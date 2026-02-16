@@ -736,7 +736,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                 {hasApplyLink && (
                                     <Button
                                         onClick={handleApply}
-                                        className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wide shadow-md"
+                                        className="w-full h-12 text-sm bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-lg flex items-center justify-center gap-2 font-bold uppercase tracking-wide shadow-md"
                                     >
                                         Apply Now
                                         <ArrowTopRightOnSquareIcon className="w-4 h-4" />
@@ -776,7 +776,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                 {hasApplyLink && (
                                     <Button
                                         onClick={handleApply}
-                                        className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg flex items-center justify-center gap-2 text-sm font-bold uppercase tracking-wide shadow-md"
+                                        className="w-full h-12 text-sm bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-lg flex items-center justify-center gap-2 font-bold uppercase tracking-wide shadow-md"
                                     >
                                         Apply Now
                                         <ArrowTopRightOnSquareIcon className="w-4 h-4" />
@@ -1048,7 +1048,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                     <div className="space-y-2">
                                         <Button
                                             onClick={handleApply}
-                                            className="w-full h-12 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl flex items-center justify-center gap-2 text-base font-bold uppercase tracking-tight shadow-lg hover:shadow-xl transition-all"
+                                            className="w-full h-12 text-base bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-tight shadow-lg hover:shadow-xl transition-all"
                                         >
                                             Apply Now
                                             <ArrowTopRightOnSquareIcon className="w-5 h-5" />
