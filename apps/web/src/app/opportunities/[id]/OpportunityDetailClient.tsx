@@ -971,14 +971,48 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                     {/* Right Column: Dynamic Action Sidebar */}
                     <aside className="lg:col-span-4 space-y-3 lg:sticky lg:top-24">
 
-                        {opp.type !== 'WALKIN' && (
-                            <EligibilitySnapshotCard
-                                education={formatEducationDisplay(opp.allowedDegrees || [], opp.allowedCourses || [], (opp as { allowedSpecializations?: string[] }).allowedSpecializations || [])}
-                                experience={opp.experienceMax != null ? `${opp.experienceMin || 0}-${opp.experienceMax} yrs` : 'Fresher+ (no cap)'}
-                                employmentType={opp.employmentType}
-                                skills={opp.requiredSkills || []}
-                            />
+                        {opp.type === 'WALKIN' && (
+                            <div className="hidden lg:block bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">
+                                <h4 className="text-[10px] font-bold uppercase tracking-widest text-primary">Walk-in snapshot</h4>
+                                <div className="space-y-2 text-xs text-muted-foreground">
+                                    <div>
+                                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Date & Time</p>
+                                        <p className="text-foreground font-semibold">
+                                            {opp.walkInDetails?.dateRange} {opp.walkInDetails?.timeRange ? `• ${opp.walkInDetails.timeRange}` : ''}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Venue</p>
+                                        <p className="text-foreground">{opp.walkInDetails?.venueAddress}</p>
+                                    </div>
+                                    {opp.walkInDetails?.requiredDocuments?.length ? (
+                                        <div>
+                                            <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Documents</p>
+                                            <ul className="list-disc list-inside text-foreground space-y-1">
+                                                {opp.walkInDetails.requiredDocuments.map((doc) => (
+                                                    <li key={doc}>{doc}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    ) : null}
+                                </div>
+                                {opp.walkInDetails?.venueLink && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => window.open(opp.walkInDetails?.venueLink, '_blank')}
+                                        className="h-9 w-full bg-primary hover:bg-primary/90 border-none text-primary-foreground font-bold uppercase text-[10px] tracking-widest"
+                                    >
+                                        Open Maps
+                                    </Button>
+                                )}
+                            </div>
                         )}
+                        <EligibilitySnapshotCard
+                            education={formatEducationDisplay(opp.allowedDegrees || [], opp.allowedCourses || [], (opp as { allowedSpecializations?: string[] }).allowedSpecializations || [])}
+                            experience={opp.experienceMax != null ? `${opp.experienceMin || 0}-${opp.experienceMax} yrs` : 'Fresher+ (no cap)'}
+                            employmentType={opp.employmentType}
+                            skills={opp.requiredSkills || []}
+                        />
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
                             <div className="space-y-3">
                                 {user && (
