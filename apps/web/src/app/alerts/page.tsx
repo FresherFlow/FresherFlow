@@ -11,11 +11,11 @@ import { cn } from '@/lib/utils';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import toast from 'react-hot-toast';
 
-type AlertKindFilter = 'all' | 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB';
+type AlertKindFilter = 'all' | 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
 
 type AlertFeedItem = {
     id: string;
-    kind: 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB';
+    kind: 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
     channel: 'EMAIL' | 'APP';
     sentAt: string;
     readAt: string | null;
@@ -43,6 +43,7 @@ type AlertFeedResponse = {
         highlight: number;
         appUpdate: number;
         newJob: number;
+        eventReminder: number;
     };
 };
 
@@ -59,6 +60,9 @@ function getAlertMetaText(item: AlertFeedItem): string | null {
             hoursLeft?: number;
             count?: number;
             relevanceReason?: string;
+            eventTitle?: string;
+            eventDate?: string;
+            reminderWindow?: string;
         };
 
         if (item.kind === 'NEW_JOB' && typeof metadata.relevanceScore === 'number') {
@@ -78,6 +82,14 @@ function getAlertMetaText(item: AlertFeedItem): string | null {
         if (item.kind === 'DAILY_DIGEST' && typeof metadata.count === 'number') {
             return `${metadata.count} matching opportunities`;
         }
+
+        if (item.kind === 'EVENT_REMINDER') {
+            const eventDate = metadata.eventDate ? new Date(metadata.eventDate) : null;
+            if (eventDate && !Number.isNaN(eventDate.getTime())) {
+                return `${metadata.eventTitle || 'Upcoming event'} • ${eventDate.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`;
+            }
+            return metadata.eventTitle || 'Upcoming milestone';
+        }
     } catch {
         return null;
     }
@@ -87,21 +99,17 @@ function getAlertMetaText(item: AlertFeedItem): string | null {
 
 export default function AlertsCenterPage() {
     const { user, isLoading } = useAuth();
-    const [loadingFeed, setLoadingFeed] = useState(true);
     const [kind, setKind] = useState<AlertKindFilter>('all');
     const [feed, setFeed] = useState<AlertFeedResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
 
     const loadFeed = async (nextKind: AlertKindFilter = kind) => {
-        setLoadingFeed(true);
         setError(null);
         try {
             const response = await alertsApi.getFeed(nextKind, 50);
             setFeed(response as AlertFeedResponse);
         } catch (err: unknown) {
             setError((err as Error)?.message || 'Failed to load alerts');
-        } finally {
-            setLoadingFeed(false);
         }
     };
 
@@ -157,7 +165,7 @@ export default function AlertsCenterPage() {
     }, [isLoading, user, kind]);
 
     const summary = useMemo(
-        () => feed?.summary || { total: 0, dailyDigest: 0, closingSoon: 0, highlight: 0, appUpdate: 0, newJob: 0 },
+        () => feed?.summary || { total: 0, dailyDigest: 0, closingSoon: 0, highlight: 0, appUpdate: 0, newJob: 0, eventReminder: 0 },
         [feed]
     );
 
@@ -225,6 +233,7 @@ export default function AlertsCenterPage() {
                     <div className="flex flex-wrap gap-2">
                         <FilterChip label={`All (${summary.total})`} active={kind === 'all'} onClick={() => setKind('all')} />
                         <FilterChip label={`New (${summary.newJob})`} active={kind === 'NEW_JOB'} onClick={() => setKind('NEW_JOB')} />
+                        <FilterChip label={`Events (${summary.eventReminder})`} active={kind === 'EVENT_REMINDER'} onClick={() => setKind('EVENT_REMINDER')} />
                         <FilterChip label={`Digest (${summary.dailyDigest})`} active={kind === 'DAILY_DIGEST'} onClick={() => setKind('DAILY_DIGEST')} />
                         <FilterChip label={`Closing (${summary.closingSoon})`} active={kind === 'CLOSING_SOON'} onClick={() => setKind('CLOSING_SOON')} />
                         <FilterChip label={`Highlight (${summary.highlight})`} active={kind === 'HIGHLIGHT'} onClick={() => setKind('HIGHLIGHT')} />
@@ -277,11 +286,13 @@ export default function AlertsCenterPage() {
                             const metaText = getAlertMetaText(item);
                             const kindLabel =
                                 item.kind === 'CLOSING_SOON' ? 'Closing soon' :
+                                    item.kind === 'EVENT_REMINDER' ? 'Event reminder' :
                                     item.kind === 'DAILY_DIGEST' ? 'Daily digest' :
                                         item.kind === 'HIGHLIGHT' ? 'Highlight' :
                                             item.kind === 'NEW_JOB' ? 'New job' : 'App Update';
                             const kindColor =
                                 item.kind === 'CLOSING_SOON' ? 'text-orange-600 bg-orange-50 border-orange-200 dark:bg-orange-500/10 dark:border-orange-500/20 dark:text-orange-300' :
+                                item.kind === 'EVENT_REMINDER' ? 'text-violet-600 bg-violet-50 border-violet-200 dark:bg-violet-500/10 dark:border-violet-500/20 dark:text-violet-300' :
                                 item.kind === 'NEW_JOB' ? 'text-primary bg-primary/10 border-primary/20' :
                                 'text-muted-foreground bg-muted border-border';
 

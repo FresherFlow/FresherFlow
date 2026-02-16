@@ -50,6 +50,16 @@ type DuplicateOpportunity = {
     status: string;
     updatedAt: string;
 };
+
+type TimelineEvent = {
+    id: string;
+    opportunityId: string;
+    eventType: 'NOTIFICATION' | 'REG_START' | 'REG_END' | 'EXAM_DATE' | 'RESULT' | 'INTERVIEW' | 'DOC_VERIFICATION' | 'OTHER';
+    eventDate: string;
+    title: string;
+    notes?: string | null;
+    sourceLink?: string | null;
+};
 import { buildOpportunityPayload } from '../opportunityPayload';
 import { buildShareUrl, type SharePlatform } from '@/lib/share';
 import { getOpportunityPath } from '@/lib/opportunityPath';
@@ -114,6 +124,14 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         updatedAt: string;
     }>>([]);
     const [checkingDuplicates, setCheckingDuplicates] = useState(false);
+    const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
+    const [timelineLoading, setTimelineLoading] = useState(false);
+    const [timelineBusyId, setTimelineBusyId] = useState<string | null>(null);
+    const [newEventType, setNewEventType] = useState<TimelineEvent['eventType']>('OTHER');
+    const [newEventDate, setNewEventDate] = useState('');
+    const [newEventTitle, setNewEventTitle] = useState('');
+    const [newEventNotes, setNewEventNotes] = useState('');
+    const [newEventSourceLink, setNewEventSourceLink] = useState('');
 
     // Form state
     const [type, setType] = useState<'JOB' | 'INTERNSHIP' | 'WALKIN'>('JOB');
@@ -360,10 +378,94 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         }
     }, [opportunityId, router]);
 
+    const loadTimelineEvents = useCallback(async () => {
+        if (!opportunityId) return;
+        setTimelineLoading(true);
+        try {
+            const response = await adminApi.getOpportunityEvents(opportunityId) as { events: TimelineEvent[] };
+            setTimelineEvents((response.events || []).map((event) => ({
+                ...event,
+                eventDate: event.eventDate ? toLocalISOString(event.eventDate) : '',
+            })));
+        } catch {
+            toast.error('Could not load timeline events.');
+        } finally {
+            setTimelineLoading(false);
+        }
+    }, [opportunityId]);
+
     useEffect(() => {
         if (!isAuthenticated || !isEditMode) return;
         void fetchOpportunityForEdit();
-    }, [isAuthenticated, isEditMode, fetchOpportunityForEdit]);
+        void loadTimelineEvents();
+    }, [isAuthenticated, isEditMode, fetchOpportunityForEdit, loadTimelineEvents]);
+
+    const handleCreateTimelineEvent = async () => {
+        if (!opportunityId) return;
+        if (!newEventTitle.trim() || !newEventDate) {
+            toast.error('Event title and date are required.');
+            return;
+        }
+
+        try {
+            setTimelineBusyId('new');
+            await adminApi.createOpportunityEvent(opportunityId, {
+                eventType: newEventType,
+                eventDate: new Date(newEventDate).toISOString(),
+                title: newEventTitle.trim(),
+                notes: newEventNotes.trim() || undefined,
+                sourceLink: newEventSourceLink.trim() || undefined,
+            });
+            setNewEventTitle('');
+            setNewEventDate('');
+            setNewEventNotes('');
+            setNewEventSourceLink('');
+            setNewEventType('OTHER');
+            await loadTimelineEvents();
+            toast.success('Timeline event added.');
+        } catch {
+            toast.error('Failed to add timeline event.');
+        } finally {
+            setTimelineBusyId(null);
+        }
+    };
+
+    const handleUpdateTimelineEvent = async (event: TimelineEvent) => {
+        if (!opportunityId || !event.id) return;
+        if (!event.title.trim() || !event.eventDate) {
+            toast.error('Event title and date are required.');
+            return;
+        }
+        try {
+            setTimelineBusyId(event.id);
+            await adminApi.updateOpportunityEvent(opportunityId, event.id, {
+                eventType: event.eventType,
+                eventDate: new Date(event.eventDate).toISOString(),
+                title: event.title.trim(),
+                notes: event.notes?.trim() || undefined,
+                sourceLink: event.sourceLink?.trim() || undefined,
+            });
+            toast.success('Event updated.');
+        } catch {
+            toast.error('Failed to update event.');
+        } finally {
+            setTimelineBusyId(null);
+        }
+    };
+
+    const handleDeleteTimelineEvent = async (eventId: string) => {
+        if (!opportunityId || !eventId) return;
+        try {
+            setTimelineBusyId(eventId);
+            await adminApi.deleteOpportunityEvent(opportunityId, eventId);
+            setTimelineEvents((prev) => prev.filter((event) => event.id !== eventId));
+            toast.success('Event removed.');
+        } catch {
+            toast.error('Failed to remove event.');
+        } finally {
+            setTimelineBusyId(null);
+        }
+    };
 
     const handleDegreeToggle = (degree: string) => {
         setAllowedDegrees(prev =>
@@ -1622,6 +1724,141 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                 </div>
 
                 {/* Footer Actions */}
+                <div className="space-y-5 md:space-y-6 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm">
+                    <h3 className="text-sm md:text-base font-semibold text-foreground flex items-center gap-2">
+                        <InformationCircleIcon className="w-4 h-4 text-muted-foreground" />
+                        Drive timeline events
+                    </h3>
+                    {!isEditMode ? (
+                        <p className="text-xs text-muted-foreground">
+                            Publish this listing first, then add timeline milestones like registration dates, exam, result, and interview.
+                        </p>
+                    ) : (
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <select
+                                    value={newEventType}
+                                    onChange={(e) => setNewEventType(e.target.value as TimelineEvent['eventType'])}
+                                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                >
+                                    <option value="NOTIFICATION">Notification</option>
+                                    <option value="REG_START">Registration Start</option>
+                                    <option value="REG_END">Registration End</option>
+                                    <option value="EXAM_DATE">Exam Date</option>
+                                    <option value="RESULT">Result</option>
+                                    <option value="INTERVIEW">Interview</option>
+                                    <option value="DOC_VERIFICATION">Document Verification</option>
+                                    <option value="OTHER">Other</option>
+                                </select>
+                                <input
+                                    type="datetime-local"
+                                    value={newEventDate}
+                                    onChange={(e) => setNewEventDate(e.target.value)}
+                                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                />
+                                <input
+                                    value={newEventTitle}
+                                    onChange={(e) => setNewEventTitle(e.target.value)}
+                                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
+                                    placeholder="Event title"
+                                />
+                                <textarea
+                                    rows={2}
+                                    value={newEventNotes}
+                                    onChange={(e) => setNewEventNotes(e.target.value)}
+                                    className="flex min-h-16 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
+                                    placeholder="Notes (optional)"
+                                />
+                                <input
+                                    value={newEventSourceLink}
+                                    onChange={(e) => setNewEventSourceLink(e.target.value)}
+                                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
+                                    placeholder="Source link (optional)"
+                                />
+                            </div>
+                            <div className="flex justify-end">
+                                <button
+                                    type="button"
+                                    onClick={() => void handleCreateTimelineEvent()}
+                                    disabled={timelineBusyId === 'new'}
+                                    className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-xs font-bold uppercase tracking-wider text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-60"
+                                >
+                                    {timelineBusyId === 'new' ? 'Adding...' : 'Add event'}
+                                </button>
+                            </div>
+
+                            <div className="space-y-3">
+                                {timelineLoading ? (
+                                    <div className="text-xs text-muted-foreground">Loading timeline...</div>
+                                ) : timelineEvents.length === 0 ? (
+                                    <div className="text-xs text-muted-foreground">No timeline events yet.</div>
+                                ) : timelineEvents.map((event) => (
+                                    <div key={event.id} className="border border-border rounded-md p-3 space-y-2">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                            <select
+                                                value={event.eventType}
+                                                onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, eventType: e.target.value as TimelineEvent['eventType'] } : item))}
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                            >
+                                                <option value="NOTIFICATION">Notification</option>
+                                                <option value="REG_START">Registration Start</option>
+                                                <option value="REG_END">Registration End</option>
+                                                <option value="EXAM_DATE">Exam Date</option>
+                                                <option value="RESULT">Result</option>
+                                                <option value="INTERVIEW">Interview</option>
+                                                <option value="DOC_VERIFICATION">Document Verification</option>
+                                                <option value="OTHER">Other</option>
+                                            </select>
+                                            <input
+                                                type="datetime-local"
+                                                value={event.eventDate}
+                                                onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, eventDate: e.target.value } : item))}
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                            />
+                                            <input
+                                                value={event.title}
+                                                onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, title: e.target.value } : item))}
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
+                                            />
+                                            <textarea
+                                                rows={2}
+                                                value={event.notes || ''}
+                                                onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, notes: e.target.value } : item))}
+                                                className="flex min-h-14 w-full rounded-md border border-input bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
+                                                placeholder="Notes"
+                                            />
+                                            <input
+                                                value={event.sourceLink || ''}
+                                                onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, sourceLink: e.target.value } : item))}
+                                                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
+                                                placeholder="Source link"
+                                            />
+                                        </div>
+                                        <div className="flex justify-end gap-2">
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleDeleteTimelineEvent(event.id)}
+                                                disabled={timelineBusyId === event.id}
+                                                className="inline-flex h-9 items-center justify-center rounded-md border border-rose-300 bg-rose-50 px-3 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                                            >
+                                                Delete
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => void handleUpdateTimelineEvent(event)}
+                                                disabled={timelineBusyId === event.id}
+                                                className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-[11px] font-semibold text-foreground hover:bg-accent disabled:opacity-60"
+                                            >
+                                                {timelineBusyId === event.id ? 'Saving...' : 'Save event'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+
                 <div className="flex flex-col md:flex-row items-center justify-end gap-3 pt-5 border-t border-border/50">
                     <Link
                         href="/admin/opportunities"

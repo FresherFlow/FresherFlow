@@ -30,7 +30,12 @@ export default function DashboardPage() {
     const [recentOpps, setRecentOpps] = useState<Opportunity[]>([]);
     const [isLoadingOpps, setIsLoadingOpps] = useState(true);
 
-    const [highlights, setHighlights] = useState<{ urgent: { walkins: Opportunity[]; others: Opportunity[] }; newlyAdded: Opportunity[] } | null>(null);
+    const [highlights, setHighlights] = useState<{
+        urgent: { walkins: Opportunity[]; others: Opportunity[] };
+        newlyAdded: Opportunity[];
+        newSinceLastVisit?: Opportunity[];
+        newSinceLastVisitCount?: number;
+    } | null>(null);
     const [isLoadingHighlights, setIsLoadingHighlights] = useState(true);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [recentError, setRecentError] = useState<string | null>(null);
@@ -103,7 +108,12 @@ export default function DashboardPage() {
     const loadHighlights = async () => {
         setHighlightsError(null);
         try {
-            const data = await dashboardApi.getHighlights() as { urgent: { walkins: Opportunity[]; others: Opportunity[] }; newlyAdded: Opportunity[] };
+            const data = await dashboardApi.getHighlights() as {
+                urgent: { walkins: Opportunity[]; others: Opportunity[] };
+                newlyAdded: Opportunity[];
+                newSinceLastVisit?: Opportunity[];
+                newSinceLastVisitCount?: number;
+            };
             setHighlights(data);
         } catch (err: unknown) {
             const message = (err as Error)?.message || 'Unable to load highlights';
@@ -129,7 +139,9 @@ export default function DashboardPage() {
                         walkins: updateList(prev.urgent.walkins),
                         others: updateList(prev.urgent.others)
                     },
-                    newlyAdded: updateList(prev.newlyAdded)
+                    newlyAdded: updateList(prev.newlyAdded),
+                    newSinceLastVisit: updateList(prev.newSinceLastVisit || []),
+                    newSinceLastVisitCount: prev.newSinceLastVisitCount || 0
                 };
             });
         } catch {
@@ -140,7 +152,7 @@ export default function DashboardPage() {
     const loadRecentOpportunities = async () => {
         setRecentError(null);
         try {
-            const data = await opportunitiesApi.list() as { opportunities: Opportunity[] };
+            const data = await opportunitiesApi.list({ sort: 'freshness_v2' }) as { opportunities: Opportunity[] };
             // Keep a broader pool so dashboard tabs can rotate fresh content.
             const sanitized = (data.opportunities || []).slice(0, 60).map((o: Opportunity) => ({
                 ...o,
@@ -223,6 +235,7 @@ export default function DashboardPage() {
         )
     );
     const featuredList = [
+        ...((highlights?.newSinceLastVisit || []).filter((candidate) => !closingSoon.some((soon) => soon.id === candidate.id))),
         ...closingSoon,
         ...newLast24Hours.filter((candidate) => !closingSoon.some((soon) => soon.id === candidate.id)),
         ...bestMatchList.filter((candidate) =>

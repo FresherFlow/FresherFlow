@@ -33,10 +33,23 @@ interface AnalyticsOverview {
         applications30d: number;
         newUsers30d: number;
         bookmarks7d: number;
+        dau: number;
+        wau: number;
+        returningUsers7d: number;
+        returningRate7d: number;
+        signupViews30d: number;
+        signupSuccess30d: number;
+        signupConversionRate30d: number;
     };
     typeDistribution: Array<{ type: string; count: number }>;
     feedback: Record<string, number>;
     funnel: Record<string, number>;
+    channelAttribution: {
+        telegram: number;
+        whatsapp: number;
+        linkedin: number;
+        others: number;
+    };
     urgent: {
         closingSoon48h: number;
         brokenLinks: number;
@@ -128,7 +141,7 @@ export default function AdminAnalyticsPage() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-3 md:gap-6">
                 {/* Link Health */}
                 <div className="bg-card/50 rounded-xl border border-border/50 p-3 md:p-5">
                     <div className="flex items-center justify-between mb-2">
@@ -169,6 +182,28 @@ export default function AdminAnalyticsPage() {
                     </div>
                     <h4 className="text-lg md:text-2xl font-bold text-foreground leading-none">{analytics.activity.bookmarks7d}</h4>
                     <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-tighter mt-1">Last 7 Days</p>
+                </div>
+
+                {/* DAU */}
+                <div className="bg-card/50 rounded-xl border border-border/50 p-3 md:p-5">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">DAU</span>
+                        <UsersIcon className="w-3 h-3 md:w-4 h-4 text-primary" />
+                    </div>
+                    <h4 className="text-lg md:text-2xl font-bold text-foreground leading-none">{analytics.activity.dau}</h4>
+                    <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-tighter mt-1">Last 24h</p>
+                </div>
+
+                {/* WAU */}
+                <div className="bg-card/50 rounded-xl border border-border/50 p-3 md:p-5">
+                    <div className="flex items-center justify-between mb-2">
+                        <span className="text-[9px] md:text-xs font-bold text-muted-foreground uppercase tracking-widest">WAU</span>
+                        <UsersIcon className="w-3 h-3 md:w-4 h-4 text-primary" />
+                    </div>
+                    <h4 className="text-lg md:text-2xl font-bold text-foreground leading-none">{analytics.activity.wau}</h4>
+                    <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-tighter mt-1">
+                        Returning {analytics.activity.returningRate7d}%
+                    </p>
                 </div>
             </div>
 
@@ -299,6 +334,24 @@ export default function AdminAnalyticsPage() {
                         ) : (
                             <p className="text-xs text-muted-foreground">No feedback this month</p>
                         )}
+                    </div>
+                </div>
+
+                {/* Channel Attribution */}
+                <div className="bg-card/30 rounded-xl border border-border/50 p-4 md:p-6 space-y-4">
+                    <h3 className="text-[10px] font-bold uppercase tracking-widest">Channel attribution (apply clicks)</h3>
+                    <div className="space-y-3">
+                        {[
+                            { label: 'Telegram', value: analytics.channelAttribution.telegram },
+                            { label: 'WhatsApp', value: analytics.channelAttribution.whatsapp },
+                            { label: 'LinkedIn', value: analytics.channelAttribution.linkedin },
+                            { label: 'Others', value: analytics.channelAttribution.others },
+                        ].map((item) => (
+                            <div key={item.label} className="flex items-center justify-between">
+                                <span className="text-xs font-medium">{item.label}</span>
+                                <span className="text-sm font-bold">{item.value}</span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

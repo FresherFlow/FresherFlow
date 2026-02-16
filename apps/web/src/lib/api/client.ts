@@ -369,7 +369,7 @@ export const opportunityClicksApi = {
 
 // Opportunities API calls
 export const opportunitiesApi = {
-    list: (params?: { type?: string; city?: string; company?: string; closingSoon?: boolean; minSalary?: number; maxSalary?: number; page?: number }) => {
+    list: (params?: { type?: string; city?: string; company?: string; closingSoon?: boolean; minSalary?: number; maxSalary?: number; page?: number; sort?: string }) => {
         const query = new URLSearchParams();
         if (params?.type) query.append('type', params.type);
         if (params?.city) query.append('city', params.city);
@@ -378,6 +378,7 @@ export const opportunitiesApi = {
         if (params?.minSalary) query.append('minSalary', String(params.minSalary));
         if (params?.maxSalary) query.append('maxSalary', String(params.maxSalary));
         if (params?.page) query.append('page', String(params.page));
+        if (params?.sort) query.append('sort', params.sort);
 
         const queryString = query.toString();
         return apiClient(`/api/opportunities${queryString ? `?${queryString}` : ''}`);
@@ -443,7 +444,7 @@ export const dashboardApi = {
 // Alerts API calls
 export const alertsApi = {
     getPreferences: () => apiClient('/api/alerts/preferences'),
-    getFeed: (kind: 'all' | 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' = 'all', limit = 50) => {
+    getFeed: (kind: 'all' | 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER' = 'all', limit = 50) => {
         const query = new URLSearchParams();
         query.set('kind', kind);
         query.set('limit', String(limit));

@@ -40,6 +40,26 @@ export const adminApi = {
     getOpportunity: (id: string) =>
         apiClient(`/api/admin/opportunities/${id}`),
 
+    getOpportunityEvents: (id: string) =>
+        apiClient(`/api/admin/opportunities/${id}/events`),
+
+    createOpportunityEvent: (id: string, data: { eventType: string; eventDate: string; title: string; notes?: string; sourceLink?: string }) =>
+        apiClient(`/api/admin/opportunities/${id}/events`, {
+            method: 'POST',
+            body: JSON.stringify(data)
+        }),
+
+    updateOpportunityEvent: (id: string, eventId: string, data: Partial<{ eventType: string; eventDate: string; title: string; notes?: string; sourceLink?: string }>) =>
+        apiClient(`/api/admin/opportunities/${id}/events/${eventId}`, {
+            method: 'PATCH',
+            body: JSON.stringify(data)
+        }),
+
+    deleteOpportunityEvent: (id: string, eventId: string) =>
+        apiClient(`/api/admin/opportunities/${id}/events/${eventId}`, {
+            method: 'DELETE'
+        }),
+
     // Update opportunity
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateOpportunity: (id: string, data: any) =>
