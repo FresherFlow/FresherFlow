@@ -21,6 +21,22 @@ import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 const EDUCATION_LEVELS = ['DIPLOMA', 'DEGREE', 'PG'];
 const OPPORTUNITY_TYPES = ['JOB', 'INTERNSHIP', 'WALKIN'];
 const WORK_MODES = ['ONSITE', 'HYBRID', 'REMOTE'];
+const INDIAN_CITIES = [
+    'Bangalore', 'Mumbai', 'Delhi', 'Pune', 'Hyderabad', 'Chennai',
+    'Kolkata', 'Ahmedabad', 'Gurugram', 'Noida', 'Chandigarh',
+    'Jaipur', 'Kochi', 'Coimbatore', 'Indore', 'Bhopal', 'Lucknow',
+    'Visakhapatnam', 'Nagpur', 'Surat', 'Vadodara', 'Mysore',
+    'Mangalore', 'Goa', 'Thiruvananthapuram', 'Bhubaneswar',
+    'Guwahati', 'Patna', 'Raipur', 'Dehradun'
+];
+const COMMON_SKILLS = [
+    'JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL',
+    'HTML', 'CSS', 'TypeScript', 'C++', 'C', 'Angular', 'Vue.js',
+    'MongoDB', 'PostgreSQL', 'AWS', 'Azure', 'Docker', 'Git',
+    'Machine Learning', 'Data Analysis', 'Excel', 'PowerPoint',
+    'Communication', 'Teamwork', 'Problem Solving', 'Spring Boot',
+    'Django', 'Flask', 'REST API', 'GraphQL', 'Express.js'
+];
 const AVAILABILITY_OPTIONS = [
     { value: 'IMMEDIATE', label: 'Within 7 Days' },
     { value: 'DAYS_15', label: '15 Days' },
@@ -98,7 +114,9 @@ export default function EditProfilePage() {
     const [availability, setAvailability] = useState('');
     const [skills, setSkills] = useState<string[]>([]);
     const [skillInput, setSkillInput] = useState('');
+    const [skillFocused, setSkillFocused] = useState(false);
     const [cityInput, setCityInput] = useState('');
+    const [cityFocused, setCityFocused] = useState(false);
 
     // Personal Info
     const [fullName, setFullName] = useState('');
@@ -572,9 +590,44 @@ export default function EditProfilePage() {
 
                                             <div className="space-y-3 pt-3 border-t border-border">
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider ml-1">Technical Skills</p>
-                                                <div className="flex gap-2">
-                                                    <input value={skillInput} onChange={(e) => setSkillInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addSkill()} className="premium-input h-9! text-sm" placeholder="e.g. React" />
-                                                    <Button onClick={addSkill} variant="outline" className="shrink-0 px-3 h-9"><PlusIcon className="w-4 h-4" /></Button>
+                                                <div className="relative">
+                                                    <div className="flex gap-2">
+                                                        <input
+                                                            value={skillInput}
+                                                            onChange={(e) => setSkillInput(e.target.value)}
+                                                            onFocus={() => setSkillFocused(true)}
+                                                            onBlur={() => setTimeout(() => setSkillFocused(false), 200)}
+                                                            onKeyDown={(e) => {
+                                                                if (e.key === 'Enter') {
+                                                                    e.preventDefault();
+                                                                    addSkill();
+                                                                }
+                                                            }}
+                                                            className="premium-input h-9! text-sm"
+                                                            placeholder="e.g. React"
+                                                        />
+                                                        <Button onClick={addSkill} variant="outline" className="shrink-0 px-3 h-9"><PlusIcon className="w-4 h-4" /></Button>
+                                                    </div>
+                                                    {skillFocused && skillInput && (
+                                                        <div className="absolute z-20 w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
+                                                            {COMMON_SKILLS.filter((skill) =>
+                                                                skill.toLowerCase().includes(skillInput.toLowerCase()) &&
+                                                                !skills.includes(skill)
+                                                            ).slice(0, 10).map((skill) => (
+                                                                <button
+                                                                    key={skill}
+                                                                    type="button"
+                                                                    onClick={() => {
+                                                                        setSkills([...skills, skill]);
+                                                                        setSkillInput('');
+                                                                    }}
+                                                                    className="w-full text-left px-4 py-2.5 hover:bg-primary/10 transition-colors text-sm font-medium first:rounded-t-xl last:rounded-b-xl"
+                                                                >
+                                                                    {skill}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 <div className="flex flex-wrap gap-1.5 min-h-6">
                                                     {skills.map(s => (
@@ -663,15 +716,45 @@ export default function EditProfilePage() {
                                     <div className="space-y-1.5">
                                         <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider ml-1">Preferred Cities</p>
                                         <div className="space-y-2">
-                                            <div className="flex gap-2">
-                                                <input
-                                                    type="text"
-                                                    value={cityInput}
-                                                    onChange={(e) => setCityInput(e.target.value)}
-                                                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCity())}
-                                                    className="premium-input h-9! text-[11px] flex-1"
-                                                    placeholder="Add city..."
-                                                />
+                                            <div className="relative">
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={cityInput}
+                                                        onChange={(e) => setCityInput(e.target.value)}
+                                                        onFocus={() => setCityFocused(true)}
+                                                        onBlur={() => setTimeout(() => setCityFocused(false), 200)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                addCity();
+                                                            }
+                                                        }}
+                                                        className="premium-input h-9! text-[11px] flex-1"
+                                                        placeholder="Add city..."
+                                                    />
+                                                    <Button onClick={addCity} variant="outline" className="shrink-0 px-3 h-9"><PlusIcon className="w-4 h-4" /></Button>
+                                                </div>
+                                                {cityFocused && cityInput && (
+                                                    <div className="absolute z-20 w-full mt-2 bg-card border border-border rounded-xl shadow-xl max-h-56 overflow-y-auto">
+                                                        {INDIAN_CITIES.filter((city) =>
+                                                            city.toLowerCase().includes(cityInput.toLowerCase()) &&
+                                                            !preferredCities.includes(city)
+                                                        ).slice(0, 10).map((city) => (
+                                                            <button
+                                                                key={city}
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setPreferredCities([...preferredCities, city]);
+                                                                    setCityInput('');
+                                                                }}
+                                                                className="w-full text-left px-4 py-2.5 hover:bg-primary/10 transition-colors text-sm font-medium first:rounded-t-xl last:rounded-b-xl"
+                                                            >
+                                                                {city}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex flex-wrap gap-2">
                                                 {preferredCities.map(city => (
