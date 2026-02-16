@@ -5,8 +5,6 @@ const OFFLINE_ACTION_QUEUE_KEY = 'ff_offline_action_queue_v1';
 const MAX_RETRY_ATTEMPTS = 10;
 const OFFLINE_ACTION_QUEUE_EVENT = 'ff-offline-action-queue-change';
 
-type OfflineActionType = 'SAVE_TOGGLE' | 'ACTION_TRACK' | 'ACTION_REMOVE';
-
 type OfflineActionBase = {
     id: string;
     ownerId?: string;

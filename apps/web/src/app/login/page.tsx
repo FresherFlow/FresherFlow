@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -50,6 +50,12 @@ function LoginContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const source = searchParams.get('source') || undefined;
+    const refCode = searchParams.get('ref') || undefined;
+    const trackingSource = useMemo(() => {
+        if (!source && !refCode) return undefined;
+        if (source && refCode) return `${source}|ref:${refCode}`;
+        return source || `ref:${refCode}`;
+    }, [source, refCode]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -111,7 +117,7 @@ function LoginContent() {
     const handleGoogleCallback = useCallback(async (response: any) => {
         setIsProcessing(true);
         try {
-            await loginWithGoogle(response.credential, source);
+            await loginWithGoogle(response.credential, trackingSource || source);
             toast.success('Welcome! Redirecting...');
             router.push('/dashboard');
         } catch (err: unknown) {
@@ -119,18 +125,18 @@ function LoginContent() {
             const errorMessage = (err as Error).message || 'Google login failed.';
             toast.error(errorMessage);
         }
-    }, [loginWithGoogle, router, source]);
+    }, [loginWithGoogle, router, trackingSource, source]);
 
     const intent = searchParams.get('intent');
 
     useEffect(() => {
-        const trackSource = source || 'unknown';
+        const trackSource = trackingSource || 'unknown';
         if (intent === 'signup') {
             growthApi.trackEvent('SIGNUP_VIEW', trackSource).catch(() => undefined);
         } else {
             growthApi.trackEvent('LOGIN_VIEW', trackSource).catch(() => undefined);
         }
-    }, [source, intent]);
+    }, [trackingSource, intent]);
 
     // Initialize Google Login - robust version with cleanup
     useEffect(() => {
@@ -197,7 +203,7 @@ function LoginContent() {
         e.preventDefault();
         setIsProcessing(true);
         try {
-            await verifyOtp(email, otp, source);
+            await verifyOtp(email, otp, trackingSource || source);
             router.push('/dashboard');
         } catch (err: unknown) {
             setIsProcessing(false);

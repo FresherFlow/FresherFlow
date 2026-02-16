@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { AuthContext } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
@@ -88,7 +89,7 @@ export function Navbar() {
     const { unreadCount } = useUnreadNotifications();
     const pendingSyncCount = useOfflineActionQueue(user?.id);
     const { theme } = useTheme();
-    const logoSrc = theme === 'dark' ? '/logo-white-optimized.png?v=3' : '/logo-optimized.png?v=3';
+    const logoSrc = theme === 'dark' ? '/logo-white-optimized.png' : '/logo-optimized.png';
 
     const navLinks = [
         { href: '/dashboard', label: 'Dashboard' },
@@ -110,14 +111,12 @@ export function Navbar() {
                     <div className="flex items-center gap-4">
                         <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-1 group shrink-0" suppressHydrationWarning>
                             <div className="w-8 h-8 relative flex items-center justify-center transition-all duration-300 transform group-hover:scale-110">
-                                <img
+                                <Image
                                     src={logoSrc}
                                     alt="FresherFlow"
                                     width={32}
                                     height={32}
-                                    loading="eager"
-                                    fetchPriority="high"
-                                    decoding="async"
+                                    priority
                                     className="w-8 h-8 object-contain"
                                 />
                             </div>
@@ -213,7 +212,7 @@ export function MobileNav() {
     const [isVisible, setIsVisible] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
     const { theme } = useTheme();
-    const logoSrc = theme === 'dark' ? '/logo-white-optimized.png?v=3' : '/logo-optimized.png?v=3';
+    const logoSrc = theme === 'dark' ? '/logo-white-optimized.png' : '/logo-optimized.png';
     const lastScrollYRef = useRef(0);
     const tickingRef = useRef(false);
 
@@ -301,14 +300,12 @@ export function MobileNav() {
             <div className="md:hidden fixed top-0 left-0 right-0 z-[70] h-16 bg-background/95 backdrop-blur-md border-b border-border">
                 <div className="h-full px-4 flex items-center justify-between">
                     <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-                        <img
+                        <Image
                             src={logoSrc}
                             alt="FresherFlow"
                             width={24}
                             height={24}
-                            loading="eager"
-                            fetchPriority="high"
-                            decoding="async"
+                            priority
                             className="w-6 h-6 object-contain"
                         />
                         <span className="text-base font-bold tracking-tight text-foreground">{mobileTitle}</span>
