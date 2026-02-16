@@ -101,14 +101,14 @@ function buildPublicOpportunitySelect(userId?: string) {
         walkInDetails: {
             select: {
                 dates: true,
-                startTime: true,
-                endTime: true,
-                venue: true,
-                address: true,
-                mapLink: true,
-                contactInfo: true,
-                dressCode: true,
-                instructions: true,
+                dateRange: true,
+                timeRange: true,
+                venueAddress: true,
+                venueLink: true,
+                reportingTime: true,
+                requiredDocuments: true,
+                contactPerson: true,
+                contactPhone: true,
             },
         },
         ...(userId
