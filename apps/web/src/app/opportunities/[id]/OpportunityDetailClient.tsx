@@ -460,17 +460,11 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         const degreeLabels = Array.from(new Set((degrees || []).map(formatEducationLevel).filter(Boolean)));
         const normalizedCourses = Array.from(new Set((courses || []).map((item) => item.trim()).filter(Boolean)));
         const normalizedSpecializations = Array.from(new Set((specializations || []).map((item) => item.trim()).filter(Boolean)));
-        const parts: string[] = [];
+        const level = degreeLabels.length > 0 ? degreeLabels.join(', ') : 'Any Graduate';
+        const coursesLine = normalizedCourses.length > 0 ? normalizedCourses.join(', ') : 'Not specified';
+        const specializationsLine = normalizedSpecializations.length > 0 ? normalizedSpecializations.join(', ') : 'Not specified';
 
-        parts.push(`Level: ${degreeLabels.length > 0 ? degreeLabels.join(', ') : 'Any Graduate'}`);
-        if (normalizedCourses.length > 0) {
-            parts.push(`Courses: ${normalizedCourses.join(', ')}`);
-        }
-        if (normalizedSpecializations.length > 0) {
-            parts.push(`Specializations: ${normalizedSpecializations.join(', ')}`);
-        }
-
-        return parts.join(' | ');
+        return `Level: ${level}\nCourses: ${coursesLine}\nSpecializations: ${specializationsLine}`;
     };
 
 
@@ -714,7 +708,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                     </div>
                                     <div className="space-y-0.5">
                                         <p className="text-[9px] font-bold text-muted-foreground uppercase">Batch</p>
-                                        <p className="font-bold text-sm text-foreground truncate">
+                                        <p className="font-bold text-sm text-foreground leading-snug whitespace-normal">
                                             {opp.allowedPassoutYears && opp.allowedPassoutYears.length > 0
                                                 ? [...opp.allowedPassoutYears].sort((a, b) => a - b).join(', ')
                                                 : 'Any'}
@@ -867,7 +861,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
                                     <p className="text-[9px] font-bold text-muted-foreground uppercase">Education</p>
-                                    <p className="text-sm font-semibold text-foreground">
+                                    <p className="text-sm font-semibold text-foreground whitespace-pre-line leading-relaxed">
                                         {formatEducationDisplay(opp.allowedDegrees || [], opp.allowedCourses || [], (opp as { allowedSpecializations?: string[] }).allowedSpecializations || [])}
                                     </p>
                                 </div>

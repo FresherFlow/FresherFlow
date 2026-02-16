@@ -12,7 +12,7 @@ export function EligibilitySnapshotCard({ education, experience, employmentType,
             <div className="space-y-3 text-sm text-muted-foreground">
                 <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Education</p>
-                    <p className="text-foreground font-semibold leading-snug">{education}</p>
+                    <p className="text-foreground font-semibold leading-relaxed whitespace-pre-line">{education}</p>
                 </div>
                 <div>
                     <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Experience</p>
