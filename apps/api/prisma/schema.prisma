@@ -111,6 +111,18 @@ enum AlertKind {
   HIGHLIGHT
   APP_UPDATE
   NEW_JOB  // Instant alert when new opportunity is published
+  EVENT_REMINDER
+}
+
+enum OpportunityEventType {
+  NOTIFICATION
+  REG_START
+  REG_END
+  EXAM_DATE
+  RESULT
+  INTERVIEW
+  DOC_VERIFICATION
+  OTHER
 }
 
 // ============================================================================
@@ -322,6 +334,7 @@ model Opportunity {
   telegramBroadcasts TelegramBroadcast[]
   clicks OpportunityClick[]
   rawIngestions RawOpportunity[]
+  events OpportunityEvent[]
 
   // DB-level filtering indexes
   @@index([status, deletedAt, type, postedAt(desc)])
@@ -485,6 +498,23 @@ model AlertDelivery {
   @@index([userId, kind])
   @@index([sentAt])
   @@index([readAt])
+}
+
+model OpportunityEvent {
+  id            String               @id @default(uuid())
+  opportunityId String
+  eventType     OpportunityEventType
+  eventDate     DateTime
+  title         String
+  notes         String?              @db.Text
+  sourceLink    String?
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, eventDate])
+  @@index([eventDate])
 }
 
 enum TelegramBroadcastStatus {

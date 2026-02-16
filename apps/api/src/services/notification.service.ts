@@ -32,13 +32,10 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         return { usersSent: 0, emailsSent: 0, appAlertsSent: 0 };
     }
 
-    // Get all users with alert preferences enabled
+    // Get all candidate users. Preferences are optional (defaults apply when missing).
     const users = await prisma.user.findMany({
         where: {
             role: 'USER',
-            alertPreference: {
-                enabled: true,
-            },
         },
         select: {
             id: true,
@@ -70,20 +67,33 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
     );
 
     for (const user of users) {
-        if (!user.profile || !user.alertPreference) continue;
+        const preference = user.alertPreference ?? {
+            enabled: true,
+            emailEnabled: false,
+            minRelevanceScore: 45,
+        };
+        if (!preference.enabled) continue;
         const alreadySentToday = sentTodayByUser.get(user.id) || 0;
         if (alreadySentToday >= MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY) continue;
 
-        // Check if user is eligible for this opportunity
-        const eligible = filterOpportunitiesForUser([opportunity as any], user.profile as any);
-        if (eligible.length === 0) continue;
+        let relevanceScore: number | null = null;
+        let relevanceReason = 'General alert';
 
-        // Rank to get relevance score
-        const ranked = rankOpportunitiesForUser(eligible as any, user.profile as any);
-        if (ranked.length === 0) continue;
+        if (user.profile) {
+            // Keep personalized alerts strict for users with profile data.
+            const eligible = filterOpportunitiesForUser([opportunity as any], user.profile as any);
+            if (eligible.length === 0) continue;
 
-        const relevanceScore = ranked[0].score;
-        if (relevanceScore < user.alertPreference.minRelevanceScore) continue;
+            const ranked = rankOpportunitiesForUser(eligible as any, user.profile as any);
+            if (ranked.length === 0) continue;
+
+            relevanceScore = ranked[0].score;
+            if (relevanceScore < preference.minRelevanceScore) continue;
+            relevanceReason = 'Profile match';
+        } else {
+            // New users should still see "new job" alerts even before profile completion.
+            relevanceReason = 'Complete profile to get personalized matching';
+        }
 
         // Create dedupe key
         const dedupeKeyBase = `${user.id}:NEW_JOB:${opportunityId}`;
@@ -112,12 +122,12 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 kind: 'NEW_JOB',
                 channel: 'APP',
                 dedupeKey: `${dedupeKeyBase}:APP`,
-                metadata: JSON.stringify({ relevanceScore }),
+                metadata: JSON.stringify({ relevanceScore, relevanceReason }),
             },
         ];
 
         // Send email if enabled
-        if (user.alertPreference.emailEnabled) {
+        if (preference.emailEnabled) {
             try {
                 await EmailService.sendNewJobAlert(user.email, user.fullName, {
                     title: opportunity.title,
@@ -132,7 +142,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                     kind: 'NEW_JOB',
                     channel: 'EMAIL',
                     dedupeKey: `${dedupeKeyBase}:EMAIL`,
-                    metadata: JSON.stringify({ relevanceScore }),
+                    metadata: JSON.stringify({ relevanceScore, relevanceReason }),
                 });
             } catch (err) {
                 logger.error('Failed to send new job email', { userId: user.id, opportunityId, error: err });

@@ -1,5 +1,5 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient, OpportunityStatus, OpportunityType } from '@prisma/client';
+import { Prisma, PrismaClient, OpportunityEventType, OpportunityStatus, OpportunityType } from '@prisma/client';
 import { requireAdmin } from '../../middleware/auth';
 import { adminRateLimit } from '../../middleware/adminRateLimit';
 import { withAdminAudit, validateReason } from '../../middleware/adminAudit';
@@ -37,6 +37,37 @@ function toCsvValue(value: unknown) {
     return `"${escaped}"`;
 }
 
+type AdminStatusFilter = OpportunityStatus | 'EXPIRED';
+
+function parseAdminStatusFilter(raw?: string): AdminStatusFilter | undefined {
+    if (!raw) return undefined;
+    const normalized = raw.toUpperCase();
+    if (normalized === 'EXPIRED') return 'EXPIRED';
+    if (Object.values(OpportunityStatus).includes(normalized as OpportunityStatus)) {
+        return normalized as OpportunityStatus;
+    }
+    return undefined;
+}
+
+function buildExpiredWhere(now: Date): Prisma.OpportunityWhereInput {
+    return {
+        status: OpportunityStatus.PUBLISHED,
+        OR: [
+            { expiredAt: { not: null } },
+            { expiresAt: { lte: now } },
+        ],
+    };
+}
+
+function parseEventType(raw?: string): OpportunityEventType {
+    const fallback = OpportunityEventType.OTHER;
+    if (!raw) return fallback;
+    const normalized = raw.toUpperCase();
+    return Object.values(OpportunityEventType).includes(normalized as OpportunityEventType)
+        ? (normalized as OpportunityEventType)
+        : fallback;
+}
+
 // GET /api/admin/opportunities/summary
 router.get('/summary', async (_req: Request, res: Response, next: NextFunction) => {
     try {
@@ -46,11 +77,12 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
             prisma.opportunity.count({
                 where: {
                     status: OpportunityStatus.PUBLISHED,
+                    expiredAt: null,
                     OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
                 }
             }),
             prisma.opportunity.count({ where: { type: OpportunityType.WALKIN } }),
-            prisma.opportunity.count({ where: { expiresAt: { lte: now } } })
+            prisma.opportunity.count({ where: buildExpiredWhere(now) })
         ]);
 
         res.json({
@@ -410,12 +442,17 @@ router.post(
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { type, status, includeCounts, includeWalkInDetails, limit, offset, q, sort } = req.query;
-        const where: any = {};
+        const where: Prisma.OpportunityWhereInput = {};
+        const andFilters: Prisma.OpportunityWhereInput[] = [];
+        const now = new Date();
 
         const normalizedType = typeof type === 'string' ? normalizeTypeParam(type) : undefined;
         if (normalizedType) where.type = normalizedType;
-        if (typeof status === 'string' && Object.values(OpportunityStatus).includes(status as OpportunityStatus)) {
-            where.status = status as OpportunityStatus;
+        const statusFilter = typeof status === 'string' ? parseAdminStatusFilter(status) : undefined;
+        if (statusFilter === 'EXPIRED') {
+            andFilters.push(buildExpiredWhere(now));
+        } else if (statusFilter) {
+            where.status = statusFilter;
         }
 
         const take = typeof limit === 'string' && !Number.isNaN(Number(limit)) ? Number(limit) : undefined;
@@ -426,12 +463,18 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
         const keyword = typeof q === 'string' ? q.trim() : '';
         if (keyword) {
-            where.OR = [
+            andFilters.push({
+                OR: [
                 { title: { contains: keyword, mode: 'insensitive' } },
                 { company: { contains: keyword, mode: 'insensitive' } },
                 { description: { contains: keyword, mode: 'insensitive' } },
                 { locations: { has: keyword } }
-            ];
+                ]
+            });
+        }
+
+        if (andFilters.length > 0) {
+            where.AND = andFilters;
         }
 
         const sortKey = typeof sort === 'string' ? sort : '';
@@ -490,12 +533,20 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 router.get('/export', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { type, status } = req.query;
-        const where: any = {};
+        const where: Prisma.OpportunityWhereInput = {};
+        const andFilters: Prisma.OpportunityWhereInput[] = [];
+        const now = new Date();
 
         const normalizedType = typeof type === 'string' ? normalizeTypeParam(type) : undefined;
         if (normalizedType) where.type = normalizedType;
-        if (typeof status === 'string' && Object.values(OpportunityStatus).includes(status as OpportunityStatus)) {
-            where.status = status as OpportunityStatus;
+        const statusFilter = typeof status === 'string' ? parseAdminStatusFilter(status) : undefined;
+        if (statusFilter === 'EXPIRED') {
+            andFilters.push(buildExpiredWhere(now));
+        } else if (statusFilter) {
+            where.status = statusFilter;
+        }
+        if (andFilters.length > 0) {
+            where.AND = andFilters;
         }
 
         const opportunities = await prisma.opportunity.findMany({
@@ -564,6 +615,9 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
             },
             include: {
                 walkInDetails: true,
+                events: {
+                    orderBy: { eventDate: 'asc' }
+                },
                 _count: {
                     select: {
                         actions: true,
@@ -578,6 +632,140 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
         }
 
         res.json({ opportunity });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// POST /api/admin/opportunities/:id/events
+router.get('/:id/events', async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const idParam = String(req.params.id || '');
+        if (!idParam) throw new AppError('Opportunity ID is required', 400);
+
+        const existing = await prisma.opportunity.findFirst({
+            where: { OR: [{ id: idParam }, { slug: idParam }] },
+            select: { id: true }
+        });
+        if (!existing) throw new AppError('Opportunity not found', 404);
+
+        const events = await prisma.opportunityEvent.findMany({
+            where: { opportunityId: existing.id },
+            orderBy: { eventDate: 'asc' }
+        });
+
+        res.json({ events });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// POST /api/admin/opportunities/:id/events
+router.post('/:id/events', adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const idParam = String(req.params.id || '');
+        if (!idParam) throw new AppError('Opportunity ID is required', 400);
+
+        const existing = await prisma.opportunity.findFirst({
+            where: { OR: [{ id: idParam }, { slug: idParam }] },
+            select: { id: true }
+        });
+        if (!existing) throw new AppError('Opportunity not found', 404);
+
+        const title = String(req.body?.title || '').trim();
+        const eventDate = req.body?.eventDate ? new Date(req.body.eventDate) : null;
+        if (!title) throw new AppError('Event title is required', 400);
+        if (!eventDate || Number.isNaN(eventDate.getTime())) throw new AppError('Valid eventDate is required', 400);
+
+        const event = await prisma.opportunityEvent.create({
+            data: {
+                opportunityId: existing.id,
+                eventType: parseEventType(req.body?.eventType),
+                eventDate,
+                title,
+                notes: req.body?.notes ? String(req.body.notes) : null,
+                sourceLink: req.body?.sourceLink ? String(req.body.sourceLink) : null,
+            }
+        });
+
+        res.status(201).json({ event });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// PATCH /api/admin/opportunities/:id/events/:eventId
+router.patch('/:id/events/:eventId', adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const idParam = String(req.params.id || '');
+        const eventId = String(req.params.eventId || '');
+        if (!idParam || !eventId) throw new AppError('Opportunity ID and event ID are required', 400);
+
+        const existing = await prisma.opportunity.findFirst({
+            where: { OR: [{ id: idParam }, { slug: idParam }] },
+            select: { id: true }
+        });
+        if (!existing) throw new AppError('Opportunity not found', 404);
+
+        const current = await prisma.opportunityEvent.findFirst({
+            where: { id: eventId, opportunityId: existing.id },
+            select: { id: true }
+        });
+        if (!current) throw new AppError('Event not found', 404);
+
+        const data: Prisma.OpportunityEventUpdateInput = {};
+        if (req.body?.title !== undefined) {
+            const title = String(req.body.title || '').trim();
+            if (!title) throw new AppError('Event title cannot be empty', 400);
+            data.title = title;
+        }
+        if (req.body?.eventDate !== undefined) {
+            const dt = new Date(req.body.eventDate);
+            if (Number.isNaN(dt.getTime())) throw new AppError('Valid eventDate is required', 400);
+            data.eventDate = dt;
+        }
+        if (req.body?.eventType !== undefined) {
+            data.eventType = parseEventType(req.body.eventType);
+        }
+        if (req.body?.notes !== undefined) {
+            data.notes = req.body.notes ? String(req.body.notes) : null;
+        }
+        if (req.body?.sourceLink !== undefined) {
+            data.sourceLink = req.body.sourceLink ? String(req.body.sourceLink) : null;
+        }
+
+        const event = await prisma.opportunityEvent.update({
+            where: { id: eventId },
+            data
+        });
+
+        res.json({ event });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// DELETE /api/admin/opportunities/:id/events/:eventId
+router.delete('/:id/events/:eventId', adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const idParam = String(req.params.id || '');
+        const eventId = String(req.params.eventId || '');
+        if (!idParam || !eventId) throw new AppError('Opportunity ID and event ID are required', 400);
+
+        const existing = await prisma.opportunity.findFirst({
+            where: { OR: [{ id: idParam }, { slug: idParam }] },
+            select: { id: true }
+        });
+        if (!existing) throw new AppError('Opportunity not found', 404);
+
+        await prisma.opportunityEvent.deleteMany({
+            where: {
+                id: eventId,
+                opportunityId: existing.id
+            }
+        });
+
+        res.json({ success: true });
     } catch (error) {
         next(error);
     }

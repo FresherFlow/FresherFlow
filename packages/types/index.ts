@@ -19,7 +19,8 @@ export enum Role {
 export enum OpportunityStatus {
     DRAFT = 'DRAFT',
     PUBLISHED = 'PUBLISHED',
-    ARCHIVED = 'ARCHIVED'
+    ARCHIVED = 'ARCHIVED',
+    EXPIRED = 'EXPIRED'
 }
 
 export enum EducationLevel {
@@ -55,6 +56,17 @@ export enum ActionType {
     PLANNING = 'PLANNING',
     ATTENDED = 'ATTENDED',
     NOT_ELIGIBLE = 'NOT_ELIGIBLE'
+}
+
+export enum OpportunityEventType {
+    NOTIFICATION = 'NOTIFICATION',
+    REG_START = 'REG_START',
+    REG_END = 'REG_END',
+    EXAM_DATE = 'EXAM_DATE',
+    RESULT = 'RESULT',
+    INTERVIEW = 'INTERVIEW',
+    DOC_VERIFICATION = 'DOC_VERIFICATION',
+    OTHER = 'OTHER'
 }
 
 export enum FeedbackReason {
@@ -197,6 +209,19 @@ export interface Opportunity {
 
     // Walk-in Details (only if type === WALKIN)
     walkInDetails?: WalkInDetails;
+    events?: OpportunityEvent[];
+}
+
+export interface OpportunityEvent {
+    id: string;
+    opportunityId: string;
+    eventType: OpportunityEventType;
+    eventDate: Date | string;
+    title: string;
+    notes?: string;
+    sourceLink?: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
 }
 
 export interface WalkInDetails {

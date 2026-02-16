@@ -10,6 +10,30 @@ import { runIngestionForSource } from '../../services/ingestion.service';
 const router = Router();
 const prisma = new PrismaClient();
 
+type SourceHealth = 'healthy' | 'degraded' | 'failing';
+
+function getIngestionSourceHealth(source: {
+    enabled: boolean;
+    runFrequencyMinutes: number;
+    lastRunAt: Date | null;
+    lastSuccessAt: Date | null;
+    runs?: Array<{ status: 'RUNNING' | 'SUCCESS' | 'PARTIAL' | 'FAILED' }>;
+}): SourceHealth {
+    if (!source.enabled) return 'degraded';
+    if (!source.lastRunAt) return 'degraded';
+
+    const now = Date.now();
+    const runLagMs = now - source.lastRunAt.getTime();
+    const maxHealthyLagMs = Math.max(source.runFrequencyMinutes, 5) * 3 * 60 * 1000;
+    const recentRun = source.runs?.[0];
+
+    if (recentRun?.status === 'FAILED') return 'failing';
+    if (!source.lastSuccessAt) return 'failing';
+    if (source.lastSuccessAt.getTime() < source.lastRunAt.getTime() - 5000) return 'degraded';
+    if (runLagMs > maxHealthyLagMs) return 'degraded';
+    return 'healthy';
+}
+
 /**
  * Trigger Link Verification Bot
  * POST /api/admin/system/verify-links
@@ -248,9 +272,34 @@ router.post('/telegram-broadcasts/:id/retry', requireAdmin, async (req: Request,
 router.get('/ingestion/sources', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
     try {
         const sources = await prisma.ingestionSource.findMany({
+            include: {
+                runs: {
+                    orderBy: { startedAt: 'desc' },
+                    take: 1,
+                    select: {
+                        id: true,
+                        status: true,
+                        startedAt: true,
+                        endedAt: true,
+                        fetchedCount: true,
+                        draftCreatedCount: true,
+                        dedupedCount: true,
+                        rejectedCount: true,
+                        errorCount: true,
+                    }
+                }
+            },
             orderBy: { createdAt: 'desc' }
         });
-        res.json({ sources });
+
+        const normalized = sources.map((source) => ({
+            ...source,
+            health: getIngestionSourceHealth(source),
+            latestRun: source.runs[0] || null,
+            runs: undefined,
+        }));
+
+        res.json({ sources: normalized });
     } catch (error) {
         next(error);
     }
@@ -353,13 +402,45 @@ router.get('/ingestion/runs', requireAdmin, async (req: Request, res: Response, 
             include: {
                 source: {
                     select: { id: true, name: true, sourceType: true }
-                }
+                },
+                rawItems: {
+                    orderBy: { createdAt: 'desc' },
+                    take: 20,
+                    select: {
+                        id: true,
+                        status: true,
+                        title: true,
+                        company: true,
+                        applyLink: true,
+                        fresherScore: true,
+                        reasonFlags: true,
+                        sourceExternalId: true,
+                        errorMessage: true,
+                        createdAt: true,
+                    }
+                },
             },
             orderBy: { startedAt: 'desc' },
             take: limit
         });
 
-        res.json({ runs });
+        res.json({
+            runs: runs.map((run) => ({
+                ...run,
+                rawItems: run.rawItems.map((item) => ({
+                    id: item.id,
+                    status: item.status,
+                    title: item.title,
+                    company: item.company,
+                    applyLink: item.applyLink,
+                    qualityScore: item.fresherScore,
+                    dedupeReason: item.reasonFlags.join(', ') || null,
+                    sourceRecordId: item.sourceExternalId,
+                    errorMessage: item.errorMessage,
+                    createdAt: item.createdAt,
+                })),
+            }))
+        });
     } catch (error) {
         next(error);
     }

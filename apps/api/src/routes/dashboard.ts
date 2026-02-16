@@ -75,12 +75,41 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
         const eligibleNew = filterOpportunitiesForUser(newOpps as any, profile as any);
         const rankedNew = sortOpportunitiesForUser(eligibleNew as any, profile as any);
 
+        // 6. New since last visit (based on latest VIEWED action)
+        const latestViewed = await prisma.userAction.findFirst({
+            where: { userId, actionType: 'VIEWED' },
+            orderBy: { updatedAt: 'desc' },
+            select: { updatedAt: true }
+        });
+        const since = latestViewed?.updatedAt || twentyFourHoursAgo;
+        const newSinceLastVisitCandidates = await prisma.opportunity.findMany({
+            where: {
+                status: OpportunityStatus.PUBLISHED,
+                deletedAt: null,
+                postedAt: { gt: since },
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
+            },
+            include: {
+                walkInDetails: true,
+                actions: { where: { userId } },
+                savedBy: { where: { userId } }
+            },
+            orderBy: { postedAt: 'desc' },
+            take: 12
+        });
+        const newSinceLastVisit = sortOpportunitiesForUser(
+            filterOpportunitiesForUser(newSinceLastVisitCandidates as any, profile as any),
+            profile as any
+        );
+
         res.json({
             urgent: {
                 walkins: walkins.slice(0, 3),
                 others: others.slice(0, 3)
             },
-            newlyAdded: rankedNew.slice(0, 3)
+            newlyAdded: rankedNew.slice(0, 3),
+            newSinceLastVisit: newSinceLastVisit.slice(0, 6),
+            newSinceLastVisitCount: newSinceLastVisit.length
         });
     } catch (error) {
         next(error);

@@ -1,13 +1,134 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient, OpportunityStatus } from '@prisma/client';
-import { requireAuth, optionalAuth } from '../middleware/auth';
-import { profileGate } from '../middleware/profileGate';
+import { optionalAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser, checkEligibility } from '../domain/eligibility';
 import { verifyAccessToken } from '@fresherflow/auth';
+import { createRateLimiter } from '../middleware/rateLimit';
 
 const router: Router = express.Router();
 const prisma = new PrismaClient();
+const publicFeedLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 80,
+    message: 'Too many feed requests. Please try again in a minute.',
+    keyPrefix: 'opportunities_public',
+});
+const GUEST_FEED_LIMIT = Number(process.env.GUEST_FEED_LIMIT || 12);
+
+function buildGuestOpportunitySelect() {
+    return {
+        id: true,
+        slug: true,
+        type: true,
+        title: true,
+        company: true,
+        locations: true,
+        workMode: true,
+        salaryMin: true,
+        salaryMax: true,
+        salaryRange: true,
+        salaryPeriod: true,
+        employmentType: true,
+        expiresAt: true,
+        postedAt: true,
+        linkHealth: true,
+        events: {
+            orderBy: { eventDate: 'asc' as const },
+            select: {
+                id: true,
+                eventType: true,
+                eventDate: true,
+                title: true,
+                sourceLink: true,
+            }
+        }
+    } as const;
+}
+
+function buildPublicOpportunitySelect(userId?: string) {
+    return {
+        id: true,
+        slug: true,
+        type: true,
+        title: true,
+        company: true,
+        companyWebsite: true,
+        description: true,
+        allowedDegrees: true,
+        allowedCourses: true,
+        allowedSpecializations: true,
+        allowedPassoutYears: true,
+        passoutYearMin: true,
+        passoutYearMax: true,
+        allowedAvailability: true,
+        requiredSkills: true,
+        locations: true,
+        experienceMin: true,
+        experienceMax: true,
+        workMode: true,
+        salaryMin: true,
+        salaryMax: true,
+        salaryRange: true,
+        salaryPeriod: true,
+        incentives: true,
+        jobFunction: true,
+        selectionProcess: true,
+        notesHighlights: true,
+        stipend: true,
+        employmentType: true,
+        applyLink: true,
+        expiresAt: true,
+        postedAt: true,
+        linkHealth: true,
+        verificationFailures: true,
+        lastVerifiedAt: true,
+        lastVerified: true,
+        events: {
+            orderBy: { eventDate: 'asc' as const },
+            select: {
+                id: true,
+                opportunityId: true,
+                eventType: true,
+                eventDate: true,
+                title: true,
+                notes: true,
+                sourceLink: true,
+                createdAt: true,
+                updatedAt: true,
+            }
+        },
+        walkInDetails: {
+            select: {
+                dates: true,
+                startTime: true,
+                endTime: true,
+                venue: true,
+                address: true,
+                mapLink: true,
+                contactInfo: true,
+                dressCode: true,
+                instructions: true,
+            },
+        },
+        ...(userId
+            ? {
+                actions: {
+                    where: { userId },
+                    select: {
+                        actionType: true,
+                        updatedAt: true,
+                    },
+                },
+                savedBy: {
+                    where: { userId },
+                    select: { id: true },
+                    take: 1,
+                },
+            }
+            : {}),
+    } as const;
+}
 
 function normalizeTypeParam(raw?: string) {
     if (!raw) return undefined;
@@ -18,17 +139,42 @@ function normalizeTypeParam(raw?: string) {
     return raw.toUpperCase();
 }
 
-// GET /api/opportunities - Get filtered opportunities (Publicly accessible with optional personalization)
-router.get('/', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
+function getFreshnessScore(
+    opportunity: { postedAt?: Date | string; expiresAt?: Date | string | null; actions?: Array<{ actionType: string }> },
+    daySeed: number
+) {
+    const now = Date.now();
+    const postedAt = opportunity.postedAt ? new Date(opportunity.postedAt).getTime() : now;
+    const ageHours = Math.max(0, (now - postedAt) / (1000 * 60 * 60));
+    const recencyScore = Math.max(0, 100 - ageHours);
+
+    const hasViewed = (opportunity.actions || []).some((a) => a.actionType === 'VIEWED');
+    const unseenScore = hasViewed ? 0 : 40;
+
+    const expiryScore = (() => {
+        if (!opportunity.expiresAt) return 8;
+        const hrs = (new Date(opportunity.expiresAt).getTime() - now) / (1000 * 60 * 60);
+        if (hrs <= 0) return -30;
+        if (hrs <= 24) return 26;
+        if (hrs <= 72) return 18;
+        if (hrs <= 168) return 10;
+        return 4;
+    })();
+
+    const stableNoise = (daySeed % 17) * 0.37;
+    return recencyScore + unseenScore + expiryScore + stableNoise;
+}
+
+router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { type, city, company, closingSoon, relevanceDebug, minSalary, maxSalary, page = '1', limit = '50' } = req.query;
+        const { type, city, relevanceDebug, minSalary, maxSalary, page = '1', limit = '50', sort } = req.query;
         const filterType = normalizeTypeParam((type) as string | undefined);
         const minSal = minSalary ? parseInt(minSalary as string) : undefined;
         const maxSal = maxSalary ? parseInt(maxSalary as string) : undefined;
         const p = parseInt(page as string) || 1;
         const l = parseInt(limit as string) || 50;
+        const sortKey = String(sort || '').toLowerCase();
 
-        // Get user for role check (Optional)
         const user = req.userId ? await prisma.user.findUnique({
             where: { id: req.userId },
             include: { profile: true }
@@ -37,71 +183,57 @@ router.get('/', optionalAuth, async (req: Request, res: Response, next: NextFunc
         const isAdmin = user?.role === 'ADMIN';
         const profile = user?.profile;
         const userId = req.userId;
+        const isGuest = !userId;
 
-        // Stage 1: DB-Level Filtering (Coarse)
         const whereClause = {
             status: OpportunityStatus.PUBLISHED,
+            deletedAt: null,
             OR: [
                 { expiresAt: null },
                 { expiresAt: { gt: new Date() } }
             ],
             ...(filterType ? { type: filterType.toUpperCase() as any } : {}),
-            ...(city ? {
-                locations: { has: city as string }
-            } : {}),
-            ...(company ? {
-                company: company as string
-            } : {}),
+            ...(city ? { locations: { has: city as string } } : {}),
             ...(minSal !== undefined ? {
                 OR: [
                     { salaryMin: { gte: minSal } },
                     { salaryMax: { gte: minSal } }
                 ]
             } : {}),
-            ...(maxSal !== undefined ? {
-                salaryMin: { lte: maxSal }
-            } : {}),
+            ...(maxSal !== undefined ? { salaryMin: { lte: maxSal } } : {}),
         };
 
         const totalAvailable = await prisma.opportunity.count({ where: whereClause });
+        const effectiveLimit = isGuest ? Math.min(l, GUEST_FEED_LIMIT) : l;
+        const effectivePage = isGuest ? 1 : p;
+        const effectiveSkip = isGuest ? 0 : (p - 1) * effectiveLimit;
 
-        const dbFiltered = await prisma.opportunity.findMany({
-            where: whereClause,
-            include: {
-                walkInDetails: true,
-                user: {
-                    select: {
-                        fullName: true
-                    }
-                },
-                ...(userId ? {
-                    actions: {
-                        where: { userId }
-                    },
-                    savedBy: {
-                        where: { userId }
-                    }
-                } : {})
-            },
-            orderBy: {
-                postedAt: 'desc'
-            },
-            take: l,
-            skip: (p - 1) * l
+        const dbFiltered = isGuest
+            ? await prisma.opportunity.findMany({
+                where: whereClause,
+                select: buildGuestOpportunitySelect(),
+                orderBy: { postedAt: 'desc' },
+                take: effectiveLimit,
+                skip: 0
+            })
+            : await prisma.opportunity.findMany({
+                where: whereClause,
+                select: buildPublicOpportunitySelect(userId || undefined),
+                orderBy: { postedAt: 'desc' },
+                take: effectiveLimit,
+                skip: effectiveSkip
+            });
+
+        const mappedResults = dbFiltered.map((opp: any) => {
+            const { savedBy, ...rest } = opp;
+            return {
+                ...rest,
+                isSaved: Boolean(savedBy && savedBy.length > 0)
+            };
         });
 
-        // Map results to include isSaved flag
-        const mappedResults = dbFiltered.map(opp => ({
-            ...opp,
-            isSaved: Boolean(opp.savedBy && opp.savedBy.length > 0)
-        }));
-
-        // Stage 2: Code-Level Filtering (Fine)
-        // Admins see EVERYTHING returned by DB filter. Candidates see eligible only.
         let finalResults: any[] = mappedResults;
-
         if (!isAdmin && profile) {
-            // Apply eligibility rules for candidates
             finalResults = filterOpportunitiesForUser(mappedResults as any, profile as any);
         }
 
@@ -109,11 +241,9 @@ router.get('/', optionalAuth, async (req: Request, res: Response, next: NextFunc
         let sorted = finalResults as any[];
         let debug: any[] | undefined;
 
-        // Personalized relevance sort (fresher-friendly experience ordering included).
         if (profile) {
             const ranked = rankOpportunitiesForUser(finalResults as any, profile as any);
             sorted = ranked.map((item) => item.opportunity);
-
             if (includeRelevanceDebug) {
                 debug = ranked.map((item) => ({
                     opportunityId: item.opportunity.id,
@@ -125,12 +255,19 @@ router.get('/', optionalAuth, async (req: Request, res: Response, next: NextFunc
             }
         }
 
+        if (sortKey === 'freshness_v2') {
+            const daySeed = Number(`${new Date().toISOString().slice(0, 10).replace(/-/g, '')}${userId || '0'}`.slice(-6));
+            sorted = [...sorted].sort((a: any, b: any) => getFreshnessScore(b, daySeed) - getFreshnessScore(a, daySeed));
+        }
+
         res.json({
             opportunities: sorted,
             count: sorted.length,
-            total: totalAvailable,
-            page: p,
-            limit: l,
+            total: isGuest ? Math.min(totalAvailable, GUEST_FEED_LIMIT) : totalAvailable,
+            page: effectivePage,
+            limit: effectiveLimit,
+            guestTeaser: isGuest,
+            requiresAuthForFullFeed: isGuest,
             ...(includeRelevanceDebug ? { relevanceDebug: debug } : {})
         });
     } catch (error) {
@@ -138,13 +275,36 @@ router.get('/', optionalAuth, async (req: Request, res: Response, next: NextFunc
     }
 });
 
-// GET /api/opportunities/:id (supports both slug and ID)
-// Publicly accessible route
-router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id/events', publicFeedLimiter, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = String(req.params.id || '');
+        if (!id) throw new AppError('Opportunity id is required', 400);
+
+        const opportunity = await prisma.opportunity.findFirst({
+            where: {
+                OR: [{ id }, { slug: id }],
+                status: OpportunityStatus.PUBLISHED,
+                deletedAt: null
+            },
+            select: { id: true }
+        });
+
+        if (!opportunity) throw new AppError('Opportunity not found', 404);
+
+        const events = await prisma.opportunityEvent.findMany({
+            where: { opportunityId: opportunity.id },
+            orderBy: { eventDate: 'asc' }
+        });
+
+        res.json({ events });
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.get('/:id', publicFeedLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id } = req.params as { id: string };
-
-        // 1. Identify User (Optional Auth)
         const token = req.cookies.accessToken;
         const userId = token ? verifyAccessToken(token) : null;
 
@@ -154,57 +314,23 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
             return /^[a-f0-9]{6,12}$/i.test(last) ? last.toLowerCase() : '';
         };
 
-        // Try finding by current slug first, then by full ID.
         let opportunity = await prisma.opportunity.findFirst({
             where: {
-                OR: [
-                    { slug: id },
-                    { id: id }
-                ]
+                OR: [{ slug: id }, { id: id }],
+                deletedAt: null
             },
-            include: {
-                walkInDetails: true,
-                user: {
-                    select: {
-                        fullName: true
-                    }
-                },
-                ...(userId ? {
-                    actions: {
-                        where: { userId }
-                    },
-                    savedBy: {
-                        where: { userId }
-                    }
-                } : {})
-            }
+            select: buildPublicOpportunitySelect(userId || undefined)
         });
 
-        // Backward-compatible slug resolution:
-        // if title/company changed, slug changes; preserve old shared links by matching UUID suffix.
         if (!opportunity) {
             const suffix = extractSlugSuffix(id);
             if (suffix) {
                 opportunity = await prisma.opportunity.findFirst({
                     where: {
-                        id: { endsWith: suffix }
+                        id: { endsWith: suffix },
+                        deletedAt: null
                     },
-                    include: {
-                        walkInDetails: true,
-                        user: {
-                            select: {
-                                fullName: true
-                            }
-                        },
-                        ...(userId ? {
-                            actions: {
-                                where: { userId }
-                            },
-                            savedBy: {
-                                where: { userId }
-                            }
-                        } : {})
-                    }
+                    select: buildPublicOpportunitySelect(userId || undefined)
                 });
             }
         }
@@ -213,21 +339,17 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
             return next(new AppError('Opportunity not found', 404));
         }
 
-        // Add isSaved flag
+        const { savedBy, ...opportunitySafe } = opportunity as typeof opportunity & { savedBy?: Array<{ id: string }> };
         const opportunityWithSaved = {
-            ...opportunity,
-            isSaved: Boolean((opportunity as any).savedBy && (opportunity as any).savedBy.length > 0)
+            ...opportunitySafe,
+            isSaved: Boolean(savedBy && savedBy.length > 0)
         };
 
-        // 2. Logic for Logged-in vs Guest
         let isEligible = true;
         let eligibilityReason: string | undefined;
 
         if (userId) {
-            const profile = await prisma.profile.findUnique({
-                where: { userId }
-            });
-
+            const profile = await prisma.profile.findUnique({ where: { userId } });
             if (profile) {
                 const result = checkEligibility(opportunity as any, profile as any, userId);
                 isEligible = result.eligible;

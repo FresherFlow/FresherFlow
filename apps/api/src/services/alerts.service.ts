@@ -203,6 +203,80 @@ async function sendClosingSoonForUser(
     return false;
 }
 
+async function sendEventRemindersForUser(
+    frontendUrl: string,
+    user: { id: string; profile: any },
+    preference: any,
+    now: Date
+): Promise<boolean> {
+    if (!preference.enabled) return false;
+
+    const upcoming = await prisma.opportunityEvent.findMany({
+        where: {
+            eventDate: {
+                gte: new Date(now.getTime() - 30 * 60 * 1000),
+                lte: new Date(now.getTime() + 3.5 * 24 * 60 * 60 * 1000),
+            },
+            opportunity: {
+                status: OpportunityStatus.PUBLISHED,
+                deletedAt: null,
+            }
+        },
+        include: {
+            opportunity: {
+                include: { walkInDetails: true }
+            }
+        },
+        orderBy: { eventDate: 'asc' },
+        take: 200
+    });
+
+    if (upcoming.length === 0) return false;
+
+    const candidates = user.profile
+        ? filterOpportunitiesForUser(upcoming.map((e) => e.opportunity) as any, user.profile as any)
+        : upcoming.map((e) => e.opportunity);
+    const allowedOpportunityIds = new Set(candidates.map((o: any) => o.id));
+
+    for (const event of upcoming) {
+        if (!allowedOpportunityIds.has(event.opportunityId)) continue;
+        const diffHours = (new Date(event.eventDate).getTime() - now.getTime()) / (1000 * 60 * 60);
+        const windows = [
+            { key: 'T3D', lower: 48, upper: 72 },
+            { key: 'T1D', lower: 12, upper: 24 },
+            { key: 'T0D', lower: -0.5, upper: 6 },
+        ] as const;
+        const window = windows.find((w) => diffHours >= w.lower && diffHours <= w.upper);
+        if (!window) continue;
+
+        const dedupeKey = `${user.id}:EVENT_REMINDER:${event.id}:${window.key}`;
+        const exists = await prisma.alertDelivery.findUnique({ where: { dedupeKey } });
+        if (exists) continue;
+
+        await prisma.alertDelivery.create({
+            data: {
+                userId: user.id,
+                opportunityId: event.opportunityId,
+                kind: 'EVENT_REMINDER',
+                channel: 'APP',
+                dedupeKey,
+                metadata: JSON.stringify({
+                    eventId: event.id,
+                    eventType: event.eventType,
+                    eventTitle: event.title,
+                    eventDate: event.eventDate,
+                    reminderWindow: window.key,
+                    sourceLink: event.sourceLink || null,
+                    applyUrl: buildOpportunityUrl(frontendUrl, event.opportunity.slug),
+                })
+            }
+        });
+        return true;
+    }
+
+    return false;
+}
+
 export async function runAlertsCycle() {
     const now = new Date();
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
@@ -227,20 +301,24 @@ export async function runAlertsCycle() {
 
     let digestSent = 0;
     let closingSoonSent = 0;
+    let eventRemindersSent = 0;
 
     for (const user of users) {
         if (!user.alertPreference) continue;
         const sentDigest = await sendDailyDigestForUser(frontendUrl, user as any, user.alertPreference, now);
         const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as any, user.alertPreference, now);
+        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as any, user.alertPreference, now);
         if (sentDigest) digestSent += 1;
         if (sentClosingSoon) closingSoonSent += 1;
+        if (sentEventReminder) eventRemindersSent += 1;
     }
 
     logger.info('Alerts cycle completed', {
         usersChecked: users.length,
         digestSent,
         closingSoonSent,
+        eventRemindersSent,
     });
 
-    return { usersChecked: users.length, digestSent, closingSoonSent };
+    return { usersChecked: users.length, digestSent, closingSoonSent, eventRemindersSent };
 }

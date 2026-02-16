@@ -14,6 +14,8 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
         const now = new Date();
         const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
         const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
         // 1. Link Health Distribution
         const linkHealthStats = await prisma.opportunity.groupBy({
@@ -179,6 +181,83 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
             })
         ]);
 
+        const [
+            actionUsers14d,
+            savedUsers14d,
+            clickUsers14d,
+            alertUsers14d,
+            channelSources30d
+        ] = await Promise.all([
+            prisma.userAction.findMany({
+                where: { createdAt: { gte: fourteenDaysAgo } },
+                select: { userId: true, createdAt: true }
+            }),
+            prisma.savedOpportunity.findMany({
+                where: { createdAt: { gte: fourteenDaysAgo } },
+                select: { userId: true, createdAt: true }
+            }),
+            prisma.opportunityClick.findMany({
+                where: { createdAt: { gte: fourteenDaysAgo }, userId: { not: null } },
+                select: { userId: true, createdAt: true }
+            }),
+            prisma.alertDelivery.findMany({
+                where: { sentAt: { gte: fourteenDaysAgo } },
+                select: { userId: true, sentAt: true }
+            }),
+            prisma.opportunityClick.groupBy({
+                by: ['source'],
+                where: clickWhere,
+                _count: { _all: true }
+            })
+        ]);
+
+        const activitySignals = [
+            ...actionUsers14d.map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
+            ...savedUsers14d.map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
+            ...clickUsers14d
+                .filter((item): item is { userId: string; createdAt: Date } => Boolean(item.userId))
+                .map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
+            ...alertUsers14d.map((item) => ({ userId: item.userId, createdAt: item.sentAt })),
+        ];
+
+        const activeUsers1d = new Set(
+            activitySignals
+                .filter((item) => item.createdAt >= oneDayAgo)
+                .map((item) => item.userId)
+        );
+        const activeUsers7d = new Set(
+            activitySignals
+                .filter((item) => item.createdAt >= sevenDaysAgo)
+                .map((item) => item.userId)
+        );
+        const previous7dUsers = new Set(
+            activitySignals
+                .filter((item) => item.createdAt >= fourteenDaysAgo && item.createdAt < sevenDaysAgo)
+                .map((item) => item.userId)
+        );
+        const returningUsers7d = new Set(
+            Array.from(activeUsers7d).filter((userId) => previous7dUsers.has(userId))
+        );
+
+        const returningRate7d = activeUsers7d.size > 0
+            ? Math.round((returningUsers7d.size / activeUsers7d.size) * 100)
+            : 0;
+
+        const sourceBuckets = {
+            telegram: 0,
+            whatsapp: 0,
+            linkedin: 0,
+            others: 0,
+        };
+
+        for (const row of channelSources30d) {
+            const source = (row.source || '').toLowerCase();
+            if (source.includes('telegram')) sourceBuckets.telegram += row._count._all;
+            else if (source.includes('whatsapp')) sourceBuckets.whatsapp += row._count._all;
+            else if (source.includes('linkedin')) sourceBuckets.linkedin += row._count._all;
+            else sourceBuckets.others += row._count._all;
+        }
+
         const topOpportunityIds = topClickedRows.map((row) => row.opportunityId);
         const topOpportunityMap = new Map<string, { title: string; company: string; slug: string }>();
 
@@ -205,7 +284,16 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
             activity: {
                 applications30d: recentApplications,
                 newUsers30d: recentUsers,
-                bookmarks7d: recentBookmarks
+                bookmarks7d: recentBookmarks,
+                dau: activeUsers1d.size,
+                wau: activeUsers7d.size,
+                returningUsers7d: returningUsers7d.size,
+                returningRate7d,
+                signupViews30d: funnel.SIGNUP_VIEW || 0,
+                signupSuccess30d: funnel.SIGNUP_SUCCESS || 0,
+                signupConversionRate30d: (funnel.SIGNUP_VIEW || 0) > 0
+                    ? Math.round(((funnel.SIGNUP_SUCCESS || 0) / (funnel.SIGNUP_VIEW || 0)) * 100)
+                    : 0
             },
             typeDistribution: typeStats.map(t => ({ type: t.type, count: t._count })),
             feedback: feedbackDistribution,
@@ -216,6 +304,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
                 uniqueAnonSessions30d: uniqueSessionClickers30d.length,
                 topClickedOpportunities
             },
+            channelAttribution: sourceBuckets,
             urgent: {
                 closingSoon48h: closingSoonCount,
                 brokenLinks: healthDistribution.broken
