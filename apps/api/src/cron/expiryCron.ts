@@ -14,6 +14,7 @@ const prisma = new PrismaClient();
  * - All expiry calculations use UTC time
  * - Database stores timestamps in UTC
  * - new Date() returns UTC timestamp when stored in PostgreSQL
+ * - Cron trigger time (midnight) is configured via EXPIRY_CRON_TIMEZONE
  * 
  * STATUS TRANSITIONS:
  * - ACTIVE → EXPIRED (terminal state)
@@ -31,8 +32,10 @@ const prisma = new PrismaClient();
  * 3. Walk-ins behave as events, not jobs
  */
 export function startExpiryCron() {
-    // Run daily at midnight UTC (00:00)
-    cron.schedule('0 0 * * *', async () => {
+    // Run once daily at midnight in configured timezone (default: IST).
+    const schedule = process.env.EXPIRY_CRON_SCHEDULE || '0 0 * * *';
+    const timezone = process.env.EXPIRY_CRON_TIMEZONE || 'Asia/Kolkata';
+    cron.schedule(schedule, async () => {
         const startTime = new Date();
 
         // Explicitly using UTC - PostgreSQL stores as UTC
@@ -195,10 +198,11 @@ export function startExpiryCron() {
                 stack: error instanceof Error ? error.stack : undefined
             });
         }
-    });
+    }, { timezone });
 
     logger.info('Expiry cron job scheduled successfully', {
-        schedule: 'Daily at midnight UTC (0 0 * * *)'
+        schedule,
+        timezone
     });
 }
 

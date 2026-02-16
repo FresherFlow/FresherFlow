@@ -395,14 +395,35 @@ function OpportunitiesListPage() {
         return date.toLocaleString();
     };
 
+    const isOpportunityExpired = (opp: { expiresAt?: string | Date | null; expiredAt?: string | Date | null }) => {
+        if (opp.expiredAt) return true;
+        if (!opp.expiresAt) return false;
+        return new Date(opp.expiresAt).getTime() <= Date.now();
+    };
+
+    const getStatusLabel = (opp: Opportunity & { expiredAt?: string | Date | null }) => {
+        if (isOpportunityExpired(opp)) return 'EXPIRED';
+        if (opp.status === 'ARCHIVED') return 'ARCHIVED';
+        if (opp.status === 'PUBLISHED') return 'LIVE';
+        return opp.status;
+    };
+
+    const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Date | null }) => {
+        const label = getStatusLabel(opp);
+        if (label === 'EXPIRED') return 'bg-orange-50 text-orange-700 ring-orange-600/10';
+        if (label === 'ARCHIVED') return 'bg-rose-50 text-rose-700 ring-rose-600/10';
+        if (label === 'LIVE') return 'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
+        return 'bg-slate-50 text-slate-600 ring-slate-500/10';
+    };
+
     if (!isAuthenticated) return null;
 
     const computedTotalPages = totalCount > 0 ? Math.ceil(totalCount / pageSize) : 1;
     const effectiveTotalPages = totalPages || computedTotalPages;
     const hasNextPage = page < effectiveTotalPages;
     const displayOpportunities = [...opportunities].sort((a, b) => {
-        const aArchived = a.status === 'ARCHIVED' ? 1 : 0;
-        const bArchived = b.status === 'ARCHIVED' ? 1 : 0;
+        const aArchived = getStatusLabel(a) === 'ARCHIVED' ? 1 : 0;
+        const bArchived = getStatusLabel(b) === 'ARCHIVED' ? 1 : 0;
         return aArchived - bArchived;
     });
 
@@ -651,14 +672,8 @@ function OpportunitiesListPage() {
                                             </div>
                                         </div>
                                     </div>
-                                    <span className={`inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold ring-1 ring-inset ${opp.status === 'ARCHIVED' ? 'bg-rose-50 text-rose-700 ring-rose-600/10' :
-                                        (opp.status === 'PUBLISHED' && opp.expiresAt && new Date(opp.expiresAt) < new Date()) ? 'bg-orange-50 text-orange-700 ring-orange-600/10' :
-                                            opp.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' :
-                                                'bg-slate-50 text-slate-600 ring-slate-500/10'
-                                        }`}>
-                                        {opp.status === 'ARCHIVED' ? 'ARCHIVED' :
-                                            (opp.status === 'PUBLISHED' && opp.expiresAt && new Date(opp.expiresAt) < new Date()) ? 'EXPIRED' :
-                                                opp.status === 'PUBLISHED' ? 'LIVE' : opp.status}
+                                    <span className={`inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
+                                        {getStatusLabel(opp)}
                                     </span>
                                 </div>
 
@@ -829,14 +844,8 @@ function OpportunitiesListPage() {
                                             </div>
                                         </td>
                                         <td className="px-5 py-4">
-                                            <span className={`inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold ring-1 ring-inset ${opp.status === 'ARCHIVED' ? 'bg-rose-50 text-rose-700 ring-rose-600/10' :
-                                                (opp.status === 'PUBLISHED' && opp.expiresAt && new Date(opp.expiresAt) < new Date()) ? 'bg-orange-50 text-orange-700 ring-orange-600/10' :
-                                                    opp.status === 'PUBLISHED' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/20' :
-                                                        'bg-slate-50 text-slate-600 ring-slate-500/10'
-                                                }`}>
-                                                {opp.status === 'ARCHIVED' ? 'ARCHIVED' :
-                                                    (opp.status === 'PUBLISHED' && opp.expiresAt && new Date(opp.expiresAt) < new Date()) ? 'EXPIRED' :
-                                                        opp.status === 'PUBLISHED' ? 'LIVE' : opp.status}
+                                            <span className={`inline-flex items-center rounded-md px-2 py-1 text-[10px] font-bold ring-1 ring-inset ${getStatusBadgeClass(opp)}`}>
+                                                {getStatusLabel(opp)}
                                             </span>
                                         </td>
                                         <td className="px-5 py-4 text-right">
