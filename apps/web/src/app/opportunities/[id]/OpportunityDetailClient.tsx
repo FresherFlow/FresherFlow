@@ -457,29 +457,20 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
     };
 
     const formatEducationDisplay = (degrees: string[], courses: string[], specializations: string[] = []): string => {
-        const degreeLabels = degrees.map(formatEducationLevel);
-        const specializationText = specializations.length > 0 ? `Specializations: ${specializations.join(', ')}` : '';
+        const degreeLabels = Array.from(new Set((degrees || []).map(formatEducationLevel).filter(Boolean)));
+        const normalizedCourses = Array.from(new Set((courses || []).map((item) => item.trim()).filter(Boolean)));
+        const normalizedSpecializations = Array.from(new Set((specializations || []).map((item) => item.trim()).filter(Boolean)));
+        const parts: string[] = [];
 
-        // If specific courses are provided, show them with degree level context
-        if (courses.length > 0) {
-            if (degrees.length > 0) {
-                // Show both degree level and specific courses
-                const base = `${degreeLabels.join(', ')} (${courses.join(', ')})`;
-                return specializationText ? `${base} • ${specializationText}` : base;
-            }
-            // Only specific courses, no degree level
-            const base = courses.join(', ');
-            return specializationText ? `${base} • ${specializationText}` : base;
+        parts.push(`Level: ${degreeLabels.length > 0 ? degreeLabels.join(', ') : 'Any Graduate'}`);
+        if (normalizedCourses.length > 0) {
+            parts.push(`Courses: ${normalizedCourses.join(', ')}`);
+        }
+        if (normalizedSpecializations.length > 0) {
+            parts.push(`Specializations: ${normalizedSpecializations.join(', ')}`);
         }
 
-        // If only degree levels, show friendly names
-        if (degrees.length > 0) {
-            const base = degreeLabels.join(', ');
-            return specializationText ? `${base} • ${specializationText}` : base;
-        }
-
-        // No restrictions
-        return specializationText ? `Any Graduate • ${specializationText}` : 'Any Graduate';
+        return parts.join(' | ');
     };
 
 
