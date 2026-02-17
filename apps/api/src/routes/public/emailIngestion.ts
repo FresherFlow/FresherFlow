@@ -10,16 +10,36 @@ const prisma = new PrismaClient();
 const emailIngestionSchema = z.object({
     sourceLabel: z.string().min(1).max(100).default('company_email'),
     envelope: z.object({
-        from: z.string().email(),
-        to: z.string().email()
+        from: z.string().trim().min(3),
+        to: z.string().trim().min(3)
     }),
     messageId: z.string().optional().nullable(),
     subject: z.string().optional().default(''),
     text: z.string().optional().default(''),
     html: z.string().optional().default(''),
-    links: z.array(z.string().url()).optional().default([]),
+    links: z.array(z.string()).optional().default([]),
     receivedAt: z.string().datetime().optional()
 });
+
+function normalizeLinks(links: string[]): string[] {
+    if (!links.length) return [];
+    const normalized = new Set<string>();
+
+    for (const raw of links) {
+        const candidate = raw.trim();
+        if (!candidate) continue;
+        try {
+            const parsed = new URL(candidate);
+            if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+                normalized.add(parsed.toString());
+            }
+        } catch {
+            // Ignore malformed links from email HTML extraction.
+        }
+    }
+
+    return Array.from(normalized);
+}
 
 function extractApplyLink(links: string[]): string | undefined {
     if (!links.length) return undefined;
@@ -72,9 +92,10 @@ router.post('/email', async (req: Request, res: Response, next: NextFunction) =>
             }
         });
 
+        const links = normalizeLinks(parsed.links || []);
         const title = extractTitle(parsed.subject || '');
         const company = extractCompanyFromSender(parsed.envelope.from);
-        const applyLink = extractApplyLink(parsed.links || []);
+        const applyLink = extractApplyLink(links);
 
         const rawPayload = {
             sourceLabel: parsed.sourceLabel,
@@ -83,7 +104,7 @@ router.post('/email', async (req: Request, res: Response, next: NextFunction) =>
             subject: parsed.subject || '',
             text: parsed.text || '',
             html: parsed.html || '',
-            links: parsed.links || [],
+            links,
             receivedAt: parsed.receivedAt || new Date().toISOString()
         };
 
@@ -103,7 +124,7 @@ router.post('/email', async (req: Request, res: Response, next: NextFunction) =>
             rawOpportunityId: created.id,
             sourceLabel: parsed.sourceLabel,
             from: parsed.envelope.from,
-            links: parsed.links.length
+            links: links.length
         });
 
         res.status(202).json({
