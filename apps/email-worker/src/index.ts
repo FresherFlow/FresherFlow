@@ -99,7 +99,8 @@ export default {
         return;
       }
 
-      message.setReject("Temporary processing error. Please retry.");
+      // Keep delivery soft-fail in debug mode to avoid bouncing potentially valid source emails.
+      return;
     }
   },
 
