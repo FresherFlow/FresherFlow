@@ -297,7 +297,7 @@ export function MobileNav() {
                     </a>
                 ))}
             </div>
-            <div className="md:hidden fixed top-0 left-0 right-0 z-[70] h-16 bg-background/95 backdrop-blur-md border-b border-border">
+            <div className="md:hidden fixed top-0 left-0 right-0 z-[70] h-16 bg-background border-b border-border">
                 <div className="h-full px-4 flex items-center justify-between">
                     <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
                         <Image
