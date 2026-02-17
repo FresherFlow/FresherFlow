@@ -18,6 +18,16 @@ export function csrfGate(req: Request, res: Response, next: NextFunction) {
         return next();
     }
 
+    // 1.1 Allow trusted worker-to-API ingestion calls using bearer token
+    if (req.path === '/api/ingestion/email') {
+        const authHeader = req.header('authorization') || '';
+        const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+        const expectedToken = process.env.INGESTION_WORKER_TOKEN || '';
+        if (token && expectedToken && token === expectedToken) {
+            return next();
+        }
+    }
+
     // 2. Enforce custom header
     const requestedFrom = req.header('X-Requested-From');
     const expectedValue = 'fresherflow-web';

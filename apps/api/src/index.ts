@@ -40,6 +40,7 @@ import healthRoutes from './routes/public/health';
 import growthRoutes from './routes/public/growth';
 import companyRoutes from './routes/public/companies';
 import opportunityClickRoutes from './routes/public/opportunityClicks';
+import emailIngestionRoutes from './routes/public/emailIngestion';
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
@@ -67,6 +68,7 @@ function extractClientIp(req: express.Request): string {
 app.use('/api', healthRoutes);
 app.use('/api/public/growth', growthRoutes);
 app.use('/api/public', opportunityClickRoutes);
+app.use('/api/ingestion', emailIngestionRoutes);
 
 // Trust proxy for Render/Vercel/Load Balancers
 if (process.env.NODE_ENV === 'production') {

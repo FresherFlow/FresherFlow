@@ -1,0 +1,11 @@
+name = "fresherflow-email-ingestion"
+main = "src/index.ts"
+compatibility_date = "2026-02-17"
+
+[vars]
+API_BASE_URL = "https://api.fresherflow.in"
+SOURCE_LABEL = "company_email"
+
+# Set these as secrets, not plain vars:
+# wrangler secret put INGESTION_WORKER_TOKEN
+# wrangler secret put FALLBACK_FORWARD_TO
