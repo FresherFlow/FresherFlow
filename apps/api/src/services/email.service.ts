@@ -2,6 +2,8 @@ import { Resend } from 'resend';
 import logger from '../utils/logger';
 
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const EMAIL_FROM = process.env.EMAIL_FROM || 'FresherFlow <no-reply@fresherflow.in>';
+const ALERTS_EMAIL_FROM = process.env.ALERTS_EMAIL_FROM || EMAIL_FROM;
 
 /**
  * Minimal Email Service
@@ -25,29 +27,36 @@ Expires in: 5 minutes
             logger.info(`OTP sent to ${email}: ${code}`);
         }
 
-        if (resend) {
-            try {
-                await resend.emails.send({
-                    from: 'FresherFlow <onboarding@resend.dev>',
-                    to: email,
-                    subject: `${code} is your FresherFlow verification code`,
-                    html: `
-                        <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-                            <h2 style="color: #333 text-align: center;">FresherFlow Verification</h2>
-                            <p style="font-size: 16px; color: #666; text-align: center;">To access your professional feed, please use the verification code below:</p>
-                            <div style="background: #f4f4f4; padding: 20px; text-align: center; border-radius: 5px; margin: 20px 0;">
-                                <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #000;">${code}</span>
-                            </div>
-                            <p style="font-size: 14px; color: #999; text-align: center;">This code will expire in 5 minutes.</p>
-                            <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
-                            <p style="font-size: 12px; color: #bbb; text-align: center;">If you didn't request this, you can safely ignore this email.</p>
+        if (!resend) {
+            if (process.env.NODE_ENV === 'production') {
+                throw new Error('OTP email service not configured (RESEND_API_KEY missing)');
+            }
+            return;
+        }
+
+        try {
+            await resend.emails.send({
+                from: EMAIL_FROM,
+                to: email,
+                subject: `${code} is your FresherFlow verification code`,
+                html: `
+                    <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                        <h2 style="color: #333 text-align: center;">FresherFlow Verification</h2>
+                        <p style="font-size: 16px; color: #666; text-align: center;">To access your professional feed, please use the verification code below:</p>
+                        <div style="background: #f4f4f4; padding: 20px; text-align: center; border-radius: 5px; margin: 20px 0;">
+                            <span style="font-size: 32px; font-weight: bold; letter-spacing: 5px; color: #000;">${code}</span>
                         </div>
-                    `
-                });
-                logger.info(`Email successfully delivered via Resend to ${email}`);
-            } catch (error) {
-                logger.error(`Failed to send email via Resend to ${email}:`, error);
-                // We don't throw here to prevent breaking the flow if email delivery fails but we've logged the code
+                        <p style="font-size: 14px; color: #999; text-align: center;">This code will expire in 5 minutes.</p>
+                        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                        <p style="font-size: 12px; color: #bbb; text-align: center;">If you didn't request this, you can safely ignore this email.</p>
+                    </div>
+                `
+            });
+            logger.info(`Email successfully delivered via Resend to ${email}`);
+        } catch (error) {
+            logger.error(`Failed to send email via Resend to ${email}:`, error);
+            if (process.env.NODE_ENV === 'production') {
+                throw new Error('Failed to deliver OTP email');
             }
         }
     }
@@ -73,7 +82,7 @@ Expires in: 15 minutes
         if (resend) {
             try {
                 await resend.emails.send({
-                    from: 'FresherFlow <onboarding@resend.dev>',
+                    from: EMAIL_FROM,
                     to: email,
                     subject: `Login to FresherFlow`,
                     html: `
@@ -117,7 +126,7 @@ Expires in: 15 minutes
 
         try {
             await resend.emails.send({
-                from: 'FresherFlow <onboarding@resend.dev>',
+                from: EMAIL_FROM,
                 to: email,
                 subject: `Your FresherFlow matches (${opportunities.length})`,
                 html: `
@@ -148,7 +157,7 @@ Expires in: 15 minutes
 
         try {
             await resend.emails.send({
-                from: 'FresherFlow <onboarding@resend.dev>',
+                from: EMAIL_FROM,
                 to: email,
                 subject: `Closing soon: ${payload.title}`,
                 html: `
@@ -185,7 +194,7 @@ Expires in: 15 minutes
 
         try {
             await resend.emails.send({
-                from: 'FresherFlow <alerts@fresherflow.in>',
+                from: ALERTS_EMAIL_FROM,
                 to: email,
                 subject: `🎯 New Job: ${data.title} at ${data.company}`,
                 html: `
