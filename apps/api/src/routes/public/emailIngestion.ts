@@ -83,25 +83,33 @@ router.post('/email', async (req: Request, res: Response, next: NextFunction) =>
         }
         const parsed = parsedResult.data;
 
-        const source = await prisma.ingestionSource.upsert({
-            where: { id: 'email-ingestion-source' },
-            update: {
-                enabled: true,
+        const emailEndpoint = 'email://sources@fresherflow.in';
+        const existingSource = await prisma.ingestionSource.findFirst({
+            where: {
                 sourceType: IngestionSourceType.CUSTOM,
-                endpoint: 'email://sources@fresherflow.in',
-                lastRunAt: new Date(),
-                updatedAt: new Date()
+                endpoint: emailEndpoint
             },
-            create: {
-                id: 'email-ingestion-source',
-                name: 'Email Ingestion',
-                sourceType: IngestionSourceType.CUSTOM,
-                endpoint: 'email://sources@fresherflow.in',
-                enabled: true,
-                runFrequencyMinutes: 5,
-                defaultType: 'JOB'
-            }
+            select: { id: true }
         });
+
+        const source = existingSource
+            ? await prisma.ingestionSource.update({
+                where: { id: existingSource.id },
+                data: {
+                    enabled: true,
+                    lastRunAt: new Date()
+                }
+            })
+            : await prisma.ingestionSource.create({
+                data: {
+                    name: 'Email Ingestion',
+                    sourceType: IngestionSourceType.CUSTOM,
+                    endpoint: emailEndpoint,
+                    enabled: true,
+                    runFrequencyMinutes: 5,
+                    defaultType: 'JOB'
+                }
+            });
 
         const links = normalizeLinks(parsed.links || []);
         const title = extractTitle(parsed.subject || '');
