@@ -67,8 +67,17 @@ router.post('/email', async (req: Request, res: Response, next: NextFunction) =>
         const expected = process.env.INGESTION_WORKER_TOKEN || '';
 
         if (!token || !expected || token !== expected) {
+            logger.warn('Email ingestion rejected: unauthorized token', {
+                hasToken: Boolean(token),
+                hasExpected: Boolean(expected)
+            });
             return next(new AppError('Unauthorized ingestion request', 401));
         }
+
+        logger.info('Email ingestion request received', {
+            hasBody: Boolean(req.body),
+            bodyType: typeof req.body
+        });
 
         const parsedResult = emailIngestionSchema.safeParse(req.body);
         if (!parsedResult.success) {

@@ -1,14 +1,18 @@
-name = "fresherflow-email-ingestion"
+name = "fresherflow-email-worker"
 main = "src/index.ts"
 compatibility_date = "2026-02-17"
 
-[vars]
-API_BASE_URL = "https://api.fresherflow.in"
-SOURCE_LABEL = "company_email"
+[observability]
+enabled = true
+head_sampling_rate = 1
 
-# Set these as secrets, not plain vars:
-# wrangler secret put INGESTION_WORKER_TOKEN
-# wrangler secret put FALLBACK_FORWARD_TO
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
 
-# apps/email-worker/wrangler.toml
-name = 'fresherflow-email-worker'
+[observability.traces]
+enabled = true
+persist = true
+head_sampling_rate = 1

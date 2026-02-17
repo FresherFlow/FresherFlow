@@ -60,8 +60,10 @@ async function sendToApi(env: Env, payload: unknown) {
   const apiBase = env.API_BASE_URL?.replace(/\/+$/, "");
   if (!apiBase) throw new Error("API_BASE_URL is missing");
   if (!env.INGESTION_WORKER_TOKEN) throw new Error("INGESTION_WORKER_TOKEN is missing");
+  const url = `${apiBase}/api/ingestion/email`;
+  console.log("Posting email payload to API", { url });
 
-  const response = await fetch(`${apiBase}/api/ingestion/email`, {
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "content-type": "application/json",
@@ -74,6 +76,8 @@ async function sendToApi(env: Env, payload: unknown) {
     const body = await response.text().catch(() => "");
     throw new Error(`API rejected email ingestion (${response.status}): ${body}`);
   }
+
+  console.log("Email payload accepted by API", { status: response.status });
 }
 
 async function handleEmail(message: ForwardableEmailMessage, env: Env): Promise<void> {
