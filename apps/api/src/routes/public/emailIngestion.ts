@@ -70,7 +70,18 @@ router.post('/email', async (req: Request, res: Response, next: NextFunction) =>
             return next(new AppError('Unauthorized ingestion request', 401));
         }
 
-        const parsed = emailIngestionSchema.parse(req.body);
+        const parsedResult = emailIngestionSchema.safeParse(req.body);
+        if (!parsedResult.success) {
+            logger.error('Invalid email ingestion payload', {
+                issues: parsedResult.error.issues.map((issue) => ({
+                    path: issue.path.join('.'),
+                    message: issue.message
+                })),
+                bodyType: typeof req.body
+            });
+            return next(new AppError('Invalid email ingestion payload', 400));
+        }
+        const parsed = parsedResult.data;
 
         const source = await prisma.ingestionSource.upsert({
             where: { id: 'email-ingestion-source' },
