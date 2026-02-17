@@ -9,3 +9,6 @@ SOURCE_LABEL = "company_email"
 # Set these as secrets, not plain vars:
 # wrangler secret put INGESTION_WORKER_TOKEN
 # wrangler secret put FALLBACK_FORWARD_TO
+
+# apps/email-worker/wrangler.toml
+name = 'fresherflow-email-worker'
