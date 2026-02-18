@@ -5,6 +5,16 @@ import TelegramService from '../services/telegram.service';
 
 const prisma = new PrismaClient();
 
+function formatDateKeyInTimezone(date: Date, timezone: string): string {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timezone,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+    });
+    return formatter.format(date);
+}
+
 /**
  * ============================================================================
  * EXPIRY CRON JOB - Production-Correct Implementation
@@ -98,19 +108,20 @@ export function startExpiryCron() {
                 // Find the maximum (last) walk-in date
                 const dates = walkIn.walkInDetails.dates.map(d => new Date(d));
                 const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+                const todayKey = formatDateKeyInTimezone(nowUTC, timezone);
+                const lastDateKey = formatDateKeyInTimezone(maxDate, timezone);
 
-                // Set to end of day UTC (23:59:59.999)
-                maxDate.setUTCHours(23, 59, 59, 999);
-
-                // If last date has passed (UTC), expire
-                if (maxDate < nowUTC) {
+                // Expire when walk-in last date is before today's date in cron timezone.
+                if (lastDateKey < todayKey) {
                     walkInIdsToExpire.push(walkIn.id);
 
                     logger.debug('Walk-in ready to expire', {
                         opportunityId: walkIn.id,
                         title: walkIn.title,
                         lastDate: maxDate.toISOString(),
-                        nowUTC: nowUTC.toISOString()
+                        lastDateKey,
+                        todayKey,
+                        timezone
                     });
                 }
             }

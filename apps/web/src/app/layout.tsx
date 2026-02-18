@@ -82,8 +82,8 @@ export default function RootLayout({
         <meta charSet="utf-8" />
         <ThemeScript />
         {/* Dynamic theme-color for light/dark mode */}
-        <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
-        <meta name="theme-color" content="#0b1220" media="(prefers-color-scheme: dark)" />
+        <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+        <meta name="theme-color" content="#0a1020" media="(prefers-color-scheme: dark)" />
         <link rel="preload" as="image" href="/logo-optimized.png?v=3" fetchPriority="high" />
         <link rel="preload" as="image" href="/logo-white-optimized.png?v=3" fetchPriority="high" />
         <script
