@@ -23,6 +23,18 @@ type OpportunityDto = {
   expiresAt?: string | null;
   companyWebsite?: string | null;
   applyLink?: string | null;
+  events?: Array<{
+    eventType:
+      | "NOTIFICATION"
+      | "REG_START"
+      | "REG_END"
+      | "EXAM_DATE"
+      | "RESULT"
+      | "INTERVIEW"
+      | "DOC_VERIFICATION"
+      | "OTHER";
+    eventDate: string;
+  }>;
 };
 
 const getApiBase = () =>
@@ -101,6 +113,25 @@ const getTypeLabel = (type?: string) => {
   return "JOB";
 };
 
+const findEventDate = (opportunity: OpportunityDto, eventType: string) => {
+  const events = opportunity.events || [];
+  const matching = events
+    .filter((event) => event.eventType === eventType)
+    .map((event) => new Date(event.eventDate))
+    .filter((date) => !Number.isNaN(date.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+  return matching[0] ?? null;
+};
+
+const isCampusDrive = (opportunity: OpportunityDto) => {
+  const title = (opportunity.title || "").toLowerCase();
+  const hasKeyword = title.includes("nqt") || title.includes("campus drive");
+  const hasTimelineEvents = (opportunity.events || []).some((event) =>
+    ["REG_START", "REG_END", "EXAM_DATE"].includes(event.eventType)
+  );
+  return hasKeyword || hasTimelineEvents;
+};
+
 const truncate = (value: string, max: number) =>
   value.length > max ? `${value.slice(0, max - 3)}...` : value;
 
@@ -129,18 +160,15 @@ const formatSalary = (opportunity: OpportunityDto) => {
   return `Up to INR ${toDisplay(max as number)}${suffix}`;
 };
 
-const getDaysUntilExpiry = (opportunity: OpportunityDto) => {
-  if (!opportunity.expiresAt) return null;
+const getDaysUntilExpiry = (targetDate: Date | null) => {
+  if (!targetDate) return null;
   const now = new Date();
-  const expiry = new Date(opportunity.expiresAt);
-  if (Number.isNaN(expiry.getTime())) return null;
-  const diff = expiry.getTime() - now.getTime();
+  const diff = targetDate.getTime() - now.getTime();
   return Math.ceil(diff / (24 * 60 * 60 * 1000));
 };
 
-const formatDeadline = (opportunity: OpportunityDto) => {
-  if (!opportunity.expiresAt) return "Open";
-  const dt = new Date(opportunity.expiresAt);
+const formatDateLabel = (dt: Date | null) => {
+  if (!dt) return "Open";
   if (Number.isNaN(dt.getTime())) return "Open";
   return dt.toLocaleDateString("en-IN", {
     day: "2-digit",
@@ -251,11 +279,17 @@ export async function GET(
   const title = truncate(opportunity.title || "Opportunity", 66);
   const company = truncate(opportunity.company || "Company", 42);
   const location = truncate(opportunity.locations?.[0] || "India", 24);
-  const typeLabel = getTypeLabel(opportunity.type);
+  const driveMode = isCampusDrive(opportunity);
+  const regEndDate = findEventDate(opportunity, "REG_END");
+  const examDate = findEventDate(opportunity, "EXAM_DATE");
+  const expiryDate = opportunity.expiresAt ? new Date(opportunity.expiresAt) : null;
+  const effectiveDeadlineDate =
+    regEndDate ?? (expiryDate && !Number.isNaN(expiryDate.getTime()) ? expiryDate : null);
+  const typeLabel = driveMode ? "CAMPUS DRIVE" : getTypeLabel(opportunity.type);
   const experienceLabel = formatExperience(opportunity);
   const salaryLabel = formatSalary(opportunity);
-  const deadlineLabel = formatDeadline(opportunity);
-  const daysUntilExpiry = getDaysUntilExpiry(opportunity);
+  const deadlineLabel = formatDateLabel(effectiveDeadlineDate);
+  const daysUntilExpiry = getDaysUntilExpiry(effectiveDeadlineDate);
   const urgencyLabel =
     daysUntilExpiry != null && daysUntilExpiry >= 0 && daysUntilExpiry <= 3
       ? daysUntilExpiry === 0
@@ -456,7 +490,7 @@ export async function GET(
           {[
             { label: "Experience", value: experienceLabel },
             { label: "Compensation", value: salaryLabel },
-            { label: "Apply by", value: deadlineLabel },
+            { label: driveMode ? "Reg Ends" : "Apply by", value: deadlineLabel },
           ].map((item) => (
             <div
               key={item.label}
@@ -504,7 +538,9 @@ export async function GET(
             marginTop: "10px",
           }}
         >
-          Verified listing on fresherflow.in
+          {driveMode && examDate
+            ? `Test from ${formatDateLabel(examDate)} - Verified listing on fresherflow.in`
+            : "Verified listing on fresherflow.in"}
         </div>
       </div>
     ),

@@ -34,6 +34,7 @@ import { analytics } from '@/lib/analytics';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { OpportunityDeadlineBadge } from './components/OpportunityDeadlineBadge';
 import { EligibilitySnapshotCard } from './components/EligibilitySnapshotCard';
+import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 
 export default function OpportunityDetailClient({ id, initialData }: { id: string; initialData?: Opportunity | null }) {
     const router = useRouter();
@@ -511,6 +512,13 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         .map((event): TimelineEventView => ({ ...event, _dt: new Date(event.eventDate) }))
         .sort((a, b) => a._dt.getTime() - b._dt.getTime());
     const upcomingTimelineEvents = timelineEvents.filter((event) => event._dt.getTime() >= Date.now());
+    const isCampusDrive = isCampusDriveOpportunity(opp);
+    const driveDates = getDriveDates(opp);
+    const driveDateItems = [
+        { label: 'Reg starts', date: driveDates.regStart },
+        { label: 'Last date', date: driveDates.regEnd },
+        { label: 'Test', date: driveDates.examDate },
+    ].filter((item) => item.date);
 
     const jobPostingJsonLd = {
         '@context': 'https://schema.org',
@@ -647,7 +655,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             <div className="relative z-10 space-y-4">
                                 <div className="flex flex-wrap items-center gap-1.5">
                                     <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[9px] font-bold uppercase tracking-tight rounded border border-primary/20">
-                                        {opp.type}
+                                        {isCampusDrive ? 'CAMPUS DRIVE' : opp.type}
                                     </span>
                                     <span className="px-1.5 py-0.5 bg-muted/40 text-muted-foreground text-[9px] font-bold uppercase tracking-tight rounded border border-border">
                                         {isOnline ? 'Online' : 'Offline'} • Sync {formatSyncTime(detailLastSyncAt)}
@@ -664,6 +672,19 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                         </div>
                                     )}
                                 </div>
+                                {driveDateItems.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        {driveDateItems.map((item) => (
+                                            <span
+                                                key={item.label}
+                                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/5 text-primary text-[10px] font-semibold border border-primary/15"
+                                            >
+                                                <ClockIcon className="w-3 h-3" />
+                                                {item.label}: {item.date?.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
 
                                 <div className="space-y-1">
                                     <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-tight">

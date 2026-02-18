@@ -6,6 +6,7 @@ import { Suspense } from 'react';
 import OpportunityDetailClient from './OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
 import { getOpportunityPath } from '@/lib/opportunityPath';
+import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 
 interface ExtendedOpportunity extends Opportunity {
     updatedAt?: string | Date;
@@ -31,11 +32,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         const company = opportunity.company;
         const batch = opportunity.allowedPassoutYears?.length > 0 ? `${opportunity.allowedPassoutYears.join('/')} Batch` : '';
         const location = opportunity.locations?.[0] || 'Remote';
-        const type = opportunity.type === 'INTERNSHIP'
-            ? 'Internship'
-            : opportunity.type === 'WALKIN'
-                ? 'Walk-in'
-                : 'Job';
+        const isCampusDrive = isCampusDriveOpportunity(opportunity as Opportunity);
+        const driveDates = getDriveDates(opportunity as Opportunity);
+        const type = isCampusDrive
+            ? 'Campus Drive'
+            : opportunity.type === 'INTERNSHIP'
+                ? 'Internship'
+                : opportunity.type === 'WALKIN'
+                    ? 'Walk-in'
+                    : 'Job';
 
         let seoTitle = `${role} at ${company} | ${type}`;
         if (batch) seoTitle += ` | ${batch}`;
@@ -49,7 +54,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         const baseDesc = `Verified ${type.toLowerCase()} opportunity at ${company} in ${location}. Open to ${eligibility}.`;
         const applyInfo = opportunity.applyLink ? ' Direct application link available.' : '';
         const freshInfo = ' Browse verified job listings, internships, and walk-ins on FresherFlow.';
-        const description = (baseDesc + applyInfo + freshInfo).substring(0, 200);
+        const driveInfo = isCampusDrive
+            ? ` Registration closes ${driveDates.regEnd ? driveDates.regEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'soon'}.`
+            : '';
+        const description = (baseDesc + applyInfo + driveInfo + freshInfo).substring(0, 200);
 
         // Canonical URL
         const canonicalId = opportunity.slug || opportunity.id;
