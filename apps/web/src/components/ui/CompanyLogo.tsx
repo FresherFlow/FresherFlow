@@ -34,6 +34,8 @@ interface CompanyLogoProps {
 
 export default function CompanyLogo({ companyName, companyWebsite, applyLink, className }: CompanyLogoProps) {
     const [imgError, setImgError] = useState(false);
+    const normalizedCompanyName = (companyName || '').toLowerCase();
+    const isTcsBrand = normalizedCompanyName.includes('tata consultancy services') || normalizedCompanyName.includes(' tcs') || normalizedCompanyName === 'tcs';
 
     // candidate domains strategy
     // 1. Domain from applyLink (high confidence)
@@ -85,7 +87,10 @@ export default function CompanyLogo({ companyName, companyWebsite, applyLink, cl
         ? companyName.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
         : '';
 
-    const knownDomain = normalizedCompany ? knownDomains[normalizedCompany] : undefined;
+    const knownDomain = normalizedCompany
+        ? knownDomains[normalizedCompany]
+            || Object.entries(knownDomains).find(([key]) => normalizedCompany.includes(key))?.[1]
+        : undefined;
 
     const constructedDomain = companyName
         ? `${normalizeCompanyName(companyName)}.com`
@@ -170,6 +175,13 @@ export default function CompanyLogo({ companyName, companyWebsite, applyLink, cl
     };
 
     if (!currentSrc || imgError) {
+        if (isTcsBrand) {
+            return (
+                <div className={cn("w-12 h-12 bg-[#005a9c] border border-[#005a9c] rounded flex items-center justify-center shrink-0", className)}>
+                    <span className="text-white text-[11px] font-bold tracking-wide">TCS</span>
+                </div>
+            );
+        }
         return (
             <div className={cn("w-12 h-12 bg-muted border border-border rounded flex items-center justify-center shrink-0", className)}>
                 <BuildingOfficeIcon className="w-6 h-6 text-muted-foreground" />

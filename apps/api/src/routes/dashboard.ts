@@ -164,6 +164,39 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
                 opportunity: item.opportunity,
             }));
 
+        if (driveMilestones.length === 0) {
+            const fallbackDrive = await prisma.opportunity.findFirst({
+                where: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    title: { contains: 'nqt', mode: 'insensitive' },
+                    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+                },
+                select: {
+                    id: true,
+                    slug: true,
+                    type: true,
+                    title: true,
+                    company: true,
+                    locations: true,
+                    expiresAt: true,
+                    postedAt: true,
+                },
+                orderBy: { postedAt: 'desc' }
+            });
+
+            if (fallbackDrive) {
+                driveMilestones.push({
+                    opportunityId: fallbackDrive.id,
+                    eventId: `fallback-${fallbackDrive.id}`,
+                    eventType: OpportunityEventType.NOTIFICATION,
+                    eventDate: fallbackDrive.postedAt,
+                    eventTitle: 'Drive update available',
+                    opportunity: fallbackDrive,
+                });
+            }
+        }
+
         res.json({
             urgent: {
                 walkins: walkins.slice(0, 3),

@@ -160,6 +160,15 @@ const formatSalary = (opportunity: OpportunityDto) => {
   return `Up to INR ${toDisplay(max as number)}${suffix}`;
 };
 
+const getCompactDriveSalary = (opportunity: OpportunityDto, driveMode: boolean) => {
+  if (!driveMode) return null;
+  const title = (opportunity.title || "").toLowerCase();
+  const company = (opportunity.company || "").toLowerCase();
+  const isTcsNqt = title.includes("nqt") && company.includes("tata");
+  if (!isTcsNqt) return null;
+  return "7-12 LPA";
+};
+
 const getDaysUntilExpiry = (targetDate: Date | null) => {
   if (!targetDate) return null;
   const now = new Date();
@@ -173,6 +182,16 @@ const formatDateLabel = (dt: Date | null) => {
   return dt.toLocaleDateString("en-IN", {
     day: "2-digit",
     month: "short",
+  });
+};
+
+const formatFullDateLabel = (dt: Date | null) => {
+  if (!dt) return null;
+  if (Number.isNaN(dt.getTime())) return null;
+  return dt.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 };
 
@@ -280,15 +299,18 @@ export async function GET(
   const company = truncate(opportunity.company || "Company", 42);
   const location = truncate(opportunity.locations?.[0] || "India", 24);
   const driveMode = isCampusDrive(opportunity);
+  const compactDriveSalary = getCompactDriveSalary(opportunity, driveMode);
   const regEndDate = findEventDate(opportunity, "REG_END");
   const examDate = findEventDate(opportunity, "EXAM_DATE");
   const expiryDate = opportunity.expiresAt ? new Date(opportunity.expiresAt) : null;
+  const validExpiryDate = expiryDate && !Number.isNaN(expiryDate.getTime()) ? expiryDate : null;
   const effectiveDeadlineDate =
-    regEndDate ?? (expiryDate && !Number.isNaN(expiryDate.getTime()) ? expiryDate : null);
+    regEndDate ?? validExpiryDate;
   const typeLabel = driveMode ? "CAMPUS DRIVE" : getTypeLabel(opportunity.type);
   const experienceLabel = formatExperience(opportunity);
-  const salaryLabel = formatSalary(opportunity);
+  const salaryLabel = compactDriveSalary || formatSalary(opportunity);
   const deadlineLabel = formatDateLabel(effectiveDeadlineDate);
+  const applyBeforeLabel = formatFullDateLabel(validExpiryDate);
   const daysUntilExpiry = getDaysUntilExpiry(effectiveDeadlineDate);
   const urgencyLabel =
     daysUntilExpiry != null && daysUntilExpiry >= 0 && daysUntilExpiry <= 3
@@ -466,6 +488,30 @@ export async function GET(
               </span>
             ) : null}
           </div>
+          {applyBeforeLabel ? (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                marginTop: "4px",
+              }}
+            >
+              <span
+                style={{
+                  borderRadius: "999px",
+                  border: "1px solid rgba(253, 230, 138, 0.55)",
+                  background: "rgba(120, 53, 15, 0.35)",
+                  color: "#fde68a",
+                  fontSize: "16px",
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  padding: "6px 12px",
+                }}
+              >
+                APPLY BEFORE {applyBeforeLabel.toUpperCase()}
+              </span>
+            </div>
+          ) : null}
 
           <div
             style={{
@@ -529,7 +575,6 @@ export async function GET(
             </div>
           ))}
         </div>
-
         <div
           style={{
             color: "#bfdbfe",

@@ -34,7 +34,7 @@ import { analytics } from '@/lib/analytics';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { OpportunityDeadlineBadge } from './components/OpportunityDeadlineBadge';
 import { EligibilitySnapshotCard } from './components/EligibilitySnapshotCard';
-import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
+import { getDriveDates, getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 
 export default function OpportunityDetailClient({ id, initialData }: { id: string; initialData?: Opportunity | null }) {
     const router = useRouter();
@@ -521,11 +521,13 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
     const upcomingTimelineEvents = timelineEvents.filter((event) => event._dt.getTime() >= Date.now());
     const isCampusDrive = isCampusDriveOpportunity(opp);
     const driveDates = getDriveDates(opp);
+    const driveMeta = getDriveMetadata(opp);
     const driveDateItems = [
         { label: 'Reg starts', date: driveDates.regStart },
         { label: 'Last date', date: driveDates.regEnd },
         { label: 'Test', date: driveDates.examDate },
     ].filter((item) => item.date);
+    const formatLpaValue = (value: string) => (/\bLPA\b/i.test(value) ? value : `${value} LPA`);
 
     const jobPostingJsonLd = {
         '@context': 'https://schema.org',
@@ -692,6 +694,18 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                         ))}
                                     </div>
                                 )}
+                                {isCampusDrive && driveMeta.badges.length > 0 && (
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        {driveMeta.badges.map((badge) => (
+                                            <span
+                                                key={badge}
+                                                className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/50 text-foreground text-[10px] font-semibold border border-border"
+                                            >
+                                                {badge}
+                                            </span>
+                                        ))}
+                                    </div>
+                                )}
 
                                 <div className="space-y-1">
                                     <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-tight">
@@ -852,6 +866,71 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             />
                         </div>
 
+                        {isCampusDrive && driveMeta.isTcsNqt && (
+                            <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-4">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">About the Drive</h3>
+                                <ul className="space-y-1.5 text-sm text-foreground/90 font-medium">
+                                    {driveMeta.overviewPoints.map((point) => (
+                                        <li key={point} className="flex items-start gap-2">
+                                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                                            <span>{point}</span>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
+                        )}
+
+                        {isCampusDrive && driveMeta.salaryRows.length > 0 && (
+                            <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Salary Breakdown</h3>
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="w-full min-w-[520px] text-xs">
+                                        <thead>
+                                            <tr className="text-muted-foreground uppercase tracking-wider">
+                                                <th className="text-left py-2">Cadre</th>
+                                                <th className="text-left py-2">Experience</th>
+                                                <th className="text-left py-2">UG CTC (LPA)</th>
+                                                <th className="text-left py-2">PG CTC (LPA)</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {driveMeta.salaryRows.map((row) => (
+                                                <tr key={`${row.cadre}-${row.experience}`} className="border-t border-border/60 text-foreground font-medium">
+                                                    <td className="py-2">{row.cadre}</td>
+                                                    <td className="py-2">{row.experience}</td>
+                                                    <td className="py-2">{formatLpaValue(row.ug)}</td>
+                                                    <td className="py-2">{formatLpaValue(row.pg)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div className="grid grid-cols-1 gap-2 md:hidden">
+                                    {(['Prime', 'Digital'] as const).map((cadre) => {
+                                        const rows = driveMeta.salaryRows.filter((row) => row.cadre === cadre);
+                                        if (rows.length === 0) return null;
+                                        return (
+                                            <div key={cadre} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
+                                                <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{cadre} Cadre</p>
+                                                <div className="mt-2 space-y-1.5">
+                                                    {rows.map((row) => (
+                                                        <div key={`${row.cadre}-${row.experience}`} className="rounded-md border border-border/70 bg-background/30 px-2 py-1.5">
+                                                            <p className="text-[10px] font-bold text-muted-foreground uppercase">{row.experience}</p>
+                                                            <div className="mt-0.5 flex items-center justify-between gap-2 text-[12px] font-semibold text-foreground">
+                                                                <span>UG: {formatLpaValue(row.ug)}</span>
+                                                                <span>PG: {formatLpaValue(row.pg)}</span>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">{driveMeta.salaryNote}</p>
+                            </div>
+                        )}
+
                         {timelineEvents.length > 0 && (
                             <div id="drive-timeline" className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
                                 <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
@@ -897,6 +976,38 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                         );
                                     })}
                                 </div>
+                            </div>
+                        )}
+
+                        {isCampusDrive && driveMeta.selectionSteps.length > 0 && (
+                            <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Selection Process</h3>
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {driveMeta.selectionSteps.map((step, index) => (
+                                        <span key={step} className="inline-flex items-center rounded-md border border-border bg-muted/20 px-2.5 py-1.5 text-[12px] font-semibold text-foreground">
+                                            {index + 1}. {step}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {isCampusDrive && driveMeta.applySteps.length > 0 && (
+                            <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">How to Apply</h3>
+                                <ol className="space-y-2 text-sm text-foreground/90 font-medium list-decimal pl-5">
+                                    {driveMeta.applySteps.map((step) => (
+                                        <li key={step}>{step}</li>
+                                    ))}
+                                </ol>
+                                {opp.applyLink && (
+                                    <Button
+                                        onClick={handleApply}
+                                        className="w-full md:w-auto h-10 text-xs bg-primary/80 text-primary-foreground border border-primary/60 hover:bg-primary rounded-lg font-bold uppercase tracking-widest"
+                                    >
+                                        Apply on Official Website
+                                    </Button>
+                                )}
                             </div>
                         )}
 

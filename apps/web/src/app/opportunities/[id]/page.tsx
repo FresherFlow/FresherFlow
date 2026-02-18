@@ -153,6 +153,7 @@ const generateJsonLd = (opportunity: Opportunity) => {
         },
         employmentType: opportunity.type === 'INTERNSHIP' ? 'INTERN' : 'FULL_TIME',
         directApply: true,
+        jobLocationType: 'ON_SITE',
     };
 
     if (opportunity.salaryMin || (opportunity.salary && opportunity.salary.min)) {

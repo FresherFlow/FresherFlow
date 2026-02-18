@@ -13,6 +13,7 @@ import CompanyLogo from '@/components/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
+import { getDriveDates, getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 
 /**
  * JobCard - REFINED TYPOGRAPHY PATTERN
@@ -30,6 +31,9 @@ interface JobCardProps {
 }
 
 export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin }: JobCardProps) {
+    const isDrive = isCampusDriveOpportunity(job);
+    const driveDates = getDriveDates(job);
+    const driveMeta = getDriveMetadata(job);
 
     const formatSalary = () => {
         if (job.salaryRange) return job.salaryRange;
@@ -139,6 +143,14 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     };
 
     const getJobTypeBadge = () => {
+        if (isDrive) {
+            return (
+                <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 border border-primary/25 text-primary text-[9px] font-bold uppercase tracking-wider rounded-full">
+                    Hiring Drive
+                </span>
+            );
+        }
+
         const type = (job.employmentType || job.type) as string;
 
         if (type === 'WALKIN' || job.type === 'WALKIN') {
@@ -237,6 +249,16 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5">
                     {getJobTypeBadge()}
+                    {isDrive && (
+                        <>
+                            <span className="inline-flex items-center px-2 py-0.5 bg-muted/60 border border-border text-foreground text-[9px] font-bold uppercase tracking-wider rounded-full">
+                                Campus 2024-2026
+                            </span>
+                            <span className="inline-flex items-center px-2 py-0.5 bg-muted/60 border border-border text-foreground text-[9px] font-bold uppercase tracking-wider rounded-full">
+                                0-2 Yrs
+                            </span>
+                        </>
+                    )}
                 </div>
                 {job.expiresAt && (
                     <span
@@ -290,7 +312,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Location</p>
                     <div className="flex items-center gap-2 text-foreground/90 text-[14px] font-semibold">
                         <MapPinIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-                        <span className="truncate">{job.locations[0] || 'Remote'}</span>
+                        <span className="truncate">{isDrive ? 'PAN India' : (job.locations[0] || 'Remote')}</span>
                     </div>
                 </div>
 
@@ -298,10 +320,15 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Salary</p>
                     <div className="flex items-center gap-2 text-foreground/90 text-[14px] font-semibold">
                         <CurrencyRupeeIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-                        <span className="truncate">{formatSalary()}</span>
+                        <span className="truncate">{isDrive ? driveMeta.maxCtcLabel : formatSalary()}</span>
                     </div>
                 </div>
             </div>
+            {isDrive && driveDates.regEnd && (
+                <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] font-semibold text-primary">
+                    Apply before {driveDates.regEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </div>
+            )}
 
             {/* Footer */}
             <div className="flex items-center justify-between pt-3 border-t border-border/30 mt-auto">
@@ -317,7 +344,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                     )}
                 </div>
                 <div className="flex items-center gap-1 text-primary text-[11px] font-bold uppercase tracking-widest group-hover:translate-x-0.5 transition-transform duration-300">
-                    <span>{isApplied ? 'View Status' : 'Apply Now'}</span>
+                    <span>{isApplied ? 'View Status' : (isDrive ? 'Apply via TCS Portal' : 'Apply Now')}</span>
                     <ChevronRightIcon className="w-3.5 h-3.5" aria-hidden="true" />
                 </div>
             </div>
