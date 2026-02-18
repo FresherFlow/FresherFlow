@@ -18,11 +18,21 @@ import { Button } from '@/components/ui/Button';
 import { formatSyncTime, getFeedLastSyncAt } from '@/lib/offline/syncStatus';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { calculateOpportunityMatch } from '@/lib/matchScore';
+import { OpportunityEventType } from '@fresherflow/types';
 
 // const UPDATE_INTERVAL_MS = 60_000;
 const HOURS_24_IN_MS = 24 * 60 * 60 * 1000;
 const MOBILE_DASHBOARD_LIMIT = 8;
 const DESKTOP_DASHBOARD_LIMIT = 24;
+
+type DriveMilestone = {
+    opportunityId: string;
+    eventId: string;
+    eventType: OpportunityEventType;
+    eventDate: string | Date;
+    eventTitle: string;
+    opportunity: Opportunity;
+};
 
 export default function DashboardPage() {
     const { user, profile, isLoading: authLoading } = useAuth();
@@ -35,6 +45,7 @@ export default function DashboardPage() {
         newlyAdded: Opportunity[];
         newSinceLastVisit?: Opportunity[];
         newSinceLastVisitCount?: number;
+        driveMilestones?: DriveMilestone[];
     } | null>(null);
     const [isLoadingHighlights, setIsLoadingHighlights] = useState(true);
     const [hasLoaded, setHasLoaded] = useState(false);
@@ -113,6 +124,7 @@ export default function DashboardPage() {
                 newlyAdded: Opportunity[];
                 newSinceLastVisit?: Opportunity[];
                 newSinceLastVisitCount?: number;
+                driveMilestones?: DriveMilestone[];
             };
             setHighlights(data);
         } catch (err: unknown) {
@@ -141,7 +153,8 @@ export default function DashboardPage() {
                     },
                     newlyAdded: updateList(prev.newlyAdded),
                     newSinceLastVisit: updateList(prev.newSinceLastVisit || []),
-                    newSinceLastVisitCount: prev.newSinceLastVisitCount || 0
+                    newSinceLastVisitCount: prev.newSinceLastVisitCount || 0,
+                    driveMilestones: prev.driveMilestones || []
                 };
             });
         } catch {
@@ -371,6 +384,33 @@ export default function DashboardPage() {
                                 </div>
                             );
                         })()
+                    )}
+                    {!isLoadingHighlights && highlights?.driveMilestones && highlights.driveMilestones.length > 0 && (
+                        <section className="space-y-3">
+                            <div className="flex items-center justify-between">
+                                <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary">Campus Drive Timeline</h2>
+                                <Link href="/opportunities" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
+                                    Track all
+                                </Link>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                {highlights.driveMilestones.map((milestone) => (
+                                    <button
+                                        key={milestone.eventId}
+                                        onClick={() => router.push(getOpportunityPathFromItem(milestone.opportunity))}
+                                        className="text-left rounded-2xl border border-primary/20 bg-primary/5 p-4 hover:bg-primary/10 transition-colors"
+                                    >
+                                        <p className="text-[9px] font-bold uppercase tracking-widest text-primary">{milestone.eventType.replace('_', ' ')}</p>
+                                        <h3 className="mt-1 text-sm font-semibold line-clamp-1">{milestone.opportunity.title}</h3>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{milestone.opportunity.company}</p>
+                                        <p className="mt-2 inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                                            {new Date(milestone.eventDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </p>
+                                        <p className="mt-2 text-[11px] text-foreground/80 line-clamp-1">{milestone.eventTitle}</p>
+                                    </button>
+                                ))}
+                            </div>
+                        </section>
                     )}
 
                     {/* Main Grid */}

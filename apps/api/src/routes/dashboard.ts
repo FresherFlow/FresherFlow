@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient, OpportunityStatus } from '@prisma/client';
+import { PrismaClient, OpportunityEventType, OpportunityStatus } from '@prisma/client';
 import { requireAuth } from '../middleware/auth';
 import { profileGate } from '../middleware/profileGate';
 import { filterOpportunitiesForUser, sortOpportunitiesForUser } from '../domain/eligibility';
@@ -102,6 +102,68 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
             profile as any
         );
 
+        const fortyFiveDaysFromNow = new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000);
+        const driveEventTypes: OpportunityEventType[] = [
+            OpportunityEventType.NOTIFICATION,
+            OpportunityEventType.REG_START,
+            OpportunityEventType.REG_END,
+            OpportunityEventType.EXAM_DATE,
+            OpportunityEventType.RESULT,
+        ];
+
+        const upcomingDriveEvents = await prisma.opportunityEvent.findMany({
+            where: {
+                eventType: { in: driveEventTypes },
+                eventDate: {
+                    gte: new Date(now.getTime() - 6 * 60 * 60 * 1000),
+                    lte: fortyFiveDaysFromNow
+                },
+                opportunity: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null
+                }
+            },
+            include: {
+                opportunity: {
+                    select: {
+                        id: true,
+                        slug: true,
+                        type: true,
+                        title: true,
+                        company: true,
+                        locations: true,
+                        expiresAt: true,
+                        postedAt: true,
+                    }
+                }
+            },
+            orderBy: { eventDate: 'asc' },
+            take: 30
+        });
+
+        const seenDriveIds = new Set<string>();
+        const driveMilestones = upcomingDriveEvents
+            .filter((item) => {
+                if (seenDriveIds.has(item.opportunityId)) return false;
+                seenDriveIds.add(item.opportunityId);
+                return true;
+            })
+            .sort((a, b) => {
+                const aPriority = /tcs/i.test(a.opportunity.company) && /nqt/i.test(a.opportunity.title) ? 1 : 0;
+                const bPriority = /tcs/i.test(b.opportunity.company) && /nqt/i.test(b.opportunity.title) ? 1 : 0;
+                if (aPriority !== bPriority) return bPriority - aPriority;
+                return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
+            })
+            .slice(0, 4)
+            .map((item) => ({
+                opportunityId: item.opportunityId,
+                eventId: item.id,
+                eventType: item.eventType,
+                eventDate: item.eventDate,
+                eventTitle: item.title,
+                opportunity: item.opportunity,
+            }));
+
         res.json({
             urgent: {
                 walkins: walkins.slice(0, 3),
@@ -109,7 +171,8 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
             },
             newlyAdded: rankedNew.slice(0, 3),
             newSinceLastVisit: newSinceLastVisit.slice(0, 6),
-            newSinceLastVisitCount: newSinceLastVisit.length
+            newSinceLastVisitCount: newSinceLastVisit.length,
+            driveMilestones
         });
     } catch (error) {
         next(error);

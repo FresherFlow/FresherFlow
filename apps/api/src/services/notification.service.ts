@@ -74,7 +74,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         const preference = user.alertPreference ?? {
             enabled: true,
             emailEnabled: false,
-            minRelevanceScore: 45,
+            minRelevanceScore: 35,
         };
         if (!preference.enabled) {
             skippedDisabled += 1;

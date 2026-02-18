@@ -735,6 +735,31 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
   }
 }`;
 
+    const TCS_NQT_TEMPLATE = `{
+  "type": "JOB",
+  "title": "TCS All India NQT Hiring 2026 (Prime + Digital)",
+  "company": "Tata Consultancy Services (TCS)",
+  "companyWebsite": "https://www.tcs.com/careers/india/tcs-all-india-nqt-hiring",
+  "description": "TCS invites Batch 2026, 2025 and 2024 graduates for All India NQT Hiring. Prime and Digital caders are open based on test performance and profile eligibility.",
+  "allowedDegrees": ["DEGREE", "PG"],
+  "allowedCourses": [],
+  "allowedSpecializations": [],
+  "allowedPassoutYears": [2024, 2025, 2026],
+  "requiredSkills": ["Aptitude", "Reasoning", "Communication", "Programming Basics"],
+  "locations": ["PAN India"],
+  "workMode": "ONSITE",
+  "experienceMin": 0,
+  "experienceMax": 2,
+  "salaryRange": "Prime: 9.09-12.26 LPA | Digital: 7.09-8.04 LPA",
+  "salaryPeriod": "YEARLY",
+  "employmentType": "Full-time",
+  "jobFunction": "Campus Hiring Drive",
+  "selectionProcess": "NQT Test > Shortlisting > Interview Process",
+  "notesHighlights": "Registration Start: 18 Feb 2026 | Registration End: 20 Mar 2026 | Test Date: 10 Mar 2026 onwards. After publish, add timeline events (NOTIFICATION, REG_START, REG_END, EXAM_DATE) in listing edit.",
+  "applyLink": "https://nextstep.tcsapps.com/indiacampus/#/registration",
+  "expiresAt": "2026-03-20T23:59"
+}`;
+
     const jsonReport = useMemo(() => {
         if (!pastedJson.trim()) return null;
         try {
@@ -1135,6 +1160,13 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                                         className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                                     >
                                         Insert Walk-in
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => setPastedJson(TCS_NQT_TEMPLATE)}
+                                        className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20"
+                                    >
+                                        Insert TCS NQT
                                     </button>
                                 </div>
                                 <button

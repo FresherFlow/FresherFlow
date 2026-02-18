@@ -392,6 +392,13 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         }
     };
 
+    const jumpToTimeline = () => {
+        if (typeof document === 'undefined') return;
+        const section = document.getElementById('drive-timeline');
+        if (!section) return;
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
     const formatSalary = (opportunity: Opportunity) => {
         if (opportunity.salaryRange) return opportunity.salaryRange;
         if (opportunity.stipend) return opportunity.stipend;
@@ -754,6 +761,15 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         {/* Mobile Actions - Non-logged-in users */}
                         {!user && (
                             <div className="lg:hidden bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">
+                                {isCampusDrive && timelineEvents.length > 0 && (
+                                    <button
+                                        onClick={jumpToTimeline}
+                                        className="w-full flex items-center justify-center gap-2 h-12 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-bold uppercase tracking-wide"
+                                    >
+                                        <ClockIcon className="w-4 h-4" />
+                                        Track Updates
+                                    </button>
+                                )}
                                 {hasApplyLink && (
                                     <Button
                                         onClick={handleApply}
@@ -794,6 +810,15 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         {/* Mobile Actions - Logged-in users */}
                         {user && (
                             <div className="lg:hidden bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">
+                                {isCampusDrive && timelineEvents.length > 0 && (
+                                    <button
+                                        onClick={jumpToTimeline}
+                                        className="w-full flex items-center justify-center gap-2 h-12 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-bold uppercase tracking-wide"
+                                    >
+                                        <ClockIcon className="w-4 h-4" />
+                                        Track Updates
+                                    </button>
+                                )}
                                 {hasApplyLink && (
                                     <Button
                                         onClick={handleApply}
@@ -828,7 +853,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         </div>
 
                         {timelineEvents.length > 0 && (
-                            <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
+                            <div id="drive-timeline" className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
                                 <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
                                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Drive timeline</h3>
                                     {upcomingTimelineEvents.length > 0 && (
@@ -1067,6 +1092,14 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                                 {hasApplyLink && (
                                     <div className="space-y-2">
+                                        {isCampusDrive && timelineEvents.length > 0 && (
+                                            <button
+                                                onClick={jumpToTimeline}
+                                                className="w-full h-10 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-[10px] font-bold uppercase tracking-widest"
+                                            >
+                                                Track Updates
+                                            </button>
+                                        )}
                                         <Button
                                             onClick={handleApply}
                                             className="w-full h-12 text-base bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-tight shadow-lg hover:shadow-xl transition-all"

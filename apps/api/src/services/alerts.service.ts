@@ -315,7 +315,7 @@ export async function runAlertsCycle() {
             emailEnabled: true,
             dailyDigest: true,
             closingSoon: true,
-            minRelevanceScore: 45,
+            minRelevanceScore: 35,
             preferredHour: 8,
             timezone: 'Asia/Kolkata',
             lastDigestSentAt: null,
