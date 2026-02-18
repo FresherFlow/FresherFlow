@@ -6,6 +6,7 @@ import { getGrowthFunnelMetrics, GrowthWindow } from '../../services/growthFunne
 import { IngestionSourceType, OpportunityType, PrismaClient, TelegramBroadcastStatus } from '@prisma/client';
 import TelegramService from '../../services/telegram.service';
 import { runIngestionForSource } from '../../services/ingestion.service';
+import { runAlertsCycle } from '../../services/alerts.service';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -45,6 +46,23 @@ router.post('/verify-links', requireAdmin, async (req: Request, res: Response, n
             success: true,
             message: 'Verification bot run complete.',
             ...results
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * Trigger alerts cycle manually
+ * POST /api/admin/system/alerts/run
+ */
+router.post('/alerts/run', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+        const result = await runAlertsCycle();
+        res.json({
+            success: true,
+            message: 'Alerts cycle run complete.',
+            ...result
         });
     } catch (error) {
         next(error);

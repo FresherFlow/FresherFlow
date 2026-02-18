@@ -1,4 +1,4 @@
-import { OpportunityStatus, OpportunityType, PrismaClient } from '@prisma/client';
+import { OpportunityEventType, OpportunityStatus, OpportunityType, PrismaClient } from '@prisma/client';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import logger from '../utils/logger';
 import { EmailService } from './email.service';
@@ -232,14 +232,21 @@ async function sendEventRemindersForUser(
     });
 
     if (upcoming.length === 0) return false;
-
-    const candidates = user.profile
-        ? filterOpportunitiesForUser(upcoming.map((e) => e.opportunity) as any, user.profile as any)
-        : upcoming.map((e) => e.opportunity);
-    const allowedOpportunityIds = new Set(candidates.map((o: any) => o.id));
+    const broadcastEventTypes = new Set<OpportunityEventType>([
+        OpportunityEventType.NOTIFICATION,
+        OpportunityEventType.REG_START,
+        OpportunityEventType.REG_END,
+        OpportunityEventType.EXAM_DATE,
+        OpportunityEventType.RESULT,
+    ]);
 
     for (const event of upcoming) {
-        if (!allowedOpportunityIds.has(event.opportunityId)) continue;
+        const shouldBypassProfileFilter = broadcastEventTypes.has(event.eventType);
+        if (user.profile && !shouldBypassProfileFilter) {
+            const eligible = filterOpportunitiesForUser([event.opportunity] as any, user.profile as any);
+            if (eligible.length === 0) continue;
+        }
+
         const diffHours = (new Date(event.eventDate).getTime() - now.getTime()) / (1000 * 60 * 60);
         const windows = [
             { key: 'T3D', lower: 48, upper: 72 },
@@ -284,10 +291,6 @@ export async function runAlertsCycle() {
     const users = await prisma.user.findMany({
         where: {
             role: 'USER',
-            alertPreference: {
-                enabled: true,
-                // emailEnabled: true, // Keep commented out as requested
-            },
         },
         select: {
             id: true,
@@ -302,12 +305,33 @@ export async function runAlertsCycle() {
     let digestSent = 0;
     let closingSoonSent = 0;
     let eventRemindersSent = 0;
+    let usersEnabled = 0;
+    let usersDisabled = 0;
+    let usersMissingProfile = 0;
 
     for (const user of users) {
-        if (!user.alertPreference) continue;
-        const sentDigest = await sendDailyDigestForUser(frontendUrl, user as any, user.alertPreference, now);
-        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as any, user.alertPreference, now);
-        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as any, user.alertPreference, now);
+        const preference = user.alertPreference ?? {
+            enabled: true,
+            emailEnabled: true,
+            dailyDigest: true,
+            closingSoon: true,
+            minRelevanceScore: 45,
+            preferredHour: 8,
+            timezone: 'Asia/Kolkata',
+            lastDigestSentAt: null,
+        };
+
+        if (!preference.enabled) {
+            usersDisabled += 1;
+            continue;
+        }
+
+        usersEnabled += 1;
+        if (!user.profile) usersMissingProfile += 1;
+
+        const sentDigest = await sendDailyDigestForUser(frontendUrl, user as any, preference as any, now);
+        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as any, preference as any, now);
+        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as any, preference as any, now);
         if (sentDigest) digestSent += 1;
         if (sentClosingSoon) closingSoonSent += 1;
         if (sentEventReminder) eventRemindersSent += 1;
@@ -315,10 +339,21 @@ export async function runAlertsCycle() {
 
     logger.info('Alerts cycle completed', {
         usersChecked: users.length,
+        usersEnabled,
+        usersDisabled,
+        usersMissingProfile,
         digestSent,
         closingSoonSent,
         eventRemindersSent,
     });
 
-    return { usersChecked: users.length, digestSent, closingSoonSent, eventRemindersSent };
+    return {
+        usersChecked: users.length,
+        usersEnabled,
+        usersDisabled,
+        usersMissingProfile,
+        digestSent,
+        closingSoonSent,
+        eventRemindersSent
+    };
 }
