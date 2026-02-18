@@ -290,7 +290,7 @@ export async function runAlertsCycle() {
 
     const users = await prisma.user.findMany({
         where: {
-            role: 'USER',
+            role: { in: ['USER', 'ADMIN'] },
         },
         select: {
             id: true,

@@ -10,11 +10,21 @@ import { OpportunityService } from '../../services/opportunity.service';
 import { ParserService } from '../../services/parser.service';
 import { sendNewJobAlerts } from '../../services/notification.service';
 import { generateSlug } from '../../utils/slugify';
+import logger from '../../utils/logger';
 
 import TelegramService from '../../services/telegram.service';
 
 const router: Router = express.Router();
 const prisma = new PrismaClient();
+
+function queueNewJobAlerts(opportunityId: string) {
+    sendNewJobAlerts(opportunityId).catch((error) => {
+        logger.error('Failed to dispatch new job alerts', {
+            opportunityId,
+            error: error instanceof Error ? error.message : String(error)
+        });
+    });
+}
 
 // Apply Admin Auth Globally for this router
 router.use(requireAdmin);
@@ -304,7 +314,7 @@ router.post(
             });
 
             if (action === 'PUBLISH' && idsNeedingAlerts.length > 0) {
-                Promise.allSettled(idsNeedingAlerts.map((opportunityId) => sendNewJobAlerts(opportunityId))).catch(() => { });
+                idsNeedingAlerts.forEach((opportunityId) => queueNewJobAlerts(opportunityId));
             }
         } catch (error) {
             next(error);
@@ -425,7 +435,7 @@ router.post(
             }
 
             if (opportunity.status === OpportunityStatus.PUBLISHED) {
-                sendNewJobAlerts(opportunity.id).catch(() => { });
+                queueNewJobAlerts(opportunity.id);
             }
 
             res.status(201).json({
@@ -878,7 +888,7 @@ router.put(
             });
 
             if (existing.status !== OpportunityStatus.PUBLISHED && opportunity.status === OpportunityStatus.PUBLISHED) {
-                sendNewJobAlerts(opportunity.id).catch(() => { });
+                queueNewJobAlerts(opportunity.id);
             }
 
             res.json({

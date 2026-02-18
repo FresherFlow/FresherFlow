@@ -35,7 +35,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
     // Get all candidate users. Preferences are optional (defaults apply when missing).
     const users = await prisma.user.findMany({
         where: {
-            role: 'USER',
+            role: { in: ['USER', 'ADMIN'] },
         },
         select: {
             id: true,
