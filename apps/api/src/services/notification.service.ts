@@ -49,6 +49,10 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
     let emailsSent = 0;
     let appAlertsSent = 0;
     const usersSent = new Set<string>();
+    let skippedDisabled = 0;
+    let skippedDailyCap = 0;
+    let skippedNotEligible = 0;
+    let lowScoreFallbackSent = 0;
     const dayStart = new Date();
     dayStart.setHours(0, 0, 0, 0);
     const sentTodayRows = await prisma.alertDelivery.groupBy({
@@ -72,9 +76,15 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             emailEnabled: false,
             minRelevanceScore: 45,
         };
-        if (!preference.enabled) continue;
+        if (!preference.enabled) {
+            skippedDisabled += 1;
+            continue;
+        }
         const alreadySentToday = sentTodayByUser.get(user.id) || 0;
-        if (alreadySentToday >= MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY) continue;
+        if (alreadySentToday >= MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY) {
+            skippedDailyCap += 1;
+            continue;
+        }
 
         let relevanceScore: number | null = null;
         let relevanceReason = 'General alert';
@@ -88,8 +98,18 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             if (ranked.length === 0) continue;
 
             relevanceScore = ranked[0].score;
-            if (relevanceScore < preference.minRelevanceScore) continue;
-            relevanceReason = 'Profile match';
+            if (relevanceScore < preference.minRelevanceScore) {
+                // If a user is eligible but ranking is slightly low, still send one "low confidence"
+                // app alert per day to avoid an empty notification inbox.
+                if (alreadySentToday > 0) {
+                    skippedNotEligible += 1;
+                    continue;
+                }
+                relevanceReason = 'Eligible match (low confidence)';
+                lowScoreFallbackSent += 1;
+            } else {
+                relevanceReason = 'Profile match';
+            }
         } else {
             // New users should still see "new job" alerts even before profile completion.
             relevanceReason = 'Complete profile to get personalized matching';
@@ -164,7 +184,11 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         opportunityId,
         usersSent: usersSent.size,
         emailsSent,
-        appAlertsSent
+        appAlertsSent,
+        skippedDisabled,
+        skippedDailyCap,
+        skippedNotEligible,
+        lowScoreFallbackSent
     });
 
     return {

@@ -7,6 +7,7 @@ import { IngestionSourceType, OpportunityType, PrismaClient, TelegramBroadcastSt
 import TelegramService from '../../services/telegram.service';
 import { runIngestionForSource } from '../../services/ingestion.service';
 import { runAlertsCycle } from '../../services/alerts.service';
+import { sendNewJobAlerts } from '../../services/notification.service';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -63,6 +64,67 @@ router.post('/alerts/run', requireAdmin, async (_req: Request, res: Response, ne
             success: true,
             message: 'Alerts cycle run complete.',
             ...result
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * Backfill NEW_JOB app alerts for recently published opportunities.
+ * Useful when notification logic was changed or when users missed prior pushes.
+ * POST /api/admin/system/alerts/backfill-new-jobs?hours=72&limit=100
+ */
+router.post('/alerts/backfill-new-jobs', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const hoursRaw = Number(req.query.hours || 72);
+        const limitRaw = Number(req.query.limit || 100);
+        const hours = Number.isFinite(hoursRaw) ? Math.min(Math.max(hoursRaw, 1), 24 * 30) : 72;
+        const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 500) : 100;
+
+        const since = new Date(Date.now() - hours * 60 * 60 * 1000);
+        const opportunities = await prisma.opportunity.findMany({
+            where: {
+                status: 'PUBLISHED',
+                deletedAt: null,
+                postedAt: { gte: since }
+            },
+            select: { id: true, postedAt: true },
+            orderBy: { postedAt: 'desc' },
+            take: limit
+        });
+
+        let processed = 0;
+        let usersSent = 0;
+        let emailsSent = 0;
+        let appAlertsSent = 0;
+        const errors: Array<{ opportunityId: string; message: string }> = [];
+
+        for (const opp of opportunities) {
+            try {
+                const result = await sendNewJobAlerts(opp.id);
+                processed += 1;
+                usersSent += result.usersSent;
+                emailsSent += result.emailsSent;
+                appAlertsSent += result.appAlertsSent;
+            } catch (error) {
+                errors.push({
+                    opportunityId: opp.id,
+                    message: error instanceof Error ? error.message : String(error)
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            message: 'Backfill complete',
+            windowHours: hours,
+            considered: opportunities.length,
+            processed,
+            usersSent,
+            emailsSent,
+            appAlertsSent,
+            errors
         });
     } catch (error) {
         next(error);
