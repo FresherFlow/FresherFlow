@@ -14,10 +14,10 @@ export const metadata: Metadata = {
         type: 'website',
         images: [
             {
-                url: '/fresherflow-og-v2.png',
+                url: '/opengraph-image',
                 width: 1200,
                 height: 630,
-                alt: 'FresherFlow verified opportunities',
+                alt: 'FresherFlow — Verified Fresher Jobs and Internships',
             },
         ],
     },
@@ -25,7 +25,7 @@ export const metadata: Metadata = {
         card: 'summary_large_image',
         title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
         description: 'Verified fresher jobs, internships, and walk-ins in India. Every listing is checked. Every link is real.',
-        images: ['/fresherflow-og-v2.png'],
+        images: ['/twitter-image'],
     },
 };
 

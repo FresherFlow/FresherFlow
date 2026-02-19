@@ -43,10 +43,11 @@ export const metadata: Metadata = {
     description: "Verified fresher jobs, internships, and walk-ins in India with direct apply links.",
     images: [
       {
-        url: "/fresherflow-og-v2.png",
+        url: "https://fresherflow.in/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "FresherFlow verified opportunities",
+        type: "image/png",
+        alt: "FresherFlow - Verified Fresher Jobs and Internships",
       },
     ],
   },
@@ -54,7 +55,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "FresherFlow - Verified Fresher Jobs & Internships in India",
     description: "Verified fresher jobs, internships, and walk-ins in India with direct apply links.",
-    images: ["/fresherflow-og-v2.png"],
+    images: ["https://fresherflow.in/twitter-image"],
   },
   icons: {
     icon: "/favicon-32x32.png",
@@ -84,6 +85,11 @@ export default function RootLayout({
         {/* Dynamic theme-color for light/dark mode */}
         <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
         <meta name="theme-color" content="#0a1020" media="(prefers-color-scheme: dark)" />
+        <meta property="og:image" content="https://fresherflow.in/opengraph-image" />
+        <meta property="og:image:secure_url" content="https://fresherflow.in/opengraph-image" />
+        <meta property="og:image:type" content="image/png" />
+        <meta property="og:image:width" content="1200" />
+        <meta property="og:image:height" content="630" />
         <link rel="preload" as="image" href="/logo-optimized.png?v=3" fetchPriority="high" />
         <link rel="preload" as="image" href="/logo-white-optimized.png?v=3" fetchPriority="high" />
         <script
