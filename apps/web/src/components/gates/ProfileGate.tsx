@@ -22,7 +22,7 @@ export function ProfileGate({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         if (!isLoading && profile) {
-            if (profile.completionPercentage < 100 && !isOnProfilePage) {
+            if (profile.completionPercentage < 40 && !isOnProfilePage) {
                 router.push('/profile/complete');
             }
         }
@@ -32,7 +32,7 @@ export function ProfileGate({ children }: { children: React.ReactNode }) {
         return <LoadingScreen message="Loading..." fullScreen={false} />;
     }
 
-    if (profile && profile.completionPercentage < 100 && !isOnProfilePage) {
+    if (profile && profile.completionPercentage < 40 && !isOnProfilePage) {
         return (
             <div className="flex items-center justify-center min-h-screen p-6">
                 <div className="premium-card max-w-sm w-full p-6 md:p-8 text-center space-y-4 md:space-y-6">

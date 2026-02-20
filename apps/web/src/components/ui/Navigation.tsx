@@ -171,7 +171,7 @@ export function Navbar() {
                                             )}
                                         </Link>
 
-                                        <Link href="/profile/edit" className="p-2 text-muted-foreground hover:text-primary transition-colors hidden md:block">
+                                        <Link href="/profile" className="p-2 text-muted-foreground hover:text-primary transition-colors hidden md:block">
                                             <UserIcon className="w-5 h-5" />
                                         </Link>
 
@@ -264,7 +264,7 @@ export function MobileNav() {
         if (path.startsWith('/walk-ins/')) return 'Walk-in';
         if (path === '/account/saved') return 'Saved';
         if (path === '/account/tracker') return 'Tracker';
-        if (path === '/profile/edit') return 'Profile';
+        if (path === '/profile') return 'Profile';
         if (path === '/alerts' || path === '/account/alerts') return 'Alerts';
         if (path === '/account/feedback') return 'Feedback';
         if (path.startsWith('/opportunities/')) return 'Opportunity';
@@ -385,7 +385,7 @@ export function MobileNav() {
 
                         <nav className="p-3 space-y-1">
                             {[
-                                { href: '/profile/edit', label: 'My Profile', icon: UserIcon },
+                                { href: '/profile', label: 'My Profile', icon: UserIcon },
                                 { href: '/account/saved', label: 'My Saved', icon: BookmarkIcon },
                                 { href: '/account/tracker', label: 'Tracker', icon: ClipboardDocumentCheckIcon },
                                 { href: '/alerts', label: 'Alerts', icon: BellIcon },

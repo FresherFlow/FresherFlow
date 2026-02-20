@@ -1,6 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import {
+    EDUCATION_LEVELS, OPPORTUNITY_TYPES, WORK_MODES, INDIAN_CITIES,
+    COMMON_SKILLS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations
+} from '@/lib/profileConstants';
 import { useAuth } from '@/contexts/AuthContext';
 import { profileApi } from '@/lib/api/client';
 import { useRouter } from 'next/navigation';
@@ -23,69 +27,6 @@ import { Select } from '@/components/ui/Select';
 
 type Step = 'education' | 'preferences' | 'readiness';
 
-const EDUCATION_LEVELS = ['DIPLOMA', 'DEGREE', 'PG'];
-const OPPORTUNITY_TYPES = ['JOB', 'INTERNSHIP', 'WALKIN'];
-const WORK_MODES = ['ONSITE', 'HYBRID', 'REMOTE'];
-const AVAILABILITY_OPTIONS = ['IMMEDIATE', 'DAYS_15', 'MONTH_1'];
-
-const INDIAN_CITIES = [
-    'Bangalore', 'Mumbai', 'Delhi', 'Pune', 'Hyderabad', 'Chennai',
-    'Kolkata', 'Ahmedabad', 'Gurugram', 'Noida', 'Chandigarh',
-    'Jaipur', 'Kochi', 'Coimbatore', 'Indore', 'Bhopal', 'Lucknow',
-    'Visakhapatnam', 'Nagpur', 'Surat', 'Vadodara', 'Mysore',
-    'Mangalore', 'Goa', 'Thiruvananthapuram', 'Bhubaneswar',
-    'Guwahati', 'Patna', 'Raipur', 'Dehradun'
-];
-
-const COMMON_SKILLS = [
-    'JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL',
-    'HTML', 'CSS', 'TypeScript', 'C++', 'C', 'Angular', 'Vue.js',
-    'MongoDB', 'PostgreSQL', 'AWS', 'Azure', 'Docker', 'Git',
-    'Machine Learning', 'Data Analysis', 'Excel', 'PowerPoint',
-    'Communication', 'Teamwork', 'Problem Solving', 'Spring Boot',
-    'Django', 'Flask', 'REST API', 'GraphQL', 'Express.js'
-];
-
-const DIPLOMA_DEGREES = [
-    'Diploma in Computer Science',
-    'Diploma in IT',
-    'Diploma in Electronics',
-    'Diploma in Mechanical',
-    'Diploma in Civil',
-    'Diploma in Electrical',
-    'Diploma in Artificial Intelligence',
-    'Other'
-];
-
-const UG_DEGREES = [
-    'B.Tech / B.E.',
-    'B.Sc.',
-    'BCA',
-    'BBA',
-    'B.Com',
-    'B.A.',
-    'Other'
-];
-
-const PG_DEGREES = [
-    'M.Tech / M.E.',
-    'M.Sc.',
-    'MCA',
-    'MBA',
-    'M.Com',
-    'M.A.',
-    'Other'
-];
-
-const DEGREE_SPECIALIZATIONS: Record<string, string[]> = {
-    'B.Tech / B.E.': ['Computer Science', 'Information Technology', 'Electronics & Communication', 'Electrical', 'Mechanical', 'Civil', 'AI & ML', 'Data Science', 'Other'],
-    'B.Sc.': ['Computer Science', 'Physics', 'Mathematics', 'Chemistry', 'Information Technology', 'Other'],
-    'BCA': ['Software Development', 'Web Applications', 'Database Systems', 'Other'],
-    'M.Tech / M.E.': ['Computer Science', 'VLSI Design', 'Structural Engineering', 'Thermo Fluids', 'Cloud Computing', 'Other'],
-    'MCA': ['Computer Applications', 'Application Development', 'System Architecture', 'Cloud Tech', 'Other'],
-    'MBA': ['Finance', 'Marketing', 'Human Resources', 'Operations', 'Business Analytics', 'Other'],
-    'default': ['General', 'Computer Science', 'Business', 'Arts', 'Other']
-};
 
 export default function ProfileCompletePage() {
     const { profile, refreshUser } = useAuth();
@@ -116,23 +57,44 @@ export default function ProfileCompletePage() {
     const [preferredCities, setPreferredCities] = useState<string[]>([]);
     const [workModes, setWorkModes] = useState<string[]>([]);
     const [cityInput, setCityInput] = useState('');
-    const [cityFocused, setCityFocused] = useState(false);
+    const [cityOpen, setCityOpen] = useState(false);
+    const cityRef = useRef<HTMLDivElement>(null);
 
     // Readiness state
-    const [availability, setAvailability] = useState('');
     const [skills, setSkills] = useState<string[]>([]);
     const [skillInput, setSkillInput] = useState('');
-    const [skillFocused, setSkillFocused] = useState(false);
+    const [skillOpen, setSkillOpen] = useState(false);
+    const skillRef = useRef<HTMLDivElement>(null);
+    const [skillHighlight, setSkillHighlight] = useState(-1);
+    const [cityHighlight, setCityHighlight] = useState(-1);
 
     const [completion, setCompletion] = useState(0);
+
+    const filteredSkillOptions = COMMON_SKILLS.filter(
+        skill => skill.toLowerCase().includes(skillInput.toLowerCase()) && !skills.includes(skill)
+    ).slice(0, 10);
+
+    const filteredCityOptions = INDIAN_CITIES.filter(
+        city => city.toLowerCase().includes(cityInput.toLowerCase()) && !preferredCities.includes(city)
+    ).slice(0, 10);
+
+    // Close dropdowns when clicking outside
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (skillRef.current && !skillRef.current.contains(e.target as Node)) setSkillOpen(false);
+            if (cityRef.current && !cityRef.current.contains(e.target as Node)) setCityOpen(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
 
     const { user } = useAuth();
 
     useEffect(() => {
         if (profile) {
             setCompletion(profile.completionPercentage);
-            if (profile.completionPercentage === 100) {
-                router.push('/dashboard');
+            if (profile.completionPercentage >= 40) {
+                router.push('/opportunities');
             }
         }
         if (user && user.fullName && !fullName) {
@@ -201,15 +163,15 @@ export default function ProfileCompletePage() {
     };
 
     const handleReadinessSubmit = async () => {
-        if (!availability || skills.length === 0) {
-            toast.error('Error: Skills & availability required');
+        if (skills.length === 0) {
+            toast.error('Please add at least one skill');
             return;
         }
 
         setIsLoading(true);
         const loadingToast = toast.loading('Finalizing your profile...');
         try {
-            await profileApi.updateReadiness({ availability, skills });
+            await profileApi.updateReadiness({ availability: '', skills });
             await refreshUser();
             toast.success('Profile complete.', { id: loadingToast });
             router.push('/dashboard');
@@ -233,9 +195,6 @@ export default function ProfileCompletePage() {
         setArray(array.includes(item) ? array.filter(i => i !== item) : [...array, item]);
     };
 
-    const getSpecializations = (course: string) => {
-        return DEGREE_SPECIALIZATIONS[course] || DEGREE_SPECIALIZATIONS['default'];
-    };
 
     return (
         <AuthGate>
@@ -437,7 +396,7 @@ export default function ProfileCompletePage() {
                                                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Specialization</label>
                                                     <Select value={gradSpecialization} onChange={(e) => setGradSpecialization(e.target.value)} disabled={!gradCourse}>
                                                         <option value="">Select Field</option>
-                                                        {getSpecializations(gradCourse).map(s => <option key={s}>{s}</option>)}
+                                                        {getSpecializations(gradCourse).map((s: string) => <option key={s}>{s}</option>)}
                                                     </Select>
                                                 </div>
                                             </div>
@@ -472,7 +431,7 @@ export default function ProfileCompletePage() {
                                                         <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">PG Specialization</label>
                                                         <Select value={pgSpecialization} onChange={(e) => setPgSpecialization(e.target.value)}>
                                                             <option value="">Select Field</option>
-                                                            {getSpecializations(pgCourse).map(s => <option key={s}>{s}</option>)}
+                                                            {getSpecializations(pgCourse).map((s: string) => <option key={s}>{s}</option>)}
                                                         </Select>
                                                     </div>
                                                 </div>
@@ -525,24 +484,24 @@ export default function ProfileCompletePage() {
 
                                         <div className="space-y-4">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Preferred Locations</p>
-                                            <div className="relative">
+                                            <div className="relative" ref={cityRef}>
                                                 <div className="flex gap-2">
-                                                    <div className="relative flex-1">
-                                                        <Input
-                                                            value={cityInput}
-                                                            onChange={(e) => setCityInput(e.target.value)}
-                                                            onFocus={() => setCityFocused(true)}
-                                                            onBlur={() => setTimeout(() => setCityFocused(false), 200)}
-                                                            placeholder="e.g. Hyderabad, Bangalore"
-                                                            className="premium-input !h-12 text-sm"
-                                                            onKeyPress={(e) => {
-                                                                if (e.key === 'Enter' && cityInput.trim()) {
-                                                                    toggleArrayItem(preferredCities, setPreferredCities, cityInput.trim());
-                                                                    setCityInput('');
-                                                                }
-                                                            }}
-                                                        />
-                                                    </div>
+                                                    <Input
+                                                        value={cityInput}
+                                                        onChange={(e) => { setCityInput(e.target.value); setCityHighlight(-1); setCityOpen(true); }}
+                                                        onFocus={() => setCityOpen(true)}
+                                                        placeholder="e.g. Hyderabad, Bangalore"
+                                                        className="premium-input !h-12 text-sm"
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'ArrowDown') { e.preventDefault(); setCityHighlight(h => Math.min(h + 1, filteredCityOptions.length - 1)); }
+                                                            else if (e.key === 'ArrowUp') { e.preventDefault(); setCityHighlight(h => Math.max(h - 1, 0)); }
+                                                            else if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                const city = cityHighlight >= 0 ? filteredCityOptions[cityHighlight] : cityInput.trim();
+                                                                if (city) { toggleArrayItem(preferredCities, setPreferredCities, city); setCityInput(''); setCityHighlight(-1); setCityOpen(false); }
+                                                            } else if (e.key === 'Escape') { setCityOpen(false); }
+                                                        }}
+                                                    />
                                                     <Button
                                                         variant="outline"
                                                         className="h-12 px-6 font-bold uppercase tracking-widest text-[10px]"
@@ -550,6 +509,7 @@ export default function ProfileCompletePage() {
                                                             if (cityInput.trim()) {
                                                                 toggleArrayItem(preferredCities, setPreferredCities, cityInput.trim());
                                                                 setCityInput('');
+                                                                setCityOpen(false);
                                                             }
                                                         }}
                                                     >
@@ -557,19 +517,13 @@ export default function ProfileCompletePage() {
                                                     </Button>
                                                 </div>
                                                 {/* City Autocomplete Dropdown */}
-                                                {cityFocused && cityInput && (
+                                                {cityOpen && cityInput && filteredCityOptions.length > 0 && (
                                                     <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-xl shadow-2xl max-h-60 overflow-y-auto">
-                                                        {INDIAN_CITIES.filter(city =>
-                                                            city.toLowerCase().includes(cityInput.toLowerCase()) &&
-                                                            !preferredCities.includes(city)
-                                                        ).slice(0, 10).map(city => (
+                                                        {filteredCityOptions.map((city, idx) => (
                                                             <button
                                                                 key={city}
-                                                                onClick={() => {
-                                                                    toggleArrayItem(preferredCities, setPreferredCities, city);
-                                                                    setCityInput('');
-                                                                }}
-                                                                className="w-full text-left px-4 py-2.5 hover:bg-primary/10 transition-colors text-sm font-medium first:rounded-t-xl last:rounded-b-xl"
+                                                                onMouseDown={() => { toggleArrayItem(preferredCities, setPreferredCities, city); setCityInput(''); setCityHighlight(-1); setCityOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2.5 transition-colors text-sm font-medium first:rounded-t-xl last:rounded-b-xl", cityHighlight === idx ? "bg-primary/20 text-foreground" : "hover:bg-primary/10")}
                                                             >
                                                                 {city}
                                                             </button>
@@ -588,14 +542,24 @@ export default function ProfileCompletePage() {
                                             </div>
                                         </div>
 
-                                        <Button onClick={handlePreferencesSubmit} disabled={isLoading} className="w-full h-12 text-sm bg-primary/15 text-foreground border border-primary/30 hover:bg-primary/20 shadow-xl shadow-primary/10 font-bold uppercase tracking-widest">
-                                            {isLoading ? <ArrowPathIcon className="w-6 h-6 animate-spin" /> : <span>Save Preferences</span>}
-                                        </Button>
+                                        <div className="flex gap-3">
+                                            <Button onClick={handlePreferencesSubmit} disabled={isLoading} className="flex-1 h-12 text-sm bg-primary/15 text-foreground border border-primary/30 hover:bg-primary/20 shadow-xl shadow-primary/10 font-bold uppercase tracking-widest">
+                                                {isLoading ? <ArrowPathIcon className="w-6 h-6 animate-spin" /> : <span>Save Preferences</span>}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setCurrentStep('readiness')}
+                                                className="h-12 px-6 font-bold uppercase tracking-widest text-[10px] text-muted-foreground"
+                                            >
+                                                Skip
+                                            </Button>
+                                        </div>
                                     </div>
                                 )}
 
                                 {currentStep === 'readiness' && (
                                     <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-500">
+                                        {/* Availability — hidden temporarily
                                         <div className="space-y-4">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Availability</p>
                                             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -610,36 +574,38 @@ export default function ProfileCompletePage() {
                                                 ))}
                                             </div>
                                         </div>
+                                        */}
 
                                         <div className="space-y-4">
                                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">Skills</p>
-                                            <div className="relative">
+                                            <div className="relative" ref={skillRef}>
                                                 <div className="flex gap-2">
                                                     <input
                                                         value={skillInput}
-                                                        onChange={(e) => setSkillInput(e.target.value)}
-                                                        onFocus={() => setSkillFocused(true)}
-                                                        onBlur={() => setTimeout(() => setSkillFocused(false), 200)}
-                                                        onKeyPress={(e) => e.key === 'Enter' && addSkill()}
-                                                        className="premium-input !h-12 text-sm"
+                                                        onChange={(e) => { setSkillInput(e.target.value); setSkillHighlight(-1); setSkillOpen(true); }}
+                                                        onFocus={() => setSkillOpen(true)}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === 'ArrowDown') { e.preventDefault(); setSkillHighlight(h => Math.min(h + 1, filteredSkillOptions.length - 1)); }
+                                                            else if (e.key === 'ArrowUp') { e.preventDefault(); setSkillHighlight(h => Math.max(h - 1, 0)); }
+                                                            else if (e.key === 'Enter') {
+                                                                e.preventDefault();
+                                                                const skill = skillHighlight >= 0 ? filteredSkillOptions[skillHighlight] : skillInput.trim();
+                                                                if (skill && !skills.includes(skill)) { setSkills([...skills, skill]); setSkillInput(''); setSkillHighlight(-1); setSkillOpen(false); }
+                                                            } else if (e.key === 'Escape') { setSkillOpen(false); }
+                                                        }}
+                                                        className="premium-input !h-12 text-sm flex-1"
                                                         placeholder="e.g. React, Node.js"
                                                     />
                                                     <button onClick={addSkill} className="premium-button shrink-0 px-4 !h-12"><PlusIcon className="w-4 h-4" /></button>
                                                 </div>
                                                 {/* Skills Autocomplete Dropdown */}
-                                                {skillFocused && skillInput && (
+                                                {skillOpen && skillInput && filteredSkillOptions.length > 0 && (
                                                     <div className="absolute z-50 w-full mt-2 bg-card border border-border rounded-xl shadow-2xl max-h-60 overflow-y-auto">
-                                                        {COMMON_SKILLS.filter(skill =>
-                                                            skill.toLowerCase().includes(skillInput.toLowerCase()) &&
-                                                            !skills.includes(skill)
-                                                        ).slice(0, 10).map(skill => (
+                                                        {filteredSkillOptions.map((skill, idx) => (
                                                             <button
                                                                 key={skill}
-                                                                onClick={() => {
-                                                                    setSkills([...skills, skill]);
-                                                                    setSkillInput('');
-                                                                }}
-                                                                className="w-full text-left px-4 py-2.5 hover:bg-primary/10 transition-colors text-sm font-medium first:rounded-t-xl last:rounded-b-xl"
+                                                                onMouseDown={() => { setSkills(prev => [...prev, skill]); setSkillInput(''); setSkillHighlight(-1); setSkillOpen(false); }}
+                                                                className={cn("w-full text-left px-4 py-2.5 transition-colors text-sm font-medium first:rounded-t-xl last:rounded-b-xl", skillHighlight === idx ? "bg-primary/20 text-foreground" : "hover:bg-primary/10")}
                                                             >
                                                                 {skill}
                                                             </button>
@@ -658,9 +624,18 @@ export default function ProfileCompletePage() {
                                             </div>
                                         </div>
 
-                                        <Button onClick={handleReadinessSubmit} disabled={isLoading} className="w-full h-12 text-sm bg-primary/15 text-foreground border border-primary/30 hover:bg-primary/20 shadow-xl shadow-primary/10 font-bold uppercase tracking-widest">
-                                            {isLoading ? <ArrowPathIcon className="w-5 h-5 animate-spin" /> : <div className="flex items-center gap-2"><span>Finish Setup</span><CheckCircleIcon className="w-5 h-5" /></div>}
-                                        </Button>
+                                        <div className="flex gap-3">
+                                            <Button onClick={handleReadinessSubmit} disabled={isLoading} className="flex-1 h-12 text-sm bg-primary/15 text-foreground border border-primary/30 hover:bg-primary/20 shadow-xl shadow-primary/10 font-bold uppercase tracking-widest">
+                                                {isLoading ? <ArrowPathIcon className="w-5 h-5 animate-spin" /> : <div className="flex items-center gap-2"><span>Finish Setup</span><CheckCircleIcon className="w-5 h-5" /></div>}
+                                            </Button>
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => router.push('/opportunities')}
+                                                className="h-12 px-6 font-bold uppercase tracking-widest text-[10px] text-muted-foreground"
+                                            >
+                                                Skip
+                                            </Button>
+                                        </div>
                                     </div>
                                 )}
                             </div>

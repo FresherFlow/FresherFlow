@@ -82,9 +82,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    // Load user on mount
+    // Load user on mount + refresh when tab regains focus
     useEffect(() => {
         loadUser();
+
+        // Re-fetch when user comes back to the tab (e.g. after editing profile)
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                loadUser();
+            }
+        };
 
         // Global handler for unauthorized errors (session expiry)
         const handleUnauthorized = () => {
@@ -93,8 +100,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
 
         if (typeof window !== 'undefined') {
+            document.addEventListener('visibilitychange', handleVisibilityChange);
             window.addEventListener('fresherflow-unauthorized', handleUnauthorized);
-            return () => window.removeEventListener('fresherflow-unauthorized', handleUnauthorized);
+            return () => {
+                document.removeEventListener('visibilitychange', handleVisibilityChange);
+                window.removeEventListener('fresherflow-unauthorized', handleUnauthorized);
+            };
         }
     }, [loadUser, logout]);
 

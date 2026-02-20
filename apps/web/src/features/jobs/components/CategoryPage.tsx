@@ -438,7 +438,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
                                             </div>
                                         </div>
                                         <Button asChild className="h-12 px-8 text-sm font-bold uppercase tracking-widest">
-                                            <Link href="/profile/edit">
+                                            <Link href="/profile">
                                                 Complete Profile
                                                 <ChevronRightIcon className="w-4 h-4 ml-2" />
                                             </Link>

@@ -307,7 +307,7 @@ export default function DashboardPage() {
                                     </Link>
                                 </Button>
                                 <Button asChild variant="outline" className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest">
-                                    <Link href="/profile/edit">
+                                    <Link href="/profile">
                                         <UserIcon className="w-4 h-4 mr-2" />
                                         Update profile
                                     </Link>

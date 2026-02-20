@@ -13,7 +13,6 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const isAuthRoute = normalizedPathname === '/login' || normalizedPathname === '/register';
     const isAdminRoute = normalizedPathname.startsWith('/admin');
 
-    // Navigation is now constant/fixed and does not hide on scroll per user request
     const hideNav = isAdminRoute;
     const isHomePage = pathname === '/';
 
@@ -33,7 +32,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
             )}>
                 <div className={cn(
                     "flex-1 flex flex-col",
-                    (!isAuthRoute && !isAdminRoute) && "min-h-[calc(100vh-(--spacing(24))-(--spacing(20)))]" // rough calculation to ensure footer pushes to bottom if content is short
+                    (!isAuthRoute && !isAdminRoute) && "min-h-[calc(100vh-10rem)]"
                 )}>
                     {children}
                 </div>
