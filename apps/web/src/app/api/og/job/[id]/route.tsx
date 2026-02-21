@@ -25,14 +25,14 @@ type OpportunityDto = {
   applyLink?: string | null;
   events?: Array<{
     eventType:
-      | "NOTIFICATION"
-      | "REG_START"
-      | "REG_END"
-      | "EXAM_DATE"
-      | "RESULT"
-      | "INTERVIEW"
-      | "DOC_VERIFICATION"
-      | "OTHER";
+    | "NOTIFICATION"
+    | "REG_START"
+    | "REG_END"
+    | "EXAM_DATE"
+    | "RESULT"
+    | "INTERVIEW"
+    | "DOC_VERIFICATION"
+    | "OTHER";
     eventDate: string;
   }>;
 };
@@ -53,14 +53,19 @@ const sanitizeDomain = (raw: string) => {
   }
 };
 
-const fetchWithTimeout = async (url: string, timeoutMs = 2500) => {
+const fetchWithTimeout = async (url: string, timeoutMs = 2500, externalSignal?: AbortSignal) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  const signals = [controller.signal];
+  if (externalSignal) signals.push(externalSignal);
+
   try {
     const response = await fetch(url, {
       method: "GET",
       cache: "no-store",
-      signal: controller.signal,
+      // Link signals if AbortSignal.any is available (Edge runtime) or manually
+      signal: (AbortSignal as any).any ? (AbortSignal as any).any(signals) : controller.signal,
     });
     return response;
   } catch {
@@ -89,22 +94,46 @@ const getLogoCandidates = (opportunity: OpportunityDto) => {
   const domain = inferDomain(opportunity);
   if (!domain) return [];
   return [
+    `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
     `https://logo.clearbit.com/${domain}?size=256`,
     `https://icons.duckduckgo.com/ip3/${domain}.ico`,
-    `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
   ];
 };
 
 const resolveLogoUrl = async (opportunity: OpportunityDto) => {
   const candidates = getLogoCandidates(opportunity);
-  for (const candidate of candidates) {
-    const response = await fetchWithTimeout(candidate);
-    if (!response || !response.ok) continue;
-    const contentType = response.headers.get("content-type") || "";
-    if (!contentType.startsWith("image/")) continue;
-    return candidate;
-  }
-  return "";
+  if (!candidates.length) return "";
+
+  const globalAbort = new AbortController();
+  const timeout = new Promise<string>((resolve) =>
+    setTimeout(() => {
+      globalAbort.abort();
+      resolve("");
+    }, 800)
+  );
+
+  const checks = candidates.map(async (url) => {
+    try {
+      const response = await fetchWithTimeout(url, 1500, globalAbort.signal);
+      if (!response || !response.ok) throw new Error();
+
+      const contentType = (response.headers.get("content-type") || "").toLowerCase();
+      if (!/(png|jpeg|jpg|svg)/.test(contentType)) throw new Error();
+
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength < 500) throw new Error();
+
+      // Cancel others once we find one
+      globalAbort.abort();
+      return url;
+    } catch (e) {
+      throw e;
+    }
+  });
+
+  const firstValid = Promise.any(checks).catch(() => "");
+
+  return Promise.race([firstValid, timeout]);
 };
 
 const getTypeLabel = (type?: string) => {
@@ -118,8 +147,7 @@ const findEventDate = (opportunity: OpportunityDto, eventType: string) => {
   const matching = events
     .filter((event) => event.eventType === eventType)
     .map((event) => new Date(event.eventDate))
-    .filter((date) => !Number.isNaN(date.getTime()))
-    .sort((a, b) => a.getTime() - b.getTime());
+    .filter((date) => !Number.isNaN(date.getTime()));
   return matching[0] ?? null;
 };
 
@@ -132,15 +160,23 @@ const isCampusDrive = (opportunity: OpportunityDto) => {
   return hasKeyword || hasTimelineEvents;
 };
 
-const truncate = (value: string, max: number) =>
-  value.length > max ? `${value.slice(0, max - 3)}...` : value;
+const truncate = (value: string, max: number) => {
+  if (!value) return "";
+  return value.length > max ? `${value.slice(0, max - 3)}...` : value;
+};
 
 const formatExperience = (opportunity: OpportunityDto) => {
-  const min = opportunity.experienceMin ?? 0;
+  const min = opportunity.experienceMin;
   const max = opportunity.experienceMax;
-  if (max == null) return min <= 0 ? "Fresher+" : `${min}+ yrs`;
-  if (min === max) return `${max} yr`;
-  return `${min}-${max} yrs`;
+  if (min == null && max == null) {
+    if (opportunity.type === "INTERNSHIP") return "Fresher";
+    return "Fresher+";
+  }
+  const finalMin = min ?? 0;
+  if (finalMin === 0 && max === 0) return "Fresher";
+  if (max == null) return finalMin <= 0 ? "Fresher+" : `${finalMin}+ yrs`;
+  if (finalMin === max) return `${max} yr`;
+  return `${finalMin}-${max} yrs`;
 };
 
 const formatSalary = (opportunity: OpportunityDto) => {
@@ -151,7 +187,7 @@ const formatSalary = (opportunity: OpportunityDto) => {
   const monthly = opportunity.salaryPeriod === "MONTHLY";
   const suffix = monthly ? "/mo" : " LPA";
   const toDisplay = (v: number) =>
-    monthly ? v.toLocaleString("en-IN") : (v / 100000).toFixed(1).replace(/\.0$/, "");
+    monthly ? v.toLocaleString("en-IN") : (Math.floor(v / 10000) / 10).toString().replace(/\.0$/, "");
   if (min != null && max != null) {
     if (min === max) return `INR ${toDisplay(min)}${suffix}`;
     return `INR ${toDisplay(min)}-${toDisplay(max)}${suffix}`;
@@ -176,23 +212,16 @@ const getDaysUntilExpiry = (targetDate: Date | null) => {
   return Math.ceil(diff / (24 * 60 * 60 * 1000));
 };
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
 const formatDateLabel = (dt: Date | null) => {
-  if (!dt) return "Open";
-  if (Number.isNaN(dt.getTime())) return "Open";
-  return dt.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-  });
+  if (!dt || Number.isNaN(dt.getTime())) return "Open";
+  return `${String(dt.getDate()).padStart(2, "0")} ${MONTHS[dt.getMonth()]}`;
 };
 
 const formatFullDateLabel = (dt: Date | null) => {
-  if (!dt) return null;
-  if (Number.isNaN(dt.getTime())) return null;
-  return dt.toLocaleDateString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  if (!dt || Number.isNaN(dt.getTime())) return null;
+  return `${String(dt.getDate()).padStart(2, "0")} ${MONTHS[dt.getMonth()]} ${dt.getFullYear()}`;
 };
 
 const renderFallbackCard = (title: string, subtitle: string) =>
@@ -265,15 +294,12 @@ export async function GET(
   let opportunity: OpportunityDto | null = null;
 
   try {
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       `${apiBase}/api/opportunities/${encodeURIComponent(id)}`,
-      {
-        headers: { Accept: "application/json" },
-        cache: "no-store",
-      }
+      3500
     );
 
-    if (!response.ok) {
+    if (!response || !response.ok) {
       return renderFallbackCard("Opportunity preview", "This listing is unavailable.");
     }
 
@@ -295,7 +321,7 @@ export async function GET(
   }
 
   const logoUrl = await resolveLogoUrl(opportunity);
-  const title = truncate(opportunity.title || "Opportunity", 66);
+  const title = truncate(opportunity.title || "Opportunity", 80);
   const company = truncate(opportunity.company || "Company", 42);
   const location = truncate(opportunity.locations?.[0] || "India", 24);
   const driveMode = isCampusDrive(opportunity);
@@ -313,8 +339,8 @@ export async function GET(
   const applyBeforeLabel = formatFullDateLabel(validExpiryDate);
   const daysUntilExpiry = getDaysUntilExpiry(effectiveDeadlineDate);
   const urgencyLabel =
-    daysUntilExpiry != null && daysUntilExpiry >= 0 && daysUntilExpiry <= 3
-      ? daysUntilExpiry === 0
+    daysUntilExpiry != null && daysUntilExpiry <= 3
+      ? daysUntilExpiry <= 0
         ? "Closing today"
         : `Closing in ${daysUntilExpiry}d`
       : null;
