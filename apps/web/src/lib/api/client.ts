@@ -7,6 +7,15 @@ import type {
 } from '@simplewebauthn/browser';
 import { markDetailSyncedNow, markFeedSyncedNow } from '@/lib/offline/syncStatus';
 
+// Thrown when a request is made with no network connectivity.
+// Callers can check `err instanceof OfflineError` to skip toast notifications.
+export class OfflineError extends Error {
+    constructor() {
+        super('You are offline. Please check your connection.');
+        this.name = 'OfflineError';
+    }
+}
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 // Singleton promise to handle concurrent refresh requests
@@ -23,6 +32,11 @@ export async function apiClient<T = unknown>(
         'X-Request-Id': `web-${Math.random().toString(36).slice(2, 10)}`, // Tracing
         ...(options.headers as Record<string, string> || {}),
     };
+
+    // Short-circuit immediately when offline — avoids misleading errors / toast spam
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        throw new OfflineError();
+    }
 
     // Defaults: credentials include for cookies
     const fetchOptions: RequestInit = {
@@ -466,6 +480,7 @@ export const alertsApi = {
     getUnreadCount: () => apiClient<{ count: number }>('/api/alerts/unread-count'),
     markAllRead: () => apiClient('/api/alerts/mark-all-read', { method: 'POST' }),
     markRead: (id: string) => apiClient(`/api/alerts/${id}/read`, { method: 'POST' }),
+    seedTest: () => apiClient('/api/alerts/seed-test', { method: 'POST' }),
 };
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

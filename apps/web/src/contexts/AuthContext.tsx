@@ -19,6 +19,42 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// ── Offline session cache ────────────────────────────────────────────────────
+const SESSION_CACHE_KEY = 'ff_cached_session_v1';
+
+type CachedSession = {
+    user: User;
+    profile: Profile | null;
+    savedAt: number;
+};
+
+function readCachedSession(): CachedSession | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = localStorage.getItem(SESSION_CACHE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw) as CachedSession;
+    } catch {
+        return null;
+    }
+}
+
+function writeCachedSession(user: User, profile: Profile | null) {
+    if (typeof window === 'undefined') return;
+    try {
+        const payload: CachedSession = { user, profile, savedAt: Date.now() };
+        localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(payload));
+    } catch {
+        // Ignore quota errors
+    }
+}
+
+function clearCachedSession() {
+    if (typeof window === 'undefined') return;
+    try { localStorage.removeItem(SESSION_CACHE_KEY); } catch { /* empty */ }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<Profile | null>(null);
@@ -40,6 +76,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
             setUser(null);
             setProfile(null);
+            clearCachedSession();
             await authApi.logout();
         } catch {
             // Ignore logout errors
@@ -63,6 +100,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (typeof document !== 'undefined') {
                 const hasSession = document.cookie.includes('ff_logged_in=true');
                 if (!hasSession) {
+                    // No session cookie — check if we're offline with a cached session
+                    const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+                    if (isOffline) {
+                        const cached = readCachedSession();
+                        if (cached) {
+                            setUser(cached.user);
+                            setProfile(cached.profile);
+                            setIsLoading(false);
+                            return;
+                        }
+                    }
                     setUser(null);
                     setProfile(null);
                     setIsLoading(false);
@@ -74,9 +122,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const response = await authApi.me() as { user: User; profile: Profile };
             setUser(response.user);
             setProfile(response.profile);
+            // Persist for offline cold-launch
+            writeCachedSession(response.user, response.profile);
         } catch {
-            setUser(null);
-            setProfile(null);
+            // Network failed — try cached session before clearing
+            const cached = readCachedSession();
+            if (cached) {
+                setUser(cached.user);
+                setProfile(cached.profile);
+            } else {
+                setUser(null);
+                setProfile(null);
+            }
         } finally {
             setIsLoading(false);
         }
@@ -114,6 +171,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const meResponse = await authApi.me() as { user: User; profile: Profile };
         setUser(meResponse.user);
         setProfile(meResponse.profile);
+        writeCachedSession(meResponse.user, meResponse.profile);
     }
 
     async function sendOtp(email: string) {
@@ -124,12 +182,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await authApi.verifyOtp(email, code, source);
         setUser(response.user);
         setProfile(response.profile as Profile);
+        writeCachedSession(response.user, response.profile as Profile);
     }
 
     async function loginWithGoogle(token: string, source?: string) {
         const response = await authApi.googleLogin(token, source);
         setUser(response.user);
         setProfile(response.profile as Profile);
+        writeCachedSession(response.user, response.profile as Profile);
     }
 
     async function refreshUser() {

@@ -19,6 +19,28 @@ import { formatSyncTime, getFeedLastSyncAt } from '@/lib/offline/syncStatus';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { calculateOpportunityMatch } from '@/lib/matchScore';
 import { OpportunityEventType } from '@fresherflow/types';
+import { OfflineError } from '@/lib/api/client';
+
+// ── Dashboard feed cache ─────────────────────────────────────────────────────
+const DASH_CACHE_KEY = 'ff_dashboard_cache_v1';
+
+function readDashCache(): Opportunity[] {
+    if (typeof window === 'undefined') return [];
+    try {
+        const raw = localStorage.getItem(DASH_CACHE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw) as { opportunities: Opportunity[] };
+        return Array.isArray(parsed.opportunities) ? parsed.opportunities : [];
+    } catch { return []; }
+}
+
+function writeDashCache(opportunities: Opportunity[]) {
+    if (typeof window === 'undefined') return;
+    try {
+        localStorage.setItem(DASH_CACHE_KEY, JSON.stringify({ opportunities, savedAt: Date.now() }));
+    } catch { /* ignore quota */ }
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 // const UPDATE_INTERVAL_MS = 60_000;
 const HOURS_24_IN_MS = 24 * 60 * 60 * 1000;
@@ -37,8 +59,18 @@ type DriveMilestone = {
 export default function DashboardPage() {
     const { user, profile, isLoading: authLoading } = useAuth();
     const router = useRouter();
-    const [recentOpps, setRecentOpps] = useState<Opportunity[]>([]);
-    const [isLoadingOpps, setIsLoadingOpps] = useState(true);
+    const [recentOpps, setRecentOpps] = useState<Opportunity[]>(() => {
+        // Lazy initializer — runs synchronously on first render.
+        // If there's a cache hit, skeleton is skipped entirely.
+        return readDashCache();
+    });
+    const [isLoadingOpps, setIsLoadingOpps] = useState<boolean>(() => {
+        // Only show skeleton if there is no cached data at all
+        if (typeof window === 'undefined') return true;
+        try {
+            return !localStorage.getItem(DASH_CACHE_KEY);
+        } catch { return true; }
+    });
 
     const [highlights, setHighlights] = useState<{
         urgent: { walkins: Opportunity[]; others: Opportunity[] };
@@ -128,9 +160,11 @@ export default function DashboardPage() {
             };
             setHighlights(data);
         } catch (err: unknown) {
+            if (err instanceof OfflineError) return; // SW cache handles it silently
             const message = (err as Error)?.message || 'Unable to load highlights';
             setHighlightsError(message);
         } finally {
+
             setIsLoadingHighlights(false);
             setFeedLastSyncAt(getFeedLastSyncAt());
         }
@@ -166,14 +200,18 @@ export default function DashboardPage() {
         setRecentError(null);
         try {
             const data = await opportunitiesApi.list({ sort: 'freshness_v2' }) as { opportunities: Opportunity[] };
-            // Keep a broader pool so dashboard tabs can rotate fresh content.
             const sanitized = (data.opportunities || []).slice(0, 60).map((o: Opportunity) => ({
                 ...o,
                 locations: o.locations || [],
                 requiredSkills: o.requiredSkills || []
             }));
             setRecentOpps(sanitized);
+            writeDashCache(sanitized); // Keep cache fresh for next offline visit
         } catch (err: unknown) {
+            if (err instanceof OfflineError) {
+                // Offline — silently use whatever is already in state from the cache initializer
+                return;
+            }
             const message = (err as Error)?.message || 'Unable to load recommended listings';
             setRecentError(message);
         } finally {
@@ -217,7 +255,7 @@ export default function DashboardPage() {
     const latestSorted = [...activeRecentOpps].sort(
         (a, b) => new Date(b.postedAt as string | Date).getTime() - new Date(a.postedAt as string | Date).getTime()
     );
-    const latestList = rotateByOffset(latestSorted, rotationOffset);
+    const latestList = latestSorted; // Pure chronological — no rotation
     // Rotate top cards per visit so users do not see the same first listings every time.
     const bestMatchList = rotateByOffset(
         [...activeRecentOpps].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)),
