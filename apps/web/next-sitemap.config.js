@@ -2,12 +2,8 @@
 module.exports = {
     siteUrl: 'https://fresherflow.in',
     generateIndexSitemap: false,
-    generateRobotsTxt: true,
+    generateRobotsTxt: false,
     sitemapSize: 7000,
-    robotsTxtOptions: {
-        policies: [{ userAgent: '*', allow: '/' }],
-        additionalSitemaps: ['https://fresherflow.in/sitemap.xml'],
-    },
     exclude: [
         '/api',
         '/api/*',

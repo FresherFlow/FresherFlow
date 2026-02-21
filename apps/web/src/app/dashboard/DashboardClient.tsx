@@ -303,9 +303,18 @@ export default function DashboardClient() {
                         </div>
                     </div>
 
-                    {/* Highlights — renders after feed (staggered) */}
-                    {!isLoadingHighlights && highlights && (
-                        (() => {
+                    {/* Highlights — always reserves space to prevent CLS */}
+                    <div className="min-h-[120px]">
+                        {isLoadingHighlights ? (
+                            <div className="space-y-3 animate-pulse">
+                                <div className="h-4 w-32 bg-muted/60 rounded" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    <div className="h-28 rounded-2xl bg-muted/40" />
+                                    <div className="h-28 rounded-2xl bg-muted/40 hidden sm:block" />
+                                    <div className="h-28 rounded-2xl bg-muted/40 hidden lg:block" />
+                                </div>
+                            </div>
+                        ) : highlights && (() => {
                             const isNotExpired = (o: Opportunity) => !o.expiresAt || new Date(o.expiresAt) > new Date();
                             const activeWalkins = highlights.urgent.walkins.filter(isNotExpired);
                             const activeNew = highlights.newlyAdded.filter(isNotExpired);
@@ -368,8 +377,8 @@ export default function DashboardClient() {
                                     </div>
                                 </div>
                             );
-                        })()
-                    )}
+                        })()}
+                    </div>
 
                     {!isLoadingHighlights && highlights?.driveMilestones && highlights.driveMilestones.length > 0 && (
                         <section className="space-y-3">
