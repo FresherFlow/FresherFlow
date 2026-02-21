@@ -223,8 +223,8 @@ class TelegramService {
         company: string,
         type: string,
         locations: string[],
-        applyLink?: string | null,
         slug: string,
+        applyLink?: string | null,
         options?: { force?: boolean }
     ): Promise<void> {
         const publicChannel = process.env.TELEGRAM_PUBLIC_CHANNEL;

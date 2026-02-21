@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
 import { opportunitiesApi, dashboardApi, savedApi } from '@/lib/api/client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Opportunity } from '@fresherflow/types';
@@ -233,93 +233,91 @@ export default function DashboardPage() {
         return Math.ceil(diffMs / (HOURS_24_IN_MS));
     };
 
-    const rotateByOffset = <T,>(items: T[], offset: number) => {
-        if (items.length <= 1) return items;
-        const normalizedOffset = ((offset % items.length) + items.length) % items.length;
-        if (normalizedOffset === 0) return items;
-        return [...items.slice(normalizedOffset), ...items.slice(0, normalizedOffset)];
-    };
-
-    const activeRecentOpps = recentOpps
-        .filter((o) => !o.expiresAt || new Date(o.expiresAt) > new Date())
-        .map((opp) => {
-            const match = calculateOpportunityMatch(profile, opp);
-            return {
-                ...opp,
-                matchScore: match.score,
-                matchReason: match.reason,
+    const { closingSoon, mobileSections, desktopSections,
+        totalActive, jobsCount, internshipsCount, walkinsCount } = useMemo(() => {
+            const rotateByOffset = <T,>(items: T[], offset: number) => {
+                if (items.length <= 1) return items;
+                const normalizedOffset = ((offset % items.length) + items.length) % items.length;
+                if (normalizedOffset === 0) return items;
+                return [...items.slice(normalizedOffset), ...items.slice(0, normalizedOffset)];
             };
-        });
-    const rotationStep = 4;
-    const rotationOffset = Math.max(0, dashboardVisitCounter - 1) * rotationStep;
-    const latestSorted = [...activeRecentOpps].sort(
-        (a, b) => new Date(b.postedAt as string | Date).getTime() - new Date(a.postedAt as string | Date).getTime()
-    );
-    const latestList = latestSorted; // Pure chronological — no rotation
-    // Rotate top cards per visit so users do not see the same first listings every time.
-    const bestMatchList = rotateByOffset(
-        [...activeRecentOpps].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)),
-        rotationOffset
-    );
-    const closingSoon = activeRecentOpps
-        .filter((o) => o.expiresAt)
-        .sort((a, b) => new Date(a.expiresAt as string).getTime() - new Date(b.expiresAt as string).getTime())
-        .slice(0, 8);
-    const newLast24Hours = latestList
-        .filter((o) => (Date.now() - new Date(o.postedAt as string | Date).getTime()) <= (HOURS_24_IN_MS))
-        .slice(0, 10);
 
-    const totalActive = activeRecentOpps.length || 1;
-    const jobsCount = activeRecentOpps.filter((o) => o.type === 'JOB').length;
-    const internshipsCount = activeRecentOpps.filter((o) => o.type === 'INTERNSHIP').length;
-    const walkinsCount = activeRecentOpps.filter((o) => o.type === 'WALKIN').length;
+            const active = recentOpps
+                .filter((o) => !o.expiresAt || new Date(o.expiresAt) > new Date())
+                .map((opp) => {
+                    const match = calculateOpportunityMatch(profile, opp);
+                    return { ...opp, matchScore: match.score, matchReason: match.reason };
+                });
 
-    const archivedList = recentOpps.filter((o) => o.status === 'ARCHIVED' || (!!o.expiresAt && new Date(o.expiresAt) <= new Date()));
-    const appliedList = recentOpps.filter((o) =>
-        (o.actions || []).some((action) =>
-            action.actionType === 'APPLIED'
-            || action.actionType === 'PLANNED'
-            || action.actionType === 'INTERVIEWED'
-            || action.actionType === 'SELECTED'
-            || action.actionType === 'PLANNING'
-            || action.actionType === 'ATTENDED'
-        )
-    );
-    const featuredList = [
-        ...((highlights?.newSinceLastVisit || []).filter((candidate) => !closingSoon.some((soon) => soon.id === candidate.id))),
-        ...closingSoon,
-        ...newLast24Hours.filter((candidate) => !closingSoon.some((soon) => soon.id === candidate.id)),
-        ...bestMatchList.filter((candidate) =>
-            !closingSoon.some((soon) => soon.id === candidate.id)
-            && !newLast24Hours.some((fresh) => fresh.id === candidate.id)
-        ),
-    ];
+            const rotationStep = 4;
+            const rotationOffset = Math.max(0, dashboardVisitCounter - 1) * rotationStep;
 
-    const sectionMap = {
-        featured: featuredList,
-        latest: latestList,
-        expiring: closingSoon,
-        all: bestMatchList,
-        applied: appliedList,
-        archived: archivedList,
-    } as const;
+            const latestSorted = [...active].sort(
+                (a, b) => new Date(b.postedAt as string | Date).getTime() - new Date(a.postedAt as string | Date).getTime()
+            );
+            const latest = latestSorted;
 
-    const mobileSections = [
-        { key: 'featured', title: 'Featured', href: '/opportunities', items: sectionMap.featured.slice(0, MOBILE_DASHBOARD_LIMIT) },
-        { key: 'latest', title: 'Latest', href: '/opportunities', items: sectionMap.latest.slice(0, MOBILE_DASHBOARD_LIMIT) },
-        { key: 'expiring', title: 'Expiring Soon', href: '/opportunities?closingSoon=true', items: sectionMap.expiring.slice(0, MOBILE_DASHBOARD_LIMIT) },
-        { key: 'all', title: 'All Jobs', href: '/opportunities', items: sectionMap.all.slice(0, MOBILE_DASHBOARD_LIMIT) },
-        { key: 'applied', title: 'Applied', href: '/account/saved', items: sectionMap.applied.slice(0, MOBILE_DASHBOARD_LIMIT) },
-        { key: 'archived', title: 'Archived', href: '/opportunities', items: sectionMap.archived.slice(0, MOBILE_DASHBOARD_LIMIT) },
-    ] as const;
-    const desktopSections = [
-        { key: 'featured', title: 'Featured', href: '/opportunities', items: sectionMap.featured.slice(0, DESKTOP_DASHBOARD_LIMIT) },
-        { key: 'latest', title: 'Latest', href: '/opportunities', items: sectionMap.latest.slice(0, DESKTOP_DASHBOARD_LIMIT) },
-        { key: 'expiring', title: 'Expiring Soon', href: '/opportunities?closingSoon=true', items: sectionMap.expiring.slice(0, DESKTOP_DASHBOARD_LIMIT) },
-        { key: 'all', title: 'All Jobs', href: '/opportunities', items: sectionMap.all.slice(0, DESKTOP_DASHBOARD_LIMIT) },
-        { key: 'applied', title: 'Applied', href: '/account/saved', items: sectionMap.applied.slice(0, DESKTOP_DASHBOARD_LIMIT) },
-        { key: 'archived', title: 'Archived', href: '/opportunities', items: sectionMap.archived.slice(0, DESKTOP_DASHBOARD_LIMIT) },
-    ] as const;
+            const bestMatch = rotateByOffset(
+                [...active].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)),
+                rotationOffset
+            );
+
+            const closing = active
+                .filter((o) => o.expiresAt)
+                .sort((a, b) => new Date(a.expiresAt as string).getTime() - new Date(b.expiresAt as string).getTime())
+                .slice(0, 8);
+
+            const newIn24h = latest
+                .filter((o) => (Date.now() - new Date(o.postedAt as string | Date).getTime()) <= HOURS_24_IN_MS)
+                .slice(0, 10);
+
+            const archived = recentOpps.filter((o) => o.status === 'ARCHIVED' || (!!o.expiresAt && new Date(o.expiresAt) <= new Date()));
+            const applied = recentOpps.filter((o) =>
+                (o.actions || []).some((action) =>
+                    ['APPLIED', 'PLANNED', 'INTERVIEWED', 'SELECTED', 'PLANNING', 'ATTENDED'].includes(action.actionType)
+                )
+            );
+
+            const featured = [
+                ...((highlights?.newSinceLastVisit || []).filter((c) => !closing.some((s) => s.id === c.id))),
+                ...closing,
+                ...newIn24h.filter((c) => !closing.some((s) => s.id === c.id)),
+                ...bestMatch.filter((c) => !closing.some((s) => s.id === c.id) && !newIn24h.some((f) => f.id === c.id)),
+            ];
+
+            const map = { featured, latest, expiring: closing, all: bestMatch, applied, archived } as const;
+
+            const mobile = [
+                { key: 'featured' as const, title: 'Featured', href: '/opportunities', items: map.featured.slice(0, MOBILE_DASHBOARD_LIMIT) },
+                { key: 'latest' as const, title: 'Latest', href: '/opportunities', items: map.latest.slice(0, MOBILE_DASHBOARD_LIMIT) },
+                { key: 'expiring' as const, title: 'Expiring Soon', href: '/opportunities?closingSoon=true', items: map.expiring.slice(0, MOBILE_DASHBOARD_LIMIT) },
+                { key: 'all' as const, title: 'All Jobs', href: '/opportunities', items: map.all.slice(0, MOBILE_DASHBOARD_LIMIT) },
+                { key: 'applied' as const, title: 'Applied', href: '/account/saved', items: map.applied.slice(0, MOBILE_DASHBOARD_LIMIT) },
+                { key: 'archived' as const, title: 'Archived', href: '/opportunities', items: map.archived.slice(0, MOBILE_DASHBOARD_LIMIT) },
+            ];
+
+            const desktop = [
+                { key: 'featured' as const, title: 'Featured', href: '/opportunities', items: map.featured.slice(0, DESKTOP_DASHBOARD_LIMIT) },
+                { key: 'latest' as const, title: 'Latest', href: '/opportunities', items: map.latest.slice(0, DESKTOP_DASHBOARD_LIMIT) },
+                { key: 'expiring' as const, title: 'Expiring Soon', href: '/opportunities?closingSoon=true', items: map.expiring.slice(0, DESKTOP_DASHBOARD_LIMIT) },
+                { key: 'all' as const, title: 'All Jobs', href: '/opportunities', items: map.all.slice(0, DESKTOP_DASHBOARD_LIMIT) },
+                { key: 'applied' as const, title: 'Applied', href: '/account/saved', items: map.applied.slice(0, DESKTOP_DASHBOARD_LIMIT) },
+                { key: 'archived' as const, title: 'Archived', href: '/opportunities', items: map.archived.slice(0, DESKTOP_DASHBOARD_LIMIT) },
+            ];
+
+            return {
+                activeRecentOpps: active, latestList: latest, bestMatchList: bestMatch,
+                closingSoon: closing, newLast24Hours: newIn24h, archivedList: archived,
+                appliedList: applied, featuredList: featured, sectionMap: map,
+                mobileSections: mobile, desktopSections: desktop,
+                totalActive: active.length || 1,
+                jobsCount: active.filter((o) => o.type === 'JOB').length,
+                internshipsCount: active.filter((o) => o.type === 'INTERNSHIP').length,
+                walkinsCount: active.filter((o) => o.type === 'WALKIN').length,
+            };
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [recentOpps, highlights, dashboardVisitCounter, profile?.id]);
+
 
     const activeSection = mobileSections.find((section) => section.key === activeTab) || mobileSections[0];
     const activeDesktopSection = desktopSections.find((section) => section.key === activeTab) || desktopSections[0];
@@ -487,7 +485,7 @@ export default function DashboardPage() {
                                     <div className="p-10 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground">No listings here yet.</div>
                                 ) : (
                                     <div className="space-y-4">
-                                        {activeSection.items.map((opp: Opportunity) => (
+                                        {activeSection.items.map((opp: Opportunity, idx: number) => (
                                             <JobCard
                                                 key={`mob-${opp.id}`}
                                                 job={opp}
@@ -497,6 +495,7 @@ export default function DashboardPage() {
                                                 onToggleSave={() => toggleSave(opp.id)}
                                                 onClick={() => router.push(getOpportunityPathFromItem(opp))}
                                                 isAdmin={user?.role === 'ADMIN'}
+                                                priority={idx < 2}
                                             />
                                         ))}
                                     </div>

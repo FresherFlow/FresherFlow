@@ -40,6 +40,7 @@ interface ParsedJob {
     requiredDocuments?: string[];
     contactPerson?: string;
     contactPhone?: string;
+    description?: string;
 }
 
 type DuplicateOpportunity = {
@@ -651,7 +652,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         }
     };
 
-const jsonReport = useMemo(() => {
+    const jsonReport = useMemo(() => {
         if (!pastedJson.trim()) return null;
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
