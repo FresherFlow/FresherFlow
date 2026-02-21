@@ -51,6 +51,10 @@ vi.mock('@prisma/client', () => {
     return { PrismaClient };
 });
 
+vi.mock('../lib/prisma', () => ({
+    default: prismaMock,
+}));
+
 vi.mock('../services/auth.service', () => ({
     AuthService: {
         generateOtp: vi.fn(() => '123456'),
