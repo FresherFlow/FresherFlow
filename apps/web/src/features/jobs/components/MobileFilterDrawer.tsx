@@ -82,7 +82,7 @@ export function MobileFilterDrawer({
                 onClick={onClose}
             />
             <div
-                className="absolute inset-x-3 top-[4.75rem] bottom-4 overflow-auto rounded-3xl border border-border/50 bg-card/90 backdrop-blur-xl p-5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] animate-in slide-in-from-bottom-10 duration-300"
+                className="absolute inset-x-3 bottom-4 top-auto max-h-[85vh] overflow-auto rounded-3xl border border-border/50 bg-card/95 backdrop-blur-xl p-5 shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] animate-in slide-in-from-bottom-10 duration-300"
                 onTouchStart={handleTouchStart}
                 onTouchEnd={handleTouchEnd}
             >

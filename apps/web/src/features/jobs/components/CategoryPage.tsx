@@ -240,9 +240,9 @@ function CategoryPageContent({ type }: CategoryPageProps) {
 
                     {/* Mobile Filter Popup */}
                     {isMobileFilterOpen && (
-                        <div className="fixed inset-0 z-50 lg:hidden">
+                        <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 lg:hidden">
                             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" onClick={() => setIsMobileFilterOpen(false)} />
-                            <div className="absolute inset-x-3 top-6 bottom-6 overflow-auto rounded-2xl border border-border bg-card p-4 shadow-2xl">
+                            <div className="relative w-full max-w-sm max-h-[85vh] overflow-auto rounded-3xl border border-border bg-card p-4 shadow-2xl animate-in zoom-in-95 duration-200">
                                 <div className="flex items-center justify-between mb-4">
                                     <h3 className="text-sm font-bold tracking-tight text-foreground">Filters</h3>
                                     <button

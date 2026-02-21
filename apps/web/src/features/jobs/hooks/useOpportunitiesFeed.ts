@@ -155,7 +155,7 @@ export function useOpportunitiesFeed({
                     setUsingCachedFeed(true);
                     setCachedAt(cached.cachedAt);
                     setHasMore(false);
-                    toast.success('Offline mode: showing cached feed.');
+                    // toast.success('Offline mode: showing cached feed.'); // Disabled per user request
                 } else {
                     const { getErrorMessage } = await import('@/lib/utils/error');
                     const msg = getErrorMessage(err);

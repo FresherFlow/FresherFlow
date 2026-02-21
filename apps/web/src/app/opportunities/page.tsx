@@ -183,24 +183,35 @@ function OpportunitiesContent() {
 
                     {/* Search & Main Category Filters */}
                     <div className="flex flex-col lg:flex-row gap-2.5">
-                        <div className="relative flex-1 group">
-                            <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                            <Input
-                                type="text"
-                                placeholder="Search specific roles, skills, or companies..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-10 h-11 text-sm bg-card/50 border-border/80 focus:border-primary/50 transition-all rounded-xl"
-                                aria-label="Search job opportunities"
-                            />
-                            {search && (
-                                <button
-                                    onClick={() => setSearch('')}
-                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                >
-                                    <XMarkIcon className="w-4 h-4" />
-                                </button>
-                            )}
+                        <div className="flex gap-2.5 w-full lg:w-auto lg:flex-1">
+                            <div className="relative flex-1 group">
+                                <MagnifyingGlassIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search specific roles, skills, or companies..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="pl-10 h-11 text-sm bg-card/50 border-border/80 focus:border-primary/50 transition-all rounded-xl"
+                                    aria-label="Search job opportunities"
+                                />
+                                {search && (
+                                    <button
+                                        onClick={() => setSearch('')}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                    >
+                                        <XMarkIcon className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <button
+                                onClick={openMobileFilters}
+                                aria-haspopup="dialog"
+                                aria-expanded={isMobileFilterOpen}
+                                className="lg:hidden h-11 flex items-center shrink-0 gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold uppercase tracking-widest"
+                            >
+                                <FunnelIcon className="w-4 h-4" />
+                                {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
+                            </button>
                         </div>
                         <div className="flex items-center gap-2">
                             <div className="flex gap-1.5 p-1 bg-muted/30 rounded-xl border border-border/50">
@@ -236,15 +247,6 @@ function OpportunitiesContent() {
                             >
                                 <FunnelIcon className="w-4 h-4" />
                                 {isFilterOpen ? 'Hide Panel' : 'Filters'}
-                            </button>
-                            <button
-                                onClick={openMobileFilters}
-                                aria-haspopup="dialog"
-                                aria-expanded={isMobileFilterOpen}
-                                className="lg:hidden h-11 flex items-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold uppercase tracking-widest"
-                            >
-                                <FunnelIcon className="w-4 h-4" />
-                                {activeFilterCount > 0 ? `Filters (${activeFilterCount})` : 'Filters'}
                             </button>
                         </div>
                     </div>
