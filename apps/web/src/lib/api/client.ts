@@ -21,6 +21,23 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 // Singleton promise to handle concurrent refresh requests
 let isRefreshing: Promise<void> | null = null;
 
+// Deduplicate offline toast — only show once every 30s regardless of how many
+// concurrent requests fail. The offline banner already informs the user.
+let _lastOfflineToastAt = 0;
+function showOfflineToastOnce() {
+    if (typeof window === 'undefined') return;
+    const now = Date.now();
+    if (now - _lastOfflineToastAt < 30_000) return;
+    _lastOfflineToastAt = now;
+    import('react-hot-toast').then(({ default: toast }) => {
+        toast('You\'re offline — showing cached data', {
+            icon: '📶',
+            id: 'offline-notice',
+            duration: 3000,
+        });
+    });
+}
+
 // API Client with automatic cookie handling
 export async function apiClient<T = unknown>(
     endpoint: string,
@@ -33,10 +50,6 @@ export async function apiClient<T = unknown>(
         ...(options.headers as Record<string, string> || {}),
     };
 
-    // Short-circuit immediately when offline — avoids misleading errors / toast spam
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        throw new OfflineError();
-    }
 
     // Defaults: credentials include for cookies
     const fetchOptions: RequestInit = {
@@ -183,6 +196,18 @@ export async function apiClient<T = unknown>(
 
         return await response.json();
     } catch (error: unknown) {
+        // Convert network-level failures that occur while offline into OfflineError.
+        // This lets callers distinguish offline failures from real server errors
+        // without blocking the service worker from intercepting the fetch.
+        const isNetworkError = error instanceof TypeError && (
+            (error.message.includes('fetch') || error.message.includes('network') || error.message.includes('Failed to fetch'))
+        );
+        const offlineNow = typeof navigator !== 'undefined' && !navigator.onLine;
+        if ((isNetworkError || offlineNow) && !(error instanceof OfflineError)) {
+            showOfflineToastOnce();
+            throw new OfflineError();
+        }
+
         console.error('API Error:', error);
         // Only report to Sentry if it's a server error or a critical unexpected error
         const err = error as { statusCode?: number; code?: string };

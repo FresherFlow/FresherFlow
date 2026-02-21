@@ -1,4 +1,4 @@
-const SW_VERSION = '1.7.0';
+const SW_VERSION = '1.8.0';
 const STATIC_CACHE = `fresherflow-static-${SW_VERSION}`;
 const API_CACHE = `fresherflow-api-${SW_VERSION}`;
 const OFFLINE_URL = '/offline.html';
@@ -90,7 +90,7 @@ self.addEventListener('fetch', (event) => {
   const isSameOrigin = url.origin === self.location.origin;
   const isApiRequest = url.pathname.startsWith('/api');
   const isNavigation = event.request.mode === 'navigate';
-  // Handle navigation requests by serving cached offline page if network fails
+  // Handle navigation requests
   if (isNavigation) {
     event.respondWith(
       (async () => {
@@ -103,10 +103,20 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         } catch {
-          const cachedNavigation = await cache.match(navigationKey);
-          if (cachedNavigation) return cachedNavigation;
+          // Offline — serve from cache in priority order:
+          // 1. The exact path that was previously cached online
+          const cachedExact = await cache.match(navigationKey);
+          if (cachedExact) return cachedExact;
+
+          // 2. App shell root '/' — Next.js will rehydrate to the right route
+          const appShell = await cache.match(new Request('/', { method: 'GET' }));
+          if (appShell) return appShell;
+
+          // 3. Explicit offline fallback page
           const offlinePage = await caches.match(OFFLINE_URL);
           if (offlinePage) return offlinePage;
+
+          // 4. Inline fallback
           return new Response(OFFLINE_FALLBACK_HTML, {
             status: 200,
             headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -116,6 +126,7 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
+
 
   // Cache key ignores tracking params so the same feed/search request can be reused.
   const normalizedUrl = new URL(url.pathname + url.search, self.location.origin);
