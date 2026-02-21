@@ -1,0 +1,53 @@
+name: Scheduled Background Jobs
+
+on:
+  schedule:
+    # Run every 20 minutes (Ingestion)
+    - cron: '*/20 * * * *'
+    # Run every 30 minutes (Alerts)
+    - cron: '*/30 * * * *'
+    # Run at midnight IST (18:30 UTC) (Expiry)
+    - cron: '30 18 * * *'
+    # Run at 2:30 AM IST (21:00 UTC) (Link Verification)
+    - cron: '0 21 * * *'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  run-cron-tasks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Ingestion (Every 20 mins)
+        if: github.event.schedule == '*/20 * * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -f -X POST "$API_BASE_URL/api/cron/ingest" \
+            -H "Authorization: Bearer $CRON_SECRET"
+            
+      - name: Trigger Alerts (Every 30 mins)
+        if: github.event.schedule == '*/30 * * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -f -X POST "$API_BASE_URL/api/cron/alerts" \
+            -H "Authorization: Bearer $CRON_SECRET"
+            
+      - name: Trigger Daily Expiry (Midnight IST)
+        if: github.event.schedule == '30 18 * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -f -X POST "$API_BASE_URL/api/cron/expire" \
+            -H "Authorization: Bearer $CRON_SECRET"
+            
+      - name: Trigger Link Verification (2:30 AM IST)
+        if: github.event.schedule == '0 21 * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -f -X POST "$API_BASE_URL/api/cron/verify" \
+            -H "Authorization: Bearer $CRON_SECRET"

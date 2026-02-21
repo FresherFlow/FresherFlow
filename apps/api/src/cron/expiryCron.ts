@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+
 import { PrismaClient, OpportunityStatus, OpportunityType } from '@prisma/client';
 import logger from '../utils/logger';
 import TelegramService from '../services/telegram.service';
@@ -41,179 +41,175 @@ function formatDateKeyInTimezone(date: Date, timezone: string): string {
  * 2. Walk-ins: max(walkInDates) < now (UTC)
  * 3. Walk-ins behave as events, not jobs
  */
-export function startExpiryCron() {
-    // Run once daily at midnight in configured timezone (default: IST).
-    const schedule = process.env.EXPIRY_CRON_SCHEDULE || '0 0 * * *';
+export async function runExpiryCycle() {
     const timezone = process.env.EXPIRY_CRON_TIMEZONE || 'Asia/Kolkata';
-    cron.schedule(schedule, async () => {
-        const startTime = new Date();
+    const startTime = new Date();
 
-        // Explicitly using UTC - PostgreSQL stores as UTC
-        const nowUTC = new Date();
+    // Explicitly using UTC - PostgreSQL stores as UTC
+    const nowUTC = new Date();
 
-        logger.info('Running expiry cron job', {
-            nowUTC: nowUTC.toISOString(),
-            timestamp: startTime.toISOString()
+    logger.info('Running expiry cycle', {
+        nowUTC: nowUTC.toISOString(),
+        timestamp: startTime.toISOString()
+    });
+
+    try {
+        // ====================================================================
+        // 1. EXPIRE JOBS & INTERNSHIPS
+        // ====================================================================
+        // Jobs and internships expire when expiresAt passes
+
+        const expiredJobsResult = await prisma.opportunity.updateMany({
+            where: {
+                type: { in: [OpportunityType.JOB, OpportunityType.INTERNSHIP] },
+                status: OpportunityStatus.PUBLISHED, // Only expire PUBLISHED
+                expiresAt: { lt: nowUTC } // expiresAt < now (UTC)
+            },
+            data: {
+                expiredAt: nowUTC // Set expiry timestamp
+            }
         });
 
-        try {
-            // ====================================================================
-            // 1. EXPIRE JOBS & INTERNSHIPS
-            // ====================================================================
-            // Jobs and internships expire when expiresAt passes
+        logger.info('Expired jobs/internships', {
+            count: expiredJobsResult.count,
+            type: 'JOB_INTERNSHIP_EXPIRY'
+        });
 
-            const expiredJobsResult = await prisma.opportunity.updateMany({
-                where: {
-                    type: { in: [OpportunityType.JOB, OpportunityType.INTERNSHIP] },
-                    status: OpportunityStatus.PUBLISHED, // Only expire PUBLISHED
-                    expiresAt: { lt: nowUTC } // expiresAt < now (UTC)
-                },
-                data: {
-                    expiredAt: nowUTC // Set expiry timestamp
-                }
-            });
+        // ====================================================================
+        // 2. EXPIRE WALK-INS (Event-Based)
+        // ====================================================================
+        // Walk-ins expire when the LAST date has passed (UTC midnight)
+        // Cannot use updateMany because we need to compute max(dates)
 
-            logger.info('Expired jobs/internships', {
-                count: expiredJobsResult.count,
-                type: 'JOB_INTERNSHIP_EXPIRY'
-            });
+        const activeWalkIns = await prisma.opportunity.findMany({
+            where: {
+                type: OpportunityType.WALKIN,
+                status: OpportunityStatus.PUBLISHED
+            },
+            include: {
+                walkInDetails: true
+            }
+        });
 
-            // ====================================================================
-            // 2. EXPIRE WALK-INS (Event-Based)
-            // ====================================================================
-            // Walk-ins expire when the LAST date has passed (UTC midnight)
-            // Cannot use updateMany because we need to compute max(dates)
+        const walkInIdsToExpire: string[] = [];
 
-            const activeWalkIns = await prisma.opportunity.findMany({
-                where: {
-                    type: OpportunityType.WALKIN,
-                    status: OpportunityStatus.PUBLISHED
-                },
-                include: {
-                    walkInDetails: true
-                }
-            });
-
-            const walkInIdsToExpire: string[] = [];
-
-            for (const walkIn of activeWalkIns) {
-                if (!walkIn.walkInDetails || walkIn.walkInDetails.dates.length === 0) {
-                    logger.warn('Walk-in missing dates - skipping', {
-                        opportunityId: walkIn.id,
-                        title: walkIn.title
-                    });
-                    continue;
-                }
-
-                // Find the maximum (last) walk-in date
-                const dates = walkIn.walkInDetails.dates.map(d => new Date(d));
-                const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
-                const todayKey = formatDateKeyInTimezone(nowUTC, timezone);
-                const lastDateKey = formatDateKeyInTimezone(maxDate, timezone);
-
-                // Expire when walk-in last date is before today's date in cron timezone.
-                if (lastDateKey < todayKey) {
-                    walkInIdsToExpire.push(walkIn.id);
-
-                    logger.debug('Walk-in ready to expire', {
-                        opportunityId: walkIn.id,
-                        title: walkIn.title,
-                        lastDate: maxDate.toISOString(),
-                        lastDateKey,
-                        todayKey,
-                        timezone
-                    });
-                }
+        for (const walkIn of activeWalkIns) {
+            if (!walkIn.walkInDetails || walkIn.walkInDetails.dates.length === 0) {
+                logger.warn('Walk-in missing dates - skipping', {
+                    opportunityId: walkIn.id,
+                    title: walkIn.title
+                });
+                continue;
             }
 
-            // Batch update expired walk-ins
-            const expiredWalkInsResult = await prisma.opportunity.updateMany({
-                where: {
-                    id: { in: walkInIdsToExpire },
-                    status: OpportunityStatus.PUBLISHED // Safety check (idempotency)
-                },
-                data: {
-                    expiredAt: nowUTC
-                }
-            });
+            // Find the maximum (last) walk-in date
+            const dates = walkIn.walkInDetails.dates.map(d => new Date(d));
+            const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
+            const todayKey = formatDateKeyInTimezone(nowUTC, timezone);
+            const lastDateKey = formatDateKeyInTimezone(maxDate, timezone);
 
-            logger.info('Expired walk-ins', {
-                count: expiredWalkInsResult.count,
-                type: 'WALKIN_EXPIRY'
-            });
+            // Expire when walk-in last date is before today's date in cron timezone.
+            if (lastDateKey < todayKey) {
+                walkInIdsToExpire.push(walkIn.id);
 
-            // ====================================================================
-            // 3. STALE LISTING WARNINGS (No Auto-Expiry)
-            // ====================================================================
-            // Listings with no expiresAt and >30 days old need admin review
-            // Logging only - no status mutation
-
-            const thirtyDaysAgo = new Date(nowUTC);
-            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-
-            const staleListings = await prisma.opportunity.findMany({
-                where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    expiresAt: null,
-                    type: { not: OpportunityType.WALKIN }, // Walk-ins use dates
-                    lastVerified: { lt: thirtyDaysAgo }
-                },
-                select: {
-                    id: true,
-                    title: true,
-                    company: true,
-                    lastVerified: true
-                }
-            });
-
-            if (staleListings.length > 0) {
-                logger.warn('Stale listings need admin review', {
-                    count: staleListings.length,
-                    type: 'STALE_LISTINGS',
-                    listings: staleListings.map(l => ({
-                        id: l.id,
-                        title: l.title,
-                        company: l.company,
-                        daysSinceVerified: Math.floor(
-                            (nowUTC.getTime() - new Date(l.lastVerified).getTime()) / (1000 * 60 * 60 * 24)
-                        )
-                    }))
+                logger.debug('Walk-in ready to expire', {
+                    opportunityId: walkIn.id,
+                    title: walkIn.title,
+                    lastDate: maxDate.toISOString(),
+                    lastDateKey,
+                    todayKey,
+                    timezone
                 });
             }
+        }
 
-            // ====================================================================
-            // COMPLETION SUMMARY
-            // ====================================================================
-            const endTime = new Date();
-            const durationMs = endTime.getTime() - startTime.getTime();
+        // Batch update expired walk-ins
+        const expiredWalkInsResult = await prisma.opportunity.updateMany({
+            where: {
+                id: { in: walkInIdsToExpire },
+                status: OpportunityStatus.PUBLISHED // Safety check (idempotency)
+            },
+            data: {
+                expiredAt: nowUTC
+            }
+        });
 
-            logger.info('Expiry cron job completed successfully', {
-                durationMs,
-                totalExpired: expiredJobsResult.count + expiredWalkInsResult.count,
-                jobsInternshipsExpired: expiredJobsResult.count,
-                walkInsExpired: expiredWalkInsResult.count,
-                staleWarnings: staleListings.length
-            });
+        logger.info('Expired walk-ins', {
+            count: expiredWalkInsResult.count,
+            type: 'WALKIN_EXPIRY'
+        });
 
-            await TelegramService.notifyExpirySummary({
-                totalExpired: expiredJobsResult.count + expiredWalkInsResult.count,
-                jobsInternshipsExpired: expiredJobsResult.count,
-                walkInsExpired: expiredWalkInsResult.count,
-                staleWarnings: staleListings.length
-            });
+        // ====================================================================
+        // 3. STALE LISTING WARNINGS (No Auto-Expiry)
+        // ====================================================================
+        // Listings with no expiresAt and >30 days old need admin review
+        // Logging only - no status mutation
 
-        } catch (error) {
-            import('@sentry/node').then(Sentry => Sentry.captureException(error));
-            logger.error('Expiry cron job failed', {
-                error: error instanceof Error ? error.message : 'Unknown error',
-                stack: error instanceof Error ? error.stack : undefined
+        const thirtyDaysAgo = new Date(nowUTC);
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+        const staleListings = await prisma.opportunity.findMany({
+            where: {
+                status: OpportunityStatus.PUBLISHED,
+                expiresAt: null,
+                type: { not: OpportunityType.WALKIN }, // Walk-ins use dates
+                lastVerified: { lt: thirtyDaysAgo }
+            },
+            select: {
+                id: true,
+                title: true,
+                company: true,
+                lastVerified: true
+            }
+        });
+
+        if (staleListings.length > 0) {
+            logger.warn('Stale listings need admin review', {
+                count: staleListings.length,
+                type: 'STALE_LISTINGS',
+                listings: staleListings.map(l => ({
+                    id: l.id,
+                    title: l.title,
+                    company: l.company,
+                    daysSinceVerified: Math.floor(
+                        (nowUTC.getTime() - new Date(l.lastVerified).getTime()) / (1000 * 60 * 60 * 24)
+                    )
+                }))
             });
         }
-    }, { timezone });
 
-    logger.info('Expiry cron job scheduled successfully', {
-        schedule,
-        timezone
-    });
+        // ====================================================================
+        // COMPLETION SUMMARY
+        // ====================================================================
+        const endTime = new Date();
+        const durationMs = endTime.getTime() - startTime.getTime();
+
+        const summary = {
+            durationMs,
+            totalExpired: expiredJobsResult.count + expiredWalkInsResult.count,
+            jobsInternshipsExpired: expiredJobsResult.count,
+            walkInsExpired: expiredWalkInsResult.count,
+            staleWarnings: staleListings.length
+        };
+
+        logger.info('Expiry cycle completed successfully', summary);
+
+        await TelegramService.notifyExpirySummary({
+            totalExpired: summary.totalExpired,
+            jobsInternshipsExpired: summary.jobsInternshipsExpired,
+            walkInsExpired: summary.walkInsExpired,
+            staleWarnings: summary.staleWarnings
+        });
+
+        return summary;
+
+    } catch (error) {
+        import('@sentry/node').then(Sentry => Sentry.captureException(error));
+        logger.error('Expiry cycle failed', {
+            error: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined
+        });
+        throw error;
+    }
 }
 

@@ -13,10 +13,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { observabilityMiddleware } from './middleware/observability';
 import logger from './utils/logger';
 import httpLogger from './middleware/httpLogger';
-import { startExpiryCron } from './cron/expiryCron';
-import { startVerificationCron } from './cron/verificationCron';
-import { startAlertsCron } from './cron/alertsCron';
-import { startIngestionCron } from './cron/ingestionCron';
+
 import { csrfGate } from './middleware/csrf';
 
 // Import routes
@@ -41,6 +38,7 @@ import growthRoutes from './routes/public/growth';
 import companyRoutes from './routes/public/companies';
 import opportunityClickRoutes from './routes/public/opportunityClicks';
 import emailIngestionRoutes from './routes/public/emailIngestion';
+import cronRoutes from './routes/cron';
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
@@ -69,6 +67,7 @@ app.use('/api', healthRoutes);
 app.use('/api/public/growth', growthRoutes);
 app.use('/api/public', opportunityClickRoutes);
 app.use('/api/ingestion', emailIngestionRoutes);
+app.use('/api/cron', cronRoutes);
 
 // Trust proxy for Render/Vercel/Load Balancers
 if (process.env.NODE_ENV === 'production') {
@@ -261,11 +260,11 @@ app.listen(PORT, () => {
     logger.info(`Frontend URL: ${process.env.FRONTEND_URL}`);
     logger.info(`Sentry: ${process.env.SENTRY_DSN ? 'Enabled' : 'Disabled'}`);
 
-    // Start cron jobs
-    startExpiryCron();
-    startVerificationCron();
-    startAlertsCron();
-    startIngestionCron();
+    // Start cron jobs - MIGRATED TO GITHUB ACTIONS
+    // startExpiryCron();
+    // startVerificationCron();
+    // startAlertsCron();
+    // startIngestionCron();
 });
 
 // Graceful shutdown
