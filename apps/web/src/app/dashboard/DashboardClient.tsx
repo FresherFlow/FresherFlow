@@ -440,7 +440,7 @@ export default function DashboardClient() {
                             </div>
 
                             {/* Mobile Feed — only active tab rendered */}
-                            <div className="md:hidden">
+                            <div className="md:hidden min-h-[600px]">
                                 {isLoadingOpps ? (
                                     <div className="space-y-4"><SkeletonJobCard /><SkeletonJobCard /></div>
                                 ) : activeItems.mobile.length === 0 ? (
@@ -465,7 +465,7 @@ export default function DashboardClient() {
                             </div>
 
                             {/* Desktop Feed — only active tab rendered */}
-                            <div className="hidden md:block">
+                            <div className="hidden md:block min-h-[600px]">
                                 {isLoadingOpps ? (
                                     <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
                                         {[1, 2, 3, 4].map(i => <SkeletonJobCard key={i} />)}
@@ -496,7 +496,7 @@ export default function DashboardClient() {
                             </div>
                         </div>
 
-                        <section className="space-y-4">
+                        <section className="space-y-4 min-h-[320px]">
                             <h2 className="text-sm font-bold uppercase tracking-wider">Intelligence</h2>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="p-5 rounded-2xl border border-border bg-card/50 space-y-2">

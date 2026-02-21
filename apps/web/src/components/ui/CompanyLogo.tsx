@@ -148,9 +148,8 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
     }
 
     const addLogoProviders = (domain: string) => {
-        candidates.push(`https://logo.clearbit.com/${domain}?size=80`);
-        candidates.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
         candidates.push(`https://www.google.com/s2/favicons?sz=128&domain_url=${domain}`);
+        candidates.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
     };
 
     if (normalizedWebsiteDomain) {

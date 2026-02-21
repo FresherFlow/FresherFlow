@@ -4,6 +4,10 @@ module.exports = {
     generateIndexSitemap: false,
     generateRobotsTxt: true,
     sitemapSize: 7000,
+    robotsTxtOptions: {
+        policies: [{ userAgent: '*', allow: '/' }],
+        additionalSitemaps: ['https://fresherflow.in/sitemap.xml'],
+    },
     exclude: [
         '/api',
         '/api/*',
