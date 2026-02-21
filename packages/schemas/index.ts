@@ -11,7 +11,8 @@ import {
     Availability,
     ActionType,
     FeedbackReason,
-    AppFeedbackType
+    AppFeedbackType,
+    SalaryPeriod
 } from '@fresherflow/types';
 
 // ========================================
@@ -29,26 +30,37 @@ export const loginSchema = z.object({
     password: z.string().min(1, 'Password is required')
 });
 
+export const sendOtpSchema = z.object({
+    email: z.string().email('Invalid email format')
+});
+
+export const verifyOtpSchema = z.object({
+    email: z.string().email('Invalid email format'),
+    code: z.string().length(6, 'Verification code must be 6 digits')
+});
+
 // ========================================
 // PROFILE SCHEMAS
 // ========================================
 
 export const educationSchema = z.object({
     educationLevel: z.nativeEnum(EducationLevel),
-    course: z.string().min(1, 'Course is required'),
-    specialization: z.string().min(1, 'Specialization is required'),
-    passoutYear: z.number()
-        .int('Year must be an integer')
-        .min(2020, 'Year must be 2020 or later')
-        .max(2030, 'Year must be 2030 or earlier')
+    tenthYear: z.number().int().min(1000).max(9999),
+    twelfthYear: z.number().int().min(1000).max(9999),
+    gradCourse: z.string().min(1, 'Course is required'),
+    gradSpecialization: z.string().min(1, 'Specialization is required'),
+    gradYear: z.number().int().min(1000).max(9999),
+    pgCourse: z.string().optional(),
+    pgSpecialization: z.string().optional(),
+    pgYear: z.number().int().min(1000).max(9999).optional()
 });
 
 export const preferencesSchema = z.object({
     interestedIn: z.array(z.nativeEnum(OpportunityType))
         .min(1, 'Select at least one opportunity type'),
     preferredCities: z.array(z.string())
-        .min(1, 'Select at least one city'),
-    preferredWorkModes: z.array(z.nativeEnum(WorkMode))
+        .min(1).max(5),
+    workModes: z.array(z.nativeEnum(WorkMode))
         .min(1, 'Select at least one work mode')
 });
 
@@ -63,83 +75,54 @@ export const readinessSchema = z.object({
 // ========================================
 
 export const walkInDetailsSchema = z.object({
-    dates: z.array(z.string()).min(1, 'At least one date is required'),
-    venueAddress: z.string().min(10, 'Venue address is required'),
-    reportingTime: z.string().min(1, 'Reporting time is required'),
-    requiredDocuments: z.array(z.string()),
+    dates: z.array(z.string()).optional(),
+    dateRange: z.string().optional(),
+    timeRange: z.string().optional(),
+    venueAddress: z.string().optional(),
+    venueLink: z.string().optional(),
+    reportingTime: z.string().optional(),
+    requiredDocuments: z.array(z.string()).optional(),
     contactPerson: z.string().optional(),
     contactPhone: z.string().optional()
 });
 
 export const opportunitySchema = z.object({
-    type: z.nativeEnum(OpportunityType),
-    title: z.string().min(5, 'Title must be at least 5 characters'),
-    company: z.string().min(2, 'Company name is required'),
+    type: z.nativeEnum(OpportunityType).optional(),
+    status: z.nativeEnum(OpportunityStatus).optional(),
+    title: z.string().min(1, 'Title is required'),
+    company: z.string().min(1, 'Company name is required'),
     companyWebsite: z.string().url().optional(),
-    description: z.string().min(20, 'Description must be at least 20 characters'),
+    description: z.string().min(10, 'Description is required'),
 
-    allowedDegrees: z.array(z.nativeEnum(EducationLevel))
-        .min(1, 'Select at least one degree type'),
-    allowedPassoutYears: z.array(z.number())
-        .min(1, 'Select at least one passout year'),
-    requiredSkills: z.array(z.string()),
+    allowedDegrees: z.array(z.nativeEnum(EducationLevel)).default([]),
+    allowedCourses: z.array(z.string()).default([]),
+    allowedSpecializations: z.array(z.string()).default([]),
+    allowedPassoutYears: z.array(z.number()).default([]),
+    requiredSkills: z.array(z.string()).default([]),
 
-    locations: z.array(z.string())
-        .min(1, 'At least one location is required'),
+    locations: z.array(z.string()).min(1, 'At least one location is required'),
     workMode: z.nativeEnum(WorkMode).optional(),
 
-    salaryMin: z.number().int().positive().optional(),
-    salaryMax: z.number().int().positive().optional(),
+    salaryMin: z.number().optional(),
+    salaryMax: z.number().optional(),
+    salaryRange: z.string().optional(),
+    salaryPeriod: z.nativeEnum(SalaryPeriod).default(SalaryPeriod.YEARLY),
+    stipend: z.string().optional(),
+    experienceMin: z.number().optional(),
+    experienceMax: z.number().optional(),
 
-    applyLink: z.string().url().optional(),
-    expiresAt: z.string().datetime().optional(),
+    applyLink: z.string().url().optional().or(z.string().length(0)),
+    expiresAt: z.string().optional(),
 
-    // Walk-in details only required if type is WALKIN
     walkInDetails: walkInDetailsSchema.optional()
-}).refine(
-    (data) => {
-        // If type is WALKIN, walkInDetails is required
-        if (data.type === OpportunityType.WALKIN) {
-            return !!data.walkInDetails;
-        }
-        return true;
-    },
-    {
-        message: 'Walk-in details are required for walk-in opportunities',
-        path: ['walkInDetails']
-    }
-).refine(
-    (data) => {
-        // If type is not WALKIN, applyLink is required
-        if (data.type !== OpportunityType.WALKIN) {
-            return !!data.applyLink;
-        }
-        return true;
-    },
-    {
-        message: 'Apply link is required for jobs and internships',
-        path: ['applyLink']
-    }
-).refine(
-    (data) => {
-        // If salaryMax is provided, it must be greater than salaryMin
-        if (data.salaryMin && data.salaryMax) {
-            return data.salaryMax >= data.salaryMin;
-        }
-        return true;
-    },
-    {
-        message: 'Maximum salary must be greater than or equal to minimum salary',
-        path: ['salaryMax']
-    }
-);
+});
 
 // ========================================
 // USER ACTION SCHEMAS
 // ========================================
 
 export const trackActionSchema = z.object({
-    status: z.nativeEnum(ActionType)
+    actionType: z.nativeEnum(ActionType)
 });
 
 export const submitFeedbackSchema = z.object({
@@ -174,6 +157,8 @@ export const adminOpportunityFiltersSchema = z.object({
 
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
+export type SendOtpInput = z.infer<typeof sendOtpSchema>;
+export type VerifyOtpInput = z.infer<typeof verifyOtpSchema>;
 export type EducationInput = z.infer<typeof educationSchema>;
 export type PreferencesInput = z.infer<typeof preferencesSchema>;
 export type ReadinessInput = z.infer<typeof readinessSchema>;

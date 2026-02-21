@@ -1,5 +1,6 @@
+import prisma from '../../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { generateSecret, generateURI, verify } from 'otplib';
 import QRCode from 'qrcode';
 import { requireAdmin } from '../../middleware/auth';
@@ -15,7 +16,7 @@ declare global {
 }
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 const APP_NAME = 'FresherFlow Admin';
 
 // Middleware to ensure user is admin for setup/disable

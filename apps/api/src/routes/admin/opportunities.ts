@@ -1,5 +1,6 @@
+import prisma from '../../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { Prisma, PrismaClient, OpportunityEventType, OpportunityStatus, OpportunityType } from '@prisma/client';
+import { Prisma, OpportunityEventType, OpportunityStatus, OpportunityType } from '@prisma/client';
 import { requireAdmin } from '../../middleware/auth';
 import { adminRateLimit } from '../../middleware/adminRateLimit';
 import { withAdminAudit, validateReason } from '../../middleware/adminAudit';
@@ -16,7 +17,7 @@ import logger from '../../utils/logger';
 import TelegramService from '../../services/telegram.service';
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 
 function queueNewJobAlerts(opportunityId: string) {
     sendNewJobAlerts(opportunityId).catch((error) => {

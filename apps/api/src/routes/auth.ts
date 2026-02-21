@@ -1,5 +1,6 @@
+import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import bcrypt from 'bcrypt';
 import {
     generateAccessToken,
@@ -32,7 +33,7 @@ const authVerifyLimiter = createRateLimiter({
 });
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 
 function resolveCookieDomain(): string | undefined {
     const explicit = process.env.COOKIE_DOMAIN?.trim();

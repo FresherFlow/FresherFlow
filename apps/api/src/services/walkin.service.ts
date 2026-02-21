@@ -1,7 +1,8 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
+
 import { OpportunityType, OpportunityStatus, Opportunity } from '@fresherflow/types';
 
-const prisma = new PrismaClient();
+
 
 /**
  * Walk-in Service - Walk-in Event Management

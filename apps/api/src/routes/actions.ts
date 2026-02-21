@@ -1,5 +1,6 @@
+import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient, OpportunityType, OpportunityStatus } from '@prisma/client';
+import { OpportunityType, OpportunityStatus } from '@prisma/client';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { userActionSchema } from '../utils/validation';
@@ -7,7 +8,7 @@ import { AppError } from '../middleware/errorHandler';
 
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 
 // POST /api/opportunities/:id/action
 router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: Request, res: Response, next: NextFunction) => {

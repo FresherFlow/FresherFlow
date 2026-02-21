@@ -1,8 +1,9 @@
-import { PrismaClient, User } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { User } from '@prisma/client';
 import { OAuth2Client } from 'google-auth-library';
 import crypto from 'crypto';
 
-const prisma = new PrismaClient();
+
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // In-memory OTP store (In production, use Redis)

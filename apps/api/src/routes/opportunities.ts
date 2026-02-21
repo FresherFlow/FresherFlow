@@ -1,5 +1,6 @@
+import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient, OpportunityStatus } from '@prisma/client';
+import { OpportunityStatus } from '@prisma/client';
 import { optionalAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser, checkEligibility } from '../domain/eligibility';
@@ -7,7 +8,7 @@ import { verifyAccessToken } from '@fresherflow/auth';
 import { createRateLimiter } from '../middleware/rateLimit';
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 const publicFeedLimiter = createRateLimiter({
     windowMs: 60 * 1000,
     max: 80,

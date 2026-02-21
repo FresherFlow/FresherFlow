@@ -41,8 +41,8 @@ test.describe('admin create listing from json', () => {
       .fill(JSON.stringify(payload, null, 2));
     await page.getByRole('button', { name: /apply json/i }).click();
 
-    await expect(page.getByDisplayValue(title)).toBeVisible();
-    await expect(page.getByDisplayValue(company)).toBeVisible();
+    await expect(page.locator(`input[value="${title}"]`)).toBeVisible();
+    await expect(page.locator(`input[value="${company}"]`)).toBeVisible();
 
     await page.getByRole('button', { name: /publish listing/i }).click();
     await expect(page).toHaveURL(/\/admin\/opportunities/);
@@ -56,7 +56,7 @@ test.describe('admin create listing from json', () => {
     expect(editHref).toBeTruthy();
     await page.goto(editHref!);
     await expect(page.getByRole('heading', { name: /edit listing/i })).toBeVisible({ timeout: 15000 });
-    await expect(page.getByDisplayValue(title)).toBeVisible();
-    await expect(page.getByDisplayValue(company)).toBeVisible();
+    await expect(page.locator(`input[value="${title}"]`)).toBeVisible();
+    await expect(page.locator(`input[value="${company}"]`)).toBeVisible();
   });
 });

@@ -1,12 +1,13 @@
+import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient, AppFeedbackType } from '@prisma/client';
+import { AppFeedbackType } from '@prisma/client';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { appFeedbackSchema } from '../utils/validation';
 import TelegramService from '../services/telegram.service';
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 
 // POST /api/feedback - Submit product feedback
 router.post('/', requireAuth, validate(appFeedbackSchema), async (req: Request, res: Response, next: NextFunction) => {

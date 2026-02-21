@@ -1,10 +1,11 @@
+import prisma from '../../lib/prisma';
 import crypto from 'crypto';
 import express, { NextFunction, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { optionalAuth } from '../../middleware/auth';
 
 const router = express.Router();
-const prisma = new PrismaClient();
+
 
 function getClientIp(req: Request): string {
     const forwarded = req.headers['x-forwarded-for'];

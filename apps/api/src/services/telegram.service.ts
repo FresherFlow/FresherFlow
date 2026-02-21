@@ -1,8 +1,9 @@
+import prisma from '../lib/prisma';
 import axios from 'axios';
-import { PrismaClient } from '@prisma/client';
+
 import { buildSocialOpportunityUrl } from '../utils/share';
 
-const prisma = new PrismaClient();
+
 
 class TelegramService {
     private botToken: string;

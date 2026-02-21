@@ -1,9 +1,10 @@
+import prisma from '../../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { requireAdmin } from '../../middleware/auth';
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 
 // GET /api/admin/feedback/alerts - Unread-style counters since a timestamp
 router.get('/alerts', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {

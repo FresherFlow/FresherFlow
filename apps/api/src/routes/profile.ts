@@ -1,5 +1,6 @@
+import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
@@ -8,7 +9,7 @@ import { AppError } from '../middleware/errorHandler';
 import { calculateCompletion } from '../utils/profileCompletion';
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 
 // GET /api/profile
 router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {

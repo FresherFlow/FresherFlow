@@ -1,16 +1,17 @@
+import prisma from '../../lib/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
 import { requireAdmin } from '../../middleware/auth';
 import { getVerificationStats, runLinkVerification } from '../../services/verificationBot';
 import { getObservabilityMetrics } from '../../middleware/observability';
 import { getGrowthFunnelMetrics, GrowthWindow } from '../../services/growthFunnel.service';
-import { IngestionSourceType, OpportunityType, PrismaClient, TelegramBroadcastStatus } from '@prisma/client';
+import { IngestionSourceType, OpportunityType, TelegramBroadcastStatus } from '@prisma/client';
 import TelegramService from '../../services/telegram.service';
 import { runIngestionForSource } from '../../services/ingestion.service';
 import { runAlertsCycle } from '../../services/alerts.service';
 import { sendNewJobAlerts } from '../../services/notification.service';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 type SourceHealth = 'healthy' | 'degraded' | 'failing';
 

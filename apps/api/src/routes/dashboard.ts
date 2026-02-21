@@ -1,11 +1,12 @@
+import prisma from '../lib/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient, OpportunityEventType, OpportunityStatus } from '@prisma/client';
+import { OpportunityEventType, OpportunityStatus } from '@prisma/client';
 import { requireAuth } from '../middleware/auth';
 import { profileGate } from '../middleware/profileGate';
 import { filterOpportunitiesForUser, sortOpportunitiesForUser } from '../domain/eligibility';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 /**
  * GET /api/dashboard/highlights

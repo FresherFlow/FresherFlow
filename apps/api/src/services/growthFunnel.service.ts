@@ -1,7 +1,8 @@
-import { GrowthFunnelEvent, PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { GrowthFunnelEvent } from '@prisma/client';
 import logger from '../utils/logger';
 
-const prisma = new PrismaClient();
+
 
 export type FunnelEvent = 'DETAIL_VIEW' | 'LOGIN_VIEW' | 'AUTH_SUCCESS' | 'SIGNUP_SUCCESS' | 'SAVE_JOB' | 'APPLY_CLICK' | 'SHARE_JOB' | 'SIGNUP_VIEW';
 export type GrowthWindow = '24h' | '7d' | '30d' | 'all';

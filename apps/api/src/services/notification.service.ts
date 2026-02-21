@@ -1,9 +1,10 @@
-import { OpportunityStatus, PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { OpportunityStatus } from '@prisma/client';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import logger from '../utils/logger';
 import { EmailService } from './email.service';
 
-const prisma = new PrismaClient();
+
 
 /**
  * Notification Service for Instant Job Alerts

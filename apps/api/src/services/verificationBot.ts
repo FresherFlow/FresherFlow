@@ -1,8 +1,9 @@
-import { PrismaClient, OpportunityStatus, LinkHealth } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { OpportunityStatus, LinkHealth } from '@prisma/client';
 import logger from '../utils/logger';
 import TelegramService from './telegram.service';
 
-const prisma = new PrismaClient();
+
 
 // Bot Configuration
 const MAX_FAILURES = 3; // Quarantine after 3 hard fails

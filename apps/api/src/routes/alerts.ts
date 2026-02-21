@@ -1,12 +1,13 @@
+import prisma from '../lib/prisma';
 import express, { NextFunction, Request, Response, Router } from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { validate } from '../middleware/validate';
 import { alertPreferencesSchema } from '../utils/validation';
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 
 router.get('/preferences', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {

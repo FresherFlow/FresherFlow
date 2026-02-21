@@ -1,9 +1,10 @@
+import prisma from '../../lib/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient, OpportunityStatus } from '@prisma/client';
+import { OpportunityStatus } from '@prisma/client';
 import { requireAdmin } from '../../middleware/auth';
 
 const router = Router();
-const prisma = new PrismaClient();
+
 
 /**
  * GET /api/admin/analytics/overview

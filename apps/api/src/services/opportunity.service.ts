@@ -1,10 +1,11 @@
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
+
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { EligibilityService } from './eligibility.service';
 import { generateSlug } from '../utils/slugify';
 import { generateCompanyLogoUrl } from '../utils/companyLogo';
 
-const prisma = new PrismaClient();
+
 
 /**
  * Opportunity Service - Business Logic Layer

@@ -53,6 +53,10 @@ const sanitizeDomain = (raw: string) => {
   }
 };
 
+interface AbortSignalConstructorExt {
+  any?: (iterable: Iterable<AbortSignal>) => AbortSignal;
+}
+
 const fetchWithTimeout = async (url: string, timeoutMs = 2500, externalSignal?: AbortSignal) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -61,11 +65,12 @@ const fetchWithTimeout = async (url: string, timeoutMs = 2500, externalSignal?: 
   if (externalSignal) signals.push(externalSignal);
 
   try {
+    const CustomAbortSignal = AbortSignal as unknown as AbortSignalConstructorExt;
     const response = await fetch(url, {
       method: "GET",
       cache: "no-store",
-      // Link signals if AbortSignal.any is available (Edge runtime) or manually
-      signal: (AbortSignal as any).any ? (AbortSignal as any).any(signals) : controller.signal,
+      // Link signals if AbortSignal.any is available (Edge runtime) or manually fallback
+      signal: typeof CustomAbortSignal.any === 'function' ? CustomAbortSignal.any(signals) : controller.signal,
     });
     return response;
   } catch {

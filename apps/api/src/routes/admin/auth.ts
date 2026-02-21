@@ -1,5 +1,6 @@
+import prisma from '../../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import {
     generateRegistrationOptions,
     verifyRegistrationResponse,
@@ -20,7 +21,7 @@ import { requireAdmin } from '../../middleware/auth';
 import rateLimit from 'express-rate-limit';
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 
 const RP_ID = process.env.RP_ID || 'localhost';
 const EXPECTED_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:3000';

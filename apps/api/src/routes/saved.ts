@@ -1,10 +1,11 @@
+import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 
 const router: Router = express.Router();
-const prisma = new PrismaClient();
+
 
 /**
  * POST /api/saved/:id

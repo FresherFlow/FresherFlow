@@ -1,9 +1,10 @@
-import { OpportunityEventType, OpportunityStatus, OpportunityType, PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { OpportunityEventType, OpportunityStatus, OpportunityType } from '@prisma/client';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import logger from '../utils/logger';
 import { EmailService } from './email.service';
 
-const prisma = new PrismaClient();
+
 const CLOSING_SOON_WINDOW_HOURS = 48;
 
 type TzParts = { dateKey: string; hour: number };

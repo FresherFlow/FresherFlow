@@ -1,4 +1,5 @@
-import { IngestionRunStatus, IngestionSourceType, OpportunityStatus, OpportunityType, PrismaClient, RawOpportunityStatus } from '@prisma/client';
+import prisma from '../lib/prisma';
+import { IngestionRunStatus, IngestionSourceType, OpportunityStatus, OpportunityType, RawOpportunityStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import logger from '../utils/logger';
 import { generateSlug } from '../utils/slugify';
@@ -26,7 +27,7 @@ type SourceConfig = {
     name: string;
 };
 
-const prisma = new PrismaClient();
+
 const FRESHER_SCORE_MIN = Number(process.env.INGESTION_FRESHER_SCORE_MIN || 35);
 const FRESHER_SCORE_HIGH_CONFIDENCE = Number(process.env.INGESTION_HIGH_CONFIDENCE_SCORE || 55);
 

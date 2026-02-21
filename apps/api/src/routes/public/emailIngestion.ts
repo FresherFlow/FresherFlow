@@ -1,11 +1,12 @@
+import prisma from '../../lib/prisma';
 import express, { Request, Response, NextFunction } from 'express';
-import { PrismaClient, IngestionSourceType, RawOpportunityStatus } from '@prisma/client';
+import { IngestionSourceType, RawOpportunityStatus } from '@prisma/client';
 import { z } from 'zod';
 import { AppError } from '../../middleware/errorHandler';
 import logger from '../../utils/logger';
 
 const router = express.Router();
-const prisma = new PrismaClient();
+
 
 const emailIngestionSchema = z.object({
     sourceLabel: z.string().min(1).max(100).default('company_email'),
