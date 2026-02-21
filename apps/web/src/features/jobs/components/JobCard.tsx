@@ -28,9 +28,10 @@ interface JobCardProps {
     isApplied?: boolean;
     onToggleSave?: () => void;
     isAdmin?: boolean;
+    priority?: boolean;
 }
 
-export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin }: JobCardProps) {
+export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin, priority = false }: JobCardProps) {
     const isDrive = isCampusDriveOpportunity(job);
     const driveDates = getDriveDates(job);
     const driveMeta = getDriveMetadata(job);
@@ -196,7 +197,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             {/* Header: Company + Title + Save */}
             <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} applyLink={job.applyLink} />
+                    <CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} companyLogoUrl={job.companyLogoUrl} applyLink={job.applyLink} priority={priority} />
                     <div className="min-w-0">
                         <Link
                             href={`/companies/${encodeURIComponent(job.company)}`}

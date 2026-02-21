@@ -148,6 +148,7 @@ export interface Opportunity {
     title: string;
     company: string;
     companyWebsite?: string;
+    companyLogoUrl?: string | null;
     description: string;
 
     // Eligibility

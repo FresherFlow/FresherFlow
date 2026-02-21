@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { authApi } from '@/lib/api/client';
+import { clearUnreadCache } from '@/hooks/useUnreadNotifications';
 import { User, Profile } from '@fresherflow/types';
 
 interface AuthContextType {
@@ -77,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(null);
             setProfile(null);
             clearCachedSession();
+            clearUnreadCache();
             await authApi.logout();
         } catch {
             // Ignore logout errors

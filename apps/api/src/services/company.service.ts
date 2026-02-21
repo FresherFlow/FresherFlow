@@ -33,21 +33,10 @@ export class CompanyService {
             }
         });
 
-        // Derive logo from company website if available
-        let logoUrl = null;
-        if (latestOpportunity.companyWebsite) {
-            try {
-                const hostname = new URL(latestOpportunity.companyWebsite).hostname.toLowerCase().replace(/^www\./, '');
-                logoUrl = `https://logo.clearbit.com/${hostname}`;
-            } catch {
-                // Ignore invalid URLs
-            }
-        }
-
         return {
             name: latestOpportunity.company, // Use the name as stored in DB
             website: latestOpportunity.companyWebsite,
-            logo: logoUrl,
+            logo: latestOpportunity.companyLogoUrl,
             stats: {
                 activeJobs: activeCount
             }

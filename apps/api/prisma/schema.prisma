@@ -274,6 +274,7 @@ model Opportunity {
   title       String
   company     String
   companyWebsite String?
+  companyLogoUrl String?
   description String? @db.Text
 
   // Eligibility Rules (DB-filterable)

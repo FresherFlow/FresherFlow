@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { EligibilityService } from './eligibility.service';
 import { generateSlug } from '../utils/slugify';
+import { generateCompanyLogoUrl } from '../utils/companyLogo';
 
 const prisma = new PrismaClient();
 
@@ -27,6 +28,7 @@ export class OpportunityService {
         return await prisma.opportunity.create({
             data: {
                 ...data,
+                companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
                 id: tempId,
                 slug,
                 postedByUserId: adminId,
@@ -88,6 +90,10 @@ export class OpportunityService {
             ...data,
             lastVerified: new Date(),
         };
+
+        if (data.companyWebsite !== undefined) {
+            updateData.companyLogoUrl = generateCompanyLogoUrl(data.companyWebsite);
+        }
 
         if (data.title || data.company) {
             const newTitle = data.title || existing.title;

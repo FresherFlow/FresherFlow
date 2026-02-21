@@ -6,22 +6,24 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { AuthContext } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { useContext, useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import UserIcon from '@heroicons/react/24/outline/UserIcon';
 import ArrowRightOnRectangleIcon from '@heroicons/react/24/outline/ArrowRightOnRectangleIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
-import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
+
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import BellIcon from '@heroicons/react/24/outline/BellIcon';
-import PaperAirplaneIcon from '@heroicons/react/24/outline/PaperAirplaneIcon';
-import ClipboardDocumentCheckIcon from '@heroicons/react/24/outline/ClipboardDocumentCheckIcon';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import { ThemeToggle } from './ThemeToggle';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
 import { useTheme } from '@/contexts/ThemeContext';
+
+// Dynamically import the full-screen menu — only loaded when user opens it
+const MobileNavMenu = dynamic(() => import('./MobileNavMenu'), { ssr: false });
 
 function TelegramBrandIcon({ className }: { className?: string }) {
     return (
@@ -361,132 +363,12 @@ export function MobileNav() {
                 </div>
             </div>
             {user && menuOpen && (
-                <div className="md:hidden fixed inset-0 z-[75] bg-background/95 backdrop-blur-sm animate-in fade-in duration-200">
-                    <button
-                        className="absolute inset-0"
-                        aria-label="Close menu"
-                        onClick={() => setMenuOpen(false)}
-                    />
-                    <div className="relative z-10 bg-card border-b border-border shadow-2xl overflow-y-auto max-h-[calc(100vh-4rem)]">
-                        <div className="p-4 border-b border-border bg-muted/30">
-                            <div className="flex items-center gap-4">
-                                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
-                                    <UserIcon className="w-5 h-5" />
-                                </div>
-                                <div className="space-y-0.5">
-                                    <h3 className="text-sm font-bold uppercase tracking-tight italic">{user.fullName || 'User Identity'}</h3>
-                                    <p className="text-[10px] font-semibold text-muted-foreground uppercase opacity-60 tracking-wider truncate max-w-50">{user.email}</p>
-                                </div>
-                                <div className="ml-auto">
-                                    <ThemeToggle />
-                                </div>
-                            </div>
-                        </div>
-
-                        <nav className="p-3 space-y-1">
-                            {[
-                                { href: '/profile', label: 'My Profile', icon: UserIcon },
-                                { href: '/account/saved', label: 'My Saved', icon: BookmarkIcon },
-                                { href: '/account/tracker', label: 'Tracker', icon: ClipboardDocumentCheckIcon },
-                                { href: '/alerts', label: 'Alerts', icon: BellIcon },
-                                { href: '/account/feedback', label: 'Feedback', icon: PaperAirplaneIcon },
-                            ].map((item) => (
-                                <Link
-                                    key={item.href}
-                                    href={item.href}
-                                    onClick={() => setMenuOpen(false)}
-                                    className="flex items-center justify-between gap-3 px-3 py-3 rounded-lg text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted hover:text-foreground"
-                                >
-                                    <div className="flex items-center gap-3">
-                                        <item.icon className="w-4 h-4 text-primary" />
-                                        <span>{item.label}</span>
-                                    </div>
-                                    {item.href === '/alerts' && unreadCount > 0 && (
-                                        <span className="px-1.5 py-0.5 rounded-full bg-primary text-[8px] font-bold text-white min-w-[18px] text-center">
-                                            {unreadCount > 99 ? '99+' : unreadCount}
-                                        </span>
-                                    )}
-                                    {item.href === '/alerts' && pendingSyncCount > 0 && (
-                                        <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-[8px] font-bold text-white min-w-[18px] text-center">
-                                            {pendingSyncCount > 99 ? '99+' : pendingSyncCount}
-                                        </span>
-                                    )}
-                                </Link>
-                            ))}
-
-                            <div className="pt-3 mt-3 border-t border-border">
-                                <p className="px-3 pb-2 text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Follow us</p>
-                                <div className="flex items-center gap-2 px-3">
-                                    <a
-                                        href="https://t.me/fresherflowin"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40"
-                                        aria-label="Telegram"
-                                    >
-                                        <TelegramBrandIcon className="w-4 h-4" />
-                                    </a>
-                                    <a
-                                        href="https://www.linkedin.com/company/fresherflow-in"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40"
-                                        aria-label="LinkedIn"
-                                    >
-                                        <LinkedInBrandIcon className="w-4 h-4" />
-                                    </a>
-                                    <a
-                                        href="https://twitter.com/Fresherflow"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40"
-                                        aria-label="Twitter"
-                                    >
-                                        <XBrandIcon className="w-4 h-4" />
-                                    </a>
-                                    <a
-                                        href="https://instagram.com/fresherflow"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40"
-                                        aria-label="Instagram"
-                                    >
-                                        <InstagramBrandIcon className="w-4 h-4" />
-                                    </a>
-                                    <a
-                                        href="https://www.facebook.com/FresherFlow.in"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40"
-                                        aria-label="Facebook"
-                                    >
-                                        <FacebookBrandIcon className="w-4 h-4" />
-                                    </a>
-                                    <a
-                                        href="https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D"
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40"
-                                        aria-label="WhatsApp"
-                                    >
-                                        <WhatsAppBrandIcon className="w-4 h-4" />
-                                    </a>
-                                </div>
-                            </div>
-
-                            <div className="pt-3 mt-3 border-t border-border">
-                                <Link
-                                    href="/logout"
-                                    onClick={() => setMenuOpen(false)}
-                                    className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-[11px] font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 transition-all"
-                                >
-                                    <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                                    <span>Sign Out</span>
-                                </Link>
-                            </div>
-                        </nav>
-                    </div>
-                </div>
+                <MobileNavMenu
+                    user={user}
+                    unreadCount={unreadCount}
+                    pendingSyncCount={pendingSyncCount}
+                    onClose={() => setMenuOpen(false)}
+                />
             )}
             {user && (
                 <div className={cn(

@@ -223,7 +223,7 @@ class TelegramService {
         company: string,
         type: string,
         locations: string[],
-        applyLink: string,
+        applyLink?: string | null,
         slug: string,
         options?: { force?: boolean }
     ): Promise<void> {

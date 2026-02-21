@@ -39,7 +39,7 @@ export async function proxy(request: NextRequest) {
         '/internships',
         '/walk-ins',
         '/profile/complete',
-        '/profile/edit',
+        '/profile',
         '/account',
         '/account/saved',
         '/account/tracker',

@@ -11,9 +11,11 @@ export function startVerificationCron() {
         return;
     }
 
-    const schedule = process.env.VERIFICATION_CRON_SCHEDULE || '0 */6 * * *';
+    const schedule = process.env.VERIFICATION_CRON_SCHEDULE || '30 2 * * *';
+    const timezone = process.env.VERIFICATION_CRON_TIMEZONE || 'Asia/Kolkata';
 
     cron.schedule(schedule, async () => {
+
         if (isRunning) {
             logger.warn('Verification cron skipped because a previous run is still in progress');
             return;
@@ -30,8 +32,8 @@ export function startVerificationCron() {
         } finally {
             isRunning = false;
         }
-    });
+    }, { timezone });
 
-    logger.info('Verification cron scheduled successfully', { schedule });
+    logger.info('Verification cron scheduled successfully', { schedule, timezone });
 }
 

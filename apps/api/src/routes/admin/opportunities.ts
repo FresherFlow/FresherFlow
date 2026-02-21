@@ -10,6 +10,7 @@ import { OpportunityService } from '../../services/opportunity.service';
 import { ParserService } from '../../services/parser.service';
 import { sendNewJobAlerts } from '../../services/notification.service';
 import { generateSlug } from '../../utils/slugify';
+import { generateCompanyLogoUrl } from '../../utils/companyLogo';
 import logger from '../../utils/logger';
 
 import TelegramService from '../../services/telegram.service';
@@ -200,6 +201,7 @@ router.post(
                     title: data.title,
                     company: data.company,
                     companyWebsite: data.companyWebsite,
+                    companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
                     description: data.description,
                     allowedDegrees: data.allowedDegrees,
                     allowedCourses: data.allowedCourses || [],
@@ -376,6 +378,7 @@ router.post(
                     title: data.title,
                     company: data.company,
                     companyWebsite: data.companyWebsite,
+                    companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
                     description: data.description,
                     allowedDegrees: data.allowedDegrees,
                     allowedCourses: data.allowedCourses || [],
@@ -475,10 +478,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         if (keyword) {
             andFilters.push({
                 OR: [
-                { title: { contains: keyword, mode: 'insensitive' } },
-                { company: { contains: keyword, mode: 'insensitive' } },
-                { description: { contains: keyword, mode: 'insensitive' } },
-                { locations: { has: keyword } }
+                    { title: { contains: keyword, mode: 'insensitive' } },
+                    { company: { contains: keyword, mode: 'insensitive' } },
+                    { description: { contains: keyword, mode: 'insensitive' } },
+                    { locations: { has: keyword } }
                 ]
             });
         }
@@ -598,7 +601,7 @@ router.get('/export', async (req: Request, res: Response, next: NextFunction) =>
                     targetId: 'opportunities',
                     reason: `type=${normalizedType || 'any'},status=${status || 'any'}`
                 }
-            }).catch(() => {});
+            }).catch(() => { });
         }
 
         const csv = [header, ...rows].join('\n');
@@ -848,6 +851,7 @@ router.put(
                 title: data.title,
                 company: data.company,
                 companyWebsite: data.companyWebsite,
+                companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
                 description: data.description,
                 allowedDegrees: data.allowedDegrees,
                 allowedCourses: data.allowedCourses || [],

@@ -27,12 +27,15 @@ const getRootDomain = (domain: string) => {
 
 interface CompanyLogoProps {
     companyName: string;
-    companyWebsite?: string;
-    applyLink?: string;
+    companyWebsite?: string | null;
+    companyLogoUrl?: string | null;
+    applyLink?: string | null;
     className?: string;
+    /** Pass true for the first 1-2 above-fold cards to improve LCP */
+    priority?: boolean;
 }
 
-export default function CompanyLogo({ companyName, companyWebsite, applyLink, className }: CompanyLogoProps) {
+export default function CompanyLogo({ companyName, companyWebsite, companyLogoUrl, applyLink, className, priority = false }: CompanyLogoProps) {
     const [imgError, setImgError] = useState(false);
     const normalizedCompanyName = (companyName || '').toLowerCase();
     const isTcsBrand = normalizedCompanyName.includes('tata consultancy services') || normalizedCompanyName.includes(' tcs') || normalizedCompanyName === 'tcs';
@@ -89,7 +92,7 @@ export default function CompanyLogo({ companyName, companyWebsite, applyLink, cl
 
     const knownDomain = normalizedCompany
         ? knownDomains[normalizedCompany]
-            || Object.entries(knownDomains).find(([key]) => normalizedCompany.includes(key))?.[1]
+        || Object.entries(knownDomains).find(([key]) => normalizedCompany.includes(key))?.[1]
         : undefined;
 
     const constructedDomain = companyName
@@ -140,6 +143,10 @@ export default function CompanyLogo({ companyName, companyWebsite, applyLink, cl
     const [attemptIndex, setAttemptIndex] = useState(0);
 
     const candidates: string[] = [];
+    if (companyLogoUrl) {
+        candidates.push(`${companyLogoUrl}?size=80`);
+    }
+
     const addLogoProviders = (domain: string) => {
         candidates.push(`https://logo.clearbit.com/${domain}?size=80`);
         candidates.push(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
@@ -198,7 +205,9 @@ export default function CompanyLogo({ companyName, companyWebsite, applyLink, cl
                 height={48}
                 className="object-contain w-full h-full"
                 onError={handleError}
-                unoptimized // Clearbit logos are external and small, optimization is optional but good practice
+                priority={priority}
+                loading={priority ? undefined : 'lazy'}
+                unoptimized
             />
         </div>
     );
