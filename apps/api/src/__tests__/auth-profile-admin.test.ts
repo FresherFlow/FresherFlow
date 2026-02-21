@@ -91,10 +91,13 @@ describe('auth and profile gate', () => {
     it('POST /api/auth/otp/verify sets cookies and returns user', async () => {
         const { AuthService } = await import('../services/auth.service');
         (AuthService.verifyOtp as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
-            id: 'user-1',
-            email: 'test@example.com',
-            fullName: 'Test User',
-            profile: { completionPercentage: 0 },
+            user: {
+                id: 'user-1',
+                email: 'test@example.com',
+                fullName: 'Test User',
+                profile: { completionPercentage: 0 },
+            },
+            isNewUser: false
         });
 
         const authRoutes = (await import('../routes/auth')).default;
@@ -106,6 +109,8 @@ describe('auth and profile gate', () => {
         const res = await request(app)
             .post('/api/auth/otp/verify')
             .send({ email: 'test@example.com', code: '123456' });
+
+        console.log('TEST ERROR RESPONSE:', res.body);
 
         expect(res.status).toBe(200);
         expect(res.body.user.email).toBe('test@example.com');
