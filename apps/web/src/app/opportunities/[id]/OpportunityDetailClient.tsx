@@ -40,10 +40,22 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user } = useAuth();
-    // Use initialData if available, otherwise start null
-    const [opp, setOpp] = useState<Opportunity | null>(initialData || null);
-    // If initialData is provided, we are not loading. If not provided, we are loading.
-    const [isLoading, setIsLoading] = useState(!initialData);
+    const [opp, setOpp] = useState<Opportunity | null>(() => {
+        if (initialData) return initialData;
+        if (typeof window !== 'undefined') {
+            const cached = getRecentViewedByIdOrSlug(id);
+            if (cached) return cached;
+        }
+        return null;
+    });
+    const [isLoading, setIsLoading] = useState<boolean>(() => {
+        if (initialData) return false;
+        if (typeof window !== 'undefined') {
+            const cached = getRecentViewedByIdOrSlug(id);
+            if (cached) return false;
+        }
+        return true;
+    });
     const [showReports, setShowReports] = useState(false);
     const reportMenuRef = useRef<HTMLDivElement | null>(null);
     const hasTrackedDetailViewRef = useRef(false);

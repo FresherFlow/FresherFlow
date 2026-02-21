@@ -28,21 +28,48 @@ export function useOpportunitiesFeed({
     maxSalary,
 }: UseOpportunitiesFeedOptions) {
     const { user, profile, isLoading: authLoading } = useAuth();
-    const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-    const [totalCount, setTotalCount] = useState(0);
+
+    // Compute the initial cache scope synchronously
+    const normalizedType = (type || 'all').toLowerCase();
+    const initialCacheScope = `type:${normalizedType}`;
+
+    const [opportunities, setOpportunities] = useState<Opportunity[]>(() => {
+        if (typeof window === 'undefined') return [];
+        if (showOnlySaved) return [];
+        const cached = readFeedCache(initialCacheScope);
+        return cached?.opportunities || [];
+    });
+    const [totalCount, setTotalCount] = useState<number>(() => {
+        if (typeof window === 'undefined') return 0;
+        if (showOnlySaved) return 0;
+        const cached = readFeedCache(initialCacheScope);
+        return cached?.count || cached?.opportunities?.length || 0;
+    });
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
-    const [isLoading, setIsLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return true;
+        if (showOnlySaved) return true;
+        const cached = readFeedCache(initialCacheScope);
+        return !cached?.opportunities?.length;
+    });
     const [error, setError] = useState<string | null>(null);
-    const [usingCachedFeed, setUsingCachedFeed] = useState(false);
-    const [cachedAt, setCachedAt] = useState<number | null>(null);
+    const [usingCachedFeed, setUsingCachedFeed] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        if (showOnlySaved) return false;
+        return !!readFeedCache(initialCacheScope)?.opportunities?.length;
+    });
+    const [cachedAt, setCachedAt] = useState<number | null>(() => {
+        if (typeof window === 'undefined') return null;
+        if (showOnlySaved) return null;
+        return readFeedCache(initialCacheScope)?.cachedAt || null;
+    });
     const [profileIncomplete, setProfileIncomplete] = useState<{ percentage: number; message: string } | null>(null);
     const lastRequestTimestamp = useRef(0);
-    const opportunitiesCountRef = useRef(0);
+    const opportunitiesCountRef = useRef(opportunities.length);
     const debouncedSearch = useDebounce(search, 300);
     const cacheScope = useMemo(() => {
-        const normalizedType = (type || 'all').toLowerCase();
-        return `type:${normalizedType}`;
+        return `type:${(type || 'all').toLowerCase()}`;
     }, [type]);
 
     useEffect(() => {
