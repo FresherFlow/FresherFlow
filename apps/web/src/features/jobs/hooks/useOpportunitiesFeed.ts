@@ -54,11 +54,7 @@ export function useOpportunitiesFeed({
         return !cached?.opportunities?.length;
     });
     const [error, setError] = useState<string | null>(null);
-    const [usingCachedFeed, setUsingCachedFeed] = useState<boolean>(() => {
-        if (typeof window === 'undefined') return false;
-        if (showOnlySaved) return false;
-        return !!readFeedCache(initialCacheScope)?.opportunities?.length;
-    });
+    const [usingCachedFeed, setUsingCachedFeed] = useState<boolean>(false);
     const [cachedAt, setCachedAt] = useState<number | null>(() => {
         if (typeof window === 'undefined') return null;
         if (showOnlySaved) return null;
@@ -150,17 +146,17 @@ export function useOpportunitiesFeed({
             } else {
                 const cached = readFeedCache(cacheScope);
                 if (cached && !showOnlySaved && pageNum === 1) {
+                    // Silently fall back to cache — no toast, user doesn't need to know
                     setOpportunities(cached.opportunities);
                     setTotalCount(cached.count || cached.opportunities.length);
                     setUsingCachedFeed(true);
                     setCachedAt(cached.cachedAt);
                     setHasMore(false);
-                    // toast.success('Offline mode: showing cached feed.'); // Disabled per user request
-                } else {
+                } else if (!showOnlySaved) {
+                    // No cache available — only then show error
                     const { getErrorMessage } = await import('@/lib/utils/error');
                     const msg = getErrorMessage(err);
                     setError(msg);
-                    toast.error(msg);
                 }
             }
         } finally {

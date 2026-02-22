@@ -120,7 +120,7 @@ const generateJsonLd = (opportunity: Opportunity) => {
                 parts.length > 2
                     ? parts.slice(-2).join('.')
                     : hostname;
-            logoUrl = `https://logo.clearbit.com/${domain}`;
+            logoUrl = `https://icons.duckduckgo.com/ip3/${domain}.ico`;
         }
     } catch {
         // Fallback to default

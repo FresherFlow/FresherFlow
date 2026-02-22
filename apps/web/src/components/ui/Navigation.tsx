@@ -189,7 +189,7 @@ export function Navbar() {
                                     </div>
                                 ) : (
                                     <div className="flex items-center gap-2">
-                                        <Link href="/login" className="hidden md:flex premium-button !h-8 !px-5 !text-[10px] uppercase tracking-widest italic">
+                                        <Link href="/login" className="hidden md:flex items-center h-8 px-4 text-[10px] font-bold uppercase tracking-widest rounded-lg border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-150">
                                             Access Feed
                                         </Link>
                                     </div>
@@ -356,7 +356,7 @@ export function MobileNav() {
                             </button>
                         </div>
                     ) : (
-                        <Link href="/login" className="premium-button !h-8 !px-4 !text-[10px] uppercase font-bold tracking-widest italic">
+                        <Link href="/login" className="flex items-center h-8 px-4 text-[10px] font-bold uppercase tracking-widest rounded-lg border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-150">
                             Login
                         </Link>
                     )}

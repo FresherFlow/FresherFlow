@@ -213,6 +213,7 @@ app.use('/api/actions', actionsRoutes);
 app.use('/api/saved', savedRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/alerts', alertsRoutes);
+app.use('/api/public/growth', growthRoutes);
 app.use('/api/public/companies', companyRoutes);
 app.use('/api/opportunities', feedbackRoutes);
 app.use('/api/feedback', appFeedbackRoutes);

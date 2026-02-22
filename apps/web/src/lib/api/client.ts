@@ -21,22 +21,6 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL;
 // Singleton promise to handle concurrent refresh requests
 let isRefreshing: Promise<void> | null = null;
 
-// Deduplicate offline toast — only show once every 30s regardless of how many
-// concurrent requests fail. The offline banner already informs the user.
-let _lastOfflineToastAt = 0;
-function showOfflineToastOnce() {
-    if (typeof window === 'undefined') return;
-    const now = Date.now();
-    if (now - _lastOfflineToastAt < 30_000) return;
-    _lastOfflineToastAt = now;
-    import('react-hot-toast').then(({ default: toast }) => {
-        toast('You\'re offline — showing cached data', {
-            icon: '📶',
-            id: 'offline-notice',
-            duration: 3000,
-        });
-    });
-}
 
 // API Client with automatic cookie handling
 export async function apiClient<T = unknown>(
@@ -204,7 +188,6 @@ export async function apiClient<T = unknown>(
         );
         const offlineNow = typeof navigator !== 'undefined' && !navigator.onLine;
         if ((isNetworkError || offlineNow) && !(error instanceof OfflineError)) {
-            showOfflineToastOnce();
             throw new OfflineError();
         }
 
