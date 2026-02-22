@@ -4,7 +4,7 @@ import express, { NextFunction, Request, Response, Router } from 'express';
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { validate } from '../middleware/validate';
-import { alertPreferencesSchema } from '../utils/validation';
+import { alertPreferencesSchema, pushSubscriptionSchema } from '../utils/validation';
 
 const router: Router = express.Router();
 
@@ -181,6 +181,60 @@ router.put('/preferences', requireAuth, validate(alertPreferencesSchema), async 
         });
 
         res.json({ preference });
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.post('/push/subscribe', requireAuth, validate(pushSubscriptionSchema), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.userId;
+        if (!userId) return next(new AppError('Unauthorized', 401));
+
+        const subscription = req.body.subscription as {
+            endpoint: string;
+            keys: { p256dh: string; auth: string };
+        };
+
+        await prisma.$transaction(async (tx) => {
+            await tx.pushSubscription.deleteMany({
+                where: {
+                    endpoint: subscription.endpoint,
+                    userId: { not: userId },
+                },
+            });
+
+            await tx.pushSubscription.upsert({
+                where: { userId },
+                create: {
+                    userId,
+                    endpoint: subscription.endpoint,
+                    p256dh: subscription.keys.p256dh,
+                    auth: subscription.keys.auth,
+                    userAgent: req.get('user-agent') || null,
+                },
+                update: {
+                    endpoint: subscription.endpoint,
+                    p256dh: subscription.keys.p256dh,
+                    auth: subscription.keys.auth,
+                    userAgent: req.get('user-agent') || null,
+                },
+            });
+        });
+
+        res.json({ ok: true });
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.delete('/push/unsubscribe', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.userId;
+        if (!userId) return next(new AppError('Unauthorized', 401));
+
+        await prisma.pushSubscription.deleteMany({ where: { userId } });
+        res.json({ ok: true });
     } catch (error) {
         next(error);
     }

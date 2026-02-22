@@ -355,7 +355,19 @@ export const profileApi = {
 };
 
 export const growthApi = {
-    trackEvent: (event: 'DETAIL_VIEW' | 'LOGIN_VIEW' | 'SAVE_JOB' | 'APPLY_CLICK' | 'SHARE_JOB' | 'SIGNUP_VIEW', source = 'unknown') =>
+    trackEvent: (
+        event:
+            | 'DETAIL_VIEW'
+            | 'LOGIN_VIEW'
+            | 'SAVE_JOB'
+            | 'APPLY_CLICK'
+            | 'SHARE_JOB'
+            | 'SIGNUP_VIEW'
+            | 'INSTALL_PROMPT_SHOWN'
+            | 'INSTALL_ACCEPTED'
+            | 'OPENED_STANDALONE',
+        source = 'unknown'
+    ) =>
         apiClient('/api/public/growth/event', {
             method: 'POST',
             body: JSON.stringify({ event, source })
@@ -488,6 +500,15 @@ export const alertsApi = {
     getUnreadCount: () => apiClient<{ count: number }>('/api/alerts/unread-count'),
     markAllRead: () => apiClient('/api/alerts/mark-all-read', { method: 'POST' }),
     markRead: (id: string) => apiClient(`/api/alerts/${id}/read`, { method: 'POST' }),
+    subscribePush: (subscription: PushSubscriptionJSON) =>
+        apiClient('/api/alerts/push/subscribe', {
+            method: 'POST',
+            body: JSON.stringify({ subscription })
+        }),
+    unsubscribePush: () =>
+        apiClient('/api/alerts/push/unsubscribe', {
+            method: 'DELETE'
+        }),
     seedTest: () => apiClient('/api/alerts/seed-test', { method: 'POST' }),
 };
 

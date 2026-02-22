@@ -139,3 +139,13 @@ export const alertPreferencesSchema = z.object({
     timezone: z.string().min(1).max(64).optional()
 });
 
+export const pushSubscriptionSchema = z.object({
+    subscription: z.object({
+        endpoint: z.string().url('Invalid push subscription endpoint'),
+        keys: z.object({
+            p256dh: z.string().min(1, 'Missing p256dh key'),
+            auth: z.string().min(1, 'Missing auth key'),
+        }),
+    }),
+});
+

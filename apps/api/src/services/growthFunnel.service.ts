@@ -4,7 +4,18 @@ import logger from '../utils/logger';
 
 
 
-export type FunnelEvent = 'DETAIL_VIEW' | 'LOGIN_VIEW' | 'AUTH_SUCCESS' | 'SIGNUP_SUCCESS' | 'SAVE_JOB' | 'APPLY_CLICK' | 'SHARE_JOB' | 'SIGNUP_VIEW';
+export type FunnelEvent =
+    | 'DETAIL_VIEW'
+    | 'LOGIN_VIEW'
+    | 'AUTH_SUCCESS'
+    | 'SIGNUP_SUCCESS'
+    | 'SAVE_JOB'
+    | 'APPLY_CLICK'
+    | 'SHARE_JOB'
+    | 'SIGNUP_VIEW'
+    | 'INSTALL_PROMPT_SHOWN'
+    | 'INSTALL_ACCEPTED'
+    | 'OPENED_STANDALONE';
 export type GrowthWindow = '24h' | '7d' | '30d' | 'all';
 
 type SourceCounters = Record<FunnelEvent, number>;
@@ -21,7 +32,10 @@ function emptyCounters(): SourceCounters {
         SAVE_JOB: 0,
         APPLY_CLICK: 0,
         SHARE_JOB: 0,
-        SIGNUP_VIEW: 0
+        SIGNUP_VIEW: 0,
+        INSTALL_PROMPT_SHOWN: 0,
+        INSTALL_ACCEPTED: 0,
+        OPENED_STANDALONE: 0,
     };
 }
 
@@ -33,7 +47,19 @@ function sanitizeSource(source?: string): string {
 
 function normalizeEvent(event?: string): FunnelEvent | null {
     const normalized = (event || '').trim().toUpperCase() as FunnelEvent;
-    const allowed: FunnelEvent[] = ['DETAIL_VIEW', 'LOGIN_VIEW', 'AUTH_SUCCESS', 'SIGNUP_SUCCESS', 'SAVE_JOB', 'APPLY_CLICK', 'SHARE_JOB', 'SIGNUP_VIEW'];
+    const allowed: FunnelEvent[] = [
+        'DETAIL_VIEW',
+        'LOGIN_VIEW',
+        'AUTH_SUCCESS',
+        'SIGNUP_SUCCESS',
+        'SAVE_JOB',
+        'APPLY_CLICK',
+        'SHARE_JOB',
+        'SIGNUP_VIEW',
+        'INSTALL_PROMPT_SHOWN',
+        'INSTALL_ACCEPTED',
+        'OPENED_STANDALONE',
+    ];
     if (!allowed.includes(normalized)) {
         return null;
     }
@@ -80,6 +106,9 @@ function formatRows(rows: Array<{ source: string; counters: SourceCounters }>) {
         acc.APPLY_CLICK += row.APPLY_CLICK || 0;
         acc.SHARE_JOB += row.SHARE_JOB || 0;
         acc.SIGNUP_VIEW += row.SIGNUP_VIEW || 0;
+        acc.INSTALL_PROMPT_SHOWN += row.INSTALL_PROMPT_SHOWN || 0;
+        acc.INSTALL_ACCEPTED += row.INSTALL_ACCEPTED || 0;
+        acc.OPENED_STANDALONE += row.OPENED_STANDALONE || 0;
         return acc;
     }, emptyCounters());
 

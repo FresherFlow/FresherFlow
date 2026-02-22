@@ -304,14 +304,14 @@ export default function DashboardClient() {
                     </div>
 
                     {/* Highlights — always reserves space to prevent CLS */}
-                    <div className="min-h-[120px]">
+                    <div>
                         {isLoadingHighlights ? (
-                            <div className="space-y-3 animate-pulse">
-                                <div className="h-4 w-32 bg-muted/60 rounded" />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                                    <div className="h-28 rounded-2xl bg-muted/40" />
-                                    <div className="h-28 rounded-2xl bg-muted/40 hidden sm:block" />
-                                    <div className="h-28 rounded-2xl bg-muted/40 hidden lg:block" />
+                            <div className="space-y-2 animate-pulse">
+                                <div className="h-3 w-24 bg-muted/60 rounded" />
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                                    <div className="h-20 rounded-xl bg-muted/35" />
+                                    <div className="h-20 rounded-xl bg-muted/35 hidden sm:block" />
+                                    <div className="h-20 rounded-xl bg-muted/35 hidden lg:block" />
                                 </div>
                             </div>
                         ) : highlights && (() => {
@@ -330,7 +330,7 @@ export default function DashboardClient() {
                                             View feed
                                         </Link>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
                                         {activeWalkins.map(opp => (
                                             <div
                                                 key={`urgent-${opp.id}`}

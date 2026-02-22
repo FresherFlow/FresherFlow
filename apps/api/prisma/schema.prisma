@@ -98,11 +98,15 @@ enum GrowthFunnelEvent {
   APPLY_CLICK
   SHARE_JOB
   SIGNUP_VIEW
+  INSTALL_PROMPT_SHOWN
+  INSTALL_ACCEPTED
+  OPENED_STANDALONE
 }
 
 enum AlertChannel {
   EMAIL
   APP
+  PUSH
 }
 
 enum AlertKind {
@@ -148,6 +152,7 @@ model User {
   savedOpportunities SavedOpportunity[]
   alertPreference AlertPreference?
   alertDeliveries AlertDelivery[]
+  pushSubscription PushSubscription?
   opportunityClicks OpportunityClick[]
   ingestionSources IngestionSource[]
   
@@ -499,6 +504,19 @@ model AlertDelivery {
   @@index([userId, kind])
   @@index([sentAt])
   @@index([readAt])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model OpportunityEvent {

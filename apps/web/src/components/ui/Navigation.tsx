@@ -21,6 +21,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useInstallPrompt } from '@/contexts/InstallPromptContext';
 
 // Dynamically import the full-screen menu — only loaded when user opens it
 const MobileNavMenu = dynamic(() => import('./MobileNavMenu'), { ssr: false });
@@ -91,6 +92,7 @@ export function Navbar() {
     const { unreadCount } = useUnreadNotifications();
     const pendingSyncCount = useOfflineActionQueue(user?.id);
     const { theme } = useTheme();
+    const { canInstall, promptInstall } = useInstallPrompt();
     const logoSrc = theme === 'dark' ? '/logo-white-optimized.png' : '/logo-optimized.png';
 
     const navLinks = [
@@ -166,6 +168,16 @@ export function Navbar() {
                                     <div className="flex items-center gap-1 md:gap-3">
                                         <div className="h-4 w-px bg-border mx-1 hidden md:block" />
 
+                                        {canInstall && (
+                                            <button
+                                                type="button"
+                                                onClick={() => void promptInstall('navbar')}
+                                                className="hidden md:inline-flex items-center rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/15"
+                                            >
+                                                Install App
+                                            </button>
+                                        )}
+
                                         <Link href="/alerts" className="p-2 text-muted-foreground hover:text-primary transition-colors hidden md:block relative">
                                             <BellIcon className="w-5 h-5" />
                                             {unreadCount > 0 && (
@@ -214,6 +226,7 @@ export function MobileNav() {
     const [isVisible, setIsVisible] = useState(true);
     const [menuOpen, setMenuOpen] = useState(false);
     const { theme } = useTheme();
+    const { canInstall, promptInstall } = useInstallPrompt();
     const logoSrc = theme === 'dark' ? '/logo-white-optimized.png' : '/logo-optimized.png';
     const lastScrollYRef = useRef(0);
     const tickingRef = useRef(false);
@@ -315,6 +328,16 @@ export function MobileNav() {
 
                     {user ? (
                         <div className="flex items-center gap-2">
+                            {canInstall && (
+                                <button
+                                    type="button"
+                                    onClick={() => void promptInstall('navbar')}
+                                    className="px-2 py-1 rounded-lg border border-primary/30 bg-primary/10 text-[10px] font-bold uppercase tracking-wider text-primary"
+                                    aria-label="Install app"
+                                >
+                                    Install
+                                </button>
+                            )}
                             {pathname.startsWith('/jobs/') || pathname.startsWith('/internships/') || pathname.startsWith('/walk-ins/') || pathname.startsWith('/opportunities/') ? (
                                 <button
                                     onClick={() => window.history.length > 1 ? history.back() : window.location.assign('/opportunities')}

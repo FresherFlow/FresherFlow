@@ -3,6 +3,7 @@ import { OpportunityStatus } from '@prisma/client';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import logger from '../utils/logger';
 import { EmailService } from './email.service';
+import { sendNewJobPush } from './push.service';
 
 
 
@@ -15,6 +16,7 @@ interface NewJobNotificationResult {
     usersSent: number;
     emailsSent: number;
     appAlertsSent: number;
+    pushSent: number;
 }
 
 const MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY = Number(process.env.MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY || 8);
@@ -30,7 +32,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
 
     if (!opportunity || opportunity.status !== OpportunityStatus.PUBLISHED) {
         logger.info('Skipping alerts for non-published opportunity', { opportunityId });
-        return { usersSent: 0, emailsSent: 0, appAlertsSent: 0 };
+        return { usersSent: 0, emailsSent: 0, appAlertsSent: 0, pushSent: 0 };
     }
 
     // Get all candidate users. Preferences are optional (defaults apply when missing).
@@ -54,6 +56,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
     let skippedDailyCap = 0;
     let skippedNotEligible = 0;
     let lowScoreFallbackSent = 0;
+    let pushSent = 0;
     const dayStart = new Date();
     dayStart.setHours(0, 0, 0, 0);
     const sentTodayRows = await prisma.alertDelivery.groupBy({
@@ -123,6 +126,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 OR: [
                     { dedupeKey: `${dedupeKeyBase}:APP` },
                     { dedupeKey: `${dedupeKeyBase}:EMAIL` },
+                    { dedupeKey: `${dedupeKeyBase}:PUSH` },
                 ],
             },
             select: { id: true },
@@ -133,7 +137,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             userId: string;
             opportunityId: string;
             kind: 'NEW_JOB';
-            channel: 'APP' | 'EMAIL';
+            channel: 'APP' | 'EMAIL' | 'PUSH';
             dedupeKey: string;
             metadata: string;
         }> = [
@@ -176,6 +180,26 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             skipDuplicates: true,
         });
 
+        const pushResult = await sendNewJobPush(user.id, {
+            title: opportunity.title,
+            company: opportunity.company,
+            opportunityId: opportunity.id,
+            opportunitySlug: opportunity.slug,
+        });
+        if (pushResult.status === 'sent') {
+            pushSent += 1;
+            await prisma.alertDelivery.create({
+                data: {
+                    userId: user.id,
+                    opportunityId: opportunity.id,
+                    kind: 'NEW_JOB',
+                    channel: 'PUSH',
+                    dedupeKey: `${dedupeKeyBase}:PUSH`,
+                    metadata: JSON.stringify({ relevanceScore, relevanceReason }),
+                },
+            }).catch(() => { });
+        }
+
         appAlertsSent++;
         usersSent.add(user.id);
         sentTodayByUser.set(user.id, alreadySentToday + 1);
@@ -189,12 +213,14 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         skippedDisabled,
         skippedDailyCap,
         skippedNotEligible,
-        lowScoreFallbackSent
+        lowScoreFallbackSent,
+        pushSent,
     });
 
     return {
         usersSent: usersSent.size,
         emailsSent,
-        appAlertsSent
+        appAlertsSent,
+        pushSent,
     };
 }

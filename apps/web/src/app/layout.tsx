@@ -5,10 +5,13 @@ import "./globals.css";
 import { ConditionalAuthProvider } from "@/components/providers/ConditionalAuthProvider";
 import { SmartToaster } from "@/components/providers/SmartToaster";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { InstallPromptProvider } from "@/contexts/InstallPromptContext";
 import { NavigationWrapper } from "@/components/providers/NavigationWrapper";
 import ServiceWorkerRegister from "@/components/providers/ServiceWorkerRegister";
+import PushNotificationProvider from "@/components/providers/PushNotificationProvider";
 import { ThemeScript } from "@/components/providers/ThemeScript";
 import OfflineNotification from "@/components/ui/OfflineNotification";
+import InstallAppBanner from "@/components/ui/InstallAppBanner";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import GoogleAnalytics from "@/components/providers/GoogleAnalytics";
@@ -126,11 +129,15 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthFormDataProvider>
             <ConditionalAuthProvider>
-              <NavigationWrapper>
-                <ErrorBoundary>
-                  {children}
-                </ErrorBoundary>
-              </NavigationWrapper>
+              <InstallPromptProvider>
+                <NavigationWrapper>
+                  <ErrorBoundary>
+                    {children}
+                  </ErrorBoundary>
+                </NavigationWrapper>
+                <InstallAppBanner />
+              </InstallPromptProvider>
+              <PushNotificationProvider />
             </ConditionalAuthProvider>
           </AuthFormDataProvider>
         </ThemeProvider>

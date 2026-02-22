@@ -1,4 +1,4 @@
-const SW_VERSION = '1.8.0';
+const SW_VERSION = '1.9.0';
 const STATIC_CACHE = `fresherflow-static-${SW_VERSION}`;
 const API_CACHE = `fresherflow-api-${SW_VERSION}`;
 const OFFLINE_URL = '/offline.html';
@@ -203,4 +203,48 @@ self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+});
+
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  let payload = null;
+  try {
+    payload = event.data.json();
+  } catch {
+    payload = { title: 'FresherFlow Update', body: event.data.text(), url: '/' };
+  }
+
+  const title = payload?.title || 'FresherFlow';
+  const body = payload?.body || 'You have a new alert.';
+  const url = payload?.url || '/alerts';
+
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body,
+      data: { url },
+      badge: '/icon-192x192.png',
+      icon: '/icon-192x192.png',
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification?.data?.url || '/alerts';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+      return undefined;
+    })
+  );
 });
