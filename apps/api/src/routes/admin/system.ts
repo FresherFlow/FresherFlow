@@ -133,6 +133,72 @@ router.post('/alerts/backfill-new-jobs', requireAdmin, async (req: Request, res:
 });
 
 /**
+ * Config + migration readiness for alerts/push rollout
+ * GET /api/admin/system/config-health
+ */
+router.get('/config-health', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+        const [pushTableRow] = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+            SELECT EXISTS (
+                SELECT 1
+                FROM information_schema.tables
+                WHERE table_schema = 'public'
+                  AND table_name = 'PushSubscription'
+            ) AS "exists"
+        `;
+
+        const [alertChannelPushRow] = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_enum e
+                JOIN pg_type t ON e.enumtypid = t.oid
+                WHERE t.typname = 'AlertChannel'
+                  AND e.enumlabel = 'PUSH'
+            ) AS "exists"
+        `;
+
+        const [growthInstallRow] = await prisma.$queryRaw<Array<{ exists: boolean }>>`
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_enum e
+                JOIN pg_type t ON e.enumtypid = t.oid
+                WHERE t.typname = 'GrowthFunnelEvent'
+                  AND e.enumlabel IN ('INSTALL_PROMPT_SHOWN', 'INSTALL_ACCEPTED', 'OPENED_STANDALONE')
+                GROUP BY t.typname
+                HAVING COUNT(*) = 3
+            ) AS "exists"
+        `;
+
+        const env = {
+            webPushPublicKey: Boolean(process.env.WEB_PUSH_VAPID_PUBLIC_KEY),
+            webPushPrivateKey: Boolean(process.env.WEB_PUSH_VAPID_PRIVATE_KEY),
+            webPushSubject: Boolean(process.env.WEB_PUSH_SUBJECT),
+            redisUrl: Boolean(process.env.REDIS_URL),
+            cronSecret: Boolean(process.env.CRON_SECRET),
+            telegramBotToken: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+            telegramPublicChannel: Boolean(process.env.TELEGRAM_PUBLIC_CHANNEL),
+        };
+
+        const db = {
+            pushSubscriptionTable: Boolean(pushTableRow?.exists),
+            alertChannelPushEnum: Boolean(alertChannelPushRow?.exists),
+            growthInstallEnums: Boolean(growthInstallRow?.exists),
+        };
+
+        const ready = {
+            pushDeliveryReady: db.pushSubscriptionTable && db.alertChannelPushEnum && env.webPushPublicKey && env.webPushPrivateKey,
+            installTrackingReady: db.growthInstallEnums,
+            cronAuthReady: env.cronSecret,
+            redisConfigured: env.redisUrl,
+        };
+
+        res.json({ ready, env, db });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
  * Get Health Statistics
  * GET /api/admin/system/health-stats
  */
