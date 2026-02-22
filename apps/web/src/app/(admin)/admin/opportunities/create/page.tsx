@@ -62,7 +62,7 @@ type TimelineEvent = {
     sourceLink?: string | null;
 };
 import { buildOpportunityPayload } from '../opportunityPayload';
-import { INTERNSHIP_TEMPLATE, JOB_TEMPLATE, TCS_NQT_TEMPLATE, WALKIN_TEMPLATE } from '@/features/admin/opportunities/jsonTemplates';
+import { INTERNSHIP_TEMPLATE, JOB_TEMPLATE, WALKIN_TEMPLATE } from '@/features/admin/opportunities/jsonTemplates';
 import { buildShareUrl, type SharePlatform } from '@/lib/share';
 import { getOpportunityPath } from '@/lib/opportunityPath';
 import {
@@ -1052,13 +1052,6 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                                         className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                                     >
                                         Insert Walk-in
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setPastedJson(TCS_NQT_TEMPLATE)}
-                                        className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20"
-                                    >
-                                        Insert TCS NQT
                                     </button>
                                 </div>
                                 <button
