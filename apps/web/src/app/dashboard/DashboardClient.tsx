@@ -305,7 +305,7 @@ export default function DashboardClient() {
 
                     {/* Highlights — always reserves space to prevent CLS */}
                     <div>
-                        {isLoadingHighlights ? (
+                        {isLoadingHighlights && isLoadingOpps ? (
                             <div className="space-y-2 animate-pulse">
                                 <div className="h-3 w-24 bg-muted/60 rounded" />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
