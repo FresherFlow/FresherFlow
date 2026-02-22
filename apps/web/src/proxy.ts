@@ -49,14 +49,17 @@ export async function proxy(request: NextRequest) {
     // If user hits 'app.domain.com' root, they always want the app.
     if (hostname.startsWith('app.')) {
         if (pathname === '/') {
-            // If logged in -> Dashboard
-            if (isAuthenticated) {
-                return redirectWithMethodAwareness(request, '/dashboard');
-            }
-            // If NOT logged in -> Login
-            else {
+            if (isAuthenticated && API_URL) {
+                const userOk = await safeAuthCheck(`${API_URL}/api/auth/me`, cookieHeader);
+                if (userOk) {
+                    return redirectWithMethodAwareness(request, '/dashboard');
+                }
                 return redirectWithMethodAwareness(request, '/login');
             }
+
+            // If logged in marker exists but API_URL is missing, fall back to optimistic redirect.
+            if (isAuthenticated) return redirectWithMethodAwareness(request, '/dashboard');
+            return redirectWithMethodAwareness(request, '/login');
         }
     }
 
@@ -92,10 +95,13 @@ export async function proxy(request: NextRequest) {
         }
     }
 
-    // 2. Main Domain Root Handling
-    // If user is already logged in and visits the landing page,
-    // we can optionally redirect them to dashboard for "App-like" feel.
+    // 4. Main Domain Root Handling
+    // Redirect to dashboard only when auth is actually valid (prevents stale-cookie loops).
     if (pathname === '/' && isAuthenticated) {
+        if (API_URL) {
+            const userOk = await safeAuthCheck(`${API_URL}/api/auth/me`, cookieHeader);
+            if (!userOk) return NextResponse.next();
+        }
         return redirectWithMethodAwareness(request, '/dashboard');
     }
 
