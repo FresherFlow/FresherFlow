@@ -15,7 +15,7 @@ import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import { SkeletonJobCard } from '@/components/ui/Skeleton';
 import JobCard from '@/features/jobs/components/JobCard';
 import { Button } from '@/components/ui/Button';
-import { formatSyncTime, getFeedLastSyncAt } from '@/lib/offline/syncStatus';
+import { getFeedLastSyncAt } from '@/lib/offline/syncStatus';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { calculateOpportunityMatch } from '@/lib/matchScore';
 import { OpportunityEventType } from '@fresherflow/types';
@@ -78,8 +78,8 @@ export default function DashboardClient() {
     const [hasLoaded, setHasLoaded] = useState(false);
     const [recentError, setRecentError] = useState<string | null>(null);
     const [highlightsError, setHighlightsError] = useState<string | null>(null);
-    const [isOnline, setIsOnline] = useState(true);
-    const [feedLastSyncAt, setFeedLastSyncAt] = useState<number | null>(null);
+    const [, setIsOnline] = useState(true);
+    const [, setFeedLastSyncAt] = useState<number | null>(null);
     const [dashboardVisitCounter, setDashboardVisitCounter] = useState(0);
     const [activeTab, setActiveTab] = useState<TabKey>('featured');
     const [showBackToTop, setShowBackToTop] = useState(false);
@@ -543,11 +543,6 @@ export default function DashboardClient() {
                                         </div>
                                     ))}
                                 </div>
-                            </div>
-                            <div className="pt-2 flex items-center justify-center">
-                                <span className="text-[8px] font-bold uppercase tracking-[0.2em] text-muted-foreground/40 px-2 py-0.5 rounded-full border border-border/30">
-                                    {isOnline ? 'Network Stable' : 'Offline Mode'} &bull; Last Sync {formatSyncTime(feedLastSyncAt)}
-                                </span>
                             </div>
                         </section>
                     </div>

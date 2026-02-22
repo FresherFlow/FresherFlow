@@ -25,7 +25,7 @@ import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import { getRecentViewedByIdOrSlug, saveRecentViewed } from '@/lib/offline/recentViewed';
-import { formatSyncTime, getDetailLastSyncAt } from '@/lib/offline/syncStatus';
+import { getDetailLastSyncAt } from '@/lib/offline/syncStatus';
 import { enqueueOfflineActionTrack, enqueueOfflineSaveToggle } from '@/lib/offline/actionQueue';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
 import { buildShareUrl } from '@/lib/share';
@@ -61,8 +61,8 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
     const hasTrackedDetailViewRef = useRef(false);
     const hasShownNotFoundRef = useRef(false);
     const hasAttemptedLoadRef = useRef(false);
-    const [isOnline, setIsOnline] = useState(true);
-    const [detailLastSyncAt, setDetailLastSyncAt] = useState<number | null>(null);
+    const [, setIsOnline] = useState(true);
+    const [, setDetailLastSyncAt] = useState<number | null>(null);
     const [relatedOpps, setRelatedOpps] = useState<Opportunity[]>([]);
     const [isLoadingRelated, setIsLoadingRelated] = useState(false);
     const [isUpdatingAction, setIsUpdatingAction] = useState(false);
@@ -346,7 +346,10 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
         // Track analytics event
         const applyAction = opp.type === 'WALKIN' ? ActionType.PLANNED : ActionType.APPLIED;
-        actionsApi.track(opp.id, applyAction).catch(() => undefined);
+        // Track apply action only for logged-in users
+        if (user) {
+            actionsApi.track(opp.id, applyAction).catch(() => undefined);
+        }
         growthApi.trackEvent('APPLY_CLICK', 'opportunity_detail').catch(() => undefined);
         opportunityClicksApi.trackApplyClick(
             opp.id,
@@ -675,20 +678,17 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border relative overflow-hidden group shadow-sm">
                             <div className="relative z-10 space-y-4">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[9px] font-bold uppercase tracking-tight rounded border border-primary/20">
+                                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] md:text-xs font-bold uppercase tracking-tight rounded border border-primary/20">
                                         {isCampusDrive ? 'CAMPUS DRIVE' : opp.type}
                                     </span>
-                                    <span className="px-1.5 py-0.5 bg-muted/40 text-muted-foreground text-[9px] font-bold uppercase tracking-tight rounded border border-border">
-                                        {isOnline ? 'Online' : 'Offline'} • Sync {formatSyncTime(detailLastSyncAt)}
-                                    </span>
                                     {opp.expiresAt && isExpired(opp) ? (
-                                        <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-destructive/5 border border-destructive/10 text-destructive text-[9px] font-bold uppercase tracking-tight rounded">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-destructive" />
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-destructive/5 border border-destructive/10 text-destructive text-[10px] md:text-xs font-bold uppercase tracking-tight rounded">
+                                            <div className="w-2 h-2 rounded-full bg-red-500" />
                                             Expired
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-success/5 border border-success/10 text-success text-[9px] font-bold uppercase tracking-tight rounded">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 text-[10px] md:text-xs font-bold uppercase tracking-tight rounded">
+                                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                             Active
                                         </div>
                                     )}
@@ -753,24 +753,24 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                 {/* Stats Grid */}
                                 <div className="pt-3 border-t border-border/50 grid grid-cols-2 lg:grid-cols-4 gap-2.5">
                                     <div className="space-y-0.5">
-                                        <p className="text-[9px] font-bold text-muted-foreground uppercase">Package</p>
-                                        <p className="font-bold text-sm text-foreground truncate">{formatSalary(opp)}</p>
+                                        <p className="text-[9px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Package</p>
+                                        <p className="font-bold text-sm md:text-base text-foreground truncate">{formatSalary(opp)}</p>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-[9px] font-bold text-muted-foreground uppercase">Employment</p>
-                                        <p className="font-bold text-sm text-foreground truncate">{opp.employmentType || 'Not specified'}</p>
+                                        <p className="text-[9px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Employment</p>
+                                        <p className="font-bold text-sm md:text-base text-foreground truncate">{opp.employmentType || 'Not specified'}</p>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-[9px] font-bold text-muted-foreground uppercase">Batch</p>
-                                        <p className="font-bold text-sm text-foreground leading-snug whitespace-normal">
+                                        <p className="text-[9px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Batch</p>
+                                        <p className="font-bold text-sm md:text-base text-foreground leading-snug whitespace-normal">
                                             {opp.allowedPassoutYears && opp.allowedPassoutYears.length > 0
                                                 ? [...opp.allowedPassoutYears].sort((a, b) => a - b).join(', ')
                                                 : 'Any'}
                                         </p>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-[9px] font-bold text-muted-foreground uppercase">Experience</p>
-                                        <p className="font-bold text-sm text-foreground truncate">{opp.experienceMax ? `${opp.experienceMin || 0}-${opp.experienceMax}y` : 'Fresher+'}</p>
+                                        <p className="text-[9px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Experience</p>
+                                        <p className="font-bold text-sm md:text-base text-foreground truncate">{opp.experienceMax ? `${opp.experienceMin || 0}-${opp.experienceMax}y` : 'Fresher'}</p>
                                     </div>
                                 </div>
                                 {opp.expiresAt && (
@@ -871,7 +871,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {/* Description Section */}
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Description</h3>
+                            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Description</h3>
                             <div
                                 className="prose prose-sm max-w-none text-foreground/80 font-medium text-sm md:text-base leading-relaxed whitespace-pre-wrap"
                                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(opp.description) }}
@@ -1029,16 +1029,16 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
-                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Education</p>
+                                    <p className="text-[9px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Education</p>
                                     <p className="text-sm font-semibold text-foreground whitespace-pre-line leading-relaxed">
                                         {formatEducationDisplay(opp.allowedDegrees || [], opp.allowedCourses || [], (opp as { allowedSpecializations?: string[] }).allowedSpecializations || [])}
                                     </p>
                                 </div>
                                 <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
-                                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Key Skills</p>
+                                    <p className="text-[9px] md:text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Key Skills</p>
                                     <div className="flex flex-wrap gap-1 mt-0.5">
                                         {(opp.requiredSkills || []).map((s: string) => (
-                                            <span key={s} className="px-1.5 py-0.5 bg-primary/5 text-primary text-[10px] font-semibold rounded">
+                                            <span key={s} className="px-1.5 py-0.5 bg-primary/5 text-primary text-[10px] md:text-xs font-semibold rounded">
                                                 {s}
                                             </span>
                                         ))}
@@ -1178,7 +1178,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         )}
                         <EligibilitySnapshotCard
                             education={formatEducationDisplay(opp.allowedDegrees || [], opp.allowedCourses || [], (opp as { allowedSpecializations?: string[] }).allowedSpecializations || [])}
-                            experience={opp.experienceMax != null ? `${opp.experienceMin || 0}-${opp.experienceMax} yrs` : 'Fresher+ (no cap)'}
+                            experience={opp.experienceMax != null ? `${opp.experienceMin || 0}-${opp.experienceMax} yrs` : 'Fresher'}
                             employmentType={opp.employmentType}
                             skills={opp.requiredSkills || []}
                         />
