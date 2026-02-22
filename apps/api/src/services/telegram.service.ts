@@ -225,7 +225,6 @@ class TelegramService {
         type: string,
         locations: string[],
         slug: string,
-        applyLink?: string | null,
         options?: { force?: boolean }
     ): Promise<void> {
         const publicChannel = process.env.TELEGRAM_PUBLIC_CHANNEL;

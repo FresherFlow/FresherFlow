@@ -1,4 +1,4 @@
-import prisma from '../../lib/prisma';
+﻿import prisma from '../../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { Prisma, OpportunityEventType, OpportunityStatus, OpportunityType } from '@prisma/client';
 import { requireAdmin } from '../../middleware/auth';
@@ -426,14 +426,13 @@ router.post(
             ).catch(() => { });
 
             // Broadcast to Public Channel if Published (Async)
-            if (opportunity.status === OpportunityStatus.PUBLISHED && opportunity.applyLink) {
+            if (opportunity.status === OpportunityStatus.PUBLISHED) {
                 TelegramService.broadcastNewOpportunity(
                     opportunity.id,
                     opportunity.title,
                     opportunity.company,
                     opportunity.type,
                     opportunity.locations,
-                    opportunity.applyLink,
                     opportunity.slug
                 ).catch(() => { });
             }
@@ -991,4 +990,5 @@ router.delete(
 );
 
 export default router;
+
 

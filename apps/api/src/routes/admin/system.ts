@@ -1,4 +1,4 @@
-import prisma from '../../lib/prisma';
+﻿import prisma from '../../lib/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
 import { requireAdmin } from '../../middleware/auth';
 import { getVerificationStats, runLinkVerification } from '../../services/verificationBot';
@@ -315,24 +315,12 @@ router.post('/telegram-broadcasts/:id/retry', requireAdmin, async (req: Request,
         }
 
         const opp = broadcast.opportunity;
-        if (!opp.applyLink) {
-            await prisma.telegramBroadcast.update({
-                where: { id },
-                data: {
-                    status: 'FAILED',
-                    errorMessage: 'Missing apply link; cannot broadcast',
-                }
-            });
-            return res.status(400).json({ message: 'Opportunity has no apply link' });
-        }
-
         await TelegramService.broadcastNewOpportunity(
             opp.id,
             opp.title,
             opp.company,
             opp.type,
             opp.locations,
-            opp.applyLink,
             opp.slug,
             { force: true }
         );
@@ -528,3 +516,4 @@ router.get('/ingestion/runs', requireAdmin, async (req: Request, res: Response, 
 });
 
 export default router;
+
