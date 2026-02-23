@@ -492,13 +492,6 @@ function CategoryPageContent({ type }: CategoryPageProps) {
                                 </div>
                             ) : (
                                 <div className="space-y-6">
-                                    <div className="flex items-center justify-between pb-2 border-b border-border/50">
-                                        <h2 className="text-xs font-bold uppercase tracking-[0.15em] text-muted-foreground/80">Listings</h2>
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                                            <span className="text-[9px] font-bold uppercase tracking-widest text-primary">Live updates</span>
-                                        </div>
-                                    </div>
                                     <div className={cn(
                                         "grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6",
                                         isFilterOpen ? "lg:grid-cols-2 xl:grid-cols-3" : "lg:grid-cols-2 xl:grid-cols-3"

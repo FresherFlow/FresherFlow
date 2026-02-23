@@ -38,15 +38,15 @@
     --accent: 190 90% 45%; /* Electric teal */
     --accent-foreground: 222 47% 11%;
 
-    --background: 210 40% 98%; /* Cool off-white */
+    --background: 210 28% 95%; /* Cooler gray so cards separate clearly */
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
-    --border: 214 20% 84%; /* Soft steel */
-    --input: 210 30% 94%;
-    --muted: 210 24% 94%;
+    --border: 214 20% 78%; /* Stronger separation in light mode */
+    --input: 210 26% 91%;
+    --muted: 210 22% 90%;
     --muted-foreground: 215 16% 40%;
 
     --ring: 190 90% 45%;

@@ -8,7 +8,7 @@ export default function InstallAppBanner() {
     if (!showBanner) return null;
 
     return (
-        <div className="fixed top-16 inset-x-0 z-80 px-3 md:px-6">
+        <div className="fixed top-16 inset-x-0 z-[80] px-3 md:px-6">
             <div className="mx-auto max-w-3xl rounded-xl border border-primary/30 bg-card/95 backdrop-blur p-3 shadow-lg">
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -36,4 +36,3 @@ export default function InstallAppBanner() {
         </div>
     );
 }
-

@@ -197,10 +197,16 @@ function ToggleRow({
                 aria-pressed={value}
                 disabled={disabled}
                 onClick={() => onChange(!value)}
-                className={`h-8 w-14 rounded-full border transition-all ${value ? 'bg-primary border-primary' : 'bg-muted border-border'} disabled:opacity-50`}
+                className={`h-8 w-14 rounded-full border transition-all ${value
+                    ? 'bg-primary border-primary'
+                    : 'bg-muted/80 border-border dark:bg-muted'
+                    } disabled:opacity-50`}
             >
                 <span
-                    className={`block h-6 w-6 rounded-full bg-white transition-transform ${value ? 'translate-x-7' : 'translate-x-1'}`}
+                    className={`block h-6 w-6 rounded-full transition-transform ${value
+                        ? 'translate-x-7 bg-primary-foreground'
+                        : 'translate-x-1 bg-card border border-border'
+                        }`}
                 />
             </button>
         </div>

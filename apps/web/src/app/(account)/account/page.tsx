@@ -39,23 +39,32 @@ export default function AccountPage() {
 
     return (
         <div className="min-h-screen bg-background animate-in fade-in duration-700 pb-16">
-            <main className="max-w-4xl mx-auto px-4 py-6 md:py-10 space-y-6 md:space-y-8">
-                <div className="flex items-center gap-3">
-                    <Link href="/dashboard" className="p-2 hover:bg-muted rounded-xl transition-colors">
-                        <ArrowLeftIcon className="w-5 h-5 text-muted-foreground" />
-                    </Link>
-                    <h1 className="text-2xl md:text-4xl font-bold tracking-tighter">Account</h1>
+            <main className="max-w-3xl mx-auto px-4 py-5 md:py-7 space-y-4 md:space-y-5">
+                <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                        <Link href="/dashboard" className="p-2 hover:bg-muted rounded-xl transition-colors">
+                            <ArrowLeftIcon className="w-5 h-5 text-muted-foreground" />
+                        </Link>
+                        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Account</h1>
+                    </div>
+                    <button
+                        onClick={logout}
+                        className="h-9 px-3.5 inline-flex items-center justify-center gap-2 text-error font-bold border border-error/20 bg-error/5 rounded-xl hover:bg-error/10 transition-all text-[10px] uppercase tracking-widest"
+                    >
+                        <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                        Sign out
+                    </button>
                 </div>
 
                 {/* Identity Card */}
-                <div className="premium-card p-5! md:p-8! flex flex-col md:flex-row items-center gap-5 md:gap-6 justify-between">
+                <div className="rounded-2xl border border-border bg-card p-4 md:p-5 flex flex-col md:flex-row items-center gap-4 md:gap-5 justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-primary text-white flex items-center justify-center text-xl md:text-2xl font-bold shadow-lg shadow-primary/20 shrink-0">
+                        <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center text-base md:text-lg font-bold shrink-0">
                             {user.fullName?.[0].toUpperCase() || user.email?.[0].toUpperCase()}
                         </div>
                         <div>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Signed-in profile</p>
-                            <h2 className="text-xl md:text-2xl font-bold tracking-tight">{user.fullName || 'User'}</h2>
+                            <h2 className="text-lg md:text-xl font-bold tracking-tight">{user.fullName || 'User'}</h2>
                             <p className="text-muted-foreground font-medium text-xs md:text-sm">{user.email}</p>
                         </div>
                     </div>
@@ -70,6 +79,20 @@ export default function AccountPage() {
 
                 {/* Quick Links */}
                 <div className="bg-card border border-border rounded-2xl overflow-hidden">
+                    <Link
+                        href="/profile"
+                        className="flex items-center gap-4 px-4 py-4 hover:bg-muted/40 transition-colors"
+                    >
+                        <div className="w-10 h-10 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
+                            <UserCircleIcon className="w-5 h-5" />
+                        </div>
+                        <div className="flex-1">
+                            <h3 className="text-sm font-semibold tracking-tight">Profile</h3>
+                            <p className="text-[11px] text-muted-foreground">Education, skills and preferences</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground">Edit</span>
+                    </Link>
+                    <div className="h-px bg-border" />
                     <Link
                         href="/account/saved"
                         className="flex items-center gap-4 px-4 py-4 hover:bg-muted/40 transition-colors"
@@ -141,16 +164,7 @@ export default function AccountPage() {
                     </Link>
                 </div>
 
-                {/* Danger Zone */}
-                <div className="pt-4 space-y-3">
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1 leading-none">Account actions</p>
-                    <button
-                        onClick={logout}
-                        className="w-full h-12 flex items-center justify-center gap-3 text-error font-bold border border-error/20 bg-error/5 rounded-2xl hover:bg-error/10 transition-all text-xs uppercase tracking-widest shadow-sm"
-                    >
-                        <ArrowRightOnRectangleIcon className="w-5 h-5" />
-                        Sign out
-                    </button>
+                <div className="pt-2">
                     <p className="text-center text-[10px] font-bold text-muted-foreground/40 uppercase tracking-tight">Build: FF-GENA-2026-X1</p>
                 </div>
             </main>

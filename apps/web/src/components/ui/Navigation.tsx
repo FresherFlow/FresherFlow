@@ -10,7 +10,6 @@ import dynamic from 'next/dynamic';
 import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import UserIcon from '@heroicons/react/24/outline/UserIcon';
-import ArrowRightOnRectangleIcon from '@heroicons/react/24/outline/ArrowRightOnRectangleIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
@@ -108,7 +107,7 @@ export function Navbar() {
     return (
         <>
             <nav suppressHydrationWarning
-                className="fixed top-0 left-0 right-0 z-100 border-b bg-card border-border py-2 shadow-sm translate-y-0 opacity-100 hidden md:block"
+                className="fixed top-0 left-0 right-0 z-[100] border-b bg-card border-border py-2 shadow-sm translate-y-0 opacity-100 hidden md:block"
             >
                 <div className="w-full px-4 md:px-6 max-w-7xl mx-auto flex items-center justify-between">
                     {/* Brand */}
@@ -185,17 +184,8 @@ export function Navbar() {
                                             )}
                                         </Link>
 
-                                        <Link href="/profile" className="p-2 text-muted-foreground hover:text-primary transition-colors hidden md:block">
+                                        <Link href="/account" className="p-2 text-muted-foreground hover:text-primary transition-colors hidden md:block" aria-label="Account">
                                             <UserIcon className="w-5 h-5" />
-                                        </Link>
-
-
-                                        <Link
-                                            href="/logout"
-                                            className="p-2 text-muted-foreground hover:text-error transition-colors hidden md:block"
-                                            title="Logout"
-                                        >
-                                            <ArrowRightOnRectangleIcon className="w-5 h-5" />
                                         </Link>
 
                                     </div>

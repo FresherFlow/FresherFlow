@@ -26,6 +26,11 @@ export async function proxy(request: NextRequest) {
     const { pathname, hostname } = request.nextUrl;
     const cookieHeader = request.headers.get('cookie') || '';
 
+    // Keep internal preview routes out of production traffic.
+    if (process.env.NODE_ENV === 'production' && pathname.startsWith('/dev')) {
+        return redirectWithMethodAwareness(request, '/');
+    }
+
     // Check for session marker
     const isAuthenticated = request.cookies.has('ff_logged_in') || request.cookies.has('accessToken');
     const isAdminAuthenticated = request.cookies.has('adminAccessToken');

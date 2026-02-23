@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -61,6 +61,7 @@ function OpportunitiesListPage() {
     const [totalPages, setTotalPages] = useState(1);
     const pageSize = 20;
     const debouncedSearch = useDebounce(search, 300);
+    const isInternalUrlSyncRef = useRef(false);
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [bulkActionPending, setBulkActionPending] = useState(false);
     const [bulkActionLabel, setBulkActionLabel] = useState('');
@@ -111,6 +112,10 @@ function OpportunitiesListPage() {
     });
 
     useEffect(() => {
+        if (isInternalUrlSyncRef.current) {
+            isInternalUrlSyncRef.current = false;
+            return;
+        }
         const typeParam = searchParams.get('type');
         const statusParam = searchParams.get('status');
         const qParam = searchParams.get('q');
@@ -169,7 +174,7 @@ function OpportunitiesListPage() {
         else params.delete('type');
         if (statusFilter) params.set('status', statusFilter);
         else params.delete('status');
-        if (search.trim()) params.set('q', search.trim());
+        if (debouncedSearch.trim()) params.set('q', debouncedSearch.trim());
         else params.delete('q');
         if (sort) params.set('sort', sort);
         else params.delete('sort');
@@ -177,9 +182,10 @@ function OpportunitiesListPage() {
         const next = params.toString();
         const current = searchParamsKey;
         if (next !== current) {
+            isInternalUrlSyncRef.current = true;
             router.replace(`${pathname}?${next}`);
         }
-    }, [typeFilter, statusFilter, search, sort, searchParams, searchParamsKey, pathname, router]);
+    }, [typeFilter, statusFilter, debouncedSearch, sort, searchParams, searchParamsKey, pathname, router]);
 
 
     const handleExpire = (id: string, title: string) => {
