@@ -226,8 +226,8 @@ export default function AlertsCenterPage() {
 
     return (
         <div className="min-h-screen bg-background pb-16">
-            <main className="max-w-4xl mx-auto px-4 py-5 md:py-8 space-y-5">
-                <div className="flex items-center justify-between gap-3">
+            <main className="max-w-4xl mx-auto px-4 py-3 md:py-8 space-y-4">
+                <div className="hidden md:flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <Link href="/dashboard" className="h-9 w-9 rounded-lg border border-border bg-card flex items-center justify-center hover:border-primary/30">
                             <ArrowLeftIcon className="w-4 h-4 text-muted-foreground" />
@@ -242,8 +242,14 @@ export default function AlertsCenterPage() {
                     </Link>
                 </div>
 
-                <div className="rounded-xl border border-border bg-card p-3 space-y-3">
-                    <div className="flex flex-wrap gap-2">
+                <div className="md:hidden flex items-center justify-end">
+                    <Link href="/account/alerts" className="text-xs font-semibold text-primary hover:underline">
+                        Preferences
+                    </Link>
+                </div>
+
+                <div className="sticky top-16 z-20 rounded-xl border border-border bg-card/95 backdrop-blur p-3 space-y-3">
+                    <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         <FilterChip label={`All (${summary.total})`} active={kind === 'all'} onClick={() => setKind('all')} />
                         <FilterChip label={`New (${summary.newJob})`} active={kind === 'NEW_JOB'} onClick={() => setKind('NEW_JOB')} />
                         <FilterChip label={`Events (${summary.eventReminder})`} active={kind === 'EVENT_REMINDER'} onClick={() => setKind('EVENT_REMINDER')} />
@@ -253,16 +259,16 @@ export default function AlertsCenterPage() {
                         <FilterChip label={`App (${summary.appUpdate})`} active={kind === 'APP_UPDATE'} onClick={() => setKind('APP_UPDATE')} />
                     </div>
 
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                         <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary dark:bg-primary/20 dark:text-primary-foreground">
                             {feed?.unreadCount || 0} unread
                         </span>
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="sm" onClick={() => void loadFeed(kind)} className="h-8 text-xs">
+                        <div className="flex items-center gap-1.5">
+                            <Button variant="outline" size="sm" onClick={() => void loadFeed(kind)} className="h-8 text-xs px-3">
                                 Refresh
                             </Button>
                             {feed && feed.unreadCount > 0 && (
-                                <Button variant="ghost" size="sm" onClick={markAllRead} className="h-8 text-xs">
+                                <Button variant="ghost" size="sm" onClick={markAllRead} className="h-8 text-xs px-3">
                                     Mark all read
                                 </Button>
                             )}
@@ -315,8 +321,8 @@ export default function AlertsCenterPage() {
                                     className={cn(
                                         "group block rounded-xl border transition-all p-4 relative overflow-hidden",
                                         item.readAt
-                                            ? "border-border bg-card text-muted-foreground"
-                                            : "border-primary/20 bg-card shadow-sm hover:border-primary/30"
+                                            ? "border-border bg-card/70 text-muted-foreground"
+                                            : "border-primary/30 bg-primary/[0.04] shadow-sm hover:border-primary/40"
                                     )}
                                 >
                                     {!item.readAt && (
@@ -324,7 +330,7 @@ export default function AlertsCenterPage() {
                                             <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                                         </div>
                                     )}
-                                    <div className="flex items-center justify-between gap-3 mb-2.5">
+                                    <div className="flex items-center justify-between gap-2 mb-2.5">
                                         <span className={cn(
                                             "text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-md border",
                                             kindColor,
@@ -332,7 +338,7 @@ export default function AlertsCenterPage() {
                                         )}>
                                             {kindLabel}
                                         </span>
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5">
                                             {item.collapsedCount && item.collapsedCount > 1 && (
                                                 <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5">
                                                     {item.collapsedCount} updates
@@ -352,7 +358,7 @@ export default function AlertsCenterPage() {
                                     </div>
                                     <div className="space-y-1">
                                         <p className={cn(
-                                            "text-sm font-semibold leading-tight group-hover:text-primary transition-colors",
+                                            "text-base md:text-sm font-semibold leading-tight group-hover:text-primary transition-colors",
                                             item.readAt ? "text-muted-foreground/80" : "text-foreground"
                                         )}>
                                             {title}
@@ -366,11 +372,11 @@ export default function AlertsCenterPage() {
                                             <p className="text-[11px] font-semibold text-muted-foreground/80">{metaText}</p>
                                         )}
                                     </div>
-                                    <div className="mt-3 flex items-center gap-2 flex-wrap">
+                                    <div className="mt-3 grid grid-cols-3 gap-2">
                                         <Link
                                             href={href}
                                             onClick={() => !item.readAt && markAsRead(item.id)}
-                                            className="h-9 px-3 rounded-md border border-border bg-background text-[11px] font-semibold hover:border-primary/30 inline-flex items-center"
+                                            className="h-10 px-3 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
                                         >
                                             Open
                                         </Link>
@@ -381,7 +387,7 @@ export default function AlertsCenterPage() {
                                                     window.open(target, '_blank', 'noopener,noreferrer');
                                                     if (!item.readAt) void markAsRead(item.id);
                                                 }}
-                                                className="h-9 px-3 rounded-md border border-border bg-background text-[11px] font-semibold hover:border-primary/30 inline-flex items-center"
+                                                className="h-10 px-3 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
                                             >
                                                 Apply
                                             </button>
@@ -389,7 +395,7 @@ export default function AlertsCenterPage() {
                                         {item.opportunity && (
                                             <button
                                                 onClick={() => void toggleSaveFromAlert(item.id, item.opportunity!.id)}
-                                                className="h-9 px-3 rounded-md border border-border bg-background text-[11px] font-semibold hover:border-primary/30 inline-flex items-center"
+                                                className="h-10 px-3 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
                                             >
                                                 {item.opportunity.isSaved ? 'Unsave' : 'Save'}
                                             </button>
@@ -414,7 +420,7 @@ function FilterChip({ label, active, onClick }: {
         <button
             onClick={onClick}
             className={cn(
-                "h-8 px-3 rounded-full border text-xs font-semibold transition-colors",
+                "h-8 shrink-0 px-3 rounded-full border text-xs font-semibold transition-colors",
                 active
                     ? "bg-primary text-primary-foreground border-primary"
                     : "bg-background text-foreground border-border hover:border-primary/30"
