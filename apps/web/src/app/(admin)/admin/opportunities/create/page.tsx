@@ -1001,8 +1001,9 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                                 Close
                             </button>
                         </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div className="space-y-2">
+                        <div className="grid grid-cols-1 gap-3">
+                            {/* Temporarily disabled: raw text auto-fill. Keep JSON auto-fill only. */}
+                            <div className="hidden space-y-2">
                                 <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Paste raw text</label>
                                 <textarea
                                     value={pastedText}

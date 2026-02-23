@@ -81,6 +81,11 @@ export const adminApi = {
             body: JSON.stringify({ reason: reason || 'Deleted by admin' })
         }),
 
+    restoreOpportunity: (id: string) =>
+        apiClient(`/api/admin/opportunities/${id}/restore`, {
+            method: 'POST'
+        }),
+
     // Get all feedback
     getFeedback: () =>
         apiClient('/api/admin/feedback'),

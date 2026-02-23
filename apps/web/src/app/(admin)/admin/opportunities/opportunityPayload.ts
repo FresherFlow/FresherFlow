@@ -92,7 +92,16 @@ const formatSalaryRange = (amount: string, period: SalaryPeriod) => {
     return `${raw.toLocaleString('en-IN')}/month`;
 };
 
+const toEndOfDayIso = (value: string) => {
+    if (!value) return undefined;
+    const date = new Date(`${value}T23:59:59`);
+    if (Number.isNaN(date.getTime())) return undefined;
+    return date.toISOString();
+};
+
 export const buildOpportunityPayload = (values: OpportunityFormValues): Record<string, unknown> => {
+    const walkInEndDate = values.endDate || values.startDate;
+    const derivedWalkInExpiry = values.type === 'WALKIN' ? toEndOfDayIso(walkInEndDate) : undefined;
     const payload: Record<string, unknown> = {
         type: values.type,
         title: values.title,
@@ -116,7 +125,7 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         experienceMin: toFloat(values.experienceMin),
         experienceMax: toFloat(values.experienceMax),
         applyLink: values.type === 'WALKIN' ? undefined : values.applyLink,
-        expiresAt: values.expiresAt || undefined,
+        expiresAt: values.expiresAt || derivedWalkInExpiry || undefined,
     };
 
     if (values.type === 'WALKIN') {
@@ -128,6 +137,7 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
             venueAddress: values.venueAddress,
             venueLink: values.venueLink || undefined,
             reportingTime: autoTimeRange || undefined,
+            dates: values.startDate ? [values.startDate, walkInEndDate || values.startDate] : undefined,
             requiredDocuments: toCsvList(values.requiredDocuments),
             contactPerson: values.contactPerson || undefined,
             contactPhone: values.contactPhone || undefined,

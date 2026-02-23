@@ -49,12 +49,13 @@ function toCsvValue(value: unknown) {
     return `"${escaped}"`;
 }
 
-type AdminStatusFilter = OpportunityStatus | 'EXPIRED';
+type AdminStatusFilter = OpportunityStatus | 'EXPIRED' | 'DELETED';
 
 function parseAdminStatusFilter(raw?: string): AdminStatusFilter | undefined {
     if (!raw) return undefined;
     const normalized = raw.toUpperCase();
     if (normalized === 'EXPIRED') return 'EXPIRED';
+    if (normalized === 'DELETED') return 'DELETED';
     if (Object.values(OpportunityStatus).includes(normalized as OpportunityStatus)) {
         return normalized as OpportunityStatus;
     }
@@ -64,11 +65,50 @@ function parseAdminStatusFilter(raw?: string): AdminStatusFilter | undefined {
 function buildExpiredWhere(now: Date): Prisma.OpportunityWhereInput {
     return {
         status: OpportunityStatus.PUBLISHED,
+        deletedAt: null,
         OR: [
             { expiredAt: { not: null } },
             { expiresAt: { lte: now } },
         ],
     };
+}
+
+function toDateOrNull(value: unknown): Date | null {
+    if (!value || typeof value !== 'string') return null;
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) return null;
+    return parsed;
+}
+
+function normalizeWalkInDates(data: any): Date[] {
+    const walkInDetails = data?.walkInDetails || {};
+    const rawDates: string[] = [];
+
+    if (Array.isArray(walkInDetails.dates)) {
+        rawDates.push(...walkInDetails.dates);
+    } else if (typeof walkInDetails.date === 'string') {
+        rawDates.push(walkInDetails.date);
+    }
+
+    if (typeof data?.startDate === 'string') rawDates.push(data.startDate);
+    if (typeof data?.endDate === 'string') rawDates.push(data.endDate);
+
+    return rawDates
+        .map((value) => toDateOrNull(value))
+        .filter((value): value is Date => Boolean(value));
+}
+
+function deriveOpportunityExpiryDate(data: any, type: OpportunityType): Date | null {
+    const explicit = toDateOrNull(data?.expiresAt);
+    if (explicit) return explicit;
+    if (type !== OpportunityType.WALKIN) return null;
+
+    const walkInDates = normalizeWalkInDates(data);
+    if (walkInDates.length === 0) return null;
+
+    const endDate = new Date(Math.max(...walkInDates.map((d) => d.getTime())));
+    endDate.setHours(23, 59, 59, 999);
+    return endDate;
 }
 
 function parseEventType(raw?: string): OpportunityEventType {
@@ -84,16 +124,22 @@ function parseEventType(raw?: string): OpportunityEventType {
 router.get('/summary', async (_req: Request, res: Response, next: NextFunction) => {
     try {
         const now = new Date();
-        const [total, active, walkins, expired] = await prisma.$transaction([
-            prisma.opportunity.count(),
+        const liveWhere: Prisma.OpportunityWhereInput = {
+            status: OpportunityStatus.PUBLISHED,
+            deletedAt: null,
+            expiredAt: null,
+            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
+        };
+        const [total, active, walkins, liveWalkins, drafts, archived, deleted, expired] = await prisma.$transaction([
+            prisma.opportunity.count({ where: { deletedAt: null } }),
             prisma.opportunity.count({
-                where: {
-                    status: OpportunityStatus.PUBLISHED,
-                    expiredAt: null,
-                    OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
-                }
+                where: liveWhere
             }),
-            prisma.opportunity.count({ where: { type: OpportunityType.WALKIN } }),
+            prisma.opportunity.count({ where: { deletedAt: null, type: OpportunityType.WALKIN } }),
+            prisma.opportunity.count({ where: { ...liveWhere, type: OpportunityType.WALKIN } }),
+            prisma.opportunity.count({ where: { status: OpportunityStatus.DRAFT, deletedAt: null } }),
+            prisma.opportunity.count({ where: { status: OpportunityStatus.ARCHIVED, deletedAt: null } }),
+            prisma.opportunity.count({ where: { deletedAt: { not: null } } }),
             prisma.opportunity.count({ where: buildExpiredWhere(now) })
         ]);
 
@@ -102,6 +148,10 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
                 total,
                 active,
                 walkins,
+                liveWalkins,
+                drafts,
+                archived,
+                deleted,
                 expired
             }
         });
@@ -170,14 +220,14 @@ router.post(
 
             let walkInCreate = undefined;
             if (type === OpportunityType.WALKIN && data.walkInDetails) {
-                const dates = data.walkInDetails.dates || (data.walkInDetails.date ? [data.walkInDetails.date] : []);
+                const dates = normalizeWalkInDates(data);
                 const venueAddress = data.walkInDetails.venueAddress || data.walkInDetails.venue;
                 const reportingTime = data.walkInDetails.reportingTime || data.walkInDetails.startTime;
 
                 if (venueAddress) {
                     walkInCreate = {
                         create: {
-                            dates: dates.map((d: string) => new Date(d)),
+                            dates,
                             dateRange: data.walkInDetails.dateRange,
                             timeRange: data.walkInDetails.timeRange,
                             venueAddress,
@@ -224,7 +274,7 @@ router.post(
                     experienceMin: data.experienceMin,
                     experienceMax: data.experienceMax,
                     applyLink,
-                    expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+                    expiresAt: deriveOpportunityExpiryDate(data, type as OpportunityType),
                     postedByUserId: req.adminId!,
                     status: OpportunityStatus.DRAFT,
                     ...(walkInCreate && { walkInDetails: walkInCreate })
@@ -274,8 +324,13 @@ router.post(
 
             switch (action) {
                 case 'DELETE':
-                    result = await prisma.opportunity.deleteMany({
-                        where: { id: { in: ids } }
+                    result = await prisma.opportunity.updateMany({
+                        where: { id: { in: ids } },
+                        data: {
+                            status: OpportunityStatus.ARCHIVED,
+                            deletedAt: now,
+                            deletionReason: reason || 'Bulk deleted by admin'
+                        }
                     });
                     break;
                 case 'ARCHIVE':
@@ -346,14 +401,14 @@ router.post(
             let walkInCreate = undefined;
             if (type === OpportunityType.WALKIN && data.walkInDetails) {
                 // Handle aliases (date -> dates, venue -> venueAddress)
-                const dates = data.walkInDetails.dates || (data.walkInDetails.date ? [data.walkInDetails.date] : []);
+                const dates = normalizeWalkInDates(data);
                 const venueAddress = data.walkInDetails.venueAddress || data.walkInDetails.venue;
                 const reportingTime = data.walkInDetails.reportingTime || data.walkInDetails.startTime;
 
                 if (venueAddress) {
                     walkInCreate = {
                         create: {
-                            dates: dates.map((d: string) => new Date(d)),
+                            dates,
                             dateRange: data.walkInDetails.dateRange,
                             timeRange: data.walkInDetails.timeRange,
                             venueAddress,
@@ -406,7 +461,7 @@ router.post(
                     experienceMax: data.experienceMax,
 
                     applyLink: data.applyLink,
-                    expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+                    expiresAt: deriveOpportunityExpiryDate(data, type as OpportunityType),
                     postedByUserId: req.adminId!,
                     status: OpportunityStatus.PUBLISHED,
 
@@ -463,9 +518,18 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         if (normalizedType) where.type = normalizedType;
         const statusFilter = typeof status === 'string' ? parseAdminStatusFilter(status) : undefined;
         if (statusFilter === 'EXPIRED') {
+            where.deletedAt = null;
             andFilters.push(buildExpiredWhere(now));
+        } else if (statusFilter === 'DELETED') {
+            where.deletedAt = { not: null };
+        } else if (statusFilter === OpportunityStatus.ARCHIVED) {
+            where.status = OpportunityStatus.ARCHIVED;
+            where.deletedAt = null;
         } else if (statusFilter) {
             where.status = statusFilter;
+            where.deletedAt = null;
+        } else {
+            where.deletedAt = null;
         }
 
         const take = typeof limit === 'string' && !Number.isNaN(Number(limit)) ? Number(limit) : undefined;
@@ -554,9 +618,18 @@ router.get('/export', async (req: Request, res: Response, next: NextFunction) =>
         if (normalizedType) where.type = normalizedType;
         const statusFilter = typeof status === 'string' ? parseAdminStatusFilter(status) : undefined;
         if (statusFilter === 'EXPIRED') {
+            where.deletedAt = null;
             andFilters.push(buildExpiredWhere(now));
+        } else if (statusFilter === 'DELETED') {
+            where.deletedAt = { not: null };
+        } else if (statusFilter === OpportunityStatus.ARCHIVED) {
+            where.status = OpportunityStatus.ARCHIVED;
+            where.deletedAt = null;
         } else if (statusFilter) {
             where.status = statusFilter;
+            where.deletedAt = null;
+        } else {
+            where.deletedAt = null;
         }
         if (andFilters.length > 0) {
             where.AND = andFilters;
@@ -815,12 +888,13 @@ router.put(
             // Prepare nested walk-in details update if applicable
             const walkInUpdate: any = {};
             if (data.type === OpportunityType.WALKIN && data.walkInDetails) {
+                const dates = normalizeWalkInDates(data);
                 const venueAddress = data.walkInDetails.venueAddress || data.walkInDetails.venue;
                 const reportingTime = data.walkInDetails.reportingTime || data.walkInDetails.startTime;
 
                 walkInUpdate.upsert = {
                     create: {
-                        dates: data.walkInDetails.dates?.map((d: string) => new Date(d)) || [],
+                        dates,
                         dateRange: data.walkInDetails.dateRange,
                         timeRange: data.walkInDetails.timeRange,
                         venueAddress: venueAddress!,
@@ -831,7 +905,7 @@ router.put(
                         contactPhone: data.walkInDetails.contactPhone
                     },
                     update: {
-                        dates: data.walkInDetails.dates?.map((d: string) => new Date(d)) || [],
+                        dates,
                         dateRange: data.walkInDetails.dateRange,
                         timeRange: data.walkInDetails.timeRange,
                         venueAddress: venueAddress!,
@@ -873,7 +947,7 @@ router.put(
                 stipend: data.stipend,
                 employmentType: data.employmentType,
                 applyLink: data.applyLink,
-                expiresAt: data.expiresAt ? new Date(data.expiresAt) : null,
+                expiresAt: deriveOpportunityExpiryDate(data, data.type as OpportunityType),
                 lastVerified: new Date(),
                 ...(data.type === OpportunityType.WALKIN && { walkInDetails: walkInUpdate })
             };
@@ -982,6 +1056,46 @@ router.delete(
             res.json({
                 opportunity,
                 message: 'Opportunity removed successfully (soft delete)'
+            });
+        } catch (error) {
+            next(error);
+        }
+    }
+);
+
+// POST /api/admin/opportunities/:id/restore
+router.post(
+    '/:id/restore',
+    adminRateLimit,
+    withAdminAudit('UPDATE'),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const idParam = req.params.id as string;
+            if (!idParam) throw new AppError('Opportunity ID is required', 400);
+
+            const existing = await prisma.opportunity.findFirst({
+                where: {
+                    OR: [
+                        { id: idParam },
+                        { slug: idParam }
+                    ]
+                }
+            });
+
+            if (!existing) throw new AppError('Opportunity not found', 404);
+
+            const opportunity = await prisma.opportunity.update({
+                where: { id: existing.id },
+                data: {
+                    deletedAt: null,
+                    deletionReason: null,
+                    status: OpportunityStatus.ARCHIVED
+                }
+            });
+
+            res.json({
+                opportunity,
+                message: 'Opportunity restored from deleted list'
             });
         } catch (error) {
             next(error);

@@ -90,3 +90,16 @@ export async function bulkOpportunityAction(
         return { success: false, error: (error as Error).message };
     }
 }
+
+export async function restoreOpportunityAction(id: string) {
+    'use server';
+    try {
+        await serverApiClient(`/api/admin/opportunities/${id}/restore`, {
+            method: 'POST',
+        });
+        revalidatePath('/admin/opportunities');
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: (error as Error).message };
+    }
+}

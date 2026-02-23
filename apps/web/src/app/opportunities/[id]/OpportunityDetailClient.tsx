@@ -35,6 +35,7 @@ import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { OpportunityDeadlineBadge } from './components/OpportunityDeadlineBadge';
 import { EligibilitySnapshotCard } from './components/EligibilitySnapshotCard';
 import { getDriveDates, getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
+import { formatTimeText12Hour } from '@/lib/timeDisplay';
 
 export default function OpportunityDetailClient({ id, initialData }: { id: string; initialData?: Opportunity | null }) {
     const router = useRouter();
@@ -1076,7 +1077,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                     <div className="space-y-1">
                                         <p className="text-[9px] font-bold text-muted-foreground uppercase">Date & Time</p>
                                         <p className="text-sm font-semibold text-foreground">
-                                            {opp.walkInDetails?.dateRange} | {opp.walkInDetails?.timeRange || opp.walkInDetails?.reportingTime}
+                                            {opp.walkInDetails?.dateRange} | {formatTimeText12Hour(opp.walkInDetails?.timeRange || opp.walkInDetails?.reportingTime)}
                                         </p>
                                     </div>
                                     <div className="space-y-2">
@@ -1147,7 +1148,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                     <div>
                                         <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Date & Time</p>
                                         <p className="text-foreground font-semibold">
-                                            {opp.walkInDetails?.dateRange} {opp.walkInDetails?.timeRange ? `• ${opp.walkInDetails.timeRange}` : ''}
+                                            {opp.walkInDetails?.dateRange} {opp.walkInDetails?.timeRange ? `• ${formatTimeText12Hour(opp.walkInDetails.timeRange)}` : ''}
                                         </p>
                                     </div>
                                     <div>

@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { getDriveDates, getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
+import { formatTimeText12Hour } from '@/lib/timeDisplay';
 
 /**
  * JobCard - REFINED TYPOGRAPHY PATTERN
@@ -35,6 +36,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     const isDrive = isCampusDriveOpportunity(job);
     const driveDates = getDriveDates(job);
     const driveMeta = getDriveMetadata(job);
+    const walkInTimeLabel = formatTimeText12Hour(job.walkInDetails?.timeRange || job.walkInDetails?.reportingTime || '');
 
     const formatSalary = () => {
         if (job.salaryRange) return job.salaryRange;
@@ -298,7 +300,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                                 <div className="text-right space-y-1">
                                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Window</p>
                                     <p className="text-sm font-semibold text-foreground">
-                                        {details.timeRange || details.reportingTime}
+                                        {walkInTimeLabel || details.timeRange || details.reportingTime}
                                     </p>
                                 </div>
                             </div>

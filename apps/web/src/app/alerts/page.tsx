@@ -327,7 +327,13 @@ export default function AlertsCenterPage() {
                                             )}
                                             <span className="text-[9px] font-bold text-muted-foreground/60 inline-flex items-center gap-1.5 uppercase tracking-wider">
                                                 <ClockIcon className="w-3 h-3" />
-                                                {new Date(item.sentAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                {new Date(item.sentAt).toLocaleString('en-IN', {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                    hour12: true
+                                                })}
                                             </span>
                                         </div>
                                     </div>

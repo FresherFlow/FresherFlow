@@ -30,7 +30,8 @@ import {
     expireOpportunityAction,
     updateOpportunityAction,
     deleteOpportunityAction,
-    bulkOpportunityAction
+    bulkOpportunityAction,
+    restoreOpportunityAction
 } from '@/features/jobs/actions/opportunity';
 
 export default function AdminOpportunitiesPage() {
@@ -45,6 +46,7 @@ function OpportunitiesListPage() {
     const { isAuthenticated } = useAdmin();
     const router = useRouter();
     const searchParams = useSearchParams();
+    const searchParamsKey = searchParams.toString();
     const pathname = usePathname();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const [opportunities, setOpportunities] = useState<any[]>([]);
@@ -113,33 +115,17 @@ function OpportunitiesListPage() {
         const statusParam = searchParams.get('status');
         const qParam = searchParams.get('q');
         const sortParam = searchParams.get('sort');
+        const nextType = typeParam ? typeParamToEnum(typeParam) : '';
+        const nextStatus = statusParam ? statusParam.toUpperCase() : '';
+        const nextSearch = qParam ?? '';
+        const nextSort = sortParam || 'postedAt_desc';
 
-        if (typeParam) {
-            setTypeFilter(typeParamToEnum(typeParam));
-        } else {
-            setTypeFilter('');
-        }
-
-        if (statusParam) {
-            setStatusFilter(statusParam.toUpperCase());
-        } else {
-            setStatusFilter('');
-        }
-
-        if (qParam !== null) {
-            setSearch(qParam);
-        } else {
-            setSearch('');
-        }
-
-        if (sortParam) {
-            setSort(sortParam);
-        } else {
-            setSort('postedAt_desc');
-        }
-
-        setPage(1);
-    }, [searchParams]);
+        setTypeFilter((prev) => (prev === nextType ? prev : nextType));
+        setStatusFilter((prev) => (prev === nextStatus ? prev : nextStatus));
+        setSearch((prev) => (prev === nextSearch ? prev : nextSearch));
+        setSort((prev) => (prev === nextSort ? prev : nextSort));
+        setPage((prev) => (prev === 1 ? prev : 1));
+    }, [searchParamsKey, searchParams]);
 
     const loadOpportunities = useCallback(async () => {
         setIsLoading(true);
@@ -189,11 +175,11 @@ function OpportunitiesListPage() {
         else params.delete('sort');
 
         const next = params.toString();
-        const current = searchParams.toString();
+        const current = searchParamsKey;
         if (next !== current) {
             router.replace(`${pathname}?${next}`);
         }
-    }, [typeFilter, statusFilter, search, sort, searchParams, pathname, router]);
+    }, [typeFilter, statusFilter, search, sort, searchParams, searchParamsKey, pathname, router]);
 
 
     const handleExpire = (id: string, title: string) => {
@@ -401,15 +387,17 @@ function OpportunitiesListPage() {
         return new Date(opp.expiresAt).getTime() <= Date.now();
     };
 
-    const getStatusLabel = (opp: Opportunity & { expiredAt?: string | Date | null }) => {
-        if (isOpportunityExpired(opp)) return 'EXPIRED';
+    const getStatusLabel = (opp: Opportunity & { expiredAt?: string | Date | null; deletedAt?: string | Date | null }) => {
+        if (opp.deletedAt) return 'DELETED';
         if (opp.status === 'ARCHIVED') return 'ARCHIVED';
+        if (isOpportunityExpired(opp)) return 'EXPIRED';
         if (opp.status === 'PUBLISHED') return 'LIVE';
         return opp.status;
     };
 
-    const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Date | null }) => {
+    const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Date | null; deletedAt?: string | Date | null }) => {
         const label = getStatusLabel(opp);
+        if (label === 'DELETED') return 'bg-slate-100 text-slate-700 ring-slate-300';
         if (label === 'EXPIRED') return 'bg-orange-50 text-orange-700 ring-orange-600/10';
         if (label === 'ARCHIVED') return 'bg-rose-50 text-rose-700 ring-rose-600/10';
         if (label === 'LIVE') return 'bg-emerald-50 text-emerald-700 ring-emerald-600/20';
@@ -474,9 +462,9 @@ function OpportunitiesListPage() {
 
             {/* Bulk Actions Bar */}
             {selectedIds.length > 0 && (
-                <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg animate-in slide-in-from-top-4 duration-300">
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
+                <div className="flex flex-col gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg animate-in slide-in-from-top-4 duration-300 md:flex-row md:items-center md:justify-between">
+                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
+                        <div className="flex items-center gap-2 flex-wrap">
                             <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">
                                 {selectedIds.length}
                             </div>
@@ -488,8 +476,8 @@ function OpportunitiesListPage() {
                                 </span>
                             )}
                         </div>
-                        <div className="h-4 w-[1px] bg-primary/20" />
-                        <div className="flex items-center gap-1">
+                        <div className="hidden h-4 w-[1px] bg-primary/20 md:block" />
+                        <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-wrap sm:items-center">
                             <button
                                 onClick={() => handleBulkAction('PUBLISH')}
                                 disabled={bulkActionPending}
@@ -507,7 +495,7 @@ function OpportunitiesListPage() {
                             <button
                                 onClick={() => handleBulkAction('DELETE')}
                                 disabled={bulkActionPending}
-                                className="h-8 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100/50 rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+                                className="h-8 px-3 text-xs font-semibold text-rose-700 hover:bg-rose-100/50 rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed col-span-2 sm:col-span-1"
                             >
                                 {bulkActionPending ? 'Working...' : 'Delete all'}
                             </button>
@@ -516,7 +504,7 @@ function OpportunitiesListPage() {
                     <button
                         onClick={() => setSelectedIds([])}
                         disabled={bulkActionPending}
-                        className="text-xs font-medium text-muted-foreground hover:text-foreground px-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                        className="self-start text-xs font-medium text-muted-foreground hover:text-foreground px-2 disabled:opacity-60 disabled:cursor-not-allowed md:self-auto"
                     >
                         Clear selection
                     </button>
@@ -591,6 +579,7 @@ function OpportunitiesListPage() {
                             <option value="PUBLISHED">Published</option>
                             <option value="EXPIRED">Expired</option>
                             <option value="ARCHIVED">Archived</option>
+                            <option value="DELETED">Deleted</option>
                         </select>
 
                         <select
@@ -755,6 +744,25 @@ function OpportunitiesListPage() {
                                         <TrashIcon className="w-4 h-4 mr-1.5" />
                                         Remove
                                     </button>
+                                    {getStatusLabel(opp) === 'DELETED' && (
+                                        <button
+                                            onClick={async () => {
+                                                const loadingToast = toast.loading('Restoring listing...');
+                                                const res = await restoreOpportunityAction(opp.id);
+                                                if (!res.success) {
+                                                    toast.error(`Failed: ${res.error}`, { id: loadingToast });
+                                                    return;
+                                                }
+                                                toast.success('Listing restored', { id: loadingToast });
+                                                loadOpportunities();
+                                            }}
+                                            className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                                            title="Restore"
+                                        >
+                                            <ArrowPathIcon className="w-4 h-4 mr-1.5" />
+                                            Restore
+                                        </button>
+                                    )}
                                     </div>
                                 </div>
                             </div>
@@ -898,6 +906,24 @@ function OpportunitiesListPage() {
                                                 >
                                                     <TrashIcon className="w-4 h-4" />
                                                 </button>
+                                                {getStatusLabel(opp) === 'DELETED' && (
+                                                    <button
+                                                        onClick={async () => {
+                                                            const loadingToast = toast.loading('Restoring listing...');
+                                                            const res = await restoreOpportunityAction(opp.id);
+                                                            if (!res.success) {
+                                                                toast.error(`Failed: ${res.error}`, { id: loadingToast });
+                                                                return;
+                                                            }
+                                                            toast.success('Listing restored', { id: loadingToast });
+                                                            loadOpportunities();
+                                                        }}
+                                                        className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md transition-all"
+                                                        title="Restore"
+                                                    >
+                                                        <ArrowPathIcon className="w-4 h-4" />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -971,7 +997,7 @@ function OpportunitiesListPage() {
                             </button>
                             <button
                                 onClick={confirmModal.action}
-                                className={`flex-1 h-10 px-4 rounded-md text-sm font-medium text-white transition-opacity hover:opacity-90 ${confirmModal.type === 'danger' ? 'bg-rose-600 shadow-rose-200' : 'bg-primary shadow-primary/20 shadow-lg'}`}
+                                className={`flex-1 h-10 px-4 rounded-md text-sm font-medium transition-opacity hover:opacity-90 ${confirmModal.type === 'danger' ? 'bg-rose-600 text-white shadow-rose-200' : 'bg-primary text-primary-foreground shadow-primary/20 shadow-lg'}`}
                             >
                                 {confirmModal.confirmText}
                             </button>

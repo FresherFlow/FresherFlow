@@ -42,9 +42,11 @@ export default function AdminDashboardHome() {
     const [loading, setLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [stats, setStats] = useState({
-        jobs: 0,
-        walkins: 0,
-        total: 0,
+        live: 0,
+        liveWalkins: 0,
+        drafts: 0,
+        expired: 0,
+        deleted: 0,
         recent24h: 0
     });
     const [observability, setObservability] = useState({
@@ -84,9 +86,11 @@ export default function AdminDashboardHome() {
 
             setRecent(opportunities);
             setStats({
-                jobs: (summary.total || 0) - (summary.walkins || 0),
-                walkins: summary.walkins || 0,
-                total: summary.total || 0,
+                live: summary.active || 0,
+                liveWalkins: summary.liveWalkins || 0,
+                drafts: summary.drafts || 0,
+                expired: summary.expired || 0,
+                deleted: summary.deleted || 0,
                 recent24h: opportunities.filter((o) => {
                     const posted = new Date(o.postedAt as string | number | Date).getTime();
                     return posted > Date.now() - 24 * 60 * 60 * 1000;
@@ -128,10 +132,19 @@ export default function AdminDashboardHome() {
         void loadDashboard();
     }, [loadDashboard]);
 
+    useEffect(() => {
+        const interval = window.setInterval(() => {
+            void loadDashboard();
+        }, 60000);
+        return () => window.clearInterval(interval);
+    }, [loadDashboard]);
+
     const statsCards = [
-        { label: 'Live listings', value: stats.jobs, icon: BriefcaseIcon, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-        { label: 'Walk-ins', value: stats.walkins, icon: MapPinIcon, color: 'text-purple-500', bg: 'bg-purple-500/10' },
-        { label: 'Total listings', value: stats.total, icon: ChartBarIcon, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+        { label: 'Live listings', value: stats.live, icon: BriefcaseIcon, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+        { label: 'Live walk-ins', value: stats.liveWalkins, icon: MapPinIcon, color: 'text-purple-500', bg: 'bg-purple-500/10' },
+        { label: 'Drafts', value: stats.drafts, icon: ChartBarIcon, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+        { label: 'Expired', value: stats.expired, icon: ClockIcon, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+        { label: 'Deleted', value: stats.deleted, icon: ClockIcon, color: 'text-rose-500', bg: 'bg-rose-500/10' },
         { label: 'New (24h)', value: stats.recent24h, icon: ClockIcon, color: 'text-amber-500', bg: 'bg-amber-500/10' },
     ];
 
@@ -162,7 +175,7 @@ export default function AdminDashboardHome() {
             )}
 
             {/* Stats Grid */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {statsCards.map((stat) => (
                     <div key={stat.label} className="bg-card p-4 md:p-5 rounded-lg border border-border shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center justify-between mb-1">
@@ -382,5 +395,3 @@ export default function AdminDashboardHome() {
         </div>
     );
 }
-
-

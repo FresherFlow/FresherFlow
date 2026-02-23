@@ -79,6 +79,13 @@ export default function ServiceWorkerRegister() {
         register();
 
         const onControllerChange = () => {
+            try {
+                const key = 'ff_sw_reloaded_once';
+                if (sessionStorage.getItem(key) === '1') return;
+                sessionStorage.setItem(key, '1');
+            } catch {
+                // ignore sessionStorage issues
+            }
             window.location.reload();
         };
         navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);

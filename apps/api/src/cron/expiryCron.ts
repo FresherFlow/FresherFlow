@@ -94,17 +94,22 @@ export async function runExpiryCycle() {
         const walkInIdsToExpire: string[] = [];
 
         for (const walkIn of activeWalkIns) {
-            if (!walkIn.walkInDetails || walkIn.walkInDetails.dates.length === 0) {
-                logger.warn('Walk-in missing dates - skipping', {
+            const dates = walkIn.walkInDetails?.dates?.map(d => new Date(d)) || [];
+            const validDates = dates.filter((d) => !Number.isNaN(d.getTime()));
+
+            // Fallback: if walk-in dates are missing, use expiresAt when available.
+            const maxDate = validDates.length > 0
+                ? new Date(Math.max(...validDates.map(d => d.getTime())))
+                : (walkIn.expiresAt ? new Date(walkIn.expiresAt) : null);
+
+            if (!maxDate || Number.isNaN(maxDate.getTime())) {
+                logger.warn('Walk-in missing dates/expiresAt - skipping', {
                     opportunityId: walkIn.id,
                     title: walkIn.title
                 });
                 continue;
             }
 
-            // Find the maximum (last) walk-in date
-            const dates = walkIn.walkInDetails.dates.map(d => new Date(d));
-            const maxDate = new Date(Math.max(...dates.map(d => d.getTime())));
             const todayKey = formatDateKeyInTimezone(nowUTC, timezone);
             const lastDateKey = formatDateKeyInTimezone(maxDate, timezone);
 
