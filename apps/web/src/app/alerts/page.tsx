@@ -51,6 +51,8 @@ type DisplayAlertItem = AlertFeedItem & {
     collapsedCount?: number;
 };
 
+const ALERTS_UPDATED_EVENT = 'ff-alerts-updated';
+
 function getAlertMetaText(item: AlertFeedItem): string | null {
     if (!item.metadata) return null;
 
@@ -103,6 +105,12 @@ export default function AlertsCenterPage() {
     const [feed, setFeed] = useState<AlertFeedResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    const emitAlertsUpdated = () => {
+        if (typeof window !== 'undefined') {
+            window.dispatchEvent(new Event(ALERTS_UPDATED_EVENT));
+        }
+    };
+
     const loadFeed = async (nextKind: AlertKindFilter = kind) => {
         setError(null);
         try {
@@ -121,6 +129,7 @@ export default function AlertsCenterPage() {
                 unreadCount: 0,
                 deliveries: prev.deliveries.map(d => ({ ...d, readAt: new Date().toISOString() }))
             } : null);
+            emitAlertsUpdated();
         } catch {
             // silent fail
         }
@@ -131,9 +140,13 @@ export default function AlertsCenterPage() {
             await alertsApi.markRead(id);
             setFeed(prev => prev ? {
                 ...prev,
-                unreadCount: Math.max(0, prev.unreadCount - 1),
-                deliveries: prev.deliveries.map(d => d.id === id ? { ...d, readAt: new Date().toISOString() } : d)
+                unreadCount: Math.max(
+                    0,
+                    prev.unreadCount - (prev.deliveries.some(d => d.id === id && !d.readAt) ? 1 : 0)
+                ),
+                deliveries: prev.deliveries.map(d => d.id === id && !d.readAt ? { ...d, readAt: new Date().toISOString() } : d)
             } : null);
+            emitAlertsUpdated();
         } catch {
             // silent fail
         }
@@ -241,9 +254,9 @@ export default function AlertsCenterPage() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                        <p className="text-xs text-muted-foreground">
+                        <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-semibold text-primary dark:bg-primary/20 dark:text-primary-foreground">
                             {feed?.unreadCount || 0} unread
-                        </p>
+                        </span>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="sm" onClick={() => void loadFeed(kind)} className="h-8 text-xs">
                                 Refresh
@@ -357,7 +370,7 @@ export default function AlertsCenterPage() {
                                         <Link
                                             href={href}
                                             onClick={() => !item.readAt && markAsRead(item.id)}
-                                            className="h-8 px-3 rounded-md border border-border bg-background text-[11px] font-semibold hover:border-primary/30 inline-flex items-center"
+                                            className="h-9 px-3 rounded-md border border-border bg-background text-[11px] font-semibold hover:border-primary/30 inline-flex items-center"
                                         >
                                             Open
                                         </Link>
@@ -368,7 +381,7 @@ export default function AlertsCenterPage() {
                                                     window.open(target, '_blank', 'noopener,noreferrer');
                                                     if (!item.readAt) void markAsRead(item.id);
                                                 }}
-                                                className="h-8 px-3 rounded-md border border-border bg-background text-[11px] font-semibold hover:border-primary/30 inline-flex items-center"
+                                                className="h-9 px-3 rounded-md border border-border bg-background text-[11px] font-semibold hover:border-primary/30 inline-flex items-center"
                                             >
                                                 Apply
                                             </button>
@@ -376,7 +389,7 @@ export default function AlertsCenterPage() {
                                         {item.opportunity && (
                                             <button
                                                 onClick={() => void toggleSaveFromAlert(item.id, item.opportunity!.id)}
-                                                className="h-8 px-3 rounded-md border border-border bg-background text-[11px] font-semibold hover:border-primary/30 inline-flex items-center"
+                                                className="h-9 px-3 rounded-md border border-border bg-background text-[11px] font-semibold hover:border-primary/30 inline-flex items-center"
                                             >
                                                 {item.opportunity.isSaved ? 'Unsave' : 'Save'}
                                             </button>

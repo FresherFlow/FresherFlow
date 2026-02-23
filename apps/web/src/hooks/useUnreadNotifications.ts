@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 const CACHE_KEY = 'ff_unread_count_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const SEEN_TOAST_ALERTS_KEY = 'ff_seen_toast_alerts';
+const ALERTS_UPDATED_EVENT = 'ff-alerts-updated';
 
 function readCache(): { count: number; at: number } | null {
     if (typeof window === 'undefined') return null;
@@ -123,14 +124,19 @@ export function useUnreadNotifications() {
             if (document.visibilityState !== 'visible') return;
             onFocus();
         };
+        const onAlertsUpdated = () => {
+            void fetchCount();
+        };
 
         window.addEventListener('focus', onFocus);
         document.addEventListener('visibilitychange', onVisibility);
+        window.addEventListener(ALERTS_UPDATED_EVENT, onAlertsUpdated);
 
         return () => {
             clearInterval(interval);
             window.removeEventListener('focus', onFocus);
             document.removeEventListener('visibilitychange', onVisibility);
+            window.removeEventListener(ALERTS_UPDATED_EVENT, onAlertsUpdated);
         };
     }, [user, fetchCount, showNewAlertToasts]);
 
