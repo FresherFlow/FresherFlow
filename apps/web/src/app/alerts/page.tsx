@@ -226,7 +226,7 @@ export default function AlertsCenterPage() {
 
     return (
         <div className="min-h-screen bg-background pb-16">
-            <main className="max-w-4xl mx-auto px-4 py-3 md:py-8 space-y-4">
+            <main className="max-w-4xl mx-auto px-4 py-2 md:py-8 space-y-3">
                 <div className="hidden md:flex items-center justify-between gap-3">
                     <div className="flex items-center gap-3">
                         <Link href="/dashboard" className="h-9 w-9 rounded-lg border border-border bg-card flex items-center justify-center hover:border-primary/30">
@@ -237,12 +237,6 @@ export default function AlertsCenterPage() {
                             <p className="text-xs text-muted-foreground">Relevant updates based on your profile</p>
                         </div>
                     </div>
-                    <Link href="/account/alerts" className="text-xs font-semibold text-primary hover:underline">
-                        Preferences
-                    </Link>
-                </div>
-
-                <div className="md:hidden flex items-center justify-end">
                     <Link href="/account/alerts" className="text-xs font-semibold text-primary hover:underline">
                         Preferences
                     </Link>
@@ -264,6 +258,9 @@ export default function AlertsCenterPage() {
                             {feed?.unreadCount || 0} unread
                         </span>
                         <div className="flex items-center gap-1.5">
+                            <Link href="/account/alerts" className="inline-flex h-8 items-center px-2.5 text-[11px] font-semibold text-primary hover:underline">
+                                Preferences
+                            </Link>
                             <Button variant="outline" size="sm" onClick={() => void loadFeed(kind)} className="h-8 text-xs px-3">
                                 Refresh
                             </Button>
@@ -344,7 +341,7 @@ export default function AlertsCenterPage() {
                                                     {item.collapsedCount} updates
                                                 </span>
                                             )}
-                                            <span className="text-[9px] font-bold text-muted-foreground/60 inline-flex items-center gap-1.5 uppercase tracking-wider">
+                                            <span className="text-[10px] font-bold text-muted-foreground/80 inline-flex items-center gap-1.5 uppercase tracking-wider">
                                                 <ClockIcon className="w-3 h-3" />
                                                 {new Date(item.sentAt).toLocaleString('en-IN', {
                                                     month: 'short',
@@ -359,17 +356,17 @@ export default function AlertsCenterPage() {
                                     <div className="space-y-1">
                                         <p className={cn(
                                             "text-base md:text-sm font-semibold leading-tight group-hover:text-primary transition-colors",
-                                            item.readAt ? "text-muted-foreground/80" : "text-foreground"
+                                            item.readAt ? "text-foreground/80" : "text-foreground"
                                         )}>
                                             {title}
                                         </p>
                                         <div className="flex items-center gap-2">
-                                            <p className="text-xs font-semibold text-muted-foreground/60">{company}</p>
+                                            <p className="text-xs font-semibold text-muted-foreground">{company}</p>
                                             <div className="w-1 h-1 rounded-full bg-border" />
                                             <p className="text-[10px] font-bold text-primary/80 uppercase tracking-widest">{item.channel}</p>
                                         </div>
                                         {metaText && (
-                                            <p className="text-[11px] font-semibold text-muted-foreground/80">{metaText}</p>
+                                            <p className="text-[12px] font-semibold text-muted-foreground">{metaText}</p>
                                         )}
                                     </div>
                                     <div className="mt-3 grid grid-cols-3 gap-2">

@@ -44,8 +44,8 @@
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
-    --border: 214 20% 88%; /* Soft steel */
-    --input: 210 30% 96%;
+    --border: 214 20% 84%; /* Soft steel */
+    --input: 210 30% 94%;
     --muted: 210 24% 94%;
     --muted-foreground: 215 16% 40%;
 
@@ -169,6 +169,10 @@
   button:disabled,
   [role="button"][aria-disabled="true"] {
     cursor: not-allowed;
+  }
+
+  ::placeholder {
+    color: hsl(var(--muted-foreground) / 0.75);
   }
 }
 
