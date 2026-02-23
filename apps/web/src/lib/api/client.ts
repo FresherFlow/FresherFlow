@@ -104,7 +104,11 @@ export async function apiClient<T = unknown>(
                     try {
                         const refreshResponse = await fetch(`${API_URL}/api/auth/refresh`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-Requested-From': 'fresherflow-web',
+                                'X-Request-Id': `web-refresh-${Math.random().toString(36).slice(2, 10)}`,
+                            },
                             credentials: 'include'
                         });
 

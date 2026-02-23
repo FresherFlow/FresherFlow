@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { AlertKind, OpportunityStatus } from '@prisma/client';
+import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, OpportunityStatus } from '@prisma/client';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import logger from '../utils/logger';
 import { EmailService } from './email.service';
@@ -20,8 +20,45 @@ interface NewJobNotificationResult {
 }
 
 const MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY = Number(process.env.MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY || 8);
+const NEW_JOB_DISPATCH_DATE_FORMAT = 'en-CA';
 
 let cachedNewJobKind: AlertKind | null = null;
+
+function getDispatchDateBucket(date = new Date()): string {
+    return date.toLocaleDateString(NEW_JOB_DISPATCH_DATE_FORMAT, { timeZone: 'Asia/Kolkata' });
+}
+
+async function logDispatch(params: {
+    correlationId: string;
+    userId?: string | null;
+    opportunityId?: string | null;
+    kind: AlertKind;
+    channel?: AlertChannel | null;
+    status: AlertDispatchStatus;
+    reason?: AlertDispatchReason | null;
+    dedupeKey?: string | null;
+    errorMessage?: string | null;
+    metadata?: Record<string, unknown> | null;
+    attemptedAt?: Date;
+    deliveredAt?: Date;
+}) {
+    await prisma.alertDispatchLog.create({
+        data: {
+            correlationId: params.correlationId,
+            userId: params.userId ?? null,
+            opportunityId: params.opportunityId ?? null,
+            kind: params.kind,
+            channel: params.channel ?? null,
+            status: params.status,
+            reason: params.reason ?? null,
+            dedupeKey: params.dedupeKey ?? null,
+            errorMessage: params.errorMessage ?? null,
+            metadata: (params.metadata ?? undefined) as any,
+            attemptedAt: params.attemptedAt,
+            deliveredAt: params.deliveredAt,
+        },
+    });
+}
 
 async function resolveNewJobKind(): Promise<AlertKind> {
     if (cachedNewJobKind) return cachedNewJobKind;
@@ -44,10 +81,22 @@ async function resolveNewJobKind(): Promise<AlertKind> {
 }
 
 export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNotificationResult> {
+    const correlationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const alertKind = await resolveNewJobKind();
     if (alertKind !== AlertKind.NEW_JOB) {
         logger.warn('AlertKind.NEW_JOB not present in DB enum, falling back to HIGHLIGHT', { alertKind });
+        await logDispatch({
+            correlationId,
+            opportunityId,
+            kind: alertKind,
+            status: AlertDispatchStatus.SKIPPED,
+            reason: AlertDispatchReason.ENUM_FALLBACK,
+            errorMessage: 'AlertKind.NEW_JOB not present in DB enum; used fallback kind.',
+            metadata: { fallbackKind: alertKind },
+        });
     }
 
     // Get the opportunity with details
@@ -101,6 +150,18 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
     );
 
     for (const user of users) {
+        const userAttemptedAt = new Date();
+        await logDispatch({
+            correlationId,
+            userId: user.id,
+            opportunityId: opportunity.id,
+            kind: alertKind,
+            status: AlertDispatchStatus.INITIATED,
+            reason: null,
+            metadata: { stage: 'user_dispatch_started' },
+            attemptedAt: userAttemptedAt,
+        });
+
         const preference = user.alertPreference ?? {
             enabled: true,
             emailEnabled: false,
@@ -108,11 +169,31 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         };
         if (!preference.enabled) {
             skippedDisabled += 1;
+            await logDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: opportunity.id,
+                kind: alertKind,
+                status: AlertDispatchStatus.SKIPPED,
+                reason: AlertDispatchReason.PREFERENCE_DISABLED,
+                metadata: { enabled: preference.enabled },
+                attemptedAt: userAttemptedAt,
+            });
             continue;
         }
         const alreadySentToday = sentTodayByUser.get(user.id) || 0;
         if (alreadySentToday >= MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY) {
             skippedDailyCap += 1;
+            await logDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: opportunity.id,
+                kind: alertKind,
+                status: AlertDispatchStatus.SKIPPED,
+                reason: AlertDispatchReason.DAILY_CAP,
+                metadata: { alreadySentToday, dailyCap: MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY },
+                attemptedAt: userAttemptedAt,
+            });
             continue;
         }
 
@@ -122,10 +203,36 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         if (user.profile) {
             // Keep personalized alerts strict for users with profile data.
             const eligible = filterOpportunitiesForUser([opportunity as any], user.profile as any);
-            if (eligible.length === 0) continue;
+            if (eligible.length === 0) {
+                skippedNotEligible += 1;
+                await logDispatch({
+                    correlationId,
+                    userId: user.id,
+                    opportunityId: opportunity.id,
+                    kind: alertKind,
+                    status: AlertDispatchStatus.SKIPPED,
+                    reason: AlertDispatchReason.NOT_ELIGIBLE,
+                    metadata: { stage: 'eligibility_filter', source: 'profile' },
+                    attemptedAt: userAttemptedAt,
+                });
+                continue;
+            }
 
             const ranked = rankOpportunitiesForUser(eligible as any, user.profile as any);
-            if (ranked.length === 0) continue;
+            if (ranked.length === 0) {
+                skippedNotEligible += 1;
+                await logDispatch({
+                    correlationId,
+                    userId: user.id,
+                    opportunityId: opportunity.id,
+                    kind: alertKind,
+                    status: AlertDispatchStatus.SKIPPED,
+                    reason: AlertDispatchReason.NOT_ELIGIBLE,
+                    metadata: { stage: 'ranking', source: 'profile' },
+                    attemptedAt: userAttemptedAt,
+                });
+                continue;
+            }
 
             relevanceScore = ranked[0].score;
             if (relevanceScore < preference.minRelevanceScore) {
@@ -133,6 +240,16 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 // app alert per day to avoid an empty notification inbox.
                 if (alreadySentToday > 0) {
                     skippedNotEligible += 1;
+                    await logDispatch({
+                        correlationId,
+                        userId: user.id,
+                        opportunityId: opportunity.id,
+                        kind: alertKind,
+                        status: AlertDispatchStatus.SKIPPED,
+                        reason: AlertDispatchReason.NOT_ELIGIBLE,
+                        metadata: { stage: 'min_relevance', relevanceScore, minRelevanceScore: preference.minRelevanceScore },
+                        attemptedAt: userAttemptedAt,
+                    });
                     continue;
                 }
                 relevanceReason = 'Eligible match (low confidence)';
@@ -146,7 +263,8 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         }
 
         // Create dedupe key
-        const dedupeKeyBase = `${user.id}:NEW_JOB:${opportunityId}`;
+        const dedupeDateBucket = getDispatchDateBucket(userAttemptedAt);
+        const dedupeKeyBase = `${user.id}:NEW_JOB:${opportunityId}:${dedupeDateBucket}`;
         const existing = await prisma.alertDelivery.findFirst({
             where: {
                 OR: [
@@ -157,7 +275,20 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             },
             select: { id: true },
         });
-        if (existing) continue;
+        if (existing) {
+            await logDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: opportunity.id,
+                kind: alertKind,
+                status: AlertDispatchStatus.SKIPPED,
+                reason: AlertDispatchReason.DEDUPE_HIT,
+                dedupeKey: dedupeKeyBase,
+                metadata: { stage: 'pre_delivery_dedupe' },
+                attemptedAt: userAttemptedAt,
+            });
+            continue;
+        }
 
         const deliveriesToCreate: Array<{
             userId: string;
@@ -195,8 +326,34 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                     dedupeKey: `${dedupeKeyBase}:EMAIL`,
                     metadata: JSON.stringify({ relevanceScore, relevanceReason }),
                 });
+                await logDispatch({
+                    correlationId,
+                    userId: user.id,
+                    opportunityId: opportunity.id,
+                    kind: alertKind,
+                    channel: AlertChannel.EMAIL,
+                    status: AlertDispatchStatus.SENT,
+                    reason: AlertDispatchReason.SENT_OK,
+                    dedupeKey: `${dedupeKeyBase}:EMAIL`,
+                    metadata: { relevanceScore, relevanceReason },
+                    attemptedAt: userAttemptedAt,
+                    deliveredAt: new Date(),
+                });
             } catch (err) {
                 logger.error('Failed to send new job email', { userId: user.id, opportunityId, error: err });
+                await logDispatch({
+                    correlationId,
+                    userId: user.id,
+                    opportunityId: opportunity.id,
+                    kind: alertKind,
+                    channel: AlertChannel.EMAIL,
+                    status: AlertDispatchStatus.FAILED,
+                    reason: AlertDispatchReason.CHANNEL_ERROR,
+                    dedupeKey: `${dedupeKeyBase}:EMAIL`,
+                    errorMessage: err instanceof Error ? err.message : String(err),
+                    metadata: { relevanceScore, relevanceReason },
+                    attemptedAt: userAttemptedAt,
+                });
             }
         }
 
@@ -204,6 +361,19 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         await prisma.alertDelivery.createMany({
             data: deliveriesToCreate,
             skipDuplicates: true,
+        });
+        await logDispatch({
+            correlationId,
+            userId: user.id,
+            opportunityId: opportunity.id,
+            kind: alertKind,
+            channel: AlertChannel.APP,
+            status: AlertDispatchStatus.SENT,
+            reason: AlertDispatchReason.SENT_OK,
+            dedupeKey: `${dedupeKeyBase}:APP`,
+            metadata: { relevanceScore, relevanceReason },
+            attemptedAt: userAttemptedAt,
+            deliveredAt: new Date(),
         });
 
         const pushResult = await sendNewJobPush(user.id, {
@@ -224,6 +394,33 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                     metadata: JSON.stringify({ relevanceScore, relevanceReason }),
                 },
             }).catch(() => { });
+            await logDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: opportunity.id,
+                kind: alertKind,
+                channel: AlertChannel.PUSH,
+                status: AlertDispatchStatus.SENT,
+                reason: AlertDispatchReason.SENT_OK,
+                dedupeKey: `${dedupeKeyBase}:PUSH`,
+                metadata: { relevanceScore, relevanceReason },
+                attemptedAt: userAttemptedAt,
+                deliveredAt: new Date(),
+            });
+        } else {
+            await logDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: opportunity.id,
+                kind: alertKind,
+                channel: AlertChannel.PUSH,
+                status: pushResult.status === 'skipped' ? AlertDispatchStatus.SKIPPED : AlertDispatchStatus.FAILED,
+                reason: pushResult.status === 'skipped' ? AlertDispatchReason.VALIDATION_ERROR : AlertDispatchReason.CHANNEL_ERROR,
+                dedupeKey: `${dedupeKeyBase}:PUSH`,
+                errorMessage: pushResult.reason || null,
+                metadata: { relevanceScore, relevanceReason, pushStatus: pushResult.status },
+                attemptedAt: userAttemptedAt,
+            });
         }
 
         appAlertsSent++;

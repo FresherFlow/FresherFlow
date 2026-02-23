@@ -203,7 +203,26 @@ export function useOpportunitiesFeed({
             };
         });
 
-        return enriched.sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0));
+        const bucketWeight = (opp: Opportunity & { isSaved?: boolean; actions?: Array<unknown> }) => {
+            const isApplied = Array.isArray(opp.actions) && opp.actions.length > 0;
+            if (isApplied) return 2;
+            if (opp.isSaved) return 1;
+            return 0;
+        };
+
+        return enriched.sort((a, b) => {
+            const bucketDiff = bucketWeight(a) - bucketWeight(b);
+            if (bucketDiff !== 0) return bucketDiff;
+
+            const scoreDiff = (b.matchScore || 0) - (a.matchScore || 0);
+            if (scoreDiff !== 0) return scoreDiff;
+
+            const postedA = new Date(a.postedAt || 0).getTime();
+            const postedB = new Date(b.postedAt || 0).getTime();
+            if (postedA !== postedB) return postedB - postedA;
+
+            return a.id.localeCompare(b.id);
+        });
     }, [opportunities, debouncedSearch, selectedLoc, closingSoon, minSalary, maxSalary, profile]);
 
     const toggleSave = async (opportunityId: string) => {

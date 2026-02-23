@@ -106,6 +106,28 @@ export const adminApi = {
     getSystemMetrics: () =>
         apiClient('/api/admin/system/metrics'),
 
+    // Alert dispatch observability
+    getAlertDispatchLogs: (filters?: {
+        status?: 'INITIATED' | 'SENT' | 'FAILED' | 'SKIPPED';
+        kind?: 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
+        channel?: 'EMAIL' | 'APP' | 'PUSH';
+        reason?: 'DEDUPE_HIT' | 'DAILY_CAP' | 'PREFERENCE_DISABLED' | 'NOT_ELIGIBLE' | 'CHANNEL_ERROR' | 'ENUM_FALLBACK' | 'VALIDATION_ERROR' | 'SENT_OK';
+        correlationId?: string;
+        sinceHours?: number;
+        limit?: number;
+    }) => {
+        const query = new URLSearchParams();
+        if (filters?.status) query.append('status', filters.status);
+        if (filters?.kind) query.append('kind', filters.kind);
+        if (filters?.channel) query.append('channel', filters.channel);
+        if (filters?.reason) query.append('reason', filters.reason);
+        if (filters?.correlationId) query.append('correlationId', filters.correlationId);
+        if (typeof filters?.sinceHours === 'number') query.append('sinceHours', String(filters.sinceHours));
+        if (typeof filters?.limit === 'number') query.append('limit', String(filters.limit));
+        const queryString = query.toString();
+        return apiClient(`/api/admin/system/alerts/dispatch-logs${queryString ? `?${queryString}` : ''}`);
+    },
+
     // Growth funnel metrics
     getGrowthFunnelMetrics: (window: '24h' | '7d' | '30d' | 'all' = '30d') =>
         apiClient(`/api/admin/system/growth-funnel?window=${window}`),

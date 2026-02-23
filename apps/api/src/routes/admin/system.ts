@@ -4,7 +4,7 @@ import { requireAdmin } from '../../middleware/auth';
 import { getVerificationStats, runLinkVerification } from '../../services/verificationBot';
 import { getObservabilityMetrics } from '../../middleware/observability';
 import { getGrowthFunnelMetrics, GrowthWindow } from '../../services/growthFunnel.service';
-import { IngestionSourceType, OpportunityType, TelegramBroadcastStatus } from '@prisma/client';
+import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, IngestionSourceType, OpportunityType, TelegramBroadcastStatus } from '@prisma/client';
 import TelegramService from '../../services/telegram.service';
 import { runIngestionForSource } from '../../services/ingestion.service';
 import { runAlertsCycle } from '../../services/alerts.service';
@@ -193,6 +193,99 @@ router.get('/config-health', requireAdmin, async (_req: Request, res: Response, 
         };
 
         res.json({ ready, env, db });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * Alert dispatch observability logs (minimal v1 surface).
+ * GET /api/admin/system/alerts/dispatch-logs
+ */
+router.get('/alerts/dispatch-logs', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const statusRaw = String(req.query.status || '').toUpperCase();
+        const kindRaw = String(req.query.kind || '').toUpperCase();
+        const channelRaw = String(req.query.channel || '').toUpperCase();
+        const reasonRaw = String(req.query.reason || '').toUpperCase();
+        const correlationIdRaw = String(req.query.correlationId || '').trim();
+        const limitRaw = Number(req.query.limit || 100);
+        const sinceHoursRaw = Number(req.query.sinceHours || 24);
+        const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 500) : 100;
+        const sinceHours = Number.isFinite(sinceHoursRaw) ? Math.min(Math.max(sinceHoursRaw, 1), 24 * 30) : 24;
+        const since = new Date(Date.now() - sinceHours * 60 * 60 * 1000);
+
+        const where: {
+            createdAt: { gte: Date };
+            status?: AlertDispatchStatus;
+            kind?: AlertKind;
+            channel?: AlertChannel;
+            reason?: AlertDispatchReason;
+            correlationId?: string;
+        } = {
+            createdAt: { gte: since },
+        };
+
+        if (Object.values(AlertDispatchStatus).includes(statusRaw as AlertDispatchStatus)) {
+            where.status = statusRaw as AlertDispatchStatus;
+        }
+        if (Object.values(AlertKind).includes(kindRaw as AlertKind)) {
+            where.kind = kindRaw as AlertKind;
+        }
+        if (Object.values(AlertChannel).includes(channelRaw as AlertChannel)) {
+            where.channel = channelRaw as AlertChannel;
+        }
+        if (Object.values(AlertDispatchReason).includes(reasonRaw as AlertDispatchReason)) {
+            where.reason = reasonRaw as AlertDispatchReason;
+        }
+        if (correlationIdRaw) {
+            where.correlationId = correlationIdRaw;
+        }
+
+        const [logs, statusTotals, reasonTotals, kindChannelStatusTotals] = await Promise.all([
+            prisma.alertDispatchLog.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                include: {
+                    user: { select: { id: true, email: true } },
+                    opportunity: { select: { id: true, slug: true, title: true } },
+                },
+            }),
+            prisma.alertDispatchLog.groupBy({
+                by: ['status'],
+                where,
+                _count: { _all: true },
+            }),
+            prisma.alertDispatchLog.groupBy({
+                by: ['reason'],
+                where,
+                _count: { _all: true },
+            }),
+            prisma.alertDispatchLog.groupBy({
+                by: ['kind', 'channel', 'status'],
+                where,
+                _count: { _all: true },
+            }),
+        ]);
+
+        res.json({
+            filters: {
+                status: where.status || null,
+                kind: where.kind || null,
+                channel: where.channel || null,
+                reason: where.reason || null,
+                correlationId: where.correlationId || null,
+                since,
+                limit,
+            },
+            totals: {
+                byStatus: statusTotals,
+                byReason: reasonTotals,
+                byKindChannelStatus: kindChannelStatusTotals,
+            },
+            logs,
+        });
     } catch (error) {
         next(error);
     }

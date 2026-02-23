@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { actionsApi } from '@/lib/api/client';
 import { ActionType } from '@fresherflow/types';
@@ -10,16 +11,13 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 import toast from 'react-hot-toast';
 import {
     BriefcaseIcon,
-    ChevronRightIcon,
-    EllipsisHorizontalIcon,
     TrashIcon,
-    CheckCircleIcon,
-    ArrowPathRoundedSquareIcon,
-    MapPinIcon
+    ArrowPathRoundedSquareIcon
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { enqueueOfflineActionRemove, enqueueOfflineActionTrack } from '@/lib/offline/actionQueue';
+import JobCard from '@/features/jobs/components/JobCard';
 
 type ActionRecord = {
     id: string;
@@ -52,9 +50,10 @@ const normalizeStatus = (value: ActionType): ActionType => {
 
 export default function AccountTrackerPage() {
     const { user, isLoading: authLoading } = useAuth();
+    const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [actions, setActions] = useState<ActionRecord[]>([]);
-    const [activeMenu, setActiveMenu] = useState<string | null>(null);
+    const [activeStatus, setActiveStatus] = useState<ActionType>(ActionType.APPLIED);
 
     const loadData = async () => {
         try {
@@ -87,7 +86,6 @@ export default function AccountTrackerPage() {
         if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
             enqueueOfflineActionTrack(opportunityId, newStatus, user.id);
             toast.success('Status update queued for sync.');
-            setActiveMenu(null);
             return;
         }
 
@@ -96,12 +94,10 @@ export default function AccountTrackerPage() {
             await actionsApi.track(opportunityId, newStatus);
             await loadData();
             toast.success('Status updated', { id: loadingToast });
-            setActiveMenu(null);
         } catch (err: unknown) {
             if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
                 enqueueOfflineActionTrack(opportunityId, newStatus, user.id);
                 toast.success('Status update queued for sync.', { id: loadingToast });
-                setActiveMenu(null);
                 return;
             }
             setActions(previousActions);
@@ -118,7 +114,6 @@ export default function AccountTrackerPage() {
         if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
             enqueueOfflineActionRemove(opportunityId, user.id);
             toast.success('Removal queued for sync.');
-            setActiveMenu(null);
             return;
         }
 
@@ -127,12 +122,10 @@ export default function AccountTrackerPage() {
             await actionsApi.remove(opportunityId);
             await loadData();
             toast.success('Removed from tracker', { id: loadingToast });
-            setActiveMenu(null);
         } catch (err: unknown) {
             if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
                 enqueueOfflineActionRemove(opportunityId, user.id);
                 toast.success('Removal queued for sync.', { id: loadingToast });
-                setActiveMenu(null);
                 return;
             }
             setActions(previousActions);
@@ -157,6 +150,8 @@ export default function AccountTrackerPage() {
 
         return map;
     }, [actions]);
+
+    const activeItems = grouped[activeStatus] || [];
 
     if (authLoading || loading) return <LoadingScreen message="Loading tracker..." />;
 
@@ -184,142 +179,99 @@ export default function AccountTrackerPage() {
 
     return (
         <div className="min-h-screen bg-background pb-20">
-            <main className="max-w-5xl mx-auto px-4 md:px-6 py-8 space-y-8">
+            <main className="max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-8 space-y-4 md:space-y-8">
                 {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-border/60 pb-6">
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 md:gap-4 border-b border-border/60 pb-4 md:pb-6">
                     <div className="space-y-1">
-                        <h1 className="text-3xl font-black tracking-tight text-foreground">Application Tracker</h1>
-                        <p className="text-sm text-muted-foreground font-medium">Keep track of your job search progress across different stages.</p>
+                        <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">Application Tracker</h1>
+                        <p className="text-base md:text-sm text-muted-foreground font-medium">Track your progress by stage.</p>
                     </div>
-                    <Link href="/opportunities" className="text-xs font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1.5">
+                    <Link href="/opportunities" className="self-start text-[11px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1.5">
                         <BriefcaseIcon className="w-4 h-4" />
                         Browse More Opportunities
                     </Link>
                 </div>
 
-                {/* Stats Summary Panel */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {STATUS_ORDER.map((status) => (
-                        <div key={status} className={cn(
-                            "rounded-2xl border border-border bg-card p-5 transition-all hover:shadow-sm",
-                            STATUS_CONFIG[status].bgColor
-                        )}>
-                            <p className={cn("text-[10px] uppercase tracking-widest font-black", STATUS_CONFIG[status].color)}>
-                                {STATUS_CONFIG[status].label}
-                            </p>
-                            <p className="text-3xl font-black tracking-tighter text-foreground mt-1">
-                                {grouped[status].length}
-                            </p>
-                        </div>
-                    ))}
-                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-4 md:gap-5">
+                    <aside className="flex lg:block gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:space-y-2 lg:overflow-visible lg:pb-0">
+                        {STATUS_ORDER.map((status) => {
+                            const isActive = activeStatus === status;
+                            return (
+                                <button
+                                    key={status}
+                                    onClick={() => setActiveStatus(status)}
+                                    className={cn(
+                                        "shrink-0 rounded-xl border px-3 py-2.5 text-left transition-all min-w-[132px] lg:w-full lg:min-w-0",
+                                        isActive
+                                            ? "border-primary/40 bg-primary/10"
+                                            : "border-border bg-card hover:border-primary/20"
+                                    )}
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <span className={cn("text-[10px] font-bold uppercase tracking-widest", STATUS_CONFIG[status].color)}>
+                                            {STATUS_CONFIG[status].label}
+                                        </span>
+                                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-border px-1.5 text-[11px] font-bold text-foreground">
+                                            {grouped[status].length}
+                                        </span>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </aside>
 
-                {/* Tracking Lanes / Sections */}
-                <div className="space-y-10">
-                    {STATUS_ORDER.map((status) => (
-                        <section key={status} className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <div className={cn("w-1.5 h-6 rounded-full", STATUS_CONFIG[status].color.replace('text-', 'bg-'))} />
-                                <h2 className="text-lg font-bold tracking-tight text-foreground">
-                                    {STATUS_CONFIG[status].label}
-                                    <span className="ml-2 text-muted-foreground font-normal text-sm">({grouped[status].length})</span>
-                                </h2>
+                    <section className="space-y-3 md:space-y-4">
+                        <h2 className="text-lg font-bold tracking-tight text-foreground">
+                            {STATUS_CONFIG[activeStatus].label}
+                            <span className="ml-2 text-muted-foreground font-normal text-sm">({activeItems.length})</span>
+                        </h2>
+
+                        {activeItems.length === 0 ? (
+                            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
+                                <p className="text-sm text-muted-foreground font-medium italic">No applications in this stage yet.</p>
                             </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {activeItems.map((item) => {
+                                    const opp = item.opportunity;
+                                    if (!opp) return null;
 
-                            {grouped[status].length === 0 ? (
-                                <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
-                                    <p className="text-sm text-muted-foreground font-medium italic">No applications in this stage yet.</p>
-                                </div>
-                            ) : (
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {grouped[status].map((item) => {
-                                        const opp = item.opportunity;
-                                        if (!opp) return null;
-                                        const isMenuOpen = activeMenu === item.id;
-
-                                        return (
-                                            <div
-                                                key={item.id}
-                                                className="group relative rounded-2xl border border-border bg-card p-5 hover:border-primary/30 transition-all hover:shadow-md flex flex-col justify-between overflow-hidden"
-                                            >
-                                                <div className="flex justify-between items-start gap-4">
-                                                    <Link href={getOpportunityPathFromItem(opp)} className="min-w-0 flex-1 space-y-1">
-                                                        <p className="text-[10px] uppercase tracking-widest font-black text-muted-foreground group-hover:text-primary transition-colors">
-                                                            {opp.company}
-                                                        </p>
-                                                        <h3 className="text-base font-bold text-foreground leading-snug line-clamp-1">
-                                                            {opp.title}
-                                                        </h3>
-                                                    </Link>
-
-                                                    {/* Action Menu */}
-                                                    <div className="relative">
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.preventDefault();
-                                                                setActiveMenu(isMenuOpen ? null : item.id);
-                                                            }}
-                                                            className="p-2 hover:bg-muted rounded-lg transition-colors text-muted-foreground"
-                                                        >
-                                                            <EllipsisHorizontalIcon className="w-5 h-5" />
-                                                        </button>
-
-                                                        {isMenuOpen && (
-                                                            <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl z-50 p-1.5 space-y-1 animate-in fade-in duration-200">
-                                                                <p className="px-2.5 py-1.5 text-[9px] font-black uppercase tracking-widest text-muted-foreground">Move to</p>
-                                                                {STATUS_ORDER.filter(s => s !== status).map(s => (
-                                                                    <button
-                                                                        key={s}
-                                                                        onClick={() => handleUpdateStatus(opp.id, s)}
-                                                                        className="w-full flex items-center gap-2.5 px-2.5 py-2 hover:bg-muted rounded-lg text-[10px] font-bold text-foreground uppercase tracking-tight transition-all text-left"
-                                                                    >
-                                                                        <CheckCircleIcon className="w-4 h-4 text-muted-foreground" />
-                                                                        {STATUS_CONFIG[s].label}
-                                                                    </button>
-                                                                ))}
-                                                                <div className="h-px bg-border my-1" />
-                                                                <button
-                                                                    onClick={() => handleRemove(opp.id)}
-                                                                    className="w-full flex items-center gap-2.5 px-2.5 py-2 hover:bg-destructive/5 text-destructive rounded-lg text-[10px] font-bold uppercase tracking-tight transition-all text-left"
-                                                                >
-                                                                    <TrashIcon className="w-4 h-4" />
-                                                                    Stop Tracking
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                </div>
-
-                                                <div className="mt-4 pt-4 border-t border-border/40 flex items-center justify-between">
-                                                    <div className="flex items-center gap-2 text-[11px] font-semibold text-muted-foreground">
-                                                        <MapPinIcon className="w-3.5 h-3.5" />
-                                                        {opp.locations[0] || 'Remote'}
-                                                    </div>
-                                                    <Link
-                                                        href={getOpportunityPathFromItem(opp)}
-                                                        className="text-[10px] font-bold uppercase tracking-widest text-primary flex items-center gap-1 group/btn"
+                                    return (
+                                        <div key={item.id} className="space-y-2">
+                                            <JobCard
+                                                job={{ ...opp, normalizedRole: opp.title }}
+                                                jobId={opp.id}
+                                                isSaved={Boolean((opp as Opportunity & { isSaved?: boolean }).isSaved)}
+                                                isApplied={true}
+                                                onClick={() => router.push(getOpportunityPathFromItem(opp))}
+                                                variant="compact"
+                                            />
+                                            <div className="rounded-xl border border-border bg-card p-2 flex flex-wrap items-center gap-2">
+                                                {STATUS_ORDER.filter((s) => s !== activeStatus).map((s) => (
+                                                    <button
+                                                        key={s}
+                                                        onClick={() => handleUpdateStatus(opp.id, s)}
+                                                        className="rounded-lg border border-border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide hover:border-primary/30 hover:text-primary"
                                                     >
-                                                        View Listing
-                                                        <ChevronRightIcon className="w-3 h-3 group-hover/btn:translate-x-0.5 transition-transform" />
-                                                    </Link>
-                                                </div>
+                                                        {STATUS_CONFIG[s].label}
+                                                    </button>
+                                                ))}
+                                                <button
+                                                    onClick={() => handleRemove(opp.id)}
+                                                    className="ml-auto rounded-lg border border-destructive/30 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-destructive hover:bg-destructive/10"
+                                                >
+                                                    <TrashIcon className="inline w-3.5 h-3.5 mr-1" />
+                                                    Stop
+                                                </button>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            )}
-                        </section>
-                    ))}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
+                    </section>
                 </div>
             </main>
-
-            {/* Click away surface for menu */}
-            {activeMenu && (
-                <div
-                    className="fixed inset-0 z-40 bg-transparent"
-                    onClick={() => setActiveMenu(null)}
-                />
-            )}
         </div>
     );
 }

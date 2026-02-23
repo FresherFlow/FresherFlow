@@ -10,6 +10,7 @@ import {
     ChatBubbleBottomCenterTextIcon,
     PlusCircleIcon,
     ChartBarIcon,
+    BellAlertIcon,
     ArrowRightOnRectangleIcon,
     Bars3Icon,
     XMarkIcon,
@@ -95,6 +96,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: '/admin/opportunities/create', label: 'Post New', icon: PlusCircleIcon },
         { href: '/admin/analytics', label: 'Analytics', icon: ChartBarIcon },
         { href: '/admin/feedback', label: 'Feedback', icon: ChatBubbleBottomCenterTextIcon },
+        { href: '/admin/alerts', label: 'Alerts', icon: BellAlertIcon },
         { href: '/admin/telegram', label: 'Telegram', icon: PaperAirplaneIcon },
         { href: '/admin/settings', label: 'Settings', icon: Cog8ToothIcon },
     ];
@@ -180,7 +182,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
                 {/* Mobile Hamburger Menu Dropdown */}
                 {mobileMenuOpen && (
-                    <div className="md:hidden fixed inset-0 top-16 z-100 bg-background/95 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="md:hidden fixed inset-0 top-16 z-[100] bg-background/95 backdrop-blur-sm animate-in fade-in duration-200">
                         <div className="bg-card border-b border-border shadow-2xl overflow-y-auto max-h-[calc(100vh-4rem)]">
                             <nav className="p-4 space-y-1">
                                 {navItems.map((item) => {

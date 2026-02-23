@@ -250,8 +250,11 @@ router.post('/login/options', adminAuthLimiter, async (req: Request, res: Respon
             return next(new AppError('Invalid admin email', 401));
         }
 
-        const user = await prisma.user.findUnique({
-            where: { email },
+        const user = await prisma.user.findFirst({
+            where: {
+                email: { equals: email, mode: 'insensitive' },
+                role: 'ADMIN',
+            },
             include: { authenticators: true }
         });
 
@@ -260,13 +263,17 @@ router.post('/login/options', adminAuthLimiter, async (req: Request, res: Respon
             return res.json({ registrationRequired: true });
         }
 
+        const allowCredentials = user.authenticators
+            .filter((auth) => typeof auth.credentialID === 'string' && auth.credentialID.length > 0)
+            .map((auth) => ({
+                id: auth.credentialID,
+                type: 'public-key' as const,
+                transports: auth.transports ? (auth.transports.split(',') as AuthenticatorTransportFuture[]) : undefined,
+            }));
+
         const options: GenerateAuthenticationOptionsOpts = {
             rpID: RP_ID,
-            allowCredentials: user.authenticators.map(auth => ({
-                id: auth.credentialID,
-                type: 'public-key',
-                transports: auth.transports ? (auth.transports.split(',') as AuthenticatorTransportFuture[]) : undefined,
-            })),
+            allowCredentials,
             userVerification: 'preferred',
         };
 
@@ -331,6 +338,9 @@ router.post('/login/verify', adminAuthLimiter, async (req: Request, res: Respons
             res.status(400).json({ verified: false });
         }
     } catch (error) {
+        console.error('[Admin Auth] login/options failed', {
+            message: error instanceof Error ? error.message : String(error),
+        });
         next(error);
     }
 });

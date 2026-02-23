@@ -65,9 +65,11 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
         if (typeof window === 'undefined') return;
 
         const installed = detectInstalled();
-        setIsInstalled(installed);
-        setBannerDismissed(readBoolean(BANNER_DISMISSED_KEY));
-        setVisitCount(readNumber(VISIT_COUNT_KEY, 0));
+        window.setTimeout(() => {
+            setIsInstalled(installed);
+            setBannerDismissed(readBoolean(BANNER_DISMISSED_KEY));
+            setVisitCount(readNumber(VISIT_COUNT_KEY, 0));
+        }, 0);
 
         if (installed && !readBoolean(STANDALONE_TRACKED_KEY)) {
             void growthApi.trackEvent('OPENED_STANDALONE', 'pwa_install');
@@ -79,7 +81,9 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
         if (!user || typeof window === 'undefined') return;
         const nextCount = readNumber(VISIT_COUNT_KEY, 0) + 1;
         setNumber(VISIT_COUNT_KEY, nextCount);
-        setVisitCount(nextCount);
+        window.setTimeout(() => {
+            setVisitCount(nextCount);
+        }, 0);
     }, [user]);
 
     useEffect(() => {

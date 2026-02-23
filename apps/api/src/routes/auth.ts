@@ -227,12 +227,16 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction) =
         const refreshToken = req.cookies.refreshToken;
 
         if (refreshToken) {
-            const tokenHash = hashRefreshToken(refreshToken);
-            // Revoke in database immediately
-            await prisma.refreshToken.updateMany({
-                where: { tokenHash },
-                data: { revokedAt: new Date() }
-            });
+            try {
+                const tokenHash = hashRefreshToken(refreshToken);
+                // Revoke in database immediately
+                await prisma.refreshToken.updateMany({
+                    where: { tokenHash },
+                    data: { revokedAt: new Date() }
+                });
+            } catch {
+                // Ignore malformed refresh token during logout and still clear cookies.
+            }
         }
 
         // CRITICAL: Use res.clearCookie with EXACT options used when setting

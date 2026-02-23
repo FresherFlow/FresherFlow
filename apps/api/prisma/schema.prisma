@@ -118,6 +118,24 @@ enum AlertKind {
   EVENT_REMINDER
 }
 
+enum AlertDispatchStatus {
+  INITIATED
+  SENT
+  FAILED
+  SKIPPED
+}
+
+enum AlertDispatchReason {
+  DEDUPE_HIT
+  DAILY_CAP
+  PREFERENCE_DISABLED
+  NOT_ELIGIBLE
+  CHANNEL_ERROR
+  ENUM_FALLBACK
+  VALIDATION_ERROR
+  SENT_OK
+}
+
 enum OpportunityEventType {
   NOTIFICATION
   REG_START
@@ -152,6 +170,7 @@ model User {
   savedOpportunities SavedOpportunity[]
   alertPreference AlertPreference?
   alertDeliveries AlertDelivery[]
+  alertDispatchLogs AlertDispatchLog[]
   pushSubscription PushSubscription?
   opportunityClicks OpportunityClick[]
   ingestionSources IngestionSource[]
@@ -337,6 +356,7 @@ model Opportunity {
   feedback ListingFeedback[]
   savedBy  SavedOpportunity[]
   alertDeliveries AlertDelivery[]
+  alertDispatchLogs AlertDispatchLog[]
   telegramBroadcasts TelegramBroadcast[]
   clicks OpportunityClick[]
   rawIngestions RawOpportunity[]
@@ -504,6 +524,33 @@ model AlertDelivery {
   @@index([userId, kind])
   @@index([sentAt])
   @@index([readAt])
+}
+
+model AlertDispatchLog {
+  id            String              @id @default(uuid())
+  correlationId String
+  userId        String?
+  opportunityId String?
+  kind          AlertKind
+  channel       AlertChannel?
+  status        AlertDispatchStatus
+  reason        AlertDispatchReason?
+  dedupeKey     String?
+  errorMessage  String?
+  metadata      Json?
+  attemptedAt   DateTime?
+  deliveredAt   DateTime?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: SetNull)
+
+  @@index([correlationId])
+  @@index([createdAt])
+  @@index([status, createdAt])
+  @@index([kind, channel, createdAt])
+  @@index([reason, createdAt])
 }
 
 model PushSubscription {

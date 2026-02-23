@@ -13,8 +13,7 @@ import CompanyLogo from '@/components/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
-import { getDriveDates, getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
-import { formatTimeText12Hour } from '@/lib/timeDisplay';
+import { getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 
 /**
  * JobCard - REFINED TYPOGRAPHY PATTERN
@@ -30,13 +29,12 @@ interface JobCardProps {
     onToggleSave?: () => void;
     isAdmin?: boolean;
     priority?: boolean;
+    variant?: 'default' | 'compact';
 }
 
-export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin, priority = false }: JobCardProps) {
+export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin, priority = false, variant = 'default' }: JobCardProps) {
     const isDrive = isCampusDriveOpportunity(job);
-    const driveDates = getDriveDates(job);
     const driveMeta = getDriveMetadata(job);
-    const walkInTimeLabel = formatTimeText12Hour(job.walkInDetails?.timeRange || job.walkInDetails?.reportingTime || '');
 
     const formatSalary = () => {
         if (job.salaryRange) return job.salaryRange;
@@ -145,40 +143,31 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
         return Math.ceil(diff / (24 * 60 * 60 * 1000));
     };
 
-    const getJobTypeBadge = () => {
-        if (isDrive) {
-            return (
-                <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 border border-primary/25 text-primary text-[9px] font-bold uppercase tracking-wider rounded-full">
-                    Hiring Drive
-                </span>
-            );
-        }
-
-        const type = (job.employmentType || job.type) as string;
-
-        if (type === 'WALKIN' || job.type === 'WALKIN') {
-            return (
-                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-muted/60 border border-border text-foreground text-[9px] font-bold uppercase tracking-wider rounded-full">
-                    <div className="w-1.5 h-1.5 rounded-full bg-foreground/60" />
-                    Drive
-                </span>
-            );
-        }
-
-        if (type === 'INTERNSHIP' || job.type === 'INTERNSHIP') {
-            return (
-                <span className="inline-flex items-center px-2 py-0.5 bg-muted/60 border border-border text-foreground text-[9px] font-bold uppercase tracking-wider rounded-full">
-                    Internship
-                </span>
-            );
-        }
-
-        return (
-            <span className="inline-flex items-center px-2 py-0.5 bg-muted/60 border border-border text-foreground text-[9px] font-bold uppercase tracking-wider rounded-full">
-                Full-time
-            </span>
-        );
+    const getLocationLabel = () => {
+        if (isDrive) return 'PAN India';
+        const locations = Array.isArray(job.locations) ? job.locations.filter(Boolean) : [];
+        if (locations.length === 0) return 'Remote';
+        return locations.join(', ');
     };
+
+    const metaChips = (() => {
+        const chips: string[] = [];
+        chips.push(isDrive ? 'Hiring Drive' : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Drive' : 'Full-time');
+        if (isDrive) chips.push('Campus 2024-2026');
+        if (isDrive) chips.push('0-2 Yrs');
+        const maxChips = variant === 'compact' ? 2 : 3;
+        const charBudget = variant === 'compact' ? 22 : 34;
+        const output: string[] = [];
+        let used = 0;
+        for (const chip of chips) {
+            if (output.length >= maxChips) break;
+            const next = used + chip.length;
+            if (output.length > 0 && next > charBudget) break;
+            output.push(chip);
+            used = next;
+        }
+        return output;
+    })();
 
     return (
         <div
@@ -192,7 +181,10 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             role="button"
             tabIndex={0}
             className={cn(
-                "group relative bg-card border border-border rounded-xl p-5 transition-all hover:border-primary/30 hover:shadow-md flex flex-col gap-4 focus:outline-none focus:ring-2 focus:ring-primary/40",
+                "group relative bg-card border border-border rounded-xl p-5 transition-all hover:border-primary/30 hover:shadow-md flex flex-col gap-4 focus:outline-none focus:ring-2 focus:ring-primary/40 overflow-hidden",
+                variant === 'compact'
+                    ? "h-[336px] md:h-[348px]"
+                    : "h-[352px] md:h-[368px]",
                 onClick && "cursor-pointer"
             )}
         >
@@ -208,9 +200,11 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         >
                             {job.company}
                         </Link>
-                        <h3 className="text-[16px] font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2 mt-1">
-                            {job.normalizedRole || job.title}
-                        </h3>
+                        <div className="min-h-[2.6rem] mt-1">
+                            <h3 className="text-[16px] font-bold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                                {job.normalizedRole || job.title}
+                            </h3>
+                        </div>
                         {typeof job.matchScore === 'number' && (
                             <div className="mt-1.5 flex items-center gap-1.5 min-w-0">
                                 <span className="inline-flex items-center rounded-full border border-primary/20 bg-primary/5 px-2 py-0.5 text-[10px] font-bold text-primary">
@@ -250,23 +244,23 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
 
             {/* Badges */}
             <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5">
-                    {getJobTypeBadge()}
-                    {isDrive && (
-                        <>
-                            <span className="inline-flex items-center px-2 py-0.5 bg-muted/60 border border-border text-foreground text-[9px] font-bold uppercase tracking-wider rounded-full">
-                                Campus 2024-2026
-                            </span>
-                            <span className="inline-flex items-center px-2 py-0.5 bg-muted/60 border border-border text-foreground text-[9px] font-bold uppercase tracking-wider rounded-full">
-                                0-2 Yrs
-                            </span>
-                        </>
-                    )}
+                <div className="flex items-center gap-1.5 min-w-0 flex-nowrap overflow-hidden">
+                    {metaChips.map((chip, idx) => (
+                        <span
+                            key={`${chip}-${idx}`}
+                            className={cn(
+                                "inline-flex shrink-0 items-center px-2 py-0.5 border text-[9px] font-bold uppercase tracking-wider rounded-full",
+                                idx === 0 ? "bg-primary/10 border-primary/25 text-primary" : "bg-muted/60 border-border text-foreground"
+                            )}
+                        >
+                            {chip}
+                        </span>
+                    ))}
                 </div>
                 {job.expiresAt && (
                     <span
                         className={cn(
-                            "inline-flex shrink-0 items-center gap-1 px-2 py-0.5 border text-[10px] font-bold uppercase tracking-wider rounded-full",
+                            "inline-flex max-w-[54%] items-center gap-1 px-2 py-0.5 border text-[10px] font-bold uppercase tracking-wider rounded-full whitespace-nowrap",
                             isExpired()
                                 ? "bg-destructive/5 border-destructive/20 text-destructive"
                                 : isClosingSoon()
@@ -278,60 +272,30 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         {isExpired()
                             ? 'Expired'
                             : isClosingSoon()
-                                ? `Expires in ${Math.max(0, daysToExpiry() || 0)}d • ${formatExpiryDate()}`
+                                ? `Expires in ${Math.max(0, daysToExpiry() || 0)}d`
                                 : `Apply by ${formatExpiryDate()}`}
                     </span>
                 )}
             </div>
 
-            {/* Walk-in Details */}
-            {job.type === 'WALKIN' && job.walkInDetails && (
-                <div className="bg-muted/30 border border-border rounded-lg p-3 space-y-2">
-                    {(() => {
-                        const details = job.walkInDetails;
-                        return (
-                            <div className="flex items-start justify-between gap-3">
-                                <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Drive Schedule</p>
-                                    <p className="text-sm font-semibold text-foreground">
-                                        {details.dateRange || 'Multiple Dates'}
-                                    </p>
-                                </div>
-                                <div className="text-right space-y-1">
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Window</p>
-                                    <p className="text-sm font-semibold text-foreground">
-                                        {walkInTimeLabel || details.timeRange || details.reportingTime}
-                                    </p>
-                                </div>
-                            </div>
-                        );
-                    })()}
-                </div>
-            )}
-
             {/* Stats Grid */}
             <div className="grid grid-cols-2 gap-x-4 gap-y-3 pt-3 border-t border-border/40">
                 <div className="flex flex-col gap-1">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Location</p>
-                    <div className="flex items-center gap-2 text-foreground/90 text-[14px] font-semibold">
+                    <div className="flex items-center gap-2 text-foreground/90 text-[14px] font-semibold min-w-0">
                         <MapPinIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-                        <span className="truncate">{isDrive ? 'PAN India' : (job.locations[0] || 'Remote')}</span>
+                        <span className="truncate whitespace-nowrap">{getLocationLabel()}</span>
                     </div>
                 </div>
 
                 <div className="flex flex-col gap-1">
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Salary</p>
-                    <div className="flex items-center gap-2 text-foreground/90 text-[14px] font-semibold">
+                    <div className="flex items-center gap-2 text-foreground/90 text-[14px] font-semibold min-w-0">
                         <CurrencyRupeeIcon className="w-3.5 h-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-                        <span className="truncate">{isDrive ? driveMeta.maxCtcLabel : formatSalary()}</span>
+                        <span className="truncate whitespace-nowrap">{isDrive ? driveMeta.maxCtcLabel : formatSalary()}</span>
                     </div>
                 </div>
             </div>
-            {isDrive && driveDates.regEnd && (
-                <div className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-[11px] font-semibold text-primary">
-                    Apply before {driveDates.regEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                </div>
-            )}
 
             {/* Footer */}
             <div className="flex items-center justify-between pt-3 border-t border-border/30 mt-auto">
