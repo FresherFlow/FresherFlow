@@ -9,9 +9,7 @@ import { useRouter } from 'next/navigation';
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import UserIcon from '@heroicons/react/24/outline/UserIcon';
-import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
-import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import { SkeletonJobCard } from '@/components/ui/Skeleton';
 import JobCard from '@/features/jobs/components/JobCard';
 import { Button } from '@/components/ui/Button';
@@ -198,11 +196,19 @@ export default function DashboardClient() {
     };
 
     // ── Tab Virtualization: compute ONLY the active tab's data ────────────────
-    const { activeItems, closingSoon, totalActive, jobsCount, internshipsCount, walkinsCount } = useMemo(() => {
+    const { activeItems, closingSoon, totalActive, jobsCount, internshipsCount, walkinsCount, latestBadgeCount } = useMemo(() => {
         const rotateByOffset = <T,>(items: T[], offset: number) => {
             if (items.length <= 1) return items;
             const norm = ((offset % items.length) + items.length) % items.length;
             return norm === 0 ? items : [...items.slice(norm), ...items.slice(0, norm)];
+        };
+        const uniqueById = (items: Opportunity[]) => {
+            const seen = new Set<string>();
+            return items.filter((item) => {
+                if (seen.has(item.id)) return false;
+                seen.add(item.id);
+                return true;
+            });
         };
 
         const active = recentOpps
@@ -231,6 +237,10 @@ export default function DashboardClient() {
         const newIn24h = latestSorted
             .filter(o => (Date.now() - new Date(o.postedAt as string | Date).getTime()) <= HOURS_24_IN_MS)
             .slice(0, 10);
+        const driveFeatured = uniqueById(
+            (highlights?.driveMilestones || []).map((milestone) => milestone.opportunity)
+        ).filter((opp) => !opp.expiresAt || new Date(opp.expiresAt) > new Date());
+        const newSinceLastVisit = (highlights?.newSinceLastVisit || []).filter(o => !o.expiresAt || new Date(o.expiresAt) > new Date());
 
         const archived = recentOpps.filter(o => o.status === 'ARCHIVED' || (!!o.expiresAt && new Date(o.expiresAt) <= new Date()));
         const applied = recentOpps.filter(o =>
@@ -239,12 +249,14 @@ export default function DashboardClient() {
             )
         );
 
-        const featured = [
-            ...((highlights?.newSinceLastVisit || []).filter(c => !closing.some(s => s.id === c.id))),
+        const featured = uniqueById([
+            ...newSinceLastVisit,
+            ...driveFeatured,
             ...closing,
-            ...newIn24h.filter(c => !closing.some(s => s.id === c.id)),
-            ...bestMatch.filter(c => !closing.some(s => s.id === c.id) && !newIn24h.some(f => f.id === c.id)),
-        ];
+            ...newIn24h,
+            ...bestMatch,
+        ]);
+        const latestCount = highlights?.newSinceLastVisitCount ?? newSinceLastVisit.length ?? newIn24h.length;
 
         // Only the active tab's items are sliced — no unused computation
         const limit = (items: Opportunity[], mobile: boolean) => items.slice(0, mobile ? MOBILE_DASHBOARD_LIMIT : DESKTOP_DASHBOARD_LIMIT);
@@ -260,6 +272,7 @@ export default function DashboardClient() {
             jobsCount: active.filter(o => o.type === 'JOB').length,
             internshipsCount: active.filter(o => o.type === 'INTERNSHIP').length,
             walkinsCount: active.filter(o => o.type === 'WALKIN').length,
+            latestBadgeCount: latestCount,
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [recentOpps, highlights, dashboardVisitCounter, profile?.id, activeTab]);
@@ -303,111 +316,6 @@ export default function DashboardClient() {
                         </div>
                     </div>
 
-                    {/* Highlights — always reserves space to prevent CLS */}
-                    <div>
-                        {isLoadingHighlights && isLoadingOpps ? (
-                            <div className="space-y-2 animate-pulse">
-                                <div className="h-3 w-24 bg-muted/60 rounded" />
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                                    <div className="h-20 rounded-xl bg-muted/35" />
-                                    <div className="h-20 rounded-xl bg-muted/35 hidden sm:block" />
-                                    <div className="h-20 rounded-xl bg-muted/35 hidden lg:block" />
-                                </div>
-                            </div>
-                        ) : highlights && (() => {
-                            const isNotExpired = (o: Opportunity) => !o.expiresAt || new Date(o.expiresAt) > new Date();
-                            const activeWalkins = highlights.urgent.walkins.filter(isNotExpired);
-                            const activeNew = highlights.newlyAdded.filter(isNotExpired);
-                            if (activeWalkins.length === 0 && activeNew.length === 0) return null;
-                            return (
-                                <div className="space-y-4 animate-in fade-in duration-500">
-                                    <div className="flex items-center justify-between">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                                            <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary dark:text-amber-300">Fresh &amp; Urgent</h2>
-                                        </div>
-                                        <Link href="/opportunities" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
-                                            View feed
-                                        </Link>
-                                    </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
-                                        {activeWalkins.map(opp => (
-                                            <div
-                                                key={`urgent-${opp.id}`}
-                                                onClick={() => router.push(getOpportunityPathFromItem(opp))}
-                                                className="bg-amber-500/5 border border-amber-500/20 rounded-2xl p-4 cursor-pointer hover:bg-amber-500/10 transition-all flex flex-col justify-between gap-2 group"
-                                            >
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-[8px] font-bold uppercase tracking-wider text-slate-900 dark:text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded">Urgent Walk-in</span>
-                                                        <div className="flex items-center gap-1 text-[9px] text-slate-700 dark:text-amber-300 font-bold tracking-tight">
-                                                            <ClockIcon className="w-3 h-3" />
-                                                            Closing Soon
-                                                        </div>
-                                                    </div>
-                                                    <h3 className="font-bold text-sm tracking-tight line-clamp-1 group-hover:text-primary dark:group-hover:text-amber-300 transition-colors">{opp.title}</h3>
-                                                    <p className="text-[11px] font-medium text-muted-foreground line-clamp-1">{opp.company} &bull; {opp.locations[0]}</p>
-                                                </div>
-                                                <div className="flex items-center justify-between border-t border-amber-500/10 pt-2">
-                                                    <span className="text-[9px] font-bold uppercase tracking-widest text-slate-700 dark:text-amber-300/60">Verified Drive</span>
-                                                    <ChevronRightIcon className="w-4 h-4 text-primary dark:text-amber-300 group-hover:translate-x-1 transition-transform" />
-                                                </div>
-                                            </div>
-                                        ))}
-                                        {activeNew.slice(0, activeWalkins.length > 0 ? 2 : 3).map(opp => (
-                                            <div
-                                                key={`new-${opp.id}`}
-                                                onClick={() => router.push(getOpportunityPathFromItem(opp))}
-                                                className="bg-primary/5 border border-primary/20 rounded-2xl p-4 cursor-pointer hover:bg-primary/10 transition-all flex flex-col justify-between gap-2 group"
-                                            >
-                                                <div className="space-y-1">
-                                                    <div className="flex items-center justify-between">
-                                                        <span className="text-[9px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2 py-0.5 rounded">New Listing</span>
-                                                        <span className="text-[10px] text-primary font-bold">Just Added</span>
-                                                    </div>
-                                                    <h3 className="font-bold text-sm tracking-tight line-clamp-1 group-hover:text-primary transition-colors">{opp.title}</h3>
-                                                    <p className="text-[11px] font-medium text-muted-foreground line-clamp-1">{opp.company} &bull; {opp.locations[0]}</p>
-                                                </div>
-                                                <div className="flex items-center justify-between border-t border-primary/10 pt-2">
-                                                    <span className="text-[10px] font-bold uppercase tracking-tighter text-primary/60">Active Hiring</span>
-                                                    <ChevronRightIcon className="w-4 h-4 text-primary group-hover:translate-x-1 transition-transform" />
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            );
-                        })()}
-                    </div>
-
-                    {!isLoadingHighlights && highlights?.driveMilestones && highlights.driveMilestones.length > 0 && (
-                        <section className="space-y-3">
-                            <div className="flex items-center justify-between">
-                                <h2 className="text-[10px] font-bold uppercase tracking-[0.15em] text-primary">Campus Drive Timeline</h2>
-                                <Link href="/opportunities" className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline">
-                                    Track all
-                                </Link>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {highlights.driveMilestones.map((milestone) => (
-                                    <button
-                                        key={milestone.eventId}
-                                        onClick={() => router.push(getOpportunityPathFromItem(milestone.opportunity))}
-                                        className="text-left rounded-2xl border border-primary/20 bg-primary/5 p-4 hover:bg-primary/10 transition-colors"
-                                    >
-                                        <p className="text-[9px] font-bold uppercase tracking-widest text-primary">{milestone.eventType.replace('_', ' ')}</p>
-                                        <h3 className="mt-1 text-sm font-semibold line-clamp-1">{milestone.opportunity.title}</h3>
-                                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{milestone.opportunity.company}</p>
-                                        <p className="mt-2 inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                                            {new Date(milestone.eventDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                        </p>
-                                        <p className="mt-2 text-[11px] text-foreground/80 line-clamp-1">{milestone.eventTitle}</p>
-                                    </button>
-                                ))}
-                            </div>
-                        </section>
-                    )}
-
                     {/* Main Grid */}
                     <div className="space-y-6 md:space-y-8">
                         <div className="space-y-3 md:space-y-6">
@@ -426,9 +334,14 @@ export default function DashboardClient() {
                                         <button
                                             key={s.key}
                                             onClick={() => setActiveTab(s.key)}
-                                            className={`relative whitespace-nowrap px-3 py-2 text-[12px] font-semibold transition-colors ${activeTab === s.key ? 'text-foreground' : 'text-muted-foreground'}`}
+                                            className={`relative whitespace-nowrap px-3 py-2 text-[12px] font-semibold transition-colors ${activeTab === s.key ? 'text-foreground' : 'text-muted-foreground'} flex items-center gap-1.5`}
                                         >
                                             {s.title}
+                                            {s.key === 'latest' && latestBadgeCount > 0 && (
+                                                <span className="inline-flex min-w-4 h-4 px-1 rounded-full bg-primary/15 border border-primary/30 text-[9px] leading-4 font-bold text-primary">
+                                                    {latestBadgeCount > 99 ? '99+' : latestBadgeCount}
+                                                </span>
+                                            )}
                                             {activeTab === s.key && <span className="absolute left-1/2 -translate-x-1/2 bottom-0 h-0.5 w-7 rounded-full bg-primary" />}
                                         </button>
                                     ))}
@@ -439,9 +352,14 @@ export default function DashboardClient() {
                                         <button
                                             key={`dt-${s.key}`}
                                             onClick={() => setActiveTab(s.key)}
-                                            className={`relative pb-3 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === s.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                                            className={`relative pb-3 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === s.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'} flex items-center gap-1.5`}
                                         >
                                             {s.title}
+                                            {s.key === 'latest' && latestBadgeCount > 0 && (
+                                                <span className="inline-flex min-w-4 h-4 px-1 rounded-full bg-primary/15 border border-primary/30 text-[9px] leading-4 font-bold text-primary normal-case tracking-normal">
+                                                    {latestBadgeCount > 99 ? '99+' : latestBadgeCount}
+                                                </span>
+                                            )}
                                             {activeTab === s.key && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary animate-in fade-in zoom-in duration-300" />}
                                         </button>
                                     ))}

@@ -1,7 +1,6 @@
 import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { opportunitiesApi } from '@/lib/api/client';
 import { Suspense } from 'react';
 import OpportunityDetailClient from './OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
@@ -21,12 +20,33 @@ type Props = {
     params: Promise<{ id: string }>;
 };
 
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in';
+
+async function fetchOpportunityForPage(slugOrId: string): Promise<ExtendedOpportunity | null> {
+    try {
+        const response = await fetch(`${API_BASE}/api/opportunities/${encodeURIComponent(slugOrId)}`, {
+            method: 'GET',
+            headers: {
+                'X-Requested-From': 'fresherflow-web',
+            },
+            next: { revalidate: 60 },
+        });
+
+        if (!response.ok) return null;
+        const payload = await response.json() as { opportunity?: ExtendedOpportunity };
+        return payload.opportunity || null;
+    } catch {
+        return null;
+    }
+}
+
 // Generate dynamic SEO metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id: slugOrId } = await params;
 
     try {
-        const { opportunity } = await opportunitiesApi.getById(slugOrId) as { opportunity: ExtendedOpportunity };
+        const opportunity = await fetchOpportunityForPage(slugOrId);
+        if (!opportunity) throw new Error('Opportunity not found');
 
         const role = opportunity.normalizedRole || opportunity.title;
         const company = opportunity.company;
@@ -177,8 +197,9 @@ export default async function OpportunityDetailPage({ params }: Props) {
     let opportunityData = null;
 
     try {
-        const { opportunity } = await opportunitiesApi.getById(slugOrId) as { opportunity: ExtendedOpportunity };
+        const opportunity = await fetchOpportunityForPage(slugOrId);
         opportunityData = opportunity;
+        if (!opportunity) throw new Error('Opportunity not found');
 
         // SEO Enforcement: Redirect to slug if ID was used
         if (slugOrId === opportunity.id && opportunity.slug) {

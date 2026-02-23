@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { OpportunityStatus } from '@prisma/client';
+import { AlertKind, OpportunityStatus } from '@prisma/client';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import logger from '../utils/logger';
 import { EmailService } from './email.service';
@@ -21,8 +21,34 @@ interface NewJobNotificationResult {
 
 const MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY = Number(process.env.MAX_NEW_JOB_ALERTS_PER_USER_PER_DAY || 8);
 
+let cachedNewJobKind: AlertKind | null = null;
+
+async function resolveNewJobKind(): Promise<AlertKind> {
+    if (cachedNewJobKind) return cachedNewJobKind;
+
+    try {
+        const labels = await prisma.$queryRaw<Array<{ enumlabel: string }>>`
+            SELECT e.enumlabel
+            FROM pg_enum e
+            JOIN pg_type t ON t.oid = e.enumtypid
+            WHERE t.typname = 'AlertKind'
+        `;
+
+        const supportedKinds = new Set(labels.map((row) => row.enumlabel));
+        cachedNewJobKind = supportedKinds.has('NEW_JOB') ? AlertKind.NEW_JOB : AlertKind.HIGHLIGHT;
+    } catch {
+        cachedNewJobKind = AlertKind.NEW_JOB;
+    }
+
+    return cachedNewJobKind;
+}
+
 export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNotificationResult> {
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const alertKind = await resolveNewJobKind();
+    if (alertKind !== AlertKind.NEW_JOB) {
+        logger.warn('AlertKind.NEW_JOB not present in DB enum, falling back to HIGHLIGHT', { alertKind });
+    }
 
     // Get the opportunity with details
     const opportunity = await prisma.opportunity.findUnique({
@@ -62,7 +88,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
     const sentTodayRows = await prisma.alertDelivery.groupBy({
         by: ['userId'],
         where: {
-            kind: 'NEW_JOB',
+            kind: alertKind,
             channel: 'APP',
             sentAt: { gte: dayStart },
         },
@@ -136,7 +162,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         const deliveriesToCreate: Array<{
             userId: string;
             opportunityId: string;
-            kind: 'NEW_JOB';
+            kind: AlertKind;
             channel: 'APP' | 'EMAIL' | 'PUSH';
             dedupeKey: string;
             metadata: string;
@@ -144,7 +170,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             {
                 userId: user.id,
                 opportunityId: opportunity.id,
-                kind: 'NEW_JOB',
+                kind: alertKind,
                 channel: 'APP',
                 dedupeKey: `${dedupeKeyBase}:APP`,
                 metadata: JSON.stringify({ relevanceScore, relevanceReason }),
@@ -164,7 +190,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 deliveriesToCreate.push({
                     userId: user.id,
                     opportunityId: opportunity.id,
-                    kind: 'NEW_JOB',
+                    kind: alertKind,
                     channel: 'EMAIL',
                     dedupeKey: `${dedupeKeyBase}:EMAIL`,
                     metadata: JSON.stringify({ relevanceScore, relevanceReason }),
@@ -192,7 +218,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 data: {
                     userId: user.id,
                     opportunityId: opportunity.id,
-                    kind: 'NEW_JOB',
+                    kind: alertKind,
                     channel: 'PUSH',
                     dedupeKey: `${dedupeKeyBase}:PUSH`,
                     metadata: JSON.stringify({ relevanceScore, relevanceReason }),

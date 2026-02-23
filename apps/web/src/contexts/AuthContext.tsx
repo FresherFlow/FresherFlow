@@ -95,8 +95,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [isLoggingOut]);
 
-    const loadUser = useCallback(async () => {
-        setIsLoading(true);
+    const loadUser = useCallback(async (options?: { silent?: boolean }) => {
+        const silent = options?.silent === true;
+        if (!silent) {
+            setIsLoading(true);
+        }
         try {
             // DEFENSIVE: Check if session marker cookie exists
             if (typeof document !== 'undefined') {
@@ -109,13 +112,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                         if (cached) {
                             setUser(cached.user);
                             setProfile(cached.profile);
-                            setIsLoading(false);
+                            if (!silent) {
+                                setIsLoading(false);
+                            }
                             return;
                         }
                     }
                     setUser(null);
                     setProfile(null);
-                    setIsLoading(false);
+                    if (!silent) {
+                        setIsLoading(false);
+                    }
                     return;
                 }
             }
@@ -137,7 +144,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setProfile(null);
             }
         } finally {
-            setIsLoading(false);
+            if (!silent) {
+                setIsLoading(false);
+            }
         }
     }, []);
 
@@ -148,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Re-fetch when user comes back to the tab (e.g. after editing profile)
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'visible') {
-                loadUser();
+                void loadUser({ silent: true });
             }
         };
 

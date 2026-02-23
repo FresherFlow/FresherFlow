@@ -305,7 +305,24 @@ router.get('/:id/events', publicFeedLimiter, async (req: Request, res: Response,
 
 router.get('/:id', publicFeedLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { id } = req.params as { id: string };
+        const { id: rawId } = req.params as { id: string };
+        const decodeSafe = (value: string) => {
+            try { return decodeURIComponent(value); } catch { return value; }
+        };
+        const normalizeId = (value: string) => {
+            const decoded = decodeSafe(value).trim();
+            if (/^https?:\/\//i.test(decoded)) {
+                try {
+                    const url = new URL(decoded);
+                    const pathSegments = url.pathname.split('/').filter(Boolean);
+                    return pathSegments[pathSegments.length - 1] || decoded;
+                } catch {
+                    return decoded.replace(/^https?:\/+/i, '');
+                }
+            }
+            return decoded;
+        };
+        const id = normalizeId(rawId);
         const token = req.cookies.accessToken;
         const userId = token ? verifyAccessToken(token) : null;
 
@@ -338,6 +355,12 @@ router.get('/:id', publicFeedLimiter, async (req: Request, res: Response, next: 
 
         if (!opportunity) {
             return next(new AppError('Opportunity not found', 404));
+        }
+
+        if (userId) {
+            res.setHeader('Cache-Control', 'private, no-store');
+        } else {
+            res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
         }
 
         const { savedBy, ...opportunitySafe } = opportunity as typeof opportunity & { savedBy?: Array<{ id: string }> };

@@ -159,6 +159,17 @@
     font-size: var(--fs-body);
     line-height: 1.6;
   }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[role="button"] {
+    cursor: pointer;
+  }
+
+  button:disabled,
+  [role="button"][aria-disabled="true"] {
+    cursor: not-allowed;
+  }
 }
 
 @layer components {
