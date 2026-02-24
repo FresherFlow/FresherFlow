@@ -2,6 +2,17 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const ADMIN_WEB_HOST = (process.env.ADMIN_WEB_HOST || 'admin.fresherflow.in').toLowerCase();
+const ADMIN_ROOT_PREFIXES = [
+    '/dashboard',
+    '/opportunities',
+    '/jobs',
+    '/walkins',
+    '/analytics',
+    '/feedback',
+    '/alerts',
+    '/telegram',
+    '/settings',
+];
 
 function redirectWithMethodAwareness(request: NextRequest, target: string) {
     const url = new URL(target, request.url);
@@ -12,6 +23,11 @@ function redirectWithMethodAwareness(request: NextRequest, target: string) {
 
 export function proxy(request: NextRequest) {
     const { pathname, hostname } = request.nextUrl;
+    const normalizedHost = hostname.toLowerCase();
+    const isAdminHost = normalizedHost === ADMIN_WEB_HOST;
+    const isAdminRootPath = ADMIN_ROOT_PREFIXES.some(
+        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+    );
 
     // Keep internal preview routes out of production traffic.
     if (process.env.NODE_ENV === 'production' && pathname.startsWith('/dev')) {
@@ -28,10 +44,45 @@ export function proxy(request: NextRequest) {
     if (
         process.env.NODE_ENV === 'production' &&
         isAdminRoute &&
-        hostname.toLowerCase() !== ADMIN_WEB_HOST
+        !isAdminHost
     ) {
-        const target = `${request.nextUrl.protocol}//${ADMIN_WEB_HOST}${pathname}${request.nextUrl.search}`;
+        const targetPath = pathname === '/admin'
+            ? '/dashboard'
+            : (pathname.replace(/^\/admin/, '') || '/');
+        const target = `${request.nextUrl.protocol}//${ADMIN_WEB_HOST}${targetPath}${request.nextUrl.search}`;
         return redirectWithMethodAwareness(request, target);
+    }
+
+    // Admin host root mapping:
+    // - keep clean URLs (/login, /dashboard, ...)
+    // - internally serve /admin/* pages via rewrite.
+    if (isAdminHost) {
+        if (pathname === '/admin') {
+            return redirectWithMethodAwareness(request, '/dashboard');
+        }
+        if (pathname.startsWith('/admin/')) {
+            const cleanPath = pathname.replace(/^\/admin/, '') || '/';
+            return redirectWithMethodAwareness(request, `${cleanPath}${request.nextUrl.search}`);
+        }
+        if (pathname === '/') {
+            return redirectWithMethodAwareness(request, isAdminAuthenticated ? '/dashboard' : '/login');
+        }
+        if (pathname === '/login') {
+            if (isAdminAuthenticated) {
+                return redirectWithMethodAwareness(request, '/dashboard');
+            }
+            const rewriteUrl = request.nextUrl.clone();
+            rewriteUrl.pathname = '/admin/login';
+            return NextResponse.rewrite(rewriteUrl);
+        }
+        if (isAdminRootPath) {
+            if (!isAdminAuthenticated) {
+                return redirectWithMethodAwareness(request, '/login');
+            }
+            const rewriteUrl = request.nextUrl.clone();
+            rewriteUrl.pathname = `/admin${pathname}`;
+            return NextResponse.rewrite(rewriteUrl);
+        }
     }
 
     // 1. Subdomain Handling (app.fresherflow.in)
@@ -80,8 +131,17 @@ export function proxy(request: NextRequest) {
 export const config = {
     matcher: [
         '/',
+        '/admin',
         '/login',
         '/dashboard/:path*',
+        '/opportunities/:path*',
+        '/jobs/:path*',
+        '/walkins/:path*',
+        '/analytics/:path*',
+        '/feedback/:path*',
+        '/alerts/:path*',
+        '/telegram/:path*',
+        '/settings/:path*',
         '/account/:path*',
         '/profile/:path*',
         '/admin/:path*',
