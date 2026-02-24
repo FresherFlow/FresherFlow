@@ -145,6 +145,14 @@
     transition: background-color 300ms, color 300ms;
   }
 
+  .theme-transition,
+  .theme-transition body,
+  .theme-transition *,
+  .theme-transition *::before,
+  .theme-transition *::after {
+    transition: background-color 240ms ease, color 240ms ease, border-color 240ms ease, fill 240ms ease, stroke 240ms ease, box-shadow 240ms ease !important;
+  }
+
   body {
     overflow-x: hidden;
     max-width: 100vw;

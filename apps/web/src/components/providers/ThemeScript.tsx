@@ -16,12 +16,15 @@ export function ThemeScript() {
                 const savedTheme = localStorage.getItem('theme');
                 // Default to light unless user explicitly chose dark.
                 const theme = savedTheme === 'dark' ? 'dark' : 'light';
+                const themeColor = theme === 'dark' ? '#080c16' : '#eef3f7';
                 
                 if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
                 } else {
                     document.documentElement.classList.remove('dark');
                 }
+                var themeMeta = document.querySelector('meta[name="theme-color"]');
+                if (themeMeta) themeMeta.setAttribute('content', themeColor);
             } catch (e) {
                 console.error('Theme synchronization failed:', e);
             }

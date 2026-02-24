@@ -21,14 +21,17 @@ export function ThemeToggle() {
     return (
         <button
             onClick={toggleTheme}
-            className="p-2.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all"
+            className="group relative p-2.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-xl transition-all duration-200"
             aria-label="Toggle Theme"
         >
-            {theme === 'light' ? (
-                <MoonIcon className="w-5.5 h-5.5" />
-            ) : (
-                <SunIcon className="w-5.5 h-5.5" />
-            )}
+            <MoonIcon
+                className={`w-5.5 h-5.5 transition-all duration-200 ${theme === 'light' ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-75 absolute inset-2.5'
+                    }`}
+            />
+            <SunIcon
+                className={`w-5.5 h-5.5 transition-all duration-200 ${theme === 'dark' ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 rotate-90 scale-75 absolute inset-2.5'
+                    }`}
+            />
         </button>
     );
 }

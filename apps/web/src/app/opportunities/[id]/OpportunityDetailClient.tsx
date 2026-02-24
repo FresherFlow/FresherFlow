@@ -1377,7 +1377,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                 <p className="text-xs font-bold uppercase tracking-wide">Join FresherFlow</p>
                                 <p className="text-[10px] opacity-90">Unlock more verified listings.</p>
                             </div>
-                            <div className="h-8 px-4 bg-white text-primary rounded-lg flex items-center justify-center text-[10px] font-bold uppercase tracking-tight shadow-sm">
+                            <div className="h-8 px-4 bg-card text-foreground border border-border rounded-lg flex items-center justify-center text-[10px] font-bold uppercase tracking-tight shadow-sm">
                                 Sign Up Free
                             </div>
                         </div>

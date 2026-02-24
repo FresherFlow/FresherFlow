@@ -86,7 +86,7 @@ export default function RootLayout({
         <meta charSet="utf-8" />
         <ThemeScript />
         {/* Dynamic theme-color updated via ThemeScript & ThemeContext */}
-        <meta name="theme-color" content="#f8fafc" id="theme-color-meta" />
+        <meta name="theme-color" content="#eef3f7" id="theme-color-meta" />
         <meta property="og:image" content="https://fresherflow.in/opengraph-image" />
         <meta property="og:image:secure_url" content="https://fresherflow.in/opengraph-image" />
         <meta property="og:image:type" content="image/png" />

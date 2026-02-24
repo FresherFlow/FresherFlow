@@ -10,6 +10,8 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const LIGHT_THEME_COLOR = '#eef3f7';
+const DARK_THEME_COLOR = '#080c16';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const [theme, setTheme] = useState<Theme>('light');
@@ -31,16 +33,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const setThemeColor = (newTheme: string) => {
         const metaThemeColor = document.getElementById('theme-color-meta') || document.querySelector('meta[name="theme-color"]');
         if (metaThemeColor) {
-            metaThemeColor.setAttribute('content', newTheme === 'dark' ? '#080c16' : '#f8fafc');
+            metaThemeColor.setAttribute('content', newTheme === 'dark' ? DARK_THEME_COLOR : LIGHT_THEME_COLOR);
         }
     };
 
     const toggleTheme = () => {
         const newTheme = theme === 'light' ? 'dark' : 'light';
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            document.documentElement.classList.add('theme-transition');
+            window.setTimeout(() => {
+                document.documentElement.classList.remove('theme-transition');
+            }, 250);
+        }
         setTheme(newTheme);
         localStorage.setItem('theme', newTheme);
         document.documentElement.classList.toggle('dark', newTheme === 'dark');
-        // Update PWA status bar color
+        // Keep PWA status bar in sync with the app chrome.
         setThemeColor(newTheme);
     };
 
