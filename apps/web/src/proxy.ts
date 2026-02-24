@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
+const ADMIN_WEB_HOST = (process.env.ADMIN_WEB_HOST || 'admin.fresherflow.in').toLowerCase();
+
 function redirectWithMethodAwareness(request: NextRequest, target: string) {
     const url = new URL(target, request.url);
     const method = request.method.toUpperCase();
@@ -21,6 +23,16 @@ export function proxy(request: NextRequest) {
     const isAdminAuthenticated = request.cookies.has('adminAccessToken');
     const isAdminRoute = pathname.startsWith('/admin');
     const isAdminLogin = pathname === '/admin/login';
+
+    // Force admin routes to dedicated admin host in production.
+    if (
+        process.env.NODE_ENV === 'production' &&
+        isAdminRoute &&
+        hostname.toLowerCase() !== ADMIN_WEB_HOST
+    ) {
+        const target = `${request.nextUrl.protocol}//${ADMIN_WEB_HOST}${pathname}${request.nextUrl.search}`;
+        return redirectWithMethodAwareness(request, target);
+    }
 
     // 1. Subdomain Handling (app.fresherflow.in)
     // If user hits 'app.domain.com' root, they want app entry.
