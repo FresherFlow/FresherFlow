@@ -183,8 +183,8 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             className={cn(
                 "group relative bg-card border border-border rounded-xl p-5 transition-all hover:border-primary/30 hover:shadow-md flex flex-col gap-4 focus:outline-none focus:ring-2 focus:ring-primary/40 overflow-hidden",
                 variant === 'compact'
-                    ? "h-[336px] md:h-[348px]"
-                    : "h-[352px] md:h-[368px]",
+                    ? "h-84 md:h-87"
+                    : "h-88 md:h-92",
                 onClick && "cursor-pointer"
             )}
         >
