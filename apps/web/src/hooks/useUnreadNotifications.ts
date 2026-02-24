@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { alertsApi } from '@/lib/api/client';
 import { AuthContext } from '@/contexts/AuthContext';
-import { useContext } from 'react';
 import toast from 'react-hot-toast';
 
 const CACHE_KEY = 'ff_unread_count_cache';
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 const SEEN_TOAST_ALERTS_KEY = 'ff_seen_toast_alerts';
 const ALERTS_UPDATED_EVENT = 'ff-alerts-updated';
+const FOCUS_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_ALERTS_FOCUS_COOLDOWN_MS || 120000);
 
 function readCache(): { count: number; at: number } | null {
     if (typeof window === 'undefined') return null;
@@ -19,12 +19,18 @@ function readCache(): { count: number; at: number } | null {
         const parsed = JSON.parse(raw) as { count: number; at: number };
         if (Date.now() - parsed.at > CACHE_TTL) return null;
         return parsed;
-    } catch { return null; }
+    } catch {
+        return null;
+    }
 }
 
 function writeCache(count: number) {
     if (typeof window === 'undefined') return;
-    try { localStorage.setItem(CACHE_KEY, JSON.stringify({ count, at: Date.now() })); } catch { /* empty */ }
+    try {
+        localStorage.setItem(CACHE_KEY, JSON.stringify({ count, at: Date.now() }));
+    } catch {
+        // ignore quota issues
+    }
 }
 
 function readSeenIds(): string[] {
@@ -50,15 +56,21 @@ function writeSeenIds(ids: string[]) {
 
 export function clearUnreadCache() {
     if (typeof window === 'undefined') return;
-    try { localStorage.removeItem(CACHE_KEY); } catch { /* empty */ }
+    try {
+        localStorage.removeItem(CACHE_KEY);
+    } catch {
+        // ignore quota issues
+    }
 }
 
 export function useUnreadNotifications() {
     const authContext = useContext(AuthContext);
     const user = authContext?.user;
 
-    // Initialise from cache synchronously — no flash on navigation
+    // Initialize from cache synchronously to avoid unread badge flicker.
     const [unreadCount, setUnreadCount] = useState<number>(() => readCache()?.count ?? 0);
+    const lastFocusRefreshAtRef = useRef(0);
+    const focusRefreshInFlightRef = useRef(false);
 
     const fetchCount = useCallback(async () => {
         if (!user) return;
@@ -67,7 +79,7 @@ export function useUnreadNotifications() {
             setUnreadCount(data.count);
             writeCache(data.count);
         } catch {
-            // silent fail — keep stale value
+            // silent fail, keep stale value
         }
     }, [user]);
 
@@ -77,7 +89,6 @@ export function useUnreadNotifications() {
             const response = await alertsApi.getFeed('all', 10) as {
                 deliveries?: Array<{
                     id: string;
-                    kind: string;
                     readAt: string | null;
                     opportunity?: { title?: string; company?: string } | null;
                 }>;
@@ -90,7 +101,7 @@ export function useUnreadNotifications() {
             unseenUnread.slice(0, 2).forEach((item) => {
                 const title = item.opportunity?.title || 'New alert';
                 const company = item.opportunity?.company;
-                toast.success(company ? `${title} • ${company}` : title, {
+                toast.success(company ? `${title} - ${company}` : title, {
                     id: `alert-${item.id}`,
                     duration: 4500,
                 });
@@ -106,23 +117,39 @@ export function useUnreadNotifications() {
     useEffect(() => {
         if (!user) return;
 
-        // Only fetch if cache is stale or empty (initial state already took care of the cached value)
         const cached = readCache();
         if (!cached) {
-            // Use setTimeout to avoid synchronous setState in effect warning
-            setTimeout(() => { void fetchCount(); }, 0);
+            setTimeout(() => {
+                void fetchCount();
+            }, 0);
         }
 
-        // Poll every 5 minutes (deduplicated across tab navigations)
         const interval = setInterval(fetchCount, CACHE_TTL);
 
+        const maybeRunFocusRefresh = async () => {
+            const now = Date.now();
+            if (now - lastFocusRefreshAtRef.current < FOCUS_REFRESH_COOLDOWN_MS) return;
+            if (focusRefreshInFlightRef.current) return;
+            focusRefreshInFlightRef.current = true;
+
+            try {
+                await fetchCount();
+                // Keep expensive feed requests off generic focus events.
+                if (window.location.pathname.startsWith('/alerts')) {
+                    await showNewAlertToasts();
+                }
+                lastFocusRefreshAtRef.current = now;
+            } finally {
+                focusRefreshInFlightRef.current = false;
+            }
+        };
+
         const onFocus = () => {
-            void fetchCount();
-            void showNewAlertToasts();
+            void maybeRunFocusRefresh();
         };
         const onVisibility = () => {
             if (document.visibilityState !== 'visible') return;
-            onFocus();
+            void maybeRunFocusRefresh();
         };
         const onAlertsUpdated = () => {
             void fetchCount();

@@ -9,6 +9,7 @@ import TelegramService from '../../services/telegram.service';
 import { runIngestionForSource } from '../../services/ingestion.service';
 import { runAlertsCycle } from '../../services/alerts.service';
 import { sendNewJobAlerts } from '../../services/notification.service';
+import { clearAdminMetricsCache, getAdminMetricsV2, MetricsWindow } from '../../services/adminMetrics.service';
 
 const router = Router();
 
@@ -347,6 +348,45 @@ router.get('/metrics', requireAdmin, async (_req: Request, res: Response, next: 
     try {
         const metrics = getObservabilityMetrics();
         res.json({ metrics });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * Canonical admin metrics endpoint
+ * GET /api/admin/system/metrics-v2?window=24h|7d|30d
+ */
+router.get('/metrics-v2', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const rawWindow = String(req.query.window || '30d').toLowerCase();
+        const allowedWindows: MetricsWindow[] = ['24h', '7d', '30d'];
+        const window = allowedWindows.includes(rawWindow as MetricsWindow)
+            ? (rawWindow as MetricsWindow)
+            : '30d';
+
+        const metrics = await getAdminMetricsV2(window);
+        res.json(metrics);
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * Force refresh canonical admin metrics cache
+ * POST /api/admin/system/metrics-v2/refresh
+ */
+router.post('/metrics-v2/refresh', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const rawWindow = String(req.query.window || '30d').toLowerCase();
+        const allowedWindows: MetricsWindow[] = ['24h', '7d', '30d'];
+        const window = allowedWindows.includes(rawWindow as MetricsWindow)
+            ? (rawWindow as MetricsWindow)
+            : '30d';
+
+        clearAdminMetricsCache();
+        const metrics = await getAdminMetricsV2(window);
+        res.json({ refreshed: true, metrics });
     } catch (error) {
         next(error);
     }

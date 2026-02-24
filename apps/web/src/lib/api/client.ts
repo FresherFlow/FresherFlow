@@ -16,7 +16,16 @@ export class OfflineError extends Error {
     }
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL;
+const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || '';
+const USER_API_URL = process.env.NEXT_PUBLIC_USER_API_URL || DEFAULT_API_URL;
+const ADMIN_API_URL = process.env.NEXT_PUBLIC_ADMIN_API_URL || DEFAULT_API_URL;
+
+export function getApiBaseForEndpoint(endpoint: string): string {
+    if (endpoint.startsWith('/api/admin')) {
+        return ADMIN_API_URL;
+    }
+    return USER_API_URL;
+}
 
 // Singleton promise to handle concurrent refresh requests
 let isRefreshing: Promise<void> | null = null;
@@ -43,7 +52,8 @@ export async function apiClient<T = unknown>(
         cache: 'no-store', // CRITICAL: Prevent caching of API responses
         next: { revalidate: 0 }
     };
-    const requestUrl = `${API_URL}${endpoint}`;
+    const baseUrl = getApiBaseForEndpoint(endpoint);
+    const requestUrl = `${baseUrl}${endpoint}`;
     const method = (fetchOptions.method || 'GET').toUpperCase();
     const canRetry = method === 'GET';
 
@@ -102,7 +112,7 @@ export async function apiClient<T = unknown>(
             if (!isRefreshing) {
                 isRefreshing = (async () => {
                     try {
-                        const refreshResponse = await fetch(`${API_URL}/api/auth/refresh`, {
+                        const refreshResponse = await fetch(`${USER_API_URL}/api/auth/refresh`, {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
@@ -374,9 +384,29 @@ export const growthApi = {
     ) =>
         apiClient('/api/public/growth/event', {
             method: 'POST',
-            body: JSON.stringify({ event, source })
+            body: JSON.stringify({
+                event,
+                source,
+                route: typeof window !== 'undefined' ? window.location.pathname : undefined,
+                sessionId: getGrowthSessionId(),
+            })
         })
 };
+
+const GROWTH_SESSION_KEY = 'ff_growth_session_v1';
+
+function getGrowthSessionId(): string {
+    if (typeof window === 'undefined') return 'server';
+    try {
+        const existing = window.sessionStorage.getItem(GROWTH_SESSION_KEY);
+        if (existing && existing.length > 0) return existing;
+        const next = `g-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        window.sessionStorage.setItem(GROWTH_SESSION_KEY, next);
+        return next;
+    } catch {
+        return 'session-unavailable';
+    }
+}
 
 const OPPORTUNITY_CLICK_SESSION_KEY = 'ff_click_session_id';
 

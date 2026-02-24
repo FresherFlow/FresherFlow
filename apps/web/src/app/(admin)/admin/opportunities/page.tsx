@@ -5,6 +5,7 @@ import { useAdmin } from '@/contexts/AdminContext';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { adminApi } from '@/lib/api/admin';
+import { getApiBaseForEndpoint } from '@/lib/api/client';
 import type { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import { AdminOpportunitiesSkeleton } from '@/components/ui/Skeleton';
@@ -77,7 +78,8 @@ function OpportunitiesListPage() {
         if (typeFilter) params.set('type', enumToTypeParam(typeFilter));
         if (statusFilter) params.set('status', statusFilter);
         const query = params.toString();
-        return `${process.env.NEXT_PUBLIC_API_URL}/api/admin/opportunities/export${query ? `?${query}` : ''}`;
+        const adminBase = getApiBaseForEndpoint('/api/admin/opportunities/export');
+        return `${adminBase}/api/admin/opportunities/export${query ? `?${query}` : ''}`;
     }, [typeFilter, statusFilter]);
 
     const typeParamToEnum = (value: string) => {

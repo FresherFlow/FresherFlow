@@ -1,6 +1,31 @@
 import { cookies } from 'next/headers';
 
-const API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL;
+const DEFAULT_API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '';
+const USER_API_URL = process.env.USER_API_URL || process.env.NEXT_PUBLIC_USER_API_URL || DEFAULT_API_URL;
+const ADMIN_API_URL = process.env.ADMIN_API_URL || process.env.NEXT_PUBLIC_ADMIN_API_URL || DEFAULT_API_URL;
+const DEFAULT_PUBLIC_REVALIDATE_SECONDS = 120;
+
+function resolveApiBase(endpoint: string) {
+    if (endpoint.startsWith('/api/admin')) return ADMIN_API_URL;
+    return USER_API_URL;
+}
+
+function shouldBypassCache(endpoint: string, method: string) {
+    if (method !== 'GET' && method !== 'HEAD') return true;
+
+    const privatePrefixes = [
+        '/api/auth',
+        '/api/admin',
+        '/api/alerts',
+        '/api/user',
+        '/api/profile',
+        '/api/account',
+        '/api/tracker',
+        '/api/feedback',
+    ];
+
+    return privatePrefixes.some((prefix) => endpoint.startsWith(prefix));
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function serverApiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
@@ -13,12 +38,19 @@ export async function serverApiClient<T = any>(endpoint: string, options: Reques
         'Cookie': cookieHeader,
         ...(options.headers as Record<string, string> || {}),
     };
+    const method = (options.method || 'GET').toUpperCase();
+    const hasExplicitCacheConfig = options.cache !== undefined || options.next !== undefined;
+    const cacheOptions = hasExplicitCacheConfig
+        ? {}
+        : shouldBypassCache(endpoint, method)
+            ? { cache: 'no-store' as const }
+            : { next: { revalidate: DEFAULT_PUBLIC_REVALIDATE_SECONDS } };
 
     try {
-        const response = await fetch(`${API_URL}${endpoint}`, {
+        const response = await fetch(`${resolveApiBase(endpoint)}${endpoint}`, {
             ...options,
             headers,
-            cache: 'no-store',
+            ...cacheOptions,
         });
 
         if (!response.ok) {

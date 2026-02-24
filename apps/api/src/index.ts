@@ -42,6 +42,9 @@ import cronRoutes from './routes/cron';
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
+const APP_MODE = (process.env.APP_MODE || 'all').toLowerCase();
+const isUserMode = APP_MODE === 'all' || APP_MODE === 'user';
+const isAdminMode = APP_MODE === 'all' || APP_MODE === 'admin';
 
 function extractClientIp(req: express.Request): string {
     const forwarded = req.headers['x-forwarded-for'];
@@ -64,10 +67,12 @@ function extractClientIp(req: express.Request): string {
 
 // Lightweight Health Check (Zero-DB, Zero-Auth)
 app.use('/api', healthRoutes);
-app.use('/api/public/growth', growthRoutes);
-app.use('/api/public', opportunityClickRoutes);
-app.use('/api/ingestion', emailIngestionRoutes);
-app.use('/api/cron', cronRoutes);
+if (isUserMode) {
+    app.use('/api/public/growth', growthRoutes);
+    app.use('/api/public', opportunityClickRoutes);
+    app.use('/api/ingestion', emailIngestionRoutes);
+    app.use('/api/cron', cronRoutes);
+}
 
 // Trust proxy for Render/Vercel/Load Balancers
 if (process.env.NODE_ENV === 'production') {
@@ -174,8 +179,12 @@ const sessionCheckLimiter = rateLimit({
 
 // Apply default rate limiting
 app.use(defaultLimiter);
-app.use('/api/auth/me', sessionCheckLimiter);
-app.use('/api/admin/auth/me', sessionCheckLimiter);
+if (isUserMode) {
+    app.use('/api/auth/me', sessionCheckLimiter);
+}
+if (isAdminMode) {
+    app.use('/api/admin/auth/me', sessionCheckLimiter);
+}
 
 // ============================================================================
 // Routes
@@ -203,30 +212,33 @@ app.get('/sitemap.xml', (_req, res) => {
     res.type('application/xml').send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
 });
 
-// User routes
-app.use('/api/auth/register', registerLimiter);
-app.use('/api/auth/login', authLimiter);
-app.use('/api/auth', authRoutes);
-app.use('/api/profile', profileRoutes);
-app.use('/api/opportunities', opportunitiesRoutes);
-app.use('/api/actions', actionsRoutes);
-app.use('/api/saved', savedRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/alerts', alertsRoutes);
-app.use('/api/public/growth', growthRoutes);
-app.use('/api/public/companies', companyRoutes);
-app.use('/api/opportunities', feedbackRoutes);
-app.use('/api/feedback', appFeedbackRoutes);
+if (isUserMode) {
+    // User routes
+    app.use('/api/auth/register', registerLimiter);
+    app.use('/api/auth/login', authLimiter);
+    app.use('/api/auth', authRoutes);
+    app.use('/api/profile', profileRoutes);
+    app.use('/api/opportunities', opportunitiesRoutes);
+    app.use('/api/actions', actionsRoutes);
+    app.use('/api/saved', savedRoutes);
+    app.use('/api/dashboard', dashboardRoutes);
+    app.use('/api/alerts', alertsRoutes);
+    app.use('/api/public/companies', companyRoutes);
+    app.use('/api/opportunities', feedbackRoutes);
+    app.use('/api/feedback', appFeedbackRoutes);
+}
 
-// Admin routes (isolated)
-app.use('/api/admin/auth/totp', adminTotpRoutes);
-app.use('/api/admin/auth/login', authLimiter);
-app.use('/api/admin/auth', adminAuthRoutes);
-app.use('/api/admin/opportunities', adminOpportunitiesRoutes);
-app.use('/api/admin/feedback', adminFeedbackRoutes);
-app.use('/api/admin/app-feedback', adminAppFeedbackRoutes);
-app.use('/api/admin/system', adminSystemRoutes);
-app.use('/api/admin/analytics', adminAnalyticsRoutes);
+if (isAdminMode) {
+    // Admin routes
+    app.use('/api/admin/auth/totp', adminTotpRoutes);
+    app.use('/api/admin/auth/login', authLimiter);
+    app.use('/api/admin/auth', adminAuthRoutes);
+    app.use('/api/admin/opportunities', adminOpportunitiesRoutes);
+    app.use('/api/admin/feedback', adminFeedbackRoutes);
+    app.use('/api/admin/app-feedback', adminAppFeedbackRoutes);
+    app.use('/api/admin/system', adminSystemRoutes);
+    app.use('/api/admin/analytics', adminAnalyticsRoutes);
+}
 
 // ============================================================================
 // Error Handling
@@ -258,6 +270,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
     logger.info(`Server running on port ${PORT}`);
     logger.info(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    logger.info(`API mode: ${APP_MODE}`);
     logger.info(`Frontend URL: ${process.env.FRONTEND_URL}`);
     logger.info(`Sentry: ${process.env.SENTRY_DSN ? 'Enabled' : 'Disabled'}`);
 

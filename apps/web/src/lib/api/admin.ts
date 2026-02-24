@@ -106,6 +106,15 @@ export const adminApi = {
     getSystemMetrics: () =>
         apiClient('/api/admin/system/metrics'),
 
+    // Canonical dashboard metrics
+    getSystemMetricsV2: (window: '24h' | '7d' | '30d' = '30d') =>
+        apiClient(`/api/admin/system/metrics-v2?window=${window}`),
+
+    refreshSystemMetricsV2: (window: '24h' | '7d' | '30d' = '30d') =>
+        apiClient(`/api/admin/system/metrics-v2/refresh?window=${window}`, {
+            method: 'POST'
+        }),
+
     // Alert dispatch observability
     getAlertDispatchLogs: (filters?: {
         status?: 'INITIATED' | 'SENT' | 'FAILED' | 'SKIPPED';

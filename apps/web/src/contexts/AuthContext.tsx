@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { authApi } from '@/lib/api/client';
 import { clearUnreadCache } from '@/hooks/useUnreadNotifications';
 import { User, Profile } from '@fresherflow/types';
@@ -19,6 +19,7 @@ interface AuthContextType {
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AUTH_VISIBILITY_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_AUTH_VISIBILITY_REFRESH_COOLDOWN_MS || 300000);
 
 // ── Offline session cache ────────────────────────────────────────────────────
 const SESSION_CACHE_KEY = 'ff_cached_session_v1';
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [profile, setProfile] = useState<Profile | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
+    const lastVisibilityRefreshAtRef = useRef(0);
 
     const logout = useCallback(async () => {
         if (isLoggingOut) return;
@@ -156,9 +158,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // Re-fetch when user comes back to the tab (e.g. after editing profile)
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible') {
-                void loadUser({ silent: true });
-            }
+            if (document.visibilityState !== 'visible') return;
+            const now = Date.now();
+            if (now - lastVisibilityRefreshAtRef.current < AUTH_VISIBILITY_REFRESH_COOLDOWN_MS) return;
+            lastVisibilityRefreshAtRef.current = now;
+            void loadUser({ silent: true });
         };
 
         // Global handler for unauthorized errors (session expiry)
