@@ -13,7 +13,7 @@ declare global {
 
 // Optional User Authentication Middleware
 export function optionalAuth(req: Request, res: Response, next: NextFunction) {
-    const token = req.cookies.accessToken;
+    const token = req.cookies?.accessToken;
     if (token) {
         try {
             const userId = verifyAccessToken(token);
@@ -30,7 +30,7 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
 // User Authentication Middleware
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
     // Cookie-based auth only
-    const token = req.cookies.accessToken;
+    const token = req.cookies?.accessToken;
 
     if (!token) {
         return next(new AppError('No token provided', 401));
@@ -52,7 +52,7 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     // For safety, checking both or just keeping headers if admin is separate?
     // User said "Cookie-based auth only", implying the whole backend.
 
-    const token = req.cookies.adminAccessToken;
+    const token = req.cookies?.adminAccessToken;
 
     if (!token) {
         return next(new AppError('No admin token provided', 401));
