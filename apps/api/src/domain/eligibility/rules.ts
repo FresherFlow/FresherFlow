@@ -2,6 +2,11 @@
 // Every rule must have a clear reason
 
 import { Opportunity, Profile, EducationLevel } from '@fresherflow/types';
+import {
+    normalizeCourseName,
+    normalizeSpecializationName,
+    normalizeAcademicToken
+} from '../../utils/academicNormalization';
 
 export interface EligibilityRule {
     name: string;
@@ -26,9 +31,9 @@ export const degreeRule: EligibilityRule = {
 
         // 1. Course restrictions are strict when provided.
         if (hasCourseRestrictions) {
-            const allowedCourses = ((opp as any).allowedCourses as string[]).map((course) => course.toLowerCase());
-            const userCourse = profile.gradCourse?.toLowerCase();
-            const userPGCourse = profile.pgCourse?.toLowerCase();
+            const allowedCourses = ((opp as any).allowedCourses as string[]).map((course) => normalizeAcademicToken(normalizeCourseName(course)));
+            const userCourse = normalizeAcademicToken(normalizeCourseName(profile.gradCourse));
+            const userPGCourse = normalizeAcademicToken(normalizeCourseName(profile.pgCourse));
 
             const courseMatch = (userCourse && allowedCourses.includes(userCourse)) ||
                 (userPGCourse && allowedCourses.includes(userPGCourse));
@@ -38,9 +43,9 @@ export const degreeRule: EligibilityRule = {
 
         // 2. Specialization restrictions are strict when provided.
         if (hasSpecializationRestrictions) {
-            const allowedSpecializations = ((opp as any).allowedSpecializations as string[]).map((specialization) => specialization.toLowerCase());
-            const userSpecialization = profile.gradSpecialization?.toLowerCase();
-            const userPGSpecialization = profile.pgSpecialization?.toLowerCase();
+            const allowedSpecializations = ((opp as any).allowedSpecializations as string[]).map((specialization) => normalizeAcademicToken(normalizeSpecializationName(specialization)));
+            const userSpecialization = normalizeAcademicToken(normalizeSpecializationName(profile.gradSpecialization));
+            const userPGSpecialization = normalizeAcademicToken(normalizeSpecializationName(profile.pgSpecialization));
 
             const specializationMatch = (userSpecialization && allowedSpecializations.includes(userSpecialization)) ||
                 (userPGSpecialization && allowedSpecializations.includes(userPGSpecialization));
@@ -48,7 +53,7 @@ export const degreeRule: EligibilityRule = {
             if (!specializationMatch) return false;
         }
 
-        // 3. Check Level Restrictions
+        // 3. Level restrictions are also strict when provided.
         if (hasLevelRestrictions) {
             const levels = ['DIPLOMA', 'DEGREE', 'PG'];
             const userLevelIndex = levels.indexOf(profile.educationLevel);
@@ -58,10 +63,11 @@ export const degreeRule: EligibilityRule = {
                 return degIndex !== -1 && degIndex <= userLevelIndex;
             });
 
-            if (levelMatch) return true;
+            if (!levelMatch) return false;
         }
 
-        return false;
+        // If every provided restriction passed, the user is eligible.
+        return true;
     },
     getReason: (opp, profile) => {
         const hasCourses = (opp as any).allowedCourses && (opp as any).allowedCourses.length > 0;

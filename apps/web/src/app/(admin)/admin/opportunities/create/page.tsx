@@ -75,6 +75,12 @@ import {
     LinkIcon,
     PaperAirplaneIcon
 } from '@heroicons/react/24/outline';
+import {
+    ALL_COURSE_OPTIONS,
+    ALL_SPECIALIZATION_OPTIONS,
+    normalizeCourseName,
+    normalizeSpecializationName
+} from '@/lib/profileConstants';
 
 type OpportunityFormPageProps = {
     mode?: 'create' | 'edit';
@@ -540,8 +546,13 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         );
     };
 
-    const normalizeCourses = (values: unknown) => {
-        return uniqueValues(toStringArray(values));
+    const normalizeCourses = (values: unknown, type: 'course' | 'specialization') => {
+        const normalize = type === 'course' ? normalizeCourseName : normalizeSpecializationName;
+        return uniqueValues(
+            toStringArray(values)
+                .map((value) => normalize(value))
+                .filter(Boolean)
+        );
     };
 
     const normalizeEducationPayload = (degreesInput: unknown, coursesInput: unknown, specializationsInput: unknown) => {
@@ -551,8 +562,8 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         const normalizedCourses = normalizeCourses([
             ...toStringArray(coursesInput),
             ...inferredCoursesFromDegrees,
-        ]);
-        const normalizedSpecializations = normalizeCourses(specializationsInput);
+        ], 'course');
+        const normalizedSpecializations = normalizeCourses(specializationsInput, 'specialization');
 
         // If only degree specializations were provided in allowedDegrees, keep eligibility broad as UG.
         const degrees = normalizedDegrees.length > 0
@@ -803,18 +814,9 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
 
 
 
-    const COMMON_COURSES = [
-        'B.Tech / B.E.', 'B.Sc.', 'BCA', 'BBA', 'B.Com', 'B.A.',
-        'M.Tech / M.E.', 'M.Sc.', 'MCA', 'MBA', 'M.Com', 'M.A.'
-    ];
-    const COMMON_SPECIALIZATIONS = [
-        'Computer Science', 'Information Technology', 'Electronics', 'Electrical',
-        'Mechanical', 'Civil', 'Data Science', 'AI/ML', 'Cybersecurity',
-        'Finance', 'Marketing', 'Human Resources', 'Operations', 'General'
-    ];
     const COMMON_DEGREES = ['DIPLOMA', 'DEGREE', 'PG'];
-    const visibleCourseOptions = Array.from(new Set([...COMMON_COURSES, ...allowedCourses]));
-    const visibleSpecializationOptions = Array.from(new Set([...COMMON_SPECIALIZATIONS, ...allowedSpecializations]));
+    const visibleCourseOptions = Array.from(new Set([...ALL_COURSE_OPTIONS, ...allowedCourses]));
+    const visibleSpecializationOptions = Array.from(new Set([...ALL_SPECIALIZATION_OPTIONS, ...allowedSpecializations]));
     const customDegrees = allowedDegrees.filter((degree) => !COMMON_DEGREES.includes(degree));
 
 

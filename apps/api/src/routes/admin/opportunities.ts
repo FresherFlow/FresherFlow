@@ -13,6 +13,7 @@ import { sendNewJobAlerts } from '../../services/notification.service';
 import { generateSlug } from '../../utils/slugify';
 import { generateCompanyLogoUrl } from '../../utils/companyLogo';
 import logger from '../../utils/logger';
+import { normalizeCourseArray, normalizeSpecializationArray } from '../../utils/academicNormalization';
 
 import TelegramService from '../../services/telegram.service';
 
@@ -109,6 +110,14 @@ function deriveOpportunityExpiryDate(data: any, type: OpportunityType): Date | n
     const endDate = new Date(Math.max(...walkInDates.map((d) => d.getTime())));
     endDate.setHours(23, 59, 59, 999);
     return endDate;
+}
+
+function normalizeEducationRequirements(data: any) {
+    return {
+        allowedDegrees: Array.isArray(data.allowedDegrees) ? data.allowedDegrees : [],
+        allowedCourses: normalizeCourseArray(data.allowedCourses || []),
+        allowedSpecializations: normalizeSpecializationArray(data.allowedSpecializations || []),
+    };
 }
 
 function parseEventType(raw?: string): OpportunityEventType {
@@ -243,6 +252,7 @@ router.post(
 
             const tempId = crypto.randomUUID();
             const slug = generateSlug(data.title, data.company, tempId);
+            const education = normalizeEducationRequirements(data);
 
             const opportunity = await prisma.opportunity.create({
                 data: {
@@ -254,9 +264,9 @@ router.post(
                     companyWebsite: data.companyWebsite,
                     companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
                     description: data.description,
-                    allowedDegrees: data.allowedDegrees,
-                    allowedCourses: data.allowedCourses || [],
-                    allowedSpecializations: data.allowedSpecializations || [],
+                    allowedDegrees: education.allowedDegrees,
+                    allowedCourses: education.allowedCourses,
+                    allowedSpecializations: education.allowedSpecializations,
                     allowedPassoutYears: data.allowedPassoutYears,
                     requiredSkills: data.requiredSkills || [],
                     locations: data.locations,
@@ -425,6 +435,7 @@ router.post(
             // Generate unique slug
             const tempId = crypto.randomUUID();
             const slug = generateSlug(data.title, data.company, tempId);
+            const education = normalizeEducationRequirements(data);
 
             const opportunity = await prisma.opportunity.create({
                 data: {
@@ -436,9 +447,9 @@ router.post(
                     companyWebsite: data.companyWebsite,
                     companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
                     description: data.description,
-                    allowedDegrees: data.allowedDegrees,
-                    allowedCourses: data.allowedCourses || [],
-                    allowedSpecializations: data.allowedSpecializations || [],
+                    allowedDegrees: education.allowedDegrees,
+                    allowedCourses: education.allowedCourses,
+                    allowedSpecializations: education.allowedSpecializations,
                     allowedPassoutYears: data.allowedPassoutYears,
                     requiredSkills: data.requiredSkills || [],
                     locations: data.locations,
@@ -919,7 +930,11 @@ router.put(
             }
 
             // Regenerate slug if title or company changed
+            const education = normalizeEducationRequirements(data);
             const updateData: any = {
+                allowedDegrees: education.allowedDegrees,
+                allowedCourses: education.allowedCourses,
+                allowedSpecializations: education.allowedSpecializations,
                 type: data.type,
                 status: data.status,
                 title: data.title,
@@ -927,9 +942,6 @@ router.put(
                 companyWebsite: data.companyWebsite,
                 companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
                 description: data.description,
-                allowedDegrees: data.allowedDegrees,
-                allowedCourses: data.allowedCourses || [],
-                allowedSpecializations: data.allowedSpecializations || [],
                 allowedPassoutYears: data.allowedPassoutYears,
                 requiredSkills: data.requiredSkills || [],
                 locations: data.locations,

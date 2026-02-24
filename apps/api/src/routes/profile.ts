@@ -7,6 +7,10 @@ import { validate } from '../middleware/validate';
 import { educationSchema, preferencesSchema, readinessSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
 import { calculateCompletion } from '../utils/profileCompletion';
+import {
+    normalizeCourseName,
+    normalizeSpecializationName
+} from '../utils/academicNormalization';
 
 const router: Router = express.Router();
 
@@ -32,6 +36,10 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
 router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { fullName, ...data } = req.body;
+        const normalizedGradCourse = normalizeCourseName(data.gradCourse);
+        const normalizedGradSpecialization = normalizeSpecializationName(data.gradSpecialization);
+        const normalizedPgCourse = normalizeCourseName(data.pgCourse) || null;
+        const normalizedPgSpecialization = normalizeSpecializationName(data.pgSpecialization) || null;
 
         // Update user if fullName is provided
         if (fullName) {
@@ -48,11 +56,11 @@ router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunct
                 educationLevel: data.educationLevel,
                 tenthYear: data.tenthYear,
                 twelfthYear: data.twelfthYear,
-                gradCourse: data.gradCourse,
-                gradSpecialization: data.gradSpecialization,
+                gradCourse: normalizedGradCourse,
+                gradSpecialization: normalizedGradSpecialization,
                 gradYear: data.gradYear,
-                pgCourse: data.pgCourse,
-                pgSpecialization: data.pgSpecialization,
+                pgCourse: normalizedPgCourse,
+                pgSpecialization: normalizedPgSpecialization,
                 pgYear: data.pgYear,
                 interestedIn: data.interestedIn,
                 preferredCities: data.preferredCities,
@@ -89,6 +97,10 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
             gradCourse, gradSpecialization, gradYear,
             pgCourse, pgSpecialization, pgYear
         } = req.body;
+        const normalizedGradCourse = normalizeCourseName(gradCourse);
+        const normalizedGradSpecialization = normalizeSpecializationName(gradSpecialization);
+        const normalizedPgCourse = normalizeCourseName(pgCourse) || null;
+        const normalizedPgSpecialization = normalizeSpecializationName(pgSpecialization) || null;
 
         // Update user if fullName is provided
         if (fullName) {
@@ -105,11 +117,11 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
                 educationLevel,
                 tenthYear,
                 twelfthYear,
-                gradCourse,
-                gradSpecialization,
+                gradCourse: normalizedGradCourse,
+                gradSpecialization: normalizedGradSpecialization,
                 gradYear,
-                pgCourse,
-                pgSpecialization,
+                pgCourse: normalizedPgCourse,
+                pgSpecialization: normalizedPgSpecialization,
                 pgYear
             }
         });

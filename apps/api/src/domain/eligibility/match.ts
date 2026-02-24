@@ -4,6 +4,11 @@
 import { Opportunity, Profile } from '@fresherflow/types';
 import { HARD_RULES, SOFT_RULES, EligibilityRule } from './rules';
 import logger from '../../utils/logger';
+import {
+    normalizeAcademicToken,
+    normalizeCourseName,
+    normalizeSpecializationName
+} from '../../utils/academicNormalization';
 
 export interface EligibilityResult {
     eligible: boolean;
@@ -222,24 +227,24 @@ function getEducationLevelScore(opportunity: Opportunity, profile: Profile): num
 }
 
 function getCourseMatchScore(opportunity: Opportunity, profile: Profile): number {
-    const allowed = (opportunity.allowedCourses || []).map((c) => c.toLowerCase());
+    const allowed = (opportunity.allowedCourses || []).map((c) => normalizeAcademicToken(normalizeCourseName(c)));
     if (allowed.length === 0) return 1;
 
     const userCourses = [profile.gradCourse, profile.pgCourse]
         .filter(Boolean)
-        .map((c) => (c as string).toLowerCase());
+        .map((c) => normalizeAcademicToken(normalizeCourseName(c as string)));
 
     if (userCourses.length === 0) return 0;
     return userCourses.some((course) => allowed.includes(course)) ? 1 : 0;
 }
 
 function getSpecializationMatchScore(opportunity: Opportunity, profile: Profile): number {
-    const allowed = ((opportunity as any).allowedSpecializations || []).map((s: string) => s.toLowerCase());
+    const allowed = ((opportunity as any).allowedSpecializations || []).map((s: string) => normalizeAcademicToken(normalizeSpecializationName(s)));
     if (allowed.length === 0) return 1;
 
     const userSpecializations = [profile.gradSpecialization, profile.pgSpecialization]
         .filter(Boolean)
-        .map((s) => (s as string).toLowerCase());
+        .map((s) => normalizeAcademicToken(normalizeSpecializationName(s as string)));
 
     if (userSpecializations.length === 0) return 0;
     return userSpecializations.some((specialization) => allowed.includes(specialization)) ? 1 : 0;

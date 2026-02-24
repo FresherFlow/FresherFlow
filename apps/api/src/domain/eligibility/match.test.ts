@@ -81,6 +81,28 @@ describe('Eligibility Matching Engine', () => {
         expect(result.warnings).toBeDefined();
         expect(result.warnings?.[0]).toContain('Pune');
     });
+
+    test('should match PG course even if UG course is different', () => {
+        const pgProfile: Profile = {
+            ...mockProfile,
+            educationLevel: EducationLevel.PG,
+            gradCourse: 'BSc',
+            pgCourse: 'MCA',
+            pgYear: 2025,
+        };
+
+        const result = checkEligibility(
+            {
+                ...mockOpp,
+                allowedDegrees: [],
+                allowedCourses: ['MCA'],
+                allowedPassoutYears: [2025],
+            },
+            pgProfile
+        );
+
+        expect(result.eligible).toBe(true);
+    });
 });
 
 describe('Sorting Logic', () => {
