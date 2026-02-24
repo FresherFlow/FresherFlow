@@ -18,6 +18,7 @@
         "dev:api": "npm run dev --workspace=apps/api",
         "dev:worker": "npm run dev:worker --workspace=apps/api",
         "dev:web": "npm run dev --workspace=apps/web",
+        "dev:admin-mobile": "npm run start --workspace=apps/admin-mobile",
         "build": "turbo run build",
         "build:api": "turbo run build --filter=fresherflow-api",
         "build:web": "turbo run build --filter=fresherflow-web",

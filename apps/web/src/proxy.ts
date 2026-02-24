@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 const ADMIN_WEB_HOST = (process.env.ADMIN_WEB_HOST || 'admin.fresherflow.in').toLowerCase();
+const PUBLIC_WEB_HOST = (process.env.PUBLIC_WEB_HOST || 'fresherflow.in').toLowerCase();
 const ADMIN_ROOT_PREFIXES = [
     '/dashboard',
     '/opportunities',
@@ -13,6 +14,7 @@ const ADMIN_ROOT_PREFIXES = [
     '/telegram',
     '/settings',
 ];
+const PUBLIC_DETAIL_PREFIXES = ['/jobs/', '/internships/', '/opportunities/', '/walk-ins/details/', '/walkins/details/'];
 
 function redirectWithMethodAwareness(request: NextRequest, target: string) {
     const url = new URL(target, request.url);
@@ -39,6 +41,17 @@ export function proxy(request: NextRequest) {
     const isAdminAuthenticated = request.cookies.has('adminAccessToken');
     const isAdminRoute = pathname.startsWith('/admin');
     const isAdminLogin = pathname === '/admin/login';
+
+    // Public detail routes should never be served on admin host.
+    // Redirect them to the public web host to avoid /admin-domain 404s.
+    if (
+        process.env.NODE_ENV === 'production' &&
+        isAdminHost &&
+        PUBLIC_DETAIL_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+    ) {
+        const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
+        return redirectWithMethodAwareness(request, target);
+    }
 
     // Force admin routes to dedicated admin host in production.
     if (
@@ -136,7 +149,9 @@ export const config = {
         '/dashboard/:path*',
         '/opportunities/:path*',
         '/jobs/:path*',
+        '/internships/:path*',
         '/walkins/:path*',
+        '/walk-ins/:path*',
         '/analytics/:path*',
         '/feedback/:path*',
         '/alerts/:path*',

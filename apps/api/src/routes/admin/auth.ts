@@ -53,6 +53,20 @@ const COOKIE_OPTIONS = {
     ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {})
 };
 
+function getAdminIdFromRequest(req: Request): string | null {
+    const cookieToken = req.cookies.adminAccessToken as string | undefined;
+    if (cookieToken) {
+        const adminId = verifyAdminToken(cookieToken);
+        if (adminId) return adminId;
+    }
+
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.toLowerCase().startsWith('bearer ')) return null;
+    const bearerToken = authHeader.slice(7).trim();
+    if (!bearerToken) return null;
+    return verifyAdminToken(bearerToken);
+}
+
 function parseDurationToMs(value: string): number | null {
     const trimmed = value.trim().toLowerCase();
     const match = trimmed.match(/^(\d+)\s*([smhd])$/);
@@ -333,7 +347,7 @@ router.post('/login/verify', adminAuthLimiter, async (req: Request, res: Respons
                 ...COOKIE_OPTIONS,
                 maxAge: accessMaxAge
             });
-            return res.json({ verified: true });
+            return res.json({ verified: true, accessToken: token });
         } else {
             res.status(400).json({ verified: false });
         }
@@ -385,7 +399,7 @@ router.post('/login/totp', adminAuthLimiter, async (req: Request, res: Response,
             ...COOKIE_OPTIONS,
             maxAge: accessMaxAge
         });
-        return res.json({ verified: true });
+        return res.json({ verified: true, accessToken: token });
     } catch (error) {
         next(error);
     }
@@ -396,10 +410,7 @@ router.post('/login/totp', adminAuthLimiter, async (req: Request, res: Response,
  */
 router.get('/me', async (req: Request, res: Response) => {
     try {
-        const token = req.cookies.adminAccessToken;
-        if (!token) return res.json({ admin: null });
-
-        const adminId = verifyAdminToken(token);
+        const adminId = getAdminIdFromRequest(req);
         if (!adminId) return res.json({ admin: null });
 
         const user = await prisma.user.findUnique({
