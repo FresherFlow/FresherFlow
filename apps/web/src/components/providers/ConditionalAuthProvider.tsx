@@ -6,7 +6,9 @@ import { ReactNode } from "react";
 
 export function ConditionalAuthProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
-    const isAdminRoute = pathname?.startsWith('/admin');
+    const adminHost = (process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in').toLowerCase();
+    const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === adminHost;
+    const isAdminRoute = pathname?.startsWith('/admin') || isAdminHost;
     const isLandingPage = pathname === '/';
 
     // Don't wrap admin and pure marketing landing routes with user AuthProvider.

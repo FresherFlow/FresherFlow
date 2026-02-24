@@ -106,16 +106,56 @@ app.use(helmet());
 // Cookies
 app.use(cookieParser());
 
-// CORS - Allowlist for multiple environments (comma-separated)
-const allowedOrigins = [
-    ...(process.env.FRONTEND_URLS || '').split(',').map(origin => origin.trim()).filter(Boolean),
-    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : [])
-];
+function normalizeOrigin(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+        return new URL(trimmed).origin;
+    } catch {
+        try {
+            return new URL(`https://${trimmed}`).origin;
+        } catch {
+            return null;
+        }
+    }
+}
+
+// CORS allowlist:
+// - explicit entries from env
+// - safe defaults for local dev
+// - optional wildcard for fresherflow subdomains in production
+const configuredOrigins = [
+    ...(process.env.FRONTEND_URLS || '').split(','),
+    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+    'http://localhost:3000',
+    'http://localhost:3001'
+]
+    .map(normalizeOrigin)
+    .filter((origin): origin is string => Boolean(origin));
+
+const allowedOrigins = new Set(configuredOrigins);
+const allowFresherflowSubdomains = process.env.CORS_ALLOW_FRESHERFLOW_SUBDOMAINS !== 'false';
+
+function isAllowedOrigin(origin: string): boolean {
+    const normalized = normalizeOrigin(origin);
+    if (!normalized) return false;
+    if (allowedOrigins.has(normalized)) return true;
+
+    if (!allowFresherflowSubdomains) return false;
+    try {
+        const parsed = new URL(normalized);
+        const host = parsed.hostname.toLowerCase();
+        return parsed.protocol === 'https:' && (host === 'fresherflow.in' || host.endsWith('.fresherflow.in'));
+    } catch {
+        return false;
+    }
+}
 
 app.use(cors({
     origin: (origin, callback) => {
         if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) return callback(null, true);
+        if (isAllowedOrigin(origin)) return callback(null, true);
+        logger.warn('CORS blocked request origin', { origin, mode: APP_MODE });
         return callback(new Error('Not allowed by CORS'));
     },
     credentials: true

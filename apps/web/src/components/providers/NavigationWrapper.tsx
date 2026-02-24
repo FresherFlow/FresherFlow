@@ -11,7 +11,9 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const normalizedPathname = pathname?.toLowerCase() || '';
     const isAuthRoute = normalizedPathname === '/login' || normalizedPathname === '/register';
-    const isAdminRoute = normalizedPathname.startsWith('/admin');
+    const adminHost = (process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in').toLowerCase();
+    const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === adminHost;
+    const isAdminRoute = normalizedPathname.startsWith('/admin') || isAdminHost;
 
     const hideNav = isAdminRoute;
     const isHomePage = pathname === '/';

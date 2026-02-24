@@ -80,6 +80,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const adminWebHost = process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in';
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -110,7 +111,8 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              if (window.location.pathname.startsWith('/admin')) {
+              var isAdminHost = window.location.hostname === '${adminWebHost}';
+              if (isAdminHost || window.location.pathname.startsWith('/admin')) {
                 var link = document.createElement('link');
                 link.rel = 'manifest';
                 link.href = '/admin-manifest.json';
