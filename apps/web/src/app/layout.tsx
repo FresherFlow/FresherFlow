@@ -1,6 +1,6 @@
-import { Suspense } from "react";
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import { ConditionalAuthProvider } from "@/components/providers/ConditionalAuthProvider";
 import { SmartToaster } from "@/components/providers/SmartToaster";
@@ -14,7 +14,6 @@ import OfflineNotification from "@/components/ui/OfflineNotification";
 import InstallAppBanner from "@/components/ui/InstallAppBanner";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import GoogleAnalytics from "@/components/providers/GoogleAnalytics";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -37,7 +36,7 @@ export const metadata: Metadata = {
   },
   description: "Verified fresher jobs, internships, and walk-ins in India. Direct apply links, profile-fit ranking, and closing-soon alerts on FresherFlow.",
   alternates: {
-    canonical: "./",
+    canonical: "/",
   },
   openGraph: {
     type: "website",
@@ -81,6 +80,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const adminWebHost = process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in';
+  const gaId = process.env.NEXT_PUBLIC_GA_ID || '';
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -146,9 +146,22 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <SmartToaster />
         <OfflineNotification />
-        <Suspense fallback={null}>
-          <GoogleAnalytics ga_id={process.env.NEXT_PUBLIC_GA_ID || ''} />
-        </Suspense>
+        {gaId ? (
+          <>
+            <Script
+              src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+              strategy="afterInteractive"
+            />
+            <Script id="ga-init" strategy="afterInteractive">
+              {`
+                window.dataLayer = window.dataLayer || [];
+                function gtag(){dataLayer.push(arguments);}
+                gtag('js', new Date());
+                gtag('config', '${gaId}', { page_path: window.location.pathname });
+              `}
+            </Script>
+          </>
+        ) : null}
         <Analytics />
         <SpeedInsights />
       </body>

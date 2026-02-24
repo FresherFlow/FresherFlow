@@ -36,6 +36,7 @@ import adminTotpRoutes from './routes/admin/totp';
 import healthRoutes from './routes/public/health';
 import growthRoutes from './routes/public/growth';
 import companyRoutes from './routes/public/companies';
+import sitemapRoutes from './routes/public/sitemap';
 import opportunityClickRoutes from './routes/public/opportunityClicks';
 import emailIngestionRoutes from './routes/public/emailIngestion';
 import cronRoutes from './routes/cron';
@@ -264,6 +265,7 @@ if (isUserMode) {
     app.use('/api/dashboard', dashboardRoutes);
     app.use('/api/alerts', alertsRoutes);
     app.use('/api/public/companies', companyRoutes);
+    app.use('/api/public/sitemap', sitemapRoutes);
     app.use('/api/opportunities', feedbackRoutes);
     app.use('/api/feedback', appFeedbackRoutes);
 }

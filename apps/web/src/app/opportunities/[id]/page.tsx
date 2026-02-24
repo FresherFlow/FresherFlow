@@ -21,6 +21,25 @@ type Props = {
 };
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in';
+const EXPIRED_GRACE_DAYS = 45;
+
+function getExpiryState(opportunity: ExtendedOpportunity) {
+    if (!opportunity.expiresAt) return { isExpired: false, pastGrace: false };
+    const expiresAt = new Date(opportunity.expiresAt);
+    if (Number.isNaN(expiresAt.getTime())) return { isExpired: false, pastGrace: false };
+    const now = Date.now();
+    const isExpired = expiresAt.getTime() <= now;
+    if (!isExpired) return { isExpired: false, pastGrace: false };
+    const graceMs = EXPIRED_GRACE_DAYS * 24 * 60 * 60 * 1000;
+    return { isExpired: true, pastGrace: now - expiresAt.getTime() > graceMs };
+}
+
+function getTypeHubPath(type?: Opportunity['type']) {
+    if (type === 'JOB') return '/jobs';
+    if (type === 'INTERNSHIP') return '/internships';
+    if (type === 'WALKIN') return '/walk-ins';
+    return '/opportunities';
+}
 
 async function fetchOpportunityForPage(slugOrId: string): Promise<ExtendedOpportunity | null> {
     try {
@@ -47,6 +66,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     try {
         const opportunity = await fetchOpportunityForPage(slugOrId);
         if (!opportunity) throw new Error('Opportunity not found');
+        const expiry = getExpiryState(opportunity);
 
         const role = opportunity.normalizedRole || opportunity.title;
         const company = opportunity.company;
@@ -96,6 +116,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         return {
             title: seoTitle,
             description,
+            robots: expiry.isExpired ? {
+                index: false,
+                follow: true,
+            } : undefined,
             openGraph: {
                 title: seoTitle,
                 description,
@@ -200,10 +224,16 @@ export default async function OpportunityDetailPage({ params }: Props) {
         const opportunity = await fetchOpportunityForPage(slugOrId);
         opportunityData = opportunity;
         if (!opportunity) throw new Error('Opportunity not found');
+        const expiry = getExpiryState(opportunity);
 
         // SEO Enforcement: Redirect to slug if ID was used
         if (slugOrId === opportunity.id && opportunity.slug) {
             redirect(getOpportunityPath(opportunity.type, opportunity.slug));
+        }
+
+        // Expired pages stay live for grace period, then redirect to the type hub.
+        if (expiry.pastGrace) {
+            redirect(getTypeHubPath(opportunity.type));
         }
     } catch {
         // Fallback handled by client component (loading/404)
@@ -211,7 +241,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
 
     return (
         <>
-            {opportunityData && (
+            {opportunityData && !getExpiryState(opportunityData).isExpired && (
                 <script
                     type="application/ld+json"
                     dangerouslySetInnerHTML={{ __html: JSON.stringify(generateJsonLd(opportunityData)) }}
