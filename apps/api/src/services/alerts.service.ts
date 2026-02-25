@@ -119,7 +119,12 @@ async function sendDailyDigestForUser(
                 kind: 'DAILY_DIGEST',
                 channel: 'APP',
                 dedupeKey: `${dedupeKey}:APP`,
-                metadata: JSON.stringify({ count: ranked.length }),
+                metadata: JSON.stringify({
+                    count: ranked.length,
+                    opportunityIds: ranked.map((item) => item.opportunity.id),
+                    generatedAt: now.toISOString(),
+                    rankVersion: 'v1'
+                }),
             },
         }),
         prisma.alertPreference.update({

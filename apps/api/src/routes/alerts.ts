@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
 import express, { NextFunction, Request, Response, Router } from 'express';
+import { OpportunityStatus } from '@prisma/client';
 
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
@@ -97,6 +98,99 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
         });
 
         res.json({ deliveries: normalizedDeliveries, summary, unreadCount });
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.get('/:id/digest-items', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.userId;
+        const alertId = String(req.params.id || '');
+        if (!userId) return next(new AppError('Unauthorized', 401));
+
+        const delivery = await prisma.alertDelivery.findFirst({
+            where: {
+                id: alertId,
+                userId,
+                channel: 'APP'
+            },
+            select: {
+                id: true,
+                kind: true,
+                metadata: true
+            }
+        });
+
+        if (!delivery || delivery.kind !== 'DAILY_DIGEST') {
+            return next(new AppError('Digest alert not found', 404));
+        }
+
+        let opportunityIds: string[] = [];
+        let requestedCount = 0;
+
+        if (delivery.metadata) {
+            try {
+                const parsed = JSON.parse(delivery.metadata) as { opportunityIds?: unknown; count?: unknown };
+                if (Array.isArray(parsed.opportunityIds)) {
+                    opportunityIds = parsed.opportunityIds
+                        .filter((value): value is string => typeof value === 'string' && value.length > 0);
+                }
+                if (typeof parsed.count === 'number' && Number.isFinite(parsed.count)) {
+                    requestedCount = Math.max(0, Math.floor(parsed.count));
+                }
+            } catch {
+                opportunityIds = [];
+                requestedCount = 0;
+            }
+        }
+
+        if (requestedCount === 0) requestedCount = opportunityIds.length;
+        if (opportunityIds.length === 0) {
+            return res.json({ items: [], requestedCount, activeCount: 0 });
+        }
+
+        const opportunities = await prisma.opportunity.findMany({
+            where: {
+                id: { in: opportunityIds },
+                status: OpportunityStatus.PUBLISHED,
+                deletedAt: null,
+                expiredAt: null,
+                OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+            },
+            select: {
+                id: true,
+                slug: true,
+                title: true,
+                company: true,
+                type: true,
+                locations: true,
+                applyLink: true,
+                companyWebsite: true,
+                expiresAt: true,
+                savedBy: {
+                    where: { userId },
+                    select: { id: true },
+                    take: 1,
+                }
+            }
+        });
+
+        const byId = new Map(opportunities.map((item) => [item.id, item]));
+        const ordered = opportunityIds
+            .map((id) => byId.get(id))
+            .filter((item): item is NonNullable<typeof item> => Boolean(item))
+            .map((item) => ({
+                ...item,
+                isSaved: item.savedBy.length > 0,
+                savedBy: undefined
+            }));
+
+        return res.json({
+            items: ordered,
+            requestedCount,
+            activeCount: ordered.length
+        });
     } catch (error) {
         next(error);
     }

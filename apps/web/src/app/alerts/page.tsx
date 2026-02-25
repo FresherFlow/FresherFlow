@@ -3,20 +3,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
-import { alertsApi, savedApi } from '@/lib/api/client';
+import { alertsApi, savedApi, actionsApi } from '@/lib/api/client';
 import { BellIcon, ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import toast from 'react-hot-toast';
+import { ActionType } from '@fresherflow/types';
 
 type AlertKindFilter = 'all' | 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
 
 type AlertFeedItem = {
     id: string;
     kind: 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
-    channel: 'EMAIL' | 'APP';
+    channel: 'EMAIL' | 'APP' | 'PUSH';
     sentAt: string;
     readAt: string | null;
     metadata: string | null;
@@ -51,7 +52,35 @@ type DisplayAlertItem = AlertFeedItem & {
     collapsedCount?: number;
 };
 
+type DigestOpportunityItem = {
+    id: string;
+    slug: string;
+    title: string;
+    company: string;
+    type: 'JOB' | 'INTERNSHIP' | 'WALKIN';
+    locations: string[];
+    applyLink?: string | null;
+    companyWebsite?: string | null;
+    expiresAt?: string | null;
+    isSaved?: boolean;
+};
+
+type DigestItemsResponse = {
+    items: DigestOpportunityItem[];
+    requestedCount: number;
+    activeCount: number;
+};
+
+type PendingApplyFollowup = {
+    alertId: string;
+    opportunityId: string;
+    opportunityTitle: string;
+    createdAt: number;
+};
+
 const ALERTS_UPDATED_EVENT = 'ff-alerts-updated';
+const APPLY_FOLLOWUP_WINDOW_MS = 5 * 60 * 1000;
+const APPLY_PROMPTED_SESSION_KEY = 'ff_alert_apply_prompted_v1';
 
 function getAlertMetaText(item: AlertFeedItem): string | null {
     if (!item.metadata) return null;
@@ -99,11 +128,39 @@ function getAlertMetaText(item: AlertFeedItem): string | null {
     return null;
 }
 
+function readPromptedOpportunityIds(): Set<string> {
+    if (typeof window === 'undefined') return new Set();
+    try {
+        const raw = window.sessionStorage.getItem(APPLY_PROMPTED_SESSION_KEY);
+        if (!raw) return new Set();
+        const parsed = JSON.parse(raw) as unknown;
+        if (!Array.isArray(parsed)) return new Set();
+        return new Set(parsed.filter((value): value is string => typeof value === 'string' && value.length > 0));
+    } catch {
+        return new Set();
+    }
+}
+
+function writePromptedOpportunityIds(ids: Set<string>) {
+    if (typeof window === 'undefined') return;
+    try {
+        window.sessionStorage.setItem(APPLY_PROMPTED_SESSION_KEY, JSON.stringify(Array.from(ids)));
+    } catch {
+        // ignore session storage errors
+    }
+}
+
 export default function AlertsCenterPage() {
     const { user, isLoading } = useAuth();
     const [kind, setKind] = useState<AlertKindFilter>('all');
     const [feed, setFeed] = useState<AlertFeedResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [expandedDigestIds, setExpandedDigestIds] = useState<Record<string, boolean>>({});
+    const [digestItemsByAlert, setDigestItemsByAlert] = useState<Record<string, DigestItemsResponse>>({});
+    const [digestLoadingByAlert, setDigestLoadingByAlert] = useState<Record<string, boolean>>({});
+    const [appliedOpportunityIds, setAppliedOpportunityIds] = useState<Set<string>>(new Set());
+    const [pendingApplyFollowup, setPendingApplyFollowup] = useState<PendingApplyFollowup | null>(null);
+    const [promptedOpportunityIds, setPromptedOpportunityIds] = useState<Set<string>>(new Set());
 
     const emitAlertsUpdated = () => {
         if (typeof window !== 'undefined') {
@@ -152,6 +209,126 @@ export default function AlertsCenterPage() {
         }
     };
 
+    const markPrompted = (opportunityId: string) => {
+        setPromptedOpportunityIds((prev) => {
+            const next = new Set(prev);
+            next.add(opportunityId);
+            writePromptedOpportunityIds(next);
+            return next;
+        });
+    };
+
+    const handleApplyFollowupConfirm = async (payload: PendingApplyFollowup) => {
+        try {
+            await actionsApi.track(payload.opportunityId, ActionType.APPLIED);
+            setAppliedOpportunityIds((prev) => new Set(prev).add(payload.opportunityId));
+            if (payload.alertId) {
+                await markAsRead(payload.alertId);
+            }
+            toast.success('Marked as applied');
+        } catch (err: unknown) {
+            toast.error((err as Error)?.message || 'Could not mark as applied');
+        }
+    };
+
+    const maybeShowApplyFollowup = () => {
+        if (!pendingApplyFollowup) return;
+        if (document.visibilityState !== 'visible') return;
+        const elapsed = Date.now() - pendingApplyFollowup.createdAt;
+        if (elapsed > APPLY_FOLLOWUP_WINDOW_MS) {
+            setPendingApplyFollowup(null);
+            return;
+        }
+        if (promptedOpportunityIds.has(pendingApplyFollowup.opportunityId)) {
+            setPendingApplyFollowup(null);
+            return;
+        }
+
+        markPrompted(pendingApplyFollowup.opportunityId);
+        const payload = pendingApplyFollowup;
+        setPendingApplyFollowup(null);
+
+        toast.custom((t) => (
+            <div className="w-[300px] rounded-lg border border-border bg-card p-3 shadow-lg">
+                <p className="text-sm font-semibold text-foreground">Did you apply?</p>
+                <p className="mt-1 text-xs text-muted-foreground truncate">{payload.opportunityTitle}</p>
+                <div className="mt-3 flex gap-2">
+                    <button
+                        className="h-8 px-3 rounded-md bg-primary text-primary-foreground text-xs font-semibold"
+                        onClick={async () => {
+                            toast.dismiss(t.id);
+                            await handleApplyFollowupConfirm(payload);
+                        }}
+                    >
+                        Yes, mark applied
+                    </button>
+                    <button
+                        className="h-8 px-3 rounded-md border border-border text-xs font-semibold"
+                        onClick={() => toast.dismiss(t.id)}
+                    >
+                        Not yet
+                    </button>
+                </div>
+            </div>
+        ), { duration: 12000 });
+    };
+
+    const handleApplyClick = async (
+        alertId: string,
+        opportunity: {
+            id: string;
+            title: string;
+            applyLink?: string | null;
+            companyWebsite?: string | null;
+            slug: string;
+            type: 'JOB' | 'INTERNSHIP' | 'WALKIN';
+        },
+        shouldMarkRead: boolean
+    ) => {
+        const href = getOpportunityPathFromItem(opportunity);
+        const target = opportunity.applyLink || opportunity.companyWebsite || href;
+        window.open(target, '_blank', 'noopener,noreferrer');
+        if (shouldMarkRead) {
+            void markAsRead(alertId);
+        }
+
+        if (appliedOpportunityIds.has(opportunity.id) || promptedOpportunityIds.has(opportunity.id)) return;
+        setPendingApplyFollowup({
+            alertId,
+            opportunityId: opportunity.id,
+            opportunityTitle: opportunity.title,
+            createdAt: Date.now()
+        });
+    };
+
+    const loadDigestItems = async (alertId: string) => {
+        if (digestItemsByAlert[alertId] || digestLoadingByAlert[alertId]) return;
+        setDigestLoadingByAlert((prev) => ({ ...prev, [alertId]: true }));
+        try {
+            const response = await alertsApi.getDigestItems(alertId) as DigestItemsResponse;
+            setDigestItemsByAlert((prev) => ({ ...prev, [alertId]: response }));
+        } catch (err: unknown) {
+            toast.error((err as Error)?.message || 'Failed to load digest items');
+            setDigestItemsByAlert((prev) => ({
+                ...prev,
+                [alertId]: { items: [], requestedCount: 0, activeCount: 0 }
+            }));
+        } finally {
+            setDigestLoadingByAlert((prev) => ({ ...prev, [alertId]: false }));
+        }
+    };
+
+    const toggleDigestExpand = async (alertId: string, shouldMarkRead: boolean) => {
+        const nextExpanded = !expandedDigestIds[alertId];
+        setExpandedDigestIds((prev) => ({ ...prev, [alertId]: nextExpanded }));
+        if (nextExpanded) {
+            await loadDigestItems(alertId);
+            if (shouldMarkRead) {
+                void markAsRead(alertId);
+            }
+        }
+    };
+
     const toggleSaveFromAlert = async (deliveryId: string, opportunityId: string) => {
         try {
             const response = await savedApi.toggle(opportunityId) as { saved: boolean };
@@ -171,11 +348,71 @@ export default function AlertsCenterPage() {
         }
     };
 
+    const toggleSaveFromDigest = async (deliveryId: string, opportunityId: string) => {
+        try {
+            const response = await savedApi.toggle(opportunityId) as { saved: boolean };
+            setDigestItemsByAlert((prev) => {
+                const current = prev[deliveryId];
+                if (!current) return prev;
+                return {
+                    ...prev,
+                    [deliveryId]: {
+                        ...current,
+                        items: current.items.map((item) => item.id === opportunityId
+                            ? { ...item, isSaved: response.saved }
+                            : item)
+                    }
+                };
+            });
+            toast.success(response.saved ? 'Saved' : 'Removed from saved');
+        } catch (err: unknown) {
+            toast.error((err as Error)?.message || 'Failed to update save');
+        }
+    };
+
     useEffect(() => {
         if (isLoading || !user) return;
         void loadFeed(kind);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isLoading, user, kind]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        setPromptedOpportunityIds(readPromptedOpportunityIds());
+    }, []);
+
+    useEffect(() => {
+        if (!user) return;
+        const loadAppliedActions = async () => {
+            try {
+                const response = await actionsApi.list() as {
+                    actions: Array<{ opportunityId: string; actionType: string }>;
+                };
+                const applied = new Set(
+                    (response.actions || [])
+                        .filter((action) => action.actionType === ActionType.APPLIED)
+                        .map((action) => action.opportunityId)
+                );
+                setAppliedOpportunityIds(applied);
+            } catch {
+                // non-blocking
+            }
+        };
+        void loadAppliedActions();
+    }, [user]);
+
+    useEffect(() => {
+        const onFocus = () => maybeShowApplyFollowup();
+        const onVisibility = () => {
+            if (document.visibilityState === 'visible') maybeShowApplyFollowup();
+        };
+        window.addEventListener('focus', onFocus);
+        document.addEventListener('visibilitychange', onVisibility);
+        return () => {
+            window.removeEventListener('focus', onFocus);
+            document.removeEventListener('visibilitychange', onVisibility);
+        };
+    }, [pendingApplyFollowup, promptedOpportunityIds, appliedOpportunityIds]);
 
     const summary = useMemo(
         () => feed?.summary || { total: 0, dailyDigest: 0, closingSoon: 0, highlight: 0, appUpdate: 0, newJob: 0, eventReminder: 0 },
@@ -309,6 +546,10 @@ export default function AlertsCenterPage() {
                             const title = item.opportunity?.title || 'Opportunity update';
                             const company = item.opportunity?.company || 'FresherFlow';
                             const href = item.opportunity ? getOpportunityPathFromItem(item.opportunity) : '/opportunities';
+                            const isDigest = item.kind === 'DAILY_DIGEST';
+                            const isDigestExpanded = Boolean(expandedDigestIds[item.id]);
+                            const digestData = digestItemsByAlert[item.id];
+                            const digestLoading = Boolean(digestLoadingByAlert[item.id]);
                             const metaText = getAlertMetaText(item);
                             const kindLabel =
                                 item.kind === 'CLOSING_SOON' ? 'Closing soon' :
@@ -384,21 +625,26 @@ export default function AlertsCenterPage() {
                                             <p className="text-[12px] font-semibold text-muted-foreground">{metaText}</p>
                                         )}
                                     </div>
-                                    <div className="mt-3 grid grid-cols-3 gap-2">
-                                        <Link
-                                            href={href}
-                                            onClick={() => !item.readAt && markAsRead(item.id)}
-                                            className="h-10 px-3 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
-                                        >
-                                            Open
-                                        </Link>
+                                    <div className={cn("mt-3 grid gap-2", item.opportunity ? "grid-cols-3" : "grid-cols-1")}>
+                                        {isDigest ? (
+                                            <button
+                                                onClick={() => void toggleDigestExpand(item.id, !item.readAt)}
+                                                className="h-10 px-3 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
+                                            >
+                                                {isDigestExpanded ? 'Hide matches' : 'Open'}
+                                            </button>
+                                        ) : (
+                                            <Link
+                                                href={href}
+                                                onClick={() => !item.readAt && markAsRead(item.id)}
+                                                className="h-10 px-3 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
+                                            >
+                                                Open
+                                            </Link>
+                                        )}
                                         {item.opportunity && (
                                             <button
-                                                onClick={() => {
-                                                    const target = item.opportunity?.applyLink || item.opportunity?.companyWebsite || href;
-                                                    window.open(target, '_blank', 'noopener,noreferrer');
-                                                    if (!item.readAt) void markAsRead(item.id);
-                                                }}
+                                                onClick={() => void handleApplyClick(item.id, item.opportunity!, !item.readAt)}
                                                 className="h-10 px-3 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
                                             >
                                                 Apply
@@ -413,6 +659,53 @@ export default function AlertsCenterPage() {
                                             </button>
                                         )}
                                     </div>
+                                    {isDigestExpanded && (
+                                        <div className="mt-3 rounded-lg border border-border bg-background/50 p-3 space-y-2">
+                                            {digestLoading && (
+                                                <p className="text-xs text-muted-foreground">Loading matched opportunities...</p>
+                                            )}
+                                            {!digestLoading && digestData && digestData.items.length === 0 && (
+                                                <p className="text-xs text-muted-foreground">No active opportunities available for this digest.</p>
+                                            )}
+                                            {!digestLoading && digestData && digestData.activeCount < digestData.requestedCount && (
+                                                <p className="text-[11px] text-muted-foreground">
+                                                    Showing {digestData.activeCount} of {digestData.requestedCount} (some listings closed).
+                                                </p>
+                                            )}
+                                            {!digestLoading && digestData?.items.map((digestItem) => {
+                                                const digestHref = getOpportunityPathFromItem(digestItem);
+                                                return (
+                                                    <div key={digestItem.id} className="rounded-md border border-border bg-card p-2.5 space-y-2">
+                                                        <div>
+                                                            <p className="text-sm font-semibold text-foreground leading-tight">{digestItem.title}</p>
+                                                            <p className="text-xs text-muted-foreground">{digestItem.company}</p>
+                                                        </div>
+                                                        <div className="grid grid-cols-3 gap-2">
+                                                            <Link
+                                                                href={digestHref}
+                                                                onClick={() => !item.readAt && markAsRead(item.id)}
+                                                                className="h-9 px-2 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
+                                                            >
+                                                                Open
+                                                            </Link>
+                                                            <button
+                                                                onClick={() => void handleApplyClick(item.id, digestItem, !item.readAt)}
+                                                                className="h-9 px-2 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
+                                                            >
+                                                                Apply
+                                                            </button>
+                                                            <button
+                                                                onClick={() => void toggleSaveFromDigest(item.id, digestItem.id)}
+                                                                className="h-9 px-2 rounded-md border border-border bg-background text-xs font-semibold hover:border-primary/30 inline-flex items-center justify-center"
+                                                            >
+                                                                {digestItem.isSaved ? 'Unsave' : 'Save'}
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </article>
                             );
                         })}
