@@ -5,5 +5,5 @@ interface PageProps {
 }
 
 export default function AdminJobsEditRedirect({ params }: PageProps) {
-    redirect(`/admin/opportunities/edit/${params.id}`);
+    redirect(`/opportunities/edit/${params.id}`);
 }

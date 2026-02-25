@@ -13,7 +13,8 @@ import { sendNewJobAlerts } from '../../services/notification.service';
 import { generateSlug } from '../../utils/slugify';
 import { generateCompanyLogoUrl } from '../../utils/companyLogo';
 import logger from '../../utils/logger';
-import { normalizeCourseArray, normalizeSpecializationArray } from '../../utils/academicNormalization';
+import { normalizeEducationBuckets } from '../../utils/academicNormalization';
+import { normalizeSkills } from '../../utils/skillNormalization';
 
 import TelegramService from '../../services/telegram.service';
 
@@ -113,10 +114,15 @@ function deriveOpportunityExpiryDate(data: any, type: OpportunityType): Date | n
 }
 
 function normalizeEducationRequirements(data: any) {
+    const normalized = normalizeEducationBuckets(
+        data.allowedCourses || [],
+        data.allowedSpecializations || []
+    );
+
     return {
         allowedDegrees: Array.isArray(data.allowedDegrees) ? data.allowedDegrees : [],
-        allowedCourses: normalizeCourseArray(data.allowedCourses || []),
-        allowedSpecializations: normalizeSpecializationArray(data.allowedSpecializations || []),
+        allowedCourses: normalized.allowedCourses,
+        allowedSpecializations: normalized.allowedSpecializations,
     };
 }
 
@@ -268,7 +274,7 @@ router.post(
                     allowedCourses: education.allowedCourses,
                     allowedSpecializations: education.allowedSpecializations,
                     allowedPassoutYears: data.allowedPassoutYears,
-                    requiredSkills: data.requiredSkills || [],
+                    requiredSkills: normalizeSkills(data.requiredSkills),
                     locations: data.locations,
                     workMode: data.workMode,
                     salaryRange: data.salaryRange,
@@ -451,7 +457,7 @@ router.post(
                     allowedCourses: education.allowedCourses,
                     allowedSpecializations: education.allowedSpecializations,
                     allowedPassoutYears: data.allowedPassoutYears,
-                    requiredSkills: data.requiredSkills || [],
+                    requiredSkills: normalizeSkills(data.requiredSkills),
                     locations: data.locations,
                     workMode: data.workMode,
 
@@ -943,7 +949,7 @@ router.put(
                 companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
                 description: data.description,
                 allowedPassoutYears: data.allowedPassoutYears,
-                requiredSkills: data.requiredSkills || [],
+                requiredSkills: normalizeSkills(data.requiredSkills),
                 locations: data.locations,
                 workMode: data.workMode,
                 salaryMin: data.salaryMin,

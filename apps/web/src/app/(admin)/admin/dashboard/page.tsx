@@ -232,7 +232,7 @@ export default function AdminDashboardHome() {
             <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
                 <div className="mb-3 flex items-center justify-between">
                     <h3 className="text-sm font-semibold">Recent listings</h3>
-                    <Link href="/admin/opportunities" className="text-xs font-medium text-primary hover:underline">
+                    <Link href="/opportunities" className="text-xs font-medium text-primary hover:underline">
                         View all
                     </Link>
                 </div>
@@ -240,7 +240,7 @@ export default function AdminDashboardHome() {
                     {metrics.recentListings.map((item) => (
                         <Link
                             key={item.id}
-                            href={`/admin/opportunities/edit/${item.id}`}
+                            href={`/opportunities/edit/${item.id}`}
                             className="flex items-center justify-between py-2 hover:bg-muted/40"
                         >
                             <div className="min-w-0 pr-2">
@@ -258,3 +258,4 @@ export default function AdminDashboardHome() {
         </div>
     );
 }
+

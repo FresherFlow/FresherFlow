@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma';
 import { IngestionRunStatus, IngestionSourceType, OpportunityStatus, OpportunityType, RawOpportunityStatus } from '@prisma/client';
 import { randomUUID } from 'crypto';
+import { normalizeSkillList } from '@fresherflow/constants';
 import logger from '../utils/logger';
 import { generateSlug } from '../utils/slugify';
 
@@ -209,7 +210,7 @@ function normalizeJsonFeedItem(item: Record<string, unknown>, fallbackType: Oppo
         allowedPassoutYears: Array.isArray(item.allowedPassoutYears)
             ? item.allowedPassoutYears.map((value) => Number(value)).filter((value) => Number.isFinite(value))
             : [],
-        requiredSkills: toStringArray(item.requiredSkills || item.skills),
+        requiredSkills: normalizeSkillList(toStringArray(item.requiredSkills || item.skills)),
         raw: item,
     };
 }
@@ -265,7 +266,7 @@ function normalizeWorkdayItem(item: Record<string, unknown>, source: SourceConfi
         experienceMin: toNumber(item.experienceMin ?? item.minExperience),
         experienceMax: toNumber(item.experienceMax ?? item.maxExperience),
         allowedPassoutYears: [],
-        requiredSkills: toStringArray(item.skills || item.keySkills),
+        requiredSkills: normalizeSkillList(toStringArray(item.skills || item.keySkills)),
         raw: item,
     };
 }
@@ -368,7 +369,7 @@ async function ensureDraftFromCandidate(candidate: Candidate, sourceName: string
             allowedCourses: [],
             allowedSpecializations: [],
             allowedPassoutYears: candidate.allowedPassoutYears || [],
-            requiredSkills: candidate.requiredSkills || [],
+            requiredSkills: normalizeSkillList(candidate.requiredSkills || []),
             status: OpportunityStatus.DRAFT,
             postedByUserId: fallbackAdminId,
             notesHighlights: `[AUTO-INGEST:${sourceName}] fresherScore=${score}`

@@ -7,6 +7,7 @@ import {
     normalizeSpecializationName,
     normalizeAcademicToken
 } from '../../utils/academicNormalization';
+import { normalizeSkillList } from '@fresherflow/constants';
 
 export interface EligibilityRule {
     name: string;
@@ -105,8 +106,8 @@ export const passoutYearRule: EligibilityRule = {
 };
 
 /**
- * Skills Eligibility Rule
- * If opportunity has required skills, user must have at least one
+ * Skills Preference Rule (Soft)
+ * Skills improve ranking relevance but should not block fresher eligibility
  */
 export const skillsRule: EligibilityRule = {
     name: 'SKILLS_MATCH',
@@ -115,8 +116,8 @@ export const skillsRule: EligibilityRule = {
             return true; // No skills required
         }
 
-        const userSkills = profile.skills?.map((s: string) => s.toLowerCase()) || [];
-        const requiredSkills = opp.requiredSkills.map((s: string) => s.toLowerCase());
+        const userSkills = normalizeSkillList(profile.skills || []);
+        const requiredSkills = normalizeSkillList(opp.requiredSkills || []);
 
         return requiredSkills.some((req: string) => userSkills.includes(req));
     },
@@ -171,7 +172,6 @@ export const workModeRule: EligibilityRule = {
 export const HARD_RULES: EligibilityRule[] = [
     degreeRule,
     passoutYearRule,
-    skillsRule,
 ];
 
 /**
@@ -179,6 +179,7 @@ export const HARD_RULES: EligibilityRule[] = [
  * These are preferences but not blockers
  */
 export const SOFT_RULES: EligibilityRule[] = [
+    skillsRule,
     locationRule,
     workModeRule,
 ];

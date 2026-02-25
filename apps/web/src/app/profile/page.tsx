@@ -7,7 +7,7 @@ import { useState, useEffect, useRef } from 'react';
 import {
     EDUCATION_LEVELS, OPPORTUNITY_TYPES, WORK_MODES, INDIAN_CITIES,
     COMMON_SKILLS, DIPLOMA_DEGREES, UG_DEGREES,
-    PG_DEGREES, getSpecializations
+    PG_DEGREES, getSpecializations, normalizeSkillName
 } from '@/lib/profileConstants';
 
 import { cn } from '@/lib/utils';
@@ -98,7 +98,10 @@ export default function ProfilePage() {
             setPreferredCities(profile.preferredCities || []);
             setWorkModes(profile.workModes || []);
             setAvailability(profile.availability || '');
-            setSkills(profile.skills || []);
+            const normalizedSkills = (profile.skills || [])
+                .map((skill) => normalizeSkillName(skill))
+                .filter(Boolean);
+            setSkills(Array.from(new Set(normalizedSkills)));
         }
         if (user?.fullName && !fullName) setFullName(user.fullName);
     }, [profile, user]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -107,7 +110,7 @@ export default function ProfilePage() {
         set(arr.includes(item) ? arr.filter(i => i !== item) : [...arr, item]);
 
     const addSkill = () => {
-        const s = skillInput.trim();
+        const s = normalizeSkillName(skillInput);
         if (s && !skills.includes(s)) { setSkills(prev => [...prev, s]); setSkillInput(''); setSkillOpen(false); }
     };
 
@@ -448,7 +451,7 @@ export default function ProfilePage() {
                                                         <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-2xl max-h-56 overflow-y-auto">
                                                             {filteredSkillOptions.map(skill => (
                                                                 <button key={skill}
-                                                                    onMouseDown={() => { setSkills(prev => [...prev, skill]); setSkillInput(''); setSkillOpen(false); }}
+                                                                    onMouseDown={() => { setSkills(prev => [...new Set([...prev, skill])]); setSkillInput(''); setSkillOpen(false); }}
                                                                     className="w-full text-left px-4 py-2.5 hover:bg-primary/10 transition-colors text-sm font-medium first:rounded-t-xl last:rounded-b-xl">
                                                                     {skill}
                                                                 </button>

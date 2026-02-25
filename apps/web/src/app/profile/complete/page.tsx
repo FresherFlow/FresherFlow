@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
     EDUCATION_LEVELS, OPPORTUNITY_TYPES, WORK_MODES, INDIAN_CITIES,
-    COMMON_SKILLS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations
+    COMMON_SKILLS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations, normalizeSkillName
 } from '@/lib/profileConstants';
 import { useAuth } from '@/contexts/AuthContext';
 import { profileApi } from '@/lib/api/client';
@@ -93,6 +93,10 @@ export default function ProfileCompletePage() {
     useEffect(() => {
         if (profile) {
             setCompletion(profile.completionPercentage);
+            const normalizedSkills = (profile.skills || [])
+                .map((skill) => normalizeSkillName(skill))
+                .filter(Boolean);
+            setSkills(Array.from(new Set(normalizedSkills)));
             if (profile.completionPercentage >= 40) {
                 router.push('/opportunities');
             }
@@ -183,8 +187,9 @@ export default function ProfileCompletePage() {
     };
 
     const addSkill = () => {
-        if (skillInput.trim() && !skills.includes(skillInput.trim())) {
-            setSkills([...skills, skillInput.trim()]);
+        const normalized = normalizeSkillName(skillInput);
+        if (normalized && !skills.includes(normalized)) {
+            setSkills([...skills, normalized]);
             setSkillInput('');
         }
     };
@@ -589,7 +594,7 @@ export default function ProfileCompletePage() {
                                                             else if (e.key === 'ArrowUp') { e.preventDefault(); setSkillHighlight(h => Math.max(h - 1, 0)); }
                                                             else if (e.key === 'Enter') {
                                                                 e.preventDefault();
-                                                                const skill = skillHighlight >= 0 ? filteredSkillOptions[skillHighlight] : skillInput.trim();
+                                                                const skill = skillHighlight >= 0 ? filteredSkillOptions[skillHighlight] : normalizeSkillName(skillInput);
                                                                 if (skill && !skills.includes(skill)) { setSkills([...skills, skill]); setSkillInput(''); setSkillHighlight(-1); setSkillOpen(false); }
                                                             } else if (e.key === 'Escape') { setSkillOpen(false); }
                                                         }}
@@ -604,7 +609,7 @@ export default function ProfileCompletePage() {
                                                         {filteredSkillOptions.map((skill, idx) => (
                                                             <button
                                                                 key={skill}
-                                                                onMouseDown={() => { setSkills(prev => [...prev, skill]); setSkillInput(''); setSkillHighlight(-1); setSkillOpen(false); }}
+                                                                onMouseDown={() => { setSkills(prev => [...new Set([...prev, skill])]); setSkillInput(''); setSkillHighlight(-1); setSkillOpen(false); }}
                                                                 className={cn("w-full text-left px-4 py-2.5 transition-colors text-sm font-medium first:rounded-t-xl last:rounded-b-xl", skillHighlight === idx ? "bg-primary/20 text-foreground" : "hover:bg-primary/10")}
                                                             >
                                                                 {skill}

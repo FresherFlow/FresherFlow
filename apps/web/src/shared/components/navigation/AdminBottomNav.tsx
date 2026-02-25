@@ -11,22 +11,22 @@ import ChartBarIcon from '@heroicons/react/24/outline/ChartBarIcon';
 const NAV_ITEMS = [
     {
         label: 'Dashboard',
-        href: '/admin',
+        href: '/dashboard',
         icon: Squares2X2Icon,
     },
     {
         label: 'Search',
-        href: '/admin/opportunities',
+        href: '/opportunities',
         icon: MagnifyingGlassIcon,
     },
     {
         label: 'Post',
-        href: '/admin/opportunities/create',
+        href: '/opportunities/create',
         icon: PlusCircleIcon,
     },
     {
         label: 'Analytics',
-        href: '/admin/analytics',
+        href: '/analytics',
         icon: ChartBarIcon,
     }
 ];
@@ -44,16 +44,19 @@ export default function AdminBottomNav() {
                     let isActive = false;
 
                     if (item.label === 'Dashboard') {
-                        // Active for /admin and /admin/dashboard
-                        isActive = pathname === '/admin' || pathname === '/admin/dashboard';
+                        isActive = pathname === '/dashboard' || pathname === '/admin' || pathname === '/admin/dashboard';
                     } else if (item.label === 'Post') {
                         // Active ONLY for create page
-                        isActive = pathname === '/admin/opportunities/create';
+                        isActive = pathname === '/opportunities/create' || pathname === '/admin/opportunities/create';
                     } else if (item.label === 'Search') {
                         // Active for opportunities list, but NOT create page
-                        isActive = pathname === '/admin/opportunities' || (pathname.startsWith('/admin/opportunities') && pathname !== '/admin/opportunities/create');
+                        isActive =
+                            pathname === '/opportunities' ||
+                            (pathname.startsWith('/opportunities') && pathname !== '/opportunities/create') ||
+                            pathname === '/admin/opportunities' ||
+                            (pathname.startsWith('/admin/opportunities') && pathname !== '/admin/opportunities/create');
                     } else if (item.label === 'Analytics') {
-                        isActive = pathname.startsWith('/admin/analytics');
+                        isActive = pathname.startsWith('/analytics') || pathname.startsWith('/admin/analytics');
                     }
 
                     return (

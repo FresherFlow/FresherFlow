@@ -86,7 +86,7 @@ export default function AdminLoginPage() {
             if (verification.verified) {
                 toast.success('Access Granted');
                 setTimeout(() => {
-                    window.location.href = '/admin/dashboard';
+                    window.location.href = '/dashboard';
                 }, 500);
             }
         } catch (err: unknown) {
@@ -119,7 +119,7 @@ export default function AdminLoginPage() {
             if (verification.verified) {
                 toast.success('Access Granted');
                 setTimeout(() => {
-                    window.location.href = '/admin/dashboard';
+                    window.location.href = '/dashboard';
                 }, 500);
             }
         } catch (err: unknown) {

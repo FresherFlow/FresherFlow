@@ -63,13 +63,14 @@ describe('Eligibility Matching Engine', () => {
         expect(result.failedRules).toContain('PASSOUT_YEAR_MATCH');
     });
 
-    test('should fail if skills do not overlap', () => {
+    test('should not fail eligibility if skills do not overlap', () => {
         const result = checkEligibility(
             { ...mockOpp, requiredSkills: ['Python'] },
             mockProfile
         );
-        expect(result.eligible).toBe(false);
-        expect(result.failedRules).toContain('SKILLS_MATCH');
+        expect(result.eligible).toBe(true);
+        expect(result.failedRules).not.toContain('SKILLS_MATCH');
+        expect(result.warnings?.some((warning) => warning.includes('skills'))).toBe(true);
     });
 
     test('should provide warnings for soft rules like location', () => {

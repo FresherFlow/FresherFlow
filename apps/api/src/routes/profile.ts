@@ -8,9 +8,9 @@ import { educationSchema, preferencesSchema, readinessSchema } from '../utils/va
 import { AppError } from '../middleware/errorHandler';
 import { calculateCompletion } from '../utils/profileCompletion';
 import {
-    normalizeCourseName,
-    normalizeSpecializationName
+    normalizeProfileEducation
 } from '../utils/academicNormalization';
+import { normalizeSkills } from '../utils/skillNormalization';
 
 const router: Router = express.Router();
 
@@ -36,10 +36,9 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
 router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { fullName, ...data } = req.body;
-        const normalizedGradCourse = normalizeCourseName(data.gradCourse);
-        const normalizedGradSpecialization = normalizeSpecializationName(data.gradSpecialization);
-        const normalizedPgCourse = normalizeCourseName(data.pgCourse) || null;
-        const normalizedPgSpecialization = normalizeSpecializationName(data.pgSpecialization) || null;
+        const normalizedGrad = normalizeProfileEducation(data.gradCourse, data.gradSpecialization);
+        const normalizedPg = normalizeProfileEducation(data.pgCourse, data.pgSpecialization);
+        const normalizedSkills = normalizeSkills(data.skills);
 
         // Update user if fullName is provided
         if (fullName) {
@@ -56,17 +55,17 @@ router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunct
                 educationLevel: data.educationLevel,
                 tenthYear: data.tenthYear,
                 twelfthYear: data.twelfthYear,
-                gradCourse: normalizedGradCourse,
-                gradSpecialization: normalizedGradSpecialization,
+                gradCourse: normalizedGrad.course,
+                gradSpecialization: normalizedGrad.specialization,
                 gradYear: data.gradYear,
-                pgCourse: normalizedPgCourse,
-                pgSpecialization: normalizedPgSpecialization,
+                pgCourse: normalizedPg.course || null,
+                pgSpecialization: normalizedPg.specialization || null,
                 pgYear: data.pgYear,
                 interestedIn: data.interestedIn,
                 preferredCities: data.preferredCities,
                 workModes: data.workModes,
                 availability: data.availability,
-                skills: data.skills
+                skills: normalizedSkills
             }
         });
 
@@ -97,10 +96,8 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
             gradCourse, gradSpecialization, gradYear,
             pgCourse, pgSpecialization, pgYear
         } = req.body;
-        const normalizedGradCourse = normalizeCourseName(gradCourse);
-        const normalizedGradSpecialization = normalizeSpecializationName(gradSpecialization);
-        const normalizedPgCourse = normalizeCourseName(pgCourse) || null;
-        const normalizedPgSpecialization = normalizeSpecializationName(pgSpecialization) || null;
+        const normalizedGrad = normalizeProfileEducation(gradCourse, gradSpecialization);
+        const normalizedPg = normalizeProfileEducation(pgCourse, pgSpecialization);
 
         // Update user if fullName is provided
         if (fullName) {
@@ -117,11 +114,11 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
                 educationLevel,
                 tenthYear,
                 twelfthYear,
-                gradCourse: normalizedGradCourse,
-                gradSpecialization: normalizedGradSpecialization,
+                gradCourse: normalizedGrad.course,
+                gradSpecialization: normalizedGrad.specialization,
                 gradYear,
-                pgCourse: normalizedPgCourse,
-                pgSpecialization: normalizedPgSpecialization,
+                pgCourse: normalizedPg.course || null,
+                pgSpecialization: normalizedPg.specialization || null,
                 pgYear
             }
         });
@@ -181,12 +178,13 @@ router.put('/preferences', requireAuth, validate(preferencesSchema), async (req:
 router.put('/readiness', requireAuth, validate(readinessSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { availability, skills } = req.body;
+        const normalizedSkills = normalizeSkills(skills);
 
         let profile = await prisma.profile.update({
             where: { userId: req.userId },
             data: {
                 availability,
-                skills
+                skills: normalizedSkills
             }
         });
 

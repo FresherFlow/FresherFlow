@@ -4,6 +4,7 @@
 import { Opportunity, Profile } from '@fresherflow/types';
 import { HARD_RULES, SOFT_RULES, EligibilityRule } from './rules';
 import logger from '../../utils/logger';
+import { normalizeSkillList } from '@fresherflow/constants';
 import {
     normalizeAcademicToken,
     normalizeCourseName,
@@ -196,10 +197,10 @@ function getExperienceRelevance(opportunity: Opportunity, fresher: boolean): num
 
 function getSkillOverlapScore(opportunity: Opportunity, profile: Profile): number {
     if (!opportunity.requiredSkills || opportunity.requiredSkills.length === 0) return 1;
-    const userSkills = new Set((profile.skills || []).map((s: string) => s.toLowerCase()));
+    const userSkills = new Set(normalizeSkillList(profile.skills || []));
     if (userSkills.size === 0) return 0;
 
-    const required = opportunity.requiredSkills.map((s: string) => s.toLowerCase());
+    const required = normalizeSkillList(opportunity.requiredSkills || []);
     const matches = required.filter((skill) => userSkills.has(skill)).length;
     return matches / required.length;
 }
@@ -291,15 +292,15 @@ function getUrgencyBoost(opportunity: Opportunity): number {
 function computeRelevanceBreakdown(opportunity: Opportunity, profile: Profile): RelevanceBreakdown {
     const fresher = isLikelyFresher(profile);
     const profileStrength = getProfileStrength(profile);
-    // Strong profiles get higher fit-weight; weaker profiles get slightly more urgency/freshness support.
-    const experienceWeight = 24 + Math.round(profileStrength * 8);
-    const skillsWeight = 16 + Math.round(profileStrength * 8);
-    const passoutWeight = 10 + Math.round(profileStrength * 4);
-    const educationWeight = 8 + Math.round(profileStrength * 4);
-    const courseWeight = 6 + Math.round(profileStrength * 3);
-    const specializationWeight = 6 + Math.round(profileStrength * 3);
-    const locationWeight = 6 + Math.round(profileStrength * 3);
-    const workModeWeight = 4 + Math.round(profileStrength * 2);
+    // Academic fit is primary for fresher matching; skills/location are secondary refinements.
+    const experienceWeight = 18 + Math.round(profileStrength * 6);
+    const passoutWeight = 14 + Math.round(profileStrength * 4);
+    const educationWeight = 12 + Math.round(profileStrength * 4);
+    const courseWeight = 10 + Math.round(profileStrength * 3);
+    const specializationWeight = 10 + Math.round(profileStrength * 3);
+    const skillsWeight = 8 + Math.round(profileStrength * 4);
+    const locationWeight = 5 + Math.round(profileStrength * 2);
+    const workModeWeight = 3 + Math.round(profileStrength * 2);
     const freshnessWeight = 4 + Math.round((1 - profileStrength) * 3);
     const urgencyWeight = 4 + Math.round((1 - profileStrength) * 5);
 

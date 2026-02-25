@@ -1,5 +1,6 @@
 import { EducationLevel, WorkMode, Availability, OpportunityType } from '@fresherflow/types';
 import Fuse from 'fuse.js';
+import { normalizeSkillList } from '@fresherflow/constants';
 
 /**
  * Centralized Eligibility Matching Engine
@@ -39,34 +40,14 @@ export class EligibilityService {
     ): { eligible: boolean; reasons: string[] } {
         const reasons: string[] = [];
 
-        // 1. Opportunity Type Match
-        if (!this.matchOpportunityType(profile.interestedIn, opportunity.type)) {
-            reasons.push('Not interested in this opportunity type');
-        }
-
-        // 2. Degree Match
+        // Hard gate 1: Degree/Education match
         if (!this.matchDegree(profile.educationLevel, opportunity.allowedDegrees)) {
             reasons.push('Education level does not match requirements');
         }
 
-        // 3. Passout Year Match
+        // Hard gate 2: Passout year match
         if (!this.matchPassoutYear(profile.passoutYear, opportunity.allowedPassoutYears)) {
             reasons.push('Passout year does not match requirements');
-        }
-
-        // 4. Location Match
-        if (!this.matchLocation(profile.preferredCities, opportunity.locations)) {
-            reasons.push('Location preference does not match');
-        }
-
-        // 5. Work Mode Match
-        if (!this.matchWorkMode(profile.workModes, opportunity.workMode)) {
-            reasons.push('Work mode preference does not match');
-        }
-
-        // 6. Availability Match
-        if (!this.matchAvailability(profile.availability, opportunity.allowedAvailability)) {
-            reasons.push('Availability does not match requirements');
         }
 
         return {
@@ -93,8 +74,8 @@ export class EligibilityService {
         userDegree: EducationLevel | null,
         allowedDegrees: EducationLevel[]
     ): boolean {
-        if (!userDegree) return false; // Must have education level
         if (allowedDegrees.length === 0) return true; // No restriction = match all
+        if (!userDegree) return false; // Must have education level when restricted
         return allowedDegrees.includes(userDegree);
     }
 
@@ -105,8 +86,8 @@ export class EligibilityService {
         userYear: number | null,
         allowedYears: number[]
     ): boolean {
-        if (!userYear) return false; // Must have passout year
         if (allowedYears.length === 0) return true; // No restriction = match all
+        if (!userYear) return false; // Must have passout year when restricted
         return allowedYears.includes(userYear);
     }
 
@@ -183,17 +164,21 @@ export class EligibilityService {
         // Skills match (30 points)
         maxScore += 30;
         if (opportunity.requiredSkills.length > 0) {
-            const fuse = new Fuse(profile.skills, {
+            const normalizedProfileSkills = normalizeSkillList(profile.skills || []);
+            const normalizedRequiredSkills = normalizeSkillList(opportunity.requiredSkills || []);
+            const fuse = new Fuse(normalizedProfileSkills, {
                 threshold: 0.3, // Allow moderate typos/variations
                 distance: 100,
             });
 
-            const matchingSkills = opportunity.requiredSkills.filter((skill) => {
+            const matchingSkills = normalizedRequiredSkills.filter((skill) => {
                 const results = fuse.search(skill);
                 return results.length > 0;
             });
 
-            const skillMatchRatio = matchingSkills.length / opportunity.requiredSkills.length;
+            const skillMatchRatio = normalizedRequiredSkills.length > 0
+                ? matchingSkills.length / normalizedRequiredSkills.length
+                : 1;
             score += skillMatchRatio * 30;
         } else {
             score += 30; // No skills required = full score

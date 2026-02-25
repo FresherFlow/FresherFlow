@@ -38,14 +38,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // Security: Redirect unauthenticated users
     useEffect(() => {
         if (!isLoading && !isAuthenticated && !isLoginPage) {
-            router.push('/admin/login');
+            router.push('/login');
         }
     }, [isAuthenticated, isLoading, isLoginPage, router]);
 
     useEffect(() => {
         if (!isAuthenticated || isLoginPage) return;
 
-        if (pathname.startsWith('/admin/feedback')) {
+        if (pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')) {
             const now = new Date().toISOString();
             window.localStorage.setItem(ADMIN_FEEDBACK_SEEN_KEY, now);
             return;
@@ -91,23 +91,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     }
 
     const navItems = [
-        { href: '/admin/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
-        { href: '/admin/opportunities', label: 'Opportunities', icon: BriefcaseIcon },
-        { href: '/admin/opportunities/create', label: 'Post New', icon: PlusCircleIcon },
-        { href: '/admin/analytics', label: 'Analytics', icon: ChartBarIcon },
-        { href: '/admin/feedback', label: 'Feedback', icon: ChatBubbleBottomCenterTextIcon },
-        { href: '/admin/alerts', label: 'Alerts', icon: BellAlertIcon },
-        { href: '/admin/telegram', label: 'Telegram', icon: PaperAirplaneIcon },
-        { href: '/admin/settings', label: 'Settings', icon: Cog8ToothIcon },
+        { href: '/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
+        { href: '/opportunities', label: 'Opportunities', icon: BriefcaseIcon },
+        { href: '/opportunities/create', label: 'Post New', icon: PlusCircleIcon },
+        { href: '/analytics', label: 'Analytics', icon: ChartBarIcon },
+        { href: '/feedback', label: 'Feedback', icon: ChatBubbleBottomCenterTextIcon },
+        { href: '/alerts', label: 'Alerts', icon: BellAlertIcon },
+        { href: '/telegram', label: 'Telegram', icon: PaperAirplaneIcon },
+        { href: '/settings', label: 'Settings', icon: Cog8ToothIcon },
     ];
-    const effectiveFeedbackAlertCount = pathname.startsWith('/admin/feedback') ? 0 : feedbackAlertCount;
+    const effectiveFeedbackAlertCount = (pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')) ? 0 : feedbackAlertCount;
 
     return (
         <div className="flex h-dvh overflow-hidden bg-background text-foreground">
             {/* Sidebar (Desktop) */}
             <aside className="w-64 bg-card border-r border-border sticky top-0 h-screen hidden md:flex flex-col">
                 <div className="p-6 flex items-center justify-between">
-                    <Link href="/admin/dashboard" className="flex items-center gap-3">
+                    <Link href="/dashboard" className="flex items-center gap-3">
                         <div
                             className="w-8 h-8 bg-contain bg-center bg-no-repeat"
                             style={{ backgroundImage: 'var(--logo-image)' }}
@@ -160,7 +160,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <header
                     className="md:hidden bg-card border-b border-border p-4 flex items-center justify-between fixed top-0 left-0 right-0 z-20 h-16 transition-all duration-300 translate-y-0 opacity-100"
                 >
-                    <Link href="/admin/dashboard" className="flex items-center gap-2">
+                    <Link href="/dashboard" className="flex items-center gap-2">
                         <div
                             className="w-8 h-8 bg-contain bg-center bg-no-repeat"
                             style={{ backgroundImage: 'var(--logo-image)' }}

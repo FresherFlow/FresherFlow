@@ -382,7 +382,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         } catch (err: unknown) {
             const error = err as Error;
             toast.error(`Failed to load listing: ${error.message}`);
-            router.push('/admin/opportunities');
+            router.push('/opportunities');
         }
     }, [opportunityId, router]);
 
@@ -887,7 +887,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                 ? 'Listing updated.'
                 : 'Listing published.';
             toast.success(successMessage, { id: loadingToast });
-            router.push('/admin/opportunities');
+            router.push('/opportunities');
         } catch (err: unknown) {
             const error = err as Error;
             let errorMessage = 'An unexpected error occurred.';
@@ -908,7 +908,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         <div className="max-w-5xl mx-auto space-y-5 md:space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-12">
             {/* Header */}
             <div className="space-y-3">
-                <Link href="/admin/opportunities" className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+                <Link href="/opportunities" className="inline-flex items-center gap-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
                     <ArrowLeftIcon className="w-3.5 h-3.5" />
                     Back to listings
                 </Link>
@@ -937,7 +937,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                             <p className="text-xs text-muted-foreground mt-1">Copy platform captions or open the listings page.</p>
                         </div>
                         <Link
-                            href="/admin/opportunities"
+                            href="/opportunities"
                             className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
                         >
                             Back to listings
@@ -1164,7 +1164,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                                         {duplicateCandidates.map((dup) => (
                                             <Link
                                                 key={dup.id}
-                                                href={`/admin/opportunities/edit/${dup.id}`}
+                                                href={`/opportunities/edit/${dup.id}`}
                                                 className="flex items-center justify-between rounded-md border border-border bg-card px-2.5 py-2 hover:bg-muted/30 transition-colors"
                                             >
                                                 <div className="min-w-0">
@@ -1781,7 +1781,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
 
                 <div className="flex flex-col md:flex-row items-center justify-end gap-3 pt-5 border-t border-border/50">
                     <Link
-                        href="/admin/opportunities"
+                        href="/opportunities"
                         className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-6 text-sm font-semibold text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus:ring-ring focus:ring-offset-2 w-full md:w-auto order-2 md:order-1"
                     >
                         Cancel
@@ -1813,3 +1813,4 @@ export default function CreateOpportunityPage() {
         </Suspense>
     );
 }
+

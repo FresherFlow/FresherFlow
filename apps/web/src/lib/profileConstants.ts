@@ -1,14 +1,18 @@
 import {
     ALL_COURSE_OPTIONS,
     ALL_SPECIALIZATION_OPTIONS,
+    CANONICAL_SKILLS,
     normalizeCourseName,
     normalizeSpecializationName,
+    normalizeSkillName,
 } from '@fresherflow/constants';
 export {
     ALL_COURSE_OPTIONS,
     ALL_SPECIALIZATION_OPTIONS,
+    CANONICAL_SKILLS,
     normalizeCourseName,
     normalizeSpecializationName,
+    normalizeSkillName,
 };
 
 export const EDUCATION_LEVELS = ['DIPLOMA', 'DEGREE', 'PG'];
@@ -24,14 +28,7 @@ export const INDIAN_CITIES = [
     'Guwahati', 'Patna', 'Raipur', 'Dehradun'
 ];
 
-export const COMMON_SKILLS = [
-    'JavaScript', 'Python', 'Java', 'React', 'Node.js', 'SQL',
-    'HTML', 'CSS', 'TypeScript', 'C++', 'C', 'Angular', 'Vue.js',
-    'MongoDB', 'PostgreSQL', 'AWS', 'Azure', 'Docker', 'Git',
-    'Machine Learning', 'Data Analysis', 'Excel', 'PowerPoint',
-    'Communication', 'Teamwork', 'Problem Solving', 'Spring Boot',
-    'Django', 'Flask', 'REST API', 'GraphQL', 'Express.js'
-];
+export const COMMON_SKILLS = [...CANONICAL_SKILLS];
 
 export const AVAILABILITY_OPTIONS = [
     { value: 'IMMEDIATE', label: 'Within 7 Days' },

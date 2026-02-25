@@ -24,7 +24,28 @@ const ADMIN_ROOT_PREFIXES = [
     '/telegram',
     '/settings',
 ];
-const PUBLIC_DETAIL_PREFIXES = ['/jobs/', '/internships/', '/opportunities/', '/walk-ins/details/', '/walkins/details/'];
+
+function isPublicDetailPath(pathname: string): boolean {
+    if (pathname.startsWith('/walk-ins/details/') || pathname.startsWith('/walkins/details/')) {
+        return true;
+    }
+
+    if (pathname.startsWith('/jobs/')) {
+        return pathname !== '/jobs/new';
+    }
+
+    if (pathname.startsWith('/internships/')) {
+        return true;
+    }
+
+    if (pathname.startsWith('/opportunities/')) {
+        if (pathname === '/opportunities/create') return false;
+        if (pathname.startsWith('/opportunities/edit/')) return false;
+        return true;
+    }
+
+    return false;
+}
 
 function redirectWithMethodAwareness(request: NextRequest, target: string) {
     const url = new URL(target, request.url);
@@ -57,7 +78,7 @@ export function proxy(request: NextRequest) {
     if (
         process.env.NODE_ENV === 'production' &&
         isAdminHost &&
-        PUBLIC_DETAIL_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+        isPublicDetailPath(pathname)
     ) {
         const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
         return redirectWithMethodAwareness(request, target);

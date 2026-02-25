@@ -447,7 +447,7 @@ function OpportunitiesListPage() {
                         <DocumentTextIcon className="w-4 h-4 mr-2" />
                         Export CSV
                     </a>
-                    <Link href="/admin/opportunities/create" className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
+                    <Link href="/opportunities/create" className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
                         <PlusCircleIcon className="w-4 h-4 mr-2" />
                         New listing
                     </Link>
@@ -629,7 +629,7 @@ function OpportunitiesListPage() {
                     <p className="text-sm text-muted-foreground max-w-sm mx-auto">
                         Start by creating a new job, internship or walk-in to start the flow for freshers.
                     </p>
-                    <Link href="/admin/opportunities/create" className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
+                    <Link href="/opportunities/create" className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
                         <PlusCircleIcon className="w-4 h-4 mr-2" />
                         Quick Create
                     </Link>
@@ -715,7 +715,7 @@ function OpportunitiesListPage() {
                                         View
                                     </Link>
                                     <Link
-                                        href={`/admin/opportunities/edit/${opp.slug || opp.id}`}
+                                        href={`/opportunities/edit/${opp.slug || opp.id}`}
                                         className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-background text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                                         title="Edit"
                                     >
@@ -883,7 +883,7 @@ function OpportunitiesListPage() {
                                                     <EyeIcon className="w-4 h-4" />
                                                 </Link>
                                                 <Link
-                                                    href={`/admin/opportunities/edit/${opp.slug || opp.id}`}
+                                                    href={`/opportunities/edit/${opp.slug || opp.id}`}
                                                     className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
                                                     title="Edit"
                                                 >
@@ -1035,3 +1035,4 @@ function ExclamationTriangleIcon(props: React.ComponentPropsWithoutRef<'svg'>) {
         </svg>
     );
 }
+

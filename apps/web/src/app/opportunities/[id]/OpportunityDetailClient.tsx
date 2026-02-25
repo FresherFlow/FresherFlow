@@ -1275,7 +1275,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         {user?.role === 'ADMIN' && (
                             <div className="bg-card p-4 border border-primary/20 rounded-xl space-y-2">
                                 <h4 className="text-xs font-bold uppercase tracking-tight text-primary">Admin Control</h4>
-                                <Link href={`/admin/opportunities/edit/${opp.id}`} className="block">
+                                <Link href={`/opportunities/edit/${opp.id}`} className="block">
                                     <Button variant="outline" className="w-full text-xs font-bold uppercase h-8 hover:bg-primary/5">
                                         Edit Opportunity
                                     </Button>
@@ -1367,3 +1367,4 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         </div>
     );
 }
+

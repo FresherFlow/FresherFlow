@@ -1,4 +1,4 @@
-﻿import { Opportunity } from '@fresherflow/types';
+import { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
@@ -187,7 +187,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                                     <span className={cn(isFreshlyPosted() && "text-primary/90")}>{getPostedLabel()}</span>
                                 )}
                                 {getPostedLabel() && typeof job.matchScore === 'number' && (
-                                    <span className="opacity-40">•</span>
+                                    <span className="opacity-40">�</span>
                                 )}
                                 {typeof job.matchScore === 'number' && (
                                     <span className="text-primary/80 font-medium">
@@ -297,7 +297,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                 <div
                     onClick={(e) => {
                         e.stopPropagation();
-                        window.location.href = `/admin/opportunities/edit/${job.slug || job.id}`;
+                        window.location.href = `/opportunities/edit/${job.slug || job.id}`;
                     }}
                     className="absolute -top-2 -right-2 p-2 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30"
                     title="Edit Listing (Admin)"
@@ -310,3 +310,4 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
         </div>
     );
 }
+
