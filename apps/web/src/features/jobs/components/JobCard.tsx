@@ -187,7 +187,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                                     <span className={cn(isFreshlyPosted() && "text-primary/90")}>{getPostedLabel()}</span>
                                 )}
                                 {getPostedLabel() && typeof job.matchScore === 'number' && (
-                                    <span className="opacity-40">•</span>
+                                    <span className="opacity-40">-</span>
                                 )}
                                 {typeof job.matchScore === 'number' && (
                                     <span className="text-primary/80 font-medium">
