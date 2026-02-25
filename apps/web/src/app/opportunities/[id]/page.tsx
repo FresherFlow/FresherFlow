@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import OpportunityDetailClient from './OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
 import { getOpportunityPath } from '@/lib/opportunityPath';
+import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
 import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 
 interface ExtendedOpportunity extends Opportunity {
@@ -71,7 +72,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         const role = opportunity.normalizedRole || opportunity.title;
         const company = opportunity.company;
         const batch = opportunity.allowedPassoutYears?.length > 0 ? `${opportunity.allowedPassoutYears.join('/')} Batch` : '';
-        const location = opportunity.locations?.[0] || 'Remote';
+        const parsedLocation = parseOpportunityLocation(opportunity.locations);
+        const location = parsedLocation.fullLabel;
         const isCampusDrive = isCampusDriveOpportunity(opportunity as Opportunity);
         const driveDates = getDriveDates(opportunity as Opportunity);
         const type = isCampusDrive
@@ -170,6 +172,7 @@ const generateJsonLd = (opportunity: Opportunity) => {
         // Fallback to default
     }
 
+    const parsedLocation = parseOpportunityLocation(opportunity.locations);
     const schema: Record<string, unknown> = {
         '@context': 'https://schema.org',
         '@type': 'JobPosting',
@@ -191,7 +194,8 @@ const generateJsonLd = (opportunity: Opportunity) => {
             '@type': 'Place',
             address: {
                 '@type': 'PostalAddress',
-                addressLocality: opportunity.locations?.[0] || 'Remote',
+                addressLocality: parsedLocation.city || parsedLocation.shortLabel,
+                ...(parsedLocation.state ? { addressRegion: parsedLocation.state } : {}),
                 addressCountry: 'IN'
             }
         },
@@ -200,14 +204,16 @@ const generateJsonLd = (opportunity: Opportunity) => {
         jobLocationType: 'ON_SITE',
     };
 
-    if (opportunity.salaryMin || (opportunity.salary && opportunity.salary.min)) {
+    const schemaSalaryMin = opportunity.salaryMin ?? opportunity.salary?.min ?? null;
+    const schemaSalaryMax = opportunity.salaryMax ?? opportunity.salary?.max ?? null;
+    if (schemaSalaryMin != null || schemaSalaryMax != null) {
         schema.baseSalary = {
             '@type': 'MonetaryAmount',
             currency: 'INR',
             value: {
                 '@type': 'QuantitativeValue',
-                minValue: opportunity.salaryMin || opportunity.salary?.min,
-                maxValue: opportunity.salaryMax || opportunity.salary?.max,
+                ...(schemaSalaryMin != null ? { minValue: schemaSalaryMin } : {}),
+                ...(schemaSalaryMax != null ? { maxValue: schemaSalaryMax } : {}),
                 unitText: opportunity.salaryPeriod === 'MONTHLY' ? 'MONTH' : 'YEAR'
             }
         };

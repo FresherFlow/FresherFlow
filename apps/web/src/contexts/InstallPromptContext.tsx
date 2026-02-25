@@ -60,10 +60,23 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
     const [isInstalled, setIsInstalled] = useState(false);
     const [bannerDismissed, setBannerDismissed] = useState(false);
     const [visitCount, setVisitCount] = useState(0);
+    const appWebHost = (process.env.NEXT_PUBLIC_APP_WEB_HOST || 'app.fresherflow.in')
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/.*$/, '')
+        .toLowerCase();
+    const adminWebHost = (process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in')
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/.*$/, '')
+        .toLowerCase();
+
+    const isInstallEligibleHost = useMemo(() => {
+        if (typeof window === 'undefined') return false;
+        const host = window.location.hostname.toLowerCase();
+        return host === appWebHost || host === adminWebHost || host === 'localhost' || host === '127.0.0.1';
+    }, [adminWebHost, appWebHost]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-
         const installed = detectInstalled();
         window.setTimeout(() => {
             setIsInstalled(installed);
@@ -115,7 +128,14 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
         setBoolean(BANNER_DISMISSED_KEY, true);
     }, []);
 
-    const promptInstall = useCallback(async (_source?: 'navbar' | 'banner') => {
+    const promptInstall = useCallback(async (source?: 'navbar' | 'banner') => {
+        if (source) {
+            void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', source);
+        }
+        if (typeof window !== 'undefined' && !isInstallEligibleHost) {
+            window.location.href = `https://${appWebHost}/dashboard?install=1`;
+            return false;
+        }
         if (!deferredPromptRef.current) return false;
         const promptEvent = deferredPromptRef.current;
         await promptEvent.prompt();
@@ -131,9 +151,9 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
         }
 
         return false;
-    }, []);
+    }, [appWebHost, isInstallEligibleHost]);
 
-    const canInstall = hasPromptEvent && !isInstalled;
+    const canInstall = isInstallEligibleHost && hasPromptEvent && !isInstalled;
     const showBanner = Boolean(user) && canInstall && !bannerDismissed && visitCount >= 3;
 
     const value = useMemo<InstallPromptContextValue>(() => ({

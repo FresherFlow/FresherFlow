@@ -7,6 +7,7 @@ type SitemapOpportunity = {
   slug: string | null;
   type: 'JOB' | 'INTERNSHIP' | 'WALKIN';
   postedAt: string;
+  updatedAt?: string;
 };
 
 type SitemapApiResponse = {
@@ -15,16 +16,14 @@ type SitemapApiResponse = {
 };
 
 const BASE_URL = 'https://fresherflow.in';
+const STATIC_ROUTES = ['/', '/opportunities', '/jobs', '/internships', '/walk-ins', '/login', '/signup'];
 
 function getApiBase(): string {
   const apiBase =
     process.env.NEXT_PUBLIC_USER_API_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
-    process.env.API_URL;
-
-  if (!apiBase) {
-    throw new Error('API base URL missing for sitemap generation');
-  }
+    process.env.API_URL ||
+    'https://api.fresherflow.in';
 
   return apiBase.replace(/\/+$/, '');
 }
@@ -44,45 +43,54 @@ function normalizeTotalPages(value: unknown): number {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const apiBase = getApiBase();
   const limit = 1000;
+  const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((path) => ({
+    url: `${BASE_URL}${path}`,
+    lastModified: new Date(),
+  }));
 
-  const firstRes = await fetch(
-    `${apiBase}/api/public/sitemap/opportunities?page=1&limit=${limit}`,
-    { cache: 'no-store' }
-  );
-
-  if (!firstRes.ok) {
-    throw new Error(`Sitemap API failed page=1 status=${firstRes.status}`);
-  }
-
-  const firstData = (await firstRes.json()) as SitemapApiResponse;
-  const totalPages = normalizeTotalPages(firstData.totalPages);
-  const allItems: SitemapOpportunity[] = Array.isArray(firstData.items) ? [...firstData.items] : [];
-
-  for (let page = 2; page <= totalPages; page += 1) {
-    const res = await fetch(
-      `${apiBase}/api/public/sitemap/opportunities?page=${page}&limit=${limit}`,
-      { cache: 'no-store' }
+  try {
+    const firstRes = await fetch(
+      `${apiBase}/api/public/sitemap/opportunities?page=1&limit=${limit}`,
+      { next: { revalidate } }
     );
 
-    if (!res.ok) {
-      throw new Error(`Sitemap API failed page=${page} status=${res.status}`);
+    if (!firstRes.ok) {
+      throw new Error(`Sitemap API failed page=1 status=${firstRes.status}`);
     }
 
-    const data = (await res.json()) as SitemapApiResponse;
-    if (Array.isArray(data.items)) {
-      allItems.push(...data.items);
+    const firstData = (await firstRes.json()) as SitemapApiResponse;
+    const totalPages = normalizeTotalPages(firstData.totalPages);
+    const allItems: SitemapOpportunity[] = Array.isArray(firstData.items) ? [...firstData.items] : [];
+
+    for (let page = 2; page <= totalPages; page += 1) {
+      const res = await fetch(
+        `${apiBase}/api/public/sitemap/opportunities?page=${page}&limit=${limit}`,
+        { next: { revalidate } }
+      );
+
+      if (!res.ok) {
+        throw new Error(`Sitemap API failed page=${page} status=${res.status}`);
+      }
+
+      const data = (await res.json()) as SitemapApiResponse;
+      if (Array.isArray(data.items)) {
+        allItems.push(...data.items);
+      }
     }
+
+    const opportunityEntries: MetadataRoute.Sitemap = allItems.map((item) => {
+      const slugOrId = item.slug ?? item.id;
+      const path = `${getPathByType(item.type)}${encodeURIComponent(slugOrId)}`;
+
+      return {
+        url: `${BASE_URL}${path}`,
+        lastModified: item.updatedAt ?? item.postedAt,
+      };
+    });
+
+    return [...staticEntries, ...opportunityEntries];
+  } catch (error) {
+    console.error('Sitemap generation failed, returning static routes only.', error);
+    return staticEntries;
   }
-
-  return allItems.map((item) => {
-    const slugOrId = item.slug ?? item.id;
-    const path = `${getPathByType(item.type)}${encodeURIComponent(slugOrId)}`;
-
-    return {
-      url: `${BASE_URL}${path}`,
-      lastModified: item.postedAt,
-      changeFrequency: 'daily',
-      priority: 0.7,
-    };
-  });
 }
