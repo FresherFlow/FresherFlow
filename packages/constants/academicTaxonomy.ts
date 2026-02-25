@@ -135,17 +135,13 @@ const SPECIALIZATION_CANONICAL_MAP: Record<string, string> = {
 const toToken = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
 export const ALL_COURSE_OPTIONS = [
+    // Keep this list as "course/degree level" only.
+    // Subject/branch details must be selected via specializations.
+    'Diploma',
     'B.Tech / B.E.', 'B.Sc', 'BCA', 'BBA', 'B.Com', 'B.A',
     'M.Tech / M.E.', 'M.Sc', 'MCA', 'MBA', 'M.Com', 'M.A',
     'MS', 'CA', 'B.Des', 'B.Ed', 'B.Pharma', 'B.Voc', 'PhD',
-    'Computer Science', 'Information Technology', 'Electronics', 'Electrical Engineering',
-    'Electronics and Communication Engineering', 'Mechanical Engineering', 'Mathematics',
-    'Statistics', 'Data Science', 'Cyber Security', 'Artificial Intelligence',
-    'Machine Learning', 'Cloud Computing', 'Business', 'Finance', 'Marketing',
-    'Commerce', 'Science', 'Technology', 'Engineering', 'Any Graduate', 'Any Postgraduate',
-    '12th Pass', 'HSC', 'Software Engineering', 'Chemistry', 'Physics',
-    'Economics', 'Data Engineering', 'Big Data Analytics', 'Blockchain',
-    'Quantitative Disciplines', 'STEM Majors', 'Other'
+    'Any Graduate', 'Any Postgraduate', '12th Pass', 'HSC', 'Other'
 ] as const;
 
 export const ALL_SPECIALIZATION_OPTIONS = [

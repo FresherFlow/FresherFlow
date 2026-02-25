@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { OpportunityStatus } from '@prisma/client';
+import { OpportunityStatus, OpportunityType, Prisma } from '@prisma/client';
 import { optionalAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser, checkEligibility } from '../domain/eligibility';
@@ -140,6 +140,15 @@ function normalizeTypeParam(raw?: string) {
     return raw.toUpperCase();
 }
 
+function parseOpportunityType(raw?: string): OpportunityType | undefined {
+    const normalized = normalizeTypeParam(raw);
+    if (!normalized) return undefined;
+    if (normalized === OpportunityType.JOB) return OpportunityType.JOB;
+    if (normalized === OpportunityType.INTERNSHIP) return OpportunityType.INTERNSHIP;
+    if (normalized === OpportunityType.WALKIN) return OpportunityType.WALKIN;
+    return undefined;
+}
+
 function getFreshnessScore(
     opportunity: { postedAt?: Date | string; expiresAt?: Date | string | null; actions?: Array<{ actionType: string }> },
     daySeed: number
@@ -169,7 +178,7 @@ function getFreshnessScore(
 router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { type, city, relevanceDebug, minSalary, maxSalary, page = '1', limit = '50', sort } = req.query;
-        const filterType = normalizeTypeParam((type) as string | undefined);
+        const filterType = parseOpportunityType(type as string | undefined);
         const minSal = minSalary ? parseInt(minSalary as string) : undefined;
         const maxSal = maxSalary ? parseInt(maxSalary as string) : undefined;
         const p = parseInt(page as string) || 1;
@@ -186,22 +195,32 @@ router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Respo
         const userId = req.userId;
         const isGuest = !userId;
 
-        const whereClause = {
-            status: OpportunityStatus.PUBLISHED,
-            deletedAt: null,
-            OR: [
-                { expiresAt: null },
-                { expiresAt: { gt: new Date() } }
-            ],
-            ...(filterType ? { type: filterType.toUpperCase() as any } : {}),
-            ...(city ? { locations: { has: city as string } } : {}),
-            ...(minSal !== undefined ? {
+        const andConditions: Prisma.OpportunityWhereInput[] = [
+            {
+                OR: [
+                    { expiresAt: null },
+                    { expiresAt: { gt: new Date() } }
+                ]
+            }
+        ];
+        if (minSal !== undefined) {
+            andConditions.push({
                 OR: [
                     { salaryMin: { gte: minSal } },
                     { salaryMax: { gte: minSal } }
                 ]
-            } : {}),
-            ...(maxSal !== undefined ? { salaryMin: { lte: maxSal } } : {}),
+            });
+        }
+        if (maxSal !== undefined) {
+            andConditions.push({ salaryMin: { lte: maxSal } });
+        }
+
+        const whereClause: Prisma.OpportunityWhereInput = {
+            status: OpportunityStatus.PUBLISHED,
+            deletedAt: null,
+            AND: andConditions,
+            ...(filterType ? { type: filterType } : {}),
+            ...(city ? { locations: { has: city as string } } : {}),
         };
 
         const totalAvailable = await prisma.opportunity.count({ where: whereClause });
