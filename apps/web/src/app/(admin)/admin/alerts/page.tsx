@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/lib/api/admin';
 
 type DispatchStatus = 'INITIATED' | 'SENT' | 'FAILED' | 'SKIPPED';
@@ -48,7 +48,7 @@ export default function AdminAlertsPage() {
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DispatchResponse | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -67,11 +67,11 @@ export default function AdminAlertsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [channel, correlationId, kind, reason, sinceHours, status]);
 
   useEffect(() => {
     void load();
-  }, []);
+  }, [load]);
 
   const statusMap = useMemo(() => {
     const map = new Map<string, number>();

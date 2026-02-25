@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { alertsApi, savedApi, actionsApi } from '@/lib/api/client';
@@ -162,11 +162,11 @@ export default function AlertsCenterPage() {
     const [pendingApplyFollowup, setPendingApplyFollowup] = useState<PendingApplyFollowup | null>(null);
     const [promptedOpportunityIds, setPromptedOpportunityIds] = useState<Set<string>>(new Set());
 
-    const emitAlertsUpdated = () => {
+    const emitAlertsUpdated = useCallback(() => {
         if (typeof window !== 'undefined') {
             window.dispatchEvent(new Event(ALERTS_UPDATED_EVENT));
         }
-    };
+    }, []);
 
     const loadFeed = async (nextKind: AlertKindFilter = kind) => {
         setError(null);
@@ -192,7 +192,7 @@ export default function AlertsCenterPage() {
         }
     };
 
-    const markAsRead = async (id: string) => {
+    const markAsRead = useCallback(async (id: string) => {
         try {
             await alertsApi.markRead(id);
             setFeed(prev => prev ? {
@@ -207,18 +207,18 @@ export default function AlertsCenterPage() {
         } catch {
             // silent fail
         }
-    };
+    }, [emitAlertsUpdated]);
 
-    const markPrompted = (opportunityId: string) => {
+    const markPrompted = useCallback((opportunityId: string) => {
         setPromptedOpportunityIds((prev) => {
             const next = new Set(prev);
             next.add(opportunityId);
             writePromptedOpportunityIds(next);
             return next;
         });
-    };
+    }, []);
 
-    const handleApplyFollowupConfirm = async (payload: PendingApplyFollowup) => {
+    const handleApplyFollowupConfirm = useCallback(async (payload: PendingApplyFollowup) => {
         try {
             await actionsApi.track(payload.opportunityId, ActionType.APPLIED);
             setAppliedOpportunityIds((prev) => new Set(prev).add(payload.opportunityId));
@@ -229,9 +229,9 @@ export default function AlertsCenterPage() {
         } catch (err: unknown) {
             toast.error((err as Error)?.message || 'Could not mark as applied');
         }
-    };
+    }, [markAsRead]);
 
-    const maybeShowApplyFollowup = () => {
+    const maybeShowApplyFollowup = useCallback(() => {
         if (!pendingApplyFollowup) return;
         if (document.visibilityState !== 'visible') return;
         const elapsed = Date.now() - pendingApplyFollowup.createdAt;
@@ -271,7 +271,7 @@ export default function AlertsCenterPage() {
                 </div>
             </div>
         ), { duration: 12000 });
-    };
+    }, [handleApplyFollowupConfirm, pendingApplyFollowup, promptedOpportunityIds, markPrompted]);
 
     const handleApplyClick = async (
         alertId: string,
@@ -412,7 +412,7 @@ export default function AlertsCenterPage() {
             window.removeEventListener('focus', onFocus);
             document.removeEventListener('visibilitychange', onVisibility);
         };
-    }, [pendingApplyFollowup, promptedOpportunityIds, appliedOpportunityIds]);
+    }, [maybeShowApplyFollowup]);
 
     const summary = useMemo(
         () => feed?.summary || { total: 0, dailyDigest: 0, closingSoon: 0, highlight: 0, appUpdate: 0, newJob: 0, eventReminder: 0 },

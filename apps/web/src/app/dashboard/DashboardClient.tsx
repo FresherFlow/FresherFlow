@@ -72,7 +72,7 @@ export default function DashboardClient() {
         try { return !localStorage.getItem(DASH_CACHE_KEY); } catch { return true; }
     });
     const [highlights, setHighlights] = useState<HighlightsData | null>(null);
-    const [isLoadingHighlights, setIsLoadingHighlights] = useState(true);
+    const [, setIsLoadingHighlights] = useState(true);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [recentError, setRecentError] = useState<string | null>(null);
     const [highlightsError, setHighlightsError] = useState<string | null>(null);
