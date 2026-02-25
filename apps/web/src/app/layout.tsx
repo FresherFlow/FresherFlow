@@ -79,7 +79,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const adminWebHost = process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in';
+  const adminWebHost = (process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in')
+    .replace(/^https?:\/\//i, '')
+    .replace(/\/.*$/, '');
   const gaId = process.env.NEXT_PUBLIC_GA_ID || '';
   return (
     <html lang="en" suppressHydrationWarning>

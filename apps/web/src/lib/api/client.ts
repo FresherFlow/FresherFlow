@@ -16,9 +16,16 @@ export class OfflineError extends Error {
     }
 }
 
-const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL || '';
-const USER_API_URL = process.env.NEXT_PUBLIC_USER_API_URL || DEFAULT_API_URL;
-const ADMIN_API_URL = process.env.NEXT_PUBLIC_ADMIN_API_URL || DEFAULT_API_URL;
+function normalizeApiBase(raw?: string): string {
+    const value = (raw || '').trim();
+    if (!value) return '';
+    const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    return withProtocol.replace(/\/+$/, '');
+}
+
+const DEFAULT_API_URL = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);
+const USER_API_URL = normalizeApiBase(process.env.NEXT_PUBLIC_USER_API_URL) || DEFAULT_API_URL;
+const ADMIN_API_URL = normalizeApiBase(process.env.NEXT_PUBLIC_ADMIN_API_URL) || DEFAULT_API_URL;
 
 export function getApiBaseForEndpoint(endpoint: string): string {
     if (endpoint.startsWith('/api/admin')) {

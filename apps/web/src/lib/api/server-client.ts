@@ -1,8 +1,15 @@
 import { cookies } from 'next/headers';
 
 const DEFAULT_API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '';
-const USER_API_URL = process.env.USER_API_URL || process.env.NEXT_PUBLIC_USER_API_URL || DEFAULT_API_URL;
-const ADMIN_API_URL = process.env.ADMIN_API_URL || process.env.NEXT_PUBLIC_ADMIN_API_URL || DEFAULT_API_URL;
+function normalizeApiBase(raw?: string): string {
+    const value = (raw || '').trim();
+    if (!value) return '';
+    const withProtocol = /^https?:\/\//i.test(value) ? value : `https://${value}`;
+    return withProtocol.replace(/\/+$/, '');
+}
+
+const USER_API_URL = normalizeApiBase(process.env.USER_API_URL || process.env.NEXT_PUBLIC_USER_API_URL) || normalizeApiBase(DEFAULT_API_URL);
+const ADMIN_API_URL = normalizeApiBase(process.env.ADMIN_API_URL || process.env.NEXT_PUBLIC_ADMIN_API_URL) || normalizeApiBase(DEFAULT_API_URL);
 const DEFAULT_PUBLIC_REVALIDATE_SECONDS = 120;
 
 function resolveApiBase(endpoint: string) {

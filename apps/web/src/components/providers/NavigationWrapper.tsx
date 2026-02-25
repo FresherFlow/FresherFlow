@@ -11,7 +11,11 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const normalizedPathname = pathname?.toLowerCase() || '';
     const isAuthRoute = normalizedPathname === '/login' || normalizedPathname === '/register';
-    const adminHost = (process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in').toLowerCase();
+    const adminHostRaw = process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in';
+    const adminHost = adminHostRaw
+        .replace(/^https?:\/\//i, '')
+        .replace(/\/.*$/, '')
+        .toLowerCase();
     const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === adminHost;
     const isAdminRoute = normalizedPathname.startsWith('/admin') || isAdminHost;
 

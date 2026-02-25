@@ -1,9 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../lib/prisma';
 import { AppError } from './errorHandler';
 import { isProfileComplete } from '../utils/profileCompletion';
-
-const prisma = new PrismaClient();
 
 /**
  * Profile Gating Middleware
