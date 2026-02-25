@@ -3,7 +3,7 @@
     "short_name": "FresherFlow",
     "version": "1.6.0",
     "description": "Verified job platform for freshers.",
-    "start_url": "/",
+    "start_url": "/dashboard",
     "scope": "/",
     "display": "standalone",
     "display_override": [

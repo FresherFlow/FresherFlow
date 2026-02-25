@@ -15,7 +15,6 @@ import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import BellIcon from '@heroicons/react/24/outline/BellIcon';
-import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import { ThemeToggle } from './ThemeToggle';
 import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
@@ -302,8 +301,8 @@ export function MobileNav() {
                     </a>
                 ))}
             </div>
-            <div className="md:hidden fixed top-0 left-0 right-0 z-[70] h-16 bg-background border-b border-border">
-                <div className="h-full px-4 flex items-center justify-between">
+            <div className="md:hidden fixed top-0 left-0 right-0 z-[70] h-[calc(4rem+env(safe-area-inset-top))] bg-background pt-[env(safe-area-inset-top)]">
+                <div className="h-16 px-4 flex items-center justify-between">
                     <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
                         <Image
                             src={logoSrc}
@@ -328,15 +327,6 @@ export function MobileNav() {
                                     Install
                                 </button>
                             )}
-                            {pathname.startsWith('/jobs/') || pathname.startsWith('/internships/') || pathname.startsWith('/walk-ins/') || pathname.startsWith('/opportunities/') ? (
-                                <button
-                                    onClick={() => window.history.length > 1 ? history.back() : window.location.assign('/opportunities')}
-                                    className="p-2 rounded-lg border border-border bg-muted/40 text-muted-foreground hover:text-primary transition-all"
-                                    aria-label="Go back"
-                                >
-                                    <ArrowLeftIcon className="w-5 h-5" />
-                                </button>
-                            ) : null}
                             <Link
                                 href="/alerts"
                                 className="p-2 rounded-lg border border-border bg-muted/40 text-muted-foreground hover:text-primary transition-all relative"

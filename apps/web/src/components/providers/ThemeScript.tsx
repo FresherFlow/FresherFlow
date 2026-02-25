@@ -16,7 +16,7 @@ export function ThemeScript() {
                 const savedTheme = localStorage.getItem('theme');
                 // Default to light unless user explicitly chose dark.
                 const theme = savedTheme === 'dark' ? 'dark' : 'light';
-                const themeColor = theme === 'dark' ? '#080c16' : '#eef3f7';
+                const themeColor = theme === 'dark' ? '#080c16' : '#eff2f6';
                 
                 if (theme === 'dark') {
                     document.documentElement.classList.add('dark');

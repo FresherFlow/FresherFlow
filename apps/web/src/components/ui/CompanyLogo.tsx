@@ -195,7 +195,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
     }
 
     return (
-        <div className={cn("relative w-12 h-12 bg-white border border-border rounded overflow-hidden shrink-0 flex items-center justify-center p-1", className)}>
+        <div className={cn("relative w-12 h-12 bg-muted/40 dark:bg-transparent border border-border rounded overflow-hidden shrink-0 flex items-center justify-center p-1", className)}>
             <Image
                 src={currentSrc}
                 alt={`${companyName} logo`}

@@ -33,20 +33,20 @@
     /* Light Mode - High-Contrast Trust + Energy */
     --primary: 222 47% 11%; /* Deep navy */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 20% 96%;
+    --secondary: 210 20% 95%;
     --secondary-foreground: 222 47% 11%;
     --accent: 190 90% 45%; /* Electric teal */
     --accent-foreground: 222 47% 11%;
 
-    --background: 210 28% 95%; /* Cooler gray so cards separate clearly */
+    --background: 210 28% 92%; /* Stronger page/card separation in light mode */
     --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
-    --border: 214 20% 78%; /* Stronger separation in light mode */
+    --border: 214 16% 68%; /* Crisp borders for card-heavy feeds */
     --input: 210 26% 91%;
-    --muted: 210 22% 90%;
+    --muted: 210 22% 86%;
     --muted-foreground: 215 16% 40%;
 
     --ring: 190 90% 45%;
@@ -318,7 +318,6 @@
   
   /* Ensure Heroicons in common containers follow the rule */
   .premium-card svg, 
-  .job-card svg,
   .feature-icon svg {
     color: hsl(var(--icon));
   }
@@ -454,43 +453,16 @@
 
   /* Cards - Production Grade */
   .premium-card, .card {
-    background: linear-gradient(180deg, hsl(var(--card) / 0.95), hsl(var(--card)));
+    background: linear-gradient(180deg, hsl(var(--card)), hsl(var(--card) / 0.96));
     border: 1px solid hsl(var(--border));
     border-radius: 14px;
     padding: 1.25rem;
-    box-shadow: 0 14px 30px -26px hsl(var(--primary) / 0.45);
+    box-shadow: 0 12px 24px -20px hsl(220 15% 20% / 0.18);
     transition: all 200ms ease;
   }
   
   .premium-card:hover, .card:hover {
-    box-shadow: 0 18px 34px -24px hsl(var(--primary) / 0.55);
-  }
-
-  /* Job Card - Special Treatment for Listings */
-  .job-card {
-    background: linear-gradient(180deg, hsl(var(--card) / 0.98), hsl(var(--card)));
-    border: 1px solid hsl(var(--border));
-    border-radius: 14px;
-    padding: 1rem;
-    box-shadow: 0 14px 30px -26px hsl(var(--primary) / 0.45);
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-    transition: all 250ms cubic-bezier(0.4, 0, 0.2, 1);
-    cursor: pointer;
-  }
-  
-  @media (min-width: 768px) {
-    .job-card {
-      padding: 1.25rem;
-      gap: 1rem;
-    }
-  }
-  
-  .job-card:hover {
-    box-shadow: 0 22px 38px -28px hsl(var(--primary) / 0.65);
-    border-color: hsl(var(--accent) / 0.5);
-    transform: translateY(-1px);
+    box-shadow: 0 14px 28px -22px hsl(220 15% 20% / 0.22);
   }
 
   /* Badges - For Job Types, Status, etc */

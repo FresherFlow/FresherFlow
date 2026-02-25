@@ -10,7 +10,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-const LIGHT_THEME_COLOR = '#eef3f7';
+const LIGHT_THEME_COLOR = '#eff2f6';
 const DARK_THEME_COLOR = '#080c16';
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {

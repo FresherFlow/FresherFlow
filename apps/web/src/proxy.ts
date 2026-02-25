@@ -84,9 +84,10 @@ export function proxy(request: NextRequest) {
             return redirectWithMethodAwareness(request, '/dashboard');
         }
         if (pathname.startsWith('/admin/')) {
-            // Accept canonical /admin/* paths on admin host without redirecting.
-            // This avoids cross-host redirect edge cases when users deep-link to /admin/*.
-            return NextResponse.next();
+            const targetPath = pathname === '/admin/login'
+                ? '/login'
+                : (pathname.replace(/^\/admin/, '') || '/');
+            return redirectWithMethodAwareness(request, `${targetPath}${request.nextUrl.search}`);
         }
         if (pathname === '/') {
             return redirectWithMethodAwareness(request, isAdminAuthenticated ? '/dashboard' : '/login');
