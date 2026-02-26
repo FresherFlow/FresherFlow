@@ -1,7 +1,5 @@
 'use client';
 
-import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
-
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useState, Suspense } from 'react';
@@ -109,9 +107,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
     };
 
     return (
-        <AuthGate>
-            <ProfileGate>
-                <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pb-12 md:pb-20 space-y-6 md:space-y-8">
+        <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pb-12 md:pb-20 space-y-6 md:space-y-8">
                     {/* Desktop Header - Category Specific */}
                     <div className="hidden md:flex flex-col gap-3 border-b border-border/60 pb-4">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -526,9 +522,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
                             )}
                         </div>
                     </div>
-                </div>
-            </ProfileGate>
-        </AuthGate>
+        </div>
     );
 }
 

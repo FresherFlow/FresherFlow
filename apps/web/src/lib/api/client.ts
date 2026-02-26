@@ -51,13 +51,20 @@ export async function apiClient<T = unknown>(
     };
 
 
+    const isPublicFeedEndpoint =
+        endpoint.startsWith('/api/opportunities') ||
+        endpoint.startsWith('/api/public/sitemap/opportunities');
+
     // Defaults: credentials include for cookies
     const fetchOptions: RequestInit = {
         ...options,
         headers,
         credentials: 'include', // CRITICAL: This sends/receives cookies
-        cache: 'no-store', // CRITICAL: Prevent caching of API responses
-        next: { revalidate: 0 }
+        // Keep private/admin/auth requests uncached, but allow public feed caching.
+        cache: options.cache ?? (isPublicFeedEndpoint ? 'default' : 'no-store'),
+        ...(isPublicFeedEndpoint
+            ? {}
+            : { next: { revalidate: 0 } })
     };
     const baseUrl = getApiBaseForEndpoint(endpoint);
     const requestUrl = `${baseUrl}${endpoint}`;
@@ -387,7 +394,10 @@ export const growthApi = {
             | 'INSTALL_PROMPT_SHOWN'
             | 'INSTALL_ACCEPTED'
             | 'OPENED_STANDALONE',
-        source = 'unknown'
+        source = 'unknown',
+        options?: {
+            opportunityId?: string;
+        }
     ) =>
         apiClient('/api/public/growth/event', {
             method: 'POST',
@@ -396,6 +406,7 @@ export const growthApi = {
                 source,
                 route: typeof window !== 'undefined' ? window.location.pathname : undefined,
                 sessionId: getGrowthSessionId(),
+                opportunityId: options?.opportunityId,
             })
         })
 };

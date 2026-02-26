@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import CategoryPage from '@/features/jobs/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
 
+export const revalidate = 300;
+
 export const metadata: Metadata = {
     title: 'Walk-in Drives & Campus Hiring | FresherFlow',
     description: 'Discover walk-in interview drives and on-campus recruitment events near you. Get complete venue details, timing, required documents, and eligibility for immediate hiring opportunities.',

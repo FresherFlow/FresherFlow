@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import CategoryPage from '@/features/jobs/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
 
+export const revalidate = 300;
+
 export const metadata: Metadata = {
     title: 'Jobs for Freshers | FresherFlow',
     description: 'Discover full-time job opportunities for freshers across India. Apply to verified openings at top companies with detailed eligibility criteria and direct application links.',

@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 
+export const revalidate = 300;
+
 const formatLabel = (value: string) =>
     value
         .replace(/-/g, ' ')

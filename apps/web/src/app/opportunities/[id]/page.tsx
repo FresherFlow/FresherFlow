@@ -13,9 +13,8 @@ interface ExtendedOpportunity extends Opportunity {
     normalizedRole?: string;
 }
 
-// ISR: Revalidate every 60 seconds instead of dynamic for every request
-// Jobs don't change every second, so caching drastically improves performance
-export const revalidate = 60;
+// ISR for public detail pages to absorb bot/preview traffic at CDN.
+export const revalidate = 300;
 
 type Props = {
     params: Promise<{ id: string }>;
@@ -49,7 +48,7 @@ async function fetchOpportunityForPage(slugOrId: string): Promise<ExtendedOpport
             headers: {
                 'X-Requested-From': 'fresherflow-web',
             },
-            next: { revalidate: 60 },
+            next: { revalidate: 300 },
         });
 
         if (!response.ok) return null;

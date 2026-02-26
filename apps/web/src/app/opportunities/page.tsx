@@ -1,6 +1,5 @@
 'use client';
 
-import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
 import { cn } from '@/lib/utils';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useState, Suspense, useEffect } from 'react';
@@ -343,12 +342,8 @@ function OpportunitiesContent() {
 
 export default function OpportunitiesPage() {
     return (
-        <AuthGate>
-            <ProfileGate>
-                <Suspense fallback={<FeedPageSkeleton />}>
-                    <OpportunitiesContent />
-                </Suspense>
-            </ProfileGate>
-        </AuthGate>
+        <Suspense fallback={<FeedPageSkeleton />}>
+            <OpportunitiesContent />
+        </Suspense>
     );
 }

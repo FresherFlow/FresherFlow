@@ -2,6 +2,8 @@ import { Metadata } from 'next';
 import CategoryPage from '@/features/jobs/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
 
+export const revalidate = 300;
+
 export const metadata: Metadata = {
     title: 'Internships for Students | FresherFlow',
     description: 'Find internship opportunities for students and recent graduates. Explore verified internship openings with stipends, skill development programs, and career kickstart opportunities.',

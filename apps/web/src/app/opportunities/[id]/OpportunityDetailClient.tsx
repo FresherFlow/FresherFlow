@@ -143,6 +143,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
             hasTrackedDetailViewRef.current = true;
             // Track job view in analytics
             analytics.jobView(opp.id, opp.company, parseOpportunityLocation(opp.locations).shortLabel);
+            growthApi.trackEvent('DETAIL_VIEW', 'opportunity_detail', { opportunityId: opp.id }).catch(() => undefined);
         }
     }, [opp]);
 

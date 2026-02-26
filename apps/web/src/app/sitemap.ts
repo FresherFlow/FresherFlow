@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-export const revalidate = 3600;
+export const dynamic = 'force-dynamic';
 
 type SitemapOpportunity = {
   id: string;
@@ -51,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const firstRes = await fetch(
       `${apiBase}/api/public/sitemap/opportunities?page=1&limit=${limit}`,
-      { next: { revalidate } }
+      { cache: 'no-store' }
     );
 
     if (!firstRes.ok) {
@@ -65,7 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (let page = 2; page <= totalPages; page += 1) {
       const res = await fetch(
         `${apiBase}/api/public/sitemap/opportunities?page=${page}&limit=${limit}`,
-        { next: { revalidate } }
+        { cache: 'no-store' }
       );
 
       if (!res.ok) {
@@ -90,7 +90,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
     return [...staticEntries, ...opportunityEntries];
   } catch (error) {
-    console.error('Sitemap generation failed, returning static routes only.', error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Sitemap generation failed.', error);
+
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(`Dynamic sitemap generation failed: ${message}`);
+    }
+
     return staticEntries;
   }
 }
