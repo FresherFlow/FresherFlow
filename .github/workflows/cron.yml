@@ -2,6 +2,8 @@ name: Scheduled Background Jobs
 
 on:
   schedule:
+    # Run every 10 minutes (Admin keep-warm)
+    - cron: '*/10 * * * *'
     # Run every 20 minutes (Ingestion)
     - cron: '*/20 * * * *'
     # Run every 30 minutes (Alerts)
@@ -16,6 +18,17 @@ jobs:
   run-cron-tasks:
     runs-on: ubuntu-latest
     steps:
+      - name: Keep admin API warm (Every 10 mins)
+        if: github.event.schedule == '*/10 * * * *' || github.event_name == 'workflow_dispatch'
+        env:
+          ADMIN_API_BASE_URL: ${{ secrets.ADMIN_API_BASE_URL }}
+        run: |
+          if [ -z "$ADMIN_API_BASE_URL" ]; then
+            echo "ADMIN_API_BASE_URL is not set; skipping admin keep-warm ping"
+            exit 0
+          fi
+          curl -f -sS "$ADMIN_API_BASE_URL/api/health" > /dev/null
+
       - name: Trigger Ingestion (Every 20 mins)
         if: github.event.schedule == '*/20 * * * *' || github.event_name == 'workflow_dispatch'
         env:

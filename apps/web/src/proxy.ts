@@ -68,11 +68,13 @@ export function proxy(request: NextRequest) {
         return redirectWithMethodAwareness(request, '/');
     }
 
-    // Keep fresherflow.in as landing-only. Any non-root route canonicalizes to app host.
+    // Keep fresherflow.in as landing + user login only.
+    // Any other path canonicalizes to app host.
     if (
         process.env.NODE_ENV === 'production' &&
         normalizedHost === PUBLIC_WEB_HOST &&
-        pathname !== '/'
+        pathname !== '/' &&
+        pathname !== '/login'
     ) {
         const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
         return redirectWithMethodAwareness(request, target);
