@@ -26,6 +26,8 @@ const ADMIN_ROOT_PREFIXES = [
     '/telegram',
     '/settings',
 ];
+const SOCIAL_PREVIEW_BOT_UA =
+    /(facebookexternalhit|facebot|twitterbot|xbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot|skypeuripreview|applebot)/i;
 
 function isPublicDetailPath(pathname: string): boolean {
     if (pathname.startsWith('/walk-ins/details/') || pathname.startsWith('/walkins/details/')) {
@@ -56,9 +58,15 @@ function redirectWithMethodAwareness(request: NextRequest, target: string) {
     return NextResponse.redirect(url, status);
 }
 
+function isSocialPreviewRequest(request: NextRequest): boolean {
+    const ua = request.headers.get('user-agent') || '';
+    return SOCIAL_PREVIEW_BOT_UA.test(ua);
+}
+
 export function proxy(request: NextRequest) {
     const { pathname, hostname } = request.nextUrl;
     const normalizedHost = hostname.toLowerCase();
+    const isPreviewBot = isSocialPreviewRequest(request);
     const isAdminHost = normalizedHost === ADMIN_WEB_HOST;
     const isAdminRootPath = ADMIN_ROOT_PREFIXES.some(
         (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
@@ -75,7 +83,8 @@ export function proxy(request: NextRequest) {
         process.env.NODE_ENV === 'production' &&
         normalizedHost === PUBLIC_WEB_HOST &&
         pathname !== '/' &&
-        pathname !== '/login'
+        pathname !== '/login' &&
+        !(isPreviewBot && isPublicDetailPath(pathname))
     ) {
         const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
         return redirectWithMethodAwareness(request, target);
