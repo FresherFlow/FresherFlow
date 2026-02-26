@@ -39,16 +39,16 @@ class TelegramService {
         return !!this.botToken && !!this.chatId;
     }
 
-    private resolveCanonicalAppOrigin(): string {
+    private resolveCanonicalShareOrigin(): string {
         const configuredOrigin =
             process.env.SOCIAL_FRONTEND_URL
-            || process.env.APP_FRONTEND_URL
             || process.env.PUBLIC_FRONTEND_URL
+            || process.env.APP_FRONTEND_URL
             || process.env.FRONTEND_URL
-            || 'https://app.fresherflow.in';
+            || 'https://fresherflow.in';
 
         if (/localhost|127\.0\.0\.1/i.test(configuredOrigin)) {
-            return 'https://app.fresherflow.in';
+            return 'https://fresherflow.in';
         }
 
         try {
@@ -56,15 +56,13 @@ class TelegramService {
             const host = parsed.hostname.toLowerCase();
             const protocol = parsed.protocol || 'https:';
 
-            if (host === 'fresherflow.in' || host === 'www.fresherflow.in') {
-                return `${protocol}//app.fresherflow.in`;
-            }
+            if (host === 'fresherflow.in' || host === 'www.fresherflow.in') return `${protocol}//fresherflow.in`;
             if (host.startsWith('admin.')) {
-                return `${protocol}//app.${host.slice('admin.'.length)}`;
+                return `${protocol}//${host.slice('admin.'.length)}`;
             }
             return `${protocol}//${host}`;
         } catch {
-            return 'https://app.fresherflow.in';
+            return 'https://fresherflow.in';
         }
     }
 
@@ -285,7 +283,7 @@ class TelegramService {
 
         const typeLabel = type === 'JOB' ? 'Job' : type === 'INTERNSHIP' ? 'Internship' : 'Walk-in';
         const locationText = locations.length > 0 ? locations.join(', ') : 'Remote/Multiple';
-        const frontendOrigin = this.resolveCanonicalAppOrigin();
+        const frontendOrigin = this.resolveCanonicalShareOrigin();
         const jobUrl = buildSocialOpportunityUrl({
             frontendOrigin,
             slug,

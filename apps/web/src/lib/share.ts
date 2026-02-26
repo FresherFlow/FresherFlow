@@ -20,6 +20,17 @@ const PLATFORM_MEDIUM: Record<SharePlatform, string> = {
 export function buildShareUrl(rawUrl: string, options: ShareLinkOptions = {}) {
     try {
         const url = new URL(rawUrl);
+        const configuredShareBase = process.env.NEXT_PUBLIC_SHARE_BASE_URL || 'https://fresherflow.in';
+
+        try {
+            const shareBase = new URL(configuredShareBase);
+            // Force social share links onto one canonical host for consistent previews.
+            url.protocol = shareBase.protocol;
+            url.host = shareBase.host;
+        } catch {
+            // Ignore invalid share base and keep the source origin.
+        }
+
         const platform = options.platform || 'other';
 
         url.searchParams.set('ref', options.ref || 'share');
@@ -33,4 +44,3 @@ export function buildShareUrl(rawUrl: string, options: ShareLinkOptions = {}) {
         return rawUrl;
     }
 }
-

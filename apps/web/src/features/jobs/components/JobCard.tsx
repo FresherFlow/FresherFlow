@@ -14,6 +14,7 @@ import { toastError } from '@/lib/utils/error';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 import { getOpportunityDisplaySalary, normalizeSalaryInput, parseOpportunityLocation } from '@/lib/opportunityDisplay';
+import { buildShareUrl } from '@/lib/share';
 
 /**
  * JobCard - REFINED TYPOGRAPHY PATTERN
@@ -47,7 +48,13 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
 
     const handleShareClick = async (e: React.MouseEvent) => {
         e.stopPropagation();
-        const shareUrl = `${window.location.origin}${getOpportunityPathFromItem(job)}`;
+        const shareUrl = buildShareUrl(`${window.location.origin}${getOpportunityPathFromItem(job)}`, {
+            platform: 'other',
+            source: 'opportunity_share',
+            medium: 'share',
+            campaign: 'opportunity_share',
+            ref: 'share',
+        });
         const shareData = {
             title: job.normalizedRole || job.title,
             text: `Check out this ${job.normalizedRole || job.title} opportunity at ${job.company} on FresherFlow!`,
