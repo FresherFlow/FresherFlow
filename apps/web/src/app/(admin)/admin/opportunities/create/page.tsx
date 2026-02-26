@@ -271,7 +271,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
 
     useEffect(() => {
         if (!isAuthenticated) {
-            router.push('/admin/login');
+            router.push('/login');
         }
     }, [isAuthenticated, router]);
 

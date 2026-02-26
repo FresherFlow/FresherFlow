@@ -13,6 +13,7 @@ function normalizeHost(value: string | undefined, fallback: string): string {
 
 const ADMIN_WEB_HOST = normalizeHost(process.env.ADMIN_WEB_HOST, 'admin.fresherflow.in');
 const PUBLIC_WEB_HOST = normalizeHost(process.env.PUBLIC_WEB_HOST, 'fresherflow.in');
+const APP_WEB_HOST = normalizeHost(process.env.APP_WEB_HOST || process.env.NEXT_PUBLIC_APP_WEB_HOST, 'app.fresherflow.in');
 const ADMIN_ROOT_PREFIXES = [
     '/dashboard',
     '/opportunities',
@@ -67,20 +68,30 @@ export function proxy(request: NextRequest) {
         return redirectWithMethodAwareness(request, '/');
     }
 
+    // Keep fresherflow.in as landing-only. Any non-root route canonicalizes to app host.
+    if (
+        process.env.NODE_ENV === 'production' &&
+        normalizedHost === PUBLIC_WEB_HOST &&
+        pathname !== '/'
+    ) {
+        const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
+        return redirectWithMethodAwareness(request, target);
+    }
+
     // Check for session marker
     const isAuthenticated = request.cookies.has('ff_logged_in') || request.cookies.has('accessToken');
     const isAdminAuthenticated = request.cookies.has('adminAccessToken');
     const isAdminRoute = pathname.startsWith('/admin');
-    const isAdminLogin = pathname === '/admin/login';
+    const isAdminLogin = pathname === '/admin/login' || pathname === '/login';
 
     // Public detail routes should never be served on admin host.
-    // Redirect them to the public web host to avoid /admin-domain 404s.
+    // Redirect them to app host to keep one canonical app domain.
     if (
         process.env.NODE_ENV === 'production' &&
         isAdminHost &&
         isPublicDetailPath(pathname)
     ) {
-        const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
+        const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
         return redirectWithMethodAwareness(request, target);
     }
 
@@ -143,7 +154,8 @@ export function proxy(request: NextRequest) {
     // 2. Admin Route Protection
     if (isAdminRoute && !isAdminLogin) {
         if (!isAdminAuthenticated) {
-            return redirectWithMethodAwareness(request, '/admin/login');
+            const target = `${request.nextUrl.protocol}//${ADMIN_WEB_HOST}/login`;
+            return redirectWithMethodAwareness(request, target);
         }
     }
 
@@ -166,7 +178,12 @@ export function proxy(request: NextRequest) {
         return redirectWithMethodAwareness(request, '/dashboard');
     }
 
-    // 5. Main Domain Root Handling
+    // Keep fresherflow.in root as landing page always.
+    if (normalizedHost === PUBLIC_WEB_HOST && pathname === '/') {
+        return NextResponse.next();
+    }
+
+    // 5. Main non-landing host root handling
     if (pathname === '/' && isAuthenticated) {
         return redirectWithMethodAwareness(request, '/dashboard');
     }
