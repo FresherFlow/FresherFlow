@@ -1,11 +1,13 @@
 import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { OpportunityStatus, OpportunityType, Prisma } from '@prisma/client';
+import Redis from 'ioredis';
 import { optionalAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser, checkEligibility } from '../domain/eligibility';
 import { verifyAccessToken } from '@fresherflow/auth';
 import { createRateLimiter } from '../middleware/rateLimit';
+import logger from '../utils/logger';
 
 const router: Router = express.Router();
 
@@ -15,7 +17,84 @@ const publicFeedLimiter = createRateLimiter({
     message: 'Too many feed requests. Please try again in a minute.',
     keyPrefix: 'opportunities_public',
 });
+const publicFeedBotLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 25,
+    message: 'Too many automated feed requests. Please slow down.',
+    keyPrefix: 'opportunities_public_bot',
+});
+const publicDetailLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 120,
+    message: 'Too many detail requests. Please try again in a minute.',
+    keyPrefix: 'opportunity_detail',
+});
+const publicDetailBotLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    max: 35,
+    message: 'Too many automated detail requests. Please slow down.',
+    keyPrefix: 'opportunity_detail_bot',
+});
 const GUEST_FEED_LIMIT = Number(process.env.GUEST_FEED_LIMIT || 12);
+const MAX_FEED_LIMIT = Number(process.env.PUBLIC_FEED_MAX_LIMIT || 100);
+const MAX_FEED_PAGE = Number(process.env.PUBLIC_FEED_MAX_PAGE || 200);
+const GUEST_FEED_CACHE_TTL_SECONDS = Number(process.env.PUBLIC_FEED_CACHE_TTL_SECONDS || 300);
+const GUEST_DETAIL_CACHE_TTL_SECONDS = Number(process.env.PUBLIC_DETAIL_CACHE_TTL_SECONDS || 300);
+const MAX_DETAIL_ID_LENGTH = Number(process.env.PUBLIC_DETAIL_MAX_ID_LENGTH || 200);
+const MAX_SALARY_FILTER = Number(process.env.PUBLIC_SALARY_MAX_FILTER || 100000000);
+const ALLOWED_SORT_KEYS = new Set(['', 'freshness_v2']);
+
+const BOT_UA_REGEX = /(bot|crawler|spider|scraper|curl|wget|python-requests|axios|headless|preview|slurp|facebookexternalhit|whatsapp|telegrambot|linkedinbot|discordbot)/i;
+let redisClient: Redis | null = null;
+
+function getRedisClient() {
+    const url = process.env.REDIS_URL;
+    if (!url) return null;
+    if (!redisClient) {
+        redisClient = new Redis(url, {
+            maxRetriesPerRequest: 1,
+            connectTimeout: 2000
+        });
+        redisClient.on('error', (err) => {
+            console.error('[Redis] Opportunities cache connection error:', err.message);
+        });
+    }
+    return redisClient;
+}
+
+function isLikelyBotTraffic(req: Request): boolean {
+    const ua = String(req.headers['user-agent'] || '').toLowerCase();
+    if (!ua) return true;
+    if (BOT_UA_REGEX.test(ua)) return true;
+
+    const acceptLanguage = String(req.headers['accept-language'] || '').trim();
+    const secFetchMode = String(req.headers['sec-fetch-mode'] || '').trim().toLowerCase();
+    return !acceptLanguage && secFetchMode !== 'navigate';
+}
+
+function adaptiveFeedLimiter(req: Request, res: Response, next: NextFunction) {
+    if (isLikelyBotTraffic(req)) {
+        return publicFeedBotLimiter(req, res, next);
+    }
+    return publicFeedLimiter(req, res, next);
+}
+
+function adaptiveDetailLimiter(req: Request, res: Response, next: NextFunction) {
+    if (isLikelyBotTraffic(req)) {
+        return publicDetailBotLimiter(req, res, next);
+    }
+    return publicDetailLimiter(req, res, next);
+}
+
+function tryResolveUserIdFromCookie(req: Request): string | null {
+    const token = req.cookies?.accessToken;
+    if (!token) return null;
+    try {
+        return verifyAccessToken(token);
+    } catch {
+        return null;
+    }
+}
 
 function buildGuestOpportunitySelect() {
     return {
@@ -149,6 +228,22 @@ function parseOpportunityType(raw?: string): OpportunityType | undefined {
     return undefined;
 }
 
+function normalizeSafeQueryString(value: unknown, maxLen = 80) {
+    return String(value || '').trim().slice(0, maxLen);
+}
+
+function parseStrictPositiveInt(value: unknown): number | null {
+    const raw = String(value ?? '').trim();
+    if (!/^\d+$/.test(raw)) return null;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isSupportedDetailId(value: string) {
+    if (!value || value.length > MAX_DETAIL_ID_LENGTH) return false;
+    return /^[a-zA-Z0-9\-_.:/%]+$/.test(value);
+}
+
 function getFreshnessScore(
     opportunity: { postedAt?: Date | string; expiresAt?: Date | string | null; actions?: Array<{ actionType: string }> },
     daySeed: number
@@ -175,15 +270,65 @@ function getFreshnessScore(
     return recencyScore + unseenScore + expiryScore + stableNoise;
 }
 
-router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/', adaptiveFeedLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { type, city, relevanceDebug, minSalary, maxSalary, page = '1', limit = '50', sort } = req.query;
-        const filterType = parseOpportunityType(type as string | undefined);
-        const minSal = minSalary ? parseInt(minSalary as string) : undefined;
-        const maxSal = maxSalary ? parseInt(maxSalary as string) : undefined;
-        const p = parseInt(page as string) || 1;
-        const l = parseInt(limit as string) || 50;
-        const sortKey = String(sort || '').toLowerCase();
+        const typeValue = normalizeSafeQueryString(type, 24);
+        const cityValue = normalizeSafeQueryString(city, 80);
+        const filterType = parseOpportunityType(typeValue || undefined);
+        const minSal = minSalary !== undefined ? parseStrictPositiveInt(minSalary) : undefined;
+        const maxSal = maxSalary !== undefined ? parseStrictPositiveInt(maxSalary) : undefined;
+        const pageValue = parseStrictPositiveInt(page);
+        const limitValue = parseStrictPositiveInt(limit);
+        const p = pageValue ?? 1;
+        const l = limitValue ?? 50;
+
+        if (pageValue === null || limitValue === null) {
+            throw new AppError('Invalid pagination params', 400);
+        }
+        if (minSalary !== undefined && minSal === null) {
+            throw new AppError('Invalid minSalary filter', 400);
+        }
+        if (maxSalary !== undefined && maxSal === null) {
+            throw new AppError('Invalid maxSalary filter', 400);
+        }
+
+        if (p < 1 || p > MAX_FEED_PAGE) {
+            throw new AppError(`Page must be between 1 and ${MAX_FEED_PAGE}`, 400);
+        }
+
+        if (l < 1 || l > MAX_FEED_LIMIT) {
+            throw new AppError(`Limit must be between 1 and ${MAX_FEED_LIMIT}`, 400);
+        }
+
+        const sortKey = normalizeSafeQueryString(sort, 24).toLowerCase();
+        if (!ALLOWED_SORT_KEYS.has(sortKey)) {
+            throw new AppError(`Unsupported sort '${sortKey}'`, 400);
+        }
+
+        if (minSal != null && (minSal < 0 || minSal > MAX_SALARY_FILTER)) {
+            throw new AppError('Invalid minSalary filter', 400);
+        }
+
+        if (maxSal != null && (maxSal < 0 || maxSal > MAX_SALARY_FILTER)) {
+            throw new AppError('Invalid maxSalary filter', 400);
+        }
+
+        if (minSal != null && maxSal != null && minSal > maxSal) {
+            throw new AppError('minSalary cannot be greater than maxSalary', 400);
+        }
+
+        if (isLikelyBotTraffic(req) && p > 20) {
+            logger.warn('Potential abusive opportunities feed request blocked', {
+                path: req.path,
+                page: p,
+                limit: l,
+                sortKey,
+                ua: String(req.headers['user-agent'] || '').slice(0, 160),
+                ip: req.ip
+            });
+            throw new AppError('Page too deep for anonymous access', 400);
+        }
 
         const user = req.userId ? await prisma.user.findUnique({
             where: { id: req.userId },
@@ -194,6 +339,7 @@ router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Respo
         const profile = user?.profile;
         const userId = req.userId;
         const isGuest = !userId;
+        const redis = getRedisClient();
 
         const andConditions: Prisma.OpportunityWhereInput[] = [
             {
@@ -203,7 +349,7 @@ router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Respo
                 ]
             }
         ];
-        if (minSal !== undefined) {
+        if (minSal != null) {
             andConditions.push({
                 OR: [
                     { salaryMin: { gte: minSal } },
@@ -211,7 +357,7 @@ router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Respo
                 ]
             });
         }
-        if (maxSal !== undefined) {
+        if (maxSal != null) {
             andConditions.push({ salaryMin: { lte: maxSal } });
         }
 
@@ -220,10 +366,38 @@ router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Respo
             deletedAt: null,
             AND: andConditions,
             ...(filterType ? { type: filterType } : {}),
-            ...(city ? { locations: { has: city as string } } : {}),
+            ...(cityValue ? { locations: { has: cityValue } } : {}),
         };
 
-        const totalAvailable = await prisma.opportunity.count({ where: whereClause });
+        const guestCacheKey = isGuest
+            ? [
+                'opportunities',
+                'v2',
+                `type:${filterType || 'all'}`,
+                `city:${cityValue || 'all'}`,
+                `min:${minSal ?? 'na'}`,
+                `max:${maxSal ?? 'na'}`,
+                `sort:${sortKey || 'default'}`,
+                `page:${p}`,
+                `limit:${Math.min(l, GUEST_FEED_LIMIT)}`,
+            ].join('|')
+            : null;
+
+        if (isGuest && guestCacheKey && redis) {
+            try {
+                const cached = await redis.get(guestCacheKey);
+                if (cached) {
+                    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+                    res.setHeader('Vary', 'Cookie, Authorization');
+                    res.setHeader('X-Feed-Cache', 'HIT');
+                    return res.json(JSON.parse(cached));
+                }
+            } catch {
+                // Cache read failures should never break feed responses.
+            }
+        }
+
+        const totalAvailable = isGuest ? undefined : await prisma.opportunity.count({ where: whereClause });
         const effectiveLimit = isGuest ? Math.min(l, GUEST_FEED_LIMIT) : l;
         const effectivePage = isGuest ? 1 : p;
         const effectiveSkip = isGuest ? 0 : (p - 1) * effectiveLimit;
@@ -251,6 +425,15 @@ router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Respo
                 isSaved: Boolean(savedBy && savedBy.length > 0)
             };
         });
+
+        if (isGuest) {
+            // Public feed traffic (bots/previews) should be edge-cached.
+            res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+            res.setHeader('X-Feed-Cache', 'MISS');
+        } else {
+            res.setHeader('Cache-Control', 'private, no-store');
+        }
+        res.setHeader('Vary', 'Cookie, Authorization');
 
         let finalResults: any[] = mappedResults;
         if (!isAdmin && profile) {
@@ -280,25 +463,35 @@ router.get('/', publicFeedLimiter, optionalAuth, async (req: Request, res: Respo
             sorted = [...sorted].sort((a: any, b: any) => getFreshnessScore(b, daySeed) - getFreshnessScore(a, daySeed));
         }
 
-        res.json({
+        const responsePayload = {
             opportunities: sorted,
             count: sorted.length,
-            total: isGuest ? Math.min(totalAvailable, GUEST_FEED_LIMIT) : totalAvailable,
+            total: isGuest ? sorted.length : totalAvailable,
             page: effectivePage,
             limit: effectiveLimit,
             guestTeaser: isGuest,
             requiresAuthForFullFeed: isGuest,
             ...(includeRelevanceDebug ? { relevanceDebug: debug } : {})
-        });
+        };
+
+        if (isGuest && guestCacheKey && redis) {
+            try {
+                await redis.setex(guestCacheKey, GUEST_FEED_CACHE_TTL_SECONDS, JSON.stringify(responsePayload));
+            } catch {
+                // Cache write failures should never break feed responses.
+            }
+        }
+
+        res.json(responsePayload);
     } catch (error) {
         next(error);
     }
 });
 
-router.get('/:id/events', publicFeedLimiter, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id/events', adaptiveDetailLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const id = String(req.params.id || '');
-        if (!id) throw new AppError('Opportunity id is required', 400);
+        if (!id || !isSupportedDetailId(id)) throw new AppError('Opportunity id is invalid', 400);
 
         const opportunity = await prisma.opportunity.findFirst({
             where: {
@@ -316,13 +509,15 @@ router.get('/:id/events', publicFeedLimiter, async (req: Request, res: Response,
             orderBy: { eventDate: 'asc' }
         });
 
+        res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+        res.setHeader('Vary', 'Cookie, Authorization');
         res.json({ events });
     } catch (error) {
         next(error);
     }
 });
 
-router.get('/:id', publicFeedLimiter, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id: rawId } = req.params as { id: string };
         const decodeSafe = (value: string) => {
@@ -342,8 +537,27 @@ router.get('/:id', publicFeedLimiter, async (req: Request, res: Response, next: 
             return decoded;
         };
         const id = normalizeId(rawId);
-        const token = req.cookies.accessToken;
-        const userId = token ? verifyAccessToken(token) : null;
+        if (!isSupportedDetailId(id)) {
+            throw new AppError('Opportunity id is invalid', 400);
+        }
+        const userId = tryResolveUserIdFromCookie(req);
+        const isGuest = !userId;
+        const redis = getRedisClient();
+        const guestDetailCacheKey = isGuest ? `opportunity_detail|v1|id:${id}` : null;
+
+        if (isGuest && guestDetailCacheKey && redis) {
+            try {
+                const cached = await redis.get(guestDetailCacheKey);
+                if (cached) {
+                    res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+                    res.setHeader('Vary', 'Cookie, Authorization');
+                    res.setHeader('X-Detail-Cache', 'HIT');
+                    return res.json(JSON.parse(cached));
+                }
+            } catch {
+                // Cache read failures should never break detail responses.
+            }
+        }
 
         const extractSlugSuffix = (value: string) => {
             const parts = value.split('-').filter(Boolean);
@@ -380,7 +594,9 @@ router.get('/:id', publicFeedLimiter, async (req: Request, res: Response, next: 
             res.setHeader('Cache-Control', 'private, no-store');
         } else {
             res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+            res.setHeader('X-Detail-Cache', 'MISS');
         }
+        res.setHeader('Vary', 'Cookie, Authorization');
 
         const { savedBy, ...opportunitySafe } = opportunity as typeof opportunity & { savedBy?: Array<{ id: string }> };
         const opportunityWithSaved = {
@@ -400,11 +616,21 @@ router.get('/:id', publicFeedLimiter, async (req: Request, res: Response, next: 
             }
         }
 
-        res.json({
+        const responsePayload = {
             opportunity: opportunityWithSaved,
             isEligible,
             eligibilityReason
-        });
+        };
+
+        if (isGuest && guestDetailCacheKey && redis) {
+            try {
+                await redis.setex(guestDetailCacheKey, GUEST_DETAIL_CACHE_TTL_SECONDS, JSON.stringify(responsePayload));
+            } catch {
+                // Cache write failures should never break detail responses.
+            }
+        }
+
+        res.json(responsePayload);
     } catch (error) {
         next(error);
     }

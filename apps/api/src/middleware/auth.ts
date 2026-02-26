@@ -36,7 +36,12 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
         return next(new AppError('No token provided', 401));
     }
 
-    const userId = verifyAccessToken(token);
+    let userId: string | null = null;
+    try {
+        userId = verifyAccessToken(token);
+    } catch {
+        return next(new AppError('Invalid or expired token', 401));
+    }
 
     if (!userId) {
         return next(new AppError('Invalid or expired token', 401));
@@ -58,7 +63,12 @@ export function requireAdmin(req: Request, res: Response, next: NextFunction) {
         return next(new AppError('No admin token provided', 401));
     }
 
-    const adminId = verifyAdminToken(token);
+    let adminId: string | null = null;
+    try {
+        adminId = verifyAdminToken(token);
+    } catch {
+        return next(new AppError('Invalid admin token', 403));
+    }
 
     if (!adminId) {
         return next(new AppError('Invalid admin token', 403));

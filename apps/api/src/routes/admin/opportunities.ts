@@ -10,6 +10,7 @@ import { AppError } from '../../middleware/errorHandler';
 import { OpportunityService } from '../../services/opportunity.service';
 import { ParserService } from '../../services/parser.service';
 import { sendNewJobAlerts } from '../../services/notification.service';
+import { invalidatePublicOpportunityCache } from '../../services/publicOpportunityCache.service';
 import { generateSlug } from '../../utils/slugify';
 import { generateCompanyLogoUrl } from '../../utils/companyLogo';
 import logger from '../../utils/logger';
@@ -386,6 +387,7 @@ router.post(
                 updatedCount: result.count,
                 skippedCount: Math.max(0, ids.length - result.count)
             });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: ids, purgeFeed: true });
 
             if (action === 'PUBLISH' && idsNeedingAlerts.length > 0) {
                 idsNeedingAlerts.forEach((opportunityId) => queueNewJobAlerts(opportunityId));
@@ -516,6 +518,10 @@ router.post(
             res.status(201).json({
                 opportunity,
                 message: 'Opportunity created successfully'
+            });
+            void invalidatePublicOpportunityCache({
+                idsOrSlugs: [opportunity.id, opportunity.slug],
+                purgeFeed: true
             });
         } catch (error) {
             next(error);
@@ -748,7 +754,7 @@ router.get('/:id/events', async (req: Request, res: Response, next: NextFunction
 
         const existing = await prisma.opportunity.findFirst({
             where: { OR: [{ id: idParam }, { slug: idParam }] },
-            select: { id: true }
+            select: { id: true, slug: true }
         });
         if (!existing) throw new AppError('Opportunity not found', 404);
 
@@ -771,7 +777,7 @@ router.post('/:id/events', adminRateLimit, withAdminAudit('UPDATE'), async (req:
 
         const existing = await prisma.opportunity.findFirst({
             where: { OR: [{ id: idParam }, { slug: idParam }] },
-            select: { id: true }
+            select: { id: true, slug: true }
         });
         if (!existing) throw new AppError('Opportunity not found', 404);
 
@@ -792,6 +798,10 @@ router.post('/:id/events', adminRateLimit, withAdminAudit('UPDATE'), async (req:
         });
 
         res.status(201).json({ event });
+        void invalidatePublicOpportunityCache({
+            idsOrSlugs: [existing.id, existing.slug],
+            purgeFeed: false
+        });
     } catch (error) {
         next(error);
     }
@@ -806,7 +816,7 @@ router.patch('/:id/events/:eventId', adminRateLimit, withAdminAudit('UPDATE'), a
 
         const existing = await prisma.opportunity.findFirst({
             where: { OR: [{ id: idParam }, { slug: idParam }] },
-            select: { id: true }
+            select: { id: true, slug: true }
         });
         if (!existing) throw new AppError('Opportunity not found', 404);
 
@@ -843,6 +853,10 @@ router.patch('/:id/events/:eventId', adminRateLimit, withAdminAudit('UPDATE'), a
         });
 
         res.json({ event });
+        void invalidatePublicOpportunityCache({
+            idsOrSlugs: [existing.id, existing.slug],
+            purgeFeed: false
+        });
     } catch (error) {
         next(error);
     }
@@ -857,7 +871,7 @@ router.delete('/:id/events/:eventId', adminRateLimit, withAdminAudit('UPDATE'), 
 
         const existing = await prisma.opportunity.findFirst({
             where: { OR: [{ id: idParam }, { slug: idParam }] },
-            select: { id: true }
+            select: { id: true, slug: true }
         });
         if (!existing) throw new AppError('Opportunity not found', 404);
 
@@ -869,6 +883,10 @@ router.delete('/:id/events/:eventId', adminRateLimit, withAdminAudit('UPDATE'), 
         });
 
         res.json({ success: true });
+        void invalidatePublicOpportunityCache({
+            idsOrSlugs: [existing.id, existing.slug],
+            purgeFeed: false
+        });
     } catch (error) {
         next(error);
     }
@@ -991,6 +1009,10 @@ router.put(
                 opportunity,
                 message: 'Opportunity updated successfully'
             });
+            void invalidatePublicOpportunityCache({
+                idsOrSlugs: [existing.id, existing.slug, opportunity.id, opportunity.slug],
+                purgeFeed: true
+            });
         } catch (error) {
             next(error);
         }
@@ -1030,6 +1052,10 @@ router.post(
             res.json({
                 opportunity,
                 message: 'Opportunity marked as expired'
+            });
+            void invalidatePublicOpportunityCache({
+                idsOrSlugs: [existing.id, existing.slug],
+                purgeFeed: true
             });
         } catch (error) {
             next(error);
@@ -1075,6 +1101,10 @@ router.delete(
                 opportunity,
                 message: 'Opportunity removed successfully (soft delete)'
             });
+            void invalidatePublicOpportunityCache({
+                idsOrSlugs: [existing.id, existing.slug],
+                purgeFeed: true
+            });
         } catch (error) {
             next(error);
         }
@@ -1114,6 +1144,10 @@ router.post(
             res.json({
                 opportunity,
                 message: 'Opportunity restored from deleted list'
+            });
+            void invalidatePublicOpportunityCache({
+                idsOrSlugs: [existing.id, existing.slug, opportunity.id, opportunity.slug],
+                purgeFeed: true
             });
         } catch (error) {
             next(error);

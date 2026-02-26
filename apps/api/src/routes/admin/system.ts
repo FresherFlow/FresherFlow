@@ -412,6 +412,64 @@ router.get('/growth-funnel', requireAdmin, async (req: Request, res: Response, n
 });
 
 /**
+ * Growth funnel sanity check against route/click signals.
+ * GET /api/admin/system/growth-funnel/sanity?window=24h|7d|30d
+ */
+router.get('/growth-funnel/sanity', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const rawWindow = String(req.query.window || '7d').toLowerCase();
+        const windowHours = rawWindow === '24h' ? 24 : rawWindow === '30d' ? 24 * 30 : 24 * 7;
+        const since = new Date(Date.now() - windowHours * 60 * 60 * 1000);
+
+        const [growthGrouped, applyClicks] = await Promise.all([
+            prisma.growthEvent.groupBy({
+                by: ['event'],
+                where: { createdAt: { gte: since } },
+                _count: { _all: true }
+            }),
+            prisma.opportunityClick.count({
+                where: { createdAt: { gte: since } }
+            })
+        ]);
+
+        const growthCounts = growthGrouped.reduce<Record<string, number>>((acc, row) => {
+            acc[row.event] = row._count._all;
+            return acc;
+        }, {});
+
+        const metrics = getObservabilityMetrics();
+        const routeSamples = Object.entries(metrics.routes)
+            .filter(([key]) => key.includes('/api/opportunities'))
+            .sort((a, b) => b[1].requests - a[1].requests)
+            .slice(0, 20)
+            .map(([route, values]) => ({
+                route,
+                requests: values.requests,
+                errors: values.errors,
+                avgLatencyMs: values.avgLatencyMs
+            }));
+
+        res.json({
+            window: rawWindow,
+            since,
+            growthCounts: {
+                detailView: growthCounts.DETAIL_VIEW || 0,
+                applyClick: growthCounts.APPLY_CLICK || 0,
+                saveJob: growthCounts.SAVE_JOB || 0,
+                authSuccess: growthCounts.AUTH_SUCCESS || 0,
+            },
+            rawSignals: {
+                applyClickRows: applyClicks,
+                observabilitySinceProcessStart: metrics.totals.requests,
+                opportunityRouteSamples: routeSamples,
+            }
+        });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
  * List Telegram broadcast attempts
  * GET /api/admin/system/telegram-broadcasts
  */
