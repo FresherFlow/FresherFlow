@@ -14,6 +14,7 @@ function normalizeHost(value: string | undefined, fallback: string): string {
 const ADMIN_WEB_HOST = normalizeHost(process.env.ADMIN_WEB_HOST, 'admin.fresherflow.in');
 const PUBLIC_WEB_HOST = normalizeHost(process.env.PUBLIC_WEB_HOST, 'fresherflow.in');
 const APP_WEB_HOST = normalizeHost(process.env.APP_WEB_HOST || process.env.NEXT_PUBLIC_APP_WEB_HOST, 'app.fresherflow.in');
+const USER_LOGIN_HOST = normalizeHost(process.env.USER_LOGIN_HOST || process.env.NEXT_PUBLIC_USER_LOGIN_HOST, PUBLIC_WEB_HOST);
 const ADMIN_ROOT_PREFIXES = [
     '/dashboard',
     '/opportunities',
@@ -85,6 +86,7 @@ export function proxy(request: NextRequest) {
     const isAdminAuthenticated = request.cookies.has('adminAccessToken');
     const isAdminRoute = pathname.startsWith('/admin');
     const isAdminLogin = pathname === '/admin/login' || pathname === '/login';
+    const userLoginUrl = `${request.nextUrl.protocol}//${USER_LOGIN_HOST}/login`;
 
     // Public detail routes should never be served on admin host.
     // Redirect them to app host to keep one canonical app domain.
@@ -149,7 +151,11 @@ export function proxy(request: NextRequest) {
     if (hostname.startsWith('app.')) {
         if (pathname === '/') {
             if (isAuthenticated) return redirectWithMethodAwareness(request, '/dashboard');
-            return redirectWithMethodAwareness(request, '/login');
+            return redirectWithMethodAwareness(request, userLoginUrl);
+        }
+        if (pathname === '/login') {
+            if (isAuthenticated) return redirectWithMethodAwareness(request, '/dashboard');
+            return redirectWithMethodAwareness(request, userLoginUrl);
         }
     }
 
@@ -168,7 +174,7 @@ export function proxy(request: NextRequest) {
         pathname.startsWith('/profile');
 
     if (isUserProtectedPath && !isAuthenticated) {
-        const loginUrl = new URL('/login', request.url);
+        const loginUrl = new URL(userLoginUrl);
         loginUrl.searchParams.set('redirect', pathname);
         const method = request.method.toUpperCase();
         const status = method === 'GET' || method === 'HEAD' ? 307 : 303;
@@ -177,7 +183,8 @@ export function proxy(request: NextRequest) {
 
     // 4. Login route guard
     if (pathname === '/login' && isAuthenticated) {
-        return redirectWithMethodAwareness(request, '/dashboard');
+        const dashboardUrl = `${request.nextUrl.protocol}//${APP_WEB_HOST}/dashboard`;
+        return redirectWithMethodAwareness(request, dashboardUrl);
     }
 
     // Keep fresherflow.in root as landing page always.
