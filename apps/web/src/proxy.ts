@@ -63,10 +63,24 @@ function isSocialPreviewRequest(request: NextRequest): boolean {
     return SOCIAL_PREVIEW_BOT_UA.test(ua);
 }
 
+function isSocialShareQuery(request: NextRequest): boolean {
+    const ref = (request.nextUrl.searchParams.get('ref') || '').toLowerCase();
+    const source = (request.nextUrl.searchParams.get('source') || '').toLowerCase();
+    const utmSource = (request.nextUrl.searchParams.get('utm_source') || '').toLowerCase();
+    return ref === 'social'
+        || source === 'opportunity_share'
+        || utmSource === 'telegram'
+        || utmSource === 'linkedin'
+        || utmSource === 'whatsapp'
+        || utmSource === 'facebook'
+        || utmSource === 'x';
+}
+
 export function proxy(request: NextRequest) {
     const { pathname, hostname } = request.nextUrl;
     const normalizedHost = hostname.toLowerCase();
     const isPreviewBot = isSocialPreviewRequest(request);
+    const isSocialShare = isSocialShareQuery(request);
     const isAdminHost = normalizedHost === ADMIN_WEB_HOST;
     const isAdminRootPath = ADMIN_ROOT_PREFIXES.some(
         (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
@@ -84,7 +98,7 @@ export function proxy(request: NextRequest) {
         normalizedHost === PUBLIC_WEB_HOST &&
         pathname !== '/' &&
         pathname !== '/login' &&
-        !(isPreviewBot && isPublicDetailPath(pathname))
+        !((isPreviewBot || isSocialShare) && isPublicDetailPath(pathname))
     ) {
         const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
         return redirectWithMethodAwareness(request, target);
