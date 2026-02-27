@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
+export const revalidate = 1800;
 
 const size = {
   width: 1200,
@@ -57,7 +58,17 @@ interface AbortSignalConstructorExt {
   any?: (iterable: Iterable<AbortSignal>) => AbortSignal;
 }
 
-const fetchWithTimeout = async (url: string, timeoutMs = 2500, externalSignal?: AbortSignal) => {
+type FetchWithTimeoutOptions = {
+  cacheMode?: RequestCache;
+  revalidateSeconds?: number;
+};
+
+const fetchWithTimeout = async (
+  url: string,
+  timeoutMs = 2500,
+  externalSignal?: AbortSignal,
+  options?: FetchWithTimeoutOptions
+) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -66,11 +77,19 @@ const fetchWithTimeout = async (url: string, timeoutMs = 2500, externalSignal?: 
 
   try {
     const CustomAbortSignal = AbortSignal as unknown as AbortSignalConstructorExt;
-    const response = await fetch(url, {
+    const requestInit: RequestInit & { next?: { revalidate: number } } = {
       method: "GET",
-      cache: "no-store",
+      cache: options?.cacheMode ?? "force-cache",
       // Link signals if AbortSignal.any is available (Edge runtime) or manually fallback
       signal: typeof CustomAbortSignal.any === 'function' ? CustomAbortSignal.any(signals) : controller.signal,
+    };
+
+    if (typeof options?.revalidateSeconds === "number") {
+      requestInit.next = { revalidate: options.revalidateSeconds };
+    }
+
+    const response = await fetch(url, {
+      ...requestInit,
     });
     return response;
   } catch {
@@ -106,6 +125,10 @@ const getLogoCandidates = (opportunity: OpportunityDto) => {
 };
 
 const resolveLogoUrl = async (opportunity: OpportunityDto) => {
+  if (process.env.OG_FETCH_REMOTE_LOGOS !== "true") {
+    return "";
+  }
+
   const candidates = getLogoCandidates(opportunity);
   if (!candidates.length) return "";
 
@@ -301,7 +324,9 @@ export async function GET(
   try {
     const response = await fetchWithTimeout(
       `${apiBase}/api/opportunities/${encodeURIComponent(id)}`,
-      3500
+      3500,
+      undefined,
+      { cacheMode: "force-cache", revalidateSeconds: 300 }
     );
 
     if (!response || !response.ok) {

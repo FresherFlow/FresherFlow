@@ -7,9 +7,22 @@ export const size = {
 };
 export const contentType = 'image/png';
 
+function resolveSiteOrigin(): string {
+    const raw =
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        process.env.SITE_URL ||
+        process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+        process.env.VERCEL_URL ||
+        'https://fresherflow.in';
+
+    const value = raw.trim();
+    if (!value) return 'https://fresherflow.in';
+    if (/^https?:\/\//i.test(value)) return value.replace(/\/$/, '');
+    return `https://${value.replace(/\/$/, '')}`;
+}
+
 export default function OpenGraphImage() {
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-    const logoUrl = `${baseUrl.replace(/\/$/, '')}/logo-white-optimized.png`;
+    const logoUrl = `${resolveSiteOrigin()}/logo-white-optimized.png`;
 
     return new ImageResponse(
         (

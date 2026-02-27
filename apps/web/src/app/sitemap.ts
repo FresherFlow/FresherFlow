@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 3600;
 
 type SitemapOpportunity = {
   id: string;
@@ -51,7 +51,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const firstRes = await fetch(
       `${apiBase}/api/public/sitemap/opportunities?page=1&limit=${limit}`,
-      { cache: 'no-store' }
+      { next: { revalidate } }
     );
 
     if (!firstRes.ok) {
@@ -65,7 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (let page = 2; page <= totalPages; page += 1) {
       const res = await fetch(
         `${apiBase}/api/public/sitemap/opportunities?page=${page}&limit=${limit}`,
-        { cache: 'no-store' }
+        { next: { revalidate } }
       );
 
       if (!res.ok) {
