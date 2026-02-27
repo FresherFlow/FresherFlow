@@ -40,6 +40,7 @@ type MetricsV2Response = {
         wau: number;
         returningUsers7d: number;
         returningRate7d: number;
+        notifiedUsers14d: number;
         requests: number;
         errorRatePct: number;
         avgLatencyMs: number;
@@ -265,8 +266,8 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
         ...clickUsers14d
             .filter((item): item is { userId: string; createdAt: Date } => Boolean(item.userId))
             .map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
-        ...alertUsers14d.map((item) => ({ userId: item.userId, createdAt: item.sentAt })),
     ];
+    const notifiedUsers14d = new Set(alertUsers14d.map((item) => item.userId));
     const dau = new Set(activitySignals.filter((item) => item.createdAt >= oneDayAgo).map((item) => item.userId));
     const wau = new Set(activitySignals.filter((item) => item.createdAt >= sevenDaysAgo).map((item) => item.userId));
     const previousWeek = new Set(
@@ -303,6 +304,7 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
             wau: wau.size,
             returningUsers7d: returning.size,
             returningRate7d: toPercent(returning.size, wau.size),
+            notifiedUsers14d: notifiedUsers14d.size,
             requests: observability.totals.requests,
             errorRatePct: observability.totals.errorRatePct,
             avgLatencyMs: observability.totals.avgLatencyMs,

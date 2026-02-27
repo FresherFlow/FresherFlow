@@ -26,6 +26,7 @@ type MetricsV2 = {
         dau: number;
         wau: number;
         returningRate7d: number;
+        notifiedUsers14d: number;
     };
 };
 
@@ -78,6 +79,7 @@ export default function AdminAnalyticsPage() {
                 <MetricCard label="Bookmarks (7d)" value={String(metrics.traffic.bookmarks7d)} />
                 <MetricCard label="DAU" value={String(metrics.traffic.dau)} />
                 <MetricCard label="WAU" value={String(metrics.traffic.wau)} hint={`Returning ${metrics.traffic.returningRate7d}%`} />
+                <MetricCard label="Notified users (14d)" value={String(metrics.traffic.notifiedUsers14d)} />
             </div>
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
