@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-export const revalidate = 3600;
+export const revalidate = 86400; // 24 hours — Google doesn't need hourly sitemap refreshes
 
 type SitemapOpportunity = {
   id: string;

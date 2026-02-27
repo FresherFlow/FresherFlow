@@ -1,7 +1,7 @@
 import { ImageResponse } from "next/og";
 
 export const runtime = "edge";
-export const revalidate = 1800;
+export const revalidate = 86400; // 24 hours — job details don't change within minutes
 
 const size = {
   width: 1200,

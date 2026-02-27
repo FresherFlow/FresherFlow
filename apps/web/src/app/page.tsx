@@ -29,8 +29,8 @@ export const metadata: Metadata = {
     },
 };
 
-// ISR: Homepage content doesn't change frequently
-export const revalidate = 120;
+// Homepage is fully static — no dynamic data, never needs regeneration
+export const dynamic = 'force-static';
 
 export default function LandingPage() {
     return (
