@@ -83,6 +83,7 @@ export default function RootLayout({
     .replace(/^https?:\/\//i, '')
     .replace(/\/.*$/, '');
   const gaId = process.env.NEXT_PUBLIC_GA_ID || '';
+  const enableSpeedInsights = process.env.NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS === 'true';
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -150,7 +151,7 @@ export default function RootLayout({
         <OfflineNotification />
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
         <Analytics />
-        <SpeedInsights />
+        {enableSpeedInsights ? <SpeedInsights /> : null}
       </body>
     </html>
   );
