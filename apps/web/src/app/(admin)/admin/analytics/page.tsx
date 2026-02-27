@@ -77,8 +77,8 @@ export default function AdminAnalyticsPage() {
                 <MetricCard label="Applications (30d)" value={String(metrics.traffic.applications30d)} />
                 <MetricCard label="New users (30d)" value={String(metrics.traffic.newUsers30d)} />
                 <MetricCard label="Bookmarks (7d)" value={String(metrics.traffic.bookmarks7d)} />
-                <MetricCard label="DAU" value={String(metrics.traffic.dau)} />
-                <MetricCard label="WAU" value={String(metrics.traffic.wau)} hint={`Returning ${metrics.traffic.returningRate7d}%`} />
+                <MetricCard label="Active DAU" value={String(metrics.traffic.dau)} hint="Actions, saves, and click activity" />
+                <MetricCard label="Active WAU" value={String(metrics.traffic.wau)} hint={`Returning ${metrics.traffic.returningRate7d}%`} />
                 <MetricCard label="Notified users (14d)" value={String(metrics.traffic.notifiedUsers14d)} />
             </div>
 

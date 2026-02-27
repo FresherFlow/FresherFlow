@@ -26,6 +26,7 @@ const ALLOWED_EVENTS = new Set([
     'INSTALL_ACCEPTED',
     'OPENED_STANDALONE',
 ]);
+const BOT_UA_REGEX = /(bot|crawler|spider|scraper|curl|wget|python-requests|axios|headless|preview|slurp|facebookexternalhit|whatsapp|telegrambot|linkedinbot|discordbot)/i;
 
 function cleanupRecentEvents(now: number) {
     for (const [key, timestamp] of recentEvents.entries()) {
@@ -46,10 +47,21 @@ function getEventDedupeWindow(event: string) {
     return DEFAULT_DEDUPE_TTL_MS;
 }
 
+function isLikelyBotRequest(req: Request) {
+    const ua = String(req.headers['user-agent'] || '');
+    return !ua || BOT_UA_REGEX.test(ua);
+}
+
 // Lightweight public tracking endpoint for growth funnel events.
 router.post('/event', growthEventLimiter, async (req: Request, res: Response) => {
     const { source, event, route, sessionId, opportunityId } = req.body || {};
     const normalizedEvent = sanitizeValue(event, 64).toUpperCase();
+    const normalizedSessionId = sanitizeValue(sessionId, 128);
+
+    // Ignore bot/no-session noise; keep endpoint cheap and idempotent.
+    if (isLikelyBotRequest(req) || !normalizedSessionId || normalizedSessionId === 'server' || normalizedSessionId === 'session-unavailable') {
+        return res.status(202).json({ ok: true });
+    }
 
     if (!ALLOWED_EVENTS.has(normalizedEvent)) {
         return res.status(400).json({ ok: false, message: 'Invalid growth event' });
@@ -57,7 +69,6 @@ router.post('/event', growthEventLimiter, async (req: Request, res: Response) =>
 
     const normalizedSource = sanitizeValue(source, 64).toLowerCase() || 'unknown';
     const normalizedRoute = sanitizeValue(route, 256).toLowerCase();
-    const normalizedSessionId = sanitizeValue(sessionId, 128);
     const normalizedOpportunityId = sanitizeValue(opportunityId, 64).toLowerCase();
 
     const now = Date.now();
