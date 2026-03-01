@@ -423,7 +423,7 @@ export default function ProfileCompletePage() {
                                         </div>
 
                                         {hasPG && (
-                                            <div className="space-y-4 animate-in slide-in-from-top-4 duration-500 pt-2 pb-6 border-b border-border/50">
+                                            <div className="space-y-4 animate-in slide-in-from-top-4 duration-500 pt-2 pb-6">
                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                                                     <div className="space-y-2">
                                                         <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest ml-1">PG Course</label>

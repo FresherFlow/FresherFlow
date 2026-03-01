@@ -98,11 +98,10 @@ export default function FeedbackPage() {
                                     key={option.value}
                                     type="button"
                                     onClick={() => setType(option.value)}
-                                    className={`rounded-2xl border px-3 py-3 text-left transition-all ${
-                                        isActive
+                                    className={`rounded-2xl border px-3 py-3 text-left transition-all ${isActive
                                             ? 'border-primary bg-primary/10 text-primary'
                                             : 'border-border bg-card hover:border-primary/50'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-center gap-2">
                                         <Icon className="w-4 h-4" />
@@ -122,11 +121,10 @@ export default function FeedbackPage() {
                                     key={value}
                                     type="button"
                                     onClick={() => setRating(value)}
-                                    className={`h-10 w-10 rounded-xl border text-sm font-semibold transition-all ${
-                                        rating === value
+                                    className={`h-10 w-10 rounded-xl border text-sm font-semibold transition-all ${rating === value
                                             ? 'border-primary bg-primary text-primary-foreground'
                                             : 'border-border bg-background text-muted-foreground hover:border-primary/50'
-                                    }`}
+                                        }`}
                                 >
                                     {value}
                                 </button>
@@ -159,7 +157,7 @@ export default function FeedbackPage() {
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="premium-button w-full h-12 uppercase tracking-widest text-xs"
+                        className="w-full h-12 uppercase tracking-widest text-xs font-semibold rounded-xl bg-foreground text-background hover:opacity-90 transition-all disabled:opacity-50"
                     >
                         {submitting ? 'Sending...' : 'Submit feedback'}
                     </button>

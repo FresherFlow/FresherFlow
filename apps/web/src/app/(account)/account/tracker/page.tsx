@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -33,13 +33,13 @@ const STATUS_ORDER: ActionType[] = [
     ActionType.SELECTED,
 ];
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bgColor: string }> = {
-    APPLIED: { label: 'Applied', color: 'text-blue-600', bgColor: 'bg-blue-50' },
-    PLANNED: { label: 'Planned', color: 'text-slate-900 dark:text-amber-300', bgColor: 'bg-amber-50' },
-    INTERVIEWED: { label: 'Interviewed', color: 'text-purple-600', bgColor: 'bg-purple-50' },
-    SELECTED: { label: 'Selected', color: 'text-green-600', bgColor: 'bg-green-50' },
-    PLANNING: { label: 'Planned', color: 'text-slate-900 dark:text-amber-300', bgColor: 'bg-amber-50' },
-    ATTENDED: { label: 'Interviewed', color: 'text-purple-600', bgColor: 'bg-purple-50' },
+const STATUS_LABEL: Record<string, string> = {
+    APPLIED: 'Applied',
+    PLANNED: 'Planned',
+    INTERVIEWED: 'Interviewed',
+    SELECTED: 'Selected',
+    PLANNING: 'Planned',
+    ATTENDED: 'Interviewed',
 };
 
 const normalizeStatus = (value: ActionType): ActionType => {
@@ -68,41 +68,33 @@ export default function AccountTrackerPage() {
 
     useEffect(() => {
         if (authLoading) return;
-        if (!user) {
-            setLoading(false);
-            return;
-        }
+        if (!user) { setLoading(false); return; }
         loadData();
     }, [authLoading, user]);
 
     const handleUpdateStatus = async (opportunityId: string, newStatus: ActionType) => {
         const previousActions = actions;
         setActions((prev) => prev.map((item) =>
-            item.opportunity?.id === opportunityId
-                ? { ...item, actionType: newStatus }
-                : item
+            item.opportunity?.id === opportunityId ? { ...item, actionType: newStatus } : item
         ));
-
         if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
             enqueueOfflineActionTrack(opportunityId, newStatus, user.id);
             toast.success('Status update queued for sync.');
             return;
         }
-
-        const loadingToast = toast.loading('Updating status...');
+        const t = toast.loading('Updating status...');
         try {
             await actionsApi.track(opportunityId, newStatus);
             await loadData();
-            toast.success('Status updated', { id: loadingToast });
+            toast.success('Status updated', { id: t });
         } catch (err: unknown) {
             if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
                 enqueueOfflineActionTrack(opportunityId, newStatus, user.id);
-                toast.success('Status update queued for sync.', { id: loadingToast });
+                toast.success('Status update queued for sync.', { id: t });
                 return;
             }
             setActions(previousActions);
-            const message = err instanceof Error ? err.message : 'Failed to update status';
-            toast.error(message, { id: loadingToast });
+            toast.error(err instanceof Error ? err.message : 'Failed to update status', { id: t });
         }
     };
 
@@ -110,44 +102,36 @@ export default function AccountTrackerPage() {
         if (!confirm('Stop tracking this application?')) return;
         const previousActions = actions;
         setActions((prev) => prev.filter((item) => item.opportunity?.id !== opportunityId));
-
         if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
             enqueueOfflineActionRemove(opportunityId, user.id);
             toast.success('Removal queued for sync.');
             return;
         }
-
-        const loadingToast = toast.loading('Removing...');
+        const t = toast.loading('Removing...');
         try {
             await actionsApi.remove(opportunityId);
             await loadData();
-            toast.success('Removed from tracker', { id: loadingToast });
+            toast.success('Removed from tracker', { id: t });
         } catch (err: unknown) {
             if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
                 enqueueOfflineActionRemove(opportunityId, user.id);
-                toast.success('Removal queued for sync.', { id: loadingToast });
+                toast.success('Removal queued for sync.', { id: t });
                 return;
             }
             setActions(previousActions);
-            const message = err instanceof Error ? err.message : 'Failed to remove';
-            toast.error(message, { id: loadingToast });
+            toast.error(err instanceof Error ? err.message : 'Failed to remove', { id: t });
         }
     };
 
     const grouped = useMemo(() => {
         const map: Record<string, ActionRecord[]> = {
-            APPLIED: [],
-            PLANNED: [],
-            INTERVIEWED: [],
-            SELECTED: [],
+            APPLIED: [], PLANNED: [], INTERVIEWED: [], SELECTED: [],
         };
-
         actions.forEach((item) => {
             const normalized = normalizeStatus(item.actionType);
             if (!map[normalized]) return;
             map[normalized].push({ ...item, actionType: normalized });
         });
-
         return map;
     }, [actions]);
 
@@ -163,13 +147,10 @@ export default function AccountTrackerPage() {
                         <ArrowPathRoundedSquareIcon className="w-8 h-8 text-muted-foreground/40" />
                     </div>
                     <div className="space-y-2">
-                        <h1 className="text-2xl font-bold tracking-tight text-foreground">Sign in required</h1>
-                        <p className="text-sm text-muted-foreground">Log in to your account to view and manage your job application progress.</p>
+                        <h1 className="text-xl font-bold tracking-tight text-foreground">Sign in required</h1>
+                        <p className="text-sm text-muted-foreground">Log in to view your application progress.</p>
                     </div>
-                    <Link
-                        href="/login"
-                        className="premium-button h-11 px-8 inline-flex items-center justify-center font-bold uppercase tracking-widest text-xs"
-                    >
+                    <Link href="/login" className="premium-button h-11 px-8 inline-flex items-center justify-center font-bold uppercase tracking-widest text-xs">
                         Sign in to FresherFlow
                     </Link>
                 </div>
@@ -179,98 +160,90 @@ export default function AccountTrackerPage() {
 
     return (
         <div className="min-h-screen bg-background pb-20">
-            <main className="max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-8 space-y-4 md:space-y-8">
-                {/* Header Section */}
-                <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 md:gap-4 border-b border-border/60 pb-4 md:pb-6">
-                    <div className="space-y-1">
-                        <h1 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">Application Tracker</h1>
-                        <p className="text-base md:text-sm text-muted-foreground font-medium">Track your progress by stage.</p>
-                    </div>
+            <main className="max-w-5xl mx-auto px-3 md:px-6 py-4 md:py-8 space-y-4 md:space-y-6">
+
+                <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 md:gap-4 pb-4 md:pb-6">
+                    <h1 className="text-lg font-bold tracking-tight text-foreground">Application Tracker</h1>
                     <Link href="/opportunities" className="self-start text-[11px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1.5">
                         <BriefcaseIcon className="w-4 h-4" />
                         Browse More Opportunities
                     </Link>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-[230px_1fr] gap-4 md:gap-5">
-                    <aside className="flex lg:block gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:space-y-2 lg:overflow-visible lg:pb-0">
-                        {STATUS_ORDER.map((status) => {
-                            const isActive = activeStatus === status;
-                            return (
-                                <button
-                                    key={status}
-                                    onClick={() => setActiveStatus(status)}
-                                    className={cn(
-                                        "shrink-0 rounded-xl border px-3 py-2.5 text-left transition-all min-w-[132px] lg:w-full lg:min-w-0",
-                                        isActive
-                                            ? "border-primary/40 bg-primary/10"
-                                            : "border-border bg-card hover:border-primary/20"
-                                    )}
-                                >
-                                    <div className="flex items-center justify-between">
-                                        <span className={cn("text-[10px] font-bold uppercase tracking-widest", STATUS_CONFIG[status].color)}>
-                                            {STATUS_CONFIG[status].label}
-                                        </span>
-                                        <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full border border-border px-1.5 text-[11px] font-bold text-foreground">
-                                            {grouped[status].length}
-                                        </span>
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </aside>
-
-                    <section className="space-y-3 md:space-y-4">
-                        <h2 className="text-lg font-bold tracking-tight text-foreground">
-                            {STATUS_CONFIG[activeStatus].label}
-                            <span className="ml-2 text-muted-foreground font-normal text-sm">({activeItems.length})</span>
-                        </h2>
-
-                        {activeItems.length === 0 ? (
-                            <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
-                                <p className="text-sm text-muted-foreground font-medium italic">No applications in this stage yet.</p>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {activeItems.map((item) => {
-                                    const opp = item.opportunity;
-                                    if (!opp) return null;
-
-                                    return (
-                                        <div key={item.id} className="space-y-2">
-                                            <JobCard
-                                                job={{ ...opp, normalizedRole: opp.title }}
-                                                jobId={opp.id}
-                                                isSaved={Boolean((opp as Opportunity & { isSaved?: boolean }).isSaved)}
-                                                isApplied={true}
-                                                onClick={() => router.push(getOpportunityPathFromItem(opp))}
-                                                variant="compact"
-                                            />
-                                            <div className="rounded-xl border border-border bg-card p-2 flex flex-wrap items-center gap-2">
-                                                {STATUS_ORDER.filter((s) => s !== activeStatus).map((s) => (
-                                                    <button
-                                                        key={s}
-                                                        onClick={() => handleUpdateStatus(opp.id, s)}
-                                                        className="rounded-lg border border-border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide hover:border-primary/30 hover:text-primary"
-                                                    >
-                                                        {STATUS_CONFIG[s].label}
-                                                    </button>
-                                                ))}
-                                                <button
-                                                    onClick={() => handleRemove(opp.id)}
-                                                    className="ml-auto rounded-lg border border-destructive/30 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-destructive hover:bg-destructive/10"
-                                                >
-                                                    <TrashIcon className="inline w-3.5 h-3.5 mr-1" />
-                                                    Stop
-                                                </button>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        )}
-                    </section>
+                <div className="flex gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none]">
+                    {STATUS_ORDER.map((status) => {
+                        const isActive = activeStatus === status;
+                        return (
+                            <button
+                                key={status}
+                                onClick={() => setActiveStatus(status)}
+                                className={cn(
+                                    'shrink-0 flex items-center gap-2 rounded-xl border px-4 py-2 transition-all',
+                                    isActive
+                                        ? 'border-border bg-card text-foreground'
+                                        : 'border-transparent bg-transparent text-muted-foreground hover:text-foreground'
+                                )}
+                            >
+                                <span className="text-[11px] font-bold uppercase tracking-widest whitespace-nowrap">
+                                    {STATUS_LABEL[status]}
+                                </span>
+                                <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border border-border px-1.5 text-[11px] font-bold text-muted-foreground tabular-nums">
+                                    {grouped[status].length}
+                                </span>
+                            </button>
+                        );
+                    })}
                 </div>
+
+                <section className="space-y-3 md:space-y-4">
+                    <h2 className="text-sm font-bold tracking-tight text-foreground">
+                        {STATUS_LABEL[activeStatus]}
+                        <span className="ml-2 text-muted-foreground font-normal text-sm">({activeItems.length})</span>
+                    </h2>
+
+                    {activeItems.length === 0 ? (
+                        <div className="rounded-2xl border border-dashed border-border bg-card/50 p-8 text-center">
+                            <p className="text-sm text-muted-foreground font-medium italic">No applications in this stage yet.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {activeItems.map((item) => {
+                                const opp = item.opportunity;
+                                if (!opp) return null;
+                                return (
+                                    <div key={item.id} className="space-y-2">
+                                        <JobCard
+                                            job={{ ...opp, normalizedRole: opp.title }}
+                                            jobId={opp.id}
+                                            isSaved={Boolean((opp as Opportunity & { isSaved?: boolean }).isSaved)}
+                                            isApplied={true}
+                                            onClick={() => router.push(getOpportunityPathFromItem(opp))}
+                                            variant="compact"
+                                        />
+                                        <div className="rounded-xl border border-border bg-card p-2 flex flex-wrap items-center gap-2">
+                                            {STATUS_ORDER.filter((s) => s !== activeStatus).map((s) => (
+                                                <button
+                                                    key={s}
+                                                    onClick={() => handleUpdateStatus(opp.id, s)}
+                                                    className="rounded-lg border border-border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                                                >
+                                                    {STATUS_LABEL[s]}
+                                                </button>
+                                            ))}
+                                            <button
+                                                onClick={() => handleRemove(opp.id)}
+                                                className="ml-auto rounded-lg border border-destructive/30 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-destructive hover:bg-destructive/10"
+                                            >
+                                                <TrashIcon className="inline w-3.5 h-3.5 mr-1" />
+                                                Stop
+                                            </button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </section>
             </main>
         </div>
     );

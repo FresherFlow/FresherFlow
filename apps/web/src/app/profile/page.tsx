@@ -186,7 +186,7 @@ export default function ProfilePage() {
             <ProfileGate>
                 <div className="max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-6 pb-16 space-y-4 md:space-y-5">
                     {/* Header */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-border">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3">
                         <div className="flex items-center gap-3">
                             <Link href="/dashboard" className="p-2 hover:bg-muted rounded-lg transition-colors group">
                                 <ArrowLeftIcon className="w-5 h-5 text-muted-foreground group-hover:text-foreground" />
@@ -214,7 +214,7 @@ export default function ProfilePage() {
 
                             {/* ── Personal Identity ── */}
                             <section className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
-                                <div className="flex items-center justify-between p-3 md:p-4 border-b border-border bg-muted/30">
+                                <div className="flex items-center justify-between p-3 md:p-4 bg-muted/30">
                                     <div className="flex items-center gap-3">
                                         <IdentificationIcon className="w-5 h-5 text-primary" />
                                         <h2 className="text-sm font-bold uppercase tracking-wider">Personal Identity</h2>
@@ -262,7 +262,7 @@ export default function ProfilePage() {
 
                             {/* ── Academic Foundation ── */}
                             <section className="bg-card rounded-xl border border-border overflow-hidden">
-                                <div className="flex items-center justify-between p-3 md:p-4 border-b border-border bg-muted/30">
+                                <div className="flex items-center justify-between p-3 md:p-4 bg-muted/30">
                                     <div className="flex items-center gap-3">
                                         <AcademicCapIcon className="w-5 h-5 text-primary" />
                                         <h2 className="text-sm font-bold uppercase tracking-wider">Academic Foundation</h2>
@@ -285,7 +285,7 @@ export default function ProfilePage() {
                                                     <input type="text" maxLength={4} value={twelfthYear} onChange={e => setTwelfthYear(e.target.value.replace(/\D/g, ''))} className="premium-input h-9! text-sm" placeholder="2020" />
                                                 </div>
                                             </div>
-                                            <div className="space-y-2 pt-3 border-t border-border">
+                                            <div className="space-y-2 pt-3">
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider ml-1">Highest Level</p>
                                                 <div className="grid grid-cols-3 gap-2">
                                                     {EDUCATION_LEVELS.map(level => (
@@ -320,7 +320,7 @@ export default function ProfilePage() {
                                                     <input type="text" maxLength={4} value={gradYear} onChange={e => setGradYear(e.target.value.replace(/\D/g, ''))} className="premium-input h-9! text-sm" placeholder="2024" />
                                                 </div>
                                             </div>
-                                            <div className="pt-3 border-t border-border">
+                                            <div className="pt-3">
                                                 <label className="flex items-center gap-3 p-3 bg-muted/40 rounded-lg cursor-pointer hover:bg-muted/60 transition-colors border border-border/50">
                                                     <input type="checkbox" checked={hasPG} onChange={e => setHasPG(e.target.checked)} className="w-4 h-4 rounded" />
                                                     <span className="text-xs font-bold">Add Postgraduate (PG) Details</span>
@@ -402,7 +402,7 @@ export default function ProfilePage() {
 
                             {/* ── Skills & Availability ── */}
                             <section className="bg-card rounded-xl border border-border overflow-hidden">
-                                <div className="flex items-center justify-between p-3 md:p-4 border-b border-border bg-muted/30">
+                                <div className="flex items-center justify-between p-3 md:p-4 bg-muted/30">
                                     <div className="flex items-center gap-3">
                                         <BoltIcon className="w-5 h-5 text-primary" />
                                         <h2 className="text-sm font-bold uppercase tracking-wider">Skills & Availability</h2>
@@ -429,7 +429,7 @@ export default function ProfilePage() {
                                                 </div>
                                             </div>
                                             */}
-                                            <div className="pt-3 border-t border-border space-y-2">
+                                            <div className="pt-3 space-y-2">
                                                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Skills</p>
                                                 {/* Skill input with ref-based dropdown */}
                                                 <div className="relative" ref={skillRef}>
@@ -500,7 +500,7 @@ export default function ProfilePage() {
                         {/* Sidebar — right 4 cols */}
                         <aside className="lg:col-span-4 space-y-3 lg:sticky lg:top-24">
                             <section className="bg-card rounded-xl border border-border overflow-hidden shadow-sm">
-                                <div className="p-3 border-b border-border bg-muted/20">
+                                <div className="p-3 bg-muted/20">
                                     <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">Job Preferences</h2>
                                 </div>
                                 <div className="p-3 md:p-4 space-y-4">
