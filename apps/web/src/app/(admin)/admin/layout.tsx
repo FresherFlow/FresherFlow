@@ -24,6 +24,7 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 import { adminApi } from '@/lib/api/admin';
 
 const ADMIN_FEEDBACK_SEEN_KEY = 'ff_admin_feedback_last_seen_at';
+const ADMIN_ALERT_POLL_MS = Number(process.env.NEXT_PUBLIC_ADMIN_ALERT_POLL_MS || 180000);
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { logout, isAuthenticated, isLoading } = useAdmin();
@@ -69,8 +70,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         };
 
         void pullFeedbackAlerts();
-        const interval = window.setInterval(() => { void pullFeedbackAlerts(); }, 60000);
-        return () => window.clearInterval(interval);
+
+        const interval = window.setInterval(() => {
+            if (document.visibilityState !== 'visible') return;
+            void pullFeedbackAlerts();
+        }, ADMIN_ALERT_POLL_MS);
+
+        const onFocus = () => {
+            void pullFeedbackAlerts();
+        };
+        window.addEventListener('focus', onFocus);
+
+        return () => {
+            window.clearInterval(interval);
+            window.removeEventListener('focus', onFocus);
+        };
     }, [isAuthenticated, isLoginPage, pathname]);
 
 
