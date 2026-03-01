@@ -1,17 +1,34 @@
 ﻿import prisma from '../../lib/prisma';
+import stagingPrisma from '../../lib/stagingPrisma';
 import { Router, Request, Response, NextFunction } from 'express';
 import { requireAdmin } from '../../middleware/auth';
 import { getVerificationStats, runLinkVerification } from '../../services/verificationBot';
 import { getObservabilityMetrics } from '../../middleware/observability';
 import { getGrowthFunnelMetrics, GrowthWindow } from '../../services/growthFunnel.service';
-import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, IngestionSourceType, OpportunityType, TelegramBroadcastStatus } from '@prisma/client';
+import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, OpportunityType, TelegramBroadcastStatus } from '@prisma/client';
+import { IngestionSourceType } from '@prisma/staging-client';
 import TelegramService from '../../services/telegram.service';
-import { runIngestionForSource } from '../../services/ingestion.service';
+import { runIngestionForSource, runIngestionByType } from '../../services/ingestion.service';
 import { runAlertsCycle } from '../../services/alerts.service';
 import { sendNewJobAlerts } from '../../services/notification.service';
 import { clearAdminMetricsCache, getAdminMetricsV2, MetricsWindow } from '../../services/adminMetrics.service';
 
 const router = Router();
+
+const ingestionEnabledInProd = process.env.INGESTION_ENABLE_IN_PROD === 'true';
+const ingestionEnabled = process.env.NODE_ENV !== 'production' || ingestionEnabledInProd;
+
+function ensureIngestionEnabled(_req: Request, res: Response, next: NextFunction) {
+    if (!ingestionEnabled) {
+        return res.status(403).json({
+            message: 'Ingestion is disabled in production',
+            code: 'INGESTION_DISABLED'
+        });
+    }
+    return next();
+}
+
+router.use('/ingestion', requireAdmin, ensureIngestionEnabled);
 
 
 type SourceHealth = 'healthy' | 'degraded' | 'failing';
@@ -24,17 +41,13 @@ function getIngestionSourceHealth(source: {
     runs?: Array<{ status: 'RUNNING' | 'SUCCESS' | 'PARTIAL' | 'FAILED' }>;
 }): SourceHealth {
     if (!source.enabled) return 'degraded';
-    if (!source.lastRunAt) return 'degraded';
-
-    const now = Date.now();
-    const runLagMs = now - source.lastRunAt.getTime();
-    const maxHealthyLagMs = Math.max(source.runFrequencyMinutes, 5) * 3 * 60 * 1000;
     const recentRun = source.runs?.[0];
+    if (!recentRun && !source.lastRunAt) return 'healthy';
 
+    // If the last run failed, it's failing.
     if (recentRun?.status === 'FAILED') return 'failing';
-    if (!source.lastSuccessAt) return 'failing';
-    if (source.lastSuccessAt.getTime() < source.lastRunAt.getTime() - 5000) return 'degraded';
-    if (runLagMs > maxHealthyLagMs) return 'degraded';
+
+    // Otherwise it's healthy (even if it fetched 0).
     return 'healthy';
 }
 
@@ -597,7 +610,7 @@ router.post('/telegram-broadcasts/:id/retry', requireAdmin, async (req: Request,
  */
 router.get('/ingestion/sources', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
     try {
-        const sources = await prisma.ingestionSource.findMany({
+        const sources = await stagingPrisma.ingestionSource.findMany({
             include: {
                 runs: {
                     orderBy: { startedAt: 'desc' },
@@ -649,7 +662,7 @@ router.post('/ingestion/sources', requireAdmin, async (req: Request, res: Respon
             return res.status(400).json({ message: 'name and endpoint are required' });
         }
 
-        const source = await prisma.ingestionSource.create({
+        const source = await stagingPrisma.ingestionSource.create({
             data: {
                 name,
                 endpoint,
@@ -661,6 +674,74 @@ router.post('/ingestion/sources', requireAdmin, async (req: Request, res: Respon
         });
 
         res.status(201).json({ source });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// Bulk import sources from slug list
+router.post('/ingestion/sources/bulk', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const slugs = req.body?.slugs as string[];
+        const sourceTypeRaw = String(req.body?.sourceType || 'LEVER').toUpperCase();
+        const sourceType = Object.values(IngestionSourceType).includes(sourceTypeRaw as IngestionSourceType)
+            ? (sourceTypeRaw as IngestionSourceType)
+            : IngestionSourceType.LEVER;
+
+        if (!Array.isArray(slugs) || slugs.length === 0) {
+            return res.status(400).json({ message: 'slugs array is required' });
+        }
+
+        // Build endpoint URLs based on source type
+        const endpointTemplate = sourceType === IngestionSourceType.GREENHOUSE
+            ? (slug: string) => `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`
+            : (slug: string) => `https://api.lever.co/v0/postings/${slug}?mode=json`;
+
+        // Get existing endpoints for dedup
+        const existing = await stagingPrisma.ingestionSource.findMany({
+            select: { endpoint: true }
+        });
+        const existingEndpoints = new Set(existing.map(e => e.endpoint));
+
+        let created = 0;
+        let skipped = 0;
+        const results: Array<{ slug: string; status: 'created' | 'skipped' }> = [];
+
+        for (const rawSlug of slugs) {
+            // Remove any quotes, commas, brackets, or weird characters that might be pasted from a raw array
+            const slug = rawSlug.replace(/[^a-zA-Z0-9-]/g, '').toLowerCase();
+            if (!slug) continue;
+
+            const endpoint = endpointTemplate(slug);
+
+            if (existingEndpoints.has(endpoint)) {
+                skipped++;
+                results.push({ slug, status: 'skipped' });
+                continue;
+            }
+
+            const name = slug
+                .split('-')
+                .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+                .join(' ');
+
+            await stagingPrisma.ingestionSource.create({
+                data: {
+                    name,
+                    endpoint,
+                    sourceType,
+                    defaultType: OpportunityType.JOB,
+                    runFrequencyMinutes: 720,
+                    enabled: true,
+                    createdByUserId: req.adminId || null
+                }
+            });
+            existingEndpoints.add(endpoint);
+            created++;
+            results.push({ slug, status: 'created' });
+        }
+
+        res.status(201).json({ created, skipped, total: slugs.length, results });
     } catch (error) {
         next(error);
     }
@@ -694,7 +775,7 @@ router.patch('/ingestion/sources/:id', requireAdmin, async (req: Request, res: R
             }
         }
 
-        const source = await prisma.ingestionSource.update({
+        const source = await stagingPrisma.ingestionSource.update({
             where: { id },
             data
         });
@@ -717,13 +798,40 @@ router.post('/ingestion/sources/:id/run', requireAdmin, async (req: Request, res
     }
 });
 
+router.post('/ingestion/run-all', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const type = typeof req.query.type === 'string' ? req.query.type : undefined;
+
+        if (type && !Object.values(IngestionSourceType).includes(type as IngestionSourceType)) {
+            return res.status(400).json({ message: `Invalid type: ${type}` });
+        }
+
+        const result = await runIngestionByType(type as IngestionSourceType);
+        res.json({ success: true, result });
+    } catch (error) {
+        next(error);
+    }
+});
+
+router.delete('/ingestion/sources/:id', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const id = String(req.params.id || '');
+        if (!id) return res.status(400).json({ message: 'source id is required' });
+
+        await stagingPrisma.ingestionSource.delete({ where: { id } });
+        res.json({ success: true });
+    } catch (error) {
+        next(error);
+    }
+});
+
 router.get('/ingestion/runs', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const sourceId = typeof req.query.sourceId === 'string' ? req.query.sourceId : undefined;
         const limitRaw = Number(req.query.limit || 25);
         const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 1), 200) : 25;
 
-        const runs = await prisma.ingestionRun.findMany({
+        const runs = await stagingPrisma.ingestionRun.findMany({
             where: sourceId ? { sourceId } : undefined,
             include: {
                 source: {
@@ -767,6 +875,47 @@ router.get('/ingestion/runs', requireAdmin, async (req: Request, res: Response, 
                 })),
             }))
         });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * One-time migration: copy IngestionSource rows from Neon → Supabase staging.
+ * POST /api/admin/system/ingestion/migrate-to-staging
+ */
+router.post('/ingestion/migrate-to-staging', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+        const sources = await prisma.ingestionSource.findMany();
+        let inserted = 0;
+        let skipped = 0;
+
+        for (const source of sources) {
+            const exists = await stagingPrisma.ingestionSource.findFirst({
+                where: { endpoint: source.endpoint }
+            });
+            if (exists) { skipped++; continue; }
+
+            await stagingPrisma.ingestionSource.create({
+                data: {
+                    id: source.id,
+                    name: source.name,
+                    sourceType: source.sourceType,
+                    endpoint: source.endpoint,
+                    enabled: source.enabled,
+                    runFrequencyMinutes: source.runFrequencyMinutes,
+                    defaultType: source.defaultType,
+                    createdByUserId: source.createdByUserId,
+                    lastRunAt: source.lastRunAt,
+                    lastSuccessAt: source.lastSuccessAt,
+                    createdAt: source.createdAt,
+                    updatedAt: source.updatedAt,
+                }
+            });
+            inserted++;
+        }
+
+        res.json({ success: true, total: sources.length, inserted, skipped });
     } catch (error) {
         next(error);
     }

@@ -15,7 +15,8 @@ import {
     Bars3Icon,
     XMarkIcon,
     Cog8ToothIcon,
-    PaperAirplaneIcon
+    PaperAirplaneIcon,
+    CloudArrowDownIcon
 } from '@heroicons/react/24/outline';
 import AdminBottomNav from '@/shared/components/navigation/AdminBottomNav';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -38,7 +39,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     // Security: Redirect unauthenticated users
     useEffect(() => {
         if (!isLoading && !isAuthenticated && !isLoginPage) {
-            router.push('/login');
+            router.push('/admin/login');
         }
     }, [isAuthenticated, isLoading, isLoginPage, router]);
 
@@ -90,16 +91,22 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         );
     }
 
+    const showIngestionNav =
+        process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ENABLE_ADMIN_INGESTION === 'true';
+
     const navItems = [
-        { href: '/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
-        { href: '/opportunities', label: 'Opportunities', icon: BriefcaseIcon },
-        { href: '/opportunities/create', label: 'Post New', icon: PlusCircleIcon },
-        { href: '/analytics', label: 'Analytics', icon: ChartBarIcon },
-        { href: '/feedback', label: 'Feedback', icon: ChatBubbleBottomCenterTextIcon },
-        { href: '/alerts', label: 'Alerts', icon: BellAlertIcon },
-        { href: '/telegram', label: 'Telegram', icon: PaperAirplaneIcon },
-        { href: '/settings', label: 'Settings', icon: Cog8ToothIcon },
+        { href: '/admin/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
+        { href: '/admin/opportunities', label: 'Opportunities', icon: BriefcaseIcon },
+        { href: '/admin/opportunities/create', label: 'Post New', icon: PlusCircleIcon },
+        { href: '/admin/analytics', label: 'Analytics', icon: ChartBarIcon },
+        { href: '/admin/feedback', label: 'Feedback', icon: ChatBubbleBottomCenterTextIcon },
+        { href: '/admin/alerts', label: 'Alerts', icon: BellAlertIcon },
+        { href: '/admin/telegram', label: 'Telegram', icon: PaperAirplaneIcon },
+        { href: '/admin/settings', label: 'Settings', icon: Cog8ToothIcon },
     ];
+    if (showIngestionNav) {
+        navItems.splice(navItems.length - 1, 0, { href: '/admin/ingestion', label: 'Ingestion', icon: CloudArrowDownIcon });
+    }
     const effectiveFeedbackAlertCount = (pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')) ? 0 : feedbackAlertCount;
 
     return (
