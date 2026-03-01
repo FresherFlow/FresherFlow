@@ -74,7 +74,7 @@ export default function FeedbackPage() {
 
     useEffect(() => {
         if (!isAuthenticated) {
-            router.push('/login');
+            router.push('/admin/login');
             return;
         }
         loadFeedback();

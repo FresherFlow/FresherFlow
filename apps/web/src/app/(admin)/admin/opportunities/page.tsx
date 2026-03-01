@@ -155,7 +155,7 @@ function OpportunitiesListPage() {
 
             if (errorMsg.includes('403') || errorMsg.includes('Unauthorized')) {
                 toast.error('Session expired. Please log in again.');
-                setTimeout(() => router.push('/login'), 1500);
+                setTimeout(() => router.push('/admin/login'), 1500);
             }
         } finally {
             setIsLoading(false);
@@ -164,7 +164,7 @@ function OpportunitiesListPage() {
 
     useEffect(() => {
         if (!isAuthenticated) {
-            router.push('/login');
+            router.push('/admin/login');
             return;
         }
         void loadOpportunities();
