@@ -201,14 +201,14 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                 <div className="absolute left-0 top-0 h-[2px] w-full bg-primary/45" />
             )}
             {/* Header: Company + Title + Save */}
-            <div className="relative z-20 flex justify-between items-start">
+            <div className="flex justify-between items-start">
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className="mt-1 shrink-0"><CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} companyLogoUrl={job.companyLogoUrl} applyLink={job.applyLink} priority={priority} /></div>
                     <div className="min-w-0">
                         <Link
                             href={`/companies/${encodeURIComponent(job.company)}`}
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                            className="text-xs font-medium text-muted-foreground line-clamp-1 hover:text-primary transition-colors cursor-pointer block"
+                            className="relative z-20 text-xs font-medium text-muted-foreground line-clamp-1 hover:text-primary transition-colors cursor-pointer block"
                         >
                             {job.company}
                         </Link>
@@ -290,7 +290,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             <div className="flex-1" />
 
             {/* Badges */}
-            <div className="relative z-20 flex items-center justify-between gap-2">
+            <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0 flex-nowrap overflow-hidden">
                     {metaChips.map((chip, idx) => (
                         <span
@@ -322,7 +322,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             </div>
 
             {/* Key Meta */}
-            <div className="relative z-20 flex items-center justify-between text-[13px] text-muted-foreground min-w-0">
+            <div className="flex items-center justify-between text-[13px] text-muted-foreground min-w-0">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
                     <MapPinIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
                     <span className="truncate text-muted-foreground" title={locationInfo.fullLabel}>{locationInfo.shortLabel}</span>
@@ -336,7 +336,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             </div>
 
             {/* Footer */}
-            <div className="relative z-20 flex items-center justify-between pt-1 mt-auto">
+            <div className="flex items-center justify-between pt-1 mt-auto">
                 <div className="flex items-center gap-1.5">
                     {(trackerStatus === 'APPLIED' || (!trackerStatus && isApplied)) && (
                         <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium border border-primary/20">

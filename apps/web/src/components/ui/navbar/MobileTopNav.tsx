@@ -56,7 +56,7 @@ export function MobileTopNav() {
     return (
         <>
             <header
-                className="md:hidden fixed top-0 left-0 right-0 z-[70] flex items-end justify-center pb-1.5 pt-[env(safe-area-inset-top)] pointer-events-none"
+                className="md:hidden fixed -top-px left-0 right-0 z-70 flex items-end justify-center pb-1.5 pt-[env(safe-area-inset-top)] pointer-events-none bg-background"
                 style={{ height: `calc(3.75rem + env(safe-area-inset-top))` }}
             >
                 <div className={cn(
@@ -67,7 +67,7 @@ export function MobileTopNav() {
                 )}>
                     {/* Brand */}
                     <Link href={user ? '/dashboard' : '/'} className="flex items-center gap-2 min-w-0">
-                        <LogoImage width={22} height={22} className="w-[22px] h-[22px] object-contain shrink-0" />
+                        <LogoImage width={22} height={22} className="w-5.5 h-5.5 object-contain shrink-0" />
                         <span className="text-[14px] font-semibold tracking-[0.02em] text-foreground/90 truncate leading-none">
                             {mobileTitle}
                         </span>
@@ -82,17 +82,17 @@ export function MobileTopNav() {
                                 </button>
                             )}
                             <Link href="/alerts" className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all" aria-label="Notifications">
-                                <BellIcon className="w-[18px] h-[18px]" />
+                                <BellIcon className="w-4.5 h-4.5" />
                                 {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full ring-2 ring-background" />}
                                 {pendingSyncCount > 0 && (
-                                    <span className="absolute -bottom-0.5 -right-0.5 min-w-[14px] h-[14px] px-1 rounded-full bg-amber-500 text-[9px] font-bold text-white leading-[14px] text-center">
+                                    <span className="absolute -bottom-0.5 -right-0.5 min-w-3.5 h-3.5 px-1 rounded-full bg-amber-500 text-[9px] font-bold text-white leading-3.5 text-center">
                                         {pendingSyncCount > 9 ? '9+' : pendingSyncCount}
                                     </span>
                                 )}
                             </Link>
                             <button onClick={() => setMenuOpen(true)} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all" aria-label="Open menu">
                                 <div className="relative">
-                                    <Bars3Icon className="w-[18px] h-[18px]" />
+                                    <Bars3Icon className="w-4.5 h-4.5" />
                                     {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary rounded-full ring-1 ring-background" />}
                                 </div>
                             </button>
