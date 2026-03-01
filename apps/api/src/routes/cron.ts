@@ -32,6 +32,10 @@ router.use((req, res, next) => {
 
 router.post('/ingest', async (req, res) => {
     try {
+        if (process.env.NODE_ENV === 'production' && process.env.INGESTION_ENABLE_IN_PROD !== 'true') {
+            res.status(403).json({ success: false, error: 'Ingestion is disabled in production' });
+            return;
+        }
         logger.info('Starting external ingestion cycle via cron API');
         const result = await runIngestionCycle();
         res.json({ success: true, result });
