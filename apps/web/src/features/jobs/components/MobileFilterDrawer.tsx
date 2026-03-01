@@ -94,7 +94,7 @@ export function MobileFilterDrawer({
                 <div className="flex items-center justify-between mb-6">
                     <div className="space-y-0.5">
                         <h3 className="text-lg font-bold tracking-tight text-foreground">Filters</h3>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tailor your feed</p>
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Tailor your feed</p>
                     </div>
                     <button
                         id="close-filters-btn"
@@ -108,7 +108,7 @@ export function MobileFilterDrawer({
 
                 <div className="space-y-5">
                     <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Location</h4>
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Location</h4>
                         <div className="grid grid-cols-2 gap-2">
                             {LOCATIONS.map((loc) => (
                                 <button
@@ -128,7 +128,7 @@ export function MobileFilterDrawer({
                     </div>
 
                     <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Min. Salary</h4>
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Min. Salary</h4>
                         <div className="grid grid-cols-2 gap-2">
                             {SALARY_RANGES.map((range) => (
                                 <button
@@ -148,7 +148,7 @@ export function MobileFilterDrawer({
                     </div>
 
                     <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Urgency</h4>
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Urgency</h4>
                         <button
                             onClick={() => setDraftClosingSoon(!draftClosingSoon)}
                             className={cn(
@@ -164,7 +164,7 @@ export function MobileFilterDrawer({
                     </div>
 
                     <div className="space-y-2">
-                        <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]">Saved</h4>
+                        <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">Saved</h4>
                         <button
                             onClick={() => setDraftShowOnlySaved(!draftShowOnlySaved)}
                             className={cn(
@@ -183,13 +183,13 @@ export function MobileFilterDrawer({
                 <div className="sticky bottom-0 bg-card pt-4 mt-6 border-t border-border flex gap-2">
                     <Button
                         variant="outline"
-                        className="flex-1 h-12 text-[10px] font-bold uppercase tracking-widest rounded-xl"
+                        className="flex-1 h-12 text-xs font-bold uppercase tracking-widest rounded-xl"
                         onClick={onClear}
                     >
                         Clear
                     </Button>
                     <Button
-                        className="flex-1 h-12 text-[10px] font-bold uppercase tracking-widest rounded-xl"
+                        className="flex-1 h-12 text-xs font-bold uppercase tracking-widest rounded-xl"
                         onClick={onApply}
                     >
                         Apply filters
