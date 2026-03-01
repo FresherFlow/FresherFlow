@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { alertsApi, savedApi, actionsApi } from '@/lib/api/client';
 import { BellIcon, ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
+import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -161,6 +162,7 @@ export default function AlertsCenterPage() {
     const [appliedOpportunityIds, setAppliedOpportunityIds] = useState<Set<string>>(new Set());
     const [pendingApplyFollowup, setPendingApplyFollowup] = useState<PendingApplyFollowup | null>(null);
     const [promptedOpportunityIds, setPromptedOpportunityIds] = useState<Set<string>>(new Set());
+    const [dismissingAlertIds, setDismissingAlertIds] = useState<Set<string>>(new Set());
 
     const emitAlertsUpdated = useCallback(() => {
         if (typeof window !== 'undefined') {
@@ -208,6 +210,33 @@ export default function AlertsCenterPage() {
             // silent fail
         }
     }, [emitAlertsUpdated]);
+
+    const dismissAlert = useCallback(async (id: string) => {
+        if (dismissingAlertIds.has(id)) return;
+        setDismissingAlertIds((prev) => new Set(prev).add(id));
+        try {
+            await alertsApi.dismiss(id);
+            setFeed((prev) => {
+                if (!prev) return prev;
+                const target = prev.deliveries.find((item) => item.id === id);
+                const wasUnread = Boolean(target && !target.readAt);
+                return {
+                    ...prev,
+                    unreadCount: Math.max(0, prev.unreadCount - (wasUnread ? 1 : 0)),
+                    deliveries: prev.deliveries.filter((item) => item.id !== id),
+                };
+            });
+            emitAlertsUpdated();
+        } catch (err: unknown) {
+            toast.error((err as Error)?.message || 'Failed to dismiss alert');
+        } finally {
+            setDismissingAlertIds((prev) => {
+                const next = new Set(prev);
+                next.delete(id);
+                return next;
+            });
+        }
+    }, [dismissingAlertIds, emitAlertsUpdated]);
 
     const markPrompted = useCallback((opportunityId: string) => {
         setPromptedOpportunityIds((prev) => {
@@ -603,6 +632,16 @@ export default function AlertsCenterPage() {
                                                     hour12: true
                                                 })}
                                             </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => void dismissAlert(item.id)}
+                                                disabled={dismissingAlertIds.has(item.id)}
+                                                className="h-6 w-6 inline-flex items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/30 disabled:opacity-50"
+                                                aria-label="Dismiss alert"
+                                                title="Dismiss"
+                                            >
+                                                <XMarkIcon className="w-3.5 h-3.5" />
+                                            </button>
                                         </div>
                                     </div>
                                     <div className="space-y-1">

@@ -260,6 +260,26 @@ router.post('/:id/read', requireAuth, async (req: Request, res: Response, next: 
     }
 });
 
+router.delete('/:id', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const userId = req.userId;
+        const { id } = req.params;
+        if (!userId) return next(new AppError('Unauthorized', 401));
+
+        const result = await prisma.alertDelivery.deleteMany({
+            where: {
+                id: String(id),
+                userId,
+                channel: 'APP'
+            }
+        });
+
+        res.json({ success: true, deleted: result.count > 0 });
+    } catch (error) {
+        next(error);
+    }
+});
+
 router.put('/preferences', requireAuth, validate(alertPreferencesSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId;

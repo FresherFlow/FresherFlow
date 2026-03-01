@@ -88,7 +88,7 @@
     --foreground: 210 15% 88%;
 
     /* Card clearly lifts from page */
-    --card: 220 16% 13%;
+    --card: 220 16% 14%;
     --card-foreground: 210 15% 88%;
 
     --primary: 210 15% 88%;
@@ -102,10 +102,10 @@
     --accent-foreground: 220 16% 9%;
 
     /* Nearly invisible borders — depth from color, not lines */
-    --border: 220 14% 18%;
-    --input: 220 14% 17%;
-    --muted: 220 14% 15%;
-    --muted-foreground: 215 12% 62%;
+    --border: 220 14% 20%;
+    --input: 220 14% 18%;
+    --muted: 220 14% 17%;
+    --muted-foreground: 215 12% 70%;
 
     --ring: 222 65% 58%;
     --icon: 210 15% 80%;
@@ -472,8 +472,8 @@
   .dark .premium-card,
   .dark .card {
     background: hsl(var(--card));
-    box-shadow: none;
-    border: none;
+    border: 1px solid hsl(var(--border) / 0.7);
+    box-shadow: 0 12px 22px -18px hsl(220 40% 4% / 0.9);
   }
 
   /* Dark primary buttons use accent, not white */

@@ -552,6 +552,7 @@ export const alertsApi = {
     getUnreadCount: () => apiClient<{ count: number }>('/api/alerts/unread-count'),
     markAllRead: () => apiClient('/api/alerts/mark-all-read', { method: 'POST' }),
     markRead: (id: string) => apiClient(`/api/alerts/${id}/read`, { method: 'POST' }),
+    dismiss: (id: string) => apiClient(`/api/alerts/${id}`, { method: 'DELETE' }),
     getDigestItems: (id: string) => apiClient<{
         items: Array<{
             id: string;

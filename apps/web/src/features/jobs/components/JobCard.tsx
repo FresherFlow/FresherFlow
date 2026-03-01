@@ -185,8 +185,8 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     return (
         <div
             className={cn(
-                "group relative bg-card border border-slate-300/70 dark:border-transparent rounded-xl p-4 md:p-5 shadow-md dark:shadow-none transition-all duration-200 hover:border-primary/40 dark:hover:border-white/8 hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 hover:bg-linear-to-b hover:from-white/3 hover:to-transparent flex flex-col gap-3 overflow-hidden",
-                isClosingSoon() && !isExpired() && "border-primary/45 dark:border-transparent",
+                "group relative bg-card border border-slate-300/70 dark:border-0 rounded-xl p-4 md:p-5 shadow-md dark:shadow-none transition-all duration-200 hover:border-primary/40 dark:hover:border-0 hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 hover:bg-linear-to-b hover:from-white/3 hover:to-transparent flex flex-col gap-3 overflow-hidden",
+                isClosingSoon() && !isExpired() && "border-primary/45 dark:border-0",
                 isExpired() && "opacity-70",
                 "cursor-pointer"
             )}
@@ -198,7 +198,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                 className="absolute inset-0 z-10"
             />
             {isClosingSoon() && !isExpired() && (
-                <div className="absolute left-0 top-0 h-full w-1 bg-primary/70" />
+                <div className="absolute left-0 top-0 h-[2px] w-full bg-primary/45" />
             )}
             {/* Header: Company + Title + Save */}
             <div className="relative z-20 flex justify-between items-start">
@@ -249,7 +249,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                     <div className="flex items-center gap-1">
                         <button
                             onClick={handleShareClick}
-                            className="relative z-20 h-9 w-9 rounded-lg transition-all border border-transparent dark:border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
+                            className="relative z-20 h-9 w-9 rounded-lg transition-all border border-transparent dark:border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
                             title="Share listing"
                             aria-label={`Share ${job.title}`}
                         >
@@ -261,7 +261,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                                 "relative z-20 h-9 w-9 rounded-lg transition-all border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
                                 isSaved
                                     ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
-                                    : "bg-background border-transparent dark:border-border text-muted-foreground hover:border-primary/30"
+                                    : "bg-background dark:bg-muted/35 border-transparent dark:border-border/60 text-muted-foreground hover:border-primary/30"
                             )}
                             aria-label={isSaved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}
                         >
@@ -297,7 +297,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             key={`${chip}-${idx}`}
                             className={cn(
                                 "inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-full",
-                                idx === 0 ? "bg-primary/15 text-primary/90" : "bg-slate-200/80 dark:bg-muted/60 text-muted-foreground"
+                                idx === 0 ? "bg-slate-200/90 dark:bg-muted/80 text-foreground/85 dark:text-foreground/85" : "bg-slate-200/80 dark:bg-muted/75 text-muted-foreground"
                             )}
                         >
                             {chip}
@@ -311,8 +311,8 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             isExpired()
                                 ? "bg-destructive/5 border-destructive/25 text-destructive dark:bg-destructive/10 dark:border-destructive/30"
                                 : isClosingSoon()
-                                    ? "bg-amber-50 border-amber-300/70 text-amber-700 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
-                                    : "bg-slate-100 border-slate-300/60 text-slate-500 dark:bg-muted dark:border-border dark:text-muted-foreground"
+                                    ? "bg-amber-100 border-amber-400/70 text-amber-800 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
+                                    : "bg-slate-100 border-slate-300/60 text-slate-500 dark:bg-muted/70 dark:border-border/70 dark:text-muted-foreground"
                         )}
                     >
                         <ClockIcon className="w-3 h-3" aria-hidden="true" />

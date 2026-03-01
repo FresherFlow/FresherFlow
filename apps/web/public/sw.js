@@ -1,4 +1,4 @@
-const SW_VERSION = '1.9.0';
+const SW_VERSION = '1.9.1';
 const STATIC_CACHE = `fresherflow-static-${SW_VERSION}`;
 const API_CACHE = `fresherflow-api-${SW_VERSION}`;
 const OFFLINE_URL = '/offline.html';
@@ -144,17 +144,35 @@ self.addEventListener('fetch', (event) => {
 
   if (isStaticAsset && !isApiRequest) {
     event.respondWith(
-      caches.open(STATIC_CACHE).then((cache) =>
-        cache.match(cacheKey).then((cachedResponse) => {
-          const fetchPromise = fetch(event.request).then((networkResponse) => {
+      (async () => {
+        const cache = await caches.open(STATIC_CACHE);
+        const isCriticalAsset = dest === 'style' || dest === 'script';
+
+        // JS/CSS must stay fresh to avoid stale UI states after deploy.
+        if (isCriticalAsset) {
+          try {
+            const networkResponse = await fetch(event.request);
             if (networkResponse && networkResponse.status === 200) {
               cache.put(cacheKey, networkResponse.clone());
             }
             return networkResponse;
-          });
-          return cachedResponse || fetchPromise;
-        })
-      )
+          } catch {
+            const cachedResponse = await cache.match(cacheKey);
+            if (cachedResponse) return cachedResponse;
+            throw new Error('critical_asset_unavailable_offline');
+          }
+        }
+
+        // Non-critical static assets can be served stale-while-revalidate.
+        const cachedResponse = await cache.match(cacheKey);
+        const fetchPromise = fetch(event.request).then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            cache.put(cacheKey, networkResponse.clone());
+          }
+          return networkResponse;
+        });
+        return cachedResponse || fetchPromise;
+      })()
     );
     return;
   }
