@@ -10,7 +10,8 @@ import JobCard from '@/features/jobs/components/JobCard';
 import { SkeletonJobCard } from '@/components/ui/Skeleton';
 import { Button } from '@/components/ui/Button';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
-import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
+
+type JobCardOpportunity = Opportunity & { matchScore?: number; matchReason?: string };
 
 export default function DeadlinesPage() {
     const [items, setItems] = useState<Opportunity[]>([]);
@@ -86,13 +87,11 @@ export default function DeadlinesPage() {
                             {sorted.map((opp) => (
                                 <JobCard
                                     key={opp.id}
-                                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                    job={opp as any}
+                                    job={opp as JobCardOpportunity}
                                     jobId={opp.id}
                                     isApplied={false}
                                     isSaved={opp.isSaved}
                                     onToggleSave={() => toggleSave(opp.id)}
-                                    onClick={() => router.push(getOpportunityPathFromItem(opp))}
                                 />
                             ))}
                         </div>

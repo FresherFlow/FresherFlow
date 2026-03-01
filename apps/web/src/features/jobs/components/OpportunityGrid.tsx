@@ -3,16 +3,14 @@
 import { Opportunity } from '@fresherflow/types';
 import JobCard from './JobCard';
 import { SkeletonJobCard } from '@/components/ui/Skeleton';
-import { cn } from '@/lib/utils';
-import { useRouter } from 'next/navigation';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
-import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
+
+type OpportunityAction = { actionType: string };
 
 interface OpportunityGridProps {
     opportunities: Opportunity[];
     isLoading: boolean;
     error: string | null;
-    isFilterOpen: boolean;
     isAdmin: boolean;
     onToggleSave: (id: string) => void;
     onClearFilters: () => void;
@@ -23,13 +21,11 @@ export function OpportunityGrid({
     opportunities,
     isLoading,
     error,
-    isFilterOpen,
     isAdmin,
     onToggleSave,
     onClearFilters,
     onRetry
 }: OpportunityGridProps) {
-    const router = useRouter();
 
     if (isLoading && opportunities.length === 0) {
         return (
@@ -65,10 +61,7 @@ export function OpportunityGrid({
 
     return (
         <div className="space-y-4 md:space-y-6">
-            <div className={cn(
-                "grid grid-cols-1 md:grid-cols-2 gap-3.5 md:gap-6",
-                isFilterOpen ? "lg:grid-cols-2 xl:grid-cols-2" : "lg:grid-cols-2 xl:grid-cols-3"
-            )} role="list" aria-label="Job listings">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-8" role="list" aria-label="Job listings">
                 {opportunities.map((opp) => (
                     <JobCard
                         key={opp.id}
@@ -79,9 +72,8 @@ export function OpportunityGrid({
                         }}
                         jobId={opp.id}
                         isSaved={opp.isSaved || false}
-                        isApplied={opp.actions && opp.actions.length > 0}
+                        isApplied={(opp.actions || []).some((a: OpportunityAction) => a.actionType === 'APPLIED')}
                         onToggleSave={() => onToggleSave(opp.id)}
-                        onClick={() => router.push(getOpportunityPathFromItem(opp))}
                         isAdmin={isAdmin}
                     />
                 ))}

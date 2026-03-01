@@ -8,6 +8,7 @@ import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
+import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
@@ -33,10 +34,33 @@ interface JobCardProps {
     variant?: 'default' | 'compact';
 }
 
+type JobAction = {
+    actionType: string;
+};
+
+type JobWithActions = Opportunity & {
+    actions?: JobAction[];
+    matchScore?: number;
+    matchReason?: string;
+};
+
+// Strips verbose prefixes for compact display in the card
+const formatMatchReason = (reason: string): string => {
+    if (reason === 'Your preferred city') return 'Preferred city';
+    const inner = reason.match(/^Not eligible \((.+)\)$/);
+    if (inner) return inner[1];
+    return reason;
+};
+
 export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin, priority = false, variant = 'default' }: JobCardProps) {
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
 
+    // Derive tracker status from actions array if available
+    const trackerAction = (job as JobWithActions).actions?.find?.((a: JobAction) =>
+        ['APPLIED', 'PLANNED', 'SAVED_FOR_LATER', 'INTERVIEWING', 'OFFERED', 'REJECTED'].includes(a.actionType)
+    );
+    const trackerStatus: string | null = trackerAction?.actionType ?? null;
 
 
     const handleSaveClick = (e: React.MouseEvent) => {
@@ -161,8 +185,8 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     return (
         <div
             className={cn(
-                "group relative bg-card border border-slate-300/70 dark:border-white/5 rounded-xl p-4 md:p-5 shadow-md dark:shadow-none transition-all duration-200 hover:border-primary/40 hover:shadow-lg dark:hover:shadow-lg hover:-translate-y-0.5 hover:bg-linear-to-b hover:from-white/3 hover:to-transparent flex flex-col gap-3 overflow-hidden",
-                isClosingSoon() && !isExpired() && "border-primary/45",
+                "group relative bg-card border border-slate-300/70 dark:border-transparent rounded-xl p-4 md:p-5 shadow-md dark:shadow-none transition-all duration-200 hover:border-primary/40 dark:hover:border-white/8 hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 hover:bg-linear-to-b hover:from-white/3 hover:to-transparent flex flex-col gap-3 overflow-hidden",
+                isClosingSoon() && !isExpired() && "border-primary/45 dark:border-transparent",
                 isExpired() && "opacity-70",
                 "cursor-pointer"
             )}
@@ -178,18 +202,18 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             )}
             {/* Header: Company + Title + Save */}
             <div className="relative z-20 flex justify-between items-start">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} companyLogoUrl={job.companyLogoUrl} applyLink={job.applyLink} priority={priority} />
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                    <div className="mt-1 shrink-0"><CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} companyLogoUrl={job.companyLogoUrl} applyLink={job.applyLink} priority={priority} /></div>
                     <div className="min-w-0">
                         <Link
                             href={`/companies/${encodeURIComponent(job.company)}`}
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                            className="text-[12px] font-medium text-muted-foreground line-clamp-1 hover:text-primary transition-colors cursor-pointer block"
+                            className="text-xs font-medium text-muted-foreground line-clamp-1 hover:text-primary transition-colors cursor-pointer block"
                         >
                             {job.company}
                         </Link>
                         {(getPostedLabel() || typeof job.matchScore === 'number') && (
-                            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                                 {getPostedLabel() && (
                                     <span className={cn(isFreshlyPosted() && "text-primary/90")}>{getPostedLabel()}</span>
                                 )}
@@ -197,53 +221,73 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                                     <span className="opacity-40">-</span>
                                 )}
                                 {typeof job.matchScore === 'number' && (
-                                    <span className="text-primary/80 font-medium">
-                                        {job.matchScore}% match
-                                    </span>
+                                    job.matchScore === 0 && job.matchReason?.includes('Not eligible') ? (
+                                        <span className="text-destructive/90 font-medium">
+                                            Not Eligible
+                                        </span>
+                                    ) : job.matchScore === 0 && job.matchReason?.includes('Complete profile') ? (
+                                        <span className="text-muted-foreground/70 font-medium">
+                                            Setup profile
+                                        </span>
+                                    ) : (
+                                        <span className="text-primary/80 font-medium">
+                                            {job.matchScore}% match
+                                        </span>
+                                    )
                                 )}
                             </div>
                         )}
                         <h3 className="mt-0.5 text-[17px] md:text-[18px] font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
                             {job.normalizedRole || job.title}
                         </h3>
-                        {isApplied && (
-                            <span className="inline-flex mt-1 px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-medium border border-primary/20">
-                                Applied
-                            </span>
-                        )}
-                        {typeof job.matchScore === 'number' && job.matchReason && job.matchReason !== 'General fit' && (
-                            <div className="mt-1 flex items-center gap-1.5 min-w-0">
-                                <p className="text-[10px] font-medium text-muted-foreground truncate">
-                                    {job.matchReason}
-                                </p>
-                            </div>
-                        )}
+
+
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1">
-                    <button
-                        onClick={handleShareClick}
-                        className="relative z-20 h-9 w-9 rounded-lg transition-all border border-transparent dark:border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
-                        title="Share listing"
-                        aria-label={`Share ${job.title}`}
-                    >
-                        <ShareIcon className="w-5 h-5" aria-hidden="true" />
-                    </button>
-                    <button
-                        onClick={handleSaveClick}
-                        className={cn(
-                            "relative z-20 h-9 w-9 rounded-lg transition-all border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
-                            isSaved
-                                ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
-                                : "bg-background border-transparent dark:border-border text-muted-foreground hover:border-primary/30"
-                        )}
-                        aria-label={isSaved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}
-                    >
-                        {isSaved ? <BookmarkSolidIcon className="w-5 h-5" aria-hidden="true" /> : <BookmarkIcon className="w-5 h-5" aria-hidden="true" />}
-                    </button>
+                <div className="flex flex-col items-end shrink-0 w-[76px]">
+                    <div className="flex items-center gap-1">
+                        <button
+                            onClick={handleShareClick}
+                            className="relative z-20 h-9 w-9 rounded-lg transition-all border border-transparent dark:border-border bg-background text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
+                            title="Share listing"
+                            aria-label={`Share ${job.title}`}
+                        >
+                            <ShareIcon className="w-5 h-5" aria-hidden="true" />
+                        </button>
+                        <button
+                            onClick={handleSaveClick}
+                            className={cn(
+                                "relative z-20 h-9 w-9 rounded-lg transition-all border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
+                                isSaved
+                                    ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
+                                    : "bg-background border-transparent dark:border-border text-muted-foreground hover:border-primary/30"
+                            )}
+                            aria-label={isSaved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}
+                        >
+                            {isSaved ? <BookmarkSolidIcon className="w-5 h-5" aria-hidden="true" /> : <BookmarkIcon className="w-5 h-5" aria-hidden="true" />}
+                        </button>
+                    </div>
+                    {typeof job.matchScore === 'number' && job.matchReason && job.matchReason !== 'General fit' && (
+                        <div
+                            title={formatMatchReason(job.matchReason)}
+                            className="mt-3 flex justify-end"
+                        >
+                            <InformationCircleIcon
+                                className={cn(
+                                    'w-4 h-4',
+                                    job.matchScore === 0 && job.matchReason.includes('Not eligible')
+                                        ? 'text-destructive/70'
+                                        : 'text-muted-foreground/50'
+                                )}
+                            />
+                        </div>
+                    )}
                 </div>
             </div>
+
+            {/* Spacer: pushes badges/meta/footer to consistent bottom position */}
+            <div className="flex-1" />
 
             {/* Badges */}
             <div className="relative z-20 flex items-center justify-between gap-2">
@@ -252,7 +296,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         <span
                             key={`${chip}-${idx}`}
                             className={cn(
-                                "inline-flex shrink-0 items-center px-2 py-0.5 text-[10px] font-medium rounded-full",
+                                "inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-full",
                                 idx === 0 ? "bg-primary/15 text-primary/90" : "bg-slate-200/80 dark:bg-muted/60 text-muted-foreground"
                             )}
                         >
@@ -263,12 +307,12 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                 {job.expiresAt && (
                     <span
                         className={cn(
-                            "inline-flex max-w-[54%] items-center gap-1 px-2 py-0.5 border text-[11px] font-medium normal-case tracking-normal rounded-full whitespace-nowrap",
+                            "inline-flex max-w-[54%] items-center gap-1 px-2 py-0.5 border text-xs font-medium normal-case tracking-normal rounded-full whitespace-nowrap",
                             isExpired()
-                                ? "bg-destructive/5 border-destructive/20 text-destructive"
+                                ? "bg-destructive/5 border-destructive/25 text-destructive dark:bg-destructive/10 dark:border-destructive/30"
                                 : isClosingSoon()
-                                    ? "bg-primary/10 border-primary/30 text-primary"
-                                    : "bg-slate-200/75 dark:bg-muted/40 border-transparent text-muted-foreground"
+                                    ? "bg-amber-50 border-amber-300/70 text-amber-700 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
+                                    : "bg-slate-100 border-slate-300/60 text-slate-500 dark:bg-muted dark:border-border dark:text-muted-foreground"
                         )}
                     >
                         <ClockIcon className="w-3 h-3" aria-hidden="true" />
@@ -278,7 +322,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             </div>
 
             {/* Key Meta */}
-            <div className="relative z-20 flex items-center gap-4 text-[13px] text-muted-foreground min-w-0">
+            <div className="relative z-20 flex items-center justify-between text-[13px] text-muted-foreground min-w-0">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
                     <MapPinIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
                     <span className="truncate text-muted-foreground" title={locationInfo.fullLabel}>{locationInfo.shortLabel}</span>
@@ -292,7 +336,24 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             </div>
 
             {/* Footer */}
-            <div className="relative z-20 flex items-center justify-end pt-1">
+            <div className="relative z-20 flex items-center justify-between pt-1 mt-auto">
+                <div className="flex items-center gap-1.5">
+                    {(trackerStatus === 'APPLIED' || (!trackerStatus && isApplied)) && (
+                        <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium border border-primary/20">
+                            Applied
+                        </span>
+                    )}
+                    {trackerStatus && trackerStatus !== 'APPLIED' && (
+                        <span className="inline-flex items-center px-2 py-0.5 bg-muted text-muted-foreground rounded text-xs font-medium border border-border">
+                            {trackerStatus === 'PLANNED' ? 'Planned'
+                                : trackerStatus === 'SAVED_FOR_LATER' ? 'Saved for later'
+                                    : trackerStatus === 'INTERVIEWING' ? 'Interviewing'
+                                        : trackerStatus === 'OFFERED' ? 'Offered'
+                                            : trackerStatus === 'REJECTED' ? 'Rejected'
+                                                : trackerStatus.charAt(0) + trackerStatus.slice(1).toLowerCase()}
+                        </span>
+                    )}
+                </div>
                 <div className="flex items-center gap-1 text-primary text-[14px] font-semibold group-hover:translate-x-0.5 transition-transform duration-300">
                     <span>View Details</span>
                     <ChevronRightIcon className="w-3.5 h-3.5" aria-hidden="true" />
@@ -317,4 +378,3 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
         </div>
     );
 }
-

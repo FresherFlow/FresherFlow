@@ -5,7 +5,7 @@ import { useDebounce } from '@/lib/hooks/useDebounce';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { readFeedCache, saveFeedCache } from '@/lib/offline/opportunitiesFeedCache';
-import { calculateOpportunityMatch } from '@/lib/matchScore';
+import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { enqueueOfflineSaveToggle } from '@/lib/offline/actionQueue';
 
 interface UseOpportunitiesFeedOptions {
@@ -17,6 +17,10 @@ interface UseOpportunitiesFeedOptions {
     minSalary?: number | null;
     maxSalary?: number | null;
 }
+
+type OpportunityAction = {
+    actionType: string;
+};
 
 export function useOpportunitiesFeed({
     type,
@@ -203,14 +207,17 @@ export function useOpportunitiesFeed({
             };
         });
 
-        const bucketWeight = (opp: Opportunity & { isSaved?: boolean; actions?: Array<unknown> }) => {
-            const isApplied = Array.isArray(opp.actions) && opp.actions.length > 0;
+        const bucketWeight = (opp: Opportunity & { isSaved?: boolean; actions?: OpportunityAction[] }) => {
+            const isApplied = Array.isArray(opp.actions) && opp.actions.some((a: OpportunityAction) => a.actionType === 'APPLIED');
             if (isApplied) return 2;
             if (opp.isSaved) return 1;
             return 0;
         };
 
         return enriched.sort((a, b) => {
+            // Not-eligible jobs always go to the bottom
+            if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
+
             const bucketDiff = bucketWeight(a) - bucketWeight(b);
             if (bucketDiff !== 0) return bucketDiff;
 

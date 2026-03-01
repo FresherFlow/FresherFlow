@@ -15,7 +15,7 @@ import JobCard from '@/features/jobs/components/JobCard';
 import { Button } from '@/components/ui/Button';
 import { getFeedLastSyncAt } from '@/lib/offline/syncStatus';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
-import { calculateOpportunityMatch } from '@/lib/matchScore';
+import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { OpportunityEventType } from '@fresherflow/types';
 import { OfflineError } from '@/lib/api/client';
 
@@ -62,6 +62,13 @@ type HighlightsData = {
     newSinceLastVisitCount?: number;
     driveMilestones?: DriveMilestone[];
 };
+
+type OpportunityAction = {
+    actionType: string;
+};
+
+const hasAppliedAction = (opp: Opportunity): boolean =>
+    (opp.actions as OpportunityAction[] | undefined)?.some((a) => a.actionType === 'APPLIED') ?? false;
 
 export default function DashboardClient() {
     const { user, profile, isLoading: authLoading } = useAuth();
@@ -218,20 +225,28 @@ export default function DashboardClient() {
                 return { ...opp, matchScore: match.score, matchReason: match.reason };
             });
 
+
         const rotationOffset = Math.max(0, dashboardVisitCounter - 1) * 4;
 
-        const latestSorted = [...active].sort(
-            (a, b) => new Date(b.postedAt as string | Date).getTime() - new Date(a.postedAt as string | Date).getTime()
-        );
+        const latestSorted = [...active].sort((a, b) => {
+            if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
+            return new Date(b.postedAt as string | Date).getTime() - new Date(a.postedAt as string | Date).getTime();
+        });
 
         const bestMatch = rotateByOffset(
-            [...active].sort((a, b) => (b.matchScore || 0) - (a.matchScore || 0)),
+            [...active].sort((a, b) => {
+                if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
+                return (b.matchScore || 0) - (a.matchScore || 0);
+            }),
             rotationOffset
         );
 
         const closing = active
             .filter(o => o.expiresAt)
-            .sort((a, b) => new Date(a.expiresAt as string).getTime() - new Date(b.expiresAt as string).getTime())
+            .sort((a, b) => {
+                if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
+                return new Date(a.expiresAt as string).getTime() - new Date(b.expiresAt as string).getTime();
+            })
             .slice(0, 8);
 
         const newIn24h = latestSorted
@@ -291,7 +306,7 @@ export default function DashboardClient() {
             <ProfileGate>
                 <div className="w-full max-w-7xl mx-auto space-y-4 md:space-y-8 pb-12 md:pb-20 px-3 md:px-6">
                     {/* Compact Header */}
-                    <div className="flex flex-col gap-1.5 md:gap-3 border-b border-border/60 pb-2.5 md:pb-4">
+                    <div className="flex flex-col gap-1.5 md:gap-3 pb-2.5 md:pb-4">
                         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-3">
                             <div className="space-y-1">
                                 <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
@@ -327,7 +342,7 @@ export default function DashboardClient() {
                             )}
 
                             {/* Tab Bar — shared for mobile/desktop, only styling differs */}
-                            <div className="border-b border-border/60">
+                            <div className="">
                                 {/* Mobile tabs */}
                                 <div className="md:hidden flex items-center gap-1 overflow-x-auto no-scrollbar">
                                     {tabs.map(s => (
@@ -379,10 +394,9 @@ export default function DashboardClient() {
                                                 key={`mob-${opp.id}`}
                                                 job={opp}
                                                 jobId={opp.id}
-                                                isApplied={false}
+                                                isApplied={hasAppliedAction(opp)}
                                                 isSaved={opp.isSaved}
                                                 onToggleSave={() => toggleSave(opp.id)}
-                                                onClick={() => router.push(getOpportunityPathFromItem(opp))}
                                                 isAdmin={user?.role === 'ADMIN'}
                                                 priority={idx < 2}
                                             />
@@ -411,10 +425,9 @@ export default function DashboardClient() {
                                                 key={`desk-${opp.id}`}
                                                 job={opp}
                                                 jobId={opp.id}
-                                                isApplied={false}
+                                                isApplied={hasAppliedAction(opp)}
                                                 isSaved={opp.isSaved}
                                                 onToggleSave={() => toggleSave(opp.id)}
-                                                onClick={() => router.push(getOpportunityPathFromItem(opp))}
                                                 isAdmin={user?.role === 'ADMIN'}
                                             />
                                         ))}
