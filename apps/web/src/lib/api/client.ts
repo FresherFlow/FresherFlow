@@ -34,6 +34,22 @@ export function getApiBaseForEndpoint(endpoint: string): string {
     return USER_API_URL;
 }
 
+function shouldBypassBrowserCache(endpoint: string, method: string): boolean {
+    if (method !== 'GET' && method !== 'HEAD') return true;
+    const privatePrefixes = [
+        '/api/auth',
+        '/api/admin',
+        '/api/alerts',
+        '/api/profile',
+        '/api/account',
+        '/api/saved',
+        '/api/actions',
+        '/api/tracker',
+        '/api/feedback',
+    ];
+    return privatePrefixes.some((prefix) => endpoint.startsWith(prefix));
+}
+
 // Singleton promise to handle concurrent refresh requests
 let isRefreshing: Promise<void> | null = null;
 
@@ -51,25 +67,21 @@ export async function apiClient<T = unknown>(
     };
 
 
-    const isPublicFeedEndpoint =
-        endpoint.startsWith('/api/opportunities') ||
-        endpoint.startsWith('/api/public/sitemap/opportunities');
+    const method = (options.method || 'GET').toUpperCase();
+    const bypassCache = shouldBypassBrowserCache(endpoint, method);
 
     // Defaults: credentials include for cookies
     const fetchOptions: RequestInit = {
         ...options,
         headers,
         credentials: 'include', // CRITICAL: This sends/receives cookies
-        // Keep private/admin/auth requests uncached, but allow public feed caching.
-        cache: options.cache ?? (isPublicFeedEndpoint ? 'default' : 'no-store'),
-        ...(isPublicFeedEndpoint
-            ? {}
-            : { next: { revalidate: 0 } })
+        // Public reads can use browser cache; private/auth data stays uncached.
+        cache: options.cache ?? (bypassCache ? 'no-store' : 'default'),
     };
     const baseUrl = getApiBaseForEndpoint(endpoint);
     const requestUrl = `${baseUrl}${endpoint}`;
-    const method = (fetchOptions.method || 'GET').toUpperCase();
-    const canRetry = method === 'GET';
+    const requestMethod = (fetchOptions.method || 'GET').toUpperCase();
+    const canRetry = requestMethod === 'GET';
 
     const fetchWithRetry = async () => {
         let lastError: unknown;
