@@ -156,6 +156,15 @@ export const normalizeSalaryInput = (raw?: SalaryPrimitive): string | null => {
 };
 
 export const getOpportunityDisplaySalary = (opportunity: Opportunity): string | null => {
+    // If salaryRange is already a human-readable string (e.g., "3 LPA", "6-8 LPA", "25k/month"),
+    // prefer it directly — it was set by admin and is the source of truth.
+    const rawRange = opportunity.salaryRange || opportunity.stipend;
+    if (rawRange && typeof rawRange === 'string') {
+        const normalized = normalizeSalaryInput(rawRange);
+        if (normalized) return normalized;
+    }
+
+    // Otherwise fall back to numeric salaryMin / salaryMax fields
     const salaryPeriod = opportunity.salaryPeriod === 'MONTHLY' ? 'MONTHLY' : 'YEARLY';
     const sMin = opportunity.salaryMin ?? opportunity.salary?.min ?? null;
     const sMax = opportunity.salaryMax ?? opportunity.salary?.max ?? null;
@@ -175,7 +184,7 @@ export const getOpportunityDisplaySalary = (opportunity: Opportunity): string | 
         if (maxVal !== null) return `Up to ${formatValue(maxVal)}`;
     }
 
-    return normalizeSalaryInput(opportunity.salaryRange || opportunity.stipend || null);
+    return null;
 };
 
 const splitLocationTokens = (locations: string[]): string[] => {

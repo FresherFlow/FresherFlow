@@ -452,11 +452,18 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         const degreeLabels = Array.from(new Set((degrees || []).map(formatEducationLevel).filter(Boolean)));
         const normalizedCourses = Array.from(new Set((courses || []).map((item) => item.trim()).filter(Boolean)));
         const normalizedSpecializations = Array.from(new Set((specializations || []).map((item) => item.trim()).filter(Boolean)));
-        const level = degreeLabels.length > 0 ? degreeLabels.join(', ') : 'Any Graduate';
-        const coursesLine = normalizedCourses.length > 0 ? normalizedCourses.join(', ') : 'Not specified';
-        const specializationsLine = normalizedSpecializations.length > 0 ? normalizedSpecializations.join(', ') : 'Not specified';
+        const lines: string[] = [];
+        if (degreeLabels.length > 0 || (normalizedCourses.length === 0 && normalizedSpecializations.length === 0)) {
+            lines.push(`Level: ${degreeLabels.length > 0 ? degreeLabels.join(', ') : 'Any Graduate'}`);
+        }
+        if (normalizedCourses.length > 0) {
+            lines.push(`Courses: ${normalizedCourses.join(', ')}`);
+        }
+        if (normalizedSpecializations.length > 0) {
+            lines.push(`Specializations: ${normalizedSpecializations.join(', ')}`);
+        }
 
-        return `Level: ${level}\nCourses: ${coursesLine}\nSpecializations: ${specializationsLine}`;
+        return lines.join('\n');
     };
 
 
@@ -665,7 +672,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                             Expired
                                         </div>
                                     ) : (
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500/10 border border-green-500/20 text-green-600 dark:text-green-400 text-xs md:text-xs font-bold uppercase tracking-tight rounded">
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted border border-border text-foreground text-xs md:text-xs font-bold uppercase tracking-tight rounded">
                                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                             Active
                                         </div>
@@ -731,7 +738,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                 </div>
 
                                 {/* Stats Grid */}
-                                <div className={cn("pt-3 border-t border-border/50 grid grid-cols-2 gap-2.5", displaySalary ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+                                <div className={cn("pt-3 grid grid-cols-2 gap-2.5", displaySalary ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
                                     {displaySalary && (
                                         <div className="space-y-0.5">
                                             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Package</p>
@@ -853,7 +860,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {/* Description Section */}
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Description</h3>
+                            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Description</h3>
                             <div
                                 className="prose prose-sm max-w-none text-foreground/80 font-medium text-sm md:text-base leading-relaxed whitespace-pre-wrap"
                                 dangerouslySetInnerHTML={{ __html: sanitizeHtml(opp.description) }}
@@ -862,7 +869,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {isCampusDrive && driveMeta.isTcsNqt && (
                             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-4">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">About the Drive</h3>
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">About the Drive</h3>
                                 <ul className="space-y-1.5 text-sm text-foreground/90 font-medium">
                                     {driveMeta.overviewPoints.map((point) => (
                                         <li key={point} className="flex items-start gap-2">
@@ -876,7 +883,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {isCampusDrive && driveMeta.salaryRows.length > 0 && (
                             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Salary Breakdown</h3>
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">Salary Breakdown</h3>
                                 <div className="hidden md:block overflow-x-auto">
                                     <table className="w-full min-w-130 text-xs">
                                         <thead>
@@ -927,7 +934,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {timelineEvents.length > 0 && (
                             <div id="drive-timeline" className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <div className="flex items-center justify-between gap-2 border-b border-border pb-2">
+                                <div className="flex items-center justify-between gap-2 pb-2">
                                     <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Drive timeline</h3>
                                     {upcomingTimelineEvents.length > 0 && (
                                         <span className="text-xs font-semibold text-primary">
@@ -975,7 +982,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {isCampusDrive && driveMeta.selectionSteps.length > 0 && (
                             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Selection Process</h3>
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">Selection Process</h3>
                                 <div className="flex flex-wrap items-center gap-2">
                                     {driveMeta.selectionSteps.map((step, index) => (
                                         <span key={step} className="inline-flex items-center rounded-md border border-border bg-muted/20 px-2.5 py-1.5 text-[12px] font-semibold text-foreground">
@@ -988,7 +995,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {isCampusDrive && driveMeta.applySteps.length > 0 && (
                             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">How to Apply</h3>
+                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">How to Apply</h3>
                                 <ol className="space-y-2 text-sm text-foreground/90 font-medium list-decimal pl-5">
                                     {driveMeta.applySteps.map((step) => (
                                         <li key={step}>{step}</li>
@@ -1007,7 +1014,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {/* Requirements Section */}
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-4">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Requirements</h3>
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">Requirements</h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
@@ -1016,16 +1023,18 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                         {formatEducationDisplay(opp.allowedDegrees || [], opp.allowedCourses || [], (opp as { allowedSpecializations?: string[] }).allowedSpecializations || [])}
                                     </p>
                                 </div>
-                                <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
-                                    <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-widest">Key Skills</p>
-                                    <div className="flex flex-wrap gap-1 mt-0.5">
-                                        {(opp.requiredSkills || []).map((s: string) => (
-                                            <span key={s} className="px-1.5 py-0.5 bg-primary/5 text-primary text-xs md:text-xs font-semibold rounded">
-                                                {s}
-                                            </span>
-                                        ))}
+                                {opp.requiredSkills && opp.requiredSkills.length > 0 && (
+                                    <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
+                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-widest">Key Skills</p>
+                                        <div className="flex flex-wrap gap-1 mt-0.5">
+                                            {opp.requiredSkills.map((s: string) => (
+                                                <span key={s} className="px-1.5 py-0.5 bg-primary/5 text-primary text-xs md:text-xs font-semibold rounded">
+                                                    {s}
+                                                </span>
+                                            ))}
+                                        </div>
                                     </div>
-                                </div>
+                                )}
                                 {(opp.jobFunction || opp.incentives) && (
                                     <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
                                         <p className="text-xs font-bold text-muted-foreground uppercase">Role details</p>
@@ -1041,7 +1050,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                         <p className="text-sm font-medium text-foreground leading-relaxed whitespace-pre-wrap">{opp.selectionProcess}</p>
                                     </div>
                                 )}
-                                {opp.notesHighlights && (
+                                {opp.notesHighlights && !opp.notesHighlights.includes('[AUTO-INGEST') && (
                                     <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg md:col-span-2">
                                         <p className="text-xs font-bold text-muted-foreground uppercase">Notes / Highlights</p>
                                         <p className="text-sm font-medium text-foreground leading-relaxed whitespace-pre-wrap">{opp.notesHighlights}</p>
@@ -1053,7 +1062,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         {/* Walk-in Drive */}
                         {opp.type === 'WALKIN' && (
                             <div className="bg-card border border-border p-4 md:p-5 rounded-xl space-y-4">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-primary border-b border-border pb-2">Walk-in Details</h2>
+                                <h2 className="text-xs font-bold uppercase tracking-wider text-primary pb-2">Walk-in Details</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1">
                                         <p className="text-xs font-bold text-muted-foreground uppercase">Date & Time</p>
@@ -1242,7 +1251,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                 )}
                             </div>
 
-                            <div className="pt-3 border-t border-border flex items-center justify-between">
+                            <div className="pt-3 flex items-center justify-between">
                                 <span className="text-xs font-bold text-muted-foreground uppercase opacity-50 italic">Listing Verified</span>
                                 <ShieldCheckIcon className="w-3.5 h-3.5 text-primary/40" />
                             </div>
