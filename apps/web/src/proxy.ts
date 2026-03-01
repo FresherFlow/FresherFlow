@@ -29,6 +29,23 @@ const ADMIN_ROOT_PREFIXES = [
 ];
 const SOCIAL_PREVIEW_BOT_UA =
     /(facebookexternalhit|facebot|twitterbot|xbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot|skypeuripreview|applebot)/i;
+const KNOWN_CRAWLER_UA = /(bot|crawler|spider|slurp|bingpreview|curl|wget|python-requests|headless)/i;
+
+function isUserProtectedPath(pathname: string): boolean {
+    return pathname.startsWith('/dashboard') || pathname.startsWith('/account') || pathname.startsWith('/profile');
+}
+
+function isLowValuePrefetch(request: NextRequest): boolean {
+    const purpose = (request.headers.get('purpose') || '').toLowerCase();
+    const secPurpose = (request.headers.get('sec-purpose') || '').toLowerCase();
+    const nextPrefetch = request.headers.get('x-middleware-prefetch') === '1';
+    return purpose.includes('prefetch') || secPurpose.includes('prefetch') || nextPrefetch;
+}
+
+function isKnownCrawler(request: NextRequest): boolean {
+    const ua = request.headers.get('user-agent') || '';
+    return KNOWN_CRAWLER_UA.test(ua);
+}
 
 function isPublicDetailPath(pathname: string): boolean {
     if (pathname.startsWith('/walk-ins/details/') || pathname.startsWith('/walkins/details/')) {
@@ -86,6 +103,31 @@ export function proxy(request: NextRequest) {
     const isAdminRootPath = ADMIN_ROOT_PREFIXES.some(
         (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
     );
+    const isAdminRoute = pathname.startsWith('/admin');
+    const isAdminLogin = pathname === '/admin/login' || pathname === '/login';
+    const isUserPath = isUserProtectedPath(pathname);
+
+    // Keep proxy zero-cost for requests that never need host/auth rewriting.
+    if (
+        normalizedHost === APP_WEB_HOST &&
+        !isAdminRoute &&
+        !isAdminRootPath &&
+        !isUserPath &&
+        pathname !== '/login' &&
+        pathname !== '/'
+    ) {
+        return NextResponse.next();
+    }
+
+    // Skip expensive logic for crawler/prefetch traffic on public routes.
+    if (
+        (isKnownCrawler(request) || isLowValuePrefetch(request)) &&
+        !isAdminRoute &&
+        !isAdminRootPath &&
+        !isUserPath
+    ) {
+        return NextResponse.next();
+    }
 
     // Keep internal preview routes out of production traffic.
     if (process.env.NODE_ENV === 'production' && pathname.startsWith('/dev')) {
@@ -108,8 +150,6 @@ export function proxy(request: NextRequest) {
     // Check for session marker
     const isAuthenticated = request.cookies.has('ff_logged_in') || request.cookies.has('accessToken');
     const isAdminAuthenticated = request.cookies.has('adminAccessToken');
-    const isAdminRoute = pathname.startsWith('/admin');
-    const isAdminLogin = pathname === '/admin/login' || pathname === '/login';
     const userLoginUrl = `${request.nextUrl.protocol}//${USER_LOGIN_HOST}/login`;
 
     // Public detail routes should never be served on admin host.
@@ -192,12 +232,7 @@ export function proxy(request: NextRequest) {
     }
 
     // 3. User Route Protection (cookie marker gate only)
-    const isUserProtectedPath =
-        pathname.startsWith('/dashboard') ||
-        pathname.startsWith('/account') ||
-        pathname.startsWith('/profile');
-
-    if (isUserProtectedPath && !isAuthenticated) {
+    if (isUserPath && !isAuthenticated) {
         const loginUrl = new URL(userLoginUrl);
         loginUrl.searchParams.set('redirect', pathname);
         const method = request.method.toUpperCase();
