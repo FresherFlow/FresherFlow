@@ -42,7 +42,7 @@ export default function TopNav() {
 
     return (
         <>
-            <nav className="border-b border-border bg-background sticky top-0 z-40">
+            <nav className="bg-background/80 backdrop-blur-xl sticky top-0 z-40 shadow-xs">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6">
                     <div className="flex items-center justify-between h-16">
                         {/* Logo */}
@@ -130,7 +130,7 @@ export default function TopNav() {
 
                                 {isDropdownOpen && user && (
                                     <div className="absolute right-0 mt-2 w-48 bg-card rounded-lg shadow-lg border border-border py-1 z-50">
-                                        <div className="px-4 py-2 border-b border-border/50 mb-1">
+                                        <div className="px-4 py-2 mb-1">
                                             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
                                         </div>
                                         <Link

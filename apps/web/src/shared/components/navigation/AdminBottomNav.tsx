@@ -11,22 +11,22 @@ import ChartBarIcon from '@heroicons/react/24/outline/ChartBarIcon';
 const NAV_ITEMS = [
     {
         label: 'Dashboard',
-        href: '/dashboard',
+        href: '/admin/dashboard',
         icon: Squares2X2Icon,
     },
     {
         label: 'Search',
-        href: '/opportunities',
+        href: '/admin/opportunities',
         icon: MagnifyingGlassIcon,
     },
     {
         label: 'Post',
-        href: '/opportunities/create',
+        href: '/admin/opportunities/create',
         icon: PlusCircleIcon,
     },
     {
         label: 'Analytics',
-        href: '/analytics',
+        href: '/admin/analytics',
         icon: ChartBarIcon,
     }
 ];

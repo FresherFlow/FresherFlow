@@ -49,15 +49,15 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
     return (
         <div className="md:hidden fixed inset-0 z-[75] bg-background/95 backdrop-blur-sm animate-in fade-in duration-200">
             <button className="absolute inset-0" aria-label="Close menu" onClick={onClose} />
-            <div className="relative z-10 bg-card border-b border-border shadow-2xl overflow-y-auto max-h-[calc(100vh-4rem)]">
-                <div className="p-4 border-b border-border bg-muted/30">
+            <div className="relative z-10 bg-card shadow-2xl overflow-y-auto max-h-[calc(100vh-4rem)]">
+                <div className="p-4 bg-muted/30">
                     <div className="flex items-center gap-4">
                         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
                             <UserIcon className="w-5 h-5" />
                         </div>
                         <div className="space-y-0.5">
                             <h3 className="text-sm font-bold uppercase tracking-tight italic">{user.fullName || 'User Identity'}</h3>
-                            <p className="text-[10px] font-semibold text-muted-foreground uppercase opacity-60 tracking-wider truncate max-w-50">{user.email}</p>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase opacity-60 tracking-wider truncate max-w-50">{user.email}</p>
                         </div>
                         <div className="ml-auto"><ThemeToggle /></div>
                     </div>
@@ -74,7 +74,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                             key={item.href}
                             href={item.href}
                             onClick={onClose}
-                            className="flex items-center justify-between gap-3 px-3 py-3 rounded-lg text-[11px] font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted hover:text-foreground"
+                            className="flex items-center justify-between gap-3 px-3 py-3 rounded-lg text-sm font-semibold text-muted-foreground hover:bg-muted hover:text-foreground"
                         >
                             <div className="flex items-center gap-3">
                                 <item.icon className="w-4 h-4 text-primary" />
@@ -92,8 +92,8 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                             )}
                         </Link>
                     ))}
-                    <div className="pt-3 mt-3 border-t border-border">
-                        <p className="px-3 pb-2 text-[9px] font-semibold text-muted-foreground uppercase tracking-widest">Follow us</p>
+                    <div className="pt-3 mt-3">
+                        <p className="px-3 pb-2 text-xs font-semibold text-muted-foreground uppercase tracking-widest">Follow us</p>
                         <div className="flex items-center gap-2 px-3">
                             {socialLinks.map((s) => (
                                 <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer"
@@ -104,9 +104,9 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                             ))}
                         </div>
                     </div>
-                    <div className="pt-3 mt-3 border-t border-border">
+                    <div className="pt-3 mt-3">
                         <Link href="/logout" onClick={onClose}
-                            className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-[11px] font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 transition-all">
+                            className="flex items-center gap-3 w-full px-3 py-3 rounded-lg text-xs font-bold uppercase tracking-wider text-destructive hover:bg-destructive/10 transition-all">
                             <ArrowRightOnRectangleIcon className="w-4 h-4" />
                             <span>Sign Out</span>
                         </Link>
