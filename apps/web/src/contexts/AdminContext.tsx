@@ -48,7 +48,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
             // Ignore logout errors
         }
         setAdmin(null);
-        router.push('/login');
+        router.push('/admin/login');
     }
 
     async function refresh() {
