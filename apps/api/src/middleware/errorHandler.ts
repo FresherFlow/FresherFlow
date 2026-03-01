@@ -41,8 +41,10 @@ export function errorHandler(
         console.log(chalk.gray(`  at ${location}`));
     }
 
-    // Full details only in dev with DEBUG env
-    if (process.env.DEBUG) {
+    // Always log full stack in dev so nothing is hidden
+    if (process.env.NODE_ENV !== 'production') {
+        console.error(chalk.red('[DEV] Full error:'), err);
+    } else if (process.env.DEBUG) {
         logger.error('Full error details', {
             requestId: req.requestId,
             error: err.message,
@@ -52,21 +54,19 @@ export function errorHandler(
         });
     }
 
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = process.env.NODE_ENV !== 'production';
 
-    /**
-     * SANITIZATION PROTOCOL
-     * 1. Check if it's explicitly an AppError (customer-facing)
-     * 2. Ensure the message doesn't contain technical markers (Prisma, Neon, AWS, invocation, etc.)
-     */
-    const technicalKeywords = /prisma|neon|aws|invocation|→|database|sql|server|connect/i;
+    // In dev: always return the real error so nothing is hidden
+    // In prod: sanitize technical internals
+    const technicalKeywords = /prisma|neon|aws|invocation|→|database|sql|connect/i;
     const isTechnical = technicalKeywords.test(err.message || '');
     const isOperational = (err.isAppError || err.isOperational) && !isTechnical;
 
-    // Use the original message ONLY if it's operational AND not technical
-    const message = isOperational
-        ? err.message
-        : 'A system error occurred. Please check your connection and try again.';
+    const message = isDev
+        ? (err.message || 'Unknown error')
+        : isOperational
+            ? err.message
+            : 'A system error occurred. Please check your connection and try again.';
 
     res.status(statusCode).json({
         error: {
@@ -74,14 +74,8 @@ export function errorHandler(
             code: err.code || err.name || 'UNKNOWN_ERROR',
             statusCode,
             requestId: req.requestId,
-            // In dev, we still send technical info in separate fields for the console
-            // but the 'message' field above is now guaranteed to be clean for toasts.
             ...(isDev && {
-                _dev_info: {
-                    originalError: err.message, // Use the original error message for dev info
-                    isOperational,
-                    type: err.name
-                }
+                stack: err.stack,
             })
         }
     });

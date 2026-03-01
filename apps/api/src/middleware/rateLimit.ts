@@ -8,6 +8,7 @@ const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 let redisClient: Redis | null = null;
 
 function getRedisClient() {
+    if (process.env.NODE_ENV === 'development' || process.env.REDIS_ENABLED === 'false') return null;
     const url = process.env.REDIS_URL;
     if (!url) return null;
     if (!redisClient) {

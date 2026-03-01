@@ -48,6 +48,7 @@ const BOT_UA_REGEX = /(bot|crawler|spider|scraper|curl|wget|python-requests|axio
 let redisClient: Redis | null = null;
 
 function getRedisClient() {
+    if (process.env.NODE_ENV === 'development' || process.env.REDIS_ENABLED === 'false') return null;
     const url = process.env.REDIS_URL;
     if (!url) return null;
     if (!redisClient) {
