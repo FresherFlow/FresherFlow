@@ -35,8 +35,8 @@
     --primary-foreground: 0 0% 100%;
     --secondary: 210 20% 95%;
     --secondary-foreground: 222 47% 11%;
-    --accent: 190 90% 45%; /* Electric teal */
-    --accent-foreground: 222 47% 11%;
+    --accent: 222 47% 11%; /* Same as primary — navy */
+    --accent-foreground: 0 0% 100%;
 
     --background: 210 28% 92%; /* Stronger page/card separation in light mode */
     --foreground: 222 47% 11%;
@@ -44,12 +44,12 @@
     --card: 0 0% 100%;
     --card-foreground: 222 47% 11%;
 
-    --border: 214 16% 68%; /* Crisp borders for card-heavy feeds */
-    --input: 210 26% 91%;
+    --border: 214 20% 76%; /* Stronger borders for visibility in light mode */
+    --input: 214 20% 76%;  /* Match border so input borders are always visible */
     --muted: 210 22% 86%;
-    --muted-foreground: 215 16% 40%;
+    --muted-foreground: 215 16% 32%;
 
-    --ring: 190 90% 45%;
+    --ring: 222 47% 11%; /* Navy focus ring to match primary */
     --icon: 222 47% 11%;
     --radius: 10px;
 
@@ -62,8 +62,8 @@
     --fs-h1: 28px;
     --fs-h2: 22px;
     --fs-h3: 18px;
-    --fs-body: 15px;
-    --fs-small: 12px;
+    --fs-body: 16px;
+    --fs-small: 13px;
     --fs-button: 13px;
     
     /* Spacing System */
@@ -82,35 +82,38 @@
 
   .dark {
     color-scheme: dark;
-    /* Dark Mode - Premium Deep */
-    --background: 222 47% 6%;
-    --foreground: 210 20% 96%;
 
-    --card: 222 47% 9%;
-    --card-foreground: 210 20% 96%;
+    /* Deeper base for real contrast */
+    --background: 222 20% 7%;
+    --foreground: 210 15% 88%;
 
-    --primary: 210 20% 96%;
-    --primary-foreground: 222 47% 11%;
+    /* Card clearly lifts from page */
+    --card: 220 16% 13%;
+    --card-foreground: 210 15% 88%;
 
-    --secondary: 222 30% 14%;
-    --secondary-foreground: 210 20% 96%;
+    --primary: 210 15% 88%;
+    --primary-foreground: 222 20% 7%;
 
-    --accent: 190 90% 55%;
-    --accent-foreground: 222 47% 11%;
+    --secondary: 220 14% 18%;
+    --secondary-foreground: 210 15% 85%;
 
-    --border: 222 24% 18%;
-    --input: 222 24% 16%;
-    --muted: 222 24% 14%;
-    --muted-foreground: 215 20% 65%;
+    /* Brand accent */
+    --accent: 222 65% 58%;
+    --accent-foreground: 220 16% 9%;
 
-    --ring: 190 90% 55%;
-    --icon: 210 20% 96%;
+    /* Nearly invisible borders — depth from color, not lines */
+    --border: 220 14% 18%;
+    --input: 220 14% 17%;
+    --muted: 220 14% 15%;
+    --muted-foreground: 215 12% 62%;
 
-    --success: 150 70% 50%;
-    --warning: 45 90% 60%;
-    --error: 0 85% 65%;
+    --ring: 222 65% 58%;
+    --icon: 210 15% 80%;
 
-    /* Dark Mode Logo override */
+    --success: 150 50% 45%;
+    --warning: 40 80% 60%;
+    --error: 0 70% 65%;
+
     --logo-image: url('/logo-white-optimized.png?v=3');
   }
 
@@ -126,7 +129,7 @@
   /* Desktop Typography Scale */
   @media (min-width: 1024px) {
     :root {
-      --fs-h1: 36px;
+      --fs-h1: 38px;
       --fs-h2: 28px;
       --fs-h3: 22px;
       --fs-body: 16px;
@@ -465,6 +468,29 @@
     box-shadow: 0 14px 28px -22px hsl(220 15% 20% / 0.22);
   }
 
+  /* Dark mode: borderless flat cards — depth from bg contrast */
+  .dark .premium-card,
+  .dark .card {
+    background: hsl(var(--card));
+    box-shadow: none;
+    border: none;
+  }
+
+  /* Dark primary buttons use accent, not white */
+  .dark .premium-button,
+  .dark .btn-primary {
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+    border-color: transparent;
+    box-shadow: none;
+  }
+
+  /* Dark badges use muted surface, not bright gray */
+  .dark .badge {
+    background-color: hsl(var(--secondary));
+    color: hsl(var(--foreground));
+  }
+
   /* Badges - For Job Types, Status, etc */
   .badge {
     display: inline-flex;
@@ -477,8 +503,8 @@
   }
   
   .badge-primary {
-    background-color: hsl(var(--accent) / 0.16);
-    color: hsl(var(--primary));
+    background-color: hsl(var(--accent) / 0.12);
+    color: hsl(var(--accent));
   }
   
   .badge-success {
@@ -489,6 +515,15 @@
   .badge-warning {
     background-color: hsl(var(--warning) / 0.1);
     color: hsl(var(--warning));
+  }
+
+  /* Text hierarchy utilities */
+  .text-body {
+    color: hsl(var(--foreground));
+  }
+
+  .text-secondary {
+    color: hsl(var(--muted-foreground));
   }
 }
 

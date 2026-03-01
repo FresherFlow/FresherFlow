@@ -48,7 +48,7 @@ export function Footer({ className }: FooterProps) {
                 <p className="text-xs text-muted-foreground">
                     &copy; {currentYear} FresherFlow. All rights reserved.
                 </p>
-                <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                <div className="flex items-center gap-3 text-xs font-semibold uppercase tracking-widest text-muted-foreground">
                     <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
                     <span className="text-muted-foreground/40">|</span>
                     <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
@@ -69,7 +69,7 @@ export function Footer({ className }: FooterProps) {
                         </a>
                     ))}
                 </div>
-                <div className="text-[10px] text-muted-foreground/60 max-w-md space-y-1">
+                <div className="text-xs text-muted-foreground/60 max-w-md space-y-1">
                     <p>
                         Company names and logos are trademarks of their respective owners.
                         FresherFlow is not affiliated with or endorsed by these companies.

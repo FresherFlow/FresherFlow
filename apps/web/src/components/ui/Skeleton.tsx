@@ -62,7 +62,7 @@ export function SkeletonJobCard() {
 export function FeedPageSkeleton() {
     return (
         <div className="w-full max-w-7xl mx-auto px-4 md:px-6 pb-12 md:pb-20 space-y-6 md:space-y-8">
-            <div className="space-y-3 border-b border-border/60 pb-4">
+            <div className="space-y-3 pb-4">
                 <Skeleton className="h-8 w-64" />
                 <Skeleton className="h-4 w-40" />
                 <div className="flex flex-wrap gap-2 pt-1">
@@ -169,7 +169,7 @@ export function AdminOverviewSkeleton() {
 export function AdminAnalyticsSkeleton() {
     return (
         <div className="max-w-7xl mx-auto space-y-6 md:space-y-8 pb-12 md:pb-20 px-2 md:px-4 pt-4 md:pt-0 animate-pulse">
-            <div className="space-y-2 py-4 border-b border-border/50">
+            <div className="space-y-2 py-4">
                 <Skeleton className="h-8 w-36" />
                 <Skeleton className="h-4 w-52" />
             </div>

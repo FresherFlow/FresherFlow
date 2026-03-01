@@ -40,7 +40,7 @@ export default function LandingPage() {
 
                 <main className="flex-1 flex flex-col">
                     {/* Hero */}
-                    <section className="relative pt-12 pb-16 md:pt-20 md:pb-20 px-6 border-b border-border overflow-hidden">
+                    <section className="relative pt-12 pb-16 md:pt-20 md:pb-20 px-6 overflow-hidden">
                         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-10 items-center relative z-10">
                             <div className="space-y-6">
                                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card/70 backdrop-blur">
@@ -113,7 +113,7 @@ export default function LandingPage() {
                     </section>
 
                     {/* Trust ledger */}
-                    <section className="py-14 md:py-20 px-6 border-b border-border/60">
+                    <section className="py-14 md:py-20 px-6">
                         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[0.45fr_1fr] gap-8 items-start">
                             <div className="space-y-3">
                                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trust ledger</p>
@@ -139,7 +139,7 @@ export default function LandingPage() {
                     </section>
 
                     {/* Audience split */}
-                    <section className="py-14 md:py-20 px-6 border-b border-border/60">
+                    <section className="py-14 md:py-20 px-6">
                         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="rounded-3xl border border-border bg-card/80 p-6 md:p-8 space-y-4">
                                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">For candidates</p>
@@ -173,7 +173,7 @@ export default function LandingPage() {
                     </section>
 
                     {/* Verification steps */}
-                    <section id="verification" className="py-14 md:py-20 px-6 border-b border-border/60">
+                    <section id="verification" className="py-14 md:py-20 px-6">
                         <div className="max-w-6xl mx-auto space-y-8">
                             <div className="text-center space-y-3 max-w-2xl mx-auto">
                                 <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Verification pipeline</h2>
@@ -197,8 +197,8 @@ export default function LandingPage() {
                         </div>
                     </section>
 
-                    {/* Collections */}
-                    <section className="py-14 md:py-20 px-6 border-b border-border/60">
+                    {/* Collections — desktop only, redundant with nav tabs on mobile */}
+                    <section className="hidden md:block py-14 md:py-20 px-6">
                         <div className="max-w-6xl mx-auto space-y-8">
                             <div className="text-center space-y-3 max-w-2xl mx-auto">
                                 <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Browse by collection</h2>

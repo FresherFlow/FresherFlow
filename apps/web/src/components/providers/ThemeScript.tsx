@@ -1,22 +1,17 @@
-'use client';
-
 /**
  * ThemeScript Component
- * 
- * This component injects a small script into the head of the document to prevent
- * the "white flash" on page reloads when using dark mode.
- * 
- * It runs BEFORE React hydrates, checking localStorage and system preferences
- * to apply the 'dark' class to the <html> element immediately.
+ *
+ * Must be a SERVER component — runs before React hydration to set the
+ * 'dark' class on <html> synchronously, preventing flash and ensuring
+ * dark:hidden / hidden:dark:block logo swap works on first paint.
  */
 export function ThemeScript() {
     const scriptContent = `
         (function() {
             try {
                 const savedTheme = localStorage.getItem('theme');
-                // Default to light unless user explicitly chose dark.
                 const theme = savedTheme === 'dark' ? 'dark' : 'light';
-                const themeColor = theme === 'dark' ? '#080c16' : '#eff2f6';
+                const themeColor = theme === 'dark' ? '#0d0f14' : '#e2eaf2';
                 
                 if (theme === 'dark') {
                     document.documentElement.classList.add('dark');
@@ -25,9 +20,7 @@ export function ThemeScript() {
                 }
                 var themeMeta = document.querySelector('meta[name="theme-color"]');
                 if (themeMeta) themeMeta.setAttribute('content', themeColor);
-            } catch (e) {
-                console.error('Theme synchronization failed:', e);
-            }
+            } catch (e) {}
         })();
     `;
 
