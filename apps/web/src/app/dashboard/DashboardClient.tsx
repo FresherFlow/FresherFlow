@@ -127,10 +127,10 @@ export default function DashboardClient() {
     useEffect(() => {
         if (!authLoading && user && profile?.completionPercentage === 100 && !hasLoaded) {
             setHasLoaded(true);
-            loadRecentOpportunities().then(() => {
-                // Stagger highlights load AFTER feed — reduces blocking JS on mount
-                loadHighlights();
-            });
+            void Promise.allSettled([
+                loadRecentOpportunities(),
+                loadHighlights(),
+            ]);
         }
     }, [authLoading, user, profile, hasLoaded, loadRecentOpportunities, loadHighlights]);
 
