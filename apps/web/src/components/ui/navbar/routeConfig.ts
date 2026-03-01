@@ -2,6 +2,7 @@ import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
+import type { SVGProps } from 'react';
 
 export type NavRoute = {
     href: string;
@@ -9,8 +10,7 @@ export type NavRoute = {
     mobileTitle?: string;
     showInDesktop?: boolean;
     showInMobileTabs?: boolean;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    icon?: React.ComponentType<any>;
+    icon?: React.ComponentType<SVGProps<SVGSVGElement>>;
     mobileLabel?: string;
 };
 
