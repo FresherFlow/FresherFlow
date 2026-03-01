@@ -4,6 +4,7 @@ import logger from '../utils/logger';
 const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const EMAIL_FROM = process.env.EMAIL_FROM || 'FresherFlow <no-reply@fresherflow.in>';
 const ALERTS_EMAIL_FROM = process.env.ALERTS_EMAIL_FROM || EMAIL_FROM;
+const ALERT_EMAILS_ENABLED = process.env.ALERT_EMAILS_ENABLED !== 'false';
 
 /**
  * Minimal Email Service
@@ -111,6 +112,10 @@ Expires in: 15 minutes
         fullName: string | null | undefined,
         opportunities: Array<{ title: string; company: string; location?: string | null; applyUrl: string }>
     ): Promise<void> {
+        if (!ALERT_EMAILS_ENABLED) {
+            logger.info(`Alert emails disabled: digest skipped for ${email}`);
+            return;
+        }
         if (opportunities.length === 0) return;
 
         const greeting = fullName ? `Hi ${fullName},` : 'Hi,';
@@ -148,6 +153,10 @@ Expires in: 15 minutes
         fullName: string | null | undefined,
         payload: { title: string; company: string; expiresText: string; applyUrl: string }
     ): Promise<void> {
+        if (!ALERT_EMAILS_ENABLED) {
+            logger.info(`Alert emails disabled: closing-soon skipped for ${email}`, { title: payload.title });
+            return;
+        }
         const greeting = fullName ? `Hi ${fullName},` : 'Hi,';
 
         if (!resend) {
@@ -185,6 +194,10 @@ Expires in: 15 minutes
         fullName: string | null,
         data: { title: string; company: string; location: string | null; applyUrl: string }
     ): Promise<void> {
+        if (!ALERT_EMAILS_ENABLED) {
+            logger.info(`Alert emails disabled: new-job skipped for ${email}`, { title: data.title });
+            return;
+        }
         const greeting = fullName ? `Hello ${fullName.split(' ')[0]}` : 'Hello';
 
         if (!resend) {
