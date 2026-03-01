@@ -20,6 +20,7 @@ const ADMIN_ROOT_PREFIXES = [
     '/opportunities',
     '/jobs',
     '/walkins',
+    '/ingestion',
     '/analytics',
     '/feedback',
     '/alerts',
