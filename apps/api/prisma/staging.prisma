@@ -1,0 +1,120 @@
+// Staging schema for ingestion pipeline
+// Lives in Supabase (free tier) — keeps Neon compute usage low.
+// Only contains tables used during the raw ingestion cycle.
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../node_modules/@prisma/staging-client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("STAGING_DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS — must mirror the main schema exactly
+// ============================================================================
+
+enum IngestionSourceType {
+  JSON_FEED
+  WORKDAY
+  GREENHOUSE
+  LEVER
+  CUSTOM
+}
+
+enum IngestionRunStatus {
+  RUNNING
+  SUCCESS
+  PARTIAL
+  FAILED
+}
+
+enum RawOpportunityStatus {
+  FETCHED
+  DRAFT_CREATED
+  DEDUPED
+  REJECTED
+  ERROR
+}
+
+// OpportunityType needed for defaultType / suggestedType columns
+enum OpportunityType {
+  JOB
+  INTERNSHIP
+  WALKIN
+}
+
+// ============================================================================
+// MODELS
+// ============================================================================
+
+model IngestionSource {
+  id                  String              @id @default(uuid())
+  name                String
+  sourceType          IngestionSourceType
+  endpoint            String
+  enabled             Boolean             @default(true)
+  runFrequencyMinutes Int                 @default(60)
+  defaultType         OpportunityType     @default(JOB)
+  health              String              @default("unknown")  // healthy | degraded | failing | unknown
+  createdByUserId     String?             // stored for reference only (no FK to Neon)
+  lastRunAt           DateTime?
+  lastSuccessAt       DateTime?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+
+  runs     IngestionRun[]
+  rawItems RawOpportunity[]
+
+  @@index([enabled, sourceType])
+  @@index([lastRunAt])
+}
+
+model IngestionRun {
+  id                String             @id @default(uuid())
+  sourceId          String
+  status            IngestionRunStatus @default(RUNNING)
+  startedAt         DateTime           @default(now())
+  endedAt           DateTime?
+  fetchedCount      Int                @default(0)
+  draftCreatedCount Int                @default(0)
+  dedupedCount      Int                @default(0)
+  rejectedCount     Int                @default(0)
+  errorCount        Int                @default(0)
+  errorSummary      String?
+
+  source   IngestionSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  rawItems RawOpportunity[]
+
+  @@index([sourceId, startedAt])
+  @@index([status, startedAt])
+}
+
+model RawOpportunity {
+  id                  String               @id @default(uuid())
+  sourceId            String
+  ingestionRunId      String?
+  sourceExternalId    String?
+  status              RawOpportunityStatus @default(FETCHED)
+  rawPayload          Json
+  title               String?
+  company             String?
+  applyLink           String?
+  suggestedType       OpportunityType?
+  fresherScore        Int?
+  reasonFlags         String[]             @default([])
+  mappedOpportunityId String?              // references Neon Opportunity.id (no FK)
+  errorMessage        String?
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  source       IngestionSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+  ingestionRun IngestionRun?   @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
+
+  @@index([sourceId, createdAt])
+  @@index([status, createdAt])
+  @@index([applyLink])
+  @@unique([sourceId, sourceExternalId])
+}
