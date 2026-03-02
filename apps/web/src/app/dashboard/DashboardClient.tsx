@@ -41,7 +41,8 @@ function writeDashCache(opportunities: Opportunity[]) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const HOURS_24_IN_MS = 24 * 60 * 60 * 1000;
-const MOBILE_DASHBOARD_LIMIT = 8;
+const MOBILE_DASHBOARD_LIMIT = 10;
+const MOBILE_DASHBOARD_STEP = 10;
 const DESKTOP_DASHBOARD_LIMIT = 24;
 
 type TabKey = 'featured' | 'latest' | 'expiring' | 'all' | 'applied' | 'archived';
@@ -88,6 +89,11 @@ export default function DashboardClient() {
     const [dashboardVisitCounter, setDashboardVisitCounter] = useState(0);
     const [activeTab, setActiveTab] = useState<TabKey>('featured');
     const [showBackToTop, setShowBackToTop] = useState(false);
+    const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_DASHBOARD_LIMIT);
+
+    useEffect(() => {
+        setMobileVisibleCount(MOBILE_DASHBOARD_LIMIT);
+    }, [activeTab]);
 
     const loadRecentOpportunities = useCallback(async () => {
         setRecentError(null);
@@ -281,7 +287,7 @@ export default function DashboardClient() {
         const currentItems = tabMap[activeTab] || featured;
 
         return {
-            activeItems: { mobile: limit(currentItems, true), desktop: limit(currentItems, false) },
+            activeItems: { mobile: currentItems, desktop: limit(currentItems, false) },
             closingSoon: closing,
             totalActive: active.length || 1,
             jobsCount: active.filter(o => o.type === 'JOB').length,
@@ -389,7 +395,7 @@ export default function DashboardClient() {
                                     <div className="p-10 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground">No listings here yet.</div>
                                 ) : (
                                     <div className="space-y-4">
-                                        {activeItems.mobile.map((opp: Opportunity, idx: number) => (
+                                        {activeItems.mobile.slice(0, mobileVisibleCount).map((opp: Opportunity, idx: number) => (
                                             <JobCard
                                                 key={`mob-${opp.id}`}
                                                 job={opp}
@@ -401,6 +407,15 @@ export default function DashboardClient() {
                                                 priority={idx < 2}
                                             />
                                         ))}
+                                        {activeItems.mobile.length > mobileVisibleCount && (
+                                            <Button
+                                                variant="outline"
+                                                onClick={() => setMobileVisibleCount((prev) => prev + MOBILE_DASHBOARD_STEP)}
+                                                className="w-full h-10 text-[10px] font-bold uppercase tracking-widest"
+                                            >
+                                                Load more
+                                            </Button>
+                                        )}
                                     </div>
                                 )}
                             </div>

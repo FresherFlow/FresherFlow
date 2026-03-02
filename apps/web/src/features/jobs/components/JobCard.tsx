@@ -226,7 +226,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                                             Not Eligible
                                         </span>
                                     ) : job.matchScore === 0 && job.matchReason === 'Eligible' ? (
-                                        <span className="text-emerald-800/90 dark:text-emerald-300 font-medium">
+                                        <span className="text-foreground/85 font-medium">
                                             Eligible
                                         </span>
                                     ) : job.matchScore === 0 && job.matchReason?.includes('Complete profile') ? (
