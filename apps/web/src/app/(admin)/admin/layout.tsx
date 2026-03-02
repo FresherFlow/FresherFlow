@@ -177,33 +177,38 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
             {/* Main Content Area */}
             <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-background md:bg-muted/10">
-                {/* Mobile Header - Fixed at Top with Hide/Show logic */}
+                {/* Mobile Header */}
                 <header
-                    className="md:hidden bg-card border-b border-border p-4 flex items-center justify-between fixed top-0 left-0 right-0 z-20 h-16 transition-all duration-300 translate-y-0 opacity-100"
+                    className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-end justify-center pb-1.5 pt-[env(safe-area-inset-top)] pointer-events-none"
+                    style={{ height: `calc(3.75rem + env(safe-area-inset-top))` }}
                 >
-                    <Link href="/dashboard" className="flex items-center gap-2">
-                        <div
-                            className="w-8 h-8 bg-contain bg-center bg-no-repeat"
-                            style={{ backgroundImage: 'var(--logo-image)' }}
-                            aria-label="FresherFlow"
-                        />
-                        <span className="text-lg font-bold tracking-tight text-foreground">FresherFlow</span>
-                    </Link>
-                    <div className="flex items-center gap-2">
-                        <ThemeToggle />
-                        <button
-                            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                            className="p-2 text-muted-foreground hover:text-foreground transition-colors"
-                            aria-label="Toggle menu"
-                        >
-                            {mobileMenuOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
-                        </button>
+                    <div className={`pointer-events-auto mx-2 w-[calc(100%-16px)] h-12 rounded-2xl px-2.5 flex items-center justify-between gap-2 transition-all duration-300 ${mobileMenuOpen ? 'border border-[hsl(var(--border))] bg-[hsl(var(--card)/0.97)] shadow-sm' : 'border border-transparent bg-transparent shadow-none'}`}>
+                        <Link href="/dashboard" className="flex items-center gap-2 min-w-0 pl-0.5">
+                            <div
+                                className="w-6 h-6 bg-contain bg-center bg-no-repeat"
+                                style={{ backgroundImage: 'var(--logo-image)' }}
+                                aria-label="FresherFlow"
+                            />
+                            <span className="text-[16px] font-semibold tracking-[0.01em] text-foreground/95 truncate leading-none">
+                                Admin
+                            </span>
+                        </Link>
+                        <div className="flex items-center gap-1.5 shrink-0 pr-0.5">
+                            <ThemeToggle />
+                            <button
+                                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                                className="p-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"
+                                aria-label="Toggle menu"
+                            >
+                                {mobileMenuOpen ? <XMarkIcon className="w-5 h-5" /> : <Bars3Icon className="w-5 h-5" />}
+                            </button>
+                        </div>
                     </div>
                 </header>
 
                 {/* Mobile Hamburger Menu Dropdown */}
                 {mobileMenuOpen && (
-                    <div className="md:hidden fixed inset-0 top-16 z-[100] bg-background/95 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="md:hidden fixed inset-0 z-[100] bg-background/95 backdrop-blur-sm animate-in fade-in duration-200" style={{ top: `calc(3.75rem + env(safe-area-inset-top))` }}>
                         <div className="bg-card border-b border-border shadow-2xl overflow-y-auto max-h-[calc(100vh-4rem)]">
                             <nav className="p-4 space-y-1">
                                 {navItems.map((item) => {
@@ -248,7 +253,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 )}
 
                 <main
-                    className="flex-1 overflow-y-auto pt-16 p-4 md:p-8 md:pt-8 w-full pb-20 md:pb-8"
+                    className="flex-1 overflow-y-auto p-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:p-8 md:pt-8 w-full pb-20 md:pb-8"
                 >
                     <div className="max-w-7xl mx-auto w-full">
                         {children}
