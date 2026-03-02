@@ -9,6 +9,7 @@ import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
+import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 
 const LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Remote'];
 
@@ -23,6 +24,7 @@ const SALARY_OPTIONS: { label: string; value: number | null }[] = [
 export interface FilterBarFilters {
     location: string | null;
     salary: number | null;
+    year: number | null;
     closingSoon: boolean;
     saved: boolean;
 }
@@ -36,7 +38,15 @@ interface FilterDropdownBarProps {
     onTypeChange?: (type: string | null) => void;
 }
 
-type OpenPanel = 'location' | 'salary' | 'type' | null;
+type OpenPanel = 'location' | 'salary' | 'year' | 'type' | null;
+
+const CURRENT_YEAR = new Date().getFullYear();
+const START_YEAR = 2020;
+const END_YEAR = CURRENT_YEAR + 2;
+const PASSOUT_YEAR_OPTIONS = Array.from(
+    { length: Math.max(0, END_YEAR - START_YEAR + 1) },
+    (_, idx) => START_YEAR + idx
+);
 
 function useClickOutside(ref: React.RefObject<HTMLElement | null>, handler: () => void) {
     useEffect(() => {
@@ -73,7 +83,7 @@ export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedTyp
     const toggle = (panel: OpenPanel) =>
         setOpen(prev => (prev === panel ? null : panel));
 
-    const hasAnyFilter = !!(filters.location || filters.salary || filters.closingSoon || filters.saved);
+    const hasAnyFilter = !!(filters.location || filters.salary || filters.year || filters.closingSoon || filters.saved);
 
     const salaryLabel = SALARY_OPTIONS.find(o => o.value === filters.salary)?.label ?? 'Any';
 
@@ -201,6 +211,56 @@ export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedTyp
                 )}
             </div>
 
+            {/* Passout year dropdown */}
+            <div className="relative">
+                <button
+                    onClick={() => toggle('year')}
+                    aria-expanded={open === 'year'}
+                    aria-haspopup="listbox"
+                    className={cn(chipBase, filters.year !== null ? chipActive : chipDefault)}
+                >
+                    <AcademicCapIcon className="w-3.5 h-3.5" />
+                    {filters.year ?? 'Year'}
+                    <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'year' && 'rotate-180')} />
+                </button>
+
+                {open === 'year' && (
+                    <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-36 z-50">
+                        <button
+                            onClick={() => {
+                                setFilters({ ...filters, year: null });
+                                setOpen(null);
+                            }}
+                            className={cn(
+                                'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                filters.year === null
+                                    ? 'bg-primary/10 text-primary'
+                                    : 'text-foreground hover:bg-muted/60'
+                            )}
+                        >
+                            Any
+                        </button>
+                        {PASSOUT_YEAR_OPTIONS.map((year) => (
+                            <button
+                                key={year}
+                                onClick={() => {
+                                    setFilters({ ...filters, year });
+                                    setOpen(null);
+                                }}
+                                className={cn(
+                                    'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                    filters.year === year
+                                        ? 'bg-primary/10 text-primary'
+                                        : 'text-foreground hover:bg-muted/60'
+                                )}
+                            >
+                                {year}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
             {/* Closing Soon toggle */}
             <button
                 onClick={() => setFilters({ ...filters, closingSoon: !filters.closingSoon })}
@@ -227,7 +287,7 @@ export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedTyp
             {/* Clear all */}
             {hasAnyFilter && (
                 <button
-                    onClick={() => setFilters({ location: null, salary: null, closingSoon: false, saved: false })}
+                    onClick={() => setFilters({ location: null, salary: null, year: null, closingSoon: false, saved: false })}
                     className={cn(chipBase, 'text-destructive border-destructive/30 bg-destructive/5 hover:bg-destructive/10')}
                 >
                     <XMarkIcon className="w-3.5 h-3.5" />

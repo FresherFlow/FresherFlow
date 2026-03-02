@@ -49,6 +49,7 @@ function OpportunitiesContent() {
     const [filters, setFilters] = useState<FilterBarFilters>({
         location: null,
         salary: null,
+        year: null,
         closingSoon: false,
         saved: false,
     });
@@ -64,7 +65,8 @@ function OpportunitiesContent() {
         (filters.location ? 1 : 0) +
         (filters.closingSoon ? 1 : 0) +
         (filters.saved ? 1 : 0) +
-        (filters.salary ? 1 : 0);
+        (filters.salary ? 1 : 0) +
+        (filters.year ? 1 : 0);
 
     const [isOnline, setIsOnline] = useState<boolean>(() =>
         typeof window !== 'undefined' ? window.navigator.onLine : true
@@ -89,6 +91,7 @@ function OpportunitiesContent() {
         closingSoon: filters.closingSoon,
         search,
         minSalary: filters.salary,
+        selectedYear: filters.year,
         maxSalary: null
     });
 
@@ -126,6 +129,7 @@ function OpportunitiesContent() {
         setFilters({
             location: draftLoc,
             salary: draftMinSalary,
+            year: filters.year,
             closingSoon: draftClosingSoon,
             saved: draftShowOnlySaved,
         });
@@ -262,7 +266,7 @@ function OpportunitiesContent() {
                             onClearFilters={() => {
                                 setSearch('');
                                 updateType(null);
-                                setFilters({ location: null, salary: null, closingSoon: false, saved: false });
+                                setFilters({ location: null, salary: null, year: null, closingSoon: false, saved: false });
                             }}
                         />
                     )}

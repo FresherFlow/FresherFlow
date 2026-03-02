@@ -54,6 +54,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
     const [filters, setFilters] = useState<FilterBarFilters>({
         location: null,
         salary: null,
+        year: null,
         closingSoon: false,
         saved: false,
     });
@@ -69,7 +70,8 @@ function CategoryPageContent({ type }: CategoryPageProps) {
         (filters.location ? 1 : 0) +
         (filters.closingSoon ? 1 : 0) +
         (filters.saved ? 1 : 0) +
-        (filters.salary ? 1 : 0);
+        (filters.salary ? 1 : 0) +
+        (filters.year ? 1 : 0);
 
     const {
         filteredOpps,
@@ -85,6 +87,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
         showOnlySaved: filters.saved,
         closingSoon: filters.closingSoon,
         minSalary: filters.salary,
+        selectedYear: filters.year,
         search,
     });
 
@@ -100,13 +103,19 @@ function CategoryPageContent({ type }: CategoryPageProps) {
     };
 
     const applyMobileFilters = () => {
-        setFilters({ location: draftLoc, salary: draftMinSalary, closingSoon: draftClosingSoon, saved: draftShowOnlySaved });
+        setFilters({
+            location: draftLoc,
+            salary: draftMinSalary,
+            year: filters.year,
+            closingSoon: draftClosingSoon,
+            saved: draftShowOnlySaved,
+        });
         setIsMobileFilterOpen(false);
     };
 
     const clearAll = () => {
         setSearch('');
-        setFilters({ location: null, salary: null, closingSoon: false, saved: false });
+        setFilters({ location: null, salary: null, year: null, closingSoon: false, saved: false });
     };
 
     return (

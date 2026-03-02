@@ -11,6 +11,7 @@ import { enqueueOfflineSaveToggle } from '@/lib/offline/actionQueue';
 interface UseOpportunitiesFeedOptions {
     type?: string | null;
     selectedLoc?: string | null;
+    selectedYear?: number | null;
     showOnlySaved: boolean;
     closingSoon: boolean;
     search: string;
@@ -25,6 +26,7 @@ type OpportunityAction = {
 export function useOpportunitiesFeed({
     type,
     selectedLoc,
+    selectedYear,
     showOnlySaved,
     closingSoon,
     search,
@@ -195,7 +197,9 @@ export function useOpportunitiesFeed({
             const matchesSalary = (!minSalary || (opp.salaryMax && opp.salaryMax >= minSalary) || (opp.salaryMin && opp.salaryMin >= minSalary)) &&
                 (!maxSalary || (opp.salaryMin && opp.salaryMin <= maxSalary));
 
-            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSalary;
+            const matchesYear = !selectedYear || (opp.allowedPassoutYears || []).includes(selectedYear);
+
+            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSalary && matchesYear;
         });
 
         const enriched = filtered.map((opp) => {
@@ -230,7 +234,7 @@ export function useOpportunitiesFeed({
 
             return a.id.localeCompare(b.id);
         });
-    }, [opportunities, debouncedSearch, selectedLoc, closingSoon, minSalary, maxSalary, profile]);
+    }, [opportunities, debouncedSearch, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
