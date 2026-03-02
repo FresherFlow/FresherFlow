@@ -10,7 +10,7 @@ const formatLabel = (value: string) =>
 
 export function generateMetadata({ params }: { params: { role: string } }): Metadata {
     const roleLabel = formatLabel(params.role);
-    const title = `${roleLabel} Jobs for Freshers | FresherFlow`;
+    const title = `${roleLabel} Jobs for Freshers`;
     const description = `Verified ${roleLabel} jobs for freshers and entry-level candidates. Every listing is checked and includes direct apply links.`;
 
     return {

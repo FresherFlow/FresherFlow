@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Privacy Policy | FresherFlow',
+    title: 'Privacy Policy',
     description: 'How FresherFlow collects and uses data.',
 };
 

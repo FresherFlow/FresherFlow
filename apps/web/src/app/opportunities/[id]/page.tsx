@@ -148,7 +148,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         };
     } catch {
         return {
-            title: 'Opportunity Not Found | FresherFlow',
+            title: 'Opportunity Not Found',
             description: 'This opportunity listing is no longer available.',
         };
     }

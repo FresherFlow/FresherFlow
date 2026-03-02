@@ -10,7 +10,7 @@ const formatLabel = (value: string) =>
 
 export function generateMetadata({ params }: { params: { city: string } }): Metadata {
     const cityLabel = formatLabel(params.city);
-    const title = `Walk-ins in ${cityLabel} | FresherFlow`;
+    const title = `Walk-ins in ${cityLabel}`;
     const description = `Verified walk-in drives and fresher opportunities in ${cityLabel}. Direct apply and venue details included.`;
 
     return {

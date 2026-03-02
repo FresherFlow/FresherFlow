@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Terms of Service | FresherFlow',
+    title: 'Terms of Service',
     description: 'Terms for using FresherFlow.',
 };
 

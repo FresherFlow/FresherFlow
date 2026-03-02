@@ -5,7 +5,7 @@ import { OpportunityType } from '@fresherflow/types';
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-    title: 'Jobs for Freshers | FresherFlow',
+    title: 'Jobs for Freshers',
     description: 'Discover full-time job opportunities for freshers across India. Apply to verified openings at top companies with detailed eligibility criteria and direct application links.',
     keywords: 'fresher jobs, full-time jobs, entry level jobs, graduate jobs, jobs for freshers india, off campus jobs',
     openGraph: {

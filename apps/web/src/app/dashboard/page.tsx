@@ -1,7 +1,7 @@
 ﻿import DashboardClient from './DashboardClient';
 
 export const metadata = {
-    title: 'Dashboard | FresherFlow',
+    title: 'Dashboard',
     description: 'Your personalized dashboard for freshers — latest jobs, walk-ins, and internships curated for your profile.',
 };
 

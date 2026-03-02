@@ -5,7 +5,7 @@ import { OpportunityType } from '@fresherflow/types';
 export const revalidate = 300;
 
 export const metadata: Metadata = {
-    title: 'Internships for Students | FresherFlow',
+    title: 'Internships for Students',
     description: 'Find internship opportunities for students and recent graduates. Explore verified internship openings with stipends, skill development programs, and career kickstart opportunities.',
     keywords: 'internships for students, paid internships, summer internships, fresher internships, internship opportunities india, student internships',
     openGraph: {
