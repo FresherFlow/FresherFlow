@@ -517,8 +517,6 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
     const displaySalary = isCampusDrive
         ? normalizeSalaryInput(driveMeta.maxCtcLabel)
         : getOpportunityDisplaySalary(opp);
-    const schemaSalaryMin = opp.salaryMin ?? opp.salary?.min ?? null;
-    const schemaSalaryMax = opp.salaryMax ?? opp.salary?.max ?? null;
     const driveDateItems = [
         { label: 'Reg starts', date: driveDates.regStart },
         { label: 'Last date', date: driveDates.regEnd },
@@ -526,48 +524,8 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
     ].filter((item) => item.date);
     const formatLpaValue = (value: string) => (/\bLPA\b/i.test(value) ? value : `${value} LPA`);
 
-    const jobPostingJsonLd = {
-        '@context': 'https://schema.org',
-        '@type': 'JobPosting',
-        'title': opp.title,
-        'description': opp.description,
-        'datePosted': opp.postedAt,
-        'validThrough': opp.expiresAt,
-        'employmentType': opp.employmentType || (opp.type === 'INTERNSHIP' ? 'INTERN' : 'FULL_TIME'),
-        'hiringOrganization': {
-            '@type': 'Organization',
-            'name': opp.company,
-            'sameAs': opp.companyWebsite
-        },
-        'jobLocation': (opp.locations?.length ? opp.locations : [locationInfo.fullLabel])
-            .map((loc) => parseOpportunityLocation([loc]))
-            .map((parsed) => ({
-                '@type': 'Place',
-                'address': {
-                    '@type': 'PostalAddress',
-                    'addressLocality': parsed.city || parsed.shortLabel,
-                    ...(parsed.state ? { addressRegion: parsed.state } : {}),
-                    'addressCountry': 'IN',
-                },
-            })),
-        'baseSalary': schemaSalaryMin != null || schemaSalaryMax != null ? {
-            '@type': 'MonetaryAmount',
-            'currency': 'INR',
-            'value': {
-                '@type': 'QuantitativeValue',
-                ...(schemaSalaryMin != null ? { minValue: schemaSalaryMin } : {}),
-                ...(schemaSalaryMax != null ? { maxValue: schemaSalaryMax } : {}),
-                'unitText': opp.salaryPeriod || 'YEAR'
-            }
-        } : undefined
-    };
-
     return (
         <div className="min-h-screen bg-background pb-16 selection:bg-primary/20">
-            <script
-                type="application/ld+json"
-                dangerouslySetInnerHTML={{ __html: JSON.stringify(jobPostingJsonLd) }}
-            />
             <main className="relative z-10 max-w-6xl mx-auto px-4 pt-2 pb-4 md:py-7 space-y-3 md:space-y-5">
 
                 {/* Quick actions - Only for logged-in users */}

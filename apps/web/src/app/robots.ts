@@ -19,6 +19,7 @@ export default function robots(): MetadataRoute.Robots {
                 disallow: [
                     '/api/',
                     '/admin/',
+                    '/admin-manifest.json',
                     '/dashboard/',
                     '/account/',
                     '/profile/',

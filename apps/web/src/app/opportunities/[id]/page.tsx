@@ -155,6 +155,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const generateJsonLd = (opportunity: Opportunity) => {
+    const postedDate = opportunity.postedAt ? new Date(opportunity.postedAt) : null;
+    const fallbackValidThrough = postedDate && !Number.isNaN(postedDate.getTime())
+        ? new Date(postedDate.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()
+        : undefined;
     let logoUrl = 'https://fresherflow.in/fresherflow-logo-v2.png';
     try {
         const sourceUrl = opportunity.companyWebsite || opportunity.applyLink;
@@ -183,7 +187,7 @@ const generateJsonLd = (opportunity: Opportunity) => {
             value: opportunity.id
         },
         datePosted: opportunity.postedAt,
-        validThrough: opportunity.expiresAt,
+        validThrough: opportunity.expiresAt || fallbackValidThrough,
         hiringOrganization: {
             '@type': 'Organization',
             name: opportunity.company,
@@ -200,8 +204,17 @@ const generateJsonLd = (opportunity: Opportunity) => {
         },
         employmentType: opportunity.type === 'INTERNSHIP' ? 'INTERN' : 'FULL_TIME',
         directApply: true,
-        jobLocationType: 'ON_SITE',
     };
+
+    const locationLabel = parsedLocation.fullLabel.toLowerCase();
+    const isRemoteRole =
+        opportunity.workMode === 'REMOTE' ||
+        locationLabel.includes('remote') ||
+        locationLabel.includes('pan india');
+
+    if (isRemoteRole) {
+        schema.jobLocationType = 'TELECOMMUTE';
+    }
 
     const schemaSalaryMin = opportunity.salaryMin ?? opportunity.salary?.min ?? null;
     const schemaSalaryMax = opportunity.salaryMax ?? opportunity.salary?.max ?? null;
