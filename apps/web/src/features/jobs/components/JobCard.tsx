@@ -225,6 +225,10 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                                         <span className="text-destructive/90 font-medium">
                                             Not Eligible
                                         </span>
+                                    ) : job.matchScore === 0 && job.matchReason === 'Eligible' ? (
+                                        <span className="text-emerald-800/90 dark:text-emerald-300 font-medium">
+                                            Eligible
+                                        </span>
                                     ) : job.matchScore === 0 && job.matchReason?.includes('Complete profile') ? (
                                         <span className="text-muted-foreground/70 font-medium">
                                             Setup profile
@@ -268,7 +272,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             {isSaved ? <BookmarkSolidIcon className="w-5 h-5" aria-hidden="true" /> : <BookmarkIcon className="w-5 h-5" aria-hidden="true" />}
                         </button>
                     </div>
-                    {typeof job.matchScore === 'number' && job.matchReason && job.matchReason !== 'General fit' && (
+                    {typeof job.matchScore === 'number' && job.matchReason && job.matchReason !== 'General fit' && job.matchReason !== 'Eligible' && (
                         <div
                             title={formatMatchReason(job.matchReason)}
                             className="mt-3 flex justify-end"
