@@ -176,6 +176,11 @@ const generateJsonLd = (opportunity: Opportunity) => {
     }
 
     const parsedLocation = parseOpportunityLocation(opportunity.locations);
+    const primaryLocality = (parsedLocation.city || parsedLocation.shortLabel || 'India')
+        .replace(/\s\+\d+$/, '')
+        .trim();
+    const rawLocationText = Array.isArray(opportunity.locations) ? opportunity.locations.join(', ') : '';
+    const postalCodeMatch = rawLocationText.match(/\b\d{6}\b/);
     const schema: Record<string, unknown> = {
         '@context': 'https://schema.org',
         '@type': 'JobPosting',
@@ -197,8 +202,10 @@ const generateJsonLd = (opportunity: Opportunity) => {
             '@type': 'Place',
             address: {
                 '@type': 'PostalAddress',
-                addressLocality: parsedLocation.city || parsedLocation.shortLabel,
+                streetAddress: primaryLocality,
+                addressLocality: primaryLocality,
                 ...(parsedLocation.state ? { addressRegion: parsedLocation.state } : {}),
+                ...(postalCodeMatch ? { postalCode: postalCodeMatch[0] } : {}),
                 addressCountry: 'IN'
             }
         },
