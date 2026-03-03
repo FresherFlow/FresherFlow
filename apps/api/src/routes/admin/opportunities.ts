@@ -532,7 +532,7 @@ router.post(
 // GET /api/admin/opportunities
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { type, status, includeCounts, includeWalkInDetails, limit, offset, q, sort } = req.query;
+        const { type, status, includeCounts, includeWalkInDetails, limit, offset, q, sort, linkHealth, activeOnly } = req.query;
         const where: Prisma.OpportunityWhereInput = {};
         const andFilters: Prisma.OpportunityWhereInput[] = [];
         const now = new Date();
@@ -553,6 +553,23 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
             where.deletedAt = null;
         } else {
             where.deletedAt = null;
+        }
+
+        if (typeof linkHealth === 'string') {
+            const normalizedLinkHealth = linkHealth.toUpperCase();
+            if (normalizedLinkHealth === 'HEALTHY' || normalizedLinkHealth === 'RETRYING' || normalizedLinkHealth === 'BROKEN') {
+                where.linkHealth = normalizedLinkHealth as Prisma.EnumLinkHealthFilter<'Opportunity'>;
+            }
+        }
+
+        const shouldForceLiveOnly = activeOnly === 'true' && (!statusFilter || statusFilter === OpportunityStatus.PUBLISHED);
+        if (shouldForceLiveOnly) {
+            where.status = OpportunityStatus.PUBLISHED;
+            where.deletedAt = null;
+            where.expiredAt = null;
+            andFilters.push({
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }]
+            });
         }
 
         const take = typeof limit === 'string' && !Number.isNaN(Number(limit)) ? Number(limit) : undefined;

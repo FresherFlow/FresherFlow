@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { validate } from '../middleware/validate';
 import { alertPreferencesSchema, pushSubscriptionSchema } from '../utils/validation';
+import { checkEligibility } from '../domain/eligibility';
 
 const router: Router = express.Router();
 
@@ -47,10 +48,16 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
             where.kind = kindRaw as any;
         }
 
+        const userWithProfile = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { profile: true }
+        });
+        const profile = userWithProfile?.profile || null;
+
         const deliveries = await prisma.alertDelivery.findMany({
             where,
             orderBy: { sentAt: 'desc' },
-            take: limit,
+            take: Math.min(limit * 3, 300),
             include: {
                 opportunity: {
                     select: {
@@ -59,7 +66,15 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
                         title: true,
                         company: true,
                         type: true,
+                        allowedDegrees: true,
+                        allowedCourses: true,
+                        allowedSpecializations: true,
+                        allowedPassoutYears: true,
+                        requiredSkills: true,
                         expiresAt: true,
+                        status: true,
+                        deletedAt: true,
+                        expiredAt: true,
                         applyLink: true,
                         companyWebsite: true,
                         savedBy: {
@@ -72,7 +87,17 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
             }
         });
 
-        const normalizedDeliveries = deliveries.map((item) => ({
+        const now = new Date();
+        const filteredDeliveries = deliveries.filter((item) => {
+            if (!item.opportunity) return true;
+            if (item.opportunity.status !== OpportunityStatus.PUBLISHED) return false;
+            if (item.opportunity.deletedAt || item.opportunity.expiredAt) return false;
+            if (item.opportunity.expiresAt && new Date(item.opportunity.expiresAt) <= now) return false;
+            if (!profile) return false;
+            return checkEligibility(item.opportunity as any, profile as any, userId).eligible;
+        }).slice(0, limit);
+
+        const normalizedDeliveries = filteredDeliveries.map((item) => ({
             ...item,
             opportunity: item.opportunity
                 ? {
@@ -93,9 +118,35 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
             eventReminder: normalizedDeliveries.filter((item) => (item.kind as any) === 'EVENT_REMINDER').length,
         };
 
-        const unreadCount = await prisma.alertDelivery.count({
-            where: { userId, readAt: null, channel: 'APP' }
+        const unreadRaw = await prisma.alertDelivery.findMany({
+            where: { userId, readAt: null, channel: 'APP' },
+            include: {
+                opportunity: {
+                    select: {
+                        id: true,
+                        type: true,
+                        allowedDegrees: true,
+                        allowedCourses: true,
+                        allowedSpecializations: true,
+                        allowedPassoutYears: true,
+                        requiredSkills: true,
+                        expiresAt: true,
+                        status: true,
+                        deletedAt: true,
+                        expiredAt: true,
+                    }
+                }
+            }
         });
+
+        const unreadCount = unreadRaw.filter((item) => {
+            if (!item.opportunity) return true;
+            if (item.opportunity.status !== OpportunityStatus.PUBLISHED) return false;
+            if (item.opportunity.deletedAt || item.opportunity.expiredAt) return false;
+            if (item.opportunity.expiresAt && new Date(item.opportunity.expiresAt) <= now) return false;
+            if (!profile) return false;
+            return checkEligibility(item.opportunity as any, profile as any, userId).eligible;
+        }).length;
 
         res.json({ deliveries: normalizedDeliveries, summary, unreadCount });
     } catch (error) {
@@ -165,6 +216,11 @@ router.get('/:id/digest-items', requireAuth, async (req: Request, res: Response,
                 company: true,
                 type: true,
                 locations: true,
+                allowedDegrees: true,
+                allowedCourses: true,
+                allowedSpecializations: true,
+                allowedPassoutYears: true,
+                requiredSkills: true,
                 applyLink: true,
                 companyWebsite: true,
                 expiresAt: true,
@@ -176,7 +232,18 @@ router.get('/:id/digest-items', requireAuth, async (req: Request, res: Response,
             }
         });
 
-        const byId = new Map(opportunities.map((item) => [item.id, item]));
+        const userWithProfile = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { profile: true }
+        });
+        const profile = userWithProfile?.profile || null;
+
+        const eligibleOpportunities = opportunities.filter((item) => {
+            if (!profile) return false;
+            return checkEligibility(item as any, profile as any, userId).eligible;
+        });
+
+        const byId = new Map(eligibleOpportunities.map((item) => [item.id, item]));
         const ordered = opportunityIds
             .map((id) => byId.get(id))
             .filter((item): item is NonNullable<typeof item> => Boolean(item))
@@ -201,13 +268,42 @@ router.get('/unread-count', requireAuth, async (req: Request, res: Response, nex
         const userId = req.userId;
         if (!userId) return next(new AppError('Unauthorized', 401));
 
-        const count = await prisma.alertDelivery.count({
-            where: {
-                userId,
-                readAt: null,
-                channel: 'APP'
+        const userWithProfile = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { profile: true }
+        });
+        const profile = userWithProfile?.profile || null;
+        const now = new Date();
+
+        const unreadRaw = await prisma.alertDelivery.findMany({
+            where: { userId, readAt: null, channel: 'APP' },
+            include: {
+                opportunity: {
+                    select: {
+                        id: true,
+                        type: true,
+                        allowedDegrees: true,
+                        allowedCourses: true,
+                        allowedSpecializations: true,
+                        allowedPassoutYears: true,
+                        requiredSkills: true,
+                        expiresAt: true,
+                        status: true,
+                        deletedAt: true,
+                        expiredAt: true,
+                    }
+                }
             }
         });
+
+        const count = unreadRaw.filter((item) => {
+            if (!item.opportunity) return true;
+            if (item.opportunity.status !== OpportunityStatus.PUBLISHED) return false;
+            if (item.opportunity.deletedAt || item.opportunity.expiredAt) return false;
+            if (item.opportunity.expiresAt && new Date(item.opportunity.expiresAt) <= now) return false;
+            if (!profile) return false;
+            return checkEligibility(item.opportunity as any, profile as any, userId).eligible;
+        }).length;
 
         res.json({ count });
     } catch (error) {

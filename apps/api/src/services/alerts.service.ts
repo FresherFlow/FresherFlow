@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { OpportunityEventType, OpportunityStatus, OpportunityType } from '@prisma/client';
+import { OpportunityStatus, OpportunityType } from '@prisma/client';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import logger from '../utils/logger';
 import { EmailService } from './email.service';
@@ -216,6 +216,7 @@ async function sendEventRemindersForUser(
     now: Date
 ): Promise<boolean> {
     if (!preference.enabled) return false;
+    if (!user.profile) return false;
 
     const upcoming = await prisma.opportunityEvent.findMany({
         where: {
@@ -238,20 +239,9 @@ async function sendEventRemindersForUser(
     });
 
     if (upcoming.length === 0) return false;
-    const broadcastEventTypes = new Set<OpportunityEventType>([
-        OpportunityEventType.NOTIFICATION,
-        OpportunityEventType.REG_START,
-        OpportunityEventType.REG_END,
-        OpportunityEventType.EXAM_DATE,
-        OpportunityEventType.RESULT,
-    ]);
-
     for (const event of upcoming) {
-        const shouldBypassProfileFilter = broadcastEventTypes.has(event.eventType);
-        if (user.profile && !shouldBypassProfileFilter) {
-            const eligible = filterOpportunitiesForUser([event.opportunity] as any, user.profile as any);
-            if (eligible.length === 0) continue;
-        }
+        const eligible = filterOpportunitiesForUser([event.opportunity] as any, user.profile as any);
+        if (eligible.length === 0) continue;
 
         const diffHours = (new Date(event.eventDate).getTime() - now.getTime()) / (1000 * 60 * 60);
         const windows = [

@@ -14,7 +14,8 @@ function normalizeHost(value: string | undefined, fallback: string): string {
 const ADMIN_WEB_HOST = normalizeHost(process.env.ADMIN_WEB_HOST, 'admin.fresherflow.in');
 const PUBLIC_WEB_HOST = normalizeHost(process.env.PUBLIC_WEB_HOST, 'fresherflow.in');
 const APP_WEB_HOST = normalizeHost(process.env.APP_WEB_HOST || process.env.NEXT_PUBLIC_APP_WEB_HOST, 'app.fresherflow.in');
-const USER_LOGIN_HOST = normalizeHost(process.env.USER_LOGIN_HOST || process.env.NEXT_PUBLIC_USER_LOGIN_HOST, PUBLIC_WEB_HOST);
+// Keep user auth flow on app host by default to avoid cross-origin RSC/CORS issues.
+const USER_LOGIN_HOST = normalizeHost(process.env.USER_LOGIN_HOST || process.env.NEXT_PUBLIC_USER_LOGIN_HOST, APP_WEB_HOST);
 const ADMIN_ROOT_PREFIXES = [
     '/dashboard',
     '/opportunities',

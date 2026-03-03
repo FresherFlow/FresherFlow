@@ -153,6 +153,9 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
         newUsers30d,
         bookmarks7d,
         growthStats,
+        viewedActionsWindow,
+        applyClicksWindow,
+        savedWindow,
         channelSources30d,
         recentListings,
         actionUsers14d,
@@ -194,6 +197,23 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
             by: ['event'],
             _count: { _all: true },
             where: { createdAt: { gte: windowStart } },
+        }),
+        prisma.userAction.count({
+            where: {
+                actionType: 'VIEWED',
+                createdAt: { gte: windowStart }
+            }
+        }),
+        prisma.opportunityClick.count({
+            where: {
+                createdAt: { gte: windowStart },
+                isInternal: false
+            }
+        }),
+        prisma.savedOpportunity.count({
+            where: {
+                createdAt: { gte: windowStart }
+            }
         }),
         prisma.opportunityClick.groupBy({
             by: ['source'],
@@ -244,12 +264,12 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
     for (const row of growthStats) {
         funnelMap.set(row.event, row._count._all);
     }
-    const detailView = funnelMap.get('DETAIL_VIEW') || 0;
+    const detailView = Math.max(funnelMap.get('DETAIL_VIEW') || 0, viewedActionsWindow);
     const loginView = funnelMap.get('LOGIN_VIEW') || 0;
     const authSuccess = funnelMap.get('AUTH_SUCCESS') || 0;
     const signupSuccess = funnelMap.get('SIGNUP_SUCCESS') || 0;
-    const applyClick = funnelMap.get('APPLY_CLICK') || 0;
-    const saveJob = funnelMap.get('SAVE_JOB') || 0;
+    const applyClick = Math.max(funnelMap.get('APPLY_CLICK') || 0, applyClicksWindow);
+    const saveJob = Math.max(funnelMap.get('SAVE_JOB') || 0, savedWindow);
 
     const sourceBuckets = { telegram: 0, whatsapp: 0, linkedin: 0, others: 0 };
     for (const row of channelSources30d) {

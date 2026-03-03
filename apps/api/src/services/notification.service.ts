@@ -130,7 +130,6 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
     let skippedDisabled = 0;
     let skippedDailyCap = 0;
     let skippedNotEligible = 0;
-    let lowScoreFallbackSent = 0;
     let pushSent = 0;
     const dayStart = new Date();
     dayStart.setHours(0, 0, 0, 0);
@@ -198,69 +197,72 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         }
 
         let relevanceScore: number | null = null;
-        let relevanceReason = 'General alert';
+        let relevanceReason = 'Profile match';
 
-        if (user.profile) {
-            // Keep personalized alerts strict for users with profile data.
-            const eligible = filterOpportunitiesForUser([opportunity as any], user.profile as any);
-            if (eligible.length === 0) {
-                skippedNotEligible += 1;
-                await logDispatch({
-                    correlationId,
-                    userId: user.id,
-                    opportunityId: opportunity.id,
-                    kind: alertKind,
-                    status: AlertDispatchStatus.SKIPPED,
-                    reason: AlertDispatchReason.NOT_ELIGIBLE,
-                    metadata: { stage: 'eligibility_filter', source: 'profile' },
-                    attemptedAt: userAttemptedAt,
-                });
-                continue;
-            }
-
-            const ranked = rankOpportunitiesForUser(eligible as any, user.profile as any);
-            if (ranked.length === 0) {
-                skippedNotEligible += 1;
-                await logDispatch({
-                    correlationId,
-                    userId: user.id,
-                    opportunityId: opportunity.id,
-                    kind: alertKind,
-                    status: AlertDispatchStatus.SKIPPED,
-                    reason: AlertDispatchReason.NOT_ELIGIBLE,
-                    metadata: { stage: 'ranking', source: 'profile' },
-                    attemptedAt: userAttemptedAt,
-                });
-                continue;
-            }
-
-            relevanceScore = ranked[0].score;
-            if (relevanceScore < preference.minRelevanceScore) {
-                // If a user is eligible but ranking is slightly low, still send one "low confidence"
-                // app alert per day to avoid an empty notification inbox.
-                if (alreadySentToday > 0) {
-                    skippedNotEligible += 1;
-                    await logDispatch({
-                        correlationId,
-                        userId: user.id,
-                        opportunityId: opportunity.id,
-                        kind: alertKind,
-                        status: AlertDispatchStatus.SKIPPED,
-                        reason: AlertDispatchReason.NOT_ELIGIBLE,
-                        metadata: { stage: 'min_relevance', relevanceScore, minRelevanceScore: preference.minRelevanceScore },
-                        attemptedAt: userAttemptedAt,
-                    });
-                    continue;
-                }
-                relevanceReason = 'Eligible match (low confidence)';
-                lowScoreFallbackSent += 1;
-            } else {
-                relevanceReason = 'Profile match';
-            }
-        } else {
-            // New users should still see "new job" alerts even before profile completion.
-            relevanceReason = 'Complete profile to get personalized matching';
+        // Strict mode: no profile => no job alerts.
+        if (!user.profile) {
+            skippedNotEligible += 1;
+            await logDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: opportunity.id,
+                kind: alertKind,
+                status: AlertDispatchStatus.SKIPPED,
+                reason: AlertDispatchReason.NOT_ELIGIBLE,
+                metadata: { stage: 'missing_profile' },
+                attemptedAt: userAttemptedAt,
+            });
+            continue;
         }
+
+        const eligible = filterOpportunitiesForUser([opportunity as any], user.profile as any);
+        if (eligible.length === 0) {
+            skippedNotEligible += 1;
+            await logDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: opportunity.id,
+                kind: alertKind,
+                status: AlertDispatchStatus.SKIPPED,
+                reason: AlertDispatchReason.NOT_ELIGIBLE,
+                metadata: { stage: 'eligibility_filter', source: 'profile' },
+                attemptedAt: userAttemptedAt,
+            });
+            continue;
+        }
+
+        const ranked = rankOpportunitiesForUser(eligible as any, user.profile as any);
+        if (ranked.length === 0) {
+            skippedNotEligible += 1;
+            await logDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: opportunity.id,
+                kind: alertKind,
+                status: AlertDispatchStatus.SKIPPED,
+                reason: AlertDispatchReason.NOT_ELIGIBLE,
+                metadata: { stage: 'ranking', source: 'profile' },
+                attemptedAt: userAttemptedAt,
+            });
+            continue;
+        }
+
+        relevanceScore = ranked[0].score;
+        if (relevanceScore < preference.minRelevanceScore) {
+            skippedNotEligible += 1;
+            await logDispatch({
+                correlationId,
+                userId: user.id,
+                opportunityId: opportunity.id,
+                kind: alertKind,
+                status: AlertDispatchStatus.SKIPPED,
+                reason: AlertDispatchReason.NOT_ELIGIBLE,
+                metadata: { stage: 'min_relevance', relevanceScore, minRelevanceScore: preference.minRelevanceScore },
+                attemptedAt: userAttemptedAt,
+            });
+            continue;
+        }
+        relevanceReason = 'Profile match';
 
         // Create dedupe key
         const dedupeDateBucket = getDispatchDateBucket(userAttemptedAt);
@@ -436,7 +438,6 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         skippedDisabled,
         skippedDailyCap,
         skippedNotEligible,
-        lowScoreFallbackSent,
         pushSent,
     });
 

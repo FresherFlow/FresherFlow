@@ -23,10 +23,12 @@ export const adminApi = {
         }),
 
     // Get all opportunities (with filters)
-    getOpportunities: (filters?: { type?: string; status?: string; limit?: number; offset?: number; q?: string; sort?: string }) => {
+    getOpportunities: (filters?: { type?: string; status?: string; linkHealth?: 'HEALTHY' | 'RETRYING' | 'BROKEN'; activeOnly?: boolean; limit?: number; offset?: number; q?: string; sort?: string }) => {
         const query = new URLSearchParams();
         if (filters?.type) query.append('type', filters.type);
         if (filters?.status) query.append('status', filters.status);
+        if (filters?.linkHealth) query.append('linkHealth', filters.linkHealth);
+        if (filters?.activeOnly) query.append('activeOnly', 'true');
         if (filters?.limit !== undefined) query.append('limit', String(filters.limit));
         if (filters?.offset !== undefined) query.append('offset', String(filters.offset));
         if (filters?.q) query.append('q', filters.q);

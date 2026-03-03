@@ -3,6 +3,9 @@ import { recordGrowthEvent } from '../../services/growthFunnel.service';
 import { createRateLimiter } from '../../middleware/rateLimit';
 
 const router = express.Router();
+// This router is mounted before global body parsers, so parse here explicitly.
+router.use(express.json());
+router.use(express.urlencoded({ extended: false }));
 const growthEventLimiter = createRateLimiter({
     windowMs: 60 * 1000,
     max: 120,
