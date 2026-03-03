@@ -41,7 +41,7 @@ import { formatTimeText12Hour } from '@/lib/timeDisplay';
 export default function OpportunityDetailClient({ id, initialData }: { id: string; initialData?: Opportunity | null }) {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
     const [opp, setOpp] = useState<Opportunity | null>(() => {
         if (initialData) return initialData;
         if (typeof window !== 'undefined') {
@@ -430,6 +430,13 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         return expiryDate >= now && expiryDate <= threeDaysFromNow;
     };
 
+    const getListingState = (opportunity: Opportunity): 'EXPIRED' | 'CLOSING_SOON' | 'ACTIVE' | 'INACTIVE' => {
+        if (opportunity.status && opportunity.status !== 'PUBLISHED') return 'INACTIVE';
+        if (isExpired(opportunity)) return 'EXPIRED';
+        if (isClosingSoon(opportunity)) return 'CLOSING_SOON';
+        return 'ACTIVE';
+    };
+
     const formatDeadline = (opportunity: Opportunity) => {
         if (!opportunity.expiresAt) return null;
         return new Date(opportunity.expiresAt).toLocaleDateString('en-IN', {
@@ -448,35 +455,103 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         }
     };
 
-    const formatEducationDisplay = (degrees: string[], courses: string[], specializations: string[] = []): string => {
-        const degreeLabels = Array.from(new Set((degrees || []).map(formatEducationLevel).filter(Boolean)));
-        const normalizedCourses = Array.from(new Set((courses || []).map((item) => item.trim()).filter(Boolean)));
-        const normalizedSpecializations = Array.from(new Set((specializations || []).map((item) => item.trim()).filter(Boolean)));
-        const lines: string[] = [];
-        if (degreeLabels.length > 0 || (normalizedCourses.length === 0 && normalizedSpecializations.length === 0)) {
-            lines.push(`Level: ${degreeLabels.length > 0 ? degreeLabels.join(', ') : 'Any Graduate'}`);
-        }
-        if (normalizedCourses.length > 0) {
-            lines.push(`Courses: ${normalizedCourses.join(', ')}`);
-        }
-        if (normalizedSpecializations.length > 0) {
-            lines.push(`Specializations: ${normalizedSpecializations.join(', ')}`);
+    const getEducationDetails = (degrees: string[], courses: string[], specializations: string[] = []) => {
+        const level = Array.from(new Set((degrees || []).map(formatEducationLevel).filter(Boolean))).join(', ') || 'Any Graduate';
+        const courseList = Array.from(new Set((courses || []).map((item) => item.trim()).filter(Boolean)));
+        const specializationList = Array.from(new Set((specializations || []).map((item) => item.trim()).filter(Boolean)));
+        return {
+            level,
+            courses: courseList.length ? courseList.join(', ') : null,
+            specializations: specializationList.length ? specializationList.join(', ') : null
+        };
+    };
+
+    const normalizeAcademic = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const educationDetails = getEducationDetails(
+        opp?.allowedDegrees || [],
+        opp?.allowedCourses || [],
+        (opp as { allowedSpecializations?: string[] } | null)?.allowedSpecializations || []
+    );
+
+    const eligibilitySnapshot = (() => {
+        if (!profile) {
+            return {
+                statusLabel: 'Complete Profile',
+                statusTone: 'neutral' as const,
+                mustFix: ['Add your education details to check eligibility for this role.'],
+                matchedSkills: [] as string[],
+                missingSkills: (opp?.requiredSkills || []).slice(0, 8),
+            };
         }
 
-        return lines.join('\n');
-    };
+        const mustFix: string[] = [];
+        const userYear = profile.gradYear || profile.pgYear;
+        const allowedYears = opp?.allowedPassoutYears || [];
+        if (allowedYears.length > 0 && (!userYear || !allowedYears.includes(userYear))) {
+            mustFix.push(`Passout year does not match (${allowedYears.join(', ')})`);
+        }
+
+        const levels = ['DIPLOMA', 'DEGREE', 'PG'];
+        const allowedDegrees = opp?.allowedDegrees || [];
+        if (allowedDegrees.length > 0) {
+            if (!profile.educationLevel) {
+                mustFix.push('Education level is missing in your profile');
+            } else {
+                const userLevelIndex = levels.indexOf(profile.educationLevel);
+                const levelMatch = allowedDegrees.some((deg) => {
+                    const degIndex = levels.indexOf(deg as string);
+                    return degIndex !== -1 && degIndex <= userLevelIndex;
+                });
+                if (!levelMatch) mustFix.push('Education level does not meet this role');
+            }
+        }
+
+        const allowedCourses = opp?.allowedCourses || [];
+        if (allowedCourses.length > 0) {
+            const normalizedAllowed = allowedCourses.map(normalizeAcademic);
+            const gradCourse = profile.gradCourse ? normalizeAcademic(profile.gradCourse) : '';
+            const pgCourse = profile.pgCourse ? normalizeAcademic(profile.pgCourse) : '';
+            if (!(gradCourse && normalizedAllowed.includes(gradCourse)) && !(pgCourse && normalizedAllowed.includes(pgCourse))) {
+                mustFix.push('Your degree course is not in the allowed list');
+            }
+        }
+
+        const allowedSpecializations = (opp as { allowedSpecializations?: string[] } | null)?.allowedSpecializations || [];
+        if (allowedSpecializations.length > 0) {
+            const normalizedAllowed = allowedSpecializations.map(normalizeAcademic);
+            const gradSpec = profile.gradSpecialization ? normalizeAcademic(profile.gradSpecialization) : '';
+            const pgSpec = profile.pgSpecialization ? normalizeAcademic(profile.pgSpecialization) : '';
+            if (!(gradSpec && normalizedAllowed.includes(gradSpec)) && !(pgSpec && normalizedAllowed.includes(pgSpec))) {
+                mustFix.push('Your specialization is not in the allowed list');
+            }
+        }
+
+        const requiredSkills = Array.from(new Set((opp?.requiredSkills || []).map((s) => s.trim()).filter(Boolean)));
+        const userSkills = new Set((profile.skills || []).map((s) => s.trim().toLowerCase()));
+        const matchedSkills = requiredSkills.filter((skill) => userSkills.has(skill.toLowerCase()));
+        const missingSkills = requiredSkills.filter((skill) => !userSkills.has(skill.toLowerCase()));
+
+        return {
+            statusLabel: mustFix.length > 0 ? 'Not Eligible Yet' : 'Eligible',
+            statusTone: (mustFix.length > 0 ? 'warn' : 'ok') as 'warn' | 'ok',
+            mustFix,
+            matchedSkills,
+            missingSkills,
+        };
+    })();
 
 
     const handleReport = async (reason: string) => {
-        if (!user) {
+        if (!user || !opp) {
             toastError(new Error('Identity required to file report.'));
-            router.push('/login');
+            if (!user) router.push('/login');
             return;
         }
 
         const loadingToast = toast.loading('Submitting report...');
         try {
-            const data = await feedbackApi.submit(opp!.id, reason) as { success: boolean; message?: string };
+            const data = await feedbackApi.submit(opp.id, reason) as { success: boolean; message?: string };
             if (data.success) {
                 toast.success('Thank you for your feedback', { id: loadingToast });
                 setShowReports(false);
@@ -492,7 +567,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
     if (!opp) return null;
 
     const detailPath = getOpportunityPathFromItem(opp);
-    const hasApplyLink = !!opp.applyLink;
+    const hasApplyLink = Boolean(opp.applyLink || opp.companyWebsite);
     const isWalkinFlow = opp.type === 'WALKIN';
     const currentAction = getCurrentActionType();
     const trackerOptions: Array<{ key: ActionType; label: string }> = [
@@ -523,6 +598,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         { label: 'Test', date: driveDates.examDate },
     ].filter((item) => item.date);
     const formatLpaValue = (value: string) => (/\bLPA\b/i.test(value) ? value : `${value} LPA`);
+    const listingState = getListingState(opp);
 
     return (
         <div className="min-h-screen bg-background pb-16 selection:bg-primary/20">
@@ -610,7 +686,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                 </div>
                                 <div>
                                     <h3 className="text-sm font-bold text-destructive uppercase tracking-wide">Opportunity Expired</h3>
-                                    <p className="text-xs text-muted-foreground font-medium">
+                                    <p className="text-sm md:text-base text-muted-foreground font-medium">
                                         This listing is no longer accepting applications. It is visible for historical reference only.
                                     </p>
                                 </div>
@@ -621,16 +697,26 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border relative overflow-hidden group shadow-sm">
                             <div className="relative z-10 space-y-4">
                                 <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs md:text-xs font-bold uppercase tracking-tight rounded border border-primary/20">
+                                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs md:text-sm font-bold uppercase tracking-tight rounded border border-primary/20">
                                         {isCampusDrive ? 'CAMPUS DRIVE' : opp.type}
                                     </span>
-                                    {opp.expiresAt && isExpired(opp) ? (
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-destructive/5 border border-destructive/10 text-destructive text-xs md:text-xs font-bold uppercase tracking-tight rounded">
+                                    {listingState === 'EXPIRED' ? (
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-destructive/5 border border-destructive/10 text-destructive text-xs md:text-sm font-bold uppercase tracking-tight rounded">
                                             <div className="w-2 h-2 rounded-full bg-red-500" />
                                             Expired
                                         </div>
+                                    ) : listingState === 'CLOSING_SOON' ? (
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-700 text-xs md:text-sm font-bold uppercase tracking-tight rounded">
+                                            <div className="w-2 h-2 rounded-full bg-amber-500" />
+                                            Closing Soon
+                                        </div>
+                                    ) : listingState === 'INACTIVE' ? (
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted border border-border text-muted-foreground text-xs md:text-sm font-bold uppercase tracking-tight rounded">
+                                            <div className="w-2 h-2 rounded-full bg-muted-foreground/70" />
+                                            Inactive
+                                        </div>
                                     ) : (
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted border border-border text-foreground text-xs md:text-xs font-bold uppercase tracking-tight rounded">
+                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary text-xs md:text-sm font-bold uppercase tracking-tight rounded">
                                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                                             Active
                                         </div>
@@ -687,7 +773,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                             </div>
                                             <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
                                                 <MapPinIcon className="w-3 h-3" />
-                                                <span className="font-medium text-xs md:text-sm" title={locationInfo.fullLabel}>
+                                                <span className="font-medium text-sm md:text-base" title={locationInfo.fullLabel}>
                                                     {locationInfo.shortLabel}
                                                 </span>
                                             </div>
@@ -708,7 +794,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                         <p className="font-semibold text-sm md:text-base text-foreground truncate">{opp.employmentType || 'Not specified'}</p>
                                     </div>
                                     <div className="space-y-0.5">
-                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Batch</p>
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Batch (YEAR)</p>
                                         <p className="font-semibold text-sm md:text-base text-foreground leading-snug whitespace-normal">
                                             {opp.allowedPassoutYears && opp.allowedPassoutYears.length > 0
                                                 ? [...opp.allowedPassoutYears].sort((a, b) => a - b).join(', ')
@@ -818,17 +904,17 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {/* Description Section */}
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Description</h3>
-                            <div
-                                className="prose prose-sm max-w-none text-foreground/80 font-medium text-sm md:text-base leading-relaxed whitespace-pre-wrap"
-                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(opp.description) }}
-                            />
-                        </div>
+                                <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Description</h3>
+                                <div
+                                    className="prose prose-base max-w-none text-foreground/80 font-medium text-sm md:text-base leading-relaxed whitespace-pre-wrap"
+                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(opp.description) }}
+                                />
+                            </div>
 
                         {isCampusDrive && driveMeta.isTcsNqt && (
                             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-4">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">About the Drive</h3>
-                                <ul className="space-y-1.5 text-sm text-foreground/90 font-medium">
+                                <ul className="space-y-1.5 text-sm md:text-base text-foreground/90 font-medium">
                                     {driveMeta.overviewPoints.map((point) => (
                                         <li key={point} className="flex items-start gap-2">
                                             <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
@@ -843,7 +929,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
                                 <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">Salary Breakdown</h3>
                                 <div className="hidden md:block overflow-x-auto">
-                                    <table className="w-full min-w-130 text-xs">
+                                    <table className="w-full min-w-130 text-sm">
                                         <thead>
                                             <tr className="text-muted-foreground uppercase tracking-wider">
                                                 <th className="text-left py-2">Cadre</th>
@@ -870,12 +956,12 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                         if (rows.length === 0) return null;
                                         return (
                                             <div key={cadre} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
-                                                <p className="text-xs font-bold text-primary uppercase tracking-wider">{cadre} Cadre</p>
+                                                <p className="text-xs md:text-sm font-bold text-primary uppercase tracking-wider">{cadre} Cadre</p>
                                                 <div className="mt-2 space-y-1.5">
                                                     {rows.map((row) => (
                                                         <div key={`${row.cadre}-${row.experience}`} className="rounded-md border border-border/70 bg-background/30 px-2 py-1.5">
-                                                            <p className="text-xs font-bold text-muted-foreground uppercase">{row.experience}</p>
-                                                            <div className="mt-0.5 flex items-center justify-between gap-2 text-[12px] font-semibold text-foreground">
+                                                            <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">{row.experience}</p>
+                                                            <div className="mt-0.5 flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
                                                                 <span>UG: {formatLpaValue(row.ug)}</span>
                                                                 <span>PG: {formatLpaValue(row.pg)}</span>
                                                             </div>
@@ -893,7 +979,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         {timelineEvents.length > 0 && (
                             <div id="drive-timeline" className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
                                 <div className="flex items-center justify-between gap-2 pb-2">
-                                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Drive timeline</h3>
+                                <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground">Drive timeline</h3>
                                     {upcomingTimelineEvents.length > 0 && (
                                         <span className="text-xs font-semibold text-primary">
                                             {upcomingTimelineEvents.length} upcoming
@@ -912,14 +998,14 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                                 )}
                                             >
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <p className="text-xs font-semibold text-foreground">{event.title}</p>
-                                                    <span className="text-xs font-semibold text-muted-foreground">
+                                                    <p className="text-sm md:text-base font-semibold text-foreground">{event.title}</p>
+                                                    <span className="text-sm font-semibold text-muted-foreground">
                                                         {event._dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                     </span>
                                                 </div>
                                                 <p className="mt-1 text-sm text-muted-foreground uppercase tracking-wide">{event.eventType.replace('_', ' ')}</p>
                                                 {event.notes ? (
-                                                    <p className="mt-1 text-xs text-foreground/80 leading-relaxed whitespace-pre-wrap">{event.notes}</p>
+                                                    <p className="mt-1 text-sm md:text-base text-foreground/80 leading-relaxed whitespace-pre-wrap">{event.notes}</p>
                                                 ) : null}
                                                 {event.sourceLink ? (
                                                     <a
@@ -940,7 +1026,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {isCampusDrive && driveMeta.selectionSteps.length > 0 && (
                             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">Selection Process</h3>
+                                <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Selection Process</h3>
                                 <div className="flex flex-wrap items-center gap-2">
                                     {driveMeta.selectionSteps.map((step, index) => (
                                         <span key={step} className="inline-flex items-center rounded-md border border-border bg-muted/20 px-2.5 py-1.5 text-[12px] font-semibold text-foreground">
@@ -953,13 +1039,13 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {isCampusDrive && driveMeta.applySteps.length > 0 && (
                             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">How to Apply</h3>
+                                <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">How to Apply</h3>
                                 <ol className="space-y-2 text-sm text-foreground/90 font-medium list-decimal pl-5">
                                     {driveMeta.applySteps.map((step) => (
                                         <li key={step}>{step}</li>
                                     ))}
                                 </ol>
-                                {opp.applyLink && (
+                                {hasApplyLink && (
                                     <Button
                                         onClick={handleApply}
                                         className="w-full md:w-auto h-10 text-xs bg-primary/80 text-primary-foreground border border-primary/60 hover:bg-primary rounded-lg font-bold uppercase tracking-widest"
@@ -972,21 +1058,36 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {/* Requirements Section */}
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-4">
-                            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">Requirements</h3>
+                            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Requirements</h3>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
                                     <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-widest">Education</p>
-                                    <p className="text-sm font-semibold text-foreground whitespace-pre-line leading-relaxed">
-                                        {formatEducationDisplay(opp.allowedDegrees || [], opp.allowedCourses || [], (opp as { allowedSpecializations?: string[] }).allowedSpecializations || [])}
-                                    </p>
+                                    <div className="mt-2 space-y-2.5">
+                                        <p className="text-sm md:text-base text-foreground leading-relaxed">
+                                            <span className="font-semibold">Level:</span>{' '}
+                                            <span className="font-medium">{educationDetails.level}</span>
+                                        </p>
+                                        {educationDetails.courses && (
+                                            <p className="text-sm md:text-base text-foreground leading-relaxed">
+                                                <span className="font-semibold">Courses:</span>{' '}
+                                                <span className="font-medium">{educationDetails.courses}</span>
+                                            </p>
+                                        )}
+                                        {educationDetails.specializations && (
+                                            <p className="text-sm md:text-base text-foreground leading-relaxed">
+                                                <span className="font-semibold">Specializations:</span>{' '}
+                                                <span className="font-medium">{educationDetails.specializations}</span>
+                                            </p>
+                                        )}
+                                    </div>
                                 </div>
                                 {opp.requiredSkills && opp.requiredSkills.length > 0 && (
                                     <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
                                         <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-widest">Key Skills</p>
                                         <div className="flex flex-wrap gap-1 mt-0.5">
                                             {opp.requiredSkills.map((s: string) => (
-                                                <span key={s} className="px-1.5 py-0.5 bg-primary/5 text-primary text-xs md:text-xs font-semibold rounded">
+                                                <span key={s} className="px-2 py-1 bg-primary/5 text-primary text-xs md:text-sm font-semibold rounded">
                                                     {s}
                                                 </span>
                                             ))}
@@ -995,23 +1096,23 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                 )}
                                 {(opp.jobFunction || opp.incentives) && (
                                     <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
-                                        <p className="text-xs font-bold text-muted-foreground uppercase">Role details</p>
+                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Role details</p>
                                         <p className="text-sm font-semibold text-foreground">{opp.jobFunction || 'General'}</p>
                                         {opp.incentives ? (
-                                            <p className="text-xs text-muted-foreground">Incentives: {opp.incentives}</p>
+                                            <p className="text-sm text-muted-foreground">Incentives: {opp.incentives}</p>
                                         ) : null}
                                     </div>
                                 )}
                                 {opp.selectionProcess && (
                                     <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg md:col-span-2">
-                                        <p className="text-xs font-bold text-muted-foreground uppercase">Selection process</p>
-                                        <p className="text-sm font-medium text-foreground leading-relaxed whitespace-pre-wrap">{opp.selectionProcess}</p>
+                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Selection process</p>
+                                        <p className="text-sm md:text-base font-medium text-foreground leading-relaxed whitespace-pre-wrap">{opp.selectionProcess}</p>
                                     </div>
                                 )}
                                 {opp.notesHighlights && !opp.notesHighlights.includes('[AUTO-INGEST') && (
                                     <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg md:col-span-2">
-                                        <p className="text-xs font-bold text-muted-foreground uppercase">Notes / Highlights</p>
-                                        <p className="text-sm font-medium text-foreground leading-relaxed whitespace-pre-wrap">{opp.notesHighlights}</p>
+                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Notes / Highlights</p>
+                                        <p className="text-sm md:text-base font-medium text-foreground leading-relaxed whitespace-pre-wrap">{opp.notesHighlights}</p>
                                     </div>
                                 )}
                             </div>
@@ -1023,14 +1124,14 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                 <h2 className="text-xs font-bold uppercase tracking-wider text-primary pb-2">Walk-in Details</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-1">
-                                        <p className="text-xs font-bold text-muted-foreground uppercase">Date & Time</p>
-                                        <p className="text-sm font-semibold text-foreground">
+                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Date & Time</p>
+                                        <p className="text-sm md:text-base font-semibold text-foreground">
                                             {opp.walkInDetails?.dateRange} | {formatTimeText12Hour(opp.walkInDetails?.timeRange || opp.walkInDetails?.reportingTime)}
                                         </p>
                                     </div>
                                     <div className="space-y-2">
-                                        <p className="text-xs font-bold text-muted-foreground uppercase">Venue</p>
-                                        <p className="text-xs font-medium text-foreground leading-relaxed">{opp.walkInDetails?.venueAddress}</p>
+                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Venue</p>
+                                        <p className="text-sm md:text-base font-medium text-foreground leading-relaxed">{opp.walkInDetails?.venueAddress}</p>
                                         {opp.walkInDetails?.venueLink && (
                                             <Button
                                                 variant="outline"
@@ -1046,8 +1147,8 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         {opp.walkInDetails?.requiredDocuments?.length ? (
                                             <div className="space-y-1">
-                                                <p className="text-xs font-bold text-muted-foreground uppercase">Documents</p>
-                                                <ul className="text-xs text-foreground space-y-1 list-disc list-inside">
+                                                <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Documents</p>
+                                                <ul className="text-sm text-foreground space-y-1 list-disc list-inside">
                                                     {opp.walkInDetails.requiredDocuments.map((doc) => (
                                                         <li key={doc}>{doc}</li>
                                                     ))}
@@ -1056,12 +1157,12 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                         ) : null}
                                         {(opp.walkInDetails?.contactPerson || opp.walkInDetails?.contactPhone) && (
                                             <div className="space-y-1">
-                                                <p className="text-xs font-bold text-muted-foreground uppercase">Contact</p>
+                                                <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Contact</p>
                                                 {opp.walkInDetails?.contactPerson && (
-                                                    <p className="text-xs font-medium text-foreground">{opp.walkInDetails.contactPerson}</p>
+                                                    <p className="text-sm md:text-base font-medium text-foreground">{opp.walkInDetails.contactPerson}</p>
                                                 )}
                                                 {opp.walkInDetails?.contactPhone && (
-                                                    <p className="text-xs font-medium text-foreground">{opp.walkInDetails.contactPhone}</p>
+                                                    <p className="text-sm md:text-base font-medium text-foreground">{opp.walkInDetails.contactPhone}</p>
                                                 )}
                                             </div>
                                         )}
@@ -1126,10 +1227,11 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             </div>
                         )}
                         <EligibilitySnapshotCard
-                            education={formatEducationDisplay(opp.allowedDegrees || [], opp.allowedCourses || [], (opp as { allowedSpecializations?: string[] }).allowedSpecializations || [])}
-                            experience={opp.experienceMax != null ? `${opp.experienceMin || 0}-${opp.experienceMax} yrs` : 'Fresher'}
-                            employmentType={opp.employmentType}
-                            skills={opp.requiredSkills || []}
+                            statusLabel={eligibilitySnapshot.statusLabel}
+                            statusTone={eligibilitySnapshot.statusTone}
+                            mustFix={eligibilitySnapshot.mustFix}
+                            matchedSkills={eligibilitySnapshot.matchedSkills}
+                            missingSkills={eligibilitySnapshot.missingSkills}
                         />
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
                             <div className="space-y-3">
@@ -1210,34 +1312,57 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             </div>
 
                             <div className="pt-3 flex items-center justify-between">
-                                <span className="text-xs font-bold text-muted-foreground uppercase opacity-50 italic">Listing Verified</span>
+                                <span className="text-xs font-semibold text-muted-foreground/90 uppercase">Listing Verified</span>
                                 <ShieldCheckIcon className="w-3.5 h-3.5 text-primary/40" />
                             </div>
                         </div>
 
-                        <div className="hidden lg:block bg-card p-4 rounded-xl border border-border shadow-sm space-y-4">
+                        <div className="hidden lg:block bg-card p-5 rounded-xl border border-border shadow-sm space-y-4">
                             <div className="flex items-center justify-between">
-                                <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Live Activity</h4>
-                                <div className="flex items-center gap-1">
-                                    <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                                    <span className="text-[8px] font-bold text-emerald-600 uppercase">Hiring Now</span>
-                                </div>
+                                <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Listing Status</h4>
+                                {listingState === 'EXPIRED' ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-destructive/20 bg-destructive/5 text-destructive text-xs font-bold uppercase tracking-wide">
+                                        <span className="w-2 h-2 rounded-full bg-destructive" />
+                                        Expired
+                                    </span>
+                                ) : listingState === 'CLOSING_SOON' ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-300 bg-amber-50 text-amber-700 text-xs font-bold uppercase tracking-wide">
+                                        <span className="w-2 h-2 rounded-full bg-amber-500" />
+                                        Closing Soon
+                                    </span>
+                                ) : listingState === 'INACTIVE' ? (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wide">
+                                        <span className="w-2 h-2 rounded-full bg-muted-foreground/70" />
+                                        Inactive
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-primary/20 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                                        Active
+                                    </span>
+                                )}
                             </div>
-                            <div className="space-y-2">
-                                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                                    <div className="h-full bg-primary/80 w-[82%] shadow-[0_0_12px_rgba(var(--primary),0.2)] rounded-full" />
-                                </div>
-                                <p className="text-xs font-medium text-muted-foreground leading-relaxed">
-                                    <span className="text-foreground font-bold">{opp?.company}</span> has viewed several applications recently and is actively filtering for this role.
+                            <div className="space-y-2.5">
+                                <p className="text-sm font-medium text-foreground leading-relaxed">
+                                    {listingState === 'EXPIRED'
+                                        ? 'This listing is expired. You can review details, but new applications are usually closed.'
+                                        : listingState === 'INACTIVE'
+                                            ? 'This listing is currently inactive. Check status updates from the source link before applying.'
+                                        : 'This listing is currently active and accepting applications.'}
                                 </p>
+                                {opp.expiresAt && (
+                                    <p className="text-sm text-muted-foreground">
+                                        Deadline: <span className="font-semibold text-foreground">{formatDeadline(opp)}</span>
+                                    </p>
+                                )}
                             </div>
                         </div>
 
                         <div className="hidden lg:flex p-3.5 items-start gap-3 bg-muted/10 border border-border border-dashed rounded-xl">
                             <InformationCircleIcon className="w-4 h-4 text-primary/40 shrink-0 mt-0.5" />
-                            <p className="text-xs font-medium text-muted-foreground leading-relaxed uppercase tracking-tight">
-                                Fraud protection: We never charge for placement. Report suspicious activity.
-                            </p>
+                                <p className="text-sm font-medium text-muted-foreground leading-relaxed uppercase tracking-tight">
+                                    Fraud protection: We never charge for placement. Report suspicious activity.
+                                </p>
                         </div>
 
                         {user?.role === 'ADMIN' && (
@@ -1277,7 +1402,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         </div>
                     ) : relatedOpps.length === 0 ? (
                         <div className="bg-muted/10 border border-border border-dashed rounded-xl p-6 text-center">
-                            <p className="text-xs text-muted-foreground">No close matches yet. Check full feed for more roles.</p>
+                            <p className="text-sm md:text-base text-muted-foreground">No close matches yet. Check full feed for more roles.</p>
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

@@ -123,6 +123,8 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         slugOrId: string;
         locations: string[];
         allowedPassoutYears: number[];
+        allowedCourses: string[];
+        allowedDegrees: string[];
     } | null>(null);
     const [duplicateCandidates, setDuplicateCandidates] = useState<Array<{
         id: string;
@@ -200,6 +202,8 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         slugOrId: string;
         locations: string[];
         allowedPassoutYears: number[];
+        allowedCourses: string[];
+        allowedDegrees: string[];
     }) => {
         const publicUrl = getPublicOpportunityUrl(payload.slugOrId, payload.type);
         const normalizedLocations = (payload.locations || []).map((value) => value.trim()).filter(Boolean);
@@ -213,12 +217,16 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
             .filter((year) => Number.isFinite(year))
             .sort((a, b) => a - b);
         const batch = sortedYears.length > 0 ? sortedYears.join(', ') : 'Any';
+        const educationLine = payload.allowedCourses?.length
+            ? payload.allowedCourses.slice(0, 3).join(', ')
+            : (payload.allowedDegrees?.length ? payload.allowedDegrees.join(', ') : 'Any Graduate');
 
         return [
             `${payload.title} - at ${payload.company}`,
             `location: ${locationLine}`,
             '',
             `Batch: ${batch}`,
+            `Education: ${educationLine}`,
             '',
             `Apply: ${publicUrl}`,
             '',
@@ -231,14 +239,20 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         company: string;
         type: 'JOB' | 'INTERNSHIP' | 'WALKIN';
         slugOrId: string;
+        allowedCourses: string[];
+        allowedDegrees: string[];
     }) => {
         const publicUrl = getPublicOpportunityUrl(payload.slugOrId, payload.type);
         const tracked = buildShareUrl(publicUrl, { platform, ref: 'admin_share', campaign: 'job_share' });
         const label = payload.type === 'WALKIN' ? 'Walk-in' : payload.type === 'INTERNSHIP' ? 'Internship' : 'Job';
+        const educationLine = payload.allowedCourses?.length
+            ? payload.allowedCourses.slice(0, 3).join(', ')
+            : (payload.allowedDegrees?.length ? payload.allowedDegrees.join(', ') : 'Any Graduate');
 
         return [
             `${payload.title} at ${payload.company}`,
             `${label} listing on FresherFlow`,
+            `Education: ${educationLine}`,
             tracked,
             '#FresherFlow #FresherJobs #OffCampus #Hiring',
         ].join('\n');
@@ -878,6 +892,8 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                         slugOrId: created.slug || created.id,
                         locations: created.locations || locations.split(',').map((value) => value.trim()).filter(Boolean),
                         allowedPassoutYears: created.allowedPassoutYears || passoutYears,
+                        allowedCourses: created.allowedCourses || allowedCourses,
+                        allowedDegrees: created.allowedDegrees || allowedDegrees,
                     };
                     setPublishedListing(listingData);
                 }
@@ -1623,6 +1639,16 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                                         onChange={(e) => setContactPhone(e.target.value)}
                                         className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all shadow-sm"
                                         placeholder="Optional phone number"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Apply URL (optional)</label>
+                                    <input
+                                        type="url"
+                                        value={applyLink}
+                                        onChange={(e) => setApplyLink(e.target.value)}
+                                        className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all shadow-sm"
+                                        placeholder="https://careers.company.com/... (if available)"
                                     />
                                 </div>
                             </div>

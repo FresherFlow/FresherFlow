@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import { alertsApi, savedApi, actionsApi } from '@/lib/api/client';
+import { calculateOpportunityMatch } from '@/lib/matchScore';
 import { BellIcon, ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import { Loader2 } from 'lucide-react';
@@ -12,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import toast from 'react-hot-toast';
 import { ActionType } from '@fresherflow/types';
+import type { Opportunity, Profile, EducationLevel } from '@fresherflow/types';
 
 type AlertKindFilter = 'all' | 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
 
@@ -28,6 +30,11 @@ type AlertFeedItem = {
         title: string;
         company: string;
         type: 'JOB' | 'INTERNSHIP' | 'WALKIN';
+        allowedDegrees?: string[];
+        allowedCourses?: string[];
+        allowedSpecializations?: string[];
+        allowedPassoutYears?: number[];
+        requiredSkills?: string[];
         expiresAt: string | null;
         applyLink?: string | null;
         companyWebsite?: string | null;
@@ -83,6 +90,44 @@ const ALERTS_UPDATED_EVENT = 'ff-alerts-updated';
 const APPLY_FOLLOWUP_WINDOW_MS = 5 * 60 * 1000;
 const APPLY_PROMPTED_SESSION_KEY = 'ff_alert_apply_prompted_v1';
 
+function isEducationLevel(value: string): value is EducationLevel {
+    return value === 'DIPLOMA' || value === 'DEGREE' || value === 'PG';
+}
+
+function buildAlertOpportunityForMatch(item: NonNullable<AlertFeedItem['opportunity']>): Opportunity {
+    return {
+        id: item.id,
+        slug: item.slug,
+        type: item.type as Opportunity['type'],
+        status: 'PUBLISHED' as Opportunity['status'],
+        title: item.title,
+        company: item.company,
+        description: '',
+        allowedDegrees: (item.allowedDegrees || []).filter((degree): degree is EducationLevel => isEducationLevel(degree)),
+        allowedCourses: item.allowedCourses || [],
+        allowedSpecializations: item.allowedSpecializations || [],
+        allowedPassoutYears: item.allowedPassoutYears || [],
+        requiredSkills: item.requiredSkills || [],
+        locations: [],
+        linkHealth: 'HEALTHY' as Opportunity['linkHealth'],
+        verificationFailures: 0,
+        lastVerifiedAt: new Date(),
+        postedAt: new Date(),
+        adminId: '',
+        expiresAt: item.expiresAt || undefined,
+        applyLink: item.applyLink || undefined,
+        companyWebsite: item.companyWebsite || undefined,
+    };
+}
+
+function getLiveMatchMetaText(item: AlertFeedItem, profile: Profile | null | undefined): string | null {
+    if (!profile || !item.opportunity) return null;
+    const liveMatch = calculateOpportunityMatch(profile, buildAlertOpportunityForMatch(item.opportunity));
+    if (liveMatch.reason.startsWith('Not eligible')) return liveMatch.reason;
+    if (liveMatch.reason === 'Eligible' || liveMatch.reason === 'Complete profile for match score') return liveMatch.reason;
+    return null;
+}
+
 function getAlertMetaText(item: AlertFeedItem): string | null {
     if (!item.metadata) return null;
 
@@ -96,10 +141,6 @@ function getAlertMetaText(item: AlertFeedItem): string | null {
             eventDate?: string;
             reminderWindow?: string;
         };
-
-        if (item.kind === 'NEW_JOB' && typeof metadata.relevanceScore === 'number') {
-            return `Match score ${Math.round(metadata.relevanceScore)}%`;
-        }
 
         if (item.kind === 'CLOSING_SOON' && typeof metadata.hoursLeft === 'number') {
             return metadata.hoursLeft <= 24
@@ -152,7 +193,7 @@ function writePromptedOpportunityIds(ids: Set<string>) {
 }
 
 export default function AlertsCenterPage() {
-    const { user, isLoading } = useAuth();
+    const { user, profile, isLoading } = useAuth();
     const [kind, setKind] = useState<AlertKindFilter>('all');
     const [feed, setFeed] = useState<AlertFeedResponse | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -579,7 +620,8 @@ export default function AlertsCenterPage() {
                             const isDigestExpanded = Boolean(expandedDigestIds[item.id]);
                             const digestData = digestItemsByAlert[item.id];
                             const digestLoading = Boolean(digestLoadingByAlert[item.id]);
-                            const metaText = getAlertMetaText(item);
+                            const matchMetaText = getLiveMatchMetaText(item, profile);
+                            const metaText = matchMetaText || getAlertMetaText(item);
                             const kindLabel =
                                 item.kind === 'CLOSING_SOON' ? 'Closing soon' :
                                     item.kind === 'EVENT_REMINDER' ? 'Event reminder' :
@@ -610,7 +652,7 @@ export default function AlertsCenterPage() {
                                     )}
                                     <div className="flex items-center justify-between gap-2 mb-2.5">
                                         <span className={cn(
-                                            "text-[10px] font-semibold uppercase tracking-wide px-2 py-1 rounded-md border",
+                                            "text-xs md:text-sm font-semibold uppercase tracking-wide px-2 py-1 rounded-md border",
                                             kindColor,
                                             item.readAt && "opacity-60"
                                         )}>
@@ -618,11 +660,11 @@ export default function AlertsCenterPage() {
                                         </span>
                                         <div className="flex items-center gap-1.5">
                                             {item.collapsedCount && item.collapsedCount > 1 && (
-                                                <span className="text-[9px] font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5">
+                                                <span className="text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5">
                                                     {item.collapsedCount} updates
                                                 </span>
                                             )}
-                                            <span className="text-[10px] font-bold text-muted-foreground inline-flex items-center gap-1.5 uppercase tracking-wider">
+                                            <span className="text-xs md:text-sm font-bold text-muted-foreground inline-flex items-center gap-1.5 uppercase tracking-wider">
                                                 <ClockIcon className="w-3 h-3" />
                                                 {new Date(item.sentAt).toLocaleString('en-IN', {
                                                     month: 'short',
@@ -646,7 +688,7 @@ export default function AlertsCenterPage() {
                                     </div>
                                     <div className="space-y-1">
                                         <p className={cn(
-                                            "text-base md:text-sm font-semibold leading-tight group-hover:text-primary transition-colors",
+                                            "text-sm md:text-base font-semibold leading-tight group-hover:text-primary transition-colors",
                                             item.readAt ? "text-foreground/90" : "text-foreground"
                                         )}>
                                             {title}
@@ -656,12 +698,12 @@ export default function AlertsCenterPage() {
                                             {channelLabel && (
                                                 <>
                                                     <div className="w-1 h-1 rounded-full bg-border" />
-                                                    <p className="text-[10px] font-bold text-primary/80 uppercase tracking-widest">{channelLabel}</p>
+                                                    <p className="text-xs md:text-sm font-bold text-primary/80 uppercase tracking-widest">{channelLabel}</p>
                                                 </>
                                             )}
                                         </div>
                                         {metaText && (
-                                            <p className="text-[12px] font-semibold text-muted-foreground">{metaText}</p>
+                                            <p className="text-sm font-semibold text-muted-foreground">{metaText}</p>
                                         )}
                                     </div>
                                     <div className={cn("mt-3 grid gap-2", item.opportunity ? "grid-cols-3" : "grid-cols-1")}>

@@ -476,13 +476,13 @@
     box-shadow: 0 12px 22px -18px hsl(220 40% 4% / 0.9);
   }
 
-  /* Dark primary buttons use accent, not white */
+  /* Dark primary buttons: keep theme-consistent, avoid bright accent blue */
   .dark .premium-button,
   .dark .btn-primary {
-    background-color: hsl(var(--accent));
-    color: hsl(var(--accent-foreground));
-    border-color: transparent;
-    box-shadow: none;
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary) / 0.35);
+    box-shadow: 0 8px 20px -16px hsl(var(--primary) / 0.6);
   }
 
   /* Dark badges use muted surface, not bright gray */

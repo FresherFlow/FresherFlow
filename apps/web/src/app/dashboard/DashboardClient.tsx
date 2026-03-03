@@ -5,7 +5,6 @@ import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
 import { opportunitiesApi, dashboardApi, savedApi } from '@/lib/api/client';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import UserIcon from '@heroicons/react/24/outline/UserIcon';
@@ -14,7 +13,6 @@ import { SkeletonJobCard } from '@/components/ui/Skeleton';
 import JobCard from '@/features/jobs/components/JobCard';
 import { Button } from '@/components/ui/Button';
 import { getFeedLastSyncAt } from '@/lib/offline/syncStatus';
-import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { OpportunityEventType } from '@fresherflow/types';
 import { OfflineError } from '@/lib/api/client';
@@ -73,7 +71,6 @@ const hasAppliedAction = (opp: Opportunity): boolean =>
 
 export default function DashboardClient() {
     const { user, profile, isLoading: authLoading } = useAuth();
-    const router = useRouter();
     const [recentOpps, setRecentOpps] = useState<Opportunity[]>(() => readDashCache());
     const [isLoadingOpps, setIsLoadingOpps] = useState<boolean>(() => {
         if (typeof window === 'undefined') return true;
@@ -131,7 +128,7 @@ export default function DashboardClient() {
 
     // On auth ready: load feed first, then stagger highlights
     useEffect(() => {
-        if (!authLoading && user && profile?.completionPercentage === 100 && !hasLoaded) {
+        if (!authLoading && user && (profile?.completionPercentage ?? 0) >= 100 && !hasLoaded) {
             setHasLoaded(true);
             void Promise.allSettled([
                 loadRecentOpportunities(),
@@ -202,14 +199,8 @@ export default function DashboardClient() {
         loadHighlights();
     };
 
-    const getDaysToExpiry = (expiresAt?: string | Date | null) => {
-        if (!expiresAt) return null;
-        const diffMs = new Date(expiresAt).getTime() - new Date().getTime();
-        return Math.ceil(diffMs / HOURS_24_IN_MS);
-    };
-
     // ── Tab Virtualization: compute ONLY the active tab's data ────────────────
-    const { activeItems, closingSoon, totalActive, jobsCount, internshipsCount, walkinsCount, latestBadgeCount } = useMemo(() => {
+    const { activeItems, totalActive, jobsCount, internshipsCount, walkinsCount, latestBadgeCount } = useMemo(() => {
         const rotateByOffset = <T,>(items: T[], offset: number) => {
             if (items.length <= 1) return items;
             const norm = ((offset % items.length) + items.length) % items.length;
@@ -288,7 +279,6 @@ export default function DashboardClient() {
 
         return {
             activeItems: { mobile: currentItems, desktop: limit(currentItems, false) },
-            closingSoon: closing,
             totalActive: active.length || 1,
             jobsCount: active.filter(o => o.type === 'JOB').length,
             internshipsCount: active.filter(o => o.type === 'INTERNSHIP').length,
@@ -451,44 +441,24 @@ export default function DashboardClient() {
                             </div>
                         </div>
 
-                        <section className="space-y-4 min-h-80">
-                            <h2 className="text-sm font-bold uppercase tracking-wider">Intelligence</h2>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                <div className="p-5 rounded-2xl border border-border bg-card/50 space-y-2">
-                                    <h3 className="text-[10px] font-bold text-primary uppercase">Snapshot</h3>
-                                    <p className="text-xs text-muted-foreground">Listings prioritized for your profile.</p>
-                                </div>
-                                <div className="p-5 rounded-2xl border border-border bg-card/50 space-y-3">
-                                    <h3 className="text-[10px] font-bold text-success uppercase">Deadline radar</h3>
-                                    <div className="space-y-2">
-                                        {closingSoon.slice(0, 3).map(opp => (
-                                            <button key={`side-${opp.id}`} onClick={() => router.push(getOpportunityPathFromItem(opp))} className="w-full text-left p-2 rounded-lg bg-muted/20 hover:bg-muted/40 transition-colors">
-                                                <p className="text-[11px] font-semibold truncate">{opp.title}</p>
-                                                <p className="inline-flex items-center rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-bold text-primary">
-                                                    {getDaysToExpiry(opp.expiresAt)}d remaining
-                                                </p>
-                                            </button>
-                                        ))}
-                                    </div>
-                                </div>
-                                <div className="p-5 rounded-2xl border border-border bg-card/50 space-y-4">
-                                    <h3 className="text-[10px] font-bold uppercase">Activity pulse</h3>
-                                    {[
-                                        { label: 'Jobs', count: jobsCount },
-                                        { label: 'Internships', count: internshipsCount },
-                                        { label: 'Walk-ins', count: walkinsCount },
-                                    ].map(item => (
-                                        <div key={item.label} className="space-y-1">
-                                            <div className="flex justify-between text-[10px]">
-                                                <span>{item.label}</span>
-                                                <span>{item.count}</span>
-                                            </div>
-                                            <div className="h-1 bg-muted rounded-full overflow-hidden">
-                                                <div className="h-full bg-primary/60" style={{ width: `${Math.min(100, (item.count / totalActive) * 100)}%` }} />
-                                            </div>
+                        <section className="space-y-4 min-h-50">
+                            <h2 className="text-sm font-bold uppercase tracking-wider">Activity Pulse</h2>
+                            <div className="p-5 rounded-2xl border border-border bg-card/50 space-y-4">
+                                {[
+                                    { label: 'Jobs', count: jobsCount },
+                                    { label: 'Internships', count: internshipsCount },
+                                    { label: 'Walk-ins', count: walkinsCount },
+                                ].map(item => (
+                                    <div key={item.label} className="space-y-1">
+                                        <div className="flex justify-between text-xs md:text-sm">
+                                            <span>{item.label}</span>
+                                            <span>{item.count}</span>
                                         </div>
-                                    ))}
-                                </div>
+                                        <div className="h-1 bg-muted rounded-full overflow-hidden">
+                                            <div className="h-full bg-primary/60" style={{ width: `${Math.min(100, (item.count / totalActive) * 100)}%` }} />
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
                         </section>
                     </div>
@@ -496,7 +466,7 @@ export default function DashboardClient() {
                 {showBackToTop && (
                     <button
                         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className="fixed bottom-24 md:bottom-8 right-4 z-40 h-10 px-3 rounded-full border border-border bg-card/95 shadow-sm text-[10px] font-bold uppercase tracking-wider text-foreground hover:border-primary/40 hover:text-primary transition-all"
+                        className="fixed bottom-24 md:bottom-8 right-4 z-40 h-10 px-3 rounded-full border border-border bg-card/95 shadow-sm text-xs md:text-sm font-bold uppercase tracking-wider text-foreground hover:border-primary/40 hover:text-primary transition-all"
                         aria-label="Back to top"
                     >
                         Top

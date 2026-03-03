@@ -190,6 +190,34 @@ export default function AdminDashboardHome() {
                 ))}
             </div>
 
+            <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
+                <div className="mb-3 flex items-center justify-between">
+                    <h3 className="text-sm font-semibold">Link health actions</h3>
+                    <Link href="/opportunities" className="text-xs font-medium text-primary hover:underline">
+                        Manage listings
+                    </Link>
+                </div>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <Link
+                        href="/opportunities?status=PUBLISHED&linkHealth=RETRYING&activeOnly=true"
+                        className="flex items-center justify-between rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800 hover:bg-amber-100"
+                    >
+                        <span>Retrying links (live)</span>
+                        <span className="font-semibold">{metrics.linkHealth.retrying}</span>
+                    </Link>
+                    <Link
+                        href="/opportunities?status=PUBLISHED&linkHealth=BROKEN&activeOnly=true"
+                        className="flex items-center justify-between rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800 hover:bg-rose-100"
+                    >
+                        <span>Broken links (live)</span>
+                        <span className="font-semibold">{metrics.linkHealth.broken}</span>
+                    </Link>
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                    These shortcuts exclude archived, deleted, and expired listings.
+                </p>
+            </div>
+
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                 <div className="rounded-lg border border-border bg-card p-4 shadow-sm">
                     <div className="mb-3 flex items-center justify-between">

@@ -55,6 +55,8 @@ function OpportunitiesListPage() {
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
     const [typeFilter, setTypeFilter] = useState('');
     const [statusFilter, setStatusFilter] = useState('');
+    const [linkHealthFilter, setLinkHealthFilter] = useState<'HEALTHY' | 'RETRYING' | 'BROKEN' | ''>('');
+    const [activeOnly, setActiveOnly] = useState(false);
     const [search, setSearch] = useState('');
     const [sort, setSort] = useState('postedAt_desc');
     const [page, setPage] = useState(1);
@@ -120,15 +122,24 @@ function OpportunitiesListPage() {
         }
         const typeParam = searchParams.get('type');
         const statusParam = searchParams.get('status');
+        const linkHealthParam = searchParams.get('linkHealth');
+        const activeOnlyParam = searchParams.get('activeOnly');
         const qParam = searchParams.get('q');
         const sortParam = searchParams.get('sort');
         const nextType = typeParam ? typeParamToEnum(typeParam) : '';
         const nextStatus = statusParam ? statusParam.toUpperCase() : '';
+        const nextLinkHealth =
+            linkHealthParam === 'HEALTHY' || linkHealthParam === 'RETRYING' || linkHealthParam === 'BROKEN'
+                ? linkHealthParam
+                : '';
+        const nextActiveOnly = activeOnlyParam === 'true';
         const nextSearch = qParam ?? '';
         const nextSort = sortParam || 'postedAt_desc';
 
         setTypeFilter((prev) => (prev === nextType ? prev : nextType));
         setStatusFilter((prev) => (prev === nextStatus ? prev : nextStatus));
+        setLinkHealthFilter((prev) => (prev === nextLinkHealth ? prev : nextLinkHealth));
+        setActiveOnly((prev) => (prev === nextActiveOnly ? prev : nextActiveOnly));
         setSearch((prev) => (prev === nextSearch ? prev : nextSearch));
         setSort((prev) => (prev === nextSort ? prev : nextSort));
         setPage((prev) => (prev === 1 ? prev : 1));
@@ -140,6 +151,8 @@ function OpportunitiesListPage() {
             const data = (await adminApi.getOpportunities({
                 type: typeFilter || undefined,
                 status: statusFilter || undefined,
+                linkHealth: linkHealthFilter || undefined,
+                activeOnly: activeOnly || undefined,
                 q: debouncedSearch || undefined,
                 sort,
                 limit: pageSize,
@@ -160,7 +173,7 @@ function OpportunitiesListPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [typeFilter, statusFilter, debouncedSearch, sort, page, router]);
+    }, [typeFilter, statusFilter, linkHealthFilter, activeOnly, debouncedSearch, sort, page, router]);
 
     useEffect(() => {
         if (!isAuthenticated) {
@@ -176,6 +189,10 @@ function OpportunitiesListPage() {
         else params.delete('type');
         if (statusFilter) params.set('status', statusFilter);
         else params.delete('status');
+        if (linkHealthFilter) params.set('linkHealth', linkHealthFilter);
+        else params.delete('linkHealth');
+        if (activeOnly) params.set('activeOnly', 'true');
+        else params.delete('activeOnly');
         if (debouncedSearch.trim()) params.set('q', debouncedSearch.trim());
         else params.delete('q');
         if (sort) params.set('sort', sort);
@@ -187,7 +204,7 @@ function OpportunitiesListPage() {
             isInternalUrlSyncRef.current = true;
             router.replace(`${pathname}?${next}`);
         }
-    }, [typeFilter, statusFilter, debouncedSearch, sort, searchParams, searchParamsKey, pathname, router]);
+    }, [typeFilter, statusFilter, linkHealthFilter, activeOnly, debouncedSearch, sort, searchParams, searchParamsKey, pathname, router]);
 
 
     const handleExpire = (id: string, title: string) => {
@@ -335,7 +352,15 @@ function OpportunitiesListPage() {
         return `${origin}${getPublicOpportunityHref(opp)}`;
     };
 
-    type SocialOpportunity = Pick<Opportunity, 'id' | 'slug' | 'type' | 'title' | 'company' | 'locations' | 'allowedPassoutYears'>;
+    type SocialOpportunity = Pick<Opportunity, 'id' | 'slug' | 'type' | 'title' | 'company' | 'locations' | 'allowedPassoutYears' | 'allowedCourses' | 'allowedDegrees'>;
+
+    const getEducationSummary = (opp: SocialOpportunity) => {
+        const courses = (opp.allowedCourses || []).map((item) => String(item).trim()).filter(Boolean);
+        if (courses.length > 0) return courses.slice(0, 3).join(', ');
+        const degrees = (opp.allowedDegrees || []).map((item) => String(item).trim()).filter(Boolean);
+        if (degrees.length > 0) return degrees.join(', ');
+        return 'Any Graduate';
+    };
 
     const buildSocialCaption = (opp: SocialOpportunity) => {
         const normalizedLocations = (opp.locations || []).map((value: string) => String(value).trim()).filter(Boolean);
@@ -354,6 +379,7 @@ function OpportunitiesListPage() {
             `location: ${locationLine}`,
             '',
             `Batch: ${batch}`,
+            `Education: ${getEducationSummary(opp)}`,
             '',
             `Apply: ${getPublicOpportunityUrl(opp)}`,
             '',
