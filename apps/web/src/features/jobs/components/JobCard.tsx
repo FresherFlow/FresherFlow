@@ -185,8 +185,8 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     return (
         <div
             className={cn(
-                "group relative bg-card border border-slate-300/70 dark:border-0 rounded-xl p-4 md:p-5 shadow-md dark:shadow-none transition-all duration-200 hover:border-primary/40 dark:hover:border-0 hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 hover:bg-linear-to-b hover:from-white/3 hover:to-transparent flex flex-col gap-3 overflow-hidden",
-                isClosingSoon() && !isExpired() && "border-primary/45 dark:border-0",
+                "group relative bg-card border border-border/50 rounded-xl p-4 md:p-5 shadow-md dark:shadow-none transition-all duration-200 hover:border-primary/40 hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 hover:bg-linear-to-b hover:from-white/3 hover:to-transparent flex flex-col gap-3 overflow-hidden",
+                isClosingSoon() && !isExpired() && "border-primary/45",
                 isExpired() && "opacity-70",
                 "cursor-pointer"
             )}
@@ -301,7 +301,9 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             key={`${chip}-${idx}`}
                             className={cn(
                                 "inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-full",
-                                idx === 0 ? "bg-slate-200/90 dark:bg-muted/80 text-foreground/85 dark:text-foreground/85" : "bg-slate-200/80 dark:bg-muted/75 text-muted-foreground"
+                                idx === 0
+                                    ? "bg-muted/80 text-foreground border border-border/70"
+                                    : "bg-muted/60 text-muted-foreground border border-border/60"
                             )}
                         >
                             {chip}
@@ -315,8 +317,8 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             isExpired()
                                 ? "bg-destructive/5 border-destructive/25 text-destructive dark:bg-destructive/10 dark:border-destructive/30"
                                 : isClosingSoon()
-                                    ? "bg-amber-100 border-amber-400/70 text-amber-800 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
-                                    : "bg-slate-100 border-slate-300/60 text-slate-500 dark:bg-muted/70 dark:border-border/70 dark:text-muted-foreground"
+                                    ? "bg-amber-100/70 border-amber-400/70 text-amber-800 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
+                                    : "bg-muted/70 border-border/70 text-foreground/80"
                         )}
                     >
                         <ClockIcon className="w-3 h-3" aria-hidden="true" />
