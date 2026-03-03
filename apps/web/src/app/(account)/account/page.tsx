@@ -11,7 +11,9 @@ import {
     ArrowLeftIcon,
     BellAlertIcon,
     ChatBubbleBottomCenterTextIcon,
-    ClipboardDocumentCheckIcon
+    ClipboardDocumentCheckIcon,
+    ChevronRightIcon,
+    EnvelopeIcon
 } from '@heroicons/react/24/outline';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
@@ -23,152 +25,123 @@ export default function AccountPage() {
     if (!user) {
         return (
             <div className="min-h-screen bg-background flex items-center justify-center px-6">
-                <div className="text-center space-y-6 animate-in fade-in duration-700">
-                    <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto">
-                        <UserCircleIcon className="w-10 h-10 text-muted-foreground" />
+                <div className="text-center space-y-5 animate-in fade-in duration-500">
+                    <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto border border-border/50">
+                        <UserCircleIcon className="w-8 h-8 text-muted-foreground/60" />
                     </div>
-                    <div className="space-y-2">
-                        <h1 className="text-3xl font-bold tracking-tight">Sign in required</h1>
-                        <p className="text-muted-foreground font-medium">Please sign in to manage your account.</p>
+                    <div className="space-y-1">
+                        <h1 className="text-2xl font-bold tracking-tight">Sign in required</h1>
+                        <p className="text-muted-foreground text-sm">Please sign in to manage your account.</p>
                     </div>
-                    <Link href="/login" className="premium-button mx-auto !w-fit px-8">Sign in</Link>
+                    <Link href="/login" className="premium-button mx-auto !w-fit px-8 h-9 text-sm">Sign in</Link>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background animate-in fade-in duration-700 pb-16">
-            <main className="max-w-3xl mx-auto px-4 py-5 md:py-7 space-y-4 md:space-y-5">
-                <div className="flex items-center justify-between gap-3">
+        <div className="min-h-screen bg-background animate-in fade-in duration-500 pb-20 font-sans">
+            <main className="max-w-5xl mx-auto px-4 md:px-8 py-5 md:py-10">
+
+                {/* ── Top nav bar (same on all sizes) ── */}
+                <div className="flex items-center justify-between mb-6 md:mb-8">
                     <div className="flex items-center gap-3">
-                        <Link href="/dashboard" className="p-2 hover:bg-muted rounded-xl transition-colors">
-                            <ArrowLeftIcon className="w-5 h-5 text-muted-foreground" />
+                        <Link href="/dashboard" className="p-1.5 -ml-1.5 rounded-lg hover:bg-muted transition-colors active:scale-95 group">
+                            <ArrowLeftIcon className="w-5 h-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                         </Link>
-                        <h1 className="text-xl md:text-2xl font-bold tracking-tight">Account</h1>
+                        <h1 className="text-xl font-bold tracking-tight text-foreground">Account</h1>
                     </div>
                     <button
                         onClick={logout}
-                        className="h-9 px-3.5 inline-flex items-center justify-center gap-2 text-error font-bold border border-error/20 bg-error/5 rounded-xl hover:bg-error/10 transition-all text-[10px] uppercase tracking-widest"
+                        className="h-8 px-3 inline-flex items-center gap-1.5 text-red-500 font-semibold border border-red-500/20 bg-red-500/5 rounded-lg hover:bg-red-500/10 transition-all text-xs active:scale-95"
                     >
-                        <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                        <ArrowRightOnRectangleIcon className="w-3.5 h-3.5" />
                         Sign out
                     </button>
                 </div>
 
-                {/* Identity Card */}
-                <div className="rounded-2xl border border-border bg-card p-4 md:p-5 flex flex-col md:flex-row items-center gap-4 md:gap-5 justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-primary text-primary-foreground flex items-center justify-center text-base md:text-lg font-bold shrink-0">
-                            {user.fullName?.[0].toUpperCase() || user.email?.[0].toUpperCase()}
-                        </div>
-                        <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Signed-in profile</p>
-                            <h2 className="text-lg md:text-xl font-bold tracking-tight">{user.fullName || 'User'}</h2>
-                            <p className="text-muted-foreground font-medium text-xs md:text-sm">{user.email}</p>
-                        </div>
-                    </div>
-                    <div className="w-full md:w-auto px-4 py-3 bg-success/5 border border-success/20 rounded-2xl">
-                        <div className="flex items-center gap-2 mb-1">
-                            <ShieldCheckIcon className="w-4 h-4 text-success" />
-                            <span className="text-[10px] font-bold text-success uppercase tracking-widest">Status</span>
-                        </div>
-                        <p className="text-xs font-bold text-foreground">Active session</p>
-                    </div>
-                </div>
+                {/* ── Two-column on desktop, single on mobile ── */}
+                <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 md:gap-8 items-start">
 
-                {/* Quick Links */}
-                <div className="bg-card border border-border rounded-2xl overflow-hidden">
-                    <Link
-                        href="/profile"
-                        className="flex items-center gap-4 px-4 py-4 hover:bg-muted/40 transition-colors"
-                    >
-                        <div className="w-10 h-10 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
-                            <UserCircleIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-semibold tracking-tight">Profile</h3>
-                            <p className="text-[11px] text-muted-foreground">Education, skills and preferences</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">Edit</span>
-                    </Link>
-                    <div className="h-px bg-border" />
-                    <Link
-                        href="/account/saved"
-                        className="flex items-center gap-4 px-4 py-4 hover:bg-muted/40 transition-colors"
-                    >
-                        <div className="w-10 h-10 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
-                            <BookmarkIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-semibold tracking-tight">Saved</h3>
-                            <p className="text-[11px] text-muted-foreground">Your bookmarked opportunities</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">View</span>
-                    </Link>
-                    <div className="h-px bg-border" />
-                    <Link
-                        href="/account/tracker"
-                        className="flex items-center gap-4 px-4 py-4 hover:bg-muted/40 transition-colors"
-                    >
-                        <div className="w-10 h-10 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
-                            <ClipboardDocumentCheckIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-semibold tracking-tight">Tracker</h3>
-                            <p className="text-[11px] text-muted-foreground">Applied, planned, interviewed, selected</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">Open</span>
-                    </Link>
-                    <div className="h-px bg-border" />
-                    <Link
-                        href="/account/alerts"
-                        className="flex items-center gap-4 px-4 py-4 hover:bg-muted/40 transition-colors"
-                    >
-                        <div className="w-10 h-10 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
-                            <BellAlertIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-semibold tracking-tight">Alerts</h3>
-                            <p className="text-[11px] text-muted-foreground">Digest and closing-soon notifications</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">Manage</span>
-                    </Link>
-                    <div className="h-px bg-border" />
-                    <Link
-                        href="/account/feedback"
-                        className="flex items-center gap-4 px-4 py-4 hover:bg-muted/40 transition-colors"
-                    >
-                        <div className="w-10 h-10 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
-                            <ChatBubbleBottomCenterTextIcon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-semibold tracking-tight">Feedback</h3>
-                            <p className="text-[11px] text-muted-foreground">Share ideas and bug reports</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">Send</span>
-                    </Link>
-                    <div className="h-px bg-border" />
-                    <Link
-                        href="/dashboard"
-                        className="flex items-center gap-4 px-4 py-4 hover:bg-muted/40 transition-colors"
-                    >
-                        <div className="w-10 h-10 rounded-xl bg-muted text-muted-foreground flex items-center justify-center">
-                            <Squares2X2Icon className="w-5 h-5" />
-                        </div>
-                        <div className="flex-1">
-                            <h3 className="text-sm font-semibold tracking-tight">Dashboard</h3>
-                            <p className="text-[11px] text-muted-foreground">Your activity and highlights</p>
-                        </div>
-                        <span className="text-xs text-muted-foreground">Open</span>
-                    </Link>
-                </div>
+                    {/* ── LEFT: Identity Panel (sticky on desktop) ── */}
+                    <div className="md:sticky md:top-8 space-y-3">
+                        {/* Avatar + Name card */}
+                        <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm">
 
-                <div className="pt-2">
-                    <p className="text-center text-[10px] font-bold text-muted-foreground/40 uppercase tracking-tight">Build: FF-GENA-2026-X1</p>
+                            <div className="flex flex-col items-center text-center gap-3">
+                                <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary/60 text-primary-foreground flex items-center justify-center text-2xl font-extrabold shadow-inner ring-4 ring-background">
+                                    {user.fullName?.[0].toUpperCase() || user.email?.[0].toUpperCase()}
+                                </div>
+                                <div className="space-y-1 w-full">
+                                    <h2 className="text-base font-bold tracking-tight text-foreground truncate">{user.fullName || 'User'}</h2>
+                                    <div className="flex items-center justify-center gap-1.5 text-muted-foreground text-xs font-medium">
+                                        <EnvelopeIcon className="w-3 h-3 shrink-0 opacity-60" />
+                                        <span className="truncate">{user.email}</span>
+                                    </div>
+                                </div>
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-success/10 text-success border border-success/20">
+                                    <ShieldCheckIcon className="w-3 h-3" /> Active session
+                                </span>
+                            </div>
+                        </div>
+
+                        {/* Build tag — desktop only */}
+                        <p className="hidden md:block text-center text-[10px] font-bold text-muted-foreground/25 uppercase tracking-widest pt-1">FF-GENA-2026-X2</p>
+                    </div>
+
+                    {/* ── RIGHT: Menu Sections ── */}
+                    <div className="space-y-5">
+
+                        <MenuSection label="General">
+                            <MenuRow href="/profile" icon={UserCircleIcon} title="Profile Settings" subtitle="Education, skills and career preferences" />
+                            <MenuRow href="/dashboard" icon={Squares2X2Icon} title="Dashboard" subtitle="Your activity overview and highlights" />
+                        </MenuSection>
+
+                        <MenuSection label="Activity">
+                            <MenuRow href="/account/saved" icon={BookmarkIcon} title="Saved" subtitle="Bookmarked jobs and internships" />
+                            <MenuRow href="/account/tracker" icon={ClipboardDocumentCheckIcon} title="Application Tracker" subtitle="Applied, planned, interviewed, selected" />
+                        </MenuSection>
+
+                        <MenuSection label="App Settings">
+                            <MenuRow href="/account/alerts" icon={BellAlertIcon} title="Alerts" subtitle="Daily digests and closing-soon notifications" />
+                            <MenuRow href="/account/feedback" icon={ChatBubbleBottomCenterTextIcon} title="Feedback" subtitle="Share ideas or report bugs" />
+                        </MenuSection>
+
+                        {/* Build tag — mobile only */}
+                        <p className="md:hidden text-center text-[10px] font-bold text-muted-foreground/25 uppercase tracking-widest pt-2">FF-GENA-2026-X2</p>
+                    </div>
+
                 </div>
             </main>
         </div>
     );
 }
 
+function MenuSection({ label, children }: { label: string; children: React.ReactNode }) {
+    return (
+        <div className="space-y-1.5">
+            <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">{label}</h3>
+            <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm divide-y divide-border/40">
+                {children}
+            </div>
+        </div>
+    );
+}
+
+function MenuRow({ href, icon: Icon, title, subtitle }: { href: string; icon: React.ElementType; title: string; subtitle: string }) {
+    return (
+        <Link
+            href={href}
+            className="group flex items-center gap-3.5 px-4 py-3.5 hover:bg-muted/30 active:bg-muted/50 transition-colors duration-150"
+        >
+            <div className="w-9 h-9 rounded-xl bg-foreground/[0.05] text-foreground/60 flex items-center justify-center shrink-0 border border-border/50 group-hover:bg-foreground group-hover:text-background group-hover:border-foreground transition-all duration-200">
+                <Icon className="w-4.5 h-4.5 w-[18px] h-[18px]" />
+            </div>
+            <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-foreground leading-snug">{title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">{subtitle}</p>
+            </div>
+            <ChevronRightIcon className="w-4 h-4 text-muted-foreground/30 group-hover:text-foreground group-hover:translate-x-0.5 transition-all duration-200 shrink-0" />
+        </Link>
+    );
+}

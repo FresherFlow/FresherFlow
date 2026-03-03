@@ -79,17 +79,17 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                             <div className="flex items-center gap-3">
                                 <item.icon className="w-4 h-4 text-primary" />
                                 <span>{item.label}</span>
+                                {item.href === '/alerts' && unreadCount > 0 && (
+                                    <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold leading-none">
+                                        {unreadCount > 99 ? '99+' : unreadCount}
+                                    </span>
+                                )}
+                                {item.href === '/alerts' && pendingSyncCount > 0 && (
+                                    <span className="inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full bg-amber-500 text-white text-[10px] font-bold leading-none">
+                                        {pendingSyncCount > 99 ? '99+' : pendingSyncCount}
+                                    </span>
+                                )}
                             </div>
-                            {item.href === '/alerts' && unreadCount > 0 && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-primary text-[8px] font-bold text-white min-w-[18px] text-center">
-                                    {unreadCount > 99 ? '99+' : unreadCount}
-                                </span>
-                            )}
-                            {item.href === '/alerts' && pendingSyncCount > 0 && (
-                                <span className="px-1.5 py-0.5 rounded-full bg-amber-500 text-[8px] font-bold text-white min-w-[18px] text-center">
-                                    {pendingSyncCount > 99 ? '99+' : pendingSyncCount}
-                                </span>
-                            )}
                         </Link>
                     ))}
                     <div className="pt-3 mt-3">

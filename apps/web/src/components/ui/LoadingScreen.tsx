@@ -1,6 +1,7 @@
 'use client';
 
 import { cn } from '@/lib/utils';
+import { useEffect, useState } from 'react';
 
 import Image from 'next/image';
 
@@ -15,6 +16,28 @@ export default function LoadingScreen({
     fullScreen = true,
     className
 }: LoadingScreenProps) {
+    const [displayMessage, setDisplayMessage] = useState(message);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+            ((window.navigator as Navigator & { standalone?: boolean }).standalone === true);
+
+        if (!isStandalone) {
+            window.setTimeout(() => setDisplayMessage(message), 0);
+            return;
+        }
+
+        const launchKey = 'ff_pwa_launch_text_seen';
+        const launchSeen = window.sessionStorage.getItem(launchKey) === '1';
+        if (!launchSeen) {
+            window.setTimeout(() => setDisplayMessage('Opening FresherFlow...'), 0);
+            window.sessionStorage.setItem(launchKey, '1');
+        } else {
+            window.setTimeout(() => setDisplayMessage(message), 0);
+        }
+    }, [message]);
+
     return (
         <div className={cn(
             "flex flex-col items-center justify-center bg-background/95 backdrop-blur-sm z-50",
@@ -49,9 +72,9 @@ export default function LoadingScreen({
                 </div>
             </div>
 
-            {message && (
+            {displayMessage && (
                 <div className="text-center animate-pulse space-y-2">
-                    <p className="text-lg font-bold text-foreground tracking-tight">{message}</p>
+                    <p className="text-lg font-bold text-foreground tracking-tight">{displayMessage}</p>
                     <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold">FresherFlow</p>
                 </div>
             )}

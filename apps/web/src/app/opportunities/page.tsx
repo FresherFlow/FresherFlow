@@ -56,7 +56,9 @@ function OpportunitiesContent() {
 
     // Mobile draft state (kept separate so apply is atomic)
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+    const [draftType, setDraftType] = useState<string | null>(null);
     const [draftLoc, setDraftLoc] = useState<string | null>(null);
+    const [draftYear, setDraftYear] = useState<number | null>(null);
     const [draftClosingSoon, setDraftClosingSoon] = useState(false);
     const [draftShowOnlySaved, setDraftShowOnlySaved] = useState(false);
     const [draftMinSalary, setDraftMinSalary] = useState<number | null>(null);
@@ -118,7 +120,9 @@ function OpportunitiesContent() {
     };
 
     const openMobileFilters = () => {
+        setDraftType(selectedType);
         setDraftLoc(filters.location);
+        setDraftYear(filters.year);
         setDraftClosingSoon(filters.closingSoon);
         setDraftShowOnlySaved(filters.saved);
         setDraftMinSalary(filters.salary);
@@ -126,10 +130,11 @@ function OpportunitiesContent() {
     };
 
     const applyMobileFilters = () => {
+        updateType(draftType);
         setFilters({
             location: draftLoc,
             salary: draftMinSalary,
-            year: filters.year,
+            year: draftYear,
             closingSoon: draftClosingSoon,
             saved: draftShowOnlySaved,
         });
@@ -160,7 +165,7 @@ function OpportunitiesContent() {
                 {/* Page header */}
                 <div className="flex flex-col gap-3.5 pb-5">
                     <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
-                        <div className="space-y-1">
+                        <div className="hidden md:block space-y-1">
                             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">Browse the live feed</h1>
                             <p className="text-xs text-muted-foreground font-medium flex items-center gap-2" aria-live="polite">
                                 <ShieldCheckIcon className="w-3.5 h-3.5 text-primary" />
@@ -231,17 +236,24 @@ function OpportunitiesContent() {
                 <MobileFilterDrawer
                     isOpen={isMobileFilterOpen}
                     onClose={() => setIsMobileFilterOpen(false)}
+                    draftType={draftType}
+                    setDraftType={setDraftType}
                     draftLoc={draftLoc}
                     setDraftLoc={setDraftLoc}
+                    draftYear={draftYear}
+                    setDraftYear={setDraftYear}
                     draftClosingSoon={draftClosingSoon}
                     setDraftClosingSoon={setDraftClosingSoon}
                     draftShowOnlySaved={draftShowOnlySaved}
                     setDraftShowOnlySaved={setDraftShowOnlySaved}
                     draftMinSalary={draftMinSalary}
                     setDraftMinSalary={setDraftMinSalary}
+                    isLoggedIn={!!user}
                     onApply={applyMobileFilters}
                     onClear={() => {
+                        setDraftType(null);
                         setDraftLoc(null);
+                        setDraftYear(null);
                         setDraftClosingSoon(false);
                         setDraftShowOnlySaved(false);
                         setDraftMinSalary(null);
