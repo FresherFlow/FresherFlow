@@ -62,6 +62,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
     // Mobile draft state
     const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
     const [draftLoc, setDraftLoc] = useState<string | null>(null);
+    const [draftYear, setDraftYear] = useState<number | null>(null);
     const [draftClosingSoon, setDraftClosingSoon] = useState(false);
     const [draftShowOnlySaved, setDraftShowOnlySaved] = useState(false);
     const [draftMinSalary, setDraftMinSalary] = useState<number | null>(null);
@@ -96,6 +97,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
 
     const openMobileFilters = () => {
         setDraftLoc(filters.location);
+        setDraftYear(filters.year);
         setDraftClosingSoon(filters.closingSoon);
         setDraftShowOnlySaved(filters.saved);
         setDraftMinSalary(filters.salary);
@@ -106,7 +108,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
         setFilters({
             location: draftLoc,
             salary: draftMinSalary,
-            year: filters.year,
+            year: draftYear,
             closingSoon: draftClosingSoon,
             saved: draftShowOnlySaved,
         });
@@ -181,15 +183,19 @@ function CategoryPageContent({ type }: CategoryPageProps) {
                 onClose={() => setIsMobileFilterOpen(false)}
                 draftLoc={draftLoc}
                 setDraftLoc={setDraftLoc}
+                draftYear={draftYear}
+                setDraftYear={setDraftYear}
                 draftClosingSoon={draftClosingSoon}
                 setDraftClosingSoon={setDraftClosingSoon}
                 draftShowOnlySaved={draftShowOnlySaved}
                 setDraftShowOnlySaved={setDraftShowOnlySaved}
                 draftMinSalary={draftMinSalary}
                 setDraftMinSalary={setDraftMinSalary}
+                isLoggedIn={!!user}
                 onApply={applyMobileFilters}
                 onClear={() => {
                     setDraftLoc(null);
+                    setDraftYear(null);
                     setDraftClosingSoon(false);
                     setDraftShowOnlySaved(false);
                     setDraftMinSalary(null);
