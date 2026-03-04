@@ -21,9 +21,13 @@ export function calculateOpportunityMatch(profile: Profile | null | undefined, o
 
     // Hard eligibility gates
     const hasYearRestrictions = opportunity.allowedPassoutYears && opportunity.allowedPassoutYears.length > 0;
-    const userYear = profile.gradYear || profile.pgYear;
-    if (hasYearRestrictions && (!userYear || !opportunity.allowedPassoutYears!.includes(userYear))) {
-        return { score: 0, reason: 'Not eligible (Batch mismatch)' };
+    if (hasYearRestrictions) {
+        const hasMatchingGradYear = profile.gradYear && opportunity.allowedPassoutYears!.includes(profile.gradYear);
+        const hasMatchingPgYear = profile.pgYear && opportunity.allowedPassoutYears!.includes(profile.pgYear);
+
+        if (!hasMatchingGradYear && !hasMatchingPgYear) {
+            return { score: 0, reason: 'Not eligible (Batch mismatch)' };
+        }
     }
 
     const allowedDegrees = opportunity.allowedDegrees || [];

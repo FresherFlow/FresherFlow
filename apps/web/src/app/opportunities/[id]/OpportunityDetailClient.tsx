@@ -486,10 +486,16 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         }
 
         const mustFix: string[] = [];
-        const userYear = profile.gradYear || profile.pgYear;
         const allowedYears = opp?.allowedPassoutYears || [];
-        if (allowedYears.length > 0 && (!userYear || !allowedYears.includes(userYear))) {
-            mustFix.push(`Passout year does not match (${allowedYears.join(', ')})`);
+        if (allowedYears.length > 0) {
+            const hasMatchingGradYear = profile.gradYear && allowedYears.includes(profile.gradYear);
+            const hasMatchingPgYear = profile.pgYear && allowedYears.includes(profile.pgYear);
+
+            if (!profile.gradYear && !profile.pgYear) {
+                mustFix.push(`Passout year is missing in your profile`);
+            } else if (!hasMatchingGradYear && !hasMatchingPgYear) {
+                mustFix.push(`Passout year does not match (${allowedYears.join(', ')})`);
+            }
         }
 
         const levels = ['DIPLOMA', 'DEGREE', 'PG'];
@@ -540,7 +546,6 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
             missingSkills,
         };
     })();
-
 
     const handleReport = async (reason: string) => {
         if (!user || !opp) {
@@ -904,12 +909,12 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {/* Description Section */}
                         <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Description</h3>
-                                <div
-                                    className="prose prose-base max-w-none text-foreground/80 font-medium text-sm md:text-base leading-relaxed whitespace-pre-wrap"
-                                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(opp.description) }}
-                                />
-                            </div>
+                            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Description</h3>
+                            <div
+                                className="prose prose-base max-w-none text-foreground/80 font-medium text-sm md:text-base leading-relaxed whitespace-pre-wrap"
+                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(opp.description) }}
+                            />
+                        </div>
 
                         {isCampusDrive && driveMeta.isTcsNqt && (
                             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-4">
@@ -979,7 +984,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         {timelineEvents.length > 0 && (
                             <div id="drive-timeline" className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
                                 <div className="flex items-center justify-between gap-2 pb-2">
-                                <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground">Drive timeline</h3>
+                                    <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground">Drive timeline</h3>
                                     {upcomingTimelineEvents.length > 0 && (
                                         <span className="text-xs font-semibold text-primary">
                                             {upcomingTimelineEvents.length} upcoming
@@ -1348,7 +1353,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                                         ? 'This listing is expired. You can review details, but new applications are usually closed.'
                                         : listingState === 'INACTIVE'
                                             ? 'This listing is currently inactive. Check status updates from the source link before applying.'
-                                        : 'This listing is currently active and accepting applications.'}
+                                            : 'This listing is currently active and accepting applications.'}
                                 </p>
                                 {opp.expiresAt && (
                                     <p className="text-sm text-muted-foreground">
@@ -1360,9 +1365,9 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         <div className="hidden lg:flex p-3.5 items-start gap-3 bg-muted/10 border border-border border-dashed rounded-xl">
                             <InformationCircleIcon className="w-4 h-4 text-primary/40 shrink-0 mt-0.5" />
-                                <p className="text-sm font-medium text-muted-foreground leading-relaxed uppercase tracking-tight">
-                                    Fraud protection: We never charge for placement. Report suspicious activity.
-                                </p>
+                            <p className="text-sm font-medium text-muted-foreground leading-relaxed uppercase tracking-tight">
+                                Fraud protection: We never charge for placement. Report suspicious activity.
+                            </p>
                         </div>
 
                         {user?.role === 'ADMIN' && (
