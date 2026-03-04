@@ -39,6 +39,7 @@ import companyRoutes from './routes/public/companies';
 import sitemapRoutes from './routes/public/sitemap';
 import opportunityClickRoutes from './routes/public/opportunityClicks';
 import emailIngestionRoutes from './routes/public/emailIngestion';
+import aiIngestionRoutes from './routes/public/aiIngestion';
 import cronRoutes from './routes/cron';
 
 const app: Application = express();
@@ -72,6 +73,7 @@ if (isUserMode) {
     app.use('/api/public/growth', growthRoutes);
     app.use('/api/public', opportunityClickRoutes);
     app.use('/api/ingestion', emailIngestionRoutes);
+    app.use('/api/internal/ingest-ai-job', aiIngestionRoutes);
     app.use('/api/cron', cronRoutes);
 }
 
