@@ -138,12 +138,12 @@ export const locationRule: EligibilityRule = {
         }
 
         const userCities = profile.preferredCities.map((c: string) => c.toLowerCase());
-        const oppLocations = opp.locations.map((l: string) => l.toLowerCase());
+        const oppLocations = (opp.locations || []).map((l: string) => l.toLowerCase());
 
         return oppLocations.some((loc: string) => userCities.includes(loc));
     },
     getReason: (opp, profile) => {
-        return `Opportunity locations (${opp.locations.join(', ')}) don't match your preferred cities: ${profile.preferredCities?.join(', ') || 'None'}`;
+        return `Opportunity locations (${(opp.locations || []).join(', ')}) don't match your preferred cities: ${profile.preferredCities?.join(', ') || 'None'}`;
     }
 };
 
