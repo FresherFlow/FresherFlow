@@ -29,10 +29,27 @@ export const metadata: Metadata = {
     },
 };
 
-// Homepage is fully static — no dynamic data, never needs regeneration
-export const dynamic = 'force-static';
+// Revalidate once per day so the count stays reasonably fresh
+export const revalidate = 86400;
 
-export default function LandingPage() {
+async function getLiveOpportunityCount(): Promise<number> {
+    try {
+        const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const base = apiUrl.replace(/\/+$/, '');
+        const res = await fetch(`${base}/api/stats`, {
+            next: { revalidate: 86400 },
+        });
+        if (!res.ok) return 0;
+        const data = await res.json() as { opportunities?: number };
+        return typeof data.opportunities === 'number' ? data.opportunities : 0;
+    } catch {
+        return 0;
+    }
+}
+
+export default async function LandingPage() {
+    const liveCount = await getLiveOpportunityCount();
+    const countLabel = liveCount > 0 ? `${liveCount}+` : 'Daily';
     return (
         <>
             <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20">
@@ -59,14 +76,14 @@ export default function LandingPage() {
                                         Open the live feed
                                         <ArrowRightIcon className="w-4 h-4 ml-2" />
                                     </Link>
-                                    <Link href="#verification" className="premium-button-outline px-6 text-[12px] uppercase tracking-widest">
-                                        See verification
+                                    <Link href="/login" className="premium-button-outline px-6 text-[12px] uppercase tracking-widest">
+                                        Sign in
                                     </Link>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4 pt-4">
                                     {[
                                         { label: 'Links checked', value: '100%' },
-                                        { label: 'New posts daily', value: '24x7' },
+                                        { label: 'Verified listings', value: countLabel },
                                         { label: 'Noise removed', value: 'Zero spam' },
                                     ].map((stat) => (
                                         <div key={stat.label} className="rounded-xl border border-border bg-card/80 p-4">
@@ -109,7 +126,7 @@ export default function LandingPage() {
                                 </div>
                             </div>
                         </div>
-                        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808010_1px,transparent_1px),linear-gradient(to_bottom,#80808010_1px,transparent_1px)] bg-[size:48px_48px] -z-10" />
+                        <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808010_1px,transparent_1px),linear-gradient(to_bottom,#80808010_1px,transparent_1px)] bg-size-[48px_48px] -z-10" />
                     </section>
 
                     {/* Trust ledger */}

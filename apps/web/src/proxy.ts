@@ -216,11 +216,17 @@ export function proxy(request: NextRequest) {
     if (hostname.startsWith('app.')) {
         if (pathname === '/') {
             if (isAuthenticated) return redirectWithMethodAwareness(request, '/dashboard');
-            return redirectWithMethodAwareness(request, userLoginUrl);
+            // Only redirect to login if userLoginUrl is on a different host/path to avoid a self-redirect loop.
+            const loginTarget = new URL(userLoginUrl);
+            if (loginTarget.hostname !== normalizedHost || loginTarget.pathname !== '/login') {
+                return redirectWithMethodAwareness(request, userLoginUrl);
+            }
+            // Same host — fall through and render /login directly.
         }
         if (pathname === '/login') {
+            // Only redirect authenticated users away; unauthenticated must reach the login page.
             if (isAuthenticated) return redirectWithMethodAwareness(request, '/dashboard');
-            return redirectWithMethodAwareness(request, userLoginUrl);
+            // Fall through — let Next.js render the login page.
         }
     }
 

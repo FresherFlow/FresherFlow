@@ -16,6 +16,7 @@ import { getFeedLastSyncAt } from '@/lib/offline/syncStatus';
 import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { OpportunityEventType } from '@fresherflow/types';
 import { OfflineError } from '@/lib/api/client';
+import { ProfileCompletionBanner, ReferralLinkButton } from '@/components/dashboard/DashboardBanners';
 
 // ── Dashboard feed cache ─────────────────────────────────────────────────────
 const DASH_CACHE_KEY = 'ff_dashboard_cache_v1';
@@ -310,7 +311,8 @@ export default function DashboardClient() {
                                 </h1>
                                 <p className="text-[11px] md:text-xs text-muted-foreground">Move fast on verified listings.</p>
                             </div>
-                            <div className="hidden md:flex flex-wrap gap-2">
+                            <div className="hidden md:flex flex-wrap items-center gap-2">
+                                <ReferralLinkButton />
                                 <Button asChild className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest">
                                     <Link href="/opportunities">
                                         <MagnifyingGlassIcon className="w-4 h-4 mr-2" />
@@ -330,6 +332,7 @@ export default function DashboardClient() {
                     {/* Main Grid */}
                     <div className="space-y-6 md:space-y-8">
                         <div className="space-y-3 md:space-y-6">
+                            <ProfileCompletionBanner />
                             {(recentError || highlightsError) && (
                                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                     <div className="text-xs text-foreground">Data sync issues. Browse existing listings.</div>
