@@ -52,12 +52,16 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 // Admin Authentication Middleware
+// Accepts both cookie (web) and Authorization Bearer header (mobile app)
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
-    // Cookie-based auth only (assuming admin also sets a cookie, if not currently implemented, this might break admin if admin frontend uses headers)
-    // For safety, checking both or just keeping headers if admin is separate?
-    // User said "Cookie-based auth only", implying the whole backend.
+    const cookieToken = req.cookies?.adminAccessToken as string | undefined;
+    const authHeader = req.headers.authorization;
+    const bearerToken =
+        authHeader && authHeader.toLowerCase().startsWith('bearer ')
+            ? authHeader.slice(7).trim()
+            : undefined;
 
-    const token = req.cookies?.adminAccessToken;
+    const token = cookieToken || bearerToken;
 
     if (!token) {
         return next(new AppError('No admin token provided', 401));

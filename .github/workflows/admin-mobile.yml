@@ -1,0 +1,60 @@
+name: Admin Mobile CI
+
+on:
+  push:
+    paths:
+      - 'apps/admin-mobile/**'
+      - '.github/workflows/admin-mobile.yml'
+  pull_request:
+    paths:
+      - 'apps/admin-mobile/**'
+
+jobs:
+  lint-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin-mobile
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+
+      - name: Install root deps
+        run: npm ci
+        working-directory: .
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Lint
+        run: npx expo lint --max-warnings 0
+        continue-on-error: true   # warn-only until baseline is clean
+
+  expo-doctor:
+    name: Expo Doctor
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/admin-mobile
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+        working-directory: .
+      - name: Expo doctor check
+        run: npx expo-doctor
+        continue-on-error: true   # advisory only

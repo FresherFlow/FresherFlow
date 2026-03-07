@@ -41,8 +41,8 @@
         "test": "turbo run test"
     },
     "dependencies": {
-        "react": "19.2.3",
-        "react-dom": "19.2.3",
+        "react": "19.1.0",
+        "react-dom": "19.1.0",
         "react-native-svg": "15.15.3",
         "turbo": "^2.8.1"
     },
@@ -68,6 +68,8 @@
     "author": "",
     "license": "MIT",
     "overrides": {
-        "tar": "^7.5.7"
+        "tar": "^7.5.7",
+        "react": "19.1.0",
+        "react-dom": "19.1.0"
     }
 }
