@@ -315,7 +315,7 @@ export const Opportunities = {
 
     update: (id: string, payload: unknown) =>
         apiRequest<{ opportunity: Opportunity }>(`/api/admin/opportunities/${id}`, {
-            method: 'PATCH',
+            method: 'PUT',
             body: JSON.stringify(payload),
         }),
 
@@ -402,4 +402,3 @@ export const Feedback = {
     opportunityFeedback: (oppId: string) =>
         apiRequest<{ feedback: FeedbackItem[] }>(`/api/admin/feedback/opportunities/${oppId}`),
 };
-

@@ -197,11 +197,7 @@ export const PostOpportunityScreen = ({ route, navigation }: any) => {
                 toast.success('Applied ✓', 'Form filled from JSON');
             } else {
                 // text → call parse text endpoint
-                const res = await fetch('/api/admin/opportunities/parse', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text: val }),
-                }).then(r => r.json()) as any;
+                const res = await Opportunities.parseText(val) as any;
                 if (res.parsed) {
                     fillForm(res.parsed);
                     setIsDirty(true);
