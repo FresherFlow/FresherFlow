@@ -18,7 +18,7 @@ type ConfigHealth = {
 
 export const SystemScreen = () => {
     const [health, setHealth] = useState<ConfigHealth | null>(null);
-    const [linkStats, setLinkStats] = useState<{ stats: { healthy: number; broken: number; retrying: number } } | null>(null);
+    const [linkStats, setLinkStats] = useState<{ healthy: number; broken: number; retrying: number } | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [runningVerify, setRunningVerify] = useState(false);
@@ -35,7 +35,7 @@ export const SystemScreen = () => {
         try {
             const [h, l, logs] = await Promise.all([
                 System.configHealth(),
-                System.healthStats(),
+                System.verifyLinksStats(),
                 System.alertDispatchLogs(20).catch(() => ({ logs: [] })),
             ]);
             setHealth(h as ConfigHealth);
@@ -163,9 +163,9 @@ export const SystemScreen = () => {
                         <View style={styles.card}>
                             <View style={styles.statRow}>
                                 {([
-                                    ['Healthy', linkStats?.stats.healthy ?? 0, theme.colors.success],
-                                    ['Broken', linkStats?.stats.broken ?? 0, theme.colors.error],
-                                    ['Retrying', linkStats?.stats.retrying ?? 0, theme.colors.accent],
+                                    ['Healthy', linkStats?.healthy ?? 0, theme.colors.success],
+                                    ['Broken', linkStats?.broken ?? 0, theme.colors.error],
+                                    ['Retrying', linkStats?.retrying ?? 0, theme.colors.accent],
                                 ] as [string, number, string][]).map(([label, val, color]) => (
                                     <View key={label} style={[styles.statBadge, { backgroundColor: color + '15' }]}>
                                         <Text style={[styles.statNum, { color }]}>{val}</Text>
@@ -318,3 +318,4 @@ const styles = StyleSheet.create({
     logError: { fontSize: 11, color: theme.colors.error, marginTop: 1 },
     logTime: { fontSize: 11, color: theme.colors.textMuted },
 });
+

@@ -176,47 +176,4 @@ export const adminApi = {
             body: JSON.stringify({ ids, action, reason })
         }),
 
-    // Ingestion sources (Supabase staging pipeline)
-    getIngestionSources: () =>
-        apiClient('/api/admin/system/ingestion/sources'),
-
-    createIngestionSource: (data: { name: string; endpoint: string; sourceType: string; runFrequencyMinutes: number; defaultType: string }) =>
-        apiClient('/api/admin/system/ingestion/sources', {
-            method: 'POST',
-            body: JSON.stringify(data)
-        }),
-
-    toggleIngestionSource: (id: string, enabled: boolean) =>
-        apiClient(`/api/admin/system/ingestion/sources/${id}`, {
-            method: 'PATCH',
-            body: JSON.stringify({ enabled })
-        }),
-
-    triggerIngestionRun: (id: string) =>
-        apiClient(`/api/admin/system/ingestion/sources/${id}/run`, {
-            method: 'POST'
-        }),
-
-    runAllByType: (type: string) =>
-        apiClient(`/api/admin/system/ingestion/run-all?type=${type}`, {
-            method: 'POST'
-        }),
-
-    deleteIngestionSource: (id: string) =>
-        apiClient(`/api/admin/system/ingestion/sources/${id}`, {
-            method: 'DELETE'
-        }),
-
-    bulkImportSources: (slugs: string[], sourceType: string) =>
-        apiClient('/api/admin/system/ingestion/sources/bulk', {
-            method: 'POST',
-            body: JSON.stringify({ slugs, sourceType })
-        }),
-
-    getIngestionRuns: (sourceId?: string, limit = 25) => {
-        const query = new URLSearchParams();
-        if (sourceId) query.append('sourceId', sourceId);
-        query.append('limit', String(limit));
-        return apiClient(`/api/admin/system/ingestion/runs?${query.toString()}`);
-    },
 };

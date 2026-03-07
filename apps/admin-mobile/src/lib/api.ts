@@ -340,6 +340,12 @@ export const Opportunities = {
             body: JSON.stringify({ url }),
         }),
 
+    parseText: (text: string) =>
+        apiRequest<{ parsed: unknown }>('/api/admin/opportunities/parse', {
+            method: 'POST',
+            body: JSON.stringify({ text }),
+        }),
+
     ingestDraft: (payload: unknown) =>
         apiRequest<{ opportunity: Opportunity }>('/api/admin/opportunities/ingest-draft', {
             method: 'POST',
@@ -396,3 +402,4 @@ export const Feedback = {
     opportunityFeedback: (oppId: string) =>
         apiRequest<{ feedback: FeedbackItem[] }>(`/api/admin/feedback/opportunities/${oppId}`),
 };
+

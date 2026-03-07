@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { runIngestionCycle } from '../services/ingestion.service';
 import { runLinkVerification } from '../services/verificationBot';
 import { runAlertsCycle } from '../services/alerts.service';
 import { runExpiryCycle } from '../cron/expiryCron';
@@ -30,20 +29,6 @@ router.use((req, res, next) => {
     next();
 });
 
-router.post('/ingest', async (req, res) => {
-    try {
-        if (process.env.NODE_ENV === 'production' && process.env.INGESTION_ENABLE_IN_PROD !== 'true') {
-            res.status(403).json({ success: false, error: 'Ingestion is disabled in production' });
-            return;
-        }
-        logger.info('Starting external ingestion cycle via cron API');
-        const result = await runIngestionCycle();
-        res.json({ success: true, result });
-    } catch (error) {
-        logger.error('Ingestion cron failed via API', error);
-        res.status(500).json({ success: false, error: 'Internal server error' });
-    }
-});
 
 router.post('/verify', async (req, res) => {
     try {
