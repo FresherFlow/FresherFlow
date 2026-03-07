@@ -4,12 +4,10 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm ci && npm run deploy:api
+    buildCommand: npm install && npm run deploy:api
     startCommand: npm run start:api
     envVars:
       - key: DATABASE_URL
-        sync: false
-      - key: DIRECT_DATABASE_URL
         sync: false
       - key: JWT_ACCESS_SECRET
         generateValue: true
@@ -26,18 +24,15 @@ services:
       - key: NODE_ENV
         value: production
     healthCheckPath: /api/health
-
   - type: web
     name: api-fresherflow-admin
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm ci && npx turbo run db:generate --filter=fresherflow-api && npx turbo run build --filter=fresherflow-api
+    buildCommand: npm install && npx turbo run db:generate --filter=fresherflow-api && npx turbo run build --filter=fresherflow-api
     startCommand: npm run start:api
     envVars:
       - key: DATABASE_URL
-        sync: false
-      - key: DIRECT_DATABASE_URL
         sync: false
       - key: JWT_ACCESS_SECRET
         sync: false
