@@ -9,6 +9,8 @@ services:
     envVars:
       - key: DATABASE_URL
         sync: false
+      - key: DIRECT_DATABASE_URL
+        sync: false
       - key: JWT_ACCESS_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -24,6 +26,7 @@ services:
       - key: NODE_ENV
         value: production
     healthCheckPath: /api/health
+
   - type: web
     name: api-fresherflow-admin
     runtime: node
@@ -33,6 +36,8 @@ services:
     startCommand: npm run start:api
     envVars:
       - key: DATABASE_URL
+        sync: false
+      - key: DIRECT_DATABASE_URL
         sync: false
       - key: JWT_ACCESS_SECRET
         sync: false
