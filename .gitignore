@@ -41,13 +41,19 @@ logs/
 *.db
 *.sqlite
 
-# Prisma
-# Migrations SHOULD be committed for production sync
-# apps/api/prisma/migrations/ 
+# Prisma - generated output (never commit generated files)
+apps/api/schema.db.output
+apps/api/replace-prisma.js
 
 # Testing
 coverage/
 .nyc_output/
+test-results/
+playwright-report/
+
+# Expo
+apps/admin-mobile/.expo/
+apps/mobile/.expo/
 
 # Misc
 .cache/
@@ -57,7 +63,6 @@ coverage/
 # Brain/artifacts (don't commit AI artifacts)
 .gemini/
 brain/
-# docs (Documentation should be tracked, but ignore large generated text files)
 docs/
 .artifacts
 
