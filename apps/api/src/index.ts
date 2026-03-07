@@ -38,9 +38,8 @@ import growthRoutes from './routes/public/growth';
 import companyRoutes from './routes/public/companies';
 import sitemapRoutes from './routes/public/sitemap';
 import opportunityClickRoutes from './routes/public/opportunityClicks';
-import emailIngestionRoutes from './routes/public/emailIngestion';
-import aiIngestionRoutes from './routes/public/aiIngestion';
 import cronRoutes from './routes/cron';
+import referralRoutes from './routes/referrals';
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
@@ -72,8 +71,6 @@ app.use('/api', healthRoutes);
 if (isUserMode) {
     app.use('/api/public/growth', growthRoutes);
     app.use('/api/public', opportunityClickRoutes);
-    app.use('/api/ingestion', emailIngestionRoutes);
-    app.use('/api/internal/ingest-ai-job', aiIngestionRoutes);
     app.use('/api/cron', cronRoutes);
 }
 
@@ -273,6 +270,8 @@ if (isUserMode) {
     app.use('/api/public/sitemap', sitemapRoutes);
     app.use('/api/opportunities', feedbackRoutes);
     app.use('/api/feedback', appFeedbackRoutes);
+    app.use('/api/referrals', referralRoutes);
+    app.use('/api/public/referrals', referralRoutes);
 }
 
 if (isAdminMode) {

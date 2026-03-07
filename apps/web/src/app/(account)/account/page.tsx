@@ -13,7 +13,8 @@ import {
     ChatBubbleBottomCenterTextIcon,
     ClipboardDocumentCheckIcon,
     ChevronRightIcon,
-    EnvelopeIcon
+    EnvelopeIcon,
+    UserGroupIcon
 } from '@heroicons/react/24/outline';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 
@@ -100,6 +101,7 @@ export default function AccountPage() {
                         <MenuSection label="Activity">
                             <MenuRow href="/account/saved" icon={BookmarkIcon} title="Saved" subtitle="Bookmarked jobs and internships" />
                             <MenuRow href="/account/tracker" icon={ClipboardDocumentCheckIcon} title="Application Tracker" subtitle="Applied, planned, interviewed, selected" />
+                            <MenuRow href="/referral" icon={UserGroupIcon} title="Invite Friends" subtitle="Share your link · earn badges as your network grows" />
                         </MenuSection>
 
                         <MenuSection label="App Settings">

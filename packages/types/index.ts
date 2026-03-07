@@ -191,6 +191,7 @@ export interface Opportunity {
     normalizedRole?: string;
 
     // Application
+    sourceLink?: string;
     applyLink?: string;
 
     // Health Tracking (Verification Bot)
@@ -356,6 +357,7 @@ export interface CreateOpportunityRequest {
     jobFunction?: string;
     selectionProcess?: string;
     notesHighlights?: string;
+    sourceLink?: string;
     applyLink?: string;
     expiresAt?: string;
     walkInDetails?: {

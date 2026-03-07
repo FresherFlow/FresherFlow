@@ -253,30 +253,26 @@ export const authApi = {
             body: JSON.stringify({ email, password })
         }),
 
-
-
     sendOtp: (email: string) =>
         apiClient('/api/auth/otp/send', {
             method: 'POST',
             body: JSON.stringify({ email })
         }),
 
-    verifyOtp: (email: string, code: string, source?: string) =>
+    verifyOtp: (email: string, code: string, source?: string, ref?: string) =>
         apiClient<AuthResponse>('/api/auth/otp/verify', {
             method: 'POST',
-            body: JSON.stringify({ email, code, source })
+            body: JSON.stringify({ email, code, source, ref })
         }),
 
-    googleLogin: (token: string, source?: string) =>
+    googleLogin: (token: string, source?: string, ref?: string) =>
         apiClient<AuthResponse>('/api/auth/google', {
             method: 'POST',
-            body: JSON.stringify({ token, source })
+            body: JSON.stringify({ token, source, ref })
         }),
 
     logout: async () => {
-        await apiClient('/api/auth/logout', {
-            method: 'POST'
-        });
+        await apiClient('/api/auth/logout', { method: 'POST' });
     },
 
     me: () => apiClient('/api/auth/me')

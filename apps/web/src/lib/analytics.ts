@@ -47,6 +47,13 @@ export const analytics = {
         });
     },
 
+    inviteShare: (method: string) => {
+        trackEvent('invite_share_clicked', {
+            share_method: method,
+            source: 'dashboard_invite',
+        });
+    },
+
     // Search/Filter events
     search: (query: string) => {
         trackEvent('search', {

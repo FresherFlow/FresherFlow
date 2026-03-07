@@ -11,8 +11,8 @@ interface AuthContextType {
     isLoading: boolean;
     login: (email: string, password: string) => Promise<void>;
     sendOtp: (email: string) => Promise<void>;
-    verifyOtp: (email: string, code: string, source?: string) => Promise<void>;
-    loginWithGoogle: (token: string, source?: string) => Promise<void>;
+    verifyOtp: (email: string, code: string, source?: string, ref?: string) => Promise<void>;
+    loginWithGoogle: (token: string, source?: string, ref?: string) => Promise<void>;
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
     refreshProfile: () => Promise<void>;
@@ -46,16 +46,14 @@ function writeCachedSession(user: User, profile: Profile | null) {
     try {
         const payload: CachedSession = { user, profile, savedAt: Date.now() };
         localStorage.setItem(SESSION_CACHE_KEY, JSON.stringify(payload));
-    } catch {
-        // Ignore quota errors
-    }
+    } catch { /* Ignore quota errors */ }
 }
 
 function clearCachedSession() {
     if (typeof window === 'undefined') return;
     try { localStorage.removeItem(SESSION_CACHE_KEY); } catch { /* empty */ }
 }
-// ────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -76,15 +74,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (typeof window !== 'undefined' && win.google?.accounts?.id) {
                 win.google.accounts.id.disableAutoSelect();
             }
-
             setUser(null);
             setProfile(null);
             clearCachedSession();
             clearUnreadCache();
             await authApi.logout();
-        } catch {
-            // Ignore logout errors
-        } finally {
+        } catch { /* Ignore logout errors */ } finally {
             if (typeof document !== 'undefined') {
                 const cookiesToClear = ['accessToken', 'refreshToken', 'ff_logged_in'];
                 cookiesToClear.forEach(name => {
@@ -99,44 +94,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const loadUser = useCallback(async (options?: { silent?: boolean }) => {
         const silent = options?.silent === true;
-        if (!silent) {
-            setIsLoading(true);
-        }
+        if (!silent) setIsLoading(true);
         try {
-            // DEFENSIVE: Check if session marker cookie exists
             if (typeof document !== 'undefined') {
                 const hasSession = document.cookie.includes('ff_logged_in=true');
                 if (!hasSession) {
-                    // No session cookie — check if we're offline with a cached session
                     const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
                     if (isOffline) {
                         const cached = readCachedSession();
                         if (cached) {
                             setUser(cached.user);
                             setProfile(cached.profile);
-                            if (!silent) {
-                                setIsLoading(false);
-                            }
+                            if (!silent) setIsLoading(false);
                             return;
                         }
                     }
                     setUser(null);
                     setProfile(null);
-                    if (!silent) {
-                        setIsLoading(false);
-                    }
+                    if (!silent) setIsLoading(false);
                     return;
                 }
             }
 
-            // Attempt to fetch current user
             const response = await authApi.me() as { user: User; profile: Profile };
             setUser(response.user);
             setProfile(response.profile);
-            // Persist for offline cold-launch
             writeCachedSession(response.user, response.profile);
         } catch {
-            // Network failed — try cached session before clearing
             const cached = readCachedSession();
             if (cached) {
                 setUser(cached.user);
@@ -146,17 +130,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setProfile(null);
             }
         } finally {
-            if (!silent) {
-                setIsLoading(false);
-            }
+            if (!silent) setIsLoading(false);
         }
     }, []);
 
-    // Load user on mount + refresh when tab regains focus
     useEffect(() => {
         loadUser();
 
-        // Re-fetch when user comes back to the tab (e.g. after editing profile)
         const handleVisibilityChange = () => {
             if (document.visibilityState !== 'visible') return;
             const now = Date.now();
@@ -165,7 +145,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             void loadUser({ silent: true });
         };
 
-        // Global handler for unauthorized errors (session expiry)
         const handleUnauthorized = () => {
             console.warn('[Auth] Session expired event received. Logging out.');
             logout();
@@ -193,15 +172,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await authApi.sendOtp(email);
     }
 
-    async function verifyOtp(email: string, code: string, source?: string) {
-        const response = await authApi.verifyOtp(email, code, source);
+    async function verifyOtp(email: string, code: string, source?: string, ref?: string) {
+        const response = await authApi.verifyOtp(email, code, source, ref);
         setUser(response.user);
         setProfile(response.profile as Profile);
         writeCachedSession(response.user, response.profile as Profile);
     }
 
-    async function loginWithGoogle(token: string, source?: string) {
-        const response = await authApi.googleLogin(token, source);
+    async function loginWithGoogle(token: string, source?: string, ref?: string) {
+        const response = await authApi.googleLogin(token, source, ref);
         setUser(response.user);
         setProfile(response.profile as Profile);
         writeCachedSession(response.user, response.profile as Profile);

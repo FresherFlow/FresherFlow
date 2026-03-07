@@ -9,11 +9,56 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // In-memory OTP store (In production, use Redis)
 const otpStore = new Map<string, { code: string; expiresAt: Date }>();
 
+// ─── Referral helpers ─────────────────────────────────────────────────────────
+
+const REF_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+function genReferralCode(len = 6): string {
+    let code = '';
+    const bytes = crypto.randomBytes(len);
+    for (let i = 0; i < len; i++) code += REF_CHARS[bytes[i]! % REF_CHARS.length];
+    return code;
+}
+
+async function uniqueReferralCode(): Promise<string> {
+    for (let attempt = 0; attempt < 10; attempt++) {
+        const code = genReferralCode();
+        const exists = await prisma.user.findFirst({ where: { referralCode: code }, select: { id: true } });
+        if (!exists) return code;
+    }
+    // Fallback: uuid prefix
+    return genReferralCode(8);
+}
+
+async function bindReferral(newUserId: string, refCode: string | undefined | null): Promise<void> {
+    if (!refCode) return;
+    const referrer = await prisma.user.findFirst({
+        where: { referralCode: refCode.toUpperCase() },
+        select: { id: true },
+    });
+    if (!referrer || referrer.id === newUserId) return; // self-referral guard
+    await prisma.user.update({
+        where: { id: newUserId },
+        data: { referredByUserId: referrer.id, referredAt: new Date() },
+    });
+    // Mark the most-recent visit from this code as converted
+    const visit = await prisma.referralVisit.findFirst({
+        where: { referralCode: refCode.toUpperCase(), visitorUserId: null },
+        orderBy: { createdAt: 'desc' },
+    });
+    if (visit) {
+        await prisma.referralVisit.update({
+            where: { id: visit.id },
+            data: { visitorUserId: newUserId },
+        });
+    }
+}
+
 export class AuthService {
     /**
      * Verify Google ID Token and return/create user
      */
-    static async verifyGoogleIdToken(idToken: string): Promise<{ user: User; isNewUser: boolean }> {
+    static async verifyGoogleIdToken(idToken: string, refCode?: string): Promise<{ user: User; isNewUser: boolean }> {
         const ticket = await googleClient.verifyIdToken({
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID
@@ -28,37 +73,29 @@ export class AuthService {
         const fullName = payload.name;
         const providerId = payload.sub;
 
-        const existingUser = await prisma.user.findUnique({
-            where: { email }
-        });
+        const existingUser = await prisma.user.findUnique({ where: { email } });
+
+        const referralCode = await uniqueReferralCode();
 
         // Upsert User
         const user = await prisma.user.upsert({
             where: { email },
-            update: {
-                provider: 'google',
-                providerId
-            },
+            update: { provider: 'google', providerId },
             create: {
                 email,
                 fullName: fullName || email.split('@')[0],
                 provider: 'google',
                 providerId,
-                profile: {
-                    create: {
-                        completionPercentage: 0
-                    }
-                }
+                referralCode,
+                profile: { create: { completionPercentage: 0 } },
             },
-            include: {
-                profile: true
-            }
+            include: { profile: true },
         });
 
-        return {
-            user,
-            isNewUser: !existingUser
-        };
+        const isNewUser = !existingUser;
+        if (isNewUser) await bindReferral(user.id, refCode);
+
+        return { user, isNewUser };
     }
 
     /**
@@ -76,7 +113,7 @@ export class AuthService {
     /**
      * Verify OTP and return/create user
      */
-    static async verifyOtp(email: string, code: string): Promise<{ user: User; isNewUser: boolean }> {
+    static async verifyOtp(email: string, code: string, refCode?: string): Promise<{ user: User; isNewUser: boolean }> {
         const stored = otpStore.get(email.toLowerCase());
 
         if (!stored) {
@@ -96,34 +133,27 @@ export class AuthService {
         otpStore.delete(email.toLowerCase());
 
         const normalizedEmail = email.toLowerCase();
-        const existingUser = await prisma.user.findUnique({
-            where: { email: normalizedEmail }
-        });
+        const existingUser = await prisma.user.findUnique({ where: { email: normalizedEmail } });
+
+        const referralCode = await uniqueReferralCode();
 
         // Upsert User
         const user = await prisma.user.upsert({
-            where: { email: email.toLowerCase() },
-            update: {
-                provider: 'email'
-            },
+            where: { email: normalizedEmail },
+            update: { provider: 'email' },
             create: {
-                email: email.toLowerCase(),
+                email: normalizedEmail,
                 fullName: email.split('@')[0],
                 provider: 'email',
-                profile: {
-                    create: {
-                        completionPercentage: 0
-                    }
-                }
+                referralCode,
+                profile: { create: { completionPercentage: 0 } },
             },
-            include: {
-                profile: true
-            }
+            include: { profile: true },
         });
 
-        return {
-            user,
-            isNewUser: !existingUser
-        };
+        const isNewUser = !existingUser;
+        if (isNewUser) await bindReferral(user.id, refCode);
+
+        return { user, isNewUser };
     }
 }

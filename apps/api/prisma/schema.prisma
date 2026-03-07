@@ -103,6 +103,14 @@ enum GrowthFunnelEvent {
   OPENED_STANDALONE
 }
 
+enum ReferralBadge {
+  FIRST_INVITE
+  CONNECTOR
+  CAMPUS_SCOUT
+  GROWTH_NODE
+  NETWORK_BUILDER
+}
+
 enum AlertChannel {
   EMAIL
   APP
@@ -159,21 +167,29 @@ model User {
   role         Role     @default(USER)
   provider     String?  @default("credentials") // credentials, google, email
   providerId   String?  // e.g. Google sub id
+  referralCode String?  @unique
+  referredByUserId String?
+  referredAt   DateTime?
   createdAt    DateTime @default(now())
 
   // Relations
-  profile       Profile?
-  refreshTokens RefreshToken[]
-  actions       UserAction[]
-  feedback      ListingFeedback[]
-  appFeedback   AppFeedback[]
+  profile            Profile?
+  refreshTokens      RefreshToken[]
+  actions            UserAction[]
+  feedback           ListingFeedback[]
+  appFeedback        AppFeedback[]
   savedOpportunities SavedOpportunity[]
-  alertPreference AlertPreference?
-  alertDeliveries AlertDelivery[]
+  alertPreference    AlertPreference?
+  alertDeliveries    AlertDelivery[]
   alertDispatchLogs AlertDispatchLog[]
-  pushSubscription PushSubscription?
+  pushSubscription   PushSubscription?
   opportunityClicks OpportunityClick[]
-  ingestionSources IngestionSource[]
+  ingestionSources   IngestionSource[]
+  referredBy         User?                @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
+  referrals          User[]               @relation("UserReferrals")
+  referralVisits     ReferralVisit[]      @relation("ReferralVisitReferrer")
+  referralVisitsAsVisitor ReferralVisit[] @relation("ReferralVisitVisitor")
+  earnedReferralBadges ReferralBadgeGrant[]
   
   // Admin Relations (only for role=ADMIN)
   postedOpportunities Opportunity[]
@@ -184,6 +200,8 @@ model User {
   // Security - TOTP
   totpSecret         String?
   isTwoFactorEnabled Boolean  @default(false)
+
+  @@index([referredByUserId])
 }
 
 model Authenticator {
@@ -326,6 +344,7 @@ model Opportunity {
   notesHighlights  String? @db.Text // Optional: bond, training, special conditions
   stipend        String? // New: "10k/month"
   employmentType String? // New: "full-time"
+  sourceLink     String? // Original listing/source page; may equal applyLink when only one URL exists
   applyLink      String?
 
   // Walk-in Specific (nullable for non-walk-ins)
@@ -374,6 +393,7 @@ model Opportunity {
   @@index([salaryMin, salaryMax])
   @@index([company])
   @@index([slug])
+  @@index([sourceLink])
   @@index([expiresAt]) // Performance for expiry cron
   @@index([deletedAt]) // Exclude soft-deleted in queries
   @@index([linkHealth]) // Focus for verification bot
@@ -482,6 +502,39 @@ model GrowthEvent {
   @@index([createdAt])
   @@index([source, event])
   @@index([source, createdAt])
+}
+
+model ReferralVisit {
+  id               String   @id @default(uuid())
+  referralCode     String
+  referrerUserId   String
+  visitorSessionId String?
+  visitorUserId    String?
+  referrer         String?
+  userAgent        String?
+  ipHash           String?
+  createdAt        DateTime @default(now())
+
+  referrerUser User  @relation("ReferralVisitReferrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
+  visitorUser  User? @relation("ReferralVisitVisitor", fields: [visitorUserId], references: [id], onDelete: SetNull)
+
+  @@index([referralCode, createdAt])
+  @@index([referrerUserId, createdAt])
+  @@index([visitorSessionId, createdAt])
+  @@index([visitorUserId, createdAt])
+}
+
+model ReferralBadgeGrant {
+  id        String         @id @default(uuid())
+  userId    String
+  badge     ReferralBadge
+  metadata  Json?
+  createdAt DateTime       @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badge])
+  @@index([badge, createdAt])
 }
 
 model OpportunityClick {
@@ -681,6 +734,7 @@ model RawOpportunity {
   rawPayload          Json
   title               String?
   company             String?
+  sourceLink          String?
   applyLink           String?
   suggestedType       OpportunityType?
   fresherScore        Int?
@@ -696,6 +750,7 @@ model RawOpportunity {
 
   @@index([sourceId, createdAt])
   @@index([status, createdAt])
+  @@index([sourceLink])
   @@index([applyLink])
   @@index([sourceExternalId])
 }

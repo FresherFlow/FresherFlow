@@ -25,6 +25,7 @@ export type OpportunityFormValues = {
     notesHighlights: string;
     experienceMin: string;
     experienceMax: string;
+    sourceLink: string;
     applyLink: string;
     expiresAt: string;
     venueAddress: string;
@@ -102,6 +103,8 @@ const toEndOfDayIso = (value: string) => {
 export const buildOpportunityPayload = (values: OpportunityFormValues): Record<string, unknown> => {
     const walkInEndDate = values.endDate || values.startDate;
     const derivedWalkInExpiry = values.type === 'WALKIN' ? toEndOfDayIso(walkInEndDate) : undefined;
+    const normalizedSourceLink = values.sourceLink.trim();
+    const normalizedApplyLink = values.applyLink.trim();
     const payload: Record<string, unknown> = {
         type: values.type,
         title: values.title,
@@ -124,7 +127,8 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         notesHighlights: values.notesHighlights || undefined,
         experienceMin: toFloat(values.experienceMin),
         experienceMax: toFloat(values.experienceMax),
-        applyLink: values.type === 'WALKIN' ? undefined : values.applyLink,
+        sourceLink: normalizedSourceLink || undefined,
+        applyLink: normalizedApplyLink || normalizedSourceLink || undefined,
         expiresAt: values.expiresAt || derivedWalkInExpiry || undefined,
     };
 

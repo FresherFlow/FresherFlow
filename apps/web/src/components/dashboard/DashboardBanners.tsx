@@ -2,17 +2,19 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import CheckIcon from '@heroicons/react/24/outline/CheckIcon';
+import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
+import { analytics } from '@/lib/analytics';
+import { buildInviteUrl } from '@/lib/share';
 
 // Profile completion banner
 export function ProfileCompletionBanner() {
     const { profile } = useAuth();
     const pct = profile?.completionPercentage ?? 0;
 
-    // Only show when incomplete (gate already blocks <40%)
     if (!profile || pct >= 100) return null;
 
     return (
@@ -43,46 +45,110 @@ export function ProfileCompletionBanner() {
 export function ReferralLinkButton() {
     const { user } = useAuth();
     const [copied, setCopied] = useState(false);
+    const [shared, setShared] = useState(false);
+    const [referralCode, setReferralCode] = useState<string | null>(null);
+
+    useEffect(() => {
+        let cancelled = false;
+        if (!user?.id) return;
+        fetch('/api/referrals/me', { credentials: 'include' })
+            .then(res => res.ok ? res.json() : null)
+            .then((data: { referralCode: string } | null) => {
+                if (!cancelled && data?.referralCode) setReferralCode(data.referralCode);
+            })
+            .catch(() => { /* silent */ });
+        return () => { cancelled = true; };
+    }, [user?.id]);
 
     if (!user?.id) return null;
 
-    const referralUrl = `${typeof window !== 'undefined' ? window.location.origin : 'https://app.fresherflow.in'}/login?ref=${user.id}`;
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fresherflow.in';
+    // Use short code if loaded, otherwise fall back to user id (will update once fetched)
+    const referralUrl = buildInviteUrl(origin, referralCode ?? user.id);
+
+    const shareData = {
+        title: 'Join me on FresherFlow',
+        text: 'Use FresherFlow to find verified fresher jobs, internships, and walk-ins.',
+        url: referralUrl,
+    };
+
+    const flashState = (type: 'copied' | 'shared') => {
+        if (type === 'copied') {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+            return;
+        }
+        setShared(true);
+        setTimeout(() => setShared(false), 2000);
+    };
 
     const handleCopy = async () => {
         try {
             await navigator.clipboard.writeText(referralUrl);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            analytics.inviteShare('copy_link');
+            flashState('copied');
         } catch {
-            // Fallback for older browsers
             const el = document.createElement('textarea');
             el.value = referralUrl;
             document.body.appendChild(el);
             el.select();
             document.execCommand('copy');
             document.body.removeChild(el);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 2000);
+            analytics.inviteShare('copy_link_fallback');
+            flashState('copied');
         }
     };
 
+    const handleShare = async () => {
+        if (navigator.share && (!navigator.canShare || navigator.canShare(shareData))) {
+            try {
+                await navigator.share(shareData);
+                analytics.inviteShare('native_share');
+                flashState('shared');
+                return;
+            } catch (error) {
+                if ((error as Error).name === 'AbortError') return;
+            }
+        }
+        await handleCopy();
+    };
+
     return (
-        <button
-            onClick={handleCopy}
-            className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
-            title="Copy your invite link"
-        >
-            {copied ? (
-                <>
-                    <CheckIcon className="w-3.5 h-3.5 text-success" />
-                    <span className="text-success">Copied!</span>
-                </>
-            ) : (
-                <>
-                    <LinkIcon className="w-3.5 h-3.5" />
-                    Invite a friend
-                </>
-            )}
-        </button>
+        <div className="inline-flex items-center gap-1.5">
+            <button
+                onClick={handleShare}
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                title="Share your invite link"
+            >
+                {shared ? (
+                    <>
+                        <CheckIcon className="w-3.5 h-3.5 text-success" />
+                        <span className="text-success">Shared</span>
+                    </>
+                ) : (
+                    <>
+                        <ShareIcon className="w-3.5 h-3.5" />
+                        Invite a friend
+                    </>
+                )}
+            </button>
+            <button
+                onClick={handleCopy}
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                title="Copy your invite link"
+            >
+                {copied ? (
+                    <>
+                        <CheckIcon className="w-3.5 h-3.5 text-success" />
+                        <span className="text-success">Copied</span>
+                    </>
+                ) : (
+                    <>
+                        <LinkIcon className="w-3.5 h-3.5" />
+                        Copy link
+                    </>
+                )}
+            </button>
+        </div>
     );
 }

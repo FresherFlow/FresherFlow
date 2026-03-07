@@ -111,6 +111,7 @@ export const opportunitySchema = z.object({
     experienceMin: z.number().optional(),
     experienceMax: z.number().optional(),
 
+    sourceLink: z.string().url().optional().or(z.string().length(0)),
     applyLink: z.string().url().optional().or(z.string().length(0)),
     expiresAt: z.string().optional(),
 

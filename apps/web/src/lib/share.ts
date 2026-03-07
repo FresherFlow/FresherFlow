@@ -44,3 +44,20 @@ export function buildShareUrl(rawUrl: string, options: ShareLinkOptions = {}) {
         return rawUrl;
     }
 }
+
+export function buildInviteUrl(rawOrigin: string, referralCode: string) {
+    try {
+        const configuredShareBase = process.env.NEXT_PUBLIC_SHARE_BASE_URL || 'https://fresherflow.in';
+        let base = rawOrigin;
+        try {
+            const shareBase = new URL(configuredShareBase);
+            base = shareBase.origin;
+        } catch { /* keep rawOrigin */ }
+
+        return `${base}/r/${referralCode.toUpperCase()}`;
+    } catch {
+        return rawOrigin;
+    }
+}
+
+

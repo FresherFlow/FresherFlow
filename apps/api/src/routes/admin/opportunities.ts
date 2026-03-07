@@ -16,6 +16,7 @@ import { generateCompanyLogoUrl } from '../../utils/companyLogo';
 import logger from '../../utils/logger';
 import { normalizeEducationBuckets } from '../../utils/academicNormalization';
 import { normalizeSkills } from '../../utils/skillNormalization';
+import { normalizeOpportunityLinks } from '../../utils/opportunityLinks';
 
 import TelegramService from '../../services/telegram.service';
 
@@ -212,16 +213,27 @@ router.post(
                 type = map[data.category] || OpportunityType.JOB;
             }
 
-            const applyLink = (typeof data.applyLink === 'string' && data.applyLink.trim().length > 0)
-                ? data.applyLink.trim()
-                : undefined;
+            const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
+
+            if (type !== OpportunityType.WALKIN && !applyLink) {
+                return res.status(400).json({
+                    message: 'At least one sourceLink or applyLink is required'
+                });
+            }
 
             // Lightweight de-duplication for automated ingestion.
-            if (applyLink) {
+            if (applyLink || sourceLink) {
+                const duplicateFilters = [
+                    applyLink ? { applyLink } : null,
+                    applyLink ? { sourceLink: applyLink } : null,
+                    sourceLink ? { sourceLink } : null,
+                    sourceLink ? { applyLink: sourceLink } : null,
+                ].filter(Boolean) as Prisma.OpportunityWhereInput[];
+
                 const existing = await prisma.opportunity.findFirst({
                     where: {
                         deletedAt: null,
-                        applyLink
+                        OR: duplicateFilters
                     },
                     select: { id: true, slug: true, status: true, title: true }
                 });
@@ -290,6 +302,7 @@ router.post(
                     notesHighlights: data.notesHighlights,
                     experienceMin: data.experienceMin,
                     experienceMax: data.experienceMax,
+                    sourceLink,
                     applyLink,
                     expiresAt: deriveOpportunityExpiryDate(data, type as OpportunityType),
                     postedByUserId: req.adminId!,
@@ -444,6 +457,13 @@ router.post(
             const tempId = crypto.randomUUID();
             const slug = generateSlug(data.title, data.company, tempId);
             const education = normalizeEducationRequirements(data);
+            const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
+
+            if (type !== OpportunityType.WALKIN && !applyLink) {
+                return res.status(400).json({
+                    message: 'At least one sourceLink or applyLink is required'
+                });
+            }
 
             const opportunity = await prisma.opportunity.create({
                 data: {
@@ -478,8 +498,8 @@ router.post(
                     notesHighlights: data.notesHighlights,
                     experienceMin: data.experienceMin,
                     experienceMax: data.experienceMax,
-
-                    applyLink: data.applyLink,
+                    sourceLink,
+                    applyLink,
                     expiresAt: deriveOpportunityExpiryDate(data, type as OpportunityType),
                     postedByUserId: req.adminId!,
                     status: OpportunityStatus.PUBLISHED,
@@ -972,6 +992,10 @@ router.put(
 
             // Regenerate slug if title or company changed
             const education = normalizeEducationRequirements(data);
+            const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
+            if (data.type !== OpportunityType.WALKIN && !applyLink) {
+                throw new AppError('At least one sourceLink or applyLink is required', 400);
+            }
             const updateData: any = {
                 allowedDegrees: education.allowedDegrees,
                 allowedCourses: education.allowedCourses,
@@ -999,7 +1023,8 @@ router.put(
                 salaryRange: data.salaryRange,
                 stipend: data.stipend,
                 employmentType: data.employmentType,
-                applyLink: data.applyLink,
+                sourceLink,
+                applyLink,
                 expiresAt: deriveOpportunityExpiryDate(data, data.type as OpportunityType),
                 lastVerified: new Date(),
                 ...(data.type === OpportunityType.WALKIN && { walkInDetails: walkInUpdate })

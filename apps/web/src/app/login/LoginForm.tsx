@@ -40,6 +40,7 @@ function LoginContent() {
     const searchParams = useSearchParams();
     const source = searchParams.get('source') || undefined;
     const refCode = searchParams.get('ref') || undefined;
+    const isInviteFlow = source === 'dashboard_invite' || Boolean(refCode);
     const trackingSource = useMemo(() => {
         if (!source && !refCode) return undefined;
         if (source && refCode) return `${source}|ref:${refCode}`;
@@ -89,25 +90,26 @@ function LoginContent() {
     const handleGoogleCallback = useCallback(async (response: any) => {
         setIsProcessing(true);
         try {
-            await loginWithGoogle(response.credential, trackingSource || source);
+            await loginWithGoogle(response.credential, trackingSource || source, refCode);
             toast.success('Welcome! Redirecting...');
             router.push('/dashboard');
         } catch (err: unknown) {
             setIsProcessing(false);
             toast.error((err as Error).message || 'Google login failed.');
         }
-    }, [loginWithGoogle, router, trackingSource, source]);
+    }, [loginWithGoogle, refCode, router, trackingSource, source]);
 
     const intent = searchParams.get('intent');
+    const isSignupIntent = intent === 'signup' || isInviteFlow;
 
     useEffect(() => {
         const trackSource = trackingSource || 'unknown';
-        if (intent === 'signup') {
+        if (isSignupIntent) {
             growthApi.trackEvent('SIGNUP_VIEW', trackSource).catch(() => undefined);
         } else {
             growthApi.trackEvent('LOGIN_VIEW', trackSource).catch(() => undefined);
         }
-    }, [trackingSource, intent]);
+    }, [trackingSource, isSignupIntent]);
 
     useEffect(() => {
         if (step !== 'email' || !googleScriptLoaded) return;
@@ -155,7 +157,7 @@ function LoginContent() {
         e.preventDefault();
         setIsProcessing(true);
         try {
-            await verifyOtp(email, otp, trackingSource || source);
+            await verifyOtp(email, otp, trackingSource || source, refCode);
             router.push('/dashboard');
         } catch (err: unknown) {
             setIsProcessing(false);
@@ -194,12 +196,19 @@ function LoginContent() {
                             </button>
                         )}
                         <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
-                            {step === 'otp' ? 'Verify identity' : 'Sign in'}
+                            {step === 'otp' ? 'Verify identity' : isSignupIntent ? 'Create your account' : 'Sign in'}
                         </h1>
                         <p className="text-muted-foreground text-sm">
                             {step === 'otp' ? `We sent a code to ${email}` : 'Enter your email to access your feed'}
                         </p>
                     </div>
+
+                    {isInviteFlow && step === 'email' && (
+                        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
+                            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Friend invite</p>
+                            <p className="mt-1 text-sm text-foreground">Join from this invite to start with the verified opportunity feed.</p>
+                        </div>
+                    )}
 
                     <div className="space-y-5">
                         {step === 'email' && (
@@ -219,7 +228,7 @@ function LoginContent() {
                                     </div>
                                 </div>
                                 <Button type="submit" disabled={isLoading || !email} className="w-full !h-11 text-sm font-semibold !rounded-lg">
-                                    {isLoading ? <ArrowPathIcon className="w-5 h-5 animate-spin mx-auto" /> : 'Continue'}
+                                    {isLoading ? <ArrowPathIcon className="w-5 h-5 animate-spin mx-auto" /> : isSignupIntent ? 'Continue to sign up' : 'Continue'}
                                 </Button>
                                 <div className="relative py-2">
                                     <div className="absolute inset-0 flex items-center">

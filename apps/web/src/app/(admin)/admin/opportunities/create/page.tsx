@@ -31,6 +31,7 @@ interface ParsedJob {
     allowedCourses?: string[];
     allowedSpecializations?: string[];
     allowedPassoutYears?: number[];
+    sourceLink?: string;
     applyLink?: string;
     expiresAt?: string;
     venueAddress?: string;
@@ -47,6 +48,7 @@ type DuplicateOpportunity = {
     id: string;
     title: string;
     company: string;
+    sourceLink?: string;
     applyLink?: string;
     status: string;
     updatedAt: string;
@@ -158,6 +160,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
     const [workMode, setWorkMode] = useState<'ONSITE' | 'HYBRID' | 'REMOTE'>('ONSITE');
     const [salaryRange, setSalaryRange] = useState('');
     const [salaryAmount, setSalaryAmount] = useState('');
+    const [sourceLink, setSourceLink] = useState('');
     const [applyLink, setApplyLink] = useState('');
     const [expiresAt, setExpiresAt] = useState('');
     const [jobFunction, setJobFunction] = useState('');
@@ -299,6 +302,8 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         }
     }, [searchParams, isEditMode]);
 
+
+
     useEffect(() => {
         const trimmedTitle = title.trim();
         const trimmedCompany = company.trim();
@@ -315,14 +320,14 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                 const opportunities = (response?.opportunities || []);
                 const titleTokens = tokenSet(trimmedTitle);
                 const companyTokens = tokenSet(trimmedCompany);
-                const currentApplyDomain = extractDomain(applyLink);
+                const currentApplyDomain = extractDomain(applyLink || sourceLink);
 
                 const scored = opportunities
                     .filter((opp) => opp.id !== opportunityId)
                     .map((opp) => {
                         const titleScore = overlapRatio(titleTokens, tokenSet(opp.title || ''));
                         const companyScore = overlapRatio(companyTokens, tokenSet(opp.company || ''));
-                        const candidateDomain = extractDomain(opp.applyLink);
+                        const candidateDomain = extractDomain(opp.applyLink || opp.sourceLink);
                         const applyDomainScore = currentApplyDomain && candidateDomain && currentApplyDomain === candidateDomain ? 1 : 0;
                         const score = (titleScore * 0.5) + (companyScore * 0.35) + (applyDomainScore * 0.15);
                         return { ...opp, score };
@@ -346,7 +351,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         }, 450);
 
         return () => clearTimeout(timeoutId);
-    }, [title, company, applyLink, opportunityId]);
+    }, [title, company, applyLink, sourceLink, opportunityId]);
 
     const fetchOpportunityForEdit = useCallback(async () => {
         if (!opportunityId) return;
@@ -375,6 +380,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
             setSalaryPeriod(opp.salaryPeriod || 'YEARLY');
             setExperienceMin(opp.experienceMin?.toString() || '');
             setExperienceMax(opp.experienceMax?.toString() || '');
+            setSourceLink(opp.sourceLink || '');
             setApplyLink(opp.applyLink || '');
             setExpiresAt(opp.expiresAt ? toLocalISOString(opp.expiresAt) : '');
 
@@ -652,6 +658,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
             setAllowedCourses(parsedEducation.courses);
             setAllowedSpecializations(parsedEducation.specializations);
             if (parsed.allowedPassoutYears?.length) setPassoutYears(normalizePassoutYears(parsed.allowedPassoutYears));
+            if (parsed.sourceLink) setSourceLink(parsed.sourceLink);
             if (parsed.applyLink) setApplyLink(parsed.applyLink);
             if (parsed.expiresAt) setExpiresAt(parsed.expiresAt);
 
@@ -684,7 +691,6 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
             const data: any = JSON.parse(pastedJson);
             const normalizedType = data.type ? typeParamToEnum(String(data.type)) : 'JOB';
             const requiredFields = ['title', 'company', 'description', 'locations'];
-            if (normalizedType !== 'WALKIN') requiredFields.push('applyLink');
             if (normalizedType === 'WALKIN') {
                 requiredFields.push('venueAddress');
             }
@@ -701,6 +707,15 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
 
             const missing = requiredFields.filter((field) => !hasField(field));
             const present = requiredFields.filter((field) => hasField(field));
+            const hasAnyLink = hasField('applyLink') || hasField('sourceLink');
+
+            if (normalizedType !== 'WALKIN') {
+                if (hasAnyLink) {
+                    present.push('source/apply link');
+                } else {
+                    missing.push('source/apply link');
+                }
+            }
 
             return {
                 valid: true,
@@ -718,6 +733,86 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         }
     }, [pastedJson]);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const applyJsonData = (data: any) => {
+        if (data.type) {
+            const normalizedType = typeParamToEnum(String(data.type));
+            if (normalizedType === 'JOB' || normalizedType === 'INTERNSHIP' || normalizedType === 'WALKIN') {
+                setType(normalizedType as 'JOB' | 'INTERNSHIP' | 'WALKIN');
+            }
+        }
+        if (data.title) setTitle(data.title);
+        if (data.company) setCompany(data.company);
+        if (data.companyWebsite) setCompanyWebsite(data.companyWebsite);
+        if (data.description) setDescription(String(data.description));
+        const parsedEducation = normalizeEducationPayload(data.allowedDegrees, data.allowedCourses, data.allowedSpecializations);
+        setAllowedDegrees(parsedEducation.degrees);
+        setAllowedCourses(parsedEducation.courses);
+        setAllowedSpecializations(parsedEducation.specializations);
+        setPassoutYears(normalizePassoutYears(data.allowedPassoutYears));
+        const requiredSkillsValues = toStringArray(data.requiredSkills);
+        if (requiredSkillsValues.length > 0) setRequiredSkills(requiredSkillsValues.join(', '));
+        const locationsValues = toStringArray(data.locations);
+        if (locationsValues.length > 0) setLocations(locationsValues.join(', '));
+        if (data.workMode) {
+            const normalizedWorkMode = normalizeWorkModeValue(data.workMode);
+            if (normalizedWorkMode) setWorkMode(normalizedWorkMode);
+        }
+        if (data.salaryRange) setSalaryRange(String(data.salaryRange));
+        if (data.salaryAmount !== undefined) setSalaryAmount(String(data.salaryAmount));
+        if (data.salaryMin !== undefined && data.salaryMax !== undefined) {
+            setSalaryRange(`${data.salaryMin}-${data.salaryMax}`);
+        }
+        if (data.salaryPeriod) {
+            const normalizedSalaryPeriod = normalizeSalaryPeriodValue(data.salaryPeriod);
+            if (normalizedSalaryPeriod) setSalaryPeriod(normalizedSalaryPeriod);
+        }
+        if (data.jobFunction) setJobFunction(String(data.jobFunction));
+        if (data.employmentType) setEmploymentType(String(data.employmentType));
+        if (data.incentives) setIncentives(String(data.incentives));
+        if (data.selectionProcess) setSelectionProcess(String(data.selectionProcess));
+        if (data.notesHighlights) setNotesHighlights(String(data.notesHighlights));
+        if (data.experienceMin !== undefined) setExperienceMin(String(data.experienceMin));
+        if (data.experienceMax !== undefined) setExperienceMax(String(data.experienceMax));
+        if (data.sourceLink) setSourceLink(String(data.sourceLink));
+        if (data.applyLink) setApplyLink(String(data.applyLink));
+        if (data.expiresAt) setExpiresAt(data.expiresAt);
+        if (data.venueAddress) setVenueAddress(String(data.venueAddress));
+        if (data.venueLink) setVenueLink(String(data.venueLink));
+        if (data.dateRange) setWalkInDateRange(String(data.dateRange));
+        if (data.timeRange) setWalkInTimeRange(String(data.timeRange));
+        if (data.requiredDocuments) {
+            const requiredDocumentsValues = toStringArray(data.requiredDocuments);
+            if (requiredDocumentsValues.length > 0) setRequiredDocuments(requiredDocumentsValues.join(', '));
+        }
+        if (data.contactPerson) setContactPerson(String(data.contactPerson));
+        if (data.contactPhone) setContactPhone(String(data.contactPhone));
+        if (data.startDate) setStartDate(String(data.startDate));
+        if (data.endDate) setEndDate(String(data.endDate));
+        if (data.startTime) setStartTime(String(data.startTime));
+        if (data.endTime) setEndTime(String(data.endTime));
+
+        if (data.walkInDetails) {
+            if (data.walkInDetails.dateRange) setWalkInDateRange(data.walkInDetails.dateRange);
+            if (data.walkInDetails.timeRange) setWalkInTimeRange(data.walkInDetails.timeRange);
+            if (data.walkInDetails.reportingTime && !data.walkInDetails.timeRange) setWalkInTimeRange(data.walkInDetails.reportingTime);
+            if (data.walkInDetails.venueAddress) setVenueAddress(data.walkInDetails.venueAddress);
+            if (data.walkInDetails.venueLink) setVenueLink(data.walkInDetails.venueLink);
+            const walkInRequiredDocuments = toStringArray(data.walkInDetails.requiredDocuments);
+            if (walkInRequiredDocuments.length > 0) setRequiredDocuments(walkInRequiredDocuments.join(', '));
+            if (data.walkInDetails.contactPerson) setContactPerson(data.walkInDetails.contactPerson);
+            if (data.walkInDetails.contactPhone) setContactPhone(data.walkInDetails.contactPhone);
+            if (Array.isArray(data.walkInDetails.dates) && data.walkInDetails.dates.length > 0) {
+                const sortedDates = data.walkInDetails.dates
+                    .map((value: unknown) => String(value))
+                    .filter(Boolean)
+                    .sort((a: string, b: string) => new Date(a).getTime() - new Date(b).getTime());
+                if (sortedDates.length > 0) setStartDate(sortedDates[0]);
+                if (sortedDates.length > 1) setEndDate(sortedDates[sortedDates.length - 1]);
+            }
+        }
+    };
+
     const applyJsonToForm = () => {
         if (!pastedJson.trim()) {
             toast.error('Please paste JSON first');
@@ -727,83 +822,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         try {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const data: any = JSON.parse(pastedJson);
-
-            if (data.type) {
-                const normalizedType = typeParamToEnum(String(data.type));
-                if (normalizedType === 'JOB' || normalizedType === 'INTERNSHIP' || normalizedType === 'WALKIN') {
-                    setType(normalizedType as 'JOB' | 'INTERNSHIP' | 'WALKIN');
-                }
-            }
-            if (data.title) setTitle(data.title);
-            if (data.company) setCompany(data.company);
-            if (data.companyWebsite) setCompanyWebsite(data.companyWebsite);
-            if (data.description) setDescription(String(data.description));
-            const parsedEducation = normalizeEducationPayload(data.allowedDegrees, data.allowedCourses, data.allowedSpecializations);
-            setAllowedDegrees(parsedEducation.degrees);
-            setAllowedCourses(parsedEducation.courses);
-            setAllowedSpecializations(parsedEducation.specializations);
-            setPassoutYears(normalizePassoutYears(data.allowedPassoutYears));
-            const requiredSkillsValues = toStringArray(data.requiredSkills);
-            if (requiredSkillsValues.length > 0) setRequiredSkills(requiredSkillsValues.join(', '));
-            const locationsValues = toStringArray(data.locations);
-            if (locationsValues.length > 0) setLocations(locationsValues.join(', '));
-            if (data.workMode) {
-                const normalizedWorkMode = normalizeWorkModeValue(data.workMode);
-                if (normalizedWorkMode) setWorkMode(normalizedWorkMode);
-            }
-            if (data.salaryRange) setSalaryRange(String(data.salaryRange));
-            if (data.salaryAmount !== undefined) setSalaryAmount(String(data.salaryAmount));
-            if (data.salaryMin !== undefined && data.salaryMax !== undefined) {
-                setSalaryRange(`${data.salaryMin}-${data.salaryMax}`);
-            }
-            if (data.salaryPeriod) {
-                const normalizedSalaryPeriod = normalizeSalaryPeriodValue(data.salaryPeriod);
-                if (normalizedSalaryPeriod) setSalaryPeriod(normalizedSalaryPeriod);
-            }
-            if (data.jobFunction) setJobFunction(String(data.jobFunction));
-            if (data.employmentType) setEmploymentType(String(data.employmentType));
-            if (data.incentives) setIncentives(String(data.incentives));
-            if (data.selectionProcess) setSelectionProcess(String(data.selectionProcess));
-            if (data.notesHighlights) setNotesHighlights(String(data.notesHighlights));
-            if (data.experienceMin !== undefined) setExperienceMin(String(data.experienceMin));
-            if (data.experienceMax !== undefined) setExperienceMax(String(data.experienceMax));
-            if (data.applyLink) setApplyLink(data.applyLink);
-            if (data.expiresAt) setExpiresAt(data.expiresAt);
-            if (data.venueAddress) setVenueAddress(String(data.venueAddress));
-            if (data.venueLink) setVenueLink(String(data.venueLink));
-            if (data.dateRange) setWalkInDateRange(String(data.dateRange));
-            if (data.timeRange) setWalkInTimeRange(String(data.timeRange));
-            if (data.requiredDocuments) {
-                const requiredDocumentsValues = toStringArray(data.requiredDocuments);
-                if (requiredDocumentsValues.length > 0) setRequiredDocuments(requiredDocumentsValues.join(', '));
-            }
-            if (data.contactPerson) setContactPerson(String(data.contactPerson));
-            if (data.contactPhone) setContactPhone(String(data.contactPhone));
-            if (data.startDate) setStartDate(String(data.startDate));
-            if (data.endDate) setEndDate(String(data.endDate));
-            if (data.startTime) setStartTime(String(data.startTime));
-            if (data.endTime) setEndTime(String(data.endTime));
-
-            if (data.walkInDetails) {
-                if (data.walkInDetails.dateRange) setWalkInDateRange(data.walkInDetails.dateRange);
-                if (data.walkInDetails.timeRange) setWalkInTimeRange(data.walkInDetails.timeRange);
-                if (data.walkInDetails.reportingTime && !data.walkInDetails.timeRange) setWalkInTimeRange(data.walkInDetails.reportingTime);
-                if (data.walkInDetails.venueAddress) setVenueAddress(data.walkInDetails.venueAddress);
-                if (data.walkInDetails.venueLink) setVenueLink(data.walkInDetails.venueLink);
-                const requiredDocumentsValues = toStringArray(data.walkInDetails.requiredDocuments);
-                if (requiredDocumentsValues.length > 0) setRequiredDocuments(requiredDocumentsValues.join(', '));
-                if (data.walkInDetails.contactPerson) setContactPerson(data.walkInDetails.contactPerson);
-                if (data.walkInDetails.contactPhone) setContactPhone(data.walkInDetails.contactPhone);
-                if (Array.isArray(data.walkInDetails.dates) && data.walkInDetails.dates.length > 0) {
-                    const sortedDates = data.walkInDetails.dates
-                        .map((value: unknown) => String(value))
-                        .filter(Boolean)
-                        .sort((a: string, b: string) => new Date(a).getTime() - new Date(b).getTime());
-                    if (sortedDates.length > 0) setStartDate(sortedDates[0]);
-                    if (sortedDates.length > 1) setEndDate(sortedDates[sortedDates.length - 1]);
-                }
-            }
-
+            applyJsonData(data);
             toast.success('Form updated from JSON.');
             setShowParser(false);
         } catch {
@@ -837,6 +856,10 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (type !== 'WALKIN' && !sourceLink.trim() && !applyLink.trim()) {
+            toast.error('Add at least one Source URL or Apply URL.');
+            return;
+        }
         setIsLoading(true);
         const loadingToast = toast.loading(isEditMode ? 'Updating listing...' : 'Publishing listing...');
 
@@ -864,6 +887,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                 notesHighlights,
                 experienceMin,
                 experienceMax,
+                sourceLink,
                 applyLink,
                 expiresAt,
                 venueAddress,
@@ -1642,6 +1666,18 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                                     />
                                 </div>
                                 <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Source URL (optional)</label>
+                                    <input
+                                        type="url"
+                                        value={sourceLink}
+                                        onChange={(e) => setSourceLink(e.target.value)}
+                                        className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all shadow-sm"
+                                        placeholder="https://company.com/jobs/... (listing page)"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
                                     <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Apply URL (optional)</label>
                                     <input
                                         type="url"
@@ -1651,20 +1687,39 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                                         placeholder="https://careers.company.com/... (if available)"
                                     />
                                 </div>
+                                <div className="flex items-end">
+                                    <p className="text-xs text-muted-foreground">
+                                        Use `Source URL` for the original listing page and `Apply URL` for the final destination. If you only have one usable link, either field is enough.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     )
                         : (
-                            <div className="space-y-1.5">
-                                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Apply URL *</label>
-                                <input
-                                    type="url"
-                                    required
-                                    value={applyLink}
-                                    onChange={(e) => setApplyLink(e.target.value)}
-                                    className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
-                                    placeholder="https://careers.company.com/..."
-                                />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Source URL</label>
+                                    <input
+                                        type="url"
+                                        value={sourceLink}
+                                        onChange={(e) => setSourceLink(e.target.value)}
+                                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+                                        placeholder="https://company.com/jobs/... (listing page)"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Apply URL</label>
+                                    <input
+                                        type="url"
+                                        value={applyLink}
+                                        onChange={(e) => setApplyLink(e.target.value)}
+                                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all shadow-sm"
+                                        placeholder="https://careers.company.com/... (application page)"
+                                    />
+                                </div>
+                                <p className="text-xs text-muted-foreground md:col-span-2">
+                                    Add at least one URL. If both are present, `Source URL` stays for tracing and `Apply URL` is where the listing should land.
+                                </p>
                             </div>
                         )}
                 </div>
