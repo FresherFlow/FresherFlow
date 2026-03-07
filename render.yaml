@@ -4,7 +4,7 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm install && npm run deploy:api
+    buildCommand: npm ci && npm run deploy:api
     startCommand: npm run start:api
     envVars:
       - key: DATABASE_URL
@@ -29,7 +29,7 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm install && npx turbo run db:generate --filter=fresherflow-api && npx turbo run build --filter=fresherflow-api
+    buildCommand: npm ci && npx turbo run db:generate --filter=fresherflow-api && npx turbo run build --filter=fresherflow-api
     startCommand: npm run start:api
     envVars:
       - key: DATABASE_URL
