@@ -3,13 +3,13 @@
 
 import { Opportunity, Profile } from '@fresherflow/types';
 import { HARD_RULES, SOFT_RULES, EligibilityRule } from './rules';
-import logger from '../../utils/logger';
+import { logger } from '@fresherflow/logger';
 import { normalizeSkillList } from '@fresherflow/constants';
 import {
     normalizeAcademicToken,
     normalizeCourseName,
     normalizeSpecializationName
-} from '../../utils/academicNormalization';
+} from '@fresherflow/utils';
 
 export interface EligibilityResult {
     eligible: boolean;

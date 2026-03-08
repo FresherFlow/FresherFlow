@@ -1,5 +1,3 @@
-// Eligibility Domain - Single Export Point
-
-export * from './rules';
+export * from './eligibility.service';
 export * from './match';
-
+export * from './rules';

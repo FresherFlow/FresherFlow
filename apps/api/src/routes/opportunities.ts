@@ -1,13 +1,15 @@
-import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { OpportunityStatus, OpportunityType, Prisma } from '@prisma/client';
-import Redis from 'ioredis';
+import { env } from '@fresherflow/config';
+import { logger } from '@fresherflow/logger';
+import { redis } from '@fresherflow/redis';
+import prisma from '../lib/prisma';
 import { optionalAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
-import { filterOpportunitiesForUser, rankOpportunitiesForUser, checkEligibility } from '../domain/eligibility';
+import { OpportunityService } from '../domain/opportunity';
+import { EligibilityService, filterOpportunitiesForUser, rankOpportunitiesForUser, checkEligibility } from '../domain/eligibility';
 import { verifyAccessToken } from '@fresherflow/auth';
 import { createRateLimiter } from '../middleware/rateLimit';
-import logger from '../utils/logger';
 
 const router: Router = express.Router();
 
@@ -35,33 +37,17 @@ const publicDetailBotLimiter = createRateLimiter({
     message: 'Too many automated detail requests. Please slow down.',
     keyPrefix: 'opportunity_detail_bot',
 });
-const GUEST_FEED_LIMIT = Number(process.env.GUEST_FEED_LIMIT || 12);
-const MAX_FEED_LIMIT = Number(process.env.PUBLIC_FEED_MAX_LIMIT || 100);
-const MAX_FEED_PAGE = Number(process.env.PUBLIC_FEED_MAX_PAGE || 200);
-const GUEST_FEED_CACHE_TTL_SECONDS = Number(process.env.PUBLIC_FEED_CACHE_TTL_SECONDS || 300);
-const GUEST_DETAIL_CACHE_TTL_SECONDS = Number(process.env.PUBLIC_DETAIL_CACHE_TTL_SECONDS || 300);
-const MAX_DETAIL_ID_LENGTH = Number(process.env.PUBLIC_DETAIL_MAX_ID_LENGTH || 200);
-const MAX_SALARY_FILTER = Number(process.env.PUBLIC_SALARY_MAX_FILTER || 100000000);
+const GUEST_FEED_LIMIT = 12;
+const MAX_FEED_LIMIT = 100;
+const MAX_FEED_PAGE = 200;
+const GUEST_FEED_CACHE_TTL_SECONDS = 300;
+const GUEST_DETAIL_CACHE_TTL_SECONDS = 300;
+const MAX_DETAIL_ID_LENGTH = 200;
+const MAX_SALARY_FILTER = 100000000;
 const ALLOWED_SORT_KEYS = new Set(['', 'freshness_v2']);
 
 const BOT_UA_REGEX = /(bot|crawler|spider|scraper|curl|wget|python-requests|axios|headless|preview|slurp|facebookexternalhit|whatsapp|telegrambot|linkedinbot|discordbot)/i;
-let redisClient: Redis | null = null;
-
-function getRedisClient() {
-    if (process.env.NODE_ENV === 'development' || process.env.REDIS_ENABLED === 'false') return null;
-    const url = process.env.REDIS_URL;
-    if (!url) return null;
-    if (!redisClient) {
-        redisClient = new Redis(url, {
-            maxRetriesPerRequest: 1,
-            connectTimeout: 2000
-        });
-        redisClient.on('error', (err) => {
-            console.error('[Redis] Opportunities cache connection error:', err.message);
-        });
-    }
-    return redisClient;
-}
+// Redis client is now globally managed by @fresherflow/redis
 
 function isLikelyBotTraffic(req: Request): boolean {
     const ua = String(req.headers['user-agent'] || '').toLowerCase();
@@ -271,6 +257,45 @@ function getFreshnessScore(
     return recencyScore + unseenScore + expiryScore + stableNoise;
 }
 
+router.get('/search', adaptiveFeedLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { q, type, city, page = '1', limit = '20' } = req.query;
+        const query = typeof q === 'string' ? q : '';
+        const typeValue = normalizeSafeQueryString(type, 24);
+        const cityValue = normalizeSafeQueryString(city, 80);
+        const p = parseStrictPositiveInt(page) ?? 1;
+        const l = parseStrictPositiveInt(limit) ?? 20;
+
+        if (p < 1 || p > 100) throw new AppError('Invalid page', 400);
+        if (l < 1 || l > 50) throw new AppError('Invalid limit', 400);
+
+        const filterType = parseOpportunityType(typeValue || undefined);
+        const locations = cityValue ? [cityValue] : undefined;
+
+        const offset = (p - 1) * l;
+
+        const searchResults = await OpportunityService.searchOpportunities(query, {
+            filterType,
+            limit: l,
+            offset,
+            locations
+        });
+
+        res.setHeader('Cache-Control', 'private, no-store');
+
+        return res.json({
+            hits: searchResults.hits,
+            totalHits: searchResults.estimatedTotalHits,
+            processingTimeMs: searchResults.processingTimeMs,
+            page: p,
+            limit: l,
+        });
+
+    } catch (error) {
+        next(error);
+    }
+});
+
 router.get('/', adaptiveFeedLimiter, optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { type, city, relevanceDebug, minSalary, maxSalary, page = '1', limit = '50', sort } = req.query;
@@ -340,7 +365,8 @@ router.get('/', adaptiveFeedLimiter, optionalAuth, async (req: Request, res: Res
         const profile = user?.profile;
         const userId = req.userId;
         const isGuest = !userId;
-        const redis = getRedisClient();
+        // Use shared redis from @fresherflow/redis
+        const redis_client = env.NODE_ENV === 'development' ? null : redis;
 
         const andConditions: Prisma.OpportunityWhereInput[] = [
             {
@@ -384,9 +410,9 @@ router.get('/', adaptiveFeedLimiter, optionalAuth, async (req: Request, res: Res
             ].join('|')
             : null;
 
-        if (isGuest && guestCacheKey && redis) {
+        if (isGuest && guestCacheKey && redis_client) {
             try {
-                const cached = await redis.get(guestCacheKey);
+                const cached = await redis_client.get(guestCacheKey);
                 if (cached) {
                     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
                     res.setHeader('Vary', 'Cookie, Authorization');
@@ -475,9 +501,9 @@ router.get('/', adaptiveFeedLimiter, optionalAuth, async (req: Request, res: Res
             ...(includeRelevanceDebug ? { relevanceDebug: debug } : {})
         };
 
-        if (isGuest && guestCacheKey && redis) {
+        if (isGuest && guestCacheKey && redis_client) {
             try {
-                await redis.setex(guestCacheKey, GUEST_FEED_CACHE_TTL_SECONDS, JSON.stringify(responsePayload));
+                await redis_client.setex(guestCacheKey, GUEST_FEED_CACHE_TTL_SECONDS, JSON.stringify(responsePayload));
             } catch {
                 // Cache write failures should never break feed responses.
             }
@@ -543,12 +569,13 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
         }
         const userId = tryResolveUserIdFromCookie(req);
         const isGuest = !userId;
-        const redis = getRedisClient();
+        // Use shared redis from @fresherflow/redis
+        const redis_client = env.NODE_ENV === 'development' ? null : redis;
         const guestDetailCacheKey = isGuest ? `opportunity_detail|v1|id:${id}` : null;
 
-        if (isGuest && guestDetailCacheKey && redis) {
+        if (isGuest && guestDetailCacheKey && redis_client) {
             try {
-                const cached = await redis.get(guestDetailCacheKey);
+                const cached = await redis_client.get(guestDetailCacheKey);
                 if (cached) {
                     res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
                     res.setHeader('Vary', 'Cookie, Authorization');
@@ -623,9 +650,9 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
             eligibilityReason
         };
 
-        if (isGuest && guestDetailCacheKey && redis) {
+        if (isGuest && guestDetailCacheKey && redis_client) {
             try {
-                await redis.setex(guestDetailCacheKey, GUEST_DETAIL_CACHE_TTL_SECONDS, JSON.stringify(responsePayload));
+                await redis_client.setex(guestDetailCacheKey, GUEST_DETAIL_CACHE_TTL_SECONDS, JSON.stringify(responsePayload));
             } catch {
                 // Cache write failures should never break detail responses.
             }

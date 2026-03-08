@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma';
 import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, OpportunityStatus } from '@prisma/client';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
-import logger from '../utils/logger';
+import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 import { sendNewJobPush } from './push.service';
 
@@ -300,15 +300,15 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             dedupeKey: string;
             metadata: string;
         }> = [
-            {
-                userId: user.id,
-                opportunityId: opportunity.id,
-                kind: alertKind,
-                channel: 'APP',
-                dedupeKey: `${dedupeKeyBase}:APP`,
-                metadata: JSON.stringify({ relevanceScore, relevanceReason }),
-            },
-        ];
+                {
+                    userId: user.id,
+                    opportunityId: opportunity.id,
+                    kind: alertKind,
+                    channel: 'APP',
+                    dedupeKey: `${dedupeKeyBase}:APP`,
+                    metadata: JSON.stringify({ relevanceScore, relevanceReason }),
+                },
+            ];
 
         // Send email if enabled
         if (preference.emailEnabled) {
@@ -378,13 +378,13 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             deliveredAt: new Date(),
         });
 
-        const pushResult = await sendNewJobPush(user.id, {
-            title: opportunity.title,
-            company: opportunity.company,
-            opportunityId: opportunity.id,
-            opportunitySlug: opportunity.slug,
-        });
-        if (pushResult.status === 'sent') {
+        try {
+            await sendNewJobPush(user.id, {
+                title: opportunity.title,
+                company: opportunity.company,
+                opportunityId: opportunity.id,
+                opportunitySlug: opportunity.slug,
+            });
             pushSent += 1;
             await prisma.alertDelivery.create({
                 data: {
@@ -405,22 +405,22 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 status: AlertDispatchStatus.SENT,
                 reason: AlertDispatchReason.SENT_OK,
                 dedupeKey: `${dedupeKeyBase}:PUSH`,
-                metadata: { relevanceScore, relevanceReason },
+                metadata: { relevanceScore, relevanceReason, queued: true },
                 attemptedAt: userAttemptedAt,
                 deliveredAt: new Date(),
             });
-        } else {
+        } catch (err: any) {
             await logDispatch({
                 correlationId,
                 userId: user.id,
                 opportunityId: opportunity.id,
                 kind: alertKind,
                 channel: AlertChannel.PUSH,
-                status: pushResult.status === 'skipped' ? AlertDispatchStatus.SKIPPED : AlertDispatchStatus.FAILED,
-                reason: pushResult.status === 'skipped' ? AlertDispatchReason.VALIDATION_ERROR : AlertDispatchReason.CHANNEL_ERROR,
+                status: AlertDispatchStatus.FAILED,
+                reason: AlertDispatchReason.CHANNEL_ERROR,
                 dedupeKey: `${dedupeKeyBase}:PUSH`,
-                errorMessage: pushResult.reason || null,
-                metadata: { relevanceScore, relevanceReason, pushStatus: pushResult.status },
+                errorMessage: err?.message || 'Failed to queue push',
+                metadata: { relevanceScore, relevanceReason },
                 attemptedAt: userAttemptedAt,
             });
         }

@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import { GrowthFunnelEvent } from '@prisma/client';
-import logger from '../utils/logger';
+import { logger } from '@fresherflow/logger';
 
 
 

@@ -6,7 +6,7 @@ import {
     normalizeCourseName,
     normalizeSpecializationName,
     normalizeAcademicToken
-} from '../../utils/academicNormalization';
+} from '@fresherflow/utils';
 import { normalizeSkillList } from '@fresherflow/constants';
 
 export interface EligibilityRule {
