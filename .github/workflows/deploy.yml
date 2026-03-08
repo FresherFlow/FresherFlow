@@ -11,6 +11,12 @@ jobs:
     name: Lint, Test, and Build
     runs-on: ubuntu-latest
 
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -44,5 +50,11 @@ jobs:
 
       - name: Run Tests
         run: npm test --workspace=apps/api
+        env:
+          DATABASE_URL: postgresql://dummy:dummy@localhost:5432/dummy
+          JWT_ACCESS_SECRET: dummy_access_secret_for_tests_only
+          JWT_REFRESH_SECRET: dummy_refresh_secret_for_tests_only
+          REDIS_URL: redis://localhost:6379
+
 
       # Vercel auto-deploys via its own GitHub integration once CI is green.
