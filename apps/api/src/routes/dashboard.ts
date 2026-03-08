@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
-import { OpportunityEventType } from '@prisma/client';
+import { OpportunityEventType } from '@fresherflow/database';
 import { OpportunityStatus } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { profileGate } from '../middleware/profileGate';
@@ -145,19 +145,19 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
 
         const seenDriveIds = new Set<string>();
         const driveMilestones = upcomingDriveEvents
-            .filter((item) => {
+            .filter((item: any) => {
                 if (seenDriveIds.has(item.opportunityId)) return false;
                 seenDriveIds.add(item.opportunityId);
                 return true;
             })
-            .sort((a, b) => {
+            .sort((a: any, b: any) => {
                 const aPriority = /tcs/i.test(a.opportunity.company) && /nqt/i.test(a.opportunity.title) ? 1 : 0;
                 const bPriority = /tcs/i.test(b.opportunity.company) && /nqt/i.test(b.opportunity.title) ? 1 : 0;
                 if (aPriority !== bPriority) return bPriority - aPriority;
                 return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
             })
             .slice(0, 4)
-            .map((item) => ({
+            .map((item: any) => ({
                 opportunityId: item.opportunityId,
                 eventId: item.id,
                 eventType: item.eventType,

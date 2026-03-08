@@ -277,7 +277,7 @@ export const OpportunitiesListScreen = () => {
 
             {/* Status Filters */}
             <View style={styles.filterRow}>
-                {STATUSES.map(s => (
+                {STATUSES.map((s: any) => (
                     <TouchableOpacity
                         key={s}
                         style={[styles.filterChip, statusFilter === s && styles.filterChipActive]}
@@ -290,7 +290,7 @@ export const OpportunitiesListScreen = () => {
 
             {/* Type Filters — Jobs / Internships / Walk-ins split */}
             <View style={styles.typeFilterRow}>
-                {TYPE_FILTERS.map(({ label, value }) => (
+                {TYPE_FILTERS.map(({ label, value }: any) => (
                     <TouchableOpacity
                         key={value}
                         style={[styles.typeChip, typeFilter === value && styles.typeChipActive]}

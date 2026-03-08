@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { User } from '@prisma/client';
+import { User } from '@fresherflow/database';
 import { OAuth2Client } from 'google-auth-library';
 import crypto from 'crypto';
 

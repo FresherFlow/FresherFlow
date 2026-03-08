@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { GrowthFunnelEvent } from '@prisma/client';
+import { GrowthFunnelEvent } from '@fresherflow/database';
 import { logger } from '@fresherflow/logger';
 
 
@@ -97,7 +97,7 @@ function formatRows(rows: Array<{ source: string; counters: SourceCounters }>) {
         };
     }).sort((a, b) => b.AUTH_SUCCESS - a.AUTH_SUCCESS);
 
-    const totals = sources.reduce((acc, row) => {
+    const totals = sources.reduce((acc: any, row: any) => {
         acc.DETAIL_VIEW += row.DETAIL_VIEW;
         acc.LOGIN_VIEW += row.LOGIN_VIEW;
         acc.AUTH_SUCCESS += row.AUTH_SUCCESS;

@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind } from '@prisma/client';
+import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind } from '@fresherflow/database';
 import { OpportunityStatus } from '@fresherflow/types';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import { logger } from '@fresherflow/logger';
@@ -72,7 +72,7 @@ async function resolveNewJobKind(): Promise<AlertKind> {
             WHERE t.typname = 'AlertKind'
         `;
 
-        const supportedKinds = new Set(labels.map((row) => row.enumlabel));
+        const supportedKinds = new Set(labels.map((row: any) => row.enumlabel));
         cachedNewJobKind = supportedKinds.has('NEW_JOB') ? AlertKind.NEW_JOB : AlertKind.HIGHLIGHT;
     } catch {
         cachedNewJobKind = AlertKind.NEW_JOB;
@@ -146,7 +146,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         },
     });
     const sentTodayByUser = new Map<string, number>(
-        sentTodayRows.map((row) => [row.userId, row._count._all])
+        sentTodayRows.map((row: any) => [row.userId, row._count._all])
     );
 
     for (const user of users) {
@@ -420,7 +420,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 status: AlertDispatchStatus.FAILED,
                 reason: AlertDispatchReason.CHANNEL_ERROR,
                 dedupeKey: `${dedupeKeyBase}:PUSH`,
-                errorMessage: err?.message || 'Failed to queue push',
+                errorMessage: err instanceof Error ? err.message : 'Failed to queue push',
                 metadata: { relevanceScore, relevanceReason },
                 attemptedAt: userAttemptedAt,
             });

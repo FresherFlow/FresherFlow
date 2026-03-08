@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { getObservabilityMetrics } from '../middleware/observability';
 
@@ -282,18 +282,18 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
     }
 
     const activitySignals = [
-        ...actionUsers14d.map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
-        ...savedUsers14d.map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
+        ...actionUsers14d.map((item: any) => ({ userId: item.userId, createdAt: item.createdAt })),
+        ...savedUsers14d.map((item: any) => ({ userId: item.userId, createdAt: item.createdAt })),
         ...clickUsers14d
-            .filter((item): item is { userId: string; createdAt: Date } => Boolean(item.userId))
-            .map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
+            .filter((item: any): item is { userId: string; createdAt: Date } => Boolean(item.userId))
+            .map((item: any) => ({ userId: item.userId, createdAt: item.createdAt })),
     ];
-    const notifiedUsers14d = new Set(alertUsers14d.map((item) => item.userId));
-    const dau = new Set(activitySignals.filter((item) => item.createdAt >= oneDayAgo).map((item) => item.userId));
-    const wau = new Set(activitySignals.filter((item) => item.createdAt >= sevenDaysAgo).map((item) => item.userId));
+    const notifiedUsers14d = new Set(alertUsers14d.map((item: any) => item.userId));
+    const dau = new Set(activitySignals.filter((item: any) => item.createdAt >= oneDayAgo).map((item) => item.userId));
+    const wau = new Set(activitySignals.filter((item: any) => item.createdAt >= sevenDaysAgo).map((item) => item.userId));
     const previousWeek = new Set(
         activitySignals
-            .filter((item) => item.createdAt >= fourteenDaysAgo && item.createdAt < sevenDaysAgo)
+            .filter((item: any) => item.createdAt >= fourteenDaysAgo && item.createdAt < sevenDaysAgo)
             .map((item) => item.userId)
     );
     const returning = new Set(Array.from(wau).filter((userId) => previousWeek.has(userId)));
@@ -344,7 +344,7 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
             loginToAuthPct: toPercent(authSuccess, loginView),
         },
         channelAttribution: sourceBuckets,
-        recentListings: recentListings.map((item) => ({
+        recentListings: recentListings.map((item: any) => ({
             ...item,
             postedAt: item.postedAt.toISOString(),
         })),

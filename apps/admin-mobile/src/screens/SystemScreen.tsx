@@ -166,7 +166,7 @@ export const SystemScreen = () => {
                                     ['Healthy', linkStats?.healthy ?? 0, theme.colors.success],
                                     ['Broken', linkStats?.broken ?? 0, theme.colors.error],
                                     ['Retrying', linkStats?.retrying ?? 0, theme.colors.accent],
-                                ] as [string, number, string][]).map(([label, val, color]) => (
+                                ] as [string, number, string][]).map(([label, val, color]: any) => (
                                     <View key={label} style={[styles.statBadge, { backgroundColor: color + '15' }]}>
                                         <Text style={[styles.statNum, { color }]}>{val}</Text>
                                         <Text style={styles.statLabel}>{label}</Text>
@@ -195,7 +195,7 @@ export const SystemScreen = () => {
                         <View style={styles.section}>
                             <SectHead icon={<Zap size={16} color={theme.colors.textMuted} />} title="Recent Dispatch Log" />
                             <View style={styles.card}>
-                                {dispatchLogs.slice(0, 10).map((log, idx) => (
+                                {dispatchLogs.slice(0, 10).map((log: any, idx: any) => (
                                     <View key={log.id} style={[styles.logRow, idx > 0 && styles.logRowBorder]}>
                                         <View style={[styles.logDot, {
                                             backgroundColor: log.status === 'SENT' ? theme.colors.success

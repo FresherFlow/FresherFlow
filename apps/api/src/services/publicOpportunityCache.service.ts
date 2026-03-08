@@ -12,7 +12,8 @@ async function deleteByPattern(pattern: string) {
             }
         } while (cursor !== '0');
     } catch (err: unknown) {
-        logger.error('[Redis] Delete by pattern failed', { pattern, error: err.message });
+        const error = err instanceof Error ? err.message : String(err);
+        logger.error('[Redis] Delete by pattern failed', { pattern, error });
     }
 }
 

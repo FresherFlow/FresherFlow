@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { LinkHealth } from '@prisma/client';
+import { LinkHealth } from '@fresherflow/database';
 import { OpportunityStatus } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
 import TelegramService from './telegram.service';

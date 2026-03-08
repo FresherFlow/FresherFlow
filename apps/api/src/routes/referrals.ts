@@ -39,7 +39,7 @@ function hashIp(ip: string): string {
 
 async function awardBadges(userId: string, signupCount: number) {
     const existingBadges = await prisma.referralBadgeGrant.findMany({ where: { userId } });
-    const earnedSet = new Set(existingBadges.map(b => b.badge));
+    const earnedSet = new Set(existingBadges.map((b: any) => b.badge));
 
     for (const m of BADGE_MILESTONES) {
         if (signupCount >= m.count && !earnedSet.has(m.badge as any)) {
@@ -162,24 +162,24 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
             select: { badge: true, createdAt: true },
         });
 
-        const earnedBadges = badges.map(b => ({
+        const earnedBadges = badges.map((b: any) => ({
             badge: b.badge,
             ...BADGE_META[b.badge],
             earnedAt: b.createdAt,
         }));
 
-        const allBadges = BADGE_MILESTONES.map(m => ({
+        const allBadges = BADGE_MILESTONES.map((m: any) => ({
             badge: m.badge,
             ...BADGE_META[m.badge],
             unlocked: totalSignups >= m.count,
-            earnedAt: badges.find(b => b.badge === m.badge)?.createdAt ?? null,
+            earnedAt: badges.find((b: any) => b.badge === m.badge)?.createdAt ?? null,
         }));
 
         res.json({
             referralCode: code,
             shareUrl,
             stats: { totalClicks, totalSignups, activated },
-            referrals: referralsRaw.map(r => ({
+            referrals: referralsRaw.map((r: any) => ({
                 id: r.id,
                 fullName: r.fullName,
                 joinedAt: r.referredAt ?? r.createdAt,

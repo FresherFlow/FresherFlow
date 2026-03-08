@@ -349,7 +349,7 @@ export const PostOpportunityScreen = ({ route, navigation }: any) => {
                 <Label>Locations (comma separated)</Label>
                 <Input placeholder="Remote, Bengaluru, Mumbai" value={locationInput} onChangeText={markDirty(setLocationInput)} />
                 <View style={styles.quickLocRow}>
-                    {QUICK_LOCATIONS.map(l => (
+                    {QUICK_LOCATIONS.map((l: any) => (
                         <TouchableOpacity key={l} style={styles.quickLoc}
                             onPress={() => {
                                 if (locationInput.toLowerCase().includes(l.toLowerCase())) return;
@@ -363,7 +363,7 @@ export const PostOpportunityScreen = ({ route, navigation }: any) => {
                 {/* Work mode */}
                 <Label>Work Mode</Label>
                 <ChipRow>
-                    {WORK_MODES.map(m => (
+                    {WORK_MODES.map((m: any) => (
                         <Chip key={m} label={m} active={workMode === m} onPress={() => { setWorkMode(m); setIsDirty(true); }} />
                     ))}
                 </ChipRow>
@@ -371,14 +371,14 @@ export const PostOpportunityScreen = ({ route, navigation }: any) => {
                 {/* Education */}
                 <Label>Eligible Degrees</Label>
                 <ChipRow wrap>
-                    {DEGREES.map(d => (
+                    {DEGREES.map((d: any) => (
                         <Chip key={d as string} label={d as string} active={selectedDegrees.includes(d)} onPress={() => toggle(selectedDegrees, setSelectedDegrees, d as string)} />
                     ))}
                 </ChipRow>
 
                 <Label>Eligible Passout Years</Label>
                 <ChipRow wrap>
-                    {PASS_YEARS.map(y => (
+                    {PASS_YEARS.map((y: any) => (
                         <Chip key={y} label={String(y)} active={selectedYears.includes(y)} onPress={() => toggle(selectedYears, setSelectedYears, y)} />
                     ))}
                 </ChipRow>
@@ -392,7 +392,7 @@ export const PostOpportunityScreen = ({ route, navigation }: any) => {
                 <Input placeholder={salaryPeriod === 'YEARLY' ? 'e.g. 4-8 LPA' : 'e.g. 25000-50000 /month'} value={salaryRange} onChangeText={markDirty(setSalaryRange)} />
                 <Label>Salary Period</Label>
                 <ChipRow>
-                    {SALARY_PERIODS.map(p => (
+                    {SALARY_PERIODS.map((p: any) => (
                         <Chip key={p} label={p} active={salaryPeriod === p} onPress={() => { setSalaryPeriod(p); setIsDirty(true); }} />
                     ))}
                 </ChipRow>

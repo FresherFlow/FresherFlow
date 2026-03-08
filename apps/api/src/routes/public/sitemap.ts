@@ -16,7 +16,7 @@ router.get('/opportunities', async (req: Request, res: Response, next: NextFunct
         const skip = (page - 1) * limit;
         const graceCutoff = new Date(Date.now() - EXPIRED_GRACE_DAYS * 24 * 60 * 60 * 1000);
 
-        const where = {
+        const where: any = {
             status: OpportunityStatus.PUBLISHED,
             deletedAt: null,
             OR: [
@@ -42,7 +42,7 @@ router.get('/opportunities', async (req: Request, res: Response, next: NextFunct
             })
         ]);
 
-        const output = items.map((item) => ({
+        const output = items.map((item: any) => ({
             id: item.id,
             slug: item.slug,
             type: item.type as OpportunityType,

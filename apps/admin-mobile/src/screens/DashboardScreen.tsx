@@ -219,7 +219,7 @@ export const DashboardScreen = () => {
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>Recent Activity</Text>
                             <View style={styles.activityList}>
-                                {recentActivity.map(item => (
+                                {recentActivity.map((item: any) => (
                                     <TouchableOpacity
                                         key={item.id}
                                         style={styles.activityRow}

@@ -125,7 +125,7 @@ export const AnalyticsScreen = () => {
                         <>
                             <SectionTitle icon={<TrendingUp size={15} color={theme.colors.primary} />} title="Top Clicked Opportunities" />
                             <View style={styles.card}>
-                                {data.clicks!.topClickedOpportunities.slice(0, 6).map((job, idx) => (
+                                {data.clicks!.topClickedOpportunities.slice(0, 6).map((job: any, idx: number) => (
                                     <View key={job.opportunityId} style={[styles.rankRow, idx > 0 && styles.rankRowBorder]}>
                                         <Text style={styles.rankNum}>#{idx + 1}</Text>
                                         <View style={{ flex: 1 }}>
@@ -163,7 +163,7 @@ export const AnalyticsScreen = () => {
                         <>
                             <SectionTitle icon={<MessageSquare size={15} color={theme.colors.primary} />} title="Listing Feedback (30d)" />
                             <View style={styles.card}>
-                                {Object.entries(data.feedback!).sort(([, a], [, b]) => b - a).map(([reason, count]) => (
+                                {Object.entries(data.feedback!).sort(([, a], [, b]) => (b as number) - (a as number)).map(([reason, count]: [string, any]) => (
                                     <View key={reason} style={styles.feedbackRow}>
                                         <Text style={styles.feedbackReason}>{reason.replace(/_/g, ' ')}</Text>
                                         <Text style={styles.feedbackCount}>{count}</Text>
@@ -178,7 +178,7 @@ export const AnalyticsScreen = () => {
                         <>
                             <SectionTitle icon={<Clock size={15} color={theme.colors.primary} />} title="Recent Registrations" />
                             <View style={styles.card}>
-                                {activity!.users!.map((u, idx) => (
+                                {activity!.users!.map((u: any, idx: number) => (
                                     <View key={u.id} style={[styles.activityRow, idx > 0 && styles.rankRowBorder]}>
                                         <View style={styles.avatar}>
                                             <Text style={styles.avatarText}>{(u.fullName || 'U')[0].toUpperCase()}</Text>

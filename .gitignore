@@ -61,5 +61,6 @@ brain/
 # docs (Documentation should be tracked, but ignore large generated text files)
 docs/
 .artifacts
+.expo/
 
 apps/mobile

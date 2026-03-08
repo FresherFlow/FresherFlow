@@ -213,31 +213,31 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
         ]);
 
         const activitySignals = [
-            ...actionUsers14d.map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
-            ...savedUsers14d.map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
+            ...actionUsers14d.map((item: any) => ({ userId: item.userId, createdAt: item.createdAt })),
+            ...savedUsers14d.map((item: any) => ({ userId: item.userId, createdAt: item.createdAt })),
             ...clickUsers14d
-                .filter((item): item is { userId: string; createdAt: Date } => Boolean(item.userId))
-                .map((item) => ({ userId: item.userId, createdAt: item.createdAt })),
-            ...alertUsers14d.map((item) => ({ userId: item.userId, createdAt: item.sentAt })),
+                .filter((item: any): item is { userId: string; createdAt: Date } => Boolean(item.userId))
+                .map((item: any) => ({ userId: item.userId, createdAt: item.createdAt })),
+            ...alertUsers14d.map((item: any) => ({ userId: item.userId, createdAt: item.sentAt })),
         ];
 
         const activeUsers1d = new Set(
             activitySignals
-                .filter((item) => item.createdAt >= oneDayAgo)
+                .filter((item: any) => item.createdAt >= oneDayAgo)
                 .map((item) => item.userId)
         );
         const activeUsers7d = new Set(
             activitySignals
-                .filter((item) => item.createdAt >= sevenDaysAgo)
+                .filter((item: any) => item.createdAt >= sevenDaysAgo)
                 .map((item) => item.userId)
         );
         const previous7dUsers = new Set(
             activitySignals
-                .filter((item) => item.createdAt >= fourteenDaysAgo && item.createdAt < sevenDaysAgo)
+                .filter((item: any) => item.createdAt >= fourteenDaysAgo && item.createdAt < sevenDaysAgo)
                 .map((item) => item.userId)
         );
         const returningUsers7d = new Set(
-            Array.from(activeUsers7d).filter((userId) => previous7dUsers.has(userId))
+            Array.from(activeUsers7d).filter((userId: any) => previous7dUsers.has(userId))
         );
 
         const returningRate7d = activeUsers7d.size > 0
@@ -259,7 +259,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
             else sourceBuckets.others += row._count._all;
         }
 
-        const topOpportunityIds = topClickedRows.map((row) => row.opportunityId);
+        const topOpportunityIds = topClickedRows.map((row: any) => row.opportunityId);
         const topOpportunityMap = new Map<string, { title: string; company: string; slug: string }>();
 
         if (topOpportunityIds.length > 0) {
@@ -268,12 +268,12 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
                 select: { id: true, title: true, company: true, slug: true }
             });
 
-            opportunities.forEach((item) => {
+            opportunities.forEach((item: any) => {
                 topOpportunityMap.set(item.id, { title: item.title, company: item.company, slug: item.slug });
             });
         }
 
-        const topClickedOpportunities = topClickedRows.map((row) => ({
+        const topClickedOpportunities = topClickedRows.map((row: any) => ({
             opportunityId: row.opportunityId,
             clicks: row._count._all,
             ...(topOpportunityMap.get(row.opportunityId) || { title: 'Unknown', company: 'Unknown', slug: '' })
@@ -296,7 +296,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
                     ? Math.round(((funnel.SIGNUP_SUCCESS || 0) / (funnel.SIGNUP_VIEW || 0)) * 100)
                     : 0
             },
-            typeDistribution: typeStats.map(t => ({ type: t.type, count: t._count })),
+            typeDistribution: typeStats.map((t: any) => ({ type: t.type, count: t._count })),
             feedback: feedbackDistribution,
             funnel,
             clicks: {

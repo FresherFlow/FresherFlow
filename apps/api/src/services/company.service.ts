@@ -66,7 +66,7 @@ export class CompanyService {
             take: 50
         });
 
-        return companies.map(c => ({
+        return companies.map((c: any) => ({
             name: c.company,
             jobCount: c._count.id
         }));

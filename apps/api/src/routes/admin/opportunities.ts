@@ -1,6 +1,6 @@
 ﻿import prisma from '../../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { Prisma, OpportunityEventType } from '@prisma/client';
+import { Prisma, OpportunityEventType } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { requireAdmin } from '../../middleware/auth';
 import { adminRateLimit } from '../../middleware/adminRateLimit';
@@ -95,7 +95,7 @@ function normalizeWalkInDates(data: any): Date[] {
     if (typeof data?.endDate === 'string') rawDates.push(data.endDate);
 
     return rawDates
-        .map((value) => toDateOrNull(value))
+        .map((value: any) => toDateOrNull(value))
         .filter((value): value is Date => Boolean(value));
 }
 
@@ -710,7 +710,7 @@ router.get('/export', async (req: Request, res: Response, next: NextFunction) =>
             'linkHealth'
         ].join(',');
 
-        const rows = opportunities.map(opp => ([
+        const rows = opportunities.map((opp: any) => ([
             toCsvValue(opp.id),
             toCsvValue(opp.slug),
             toCsvValue(opp.type),
