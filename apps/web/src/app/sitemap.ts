@@ -93,9 +93,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Sitemap generation failed.', error);
 
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(`Dynamic sitemap generation failed: ${message}`);
-    }
+    console.warn(`Dynamic sitemap generation failed (API may be down during build): ${message}`);
 
     return staticEntries;
   }

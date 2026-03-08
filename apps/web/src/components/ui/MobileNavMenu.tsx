@@ -7,6 +7,8 @@ import BellIcon from '@heroicons/react/24/outline/BellIcon';
 import PaperAirplaneIcon from '@heroicons/react/24/outline/PaperAirplaneIcon';
 import ClipboardDocumentCheckIcon from '@heroicons/react/24/outline/ClipboardDocumentCheckIcon';
 import ArrowRightOnRectangleIcon from '@heroicons/react/24/outline/ArrowRightOnRectangleIcon';
+import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
+import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import { ThemeToggle } from './ThemeToggle';
 import type { User } from '@fresherflow/types';
 
@@ -67,6 +69,8 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                         { href: '/profile', label: 'My Profile', icon: UserIcon },
                         { href: '/account/saved', label: 'My Saved', icon: BookmarkIcon },
                         { href: '/account/tracker', label: 'Tracker', icon: ClipboardDocumentCheckIcon },
+                        { href: '/referral', label: 'Invite Friends', icon: UserGroupIcon },
+                        { href: '/submit-link', label: 'Submit Job Link', icon: LinkIcon },
                         { href: '/alerts', label: 'Alerts', icon: BellIcon },
                         { href: '/account/feedback', label: 'Feedback', icon: PaperAirplaneIcon },
                     ].map((item) => (

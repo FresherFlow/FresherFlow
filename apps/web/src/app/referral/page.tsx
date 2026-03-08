@@ -46,14 +46,24 @@ export default function ReferralPage() {
     const { user } = useAuth();
     const [data, setData] = useState<ReferralData | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
     const [copied, setCopied] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
+        setError(false);
         try {
             const res = await fetch('/api/referrals/me', { credentials: 'include' });
-            if (res.ok) setData(await res.json());
-        } catch { /* silent */ } finally { setLoading(false); }
+            if (res.ok) {
+                setData(await res.json());
+            } else {
+                setError(true);
+            }
+        } catch {
+            setError(true);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => { void fetchData(); }, [fetchData]);
@@ -97,6 +107,15 @@ export default function ReferralPage() {
                     </Link>
                     <h1 className="text-xl font-bold tracking-tight text-foreground">Invite Friends</h1>
                 </div>
+
+                {error && (
+                    <div className="mb-6 p-4 rounded-xl border border-red-500/20 bg-red-500/10 text-red-500 text-sm flex items-center justify-between">
+                        <span>Failed to load referral data. Please try again.</span>
+                        <button onClick={fetchData} className="px-3 py-1.5 bg-background text-foreground rounded-lg text-xs font-semibold hover:bg-muted border border-border transition-colors">
+                            Retry
+                        </button>
+                    </div>
+                )}
 
                 {/* Two-column layout */}
                 <div className="grid grid-cols-1 md:grid-cols-[320px_1fr] gap-6 md:gap-8 items-start">
