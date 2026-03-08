@@ -73,7 +73,8 @@
         "resend": "^6.9.1",
         "web-push": "^3.6.7",
         "winston": "^3.19.0",
-        "zod": "^3.24.1"
+        "zod": "^3.24.1",
+        "otplib": "^13.2.1"
     },
     "devDependencies": {
         "@types/qrcode": "^1.5.6",
@@ -85,7 +86,6 @@
         "supertest": "^7.1.1",
         "vitest": "^4.0.18",
         "prisma": "^6.2.0",
-        "otplib": "^13.2.1",
         "typescript": "^5.7.3"
     }
 }
