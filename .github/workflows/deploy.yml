@@ -10,7 +10,7 @@ jobs:
   validate:
     name: Lint, Test, and Build
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -22,21 +22,27 @@ jobs:
         with:
           node-version: '20'
           cache: 'npm'
-      
+
       - name: Install Dependencies
-        run: npm install
-      
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npm run db:generate --workspace=@fresherflow/database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       - name: Lint Check
         run: npx turbo lint --filter=fresherflow-api --filter=fresherflow-web
-      
+
       - name: Type Check
         run: npx turbo typecheck --filter=fresherflow-api --filter=fresherflow-web
-      
-      - name: Build Application
+
+      - name: Build Applications
         run: npx turbo build --filter=fresherflow-api --filter=fresherflow-web
-      
-      - name: Run Tests (Parser Logic)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Run Tests
         run: npm test --workspace=apps/api
 
-      # Note: Vercel auto-deploys via its own GitHub integration 
-      # once this CI pipeline is healthy.
+      # Vercel auto-deploys via its own GitHub integration once CI is green.

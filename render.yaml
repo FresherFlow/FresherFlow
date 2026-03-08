@@ -1,97 +1,61 @@
 services:
 
-  # ================= API =================
+  # ── API ─────────────────────────────────────────────────────────────────────
   - type: web
     name: fresherflow-api
     runtime: node
     region: singapore
     plan: free
-
-    buildCommand: npm ci && npm run prune:api && npm run deploy:api
+    buildCommand: npm ci && npm run deploy:api   # generates prisma, migrates, builds
     startCommand: npm run start:api
-
     healthCheckPath: /api/health
-
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: NODE_VERSION
         value: 20
-
-      - key: TURBO_CACHE_DIR
-        value: .turbo
-
       - key: DATABASE_URL
-        fromDatabase:
-          name: fresherflow-db
-          property: connectionString
-
+        sync: false          # set in Render dashboard → your Neon connection string
       - key: REDIS_URL
         fromService:
           type: redis
           name: fresherflow-redis
           property: connectionString
-
       - key: JWT_ACCESS_SECRET
         generateValue: true
-
       - key: JWT_REFRESH_SECRET
         generateValue: true
-
-      - key: NODE_ENV
-        value: production
-      
-      - key: TURBO_TELEMETRY_DISABLED
-        value: 1
-
     buildFilter:
       paths:
         - apps/api/**
         - packages/**
-        - turbo.json
         - package.json
         - package-lock.json
 
-
-  # ================= WORKER =================
+  # ── WORKER ──────────────────────────────────────────────────────────────────
   - type: worker
     name: fresherflow-worker
     runtime: node
     region: singapore
     plan: free
-
-    buildCommand: npm run deploy:api
+    buildCommand: npm ci && npx turbo run build --filter=fresherflow-api  # no migrations
     startCommand: npm run start:worker
-
     envVars:
+      - key: NODE_ENV
+        value: production
       - key: NODE_VERSION
         value: 20
-
-      - key: TURBO_CACHE_DIR
-        value: .turbo
-
       - key: DATABASE_URL
-        fromDatabase:
-          name: fresherflow-db
-          property: connectionString
-
+        sync: false          # same Neon connection string
       - key: REDIS_URL
         fromService:
           type: redis
           name: fresherflow-redis
           property: connectionString
 
-      - key: NODE_ENV
-        value: production
-
-
-  # ================= REDIS =================
+  # ── REDIS ────────────────────────────────────────────────────────────────────
   - type: redis
     name: fresherflow-redis
     plan: free
     region: singapore
     ipAllowList: []
-
-# ================= DATABASE =================
-databases:
-  - name: fresherflow-db
-    databaseName: fresherflow
-    plan: free
