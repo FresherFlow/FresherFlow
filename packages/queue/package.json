@@ -1,0 +1,26 @@
+{
+    "name": "@fresherflow/queue",
+    "version": "1.0.0",
+    "private": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "bullmq": "^5.41.6",
+        "ioredis": "^5.5.0",
+        "resend": "^6.9.1",
+        "web-push": "^3.6.7",
+        "axios": "^1.7.9",
+        "@fresherflow/redis": "*",
+        "@fresherflow/search": "*",
+        "@fresherflow/database": "*",
+        "@fresherflow/logger": "*"
+    },
+    "devDependencies": {
+        "typescript": "^5.7.3",
+        "@types/node": "^22.10.5",
+        "@types/web-push": "^3.6.4"
+    }
+}

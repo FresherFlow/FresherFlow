@@ -1,0 +1,17 @@
+{
+    "name": "@fresherflow/logger",
+    "version": "1.0.0",
+    "private": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "build": "tsc"
+    },
+    "dependencies": {
+        "winston": "^3.17.0",
+        "chalk": "^4.1.2"
+    },
+    "devDependencies": {
+        "typescript": "^5.7.3"
+    }
+}
