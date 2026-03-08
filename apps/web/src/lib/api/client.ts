@@ -10,6 +10,7 @@ import { markDetailSyncedNow, markFeedSyncedNow } from '@/lib/offline/syncStatus
 // Thrown when a request is made with no network connectivity.
 // Callers can check `err instanceof OfflineError` to skip toast notifications.
 export class OfflineError extends Error {
+    statusCode = 0; // Ensure it has a status code to help filtering
     constructor() {
         super('You are offline. Please check your connection.');
         this.name = 'OfflineError';
@@ -232,9 +233,19 @@ export async function apiClient<T = unknown>(
         }
 
         console.error('API Error:', error);
-        // Only report to Sentry if it's a server error or a critical unexpected error
-        const err = error as { statusCode?: number; code?: string };
-        if (err.statusCode && err.statusCode >= 500 || err.code === 'TIMEOUT' || !err.statusCode) {
+
+        // Filter what we report to Sentry to reduce noise
+        const err = error as { statusCode?: number; code?: string; message?: string };
+        const isOffline = error instanceof OfflineError;
+        const isUnauthorized = err.statusCode === 401 || err.message?.includes('No token provided');
+        const isSafariLoadFailed = error instanceof TypeError && err.message === 'Load failed';
+
+        // Only report to Sentry if it's a real server error (5xx), a timeout, 
+        // or an unexpected non-network failure.
+        const shouldReport = !isOffline && !isUnauthorized && !isSafariLoadFailed &&
+            (err.statusCode && err.statusCode >= 500 || err.code === 'TIMEOUT' || !err.statusCode);
+
+        if (shouldReport) {
             import('@sentry/nextjs').then(Sentry => {
                 Sentry.captureException(error, {
                     extra: { endpoint, method }

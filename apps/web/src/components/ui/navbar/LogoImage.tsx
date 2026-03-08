@@ -24,3 +24,4 @@ export function LogoImage({ width, height, className }: LogoImageProps) {
         />
     );
 }
+export default LogoImage;
