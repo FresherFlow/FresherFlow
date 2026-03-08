@@ -285,8 +285,8 @@ router.get('/search', adaptiveFeedLimiter, optionalAuth, async (req: Request, re
 
         return res.json({
             hits: searchResults.hits,
-            totalHits: searchResults.estimatedTotalHits,
-            processingTimeMs: searchResults.processingTimeMs,
+            totalHits: searchResults.totalHits,
+            processingTimeMs: 0,
             page: p,
             limit: l,
         });

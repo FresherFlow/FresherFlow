@@ -1,11 +1,6 @@
-import { MeiliSearch } from 'meilisearch';
-
-const host = process.env.MEILISEARCH_HOST || 'http://127.0.0.1:7700';
-const apiKey = process.env.MEILISEARCH_API_KEY || 'masterKey';
-
-export const searchClient = new MeiliSearch({
-    host,
-    apiKey,
-});
-
+/**
+ * Dummy client: no longer used since we swapped to PostgreSQL Full-Text Search.
+ * Kept so that any imports of `OPPORTUNITIES_INDEX` don't break.
+ */
 export const OPPORTUNITIES_INDEX = 'opportunities';
+export const searchClient = null;
