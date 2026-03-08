@@ -111,15 +111,14 @@ services:
         - package.json
         - package-lock.json
 
+  # ================= REDIS =================
+  - type: redis
+    name: fresherflow-redis
+    plan: free
+    region: singapore
 
 # ================= DATABASE =================
 databases:
   - name: fresherflow-db
     databaseName: fresherflow
-    plan: free
-
-
-  # ================= REDIS =================
-  - type: redis
-    name: fresherflow-redis
     plan: free
