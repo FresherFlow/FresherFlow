@@ -10,6 +10,8 @@ import { SecurityScreen } from '../screens/SecurityScreen';
 import AppearanceSettingsScreen from '../screens/AppearanceSettingsScreen';
 import ThemeSettingsScreen from '../screens/ThemeSettingsScreen';
 
+import { useTheme } from '../theme/ThemeProvider';
+
 export type SettingsStackParamList = {
     SettingsOverview: undefined;
     SystemOverview: undefined;
@@ -22,8 +24,6 @@ export type SettingsStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<SettingsStackParamList>();
-
-import { useTheme } from '../theme/ThemeProvider';
 
 export const SettingsNavigator = () => {
     const { colors } = useTheme();

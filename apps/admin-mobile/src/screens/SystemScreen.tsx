@@ -29,7 +29,7 @@ export const SystemScreen = () => {
     const [installingOta, setInstallingOta] = useState(false);
     const [otaAvailable, setOtaAvailable] = useState(false);
     const [otaStatusText, setOtaStatusText] = useState('Ready to check');
-    const [dispatchLogs, setDispatchLogs] = useState<Array<{ id: string; channel: string; status: string; sentAt: string | null; errorMessage?: string | null }>>([]);
+    const [dispatchLogs, setDispatchLogs] = useState<{ id: string; channel: string; status: string; sentAt: string | null; errorMessage?: string | null }[]>([]);
 
     const fetchAll = useCallback(async () => {
         try {

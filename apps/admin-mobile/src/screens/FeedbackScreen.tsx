@@ -13,7 +13,7 @@ type OppFeedbackGroup = {
     opportunity: { id: string; title: string; company: string; type: string } | null;
     feedbackCount: number;
     negativeCount: number;
-    feedback: Array<{ id: string; reason: string; createdAt: string }>;
+    feedback: { id: string; reason: string; createdAt: string }[];
 };
 
 type AppFeedbackItem = {

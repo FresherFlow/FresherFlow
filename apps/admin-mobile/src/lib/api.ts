@@ -61,13 +61,13 @@ export type MetricsV2 = {
         broken: number;
         retrying: number;
     };
-    recentListings?: Array<{
+    recentListings?: {
         id: string;
         title: string;
         company: string;
         type: string;
         postedAt: string;
-    }>;
+    }[];
 };
 
 export type AnalyticsOverview = {
@@ -76,13 +76,13 @@ export type AnalyticsOverview = {
 };
 
 export type RecentActivity = {
-    items: Array<{
+    items: {
         id: string;
         action: string;
         entity: string;
         createdAt: string;
         adminEmail?: string;
-    }>;
+    }[];
 };
 
 export type ConfigHealth = {
@@ -244,7 +244,7 @@ export const System = {
         apiRequest<AlertsRunResult>('/api/admin/system/alerts/backfill', { method: 'POST' }),
 
     alertsDispatchLogs: () =>
-        apiRequest<{ logs: Array<{ id: string; status: string; createdAt: string; message?: string }> }>(
+        apiRequest<{ logs: { id: string; status: string; createdAt: string; message?: string }[] }>(
             '/api/admin/system/alerts/dispatch-logs',
         ),
 
@@ -265,7 +265,7 @@ export const System = {
         apiRequest<{ processed?: number; usersSent?: number }>('/api/admin/system/alerts/backfill-new-jobs', { method: 'POST' }),
 
     alertDispatchLogs: (limit = 20) =>
-        apiRequest<{ logs: Array<{ id: string; channel: string; status: string; sentAt: string | null; errorMessage?: string | null }> }>(
+        apiRequest<{ logs: { id: string; channel: string; status: string; sentAt: string | null; errorMessage?: string | null }[] }>(
             `/api/admin/system/alerts/dispatch-logs?limit=${limit}`,
         ),
 };
@@ -353,7 +353,7 @@ export const Opportunities = {
         }),
 
     events: (id: string) =>
-        apiRequest<{ events: Array<{ id: string; type: string; note?: string; createdAt: string }> }>(
+        apiRequest<{ events: { id: string; type: string; note?: string; createdAt: string }[] }>(
             `/api/admin/opportunities/${id}/events`,
         ),
 

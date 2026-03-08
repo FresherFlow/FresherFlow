@@ -13,7 +13,7 @@ if (Platform.OS !== 'web') {
 }
 
 class SettingsEventEmitter {
-    private listeners: Array<() => void> = [];
+    private listeners: (() => void)[] = [];
     addListener(listener: () => void) {
         this.listeners.push(listener);
         return () => { this.listeners = this.listeners.filter(l => l !== listener); };
