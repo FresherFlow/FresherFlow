@@ -38,7 +38,7 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm ci && npx turbo run build --filter=fresherflow-worker
+    buildCommand: npm ci && npm run db:generate --workspace=@fresherflow/database && npx turbo run build --filter=fresherflow-worker
     startCommand: npm run start --workspace=apps/worker
     healthCheckPath: /
     envVars:
