@@ -17,6 +17,13 @@ export type ThemeColors = {
 
 export type ThemeMode = 'light' | 'dark';
 
+export interface Theme {
+  id: string;
+  name: string;
+  colors: ThemeColors & { darkBackground?: string };
+  isEditable: boolean;
+}
+
 export const light: ThemeColors = {
   background: '#dfe6ef',
   surface: '#ffffff',
@@ -48,6 +55,21 @@ export const dark: ThemeColors = {
 };
 
 export const themes = { light, dark };
+
+export const DEFAULT_THEMES: Theme[] = [
+  {
+    id: 'command_dark',
+    name: 'Command Dark',
+    colors: dark,
+    isEditable: false,
+  },
+  {
+    id: 'slate_light',
+    name: 'Slate Light',
+    colors: light,
+    isEditable: false,
+  },
+];
 
 export const spacing = { xs: 4, sm: 8, md: 16, lg: 24, xl: 32 } as const;
 export const roundness = { sm: 4, md: 8, lg: 12, xl: 20, full: 9999 } as const;
