@@ -16,16 +16,19 @@ jobs:
   run-cron-tasks:
     runs-on: ubuntu-latest
     steps:
-      - name: Keep admin API warm (Every 10 mins)
+      - name: Keep APIs and Worker warm (Every 10 mins)
         if: github.event.schedule == '*/10 * * * *' || github.event_name == 'workflow_dispatch'
         env:
           ADMIN_API_BASE_URL: ${{ secrets.ADMIN_API_BASE_URL }}
+          WORKER_URL: ${{ secrets.WORKER_URL }}
         run: |
-          if [ -z "$ADMIN_API_BASE_URL" ]; then
-            echo "ADMIN_API_BASE_URL is not set; skipping admin keep-warm ping"
-            exit 0
+          if [ -n "$ADMIN_API_BASE_URL" ]; then
+            curl -f -sS "$ADMIN_API_BASE_URL/api/health" > /dev/null || echo "Admin API keep-warm ping failed"
           fi
-          curl -f -sS "$ADMIN_API_BASE_URL/api/health" > /dev/null || echo "Admin API keep-warm ping failed (timeout), ignoring..."
+          
+          if [ -n "$WORKER_URL" ]; then
+            curl -f -sS "$WORKER_URL" > /dev/null || echo "Worker keep-warm ping failed"
+          fi
 
       - name: Trigger Alerts (Twice daily — 8 AM & 8 PM IST)
         if: github.event.schedule == '30 2,14 * * *' || github.event_name == 'workflow_dispatch'
