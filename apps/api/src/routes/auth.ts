@@ -103,7 +103,7 @@ router.post('/otp/verify', authVerifyLimiter, validate(verifyOtpSchema), async (
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: { completionPercentage: (user as any).profile?.completionPercentage || 0 }
+            profile: (user as any).profile || null
         });
     } catch (error: any) {
         next(new AppError(error.message, 401));
@@ -123,7 +123,7 @@ router.post('/google', authVerifyLimiter, async (req: Request, res: Response, ne
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: { completionPercentage: (user as any).profile?.completionPercentage || 0 }
+            profile: (user as any).profile || null
         });
     } catch (error: any) {
         next(new AppError(error.message, 401));
@@ -150,7 +150,7 @@ router.post('/login', validate(loginSchema), async (req: Request, res: Response,
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: { completionPercentage: user.profile?.completionPercentage || 0 }
+            profile: user.profile || null
         });
     } catch (error) {
         next(error);
