@@ -25,7 +25,7 @@ jobs:
             echo "ADMIN_API_BASE_URL is not set; skipping admin keep-warm ping"
             exit 0
           fi
-          curl -f -sS "$ADMIN_API_BASE_URL/api/health" > /dev/null
+          curl -f -sS "$ADMIN_API_BASE_URL/api/health" > /dev/null || echo "Admin API keep-warm ping failed (timeout), ignoring..."
 
       - name: Trigger Alerts (Twice daily — 8 AM & 8 PM IST)
         if: github.event.schedule == '30 2,14 * * *' || github.event_name == 'workflow_dispatch'
