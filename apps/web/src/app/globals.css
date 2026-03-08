@@ -126,6 +126,7 @@
     color-scheme: dark;
   }
 
+
   /* Desktop Typography Scale */
   @media (min-width: 1024px) {
     :root {
@@ -142,6 +143,13 @@
     margin: 0;
     padding: 0;
     overflow-y: auto;
+    /* PWA fix: fills status-bar/safe-area so Android won't draw a divider line */
+    background-color: #e2eaf2;
+  }
+
+  /* PWA fix: dark mode status-bar background */
+  html.dark, .dark html {
+    background-color: #0d0f14;
   }
 
   html, body {
