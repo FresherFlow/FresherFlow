@@ -1,0 +1,30 @@
+{
+    "name": "@fresherflow/ingestion",
+    "version": "1.0.0",
+    "private": true,
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc",
+        "dev": "nodemon src/index.ts",
+        "start": "node dist/index.js"
+    },
+    "dependencies": {
+        "@fresherflow/logger": "*",
+        "@fresherflow/queue": "*",
+        "@fresherflow/redis": "*",
+        "@fresherflow/utils": "*",
+        "axios": "^1.7.9",
+        "compromise": "^14.14.3",
+        "country-state-city": "^3.2.1",
+        "express": "^4.21.2",
+        "natural": "^8.0.1",
+        "node-cron": "^4.2.1"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.0",
+        "@types/node": "^22.10.5",
+        "@types/node-cron": "^3.0.11",
+        "nodemon": "^3.1.9",
+        "typescript": "^5.7.3"
+    }
+}
