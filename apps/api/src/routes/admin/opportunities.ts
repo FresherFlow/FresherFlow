@@ -7,15 +7,11 @@ import { withAdminAudit, validateReason } from '../../middleware/adminAudit';
 import { validate } from '../../middleware/validate';
 import { opportunitySchema } from '../../utils/validation';
 import { AppError } from '../../middleware/errorHandler';
-import { OpportunityService } from '../../services/opportunity.service';
-import { ParserService } from '../../services/parser.service';
+import { OpportunityService } from '../../domain/opportunity';
 import { sendNewJobAlerts } from '../../services/notification.service';
 import { invalidatePublicOpportunityCache } from '../../services/publicOpportunityCache.service';
-import { generateSlug } from '../../utils/slugify';
-import { generateCompanyLogoUrl } from '../../utils/companyLogo';
-import logger from '../../utils/logger';
-import { normalizeEducationBuckets } from '../../utils/academicNormalization';
-import { normalizeSkills } from '../../utils/skillNormalization';
+import { generateSlug, generateCompanyLogoUrl, ParserService, normalizeEducationBuckets, normalizeSkills } from '@fresherflow/utils';
+import { logger } from '@fresherflow/logger';
 import { normalizeOpportunityLinks } from '../../utils/opportunityLinks';
 
 import TelegramService from '../../services/telegram.service';

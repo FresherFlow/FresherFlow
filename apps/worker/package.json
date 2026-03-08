@@ -1,0 +1,31 @@
+{
+    "name": "fresherflow-worker",
+    "version": "1.0.0",
+    "description": "Background worker service for FresherFlow",
+    "main": "dist/index.js",
+    "scripts": {
+        "dev": "nodemon --exec \"npx ts-node\" src/index.ts",
+        "build": "tsc",
+        "start": "node dist/index.js",
+        "db:generate": "prisma generate --schema=../../packages/database/prisma/schema.prisma"
+    },
+    "dependencies": {
+        "@fresherflow/config": "*",
+        "@fresherflow/database": "*",
+        "@fresherflow/logger": "*",
+        "@fresherflow/queue": "*",
+        "@fresherflow/redis": "*",
+        "@prisma/client": "^6.2.0",
+        "bullmq": "^5.41.6",
+        "ioredis": "^5.5.0",
+        "resend": "^6.9.1",
+        "dotenv": "^16.4.7",
+        "typescript": "^5.7.3"
+    },
+    "devDependencies": {
+        "nodemon": "^3.1.9",
+        "ts-node": "^10.9.2",
+        "@types/node": "^22.10.5",
+        "prisma": "^6.2.0"
+    }
+}

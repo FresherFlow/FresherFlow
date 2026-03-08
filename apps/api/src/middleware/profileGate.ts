@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma';
 import { AppError } from './errorHandler';
-import { isProfileComplete } from '../utils/profileCompletion';
+import { calculateCompletion } from '@fresherflow/utils';
 
 /**
  * Profile Gating Middleware
@@ -33,7 +33,7 @@ export async function profileGate(req: Request, res: Response, next: NextFunctio
             return next(new AppError('Profile not found. Please complete your profile.', 403));
         }
 
-        if (!isProfileComplete(profile as any)) {
+        if (calculateCompletion(profile as any) < 100) {
             return res.status(403).json({
                 error: 'Complete your profile to access this feature',
                 completionPercentage: profile.completionPercentage,

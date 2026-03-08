@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import logger, { log } from '../utils/logger';
+import { logger } from '@fresherflow/logger';
 import chalk from 'chalk';
 import TelegramService from '../services/telegram.service';
 

@@ -55,7 +55,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 // Accepts both cookie (web) and Authorization Bearer header (mobile app)
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
     const cookieToken = req.cookies?.adminAccessToken as string | undefined;
-    const authHeader = req.headers?.authorization;
+    const authHeader = req.headers ? req.headers.authorization : undefined;
     const bearerToken =
         authHeader && authHeader.toLowerCase().startsWith('bearer ')
             ? authHeader.slice(7).trim()

@@ -131,7 +131,7 @@ router.post('/google', authVerifyLimiter, async (req: Request, res: Response, ne
 });
 
 // POST /api/auth/login (Legacy/Admin Support)
-router.post('/login', validate(loginSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/login', authVerifyLimiter, validate(loginSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, password } = req.body;
 

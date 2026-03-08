@@ -1,6 +1,6 @@
-import webpush from 'web-push';
 import prisma from '../lib/prisma';
-import logger from '../utils/logger';
+import { logger } from '@fresherflow/logger';
+import { enqueuePushNotification } from '@fresherflow/queue';
 
 export type NewJobPushPayload = {
     title: string;
@@ -8,29 +8,6 @@ export type NewJobPushPayload = {
     opportunityId: string;
     opportunitySlug: string;
 };
-
-type PushSendResult = {
-    status: 'sent' | 'skipped' | 'invalid_subscription' | 'failed';
-    reason?: string;
-};
-
-let vapidConfigured = false;
-
-function ensureVapidConfigured() {
-    if (vapidConfigured) return true;
-
-    const publicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY;
-    const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY;
-    const subject = process.env.WEB_PUSH_SUBJECT || 'mailto:support@fresherflow.in';
-
-    if (!publicKey || !privateKey) {
-        return false;
-    }
-
-    webpush.setVapidDetails(subject, publicKey, privateKey);
-    vapidConfigured = true;
-    return true;
-}
 
 function getFrontendOrigin() {
     const configuredOrigin =
@@ -50,24 +27,23 @@ function buildOpportunityUrl(opportunitySlug: string) {
     return url.toString();
 }
 
-function isInvalidSubscriptionStatus(statusCode?: number) {
-    return statusCode === 404 || statusCode === 410;
-}
-
-export async function sendNewJobPush(userId: string, payload: NewJobPushPayload): Promise<PushSendResult> {
-    if (!ensureVapidConfigured()) {
-        return { status: 'skipped', reason: 'missing_vapid_keys' };
-    }
-
-    const subscription = await prisma.pushSubscription.findUnique({
-        where: { userId },
-    });
+/**
+ * Enqueues a push notification job to the worker.
+ * The subscription lookup stays here; the actual sendNotification I/O runs in the worker.
+ */
+export async function sendNewJobPush(userId: string, payload: NewJobPushPayload): Promise<void> {
+    const subscription = await prisma.pushSubscription.findUnique({ where: { userId } });
 
     if (!subscription) {
-        return { status: 'skipped', reason: 'subscription_missing' };
+        logger.debug('No push subscription found for user', { userId });
+        return;
     }
 
-    const notificationPayload = JSON.stringify({
+    await enqueuePushNotification({
+        endpoint: subscription.endpoint,
+        p256dh: subscription.p256dh,
+        auth: subscription.auth,
+        userId,
         title: `New job: ${payload.title}`,
         body: `${payload.company} posted a new opening for freshers.`,
         url: buildOpportunityUrl(payload.opportunitySlug),
@@ -75,30 +51,5 @@ export async function sendNewJobPush(userId: string, payload: NewJobPushPayload)
         opportunityId: payload.opportunityId,
     });
 
-    try {
-        await webpush.sendNotification(
-            {
-                endpoint: subscription.endpoint,
-                keys: {
-                    p256dh: subscription.p256dh,
-                    auth: subscription.auth,
-                },
-            },
-            notificationPayload
-        );
-        return { status: 'sent' };
-    } catch (error: any) {
-        const statusCode = Number(error?.statusCode || error?.status || 0) || undefined;
-        const message = error?.body || error?.message || 'Unknown web push error';
-
-        if (isInvalidSubscriptionStatus(statusCode)) {
-            await prisma.pushSubscription.deleteMany({ where: { userId } });
-            logger.info('Deleted stale push subscription', { userId, statusCode });
-            return { status: 'invalid_subscription', reason: `status_${statusCode}` };
-        }
-
-        logger.error('Web push delivery failed', { userId, statusCode, message });
-        return { status: 'failed', reason: String(message) };
-    }
+    logger.debug('Push notification queued', { userId });
 }
-

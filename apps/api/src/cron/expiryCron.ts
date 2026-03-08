@@ -1,6 +1,6 @@
 
 import { PrismaClient, OpportunityStatus, OpportunityType } from '@prisma/client';
-import logger from '../utils/logger';
+import { logger } from '@fresherflow/logger';
 import TelegramService from '../services/telegram.service';
 
 const prisma = new PrismaClient();
@@ -217,4 +217,3 @@ export async function runExpiryCycle() {
         throw error;
     }
 }
-

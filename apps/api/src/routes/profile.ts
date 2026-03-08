@@ -6,11 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { educationSchema, preferencesSchema, readinessSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
-import { calculateCompletion } from '../utils/profileCompletion';
-import {
-    normalizeProfileEducation
-} from '../utils/academicNormalization';
-import { normalizeSkills } from '../utils/skillNormalization';
+import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/utils';
 
 const router: Router = express.Router();
 

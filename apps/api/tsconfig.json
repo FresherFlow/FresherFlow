@@ -13,6 +13,7 @@
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true,
         "moduleResolution": "node",
+        "baseUrl": ".",
         "typeRoots": [
             "./node_modules/@types",
             "../../node_modules/@types"

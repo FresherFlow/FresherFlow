@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma';
 import { OpportunityStatus, OpportunityType } from '@prisma/client';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
-import logger from '../utils/logger';
+import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 
 

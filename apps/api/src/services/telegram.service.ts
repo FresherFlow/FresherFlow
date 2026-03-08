@@ -1,9 +1,7 @@
 import prisma from '../lib/prisma';
 import axios from 'axios';
-
+import { enqueueTelegramBroadcast } from '@fresherflow/queue';
 import { buildSocialOpportunityUrl } from '../utils/share';
-
-
 
 class TelegramService {
     private botToken: string;
@@ -312,41 +310,15 @@ class TelegramService {
             `<i>${['#FresherJobs', locationTag, '#FresherFlow'].filter(Boolean).join(' ')}</i>`
         ].join('\n');
 
-        const messageId = await this.broadcastToChannel(publicChannel, message);
-        if (messageId) {
-            await prisma.telegramBroadcast.upsert({
-                where: { dedupeKey },
-                create: {
-                    opportunityId,
-                    channel: publicChannel,
-                    dedupeKey,
-                    status: 'SENT',
-                    messageId,
-                    sentAt: new Date()
-                },
-                update: {
-                    status: 'SENT',
-                    messageId,
-                    sentAt: new Date(),
-                    errorMessage: null
-                }
-            });
-            return;
-        }
+        // Enqueue — worker handles Axios I/O, retries, and DB record update
+        await enqueueTelegramBroadcast({
+            botToken: this.botToken,
+            channelId: publicChannel,
+            message,
+            opportunityId,
+            dedupeKey,
+            publicChannel,
 
-        await prisma.telegramBroadcast.upsert({
-            where: { dedupeKey },
-            create: {
-                opportunityId,
-                channel: publicChannel,
-                dedupeKey,
-                status: 'FAILED',
-                errorMessage: 'Telegram sendMessage failed'
-            },
-            update: {
-                status: 'FAILED',
-                errorMessage: 'Telegram sendMessage failed'
-            }
         });
     }
 }

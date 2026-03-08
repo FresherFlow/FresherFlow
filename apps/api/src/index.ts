@@ -10,8 +10,10 @@ import cookieParser from 'cookie-parser';
 import * as Sentry from '@sentry/node';
 import { requestIdMiddleware } from './middleware/requestId';
 import { errorHandler } from './middleware/errorHandler';
+import { env } from '@fresherflow/config';
+import { logger } from '@fresherflow/logger';
+import { redis } from '@fresherflow/redis';
 import { observabilityMiddleware } from './middleware/observability';
-import logger from './utils/logger';
 import httpLogger from './middleware/httpLogger';
 
 import { csrfGate } from './middleware/csrf';
@@ -43,8 +45,8 @@ import referralRoutes from './routes/referrals';
 import joblinksRoutes from './routes/public/joblinks';
 
 const app: Application = express();
-const PORT = process.env.PORT || 5000;
-const APP_MODE = (process.env.APP_MODE || 'all').toLowerCase();
+const PORT = env.PORT;
+const APP_MODE = env.APP_MODE;
 const isUserMode = APP_MODE === 'all' || APP_MODE === 'user';
 const isAdminMode = APP_MODE === 'all' || APP_MODE === 'admin';
 
@@ -83,11 +85,11 @@ if (process.env.NODE_ENV === 'production') {
 // ============================================================================
 // Sentry Error Monitoring (Disabled for first run)
 // ============================================================================
-if (process.env.SENTRY_DSN) {
+if (env.SENTRY_DSN) {
     Sentry.init({
-        dsn: process.env.SENTRY_DSN,
-        environment: process.env.NODE_ENV || 'development',
-        tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+        dsn: env.SENTRY_DSN,
+        environment: env.NODE_ENV,
+        tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
     });
 }
 
@@ -126,8 +128,8 @@ function normalizeOrigin(value: string): string | null {
 // - safe defaults for local dev
 // - optional wildcard for fresherflow subdomains in production
 const configuredOrigins = [
-    ...(process.env.FRONTEND_URLS || '').split(','),
-    ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
+    ...(env.FRONTEND_URLS || '').split(','),
+    ...(env.FRONTEND_URL ? [env.FRONTEND_URL] : []),
     'https://fresherflow.in',
     'https://app.fresherflow.in',
     'https://admin.fresherflow.in',
@@ -138,7 +140,7 @@ const configuredOrigins = [
     .filter((origin): origin is string => Boolean(origin));
 
 const allowedOrigins = new Set(configuredOrigins);
-const allowFresherflowSubdomains = process.env.CORS_ALLOW_FRESHERFLOW_SUBDOMAINS !== 'false';
+const allowFresherflowSubdomains = true; // Could also move to config
 
 function isAllowedOrigin(origin: string): boolean {
     const normalized = normalizeOrigin(origin);

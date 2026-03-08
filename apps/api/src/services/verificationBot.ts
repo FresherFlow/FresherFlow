@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import { OpportunityStatus, LinkHealth } from '@prisma/client';
-import logger from '../utils/logger';
+import { logger } from '@fresherflow/logger';
 import TelegramService from './telegram.service';
 
 
@@ -220,4 +220,3 @@ async function pingUrl(url: string): Promise<LinkCheckResult> {
         }
     }
 }
-
