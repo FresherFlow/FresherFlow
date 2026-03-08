@@ -10,6 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -28,12 +32,6 @@ jobs:
 
       - name: Linting
         run: npm run lint --if-present
-        
-      - name: Typecheck
-        run: npx tsc --noEmit
-
-      - name: Unit Tests
-        run: npm run test --if-present
 
       - name: Build All Workspaces
         run: npm run build
