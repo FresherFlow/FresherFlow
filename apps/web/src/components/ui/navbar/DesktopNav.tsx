@@ -9,7 +9,7 @@ import BellIcon from '@heroicons/react/24/outline/BellIcon';
 import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
 import { ThemeToggle } from '../ThemeToggle';
 import { LogoImage } from './LogoImage';
-import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
+import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
 import { NAV_ROUTES } from './routeConfig';
 

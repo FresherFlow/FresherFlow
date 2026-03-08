@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
 import { authApi } from '@/lib/api/client';
-import { clearUnreadCache } from '@/hooks/useUnreadNotifications';
+import { clearUnreadCache } from '@/features/notifications/hooks/useUnreadNotifications';
 import { User, Profile } from '@fresherflow/types';
 
 interface AuthContextType {

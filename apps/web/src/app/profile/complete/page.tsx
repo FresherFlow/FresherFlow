@@ -10,7 +10,7 @@ import { profileApi } from '@/lib/api/client';
 import { useRouter } from 'next/navigation';
 import { AuthGate } from '@/components/gates/ProfileGate';
 import { cn } from '@/lib/utils';
-import { useProfileForm } from '@/hooks/useProfileForm';
+import { useProfileForm } from '@/features/profile/hooks/useProfileForm';
 import { validateEducationData } from '@/lib/profileFormValidation';
 import toast from 'react-hot-toast';
 import {

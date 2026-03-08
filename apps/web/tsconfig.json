@@ -28,6 +28,9 @@
       ],
       "@fresherflow/types": [
         "../../packages/types/index.ts"
+      ],
+      "@fresherflow/utils": [
+        "../../packages/utils/src/index.ts"
       ]
     }
   },

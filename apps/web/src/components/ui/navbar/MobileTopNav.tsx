@@ -9,7 +9,7 @@ import { AuthContext } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import BellIcon from '@heroicons/react/24/outline/BellIcon';
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
-import { useUnreadNotifications } from '@/hooks/useUnreadNotifications';
+import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
 import { useInstallPrompt } from '@/contexts/InstallPromptContext';
 import { NAV_ROUTES } from './routeConfig';
