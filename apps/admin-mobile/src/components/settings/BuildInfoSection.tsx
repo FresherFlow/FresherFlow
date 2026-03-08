@@ -15,7 +15,7 @@ type BuildInfoSectionProps = {
 
 type NavigationProp = NativeStackNavigationProp<SettingsStackParamList>;
 
-export const BuildInfoSection = React.memo(({ colors: c, otaState, onCheckUpdate }: BuildInfoSectionProps) => {
+export const BuildInfoSection = React.memo(({ colors: c, otaState, onCheckUpdate: _onCheckUpdate }: BuildInfoSectionProps) => {
     const navigation = useNavigation<NavigationProp>();
 
     return (

@@ -68,7 +68,7 @@ export const AnalyticsScreen = () => {
         }
     }, []);
 
-    useFocusEffect(useCallback(() => { void fetchAll(); }, []));
+    useFocusEffect(useCallback(() => { void fetchAll(); }, [fetchAll]));
     const onRefresh = () => { setRefreshing(true); void fetchAll(); };
 
     const a = data?.activity;

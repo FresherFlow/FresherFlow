@@ -20,7 +20,7 @@ export const DashboardScreen = () => {
     const [window, setWindow] = useState<'24h' | '7d' | '30d'>('7d');
     const [urgent, setUrgent] = useState<{ closingSoon48h: number; brokenLinks: number } | null>(null);
     const [recentActivity, setRecentActivity] = useState<RecentActivity['items']>([]);
-    const [fetchError, setFetchError] = useState<string | null>(null);
+    const [_, setFetchError] = useState<string | null>(null);
 
     const fetchMetrics = useCallback(async (w = window) => {
         setFetchError(null);
@@ -51,7 +51,7 @@ export const DashboardScreen = () => {
 
     useFocusEffect(useCallback(() => {
         void fetchMetrics(window);
-    }, [window]));
+    }, [window, fetchMetrics]));
 
     const onRefresh = () => {
         setRefreshing(true);

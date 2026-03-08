@@ -4,7 +4,7 @@ import {
     ActivityIndicator, RefreshControl, TextInput, Alert,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { Plus, Edit3, Search, CheckCircle2, Archive, Trash2, RotateCcw, Clock, Download } from 'lucide-react-native';
+import { Plus, Edit3, Search, CheckCircle2, Trash2, RotateCcw, Clock, Download } from 'lucide-react-native';
 import { Opportunities, type Opportunity } from '../lib/api';
 import { CompanyLogo } from '../components/CompanyLogo';
 import { theme } from '../theme';
@@ -38,7 +38,7 @@ export const OpportunitiesListScreen = () => {
     const fetchingRef = useRef(false);
 
     const fetchJobs = useCallback(async (opts: { pg?: number; force?: boolean; query?: string; status?: string; type?: string } = {}) => {
-        const { pg = 1, force = false, query = activeQuery, status = statusFilter, type = typeFilter } = opts;
+        const { pg = 1, force: _force = false, query = activeQuery, status = statusFilter, type = typeFilter } = opts;
         if (fetchingRef.current) return;  // already in flight
         fetchingRef.current = true;
         try {
@@ -80,7 +80,7 @@ export const OpportunitiesListScreen = () => {
     }, [activeQuery, statusFilter, typeFilter]);
 
     useFocusEffect(useCallback(() => {
-        fetchingRef.current = false;  // reset lock on focus
+        fetchingRef.current = false;
         const bootstrap = async () => {
             const raw = await AsyncStorage.getItem(ADMIN_OPPORTUNITIES_CACHE_KEY).catch(() => null);
             if (raw) {
@@ -92,7 +92,7 @@ export const OpportunitiesListScreen = () => {
             void fetchJobs({ force: true });
         };
         void bootstrap();
-    }, [statusFilter, typeFilter]));
+    }, [fetchJobs]));
 
     const onRefresh = () => { setRefreshing(true); void fetchJobs({ force: true }); };
     const onSearch = () => { setPage(1); void fetchJobs({ force: true, query: searchInput, status: statusFilter, type: typeFilter }); };

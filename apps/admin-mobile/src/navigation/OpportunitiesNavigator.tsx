@@ -44,7 +44,7 @@ export const OpportunitiesNavigator = () => {
             <Stack.Screen
                 name="OpportunityFeedback"
                 component={OpportunityFeedbackScreen}
-                options={({ route }) => ({
+                options={() => ({
                     title: 'Feedback',
                     headerBackTitle: 'Detail',
                 })}

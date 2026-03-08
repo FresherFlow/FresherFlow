@@ -11,7 +11,7 @@ import {
     Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, KeyRound, ArrowRight, AlertCircle, ChevronLeft, Fingerprint } from 'lucide-react-native';
+import { Mail, KeyRound, ArrowRight, AlertCircle, ChevronLeft } from 'lucide-react-native';
 import { Passkey } from 'react-native-passkey';
 import { theme } from '../theme';
 import { useAuth } from '../context/AuthContext';
@@ -25,7 +25,7 @@ export const LoginScreen = () => {
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
-    const [passkeyLoading, setPasskeyLoading] = useState(false);
+    const [_, setPasskeyLoading] = useState(false);
     const [error, setError] = useState('');
 
     const passkeySupported = Passkey.isSupported();

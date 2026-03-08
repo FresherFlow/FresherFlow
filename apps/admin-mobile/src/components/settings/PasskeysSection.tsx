@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert, FlatList } from 'react-native';
-import { Shield, Smartphone, Trash2, Plus, Key } from 'lucide-react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { Trash2, Plus, Key } from 'lucide-react-native';
 import { ThemeColors } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
 
@@ -20,18 +20,14 @@ export const PasskeysSection = React.memo(({ colors: c }: PasskeysSectionProps) 
 
     const [passkeys, setPasskeys] = useState<Passkey[]>([]);
     const [status, setStatus] = useState<'idle' | 'loading' | 'registering' | 'deleting'>('loading');
-    const [error, setError] = useState<string | null>(null);
 
     const loadPasskeys = useCallback(async () => {
         try {
             if (!getPasskeys) return;
-            setError(null);
-            setStatus('loading');
             const res = await getPasskeys();
             setPasskeys(res.keys);
             setStatus('idle');
-        } catch (err) {
-            setError('Failed to load passkeys.');
+        } catch {
             setStatus('idle');
         }
     }, [getPasskeys]);

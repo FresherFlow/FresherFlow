@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useCallback, useEffect } from 'react';
 import { FlatList, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View, TextInput, Alert, BackHandler } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
 import { Check, Moon, Sun, Edit2, Trash2, Plus, ArrowLeft } from 'lucide-react-native';
 import ColorPicker from 'react-native-wheel-color-picker';
 

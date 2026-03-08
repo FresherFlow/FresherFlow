@@ -5,8 +5,7 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
-    Edit3, ExternalLink, Clock, CheckCircle2, Archive,
-    RotateCcw, Trash2, Plus, X, MessageSquare,
+    Edit3, ExternalLink, Clock, Plus, X, MessageSquare,
 } from 'lucide-react-native';
 import { Opportunities } from '../lib/api';
 import { CompanyLogo } from '../components/CompanyLogo';

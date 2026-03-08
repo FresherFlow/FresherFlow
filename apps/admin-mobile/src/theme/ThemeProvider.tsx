@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, JSX } from 'react';
+import { useSettings } from '../hooks/useSettings';
 import { useColorScheme } from 'react-native';
 import { themes, spacing, roundness, DEFAULT_THEMES } from './index';
 import type { ThemeColors, ThemeMode, Theme } from './index';
@@ -39,7 +40,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): JSX.
         systemScheme === 'light' ? 'light' : 'dark'
     );
 
-    const { settings, updateSetting, isLoaded } = require('../hooks/useSettings').useSettings();
+    const { settings, updateSetting } = useSettings();
 
     // Use mmkv settings or fallback to useColorScheme
     const mode = settings ? (settings.enableDarkMode ? 'dark' : 'light') : fallbackMode;
@@ -57,12 +58,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }): JSX.
                 background: t.colors.darkBackground,
             }
         }))];
-    }, [settings?.customThemes]);
+    }, [settings]);
 
     const currentTheme = React.useMemo(() => {
         if (!settings?.themeId) return themes[mode];
         return availableThemes.find((t: any) => t.id === settings.themeId) || themes[mode];
-    }, [availableThemes, settings?.themeId, mode]);
+    }, [availableThemes, settings, mode]);
 
     const toggle = useCallback(() => {
         if (updateSetting) updateSetting('enableDarkMode', !settings.enableDarkMode);

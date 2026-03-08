@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Switch, TouchableOpacity, TextInput, ActivityIndicator, Image, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Image, StyleSheet } from 'react-native';
 import { ShieldCheck, Smartphone, QrCode } from 'lucide-react-native';
 import { ThemeColors } from '../../theme';
 import { TotpState } from '../../hooks/useTotpManager';

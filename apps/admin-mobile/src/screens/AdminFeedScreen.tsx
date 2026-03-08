@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
     StyleSheet, Text, View, FlatList, TouchableOpacity,
-    ActivityIndicator, RefreshControl, TextInput, Alert, Image,
+    ActivityIndicator, RefreshControl, TextInput, Image,
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { Plus, Edit3, Search } from 'lucide-react-native';
@@ -86,7 +86,7 @@ export const AdminFeedScreen = () => {
             } catch { /* ignore */ }
             void fetchJobs({ force: true });
         })();
-    }, []));
+    }, [fetchJobs]));
 
     const onRefresh = () => { setRefreshing(true); void fetchJobs({ pg: 1, force: true }); };
     const onSearch = () => { void fetchJobs({ pg: 1, query: searchInput }); };

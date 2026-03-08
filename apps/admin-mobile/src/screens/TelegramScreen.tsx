@@ -31,7 +31,7 @@ export const TelegramScreen = () => {
     const [retryingId, setRetryingId] = useState<string | null>(null);
 
     const fetchBroadcasts = useCallback(async (opts: { pg?: number; status?: StatusFilter; force?: boolean } = {}) => {
-        const { pg = 1, status = statusFilter, force = false } = opts;
+        const { pg = 1, status = statusFilter, force: _force = false } = opts;
         try {
             if (pg === 1) setLoading(true); else setLoadingMore(true);
             const params: Record<string, string | number> = { limit: PAGE_SIZE, page: pg };
@@ -48,7 +48,7 @@ export const TelegramScreen = () => {
         }
     }, [statusFilter]);
 
-    useFocusEffect(useCallback(() => { void fetchBroadcasts({ force: true }); }, [statusFilter]));
+    useFocusEffect(useCallback(() => { void fetchBroadcasts({ force: true }); }, [fetchBroadcasts]));
     const onRefresh = () => { setRefreshing(true); void fetchBroadcasts({ pg: 1, force: true }); };
     const onLoadMore = () => { if (!loadingMore && broadcasts.length < total) void fetchBroadcasts({ pg: page + 1 }); };
     const onFilter = (s: StatusFilter) => { setStatusFilter(s); void fetchBroadcasts({ pg: 1, status: s, force: true }); };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
     StyleSheet, Text, View, TextInput, ScrollView,
-    TouchableOpacity, Alert, ActivityIndicator, Modal, Switch,
+    TouchableOpacity, Alert, ActivityIndicator, Modal,
 } from 'react-native';
 import { Opportunities } from '../lib/api';
 import { theme } from '../theme';
@@ -18,9 +18,7 @@ const STATUSES = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const;
 const PASS_YEARS = [2022, 2023, 2024, 2025, 2026, 2027, 2028];
 const DEGREES = ['DIPLOMA', 'DEGREE', 'PG'];
 const QUICK_LOCATIONS = ['Remote', 'Bengaluru', 'Mumbai', 'Hyderabad', 'Chennai', 'Delhi', 'Pune', 'Kolkata', 'Pan India'];
-const EVENT_TYPES = [
-    'NOTIFICATION', 'REG_START', 'REG_END', 'EXAM_DATE', 'RESULT', 'INTERVIEW', 'DOC_VERIFICATION', 'OTHER',
-] as const;
+
 
 type OpType = typeof OPPORTUNITY_TYPES[number];
 type SalaryPeriod = typeof SALARY_PERIODS[number];
@@ -104,12 +102,8 @@ export const PostOpportunityScreen = ({ route, navigation }: any) => {
         return unsub;
     }, [navigation, isDirty, saving]);
 
-    useEffect(() => {
-        if (isEditing) void fetchOpportunity();
-    }, [opportunityId]);
-
     // ── Load existing ────────────────────────────────────────────────────────────
-    const fetchOpportunity = async () => {
+    const fetchOpportunity = useCallback(async () => {
         try {
             const data = await Opportunities.get(opportunityId!);
             fillForm(data.opportunity as any);
@@ -119,7 +113,11 @@ export const PostOpportunityScreen = ({ route, navigation }: any) => {
         } finally {
             setLoading(false);
         }
-    };
+    }, [opportunityId, navigation]);
+
+    useEffect(() => {
+        if (isEditing) void fetchOpportunity();
+    }, [opportunityId, fetchOpportunity, isEditing]);
 
     const fillForm = (o: any) => {
         setType(o.type || 'JOB');

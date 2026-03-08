@@ -5,6 +5,7 @@ import { Platform } from 'react-native';
 let mmkvInstance: any = null;
 if (Platform.OS !== 'web') {
     try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const { MMKV } = require('react-native-mmkv');
         mmkvInstance = new MMKV({ id: 'admin-settings' });
     } catch (e) {

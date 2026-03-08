@@ -49,7 +49,7 @@ export const SystemScreen = () => {
         }
     }, []);
 
-    useFocusEffect(useCallback(() => { void fetchAll(); }, []));
+    useFocusEffect(useCallback(() => { void fetchAll(); }, [fetchAll]));
     const onRefresh = () => { setRefreshing(true); void fetchAll(); };
 
     const runVerification = async () => {
@@ -121,7 +121,7 @@ export const SystemScreen = () => {
             } else {
                 setOtaAvailable(false); setOtaStatusText('No updates found');
             }
-        } catch (e) {
+        } catch (_e) {
             setOtaAvailable(false);
             setOtaStatusText('Failed to check updates');
         } finally {

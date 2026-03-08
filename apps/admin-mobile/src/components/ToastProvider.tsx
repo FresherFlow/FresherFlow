@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { _registerToastProvider, type ToastItem } from '../lib/toast';
-import { theme } from '../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const CONFIGS = {
@@ -59,8 +58,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         _registerToastProvider(show);
+        const currentTimers = timers.current;
         return () => {
-            Object.values(timers.current).forEach(clearTimeout);
+            Object.values(currentTimers).forEach(clearTimeout);
         };
     }, [show]);
 

@@ -4,7 +4,7 @@ import {
     ActivityIndicator, RefreshControl, Linking, TextInput, KeyboardAvoidingView, Platform
 } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { MessageSquare, AlertTriangle, ChevronRight, Smartphone, Star, NotebookPen } from 'lucide-react-native';
+import { MessageSquare, AlertTriangle, ChevronRight, Smartphone, NotebookPen } from 'lucide-react-native';
 import { Feedback } from '../lib/api';
 import { CompanyLogo } from '../components/CompanyLogo';
 import { theme } from '../theme';
@@ -63,7 +63,7 @@ export const FeedbackScreen = () => {
         }
     }, []);
 
-    useFocusEffect(useCallback(() => { void fetchAll(); }, []));
+    useFocusEffect(useCallback(() => { void fetchAll(); }, [fetchAll]));
     const onRefresh = () => { setRefreshing(true); void fetchAll(); };
 
     const handleSaveNote = () => {

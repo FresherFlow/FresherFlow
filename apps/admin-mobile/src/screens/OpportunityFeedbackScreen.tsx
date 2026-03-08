@@ -38,11 +38,15 @@ export const OpportunityFeedbackScreen = () => {
         }
     }, [opportunityId]);
 
-    useFocusEffect(useCallback(() => { void fetchFeedback(); }, [opportunityId]));
+    useFocusEffect(useCallback(() => { void fetchFeedback(); }, [fetchFeedback]));
     const onRefresh = () => { setRefreshing(true); void fetchFeedback(); };
 
     const toggleExpand = (id: string) => {
-        setExpanded(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+        setExpanded(prev => {
+            const n = new Set(prev);
+            if (n.has(id)) n.delete(id); else n.add(id);
+            return n;
+        });
     };
 
     const avgRating = (() => {

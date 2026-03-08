@@ -57,7 +57,7 @@ export function captureMessage(message: string, level: 'info' | 'warning' | 'err
     } catch { /* ignore */ }
 }
 
-export function setUserContext(userId: string, email?: string): void {
+export function setUserContext(_userId: string, _email?: string): void {
     try {
         // const Sentry = require('@sentry/react-native');
         // Sentry.setUser({ id: userId, email });

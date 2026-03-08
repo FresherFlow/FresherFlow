@@ -1,5 +1,4 @@
-import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
 import { Monitor, RefreshCw } from 'lucide-react-native';
 import { useTheme } from '../theme/ThemeProvider';
 import { useOtaManager } from '../hooks/useOtaManager';
