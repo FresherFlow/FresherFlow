@@ -4,8 +4,6 @@ on:
   schedule:
     # Run every 10 minutes (Admin keep-warm)
     - cron: '*/10 * * * *'
-    # Run every 20 minutes (Ingestion)
-    - cron: '*/20 * * * *'
     # Run twice daily at 8 AM and 8 PM IST (2:30 UTC and 14:30 UTC)
     - cron: '30 2,14 * * *'
     # Run at midnight IST (18:30 UTC) (Expiry)
@@ -29,15 +27,6 @@ jobs:
           fi
           curl -f -sS "$ADMIN_API_BASE_URL/api/health" > /dev/null
 
-      - name: Trigger Ingestion (Every 20 mins)
-        if: github.event.schedule == '*/20 * * * *' || github.event_name == 'workflow_dispatch'
-        env:
-          API_BASE_URL: ${{ secrets.API_BASE_URL }}
-          CRON_SECRET: ${{ secrets.CRON_SECRET }}
-        run: |
-          curl -f -X POST "$API_BASE_URL/api/cron/ingest" \
-            -H "Authorization: Bearer $CRON_SECRET"
-            
       - name: Trigger Alerts (Twice daily — 8 AM & 8 PM IST)
         if: github.event.schedule == '30 2,14 * * *' || github.event_name == 'workflow_dispatch'
         env:
