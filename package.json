@@ -35,7 +35,9 @@
         "db:generate": "cd apps/api && npm run db:generate",
         "db:push": "cd apps/api && npm run db:push",
         "db:studio": "cd apps/api && npm run db:studio",
-        "lint": "npm run lint --workspaces --if-present",
+        "lint": "turbo run lint --filter=./apps/api --filter=./apps/web",
+        "lint:api": "turbo run lint --filter=fresherflow-api",
+        "lint:web": "turbo run lint --filter=fresherflow-web",
         "clean": "rimraf apps/*/node_modules apps/*/dist packages/*/node_modules packages/*/dist node_modules",
         "typecheck": "turbo run typecheck",
         "test": "turbo run test"
