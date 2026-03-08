@@ -1,6 +1,4 @@
 module.exports = {
-    extends: 'universe/native',
-    rules: {
-        'prettier/prettier': ['warn', { endOfLine: 'auto' }],
-    },
+    extends: 'expo',
+    ignorePatterns: ['node_modules/', 'dist/', '.expo/', '.turbo/', 'build/'],
 };

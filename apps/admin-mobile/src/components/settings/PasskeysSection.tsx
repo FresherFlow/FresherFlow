@@ -37,6 +37,7 @@ export const PasskeysSection = React.memo(({ colors: c }: PasskeysSectionProps) 
     }, [getPasskeys]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         loadPasskeys();
     }, [loadPasskeys]);
 
