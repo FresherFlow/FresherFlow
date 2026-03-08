@@ -40,6 +40,7 @@ import sitemapRoutes from './routes/public/sitemap';
 import opportunityClickRoutes from './routes/public/opportunityClicks';
 import cronRoutes from './routes/cron';
 import referralRoutes from './routes/referrals';
+import joblinksRoutes from './routes/public/joblinks';
 
 const app: Application = express();
 const PORT = process.env.PORT || 5000;
@@ -268,6 +269,7 @@ if (isUserMode) {
     app.use('/api/alerts', alertsRoutes);
     app.use('/api/public/companies', companyRoutes);
     app.use('/api/public/sitemap', sitemapRoutes);
+    app.use('/api/public', joblinksRoutes);
     app.use('/api/opportunities', feedbackRoutes);
     app.use('/api/feedback', appFeedbackRoutes);
     app.use('/api/referrals', referralRoutes);

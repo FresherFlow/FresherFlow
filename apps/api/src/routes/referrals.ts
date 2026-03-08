@@ -38,12 +38,13 @@ function hashIp(ip: string): string {
 }
 
 async function awardBadges(userId: string, signupCount: number) {
+    const existingBadges = await prisma.referralBadgeGrant.findMany({ where: { userId } });
+    const earnedSet = new Set(existingBadges.map(b => b.badge));
+
     for (const m of BADGE_MILESTONES) {
-        if (signupCount >= m.count) {
-            await prisma.referralBadgeGrant.upsert({
-                where: { userId_badge: { userId, badge: m.badge as any } },
-                update: {},
-                create: { userId, badge: m.badge as any },
+        if (signupCount >= m.count && !earnedSet.has(m.badge as any)) {
+            await prisma.referralBadgeGrant.create({
+                data: { userId, badge: m.badge as any }
             }).catch(() => { /* ignore dup */ });
         }
     }
@@ -106,12 +107,26 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
         if (!user) return res.status(404).json({ error: 'Not found' });
 
         if (!user.referralCode) {
-            const code = generateCode();
-            user = await prisma.user.update({
-                where: { id: userId },
-                data: { referralCode: code },
-                select: { id: true, referralCode: true },
-            });
+            let codeGenerated = false;
+            let maxRetries = 3;
+            let newCode = '';
+            while (!codeGenerated && maxRetries > 0) {
+                try {
+                    newCode = generateCode();
+                    user = await prisma.user.update({
+                        where: { id: userId },
+                        data: { referralCode: newCode },
+                        select: { id: true, referralCode: true },
+                    });
+                    codeGenerated = true;
+                } catch (e: any) {
+                    if (e.code !== 'P2002') throw e;
+                    maxRetries--;
+                }
+            }
+            if (!codeGenerated) {
+                return res.status(500).json({ error: 'Failed to generate referral code' });
+            }
         }
 
         const code = user.referralCode!;
@@ -119,8 +134,15 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
         const shareUrl = `${origin}/r/${code}`;
 
         // Stats
-        const [totalClicks, referralsRaw] = await Promise.all([
+        const [totalClicks, totalSignups, activated, referralsRaw] = await Promise.all([
             prisma.referralVisit.count({ where: { referralCode: code } }),
+            prisma.user.count({ where: { referredByUserId: userId } }),
+            prisma.user.count({
+                where: {
+                    referredByUserId: userId,
+                    profile: { completionPercentage: { gte: 40 } }
+                }
+            }),
             prisma.user.findMany({
                 where: { referredByUserId: userId },
                 select: {
@@ -129,11 +151,9 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
                     profile: { select: { completionPercentage: true } },
                 },
                 orderBy: { createdAt: 'desc' },
+                take: 50
             })
         ]);
-
-        const totalSignups = referralsRaw.length;
-        const activated = referralsRaw.filter(r => (r.profile?.completionPercentage ?? 0) >= 40).length;
 
         await awardBadges(userId, totalSignups);
 
