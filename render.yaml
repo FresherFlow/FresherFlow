@@ -15,7 +15,7 @@ services:
       - key: NODE_VERSION
         value: 20
       - key: DATABASE_URL
-        sync: false          # set in Render dashboard → your Neon connection string
+        sync: false          # set in Render dashboard → Neon connection string
       - key: REDIS_URL
         fromService:
           type: redis
@@ -32,14 +32,15 @@ services:
         - package.json
         - package-lock.json
 
-  # ── WORKER ──────────────────────────────────────────────────────────────────
-  - type: worker
+  # ── WORKER (runs as web service on free tier — binds health port) ────────────
+  - type: web
     name: fresherflow-worker
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm ci && npx turbo run build --filter=fresherflow-api  # no migrations
-    startCommand: npm run start:worker
+    buildCommand: npm ci && npx turbo run build --filter=fresherflow-worker
+    startCommand: npm run start --workspace=apps/worker
+    healthCheckPath: /
     envVars:
       - key: NODE_ENV
         value: production

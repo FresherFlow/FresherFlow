@@ -12,6 +12,7 @@ import {
     processSearchJob,
     processIngestionJob,
 } from '@fresherflow/queue';
+import http from 'http';
 
 const connection = {
     host: redis.options.host,
@@ -23,12 +24,12 @@ const connection = {
 
 logger.info('Starting FresherFlow Background Worker...');
 
-// Ensure Meilisearch indices exist on boot
+// Ensure search indices exist on boot
 setupSearchIndex().catch((err: any) => {
     logger.error('Failed to setup search index on boot:', err);
 });
 
-// Workers
+// BullMQ Workers
 const emailWorker = new Worker('email', async (job) => { await processEmailJob(job); }, { connection });
 const cronWorker = new Worker('cron', async (job) => { await processCronJob(job); }, { connection });
 const pushWorker = new Worker('push', async (job) => { await processPushJob(job); }, { connection });
@@ -48,6 +49,16 @@ for (const [name, worker] of [
     worker.on('completed', (job) => logger.info(`[${name}] job ${job.id} completed`));
     worker.on('failed', (job, err) => logger.error(`[${name}] job ${job?.id} failed: ${err.message}`));
 }
+
+// Minimal HTTP health server — Render free-tier web services require a port binding.
+// Without this, Render kills the process thinking it failed to start.
+const PORT = parseInt(process.env.PORT || '3001', 10);
+http.createServer((_, res) => {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ status: 'ok', service: 'fresherflow-worker' }));
+}).listen(PORT, () => {
+    logger.info(`Worker health server listening on port ${PORT}`);
+});
 
 async function shutdown() {
     logger.info('Shutting down workers...');
