@@ -61,7 +61,4 @@ brain/
 docs/
 .artifacts
 
-apps/worker
 apps/mobile
-apps/web-scrap
-apps/ingestion

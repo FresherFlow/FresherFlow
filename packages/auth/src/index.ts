@@ -1,28 +1,14 @@
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
-
-// Runtime validation for required env vars
-// We check this when the functions are called or when the module is loaded if we want strictness.
-// Given strict instructions, we'll keep the top-level check but gracefully handle if envs are loaded later? 
-// No, better to check access time or provide a configure function?
-// For "simpler code", let's assume env vars are present in the process.
+import { env } from '@fresherflow/config';
 
 const getAccessSecret = () => {
-    if (!process.env.JWT_ACCESS_SECRET) {
-        throw new Error('JWT_ACCESS_SECRET is not defined');
-    }
-    return process.env.JWT_ACCESS_SECRET;
+    return env.JWT_ACCESS_SECRET;
 };
 
 const getRefreshSecret = () => {
-    if (!process.env.JWT_REFRESH_SECRET) {
-        throw new Error('JWT_REFRESH_SECRET is not defined');
-    }
-    return process.env.JWT_REFRESH_SECRET;
+    return env.JWT_REFRESH_SECRET;
 };
-
-const ACCESS_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY || '15m';
-const REFRESH_EXPIRY = process.env.REFRESH_TOKEN_EXPIRY || '30d';
 
 export interface TokenPayload {
     userId: string;
@@ -36,13 +22,13 @@ export interface AdminTokenPayload {
 
 // User Tokens
 export function generateAccessToken(userId: string): string {
-    const expiry = process.env.ACCESS_TOKEN_EXPIRY || '15m';
+    const expiry = '15m';
     // @ts-ignore - JWT type issue
     return jwt.sign({ userId, type: 'access' }, getAccessSecret(), { expiresIn: expiry });
 }
 
 export function generateRefreshToken(userId: string): { token: string; hash: string } {
-    const expiry = process.env.REFRESH_TOKEN_EXPIRY || '90d';
+    const expiry = '90d';
     // @ts-ignore - JWT type issue
     const token = jwt.sign({ userId, type: 'refresh' }, getRefreshSecret(), { expiresIn: expiry });
 
@@ -78,7 +64,7 @@ export function hashRefreshToken(token: string): string {
 
 // Admin Tokens
 export function generateAdminToken(adminId: string): string {
-    const expiry = process.env.ADMIN_ACCESS_TOKEN_EXPIRY || process.env.ACCESS_TOKEN_EXPIRY || '7d';
+    const expiry = '7d';
     // @ts-ignore - JWT type issue
     return jwt.sign({ adminId, role: 'admin' }, getAccessSecret(), { expiresIn: expiry });
 }

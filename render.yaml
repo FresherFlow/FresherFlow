@@ -1,51 +1,125 @@
 services:
+
+  # ================= API =================
   - type: web
-    name: api-fresherflow-user
+    name: fresherflow-api
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm install && npm run deploy:api
+
+    buildCommand: npm ci && npm run prune:api && npm run deploy:api
     startCommand: npm run start:api
+
+    healthCheckPath: /api/health
+
     envVars:
+      - key: NODE_VERSION
+        value: 20
+
+      - key: TURBO_CACHE_DIR
+        value: .turbo
+
       - key: DATABASE_URL
-        sync: false
+        fromDatabase:
+          name: fresherflow-db
+          property: connectionString
+
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: fresherflow-redis
+          property: connectionString
+
       - key: JWT_ACCESS_SECRET
         generateValue: true
+
       - key: JWT_REFRESH_SECRET
         generateValue: true
-      - key: FRONTEND_URL
-        sync: false
-      - key: FRONTEND_URLS
-        sync: false
-      - key: COOKIE_DOMAIN
-        sync: false
-      - key: APP_MODE
-        value: user
+
       - key: NODE_ENV
         value: production
-    healthCheckPath: /api/health
-  - type: web
-    name: api-fresherflow-admin
+      
+      - key: TURBO_TELEMETRY_DISABLED
+        value: 1
+
+    buildFilter:
+      paths:
+        - apps/api/**
+        - packages/**
+        - turbo.json
+        - package.json
+        - package-lock.json
+
+
+  # ================= WORKER =================
+  - type: worker
+    name: fresherflow-worker
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm install && npx turbo run db:generate --filter=fresherflow-api && npx turbo run build --filter=fresherflow-api
-    startCommand: npm run start:api
+
+    buildCommand: npm run deploy:api
+    startCommand: npm run start:worker
+
     envVars:
+      - key: NODE_VERSION
+        value: 20
+
+      - key: TURBO_CACHE_DIR
+        value: .turbo
+
       - key: DATABASE_URL
-        sync: false
-      - key: JWT_ACCESS_SECRET
-        sync: false
-      - key: JWT_REFRESH_SECRET
-        sync: false
-      - key: FRONTEND_URL
-        sync: false
-      - key: FRONTEND_URLS
-        sync: false
-      - key: COOKIE_DOMAIN
-        sync: false
-      - key: APP_MODE
-        value: admin
+        fromDatabase:
+          name: fresherflow-db
+          property: connectionString
+
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: fresherflow-redis
+          property: connectionString
+
       - key: NODE_ENV
         value: production
-    healthCheckPath: /api/health
+
+
+  # ================= NEXT WEB =================
+  - type: web
+    name: fresherflow-web
+    runtime: node
+    region: singapore
+    plan: free
+
+    buildCommand: npm ci && npm run prune:web && npm run build:web
+    startCommand: npm run start:web
+
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+
+      - key: TURBO_CACHE_DIR
+        value: .turbo
+
+      - key: NEXT_PUBLIC_API_URL
+        value: https://fresherflow-api.onrender.com
+
+    buildFilter:
+      paths:
+        - apps/web/**
+        - packages/**
+        - turbo.json
+        - package.json
+        - package-lock.json
+
+
+# ================= DATABASE =================
+databases:
+  - name: fresherflow-db
+    databaseName: fresherflow
+    plan: free
+
+
+  # ================= REDIS =================
+  - type: redis
+    name: fresherflow-redis
+    plan: free

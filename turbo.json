@@ -1,11 +1,14 @@
 {
     "$schema": "https://turbo.build/schema.json",
     "ui": "tui",
+    "globalDependencies": [
+        "package-lock.json",
+        "turbo.json"
+    ],
     "tasks": {
         "build": {
             "dependsOn": [
-                "^build",
-                "db:generate"
+                "^build"
             ],
             "outputs": [
                 "dist/**",
@@ -36,7 +39,9 @@
             ]
         },
         "db:generate": {
-            "cache": false
+            "outputs": [
+                "node_modules/.prisma/**"
+            ]
         },
         "db:push": {
             "cache": false
