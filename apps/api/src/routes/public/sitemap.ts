@@ -1,6 +1,6 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../lib/prisma';
-import { OpportunityStatus, OpportunityType } from '@prisma/client';
+import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 
 const router: Router = express.Router();
 const DEFAULT_LIMIT = 1000;

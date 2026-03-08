@@ -63,8 +63,9 @@ export const PasskeysSection = React.memo(({ colors: c }: PasskeysSectionProps) 
                             setStatus('deleting');
                             await deletePasskey(id);
                             await loadPasskeys(); // reload list
-                        } catch (err: any) {
-                            Alert.alert("Error", err.message || "Failed to delete passkey");
+                        } catch (err: unknown) {
+                            const errorMsg = err instanceof Error ? err.message : String(err) || "Failed to delete passkey";
+                            Alert.alert("Error", errorMsg);
                             setStatus('idle');
                         }
                     }

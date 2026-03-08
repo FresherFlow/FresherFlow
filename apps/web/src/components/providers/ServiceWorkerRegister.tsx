@@ -70,7 +70,7 @@ export default function ServiceWorkerRegister() {
                         }
                     });
                 });
-            } catch (err) {
+            } catch (err: unknown) {
                 // Silent fail - app should still work without SW
                 console.warn('Service worker registration failed', err);
             }

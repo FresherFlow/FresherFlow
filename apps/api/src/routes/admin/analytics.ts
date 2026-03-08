@@ -1,6 +1,6 @@
 import prisma from '../../lib/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
-import { OpportunityStatus } from '@prisma/client';
+import { OpportunityStatus } from '@fresherflow/types';
 import { requireAdmin } from '../../middleware/auth';
 
 const router = Router();

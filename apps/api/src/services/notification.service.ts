@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
-import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, OpportunityStatus } from '@prisma/client';
+import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind } from '@prisma/client';
+import { OpportunityStatus } from '@fresherflow/types';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
@@ -341,7 +342,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                     attemptedAt: userAttemptedAt,
                     deliveredAt: new Date(),
                 });
-            } catch (err) {
+            } catch (err: unknown) {
                 logger.error('Failed to send new job email', { userId: user.id, opportunityId, error: err });
                 await logDispatch({
                     correlationId,
@@ -409,7 +410,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 attemptedAt: userAttemptedAt,
                 deliveredAt: new Date(),
             });
-        } catch (err: any) {
+        } catch (err: unknown) {
             await logDispatch({
                 correlationId,
                 userId: user.id,

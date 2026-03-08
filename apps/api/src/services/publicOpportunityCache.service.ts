@@ -11,7 +11,7 @@ async function deleteByPattern(pattern: string) {
                 await redis.del(...keys);
             }
         } while (cursor !== '0');
-    } catch (err: any) {
+    } catch (err: unknown) {
         logger.error('[Redis] Delete by pattern failed', { pattern, error: err.message });
     }
 }

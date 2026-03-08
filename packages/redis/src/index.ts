@@ -10,7 +10,7 @@ const redisClientSingleton = () => {
         maxRetriesPerRequest: null,
     });
 
-    client.on('error', (err) => {
+    client.on('error', (err: any) => {
         // Suppress connection errors in dev — don't crash the process
         if (process.env.NODE_ENV !== 'production') {
             console.warn('[redis] Connection error (dev):', err.message);

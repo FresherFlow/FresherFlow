@@ -372,7 +372,7 @@ export const PostOpportunityScreen = ({ route, navigation }: any) => {
                 <Label>Eligible Degrees</Label>
                 <ChipRow wrap>
                     {DEGREES.map(d => (
-                        <Chip key={d} label={d} active={selectedDegrees.includes(d)} onPress={() => toggle(selectedDegrees, setSelectedDegrees, d)} />
+                        <Chip key={d as string} label={d as string} active={selectedDegrees.includes(d)} onPress={() => toggle(selectedDegrees, setSelectedDegrees, d as string)} />
                     ))}
                 </ChipRow>
 

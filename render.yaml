@@ -83,34 +83,6 @@ services:
         value: production
 
 
-  # ================= NEXT WEB =================
-  - type: web
-    name: fresherflow-web
-    runtime: node
-    region: singapore
-    plan: free
-
-    buildCommand: npm ci && npm run prune:web && npm run build:web
-    startCommand: npm run start:web
-
-    envVars:
-      - key: NODE_VERSION
-        value: 20
-
-      - key: TURBO_CACHE_DIR
-        value: .turbo
-
-      - key: NEXT_PUBLIC_API_URL
-        value: https://fresherflow-api.onrender.com
-
-    buildFilter:
-      paths:
-        - apps/web/**
-        - packages/**
-        - turbo.json
-        - package.json
-        - package-lock.json
-
   # ================= REDIS =================
   - type: redis
     name: fresherflow-redis

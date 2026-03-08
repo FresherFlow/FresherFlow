@@ -1,6 +1,7 @@
 import prisma from '../lib/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
-import { OpportunityEventType, OpportunityStatus } from '@prisma/client';
+import { OpportunityEventType } from '@prisma/client';
+import { OpportunityStatus } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { profileGate } from '../middleware/profileGate';
 import { filterOpportunitiesForUser, sortOpportunitiesForUser } from '../domain/eligibility';

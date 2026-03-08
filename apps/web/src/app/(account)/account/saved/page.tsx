@@ -25,7 +25,7 @@ export default function SavedJobsPage() {
         try {
             const data = await savedApi.list() as { opportunities: Opportunity[] };
             setSavedJobs(data.opportunities || []);
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('Error loading saved jobs:', err);
             toast.error('Failed to sync saved jobs');
         } finally {

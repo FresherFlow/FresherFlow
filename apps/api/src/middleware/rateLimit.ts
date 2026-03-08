@@ -16,7 +16,7 @@ function getRedisClient() {
             maxRetriesPerRequest: 1,
             connectTimeout: 2000
         });
-        redisClient.on('error', (err) => {
+        redisClient.on('error', (err: any) => {
             console.error('[Redis] Rate limit connection error:', err.message);
         });
     }
@@ -63,7 +63,7 @@ export function createRateLimiter(options: RateLimitOptions) {
                     return next(new AppError(options.message, 429));
                 }
                 return next();
-            } catch (err) {
+            } catch (err: unknown) {
                 console.error('[RateLimit] Redis failure, falling back to memory:', err);
             }
         }

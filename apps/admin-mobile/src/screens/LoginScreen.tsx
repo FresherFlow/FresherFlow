@@ -97,7 +97,7 @@ export const LoginScreen = () => {
         setLoading(true);
         try {
             await verifyTotp(email.trim(), otp.trim());
-        } catch (err) {
+        } catch (err: unknown) {
             setError(err instanceof Error ? err.message : 'Login failed. Check your code and try again.');
         } finally {
             setLoading(false);

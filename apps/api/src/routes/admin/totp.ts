@@ -42,7 +42,7 @@ router.post('/generate', async (req: Request, res: Response, next: NextFunction)
         let imageUrl = '';
         try {
             imageUrl = await QRCode.toDataURL(otpauth);
-        } catch (err) {
+        } catch (err: unknown) {
             console.error('QR Code generation failed', err);
             return next(new AppError('Failed to generate QR code', 500));
         }

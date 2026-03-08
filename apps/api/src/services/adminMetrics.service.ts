@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
-import { OpportunityStatus, OpportunityType, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { getObservabilityMetrics } from '../middleware/observability';
 
 export type MetricsWindow = '24h' | '7d' | '30d';

@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { OpportunityStatus, OpportunityType } from '@prisma/client';
+import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
@@ -38,7 +38,7 @@ function getClosingSoonHours(opportunity: {
     if (opportunity.type === 'WALKIN') {
         const dates = opportunity.walkInDetails?.dates ?? [];
         if (dates.length === 0) return null;
-        const lastDate = new Date(Math.max(...dates.map((d) => new Date(d).getTime())));
+        const lastDate = new Date(Math.max(...dates.map((d: any) => new Date(d).getTime())));
         lastDate.setUTCHours(23, 59, 59, 999);
         const diffHours = (lastDate.getTime() - now.getTime()) / (1000 * 60 * 60);
         return diffHours > 0 && diffHours <= CLOSING_SOON_WINDOW_HOURS ? diffHours : null;

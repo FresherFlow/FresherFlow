@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import express, { NextFunction, Request, Response, Router } from 'express';
-import { OpportunityStatus } from '@prisma/client';
+import { OpportunityStatus } from '@fresherflow/types';
 
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';

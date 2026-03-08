@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { OpportunityType, OpportunityStatus } from '@prisma/client';
+import { OpportunityType, OpportunityStatus } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { userActionSchema } from '../utils/validation';

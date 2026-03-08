@@ -1,5 +1,6 @@
 
-import { PrismaClient, OpportunityStatus, OpportunityType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
 import TelegramService from '../services/telegram.service';
 
@@ -95,7 +96,7 @@ export async function runExpiryCycle() {
 
         for (const walkIn of activeWalkIns) {
             const dates = walkIn.walkInDetails?.dates?.map(d => new Date(d)) || [];
-            const validDates = dates.filter((d) => !Number.isNaN(d.getTime()));
+            const validDates = dates.filter((d: any) => !Number.isNaN(d.getTime()));
 
             // Fallback: if walk-in dates are missing, use expiresAt when available.
             const maxDate = validDates.length > 0

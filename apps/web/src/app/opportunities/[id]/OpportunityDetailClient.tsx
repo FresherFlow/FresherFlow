@@ -176,7 +176,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
             try {
                 const data = await opportunitiesApi.list({ type: opp.type }) as { opportunities: Opportunity[] };
                 const currentSkillSet = new Set((opp.requiredSkills || []).map((s) => s.toLowerCase()));
-                const currentLocations = new Set((opp.locations || []).map((l) => l.toLowerCase()));
+                const currentLocations = new Set((opp.locations || []).map((l: string) => l.toLowerCase()));
 
                 const scored = (data.opportunities || [])
                     .filter((item: Opportunity) => item.id !== opp.id)
@@ -185,8 +185,8 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         let score = 0;
                         if (item.company === opp.company) score += 5;
 
-                        const itemLocations = (item.locations || []).map((l) => l.toLowerCase());
-                        if (itemLocations.some((l) => currentLocations.has(l))) score += 3;
+                        const itemLocations = (item.locations || []).map((l: string) => l.toLowerCase());
+                        if (itemLocations.some((l: string) => currentLocations.has(l))) score += 3;
 
                         const itemSkills = (item.requiredSkills || []).map((s) => s.toLowerCase());
                         const sharedSkills = itemSkills.filter((s) => currentSkillSet.has(s)).length;
@@ -261,7 +261,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
             if (result.saved) {
                 growthApi.trackEvent('SAVE_JOB', 'opportunity_detail').catch(() => undefined);
             }
-        } catch (err) {
+        } catch (err: unknown) {
             if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
                 enqueueOfflineSaveToggle(opp.id, user.id);
                 toast.success('Saved update queued for sync.');
@@ -325,7 +325,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         setIsUpdatingAction(true);
         try {
             await actionsApi.track(opp.id, actionType);
-        } catch (err) {
+        } catch (err: unknown) {
             if (typeof navigator !== 'undefined' && !navigator.onLine) {
                 enqueueOfflineActionTrack(opp.id, actionType, user.id);
                 return;
@@ -405,7 +405,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         try {
             await navigator.clipboard.writeText(getShareUrl());
             toast.success('Link copied to clipboard!');
-        } catch (err) {
+        } catch (err: unknown) {
             toastError(err, 'Failed to copy link');
         }
     };

@@ -1,6 +1,7 @@
 ﻿import prisma from '../../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { Prisma, OpportunityEventType, OpportunityStatus, OpportunityType } from '@prisma/client';
+import { Prisma, OpportunityEventType } from '@prisma/client';
+import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { requireAdmin } from '../../middleware/auth';
 import { adminRateLimit } from '../../middleware/adminRateLimit';
 import { withAdminAudit, validateReason } from '../../middleware/adminAudit';
@@ -106,7 +107,7 @@ function deriveOpportunityExpiryDate(data: any, type: OpportunityType): Date | n
     const walkInDates = normalizeWalkInDates(data);
     if (walkInDates.length === 0) return null;
 
-    const endDate = new Date(Math.max(...walkInDates.map((d) => d.getTime())));
+    const endDate = new Date(Math.max(...walkInDates.map((d: any) => d.getTime())));
     endDate.setHours(23, 59, 59, 999);
     return endDate;
 }

@@ -92,7 +92,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
         if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
             try {
                 await navigator.share(shareData);
-            } catch (err) {
+            } catch (err: unknown) {
                 if ((err as Error).name !== 'AbortError') {
                     toastError(err, 'Failed to share');
                 }
@@ -101,7 +101,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             try {
                 await navigator.clipboard.writeText(shareUrl);
                 toast.success('Link copied to clipboard!');
-            } catch (err) {
+            } catch (err: unknown) {
                 toastError(err, 'Failed to copy link');
             }
         }

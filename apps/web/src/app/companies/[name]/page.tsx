@@ -38,7 +38,7 @@ export default function CompanyProfilePage({ params }: { params: Promise<{ name:
                 ]) as [{ company: CompanyProfile }, { opportunities: Opportunity[] }];
                 setProfile(profileRes.company);
                 setJobs(jobsRes.opportunities || []);
-            } catch (err) {
+            } catch (err: unknown) {
                 console.error('Failed to load company profile:', err);
                 setError('Company not found or failed to load.');
             } finally {

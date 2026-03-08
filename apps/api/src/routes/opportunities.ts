@@ -1,5 +1,6 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { OpportunityStatus, OpportunityType, Prisma } from '@prisma/client';
+import { Prisma } from '@prisma/client';
+import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { env } from '@fresherflow/config';
 import { logger } from '@fresherflow/logger';
 import { redis } from '@fresherflow/redis';

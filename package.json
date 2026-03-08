@@ -37,7 +37,7 @@
         "db:generate": "npm run db:generate --workspace=apps/api",
         "db:push": "npm run db:push --workspace=apps/api",
         "db:studio": "npm run db:studio --workspace=apps/api",
-        "lint": "turbo run lint --filter=./apps/api --filter=./apps/web --filter=./apps/admin-mobile --filter=./apps/worker",
+        "lint": "turbo run lint",
         "lint:api": "turbo run lint --filter=fresherflow-api",
         "lint:web": "turbo run lint --filter=fresherflow-web",
         "clean": "rimraf apps/*/node_modules apps/*/dist packages/*/node_modules packages/*/dist node_modules",

@@ -132,7 +132,7 @@ function LoginContent() {
                     text: 'continue_with', shape: 'rectangular',
                     logo_alignment: 'center', width: buttonWidth,
                 });
-            } catch (err) {
+            } catch (err: unknown) {
                 console.error('[Google] Render failed:', err);
             }
         };
