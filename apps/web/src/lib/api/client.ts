@@ -243,7 +243,7 @@ export async function apiClient<T = unknown>(
         // Only report to Sentry if it's a real server error (5xx), a timeout, 
         // or an unexpected non-network failure.
         const shouldReport = !isOffline && !isUnauthorized && !isSafariLoadFailed &&
-            (err.statusCode && err.statusCode >= 500 || err.code === 'TIMEOUT' || !err.statusCode);
+            (err.statusCode != null && err.statusCode >= 500 || err.code === 'TIMEOUT' || (err.statusCode == null && !isOffline));
 
         if (shouldReport) {
             import('@sentry/nextjs').then(Sentry => {
