@@ -116,6 +116,7 @@ services:
     name: fresherflow-redis
     plan: free
     region: singapore
+    ipAllowList: []
 
 # ================= DATABASE =================
 databases:
