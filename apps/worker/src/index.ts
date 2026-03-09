@@ -52,7 +52,7 @@ for (const [name, worker] of [
 
 // Minimal HTTP health server — Render free-tier web services require a port binding.
 // Without this, Render kills the process thinking it failed to start.
-const PORT = parseInt(process.env.PORT || '3001', 10);
+const PORT = parseInt(process.env.PORT || '5001', 10);
 http.createServer((_, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ status: 'ok', service: 'fresherflow-worker' }));

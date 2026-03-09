@@ -45,7 +45,7 @@ import referralRoutes from './routes/referrals';
 import joblinksRoutes from './routes/public/joblinks';
 
 const app: Application = express();
-const PORT = env.PORT;
+const PORT = env.PORT || 5000;
 const APP_MODE = env.APP_MODE;
 const isUserMode = APP_MODE === 'all' || APP_MODE === 'user';
 const isAdminMode = APP_MODE === 'all' || APP_MODE === 'admin';

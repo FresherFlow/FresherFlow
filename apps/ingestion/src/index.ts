@@ -1,10 +1,11 @@
+import 'dotenv/config';
 import express from 'express';
 import { logger } from '@fresherflow/logger';
 
 import { startIngestionScheduler } from './scheduler';
 
 const app = express();
-const port = process.env.PORT || 3005;
+const port = process.env.PORT || 5002;
 
 app.use(express.json());
 
