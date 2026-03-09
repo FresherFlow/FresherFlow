@@ -15,8 +15,7 @@ import {
     Bars3Icon,
     XMarkIcon,
     Cog8ToothIcon,
-    PaperAirplaneIcon,
-    CloudArrowDownIcon
+    PaperAirplaneIcon
 } from '@heroicons/react/24/outline';
 import AdminBottomNav from '@/shared/components/navigation/AdminBottomNav';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
@@ -105,9 +104,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         );
     }
 
-    const showIngestionNav =
-        process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_ENABLE_ADMIN_INGESTION === 'true';
-
     const navItems = [
         { href: '/admin/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
         { href: '/admin/opportunities', label: 'Opportunities', icon: BriefcaseIcon },
@@ -118,44 +114,60 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: '/admin/telegram', label: 'Telegram', icon: PaperAirplaneIcon },
         { href: '/admin/settings', label: 'Settings', icon: Cog8ToothIcon },
     ];
-    if (showIngestionNav) {
-        navItems.splice(navItems.length - 1, 0, { href: '/admin/ingestion', label: 'Ingestion', icon: CloudArrowDownIcon });
-    }
+
     const effectiveFeedbackAlertCount = (pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')) ? 0 : feedbackAlertCount;
 
     return (
         <div className="flex h-dvh overflow-hidden bg-background text-foreground">
             {/* Sidebar (Desktop) */}
-            <aside className="w-64 bg-card border-r border-border sticky top-0 h-screen hidden md:flex flex-col">
-                <div className="p-6 flex items-center justify-between">
-                    <Link href="/dashboard" className="flex items-center gap-3">
+            <aside className="w-58 bg-card border-r border-border sticky top-0 h-screen hidden md:flex flex-col flex-shrink-0 transition-all duration-300">
+                <div className="px-5 py-6 flex items-center justify-between">
+                    <Link href="/admin/dashboard" className="flex items-center gap-3">
                         <div
-                            className="w-8 h-8 bg-contain bg-center bg-no-repeat"
+                            className="w-8 h-8 bg-contain bg-center bg-no-repeat shrink-0"
                             style={{ backgroundImage: 'var(--logo-image)' }}
                             aria-label="FresherFlow"
                         />
-                        <span className="text-lg font-bold tracking-tight text-foreground">FresherFlow <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-1.5 py-0.5 rounded ml-1 tracking-wider">ADMIN</span></span>
+                        <div className="flex flex-col">
+                            <span className="text-[17px] font-bold tracking-tight text-foreground leading-none">FresherFlow</span>
+                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.18em] mt-1.5 opacity-60">Admin Portal</span>
+                        </div>
                     </Link>
                     <ThemeToggle />
                 </div>
 
-                <nav className="flex-1 px-3 space-y-1 mt-4">
+                <nav className="flex-1 px-3 space-y-1 mt-4 overflow-y-auto custom-scrollbar pb-6">
                     {navItems.map((item) => {
                         const Icon = item.icon;
-                        const isActive = pathname === item.href;
+
+                        // Robust path matching logic (matching AdminBottomNav behavior)
+                        let isActive = pathname === item.href || pathname === item.href + '/';
+
+                        if (item.label === 'Dashboard') {
+                            isActive = pathname === '/admin/dashboard' || pathname === '/admin' || pathname === '/dashboard';
+                        } else if (item.label === 'Opportunities') {
+                            isActive =
+                                (pathname.startsWith('/admin/opportunities') && pathname !== '/admin/opportunities/create') ||
+                                (pathname.startsWith('/opportunities') && pathname !== '/opportunities/create');
+                        } else if (item.label === 'Post New') {
+                            isActive = pathname === '/admin/opportunities/create' || pathname === '/opportunities/create';
+                        } else if (item.label === 'Analytics') {
+                            isActive = pathname.startsWith('/admin/analytics') || pathname.startsWith('/analytics');
+                        }
+
                         return (
                             <Link
                                 key={item.href}
                                 href={item.href}
-                                className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${isActive
-                                    ? 'bg-primary text-primary-foreground shadow-md'
-                                    : 'text-muted-foreground hover:bg-muted hover:text-foreground'
+                                className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${isActive
+                                    ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                                    : 'text-muted-foreground hover:bg-muted/80 hover:text-foreground'
                                     }`}
                             >
-                                <Icon className={`w-4 h-4 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground'}`} />
-                                {item.label}
+                                <Icon className={`w-[18px] h-[18px] shrink-0 ${isActive ? 'text-primary-foreground' : 'text-muted-foreground/90'}`} strokeWidth={isActive ? 2.5 : 2} />
+                                <span className="truncate">{item.label}</span>
                                 {item.label === 'Feedback' && effectiveFeedbackAlertCount > 0 && (
-                                    <span className="ml-auto inline-flex min-w-5 h-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold px-1.5">
+                                    <span className="ml-auto inline-flex min-w-4 h-4 items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold px-1">
                                         {effectiveFeedbackAlertCount > 99 ? '99+' : effectiveFeedbackAlertCount}
                                     </span>
                                 )}
