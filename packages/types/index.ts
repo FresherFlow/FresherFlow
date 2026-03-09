@@ -136,6 +136,8 @@ export interface Admin {
     fullName: string;
     createdAt: Date;
     isTwoFactorEnabled?: boolean;
+    totpEnabled?: boolean;
+    totpEnabledAt?: Date | string | null;
 }
 
 export interface Opportunity {
@@ -289,6 +291,8 @@ export interface OpportunitiesResponse {
     opportunities: Opportunity[];
     total: number;
 }
+
+export type OpportunityListResponse = OpportunitiesResponse;
 
 export interface OpportunityDetailResponse {
     opportunity: Opportunity;
