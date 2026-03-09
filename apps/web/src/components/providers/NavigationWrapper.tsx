@@ -1,11 +1,12 @@
 'use client';
 
-import { Suspense } from 'react';
+import { Suspense, useContext } from 'react';
 import { usePathname } from 'next/navigation';
 import { Navbar, MobileNav } from '@/components/ui/Navigation';
 import { Footer } from '@/components/ui/Footer';
 import { cn } from '@/lib/utils';
 import OfflineActionSync from '@/components/providers/OfflineActionSync';
+import { AuthContext } from '@/contexts/AuthContext';
 
 export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -21,6 +22,9 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
     const hideNav = isAdminRoute;
     const isHomePage = pathname === '/';
+
+    const authContext = useContext(AuthContext);
+    const isAuthenticated = !!authContext?.user;
 
     return (
         <>
@@ -42,7 +46,9 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
                 )}>
                     {children}
                 </div>
-                {!isAdminRoute && !isAuthRoute && <Footer />}
+                {!isAdminRoute && !isAuthRoute && (
+                    <Footer className={cn(isAuthenticated && "hidden md:block")} />
+                )}
             </main>
             {!hideNav && (
                 <Suspense fallback={null}>
