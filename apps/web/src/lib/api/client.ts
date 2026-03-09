@@ -600,6 +600,20 @@ export const alertsApi = {
     seedTest: () => apiClient('/api/alerts/seed-test', { method: 'POST' }),
 };
 
+export const referralApi = {
+    getMe: () => apiClient<unknown>('/api/referrals/me'),
+    validateCode: (code: string) => apiClient<{ valid: boolean; referrerId: string }>(`/api/public/referrals/${code}`),
+    trackClick: (code: string) => apiClient(`/api/public/referrals/${code}/click`, { method: 'POST' }),
+};
+
+export const joblinksApi = {
+    submit: (url: string, source: string) =>
+        apiClient('/api/public/submit-job-link', {
+            method: 'POST',
+            body: JSON.stringify({ url, source })
+        }),
+};
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const setTokens = (_a: string, _b: string) => { }; // Deprecated: No-op
 export const getTokens = () => ({ accessToken: null, refreshToken: null }); // Deprecated: No-op

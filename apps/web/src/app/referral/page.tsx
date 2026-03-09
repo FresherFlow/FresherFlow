@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import { buildInviteUrl } from '@/lib/share';
 import { analytics } from '@/lib/analytics';
+import { referralApi } from '@/lib/api/client';
 import {
     ClipboardDocumentIcon,
     ShareIcon,
@@ -53,12 +54,8 @@ export default function ReferralPage() {
         setLoading(true);
         setError(false);
         try {
-            const res = await fetch('/api/referrals/me', { credentials: 'include' });
-            if (res.ok) {
-                setData(await res.json());
-            } else {
-                setError(true);
-            }
+            const data = await referralApi.getMe();
+            setData(data);
         } catch {
             setError(true);
         } finally {

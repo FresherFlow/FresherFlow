@@ -9,6 +9,7 @@ import CheckIcon from '@heroicons/react/24/outline/CheckIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import { analytics } from '@/lib/analytics';
 import { buildInviteUrl } from '@/lib/share';
+import { referralApi } from '@/lib/api/client';
 
 // Profile completion banner
 export function ProfileCompletionBanner() {
@@ -51,8 +52,7 @@ export function ReferralLinkButton() {
     useEffect(() => {
         let cancelled = false;
         if (!user?.id) return;
-        fetch('/api/referrals/me', { credentials: 'include' })
-            .then(res => res.ok ? res.json() : null)
+        referralApi.getMe()
             .then((data: { referralCode: string } | null) => {
                 if (!cancelled && data?.referralCode) setReferralCode(data.referralCode);
             })

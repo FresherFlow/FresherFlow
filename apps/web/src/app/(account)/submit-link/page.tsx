@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeftIcon, LinkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '@/contexts/AuthContext';
+import { joblinksApi } from '@/lib/api/client';
 
 export default function SubmitLinkPage() {
     const { user } = useAuth();
@@ -24,27 +25,13 @@ export default function SubmitLinkPage() {
         setErrorMessage('');
 
         try {
-            const res = await fetch('/api/public/submit-job-link', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    url,
-                    source: user ? (user.fullName || user.email || 'authenticated') : 'anonymous'
-                })
-            });
-
-            const data = await res.json();
-
-            if (res.ok) {
-                setStatus('success');
-                setUrl('');
-            } else {
-                setStatus('error');
-                setErrorMessage(data.error || 'Something went wrong. Please try again.');
-            }
-        } catch {
+            const source = user ? (user.fullName || user.email || 'authenticated') : 'anonymous';
+            await joblinksApi.submit(url, source);
+            setStatus('success');
+            setUrl('');
+        } catch (error) {
             setStatus('error');
-            setErrorMessage('Network error. Please check your connection and try again.');
+            setErrorMessage(error instanceof Error ? error.message : 'Something went wrong. Please try again.');
         }
     };
 
