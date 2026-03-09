@@ -57,8 +57,8 @@ export const AdminFeedScreen = () => {
                 );
             } else {
                 setJobs(prev => {
-                    const seen = new Set(prev.map(j => j.id));
-                    return [...prev, ...rows.filter(r => !seen.has(r.id))];
+                    const seen = new Set(prev.map((j: Opportunity) => j.id));
+                    return [...prev, ...rows.filter((r: Opportunity) => !seen.has(r.id))];
                 });
             }
             setTotal(data.total ?? rows.length);
@@ -115,7 +115,7 @@ export const AdminFeedScreen = () => {
                             </View>
                             <Text style={styles.typeText}>{String(item.type)}</Text>
                             <Text style={styles.dateText}>
-                                {item.createdAt ? new Date(String(item.createdAt)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
+                                {item.postedAt ? new Date(String(item.postedAt)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
                             </Text>
                         </View>
                     </View>

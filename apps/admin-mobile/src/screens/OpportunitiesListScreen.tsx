@@ -63,8 +63,8 @@ export const OpportunitiesListScreen = () => {
             } else {
                 // Deduplicate by ID — guards against concurrent onEndReached calls
                 setJobs(prev => {
-                    const seen = new Set(prev.map(j => j.id));
-                    return [...prev, ...rows.filter(r => !seen.has(r.id))];
+                    const seen = new Set(prev.map((j: Opportunity) => j.id));
+                    return [...prev, ...rows.filter((r: Opportunity) => !seen.has(r.id))];
                 });
             }
             setTotal(data.total ?? rows.length);
@@ -225,7 +225,7 @@ export const OpportunitiesListScreen = () => {
                 </View>
                 <View style={styles.jobFooter}>
                     <Text style={styles.jobDate}>
-                        {item.createdAt ? new Date(String(item.createdAt)).toLocaleDateString('en-IN') : '—'}
+                        {item.postedAt ? new Date(String(item.postedAt)).toLocaleDateString('en-IN') : '—'}
                         {' · '}{String(item.type)}
                     </Text>
                     <View style={styles.actionRow}>

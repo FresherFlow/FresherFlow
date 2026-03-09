@@ -6,14 +6,8 @@ import { apiRequest } from './http';
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
-export type Admin = {
-    id: string;
-    email: string;
-    fullName: string;
-    totpEnabled: boolean;
-    totpEnabledAt?: string | null;
-};
-
+import type { Admin, Opportunity, OpportunityListResponse } from '@fresherflow/types';
+export type { Admin, Opportunity, OpportunityListResponse };
 export type MeResponse = { admin: Admin };
 
 export type LoginOptions = {
@@ -123,18 +117,6 @@ export type TelegramBroadcast = {
     opportunity?: { title: string; company: string } | null;
 };
 
-export type Opportunity = {
-    id: string;
-    title: string;
-    company: string;
-    type: string;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-    expiresAt?: string | null;
-    [key: string]: unknown;
-};
-
 export type OpportunityListParams = {
     page?: number;
     limit?: number;
@@ -142,13 +124,6 @@ export type OpportunityListParams = {
     type?: string;
     search?: string;
     sort?: string;
-};
-
-export type OpportunityListResponse = {
-    opportunities: Opportunity[];
-    total: number;
-    page: number;
-    totalPages: number;
 };
 
 export type FeedbackItem = {

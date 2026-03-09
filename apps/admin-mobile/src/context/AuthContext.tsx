@@ -66,7 +66,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshMe = useCallback(async () => {
     try {
       const data = await Auth.me();
-      const a = data.admin as Admin | null;
+      const a = data.admin as unknown as Admin | null;
       setAdmin(a ?? null);
       if (a) {
         await AsyncStorage.setItem(ADMIN_CACHE_KEY, JSON.stringify(a));
