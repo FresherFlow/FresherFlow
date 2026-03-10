@@ -55,7 +55,7 @@ export default function ReferralPage() {
         setError(false);
         try {
             const data = await referralApi.getMe();
-            setData(data);
+            setData(data as ReferralData);
         } catch {
             setError(true);
         } finally {
