@@ -377,7 +377,11 @@ router.post(
 
                     result = await prisma.opportunity.updateMany({
                         where: { id: { in: ids } },
-                        data: { status: OpportunityStatus.PUBLISHED }
+                        data: {
+                            status: OpportunityStatus.PUBLISHED,
+                            expiredAt: null,
+                            deletedAt: null
+                        }
                     });
                     break;
                 case 'EXPIRE':
@@ -1024,6 +1028,7 @@ router.put(
                 applyLink,
                 expiresAt: deriveOpportunityExpiryDate(data, data.type as OpportunityType),
                 lastVerified: new Date(),
+                ...(data.status === OpportunityStatus.PUBLISHED ? { expiredAt: null, deletedAt: null } : {}),
                 ...(data.type === OpportunityType.WALKIN && { walkInDetails: walkInUpdate })
             };
 
