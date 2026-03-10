@@ -53,7 +53,8 @@ export function ReferralLinkButton() {
         let cancelled = false;
         if (!user?.id) return;
         referralApi.getMe()
-            .then((data: { referralCode: string } | null) => {
+            .then((res) => {
+                const data = res as { referralCode: string } | null;
                 if (!cancelled && data?.referralCode) setReferralCode(data.referralCode);
             })
             .catch(() => { /* silent */ });
