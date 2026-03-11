@@ -150,7 +150,9 @@ export async function apiClient<T = unknown>(
                         });
 
                         if (!refreshResponse.ok) {
-                            throw new Error('Refresh failed');
+                            const err = new Error('Refresh failed') as any;
+                            err.status = refreshResponse.status;
+                            throw err;
                         }
                         // Refresh successful
                     } catch (error) {
@@ -170,12 +172,22 @@ export async function apiClient<T = unknown>(
                 await isRefreshing;
                 // Retry original request
                 response = await fetchWithRetry();
-            } catch {
-                console.error('[Auth] Refresh failed, session expired.');
-                if (typeof window !== 'undefined') {
-                    window.dispatchEvent(new CustomEvent('fresherflow-unauthorized'));
+            } catch (error: any) {
+                // IMPORTANT: Only force logout if we are CERTAIN the session is dead (401/403).
+                // If it's a network error or a 5xx (build/deploy), do NOT logout.
+                const isExplicitAuthFailure = error?.status === 401 || error?.status === 403 || error?.message?.includes('Refresh failed');
+                const isNetworkError = error instanceof OfflineError || (error instanceof TypeError && error.message.includes('fetch'));
+                
+                if (isExplicitAuthFailure && !isNetworkError) {
+                    console.error('[Auth] Refresh failed, session expired.');
+                    if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new CustomEvent('fresherflow-unauthorized'));
+                    }
+                    throw new Error('Session expired');
                 }
-                throw new Error('Session expired');
+                
+                // Otherwise, let the original request fail normally without clearing the session.
+                throw error;
             }
         }
 
