@@ -400,7 +400,7 @@ router.get('/', adaptiveFeedLimiter, optionalAuth, async (req: Request, res: Res
         const guestCacheKey = isGuest
             ? [
                 'opportunities',
-                'v2',
+                'v3',
                 `type:${filterType || 'all'}`,
                 `city:${cityValue || 'all'}`,
                 `min:${minSal ?? 'na'}`,
@@ -572,7 +572,7 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
         const isGuest = !userId;
         // Use shared redis from @fresherflow/redis
         const redis_client = env.NODE_ENV === 'development' ? null : redis;
-        const guestDetailCacheKey = isGuest ? `opportunity_detail|v1|id:${id}` : null;
+        const guestDetailCacheKey = isGuest ? `opportunity_detail|v2|id:${id}` : null;
 
         if (isGuest && guestDetailCacheKey && redis_client) {
             try {
