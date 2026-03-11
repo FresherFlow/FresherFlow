@@ -1,4 +1,4 @@
-const SW_VERSION = '1.9.1';
+const SW_VERSION = '1.9.2';
 const STATIC_CACHE = `fresherflow-static-${SW_VERSION}`;
 const API_CACHE = `fresherflow-api-${SW_VERSION}`;
 const OFFLINE_URL = '/offline.html';
