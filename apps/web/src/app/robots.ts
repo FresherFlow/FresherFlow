@@ -24,6 +24,10 @@ export default function robots(): MetadataRoute.Robots {
                     '/account/',
                     '/profile/',
                     '/alerts/',
+                    '/login',
+                    '/signup',
+                    '/logout',
+                    '/index',
                 ],
             },
             {

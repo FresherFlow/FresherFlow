@@ -60,6 +60,9 @@ const COOKIE_OPTIONS = {
     ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {})
 };
 
+const ACCESS_TOKEN_MAX_AGE_MS = 15 * 60 * 1000;
+const REFRESH_TOKEN_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+
 async function setAuthCookies(user: any, res: Response) {
     const accessToken = generateAccessToken(user.id);
     const { token: refreshToken, hash: tokenHash } = generateRefreshToken(user.id);
@@ -68,16 +71,13 @@ async function setAuthCookies(user: any, res: Response) {
         data: {
             userId: user.id,
             tokenHash,
-            expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000)
+            expiresAt: new Date(Date.now() + REFRESH_TOKEN_MAX_AGE_MS)
         }
     });
 
-    const accessMaxAge = 24 * 60 * 60 * 1000;
-    const refreshMaxAge = 90 * 24 * 60 * 60 * 1000;
-
-    res.cookie('accessToken', accessToken, { ...COOKIE_OPTIONS, maxAge: accessMaxAge });
-    res.cookie('refreshToken', refreshToken, { ...COOKIE_OPTIONS, maxAge: refreshMaxAge });
-    res.cookie('ff_logged_in', 'true', { ...COOKIE_OPTIONS, httpOnly: false, maxAge: refreshMaxAge });
+    res.cookie('accessToken', accessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE_MS });
+    res.cookie('refreshToken', refreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
+    res.cookie('ff_logged_in', 'true', { ...COOKIE_OPTIONS, httpOnly: false, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
 }
 
 // POST /api/auth/otp/send
@@ -174,7 +174,8 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
         if (!storedToken) return next(new AppError('Refresh token expired or revoked', 401));
 
         const newAccessToken = generateAccessToken(userId);
-        res.cookie('accessToken', newAccessToken, { ...COOKIE_OPTIONS, maxAge: 24 * 60 * 60 * 1000 });
+        res.cookie('accessToken', newAccessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE_MS });
+        res.cookie('ff_logged_in', 'true', { ...COOKIE_OPTIONS, httpOnly: false, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
         res.json({ success: true });
     } catch (error) {
         next(error);

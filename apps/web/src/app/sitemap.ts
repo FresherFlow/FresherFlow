@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 
-export const revalidate = 86400; // 24 hours — Google doesn't need hourly sitemap refreshes
+export const revalidate = 86400; // 24 hours; daily sitemap refresh is enough.
 
 type SitemapOpportunity = {
   id: string;
@@ -16,7 +16,7 @@ type SitemapApiResponse = {
 };
 
 const BASE_URL = 'https://fresherflow.in';
-const STATIC_ROUTES = ['/', '/opportunities', '/jobs', '/internships', '/walk-ins', '/login', '/signup'];
+const STATIC_ROUTES = ['/', '/opportunities', '/jobs', '/internships', '/walk-ins'];
 
 function getApiBase(): string {
   const apiBase =
@@ -92,9 +92,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Sitemap generation failed.', error);
-
     console.warn(`Dynamic sitemap generation failed (API may be down during build): ${message}`);
-
     return staticEntries;
   }
 }

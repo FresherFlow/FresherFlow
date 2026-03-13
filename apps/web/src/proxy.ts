@@ -14,7 +14,6 @@ function normalizeHost(value: string | undefined, fallback: string): string {
 const ADMIN_WEB_HOST = normalizeHost(process.env.ADMIN_WEB_HOST, 'admin.fresherflow.in');
 const PUBLIC_WEB_HOST = normalizeHost(process.env.PUBLIC_WEB_HOST, 'fresherflow.in');
 const APP_WEB_HOST = normalizeHost(process.env.APP_WEB_HOST || process.env.NEXT_PUBLIC_APP_WEB_HOST, 'app.fresherflow.in');
-// Keep user auth flow on app host by default to avoid cross-origin RSC/CORS issues.
 const USER_LOGIN_HOST = normalizeHost(process.env.USER_LOGIN_HOST || process.env.NEXT_PUBLIC_USER_LOGIN_HOST, APP_WEB_HOST);
 const ADMIN_ROOT_PREFIXES = [
     '/dashboard',
@@ -28,12 +27,16 @@ const ADMIN_ROOT_PREFIXES = [
     '/telegram',
     '/settings',
 ];
-const SOCIAL_PREVIEW_BOT_UA =
-    /(facebookexternalhit|facebot|twitterbot|xbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot|skypeuripreview|applebot)/i;
+const APP_ONLY_PREFIXES = ['/dashboard', '/account', '/profile', '/alerts'];
+const SOCIAL_PREVIEW_BOT_UA = /(facebookexternalhit|facebot|twitterbot|xbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot|skypeuripreview|applebot)/i;
 const KNOWN_CRAWLER_UA = /(bot|crawler|spider|slurp|bingpreview|curl|wget|python-requests|headless)/i;
 
 function isUserProtectedPath(pathname: string): boolean {
-    return pathname.startsWith('/dashboard') || pathname.startsWith('/account') || pathname.startsWith('/profile');
+    return pathname.startsWith('/dashboard') || pathname.startsWith('/account') || pathname.startsWith('/profile') || pathname.startsWith('/alerts');
+}
+
+function isAppOnlyPath(pathname: string): boolean {
+    return APP_ONLY_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
 }
 
 function isLowValuePrefetch(request: NextRequest): boolean {
@@ -49,24 +52,31 @@ function isKnownCrawler(request: NextRequest): boolean {
 }
 
 function isPublicDetailPath(pathname: string): boolean {
-    if (pathname.startsWith('/walk-ins/details/') || pathname.startsWith('/walkins/details/')) {
-        return true;
-    }
-
-    if (pathname.startsWith('/jobs/')) {
-        return pathname !== '/jobs/new';
-    }
-
-    if (pathname.startsWith('/internships/')) {
-        return true;
-    }
-
+    if (pathname.startsWith('/walk-ins/details/') || pathname.startsWith('/walkins/details/')) return true;
+    if (pathname.startsWith('/jobs/')) return pathname !== '/jobs/new';
+    if (pathname.startsWith('/internships/')) return true;
     if (pathname.startsWith('/opportunities/')) {
         if (pathname === '/opportunities/create') return false;
         if (pathname.startsWith('/opportunities/edit/')) return false;
         return true;
     }
+    return false;
+}
 
+function isPublicCanonicalPath(pathname: string): boolean {
+    if (pathname === '/' || pathname === '/jobs' || pathname === '/internships' || pathname === '/walk-ins' || pathname === '/opportunities') {
+        return true;
+    }
+    if (pathname.startsWith('/jobs/')) return true;
+    if (pathname.startsWith('/internships/')) return true;
+    if (pathname.startsWith('/walk-ins/')) return true;
+    if (pathname.startsWith('/walkins/')) return true;
+    if (pathname.startsWith('/opportunities/')) {
+        if (pathname === '/opportunities/create') return false;
+        if (pathname.startsWith('/opportunities/edit/')) return false;
+        return true;
+    }
+    if (pathname.startsWith('/companies/')) return true;
     return false;
 }
 
@@ -75,6 +85,11 @@ function redirectWithMethodAwareness(request: NextRequest, target: string) {
     const method = request.method.toUpperCase();
     const status = method === 'GET' || method === 'HEAD' ? 307 : 303;
     return NextResponse.redirect(url, status);
+}
+
+function withNoIndex(response: NextResponse) {
+    response.headers.set('X-Robots-Tag', 'noindex, nofollow, noarchive');
+    return response;
 }
 
 function isSocialPreviewRequest(request: NextRequest): boolean {
@@ -101,169 +116,145 @@ export function proxy(request: NextRequest) {
     const isPreviewBot = isSocialPreviewRequest(request);
     const isSocialShare = isSocialShareQuery(request);
     const isAdminHost = normalizedHost === ADMIN_WEB_HOST;
-    const isAdminRootPath = ADMIN_ROOT_PREFIXES.some(
-        (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-    );
+    const isAppHost = normalizedHost === APP_WEB_HOST;
+    const isAdminRootPath = ADMIN_ROOT_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
     const isAdminRoute = pathname.startsWith('/admin');
     const isAdminLogin = pathname === '/admin/login' || pathname === '/login';
     const isUserPath = isUserProtectedPath(pathname);
+    const isPublicPath = isPublicCanonicalPath(pathname);
+    const shouldNoIndex = isAdminHost || isAppHost || isAdminRoute || isAdminRootPath || pathname === '/logout' || pathname === '/index' || pathname === '/admin-manifest.json';
 
-    // Keep proxy zero-cost for requests that never need host/auth rewriting.
-    if (
-        normalizedHost === APP_WEB_HOST &&
-        !isAdminRoute &&
-        !isAdminRootPath &&
-        !isUserPath &&
-        pathname !== '/login' &&
-        pathname !== '/'
-    ) {
-        return NextResponse.next();
+    if ((isKnownCrawler(request) || isLowValuePrefetch(request)) && !isAdminRoute && !isAdminRootPath && !isUserPath) {
+        if (isAppHost && isPublicPath) {
+            const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
+            return withNoIndex(redirectWithMethodAwareness(request, target));
+        }
+        return shouldNoIndex ? withNoIndex(NextResponse.next()) : NextResponse.next();
     }
 
-    // Skip expensive logic for crawler/prefetch traffic on public routes.
-    if (
-        (isKnownCrawler(request) || isLowValuePrefetch(request)) &&
-        !isAdminRoute &&
-        !isAdminRootPath &&
-        !isUserPath
-    ) {
-        return NextResponse.next();
-    }
-
-    // Keep internal preview routes out of production traffic.
     if (process.env.NODE_ENV === 'production' && pathname.startsWith('/dev')) {
         return redirectWithMethodAwareness(request, '/');
     }
 
-    // Keep fresherflow.in as landing + user login only.
-    // Any other path canonicalizes to app host.
+    const isAuthenticated = request.cookies.has('ff_logged_in') || request.cookies.has('accessToken');
+    const isAdminAuthenticated = request.cookies.has('adminAccessToken');
+    const userLoginUrl = `${request.nextUrl.protocol}//${USER_LOGIN_HOST}/login`;
+
+    if (process.env.NODE_ENV === 'production' && normalizedHost === PUBLIC_WEB_HOST && isUserPath) {
+        const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
+        return redirectWithMethodAwareness(request, target);
+    }
+
+    if (process.env.NODE_ENV === 'production' && isAppHost && isPublicPath && pathname !== '/login') {
+        const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
+        return withNoIndex(redirectWithMethodAwareness(request, target));
+    }
+
     if (
         process.env.NODE_ENV === 'production' &&
         normalizedHost === PUBLIC_WEB_HOST &&
         pathname !== '/' &&
         pathname !== '/login' &&
+        !isPublicPath &&
         !((isPreviewBot || isSocialShare) && isPublicDetailPath(pathname))
     ) {
         const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
         return redirectWithMethodAwareness(request, target);
     }
 
-    // Check for session marker
-    const isAuthenticated = request.cookies.has('ff_logged_in') || request.cookies.has('accessToken');
-    const isAdminAuthenticated = request.cookies.has('adminAccessToken');
-    const userLoginUrl = `${request.nextUrl.protocol}//${USER_LOGIN_HOST}/login`;
-
-    // Public detail routes should never be served on admin host.
-    // Redirect them to app host to keep one canonical app domain.
-    if (
-        process.env.NODE_ENV === 'production' &&
-        isAdminHost &&
-        isPublicDetailPath(pathname)
-    ) {
-        const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
-        return redirectWithMethodAwareness(request, target);
+    if (process.env.NODE_ENV === 'production' && isAdminHost && isPublicDetailPath(pathname)) {
+        const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
+        return withNoIndex(redirectWithMethodAwareness(request, target));
     }
 
-    // Force admin routes to dedicated admin host in production.
-    if (
-        process.env.NODE_ENV === 'production' &&
-        isAdminRoute &&
-        !isAdminHost
-    ) {
-        const targetPath = pathname === '/admin'
-            ? '/dashboard'
-            : (pathname.replace(/^\/admin/, '') || '/');
+    if (process.env.NODE_ENV === 'production' && isAdminRoute && !isAdminHost) {
+        const targetPath = pathname === '/admin' ? '/dashboard' : (pathname.replace(/^\/admin/, '') || '/');
         const target = `${request.nextUrl.protocol}//${ADMIN_WEB_HOST}${targetPath}${request.nextUrl.search}`;
-        return redirectWithMethodAwareness(request, target);
+        return withNoIndex(redirectWithMethodAwareness(request, target));
     }
 
-    // Admin host root mapping:
-    // - keep clean URLs (/login, /dashboard, ...)
-    // - internally serve /admin/* pages via rewrite.
     if (isAdminHost) {
         if (pathname === '/admin') {
-            return redirectWithMethodAwareness(request, '/dashboard');
+            return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
         }
         if (pathname.startsWith('/admin/')) {
-            const targetPath = pathname === '/admin/login'
-                ? '/login'
-                : (pathname.replace(/^\/admin/, '') || '/');
-            return redirectWithMethodAwareness(request, `${targetPath}${request.nextUrl.search}`);
+            const targetPath = pathname === '/admin/login' ? '/login' : (pathname.replace(/^\/admin/, '') || '/');
+            return withNoIndex(redirectWithMethodAwareness(request, `${targetPath}${request.nextUrl.search}`));
         }
         if (pathname === '/') {
-            return redirectWithMethodAwareness(request, isAdminAuthenticated ? '/dashboard' : '/login');
+            return withNoIndex(redirectWithMethodAwareness(request, isAdminAuthenticated ? '/dashboard' : '/login'));
         }
         if (pathname === '/login') {
             if (isAdminAuthenticated) {
-                return redirectWithMethodAwareness(request, '/dashboard');
+                return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
             }
             const rewriteUrl = request.nextUrl.clone();
             rewriteUrl.pathname = '/admin/login';
-            return NextResponse.rewrite(rewriteUrl);
+            return withNoIndex(NextResponse.rewrite(rewriteUrl));
         }
         if (isAdminRootPath) {
             if (!isAdminAuthenticated) {
-                return redirectWithMethodAwareness(request, '/login');
+                return withNoIndex(redirectWithMethodAwareness(request, '/login'));
             }
             const rewriteUrl = request.nextUrl.clone();
             rewriteUrl.pathname = `/admin${pathname}`;
-            return NextResponse.rewrite(rewriteUrl);
+            return withNoIndex(NextResponse.rewrite(rewriteUrl));
         }
+
+        const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
+        return withNoIndex(redirectWithMethodAwareness(request, target));
     }
 
-    // 1. Subdomain Handling (app.fresherflow.in)
-    // If user hits 'app.domain.com' root, they want app entry.
-    if (hostname.startsWith('app.')) {
+    if (isAppHost) {
         if (pathname === '/') {
-            if (isAuthenticated) return redirectWithMethodAwareness(request, '/dashboard');
-            // Only redirect to login if userLoginUrl is on a different host/path to avoid a self-redirect loop.
+            if (isAuthenticated) return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
             const loginTarget = new URL(userLoginUrl);
             if (loginTarget.hostname !== normalizedHost || loginTarget.pathname !== '/login') {
-                return redirectWithMethodAwareness(request, userLoginUrl);
+                return withNoIndex(redirectWithMethodAwareness(request, userLoginUrl));
             }
-            // Same host — fall through and render /login directly.
+            return withNoIndex(NextResponse.next());
         }
+
         if (pathname === '/login') {
-            // Only redirect authenticated users away; unauthenticated must reach the login page.
-            if (isAuthenticated) return redirectWithMethodAwareness(request, '/dashboard');
-            // Fall through — let Next.js render the login page.
+            if (isAuthenticated) return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
+            return withNoIndex(NextResponse.next());
+        }
+
+        if (!isAppOnlyPath(pathname)) {
+            const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
+            return withNoIndex(redirectWithMethodAwareness(request, target));
         }
     }
 
-    // 2. Admin Route Protection
     if (isAdminRoute && !isAdminLogin) {
         if (!isAdminAuthenticated) {
             const target = `${request.nextUrl.protocol}//${ADMIN_WEB_HOST}/login`;
-            return redirectWithMethodAwareness(request, target);
+            return withNoIndex(redirectWithMethodAwareness(request, target));
         }
     }
 
-    // 3. User Route Protection (cookie marker gate only)
     if (isUserPath && !isAuthenticated) {
         const loginUrl = new URL(userLoginUrl);
         loginUrl.searchParams.set('redirect', pathname);
         const method = request.method.toUpperCase();
         const status = method === 'GET' || method === 'HEAD' ? 307 : 303;
-        return NextResponse.redirect(loginUrl, status);
+        return withNoIndex(NextResponse.redirect(loginUrl, status));
     }
 
-    // 4. Login route guard
     if (pathname === '/login' && isAuthenticated) {
         const dashboardUrl = `${request.nextUrl.protocol}//${APP_WEB_HOST}/dashboard`;
-        return redirectWithMethodAwareness(request, dashboardUrl);
+        return withNoIndex(redirectWithMethodAwareness(request, dashboardUrl));
     }
 
-    // Keep fresherflow.in root as landing page always.
     if (normalizedHost === PUBLIC_WEB_HOST && pathname === '/') {
         return NextResponse.next();
     }
 
-    // 5. Main non-landing host root handling
     if (pathname === '/' && isAuthenticated) {
-        return redirectWithMethodAwareness(request, '/dashboard');
+        return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
     }
 
-    return NextResponse.next();
+    return shouldNoIndex ? withNoIndex(NextResponse.next()) : NextResponse.next();
 }
 
 export const config = {
@@ -271,6 +262,7 @@ export const config = {
         '/',
         '/admin',
         '/login',
+        '/signup',
         '/dashboard/:path*',
         '/opportunities/:path*',
         '/jobs/:path*',
@@ -285,5 +277,9 @@ export const config = {
         '/account/:path*',
         '/profile/:path*',
         '/admin/:path*',
+        '/companies/:path*',
+        '/logout',
+        '/index',
+        '/admin-manifest.json',
     ],
 };

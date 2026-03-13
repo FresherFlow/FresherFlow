@@ -6,7 +6,7 @@ import { AuthContext } from '@/contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 const CACHE_KEY = 'ff_unread_count_cache';
-const CACHE_TTL = Number(process.env.NEXT_PUBLIC_ALERTS_CACHE_TTL_MS || 15 * 60 * 1000); // 15 minutes
+const CACHE_TTL = Number(process.env.NEXT_PUBLIC_ALERTS_CACHE_TTL_MS || 15 * 60 * 1000);
 const SEEN_TOAST_ALERTS_KEY = 'ff_seen_toast_alerts';
 const ALERTS_UPDATED_EVENT = 'ff-alerts-updated';
 const FOCUS_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_ALERTS_FOCUS_COOLDOWN_MS || 120000);
@@ -24,6 +24,17 @@ function readCache(): { count: number; at: number } | null {
     }
 }
 
+function readRawCache(): { count: number; at: number } | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        const raw = localStorage.getItem(CACHE_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw) as { count: number; at: number };
+    } catch {
+        return null;
+    }
+}
+
 function writeCache(count: number) {
     if (typeof window === 'undefined') return;
     try {
@@ -31,6 +42,10 @@ function writeCache(count: number) {
     } catch {
         // ignore quota issues
     }
+}
+
+function isCacheFresh(at: number) {
+    return Date.now() - at < CACHE_TTL;
 }
 
 function readSeenIds(): string[] {
@@ -67,17 +82,27 @@ export function useUnreadNotifications() {
     const authContext = useContext(AuthContext);
     const user = authContext?.user;
 
-    // Initialize from cache synchronously to avoid unread badge flicker.
     const [unreadCount, setUnreadCount] = useState<number>(() => readCache()?.count ?? 0);
     const lastFocusRefreshAtRef = useRef(0);
     const focusRefreshInFlightRef = useRef(false);
+    const lastSuccessfulFetchAtRef = useRef(readRawCache()?.at ?? 0);
 
-    const fetchCount = useCallback(async () => {
+    const fetchCount = useCallback(async (options?: { force?: boolean }) => {
         if (!user) return;
+        const force = options?.force === true;
+        if (!force && isCacheFresh(lastSuccessfulFetchAtRef.current)) {
+            const cached = readCache();
+            if (cached) {
+                setUnreadCount(cached.count);
+                return;
+            }
+        }
+
         try {
             const data = await alertsApi.getUnreadCount() as { count: number };
             setUnreadCount(data.count);
             writeCache(data.count);
+            lastSuccessfulFetchAtRef.current = Date.now();
         } catch {
             // silent fail, keep stale value
         }
@@ -118,26 +143,29 @@ export function useUnreadNotifications() {
         if (!user) return;
 
         const cached = readCache();
-        if (!cached) {
+        if (cached) {
+            setUnreadCount(cached.count);
+            lastSuccessfulFetchAtRef.current = cached.at;
+        } else {
             setTimeout(() => {
-                void fetchCount();
+                void fetchCount({ force: true });
             }, 0);
         }
 
         const interval = setInterval(() => {
             if (document.visibilityState !== 'visible') return;
-            void fetchCount();
+            void fetchCount({ force: true });
         }, CACHE_TTL);
 
         const maybeRunFocusRefresh = async () => {
             const now = Date.now();
             if (now - lastFocusRefreshAtRef.current < FOCUS_REFRESH_COOLDOWN_MS) return;
+            if (now - lastSuccessfulFetchAtRef.current < CACHE_TTL) return;
             if (focusRefreshInFlightRef.current) return;
             focusRefreshInFlightRef.current = true;
 
             try {
-                await fetchCount();
-                // Keep expensive feed requests off generic focus events.
+                await fetchCount({ force: true });
                 if (window.location.pathname.startsWith('/alerts')) {
                     await showNewAlertToasts();
                 }
@@ -155,7 +183,7 @@ export function useUnreadNotifications() {
             void maybeRunFocusRefresh();
         };
         const onAlertsUpdated = () => {
-            void fetchCount();
+            void fetchCount({ force: true });
         };
 
         window.addEventListener('focus', onFocus);
@@ -170,5 +198,5 @@ export function useUnreadNotifications() {
         };
     }, [user, fetchCount, showNewAlertToasts]);
 
-    return { unreadCount, refresh: fetchCount };
+    return { unreadCount, refresh: () => fetchCount({ force: true }) };
 }

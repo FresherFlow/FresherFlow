@@ -20,8 +20,8 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_VISIBILITY_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_AUTH_VISIBILITY_REFRESH_COOLDOWN_MS || 300000);
+const SESSION_REVALIDATE_MS = Number(process.env.NEXT_PUBLIC_SESSION_REVALIDATE_MS || 30 * 60 * 1000);
 
-// ── Offline session cache ────────────────────────────────────────────────────
 const SESSION_CACHE_KEY = 'ff_cached_session_v1';
 
 type CachedSession = {
@@ -53,7 +53,10 @@ function clearCachedSession() {
     if (typeof window === 'undefined') return;
     try { localStorage.removeItem(SESSION_CACHE_KEY); } catch { /* empty */ }
 }
-// ─────────────────────────────────────────────────────────────────────────────
+
+function isCachedSessionFresh(cached: CachedSession | null) {
+    return Boolean(cached && Date.now() - cached.savedAt < SESSION_REVALIDATE_MS);
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -61,6 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
     const [isLoggingOut, setIsLoggingOut] = useState(false);
     const lastVisibilityRefreshAtRef = useRef(0);
+    const lastSuccessfulLoadAtRef = useRef(0);
 
     const logout = useCallback(async () => {
         if (isLoggingOut) return;
@@ -96,18 +100,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const silent = options?.silent === true;
         if (!silent) setIsLoading(true);
         try {
+            const cached = readCachedSession();
             if (typeof document !== 'undefined') {
                 const hasSession = document.cookie.includes('ff_logged_in=true');
                 if (!hasSession) {
                     const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
-                    if (isOffline) {
-                        const cached = readCachedSession();
-                        if (cached) {
-                            setUser(cached.user);
-                            setProfile(cached.profile);
-                            if (!silent) setIsLoading(false);
-                            return;
-                        }
+                    if (isOffline && cached) {
+                        setUser(cached.user);
+                        setProfile(cached.profile);
+                        lastSuccessfulLoadAtRef.current = cached.savedAt;
+                        if (!silent) setIsLoading(false);
+                        return;
                     }
                     setUser(null);
                     setProfile(null);
@@ -116,15 +119,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
             }
 
+            if (cached && isCachedSessionFresh(cached)) {
+                setUser(cached.user);
+                setProfile(cached.profile);
+                lastSuccessfulLoadAtRef.current = cached.savedAt;
+                if (!silent) setIsLoading(false);
+                return;
+            }
+
             const response = await authApi.me() as { user: User; profile: Profile };
             setUser(response.user);
             setProfile(response.profile);
             writeCachedSession(response.user, response.profile);
+            lastSuccessfulLoadAtRef.current = Date.now();
         } catch {
             const cached = readCachedSession();
             if (cached) {
                 setUser(cached.user);
                 setProfile(cached.profile);
+                lastSuccessfulLoadAtRef.current = cached.savedAt;
             } else {
                 setUser(null);
                 setProfile(null);
@@ -135,19 +148,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
 
     useEffect(() => {
-        loadUser();
+        void loadUser();
 
         const handleVisibilityChange = () => {
             if (document.visibilityState !== 'visible') return;
             const now = Date.now();
             if (now - lastVisibilityRefreshAtRef.current < AUTH_VISIBILITY_REFRESH_COOLDOWN_MS) return;
+            if (now - lastSuccessfulLoadAtRef.current < SESSION_REVALIDATE_MS) return;
             lastVisibilityRefreshAtRef.current = now;
             void loadUser({ silent: true });
         };
 
         const handleUnauthorized = () => {
             console.warn('[Auth] Session expired event received. Logging out.');
-            logout();
+            void logout();
         };
 
         if (typeof window !== 'undefined') {
@@ -166,6 +180,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(meResponse.user);
         setProfile(meResponse.profile);
         writeCachedSession(meResponse.user, meResponse.profile);
+        lastSuccessfulLoadAtRef.current = Date.now();
     }
 
     async function sendOtp(email: string) {
@@ -177,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(response.user);
         setProfile(response.profile as Profile);
         writeCachedSession(response.user, response.profile as Profile);
+        lastSuccessfulLoadAtRef.current = Date.now();
     }
 
     async function loginWithGoogle(token: string, source?: string, ref?: string) {
@@ -184,6 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(response.user);
         setProfile(response.profile as Profile);
         writeCachedSession(response.user, response.profile as Profile);
+        lastSuccessfulLoadAtRef.current = Date.now();
     }
 
     async function refreshUser() {

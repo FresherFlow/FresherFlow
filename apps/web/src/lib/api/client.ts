@@ -1,4 +1,5 @@
-import { AuthResponse, Profile, Admin, ActionType } from '@fresherflow/types';
+import { AuthResponse, Profile, Admin, ActionType } from '@fresherflow/types'; // Updated
+
 import type {
     PublicKeyCredentialCreationOptionsJSON,
     RegistrationResponseJSON,
@@ -14,6 +15,15 @@ export class OfflineError extends Error {
     constructor() {
         super('You are offline. Please check your connection.');
         this.name = 'OfflineError';
+    }
+}
+
+// Thrown when the session is definitely invalid (401 after refresh failed)
+export class UnauthorizedError extends Error {
+    statusCode = 401;
+    constructor(message = 'Session expired') {
+        super(message);
+        this.name = 'UnauthorizedError';
     }
 }
 
@@ -172,10 +182,12 @@ export async function apiClient<T = unknown>(
                 await isRefreshing;
                 // Retry original request
                 response = await fetchWithRetry();
-            } catch (error: any) {
-                // IMPORTANT: Only force logout if we are CERTAIN the session is dead (401/403).
-                // If it's a network error or a 5xx (build/deploy), do NOT logout.
-                const isExplicitAuthFailure = error?.status === 401 || error?.status === 403 || error?.message?.includes('Refresh failed');
+            } catch (err: unknown) {
+                const error = err as any;
+                // Only force logout when refresh proves the session is actually invalid.
+                // Transient refresh failures (timeouts, 5xx, deploy/network blips) should not
+                // wipe the user's session and send them back to login.
+                const isExplicitAuthFailure = error?.status === 401 || error?.status === 403;
                 const isNetworkError = error instanceof OfflineError || (error instanceof TypeError && error.message.includes('fetch'));
                 
                 if (isExplicitAuthFailure && !isNetworkError) {
@@ -183,7 +195,7 @@ export async function apiClient<T = unknown>(
                     if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('fresherflow-unauthorized'));
                     }
-                    throw new Error('Session expired');
+                    throw new UnauthorizedError();
                 }
                 
                 // Otherwise, let the original request fail normally without clearing the session.
@@ -249,18 +261,23 @@ export async function apiClient<T = unknown>(
         // Filter what we report to Sentry to reduce noise
         const err = error as { statusCode?: number; code?: string; message?: string };
         const isOffline = error instanceof OfflineError;
-        const isUnauthorized = err.statusCode === 401 || err.message?.includes('No token provided');
-        const isSafariLoadFailed = error instanceof TypeError && err.message === 'Load failed';
+        const isUnauthorized = error instanceof UnauthorizedError || err.statusCode === 401 || err.message?.includes('No token provided');
+        const isSafariLoadFailed = error instanceof TypeError && err.message === 'Load failed'; // Generic Safari error for network failures
+        const isCommonNetworkError = error instanceof TypeError && (
+            err.message?.includes('Failed to fetch') || 
+            err.message?.includes('NetworkError') || 
+            err.message?.includes('network error')
+        );
 
         // Only report to Sentry if it's a real server error (5xx), a timeout, 
         // or an unexpected non-network failure.
-        const shouldReport = !isOffline && !isUnauthorized && !isSafariLoadFailed &&
+        const shouldReport = !isOffline && !isUnauthorized && !isSafariLoadFailed && !isCommonNetworkError &&
             (err.statusCode != null && err.statusCode >= 500 || err.code === 'TIMEOUT' || (err.statusCode == null && !isOffline));
 
         if (shouldReport) {
             import('@sentry/nextjs').then(Sentry => {
                 Sentry.captureException(error, {
-                    extra: { endpoint, method }
+                    extra: { endpoint, method, statusCode: err.statusCode, code: err.code }
                 });
             });
         }
