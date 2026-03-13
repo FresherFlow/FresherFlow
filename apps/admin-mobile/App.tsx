@@ -2,6 +2,7 @@ import React from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
+import { View } from 'react-native';
 import { AuthProvider } from './src/context/AuthContext';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
@@ -13,12 +14,15 @@ initSentry();
 
 function ThemedApp() {
     const { mode } = useTheme();
+    const shellBackground = mode === 'dark' ? '#0d0f14' : '#e2eaf2';
     return (
         <ToastProvider>
-            <NavigationContainer>
-                <AppNavigator />
-                <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
-            </NavigationContainer>
+            <View style={{ flex: 1, backgroundColor: shellBackground }}>
+                <NavigationContainer>
+                    <AppNavigator />
+                    <StatusBar style={mode === 'dark' ? 'light' : 'dark'} backgroundColor={shellBackground} />
+                </NavigationContainer>
+            </View>
         </ToastProvider>
     );
 }

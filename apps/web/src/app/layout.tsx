@@ -67,7 +67,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     title: "FresherFlow",
-    statusBarStyle: "default"
+    statusBarStyle: "black-translucent"
   }
 };
 
@@ -157,4 +157,5 @@ export default function RootLayout({
     </html>
   );
 }
+
 
