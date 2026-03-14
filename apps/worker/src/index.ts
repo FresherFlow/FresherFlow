@@ -1,14 +1,13 @@
 import 'dotenv/config';
 import './bootstrap'; // explicit processor registration: do not remove
 import { Worker, Queue } from 'bullmq';
-import { logger } from '@fresherflow/logger';
 import {
     WORKER_DEFINITIONS,
     WORKER_QUEUE_NAMES,
     getQueueConnection,
 } from '@fresherflow/queue';
 import http from 'http';
-import { setupCleanLogging } from './utils/clean-logs';
+import { logger, setupCleanLogging } from '@fresherflow/logger';
 
 setupCleanLogging();
 

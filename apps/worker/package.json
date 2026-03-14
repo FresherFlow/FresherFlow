@@ -7,7 +7,8 @@
         "dev": "nodemon --exec \"npx ts-node\" src/index.ts",
         "build": "tsc",
         "start": "node dist/index.js",
-        "db:generate": "prisma generate --schema=../../packages/database/prisma/schema.prisma"
+        "db:generate": "prisma generate --schema=../../packages/database/prisma/schema.prisma",
+        "lint": "eslint \"src/**/*.ts\""
     },
     "dependencies": {
         "@fresherflow/config": "*",
@@ -26,6 +27,9 @@
         "nodemon": "^3.1.9",
         "ts-node": "^10.9.2",
         "@types/node": "^22.10.5",
-        "prisma": "^6.2.0"
+        "prisma": "^6.2.0",
+        "eslint": "^9.10.0",
+        "typescript-eslint": "^8.5.0",
+        "eslint-config-prettier": "^9.1.0"
     }
 }

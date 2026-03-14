@@ -77,3 +77,44 @@ export const log = {
 
 export const logger = defaultLogger;
 export default defaultLogger;
+
+/**
+ * Global utility to suppress noisy environment warnings (e.g. BullMQ eviction policy)
+ * and non-critical operational errors like health check ECONNRESETs.
+ */
+export function setupCleanLogging() {
+    const BANNED_MESSAGES = [
+        'Eviction policy is volatile-lru',
+        'Eviction policy is allkeys-lru',
+        'It should be "noeviction"'
+    ];
+
+    const BANNED_ERRORS = [
+        'ECONNRESET',
+        'ECONNREFUSED'
+    ];
+
+    const originalWarn = console.warn;
+    const originalError = console.error;
+
+    console.warn = (...args: any[]) => {
+        const msg = args.join(' ');
+        if (BANNED_MESSAGES.some(b => msg.includes(b))) return;
+        originalWarn(...args);
+    };
+
+    console.error = (...args: any[]) => {
+        const msg = args.join(' ');
+        // Suppress common health-check connection resets in production logs
+        if (BANNED_ERRORS.some(b => msg.includes(b)) && process.env.NODE_ENV === 'production') {
+            return;
+        }
+        originalError(...args);
+    };
+
+    // Also hook into process-level errors if needed
+    process.on('uncaughtException', (err) => {
+        if (BANNED_ERRORS.some(b => err.message.includes(b))) return;
+        logger.error('Uncaught Exception', { error: err });
+    });
+}
