@@ -1,25 +1,25 @@
 {
-    "name": "@fresherflow/types",
-    "version": "1.0.0",
-    "description": "Shared TypeScript types for Job Platform",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
-    "scripts": {
-        "build": "tsc",
-        "dev": "tsc --watch",
-        "typecheck": "tsc --noEmit",
-        "lint": "eslint \"src/**/*.ts\""
-    },
-    "keywords": [
-        "types",
-        "typescript"
-    ],
-    "author": "",
-    "license": "MIT",
-    "devDependencies": {
-        "typescript": "^5.7.3",
-        "eslint": "^9.10.0",
-        "typescript-eslint": "^8.5.0",
-        "eslint-config-prettier": "^9.1.0"
-    }
+    "name":  "@fresherflow/types",
+    "version":  "1.0.0",
+    "description":  "Shared TypeScript types for Job Platform",
+    "main":  "dist/index.js",
+    "types":  "dist/index.d.ts",
+    "scripts":  {
+                    "build":  "tsc",
+                    "dev":  "tsc --watch",
+                    "typecheck":  "tsc --noEmit",
+                    "lint":  "eslint ."
+                },
+    "keywords":  [
+                     "types",
+                     "typescript"
+                 ],
+    "author":  "",
+    "license":  "MIT",
+    "devDependencies":  {
+                            "typescript":  "^5.7.3",
+                            "eslint":  "^9.10.0",
+                            "typescript-eslint":  "^8.5.0",
+                            "eslint-config-prettier":  "^9.1.0"
+                        }
 }

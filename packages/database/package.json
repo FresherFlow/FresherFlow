@@ -1,23 +1,23 @@
 {
-    "name": "@fresherflow/database",
-    "version": "1.0.0",
-    "private": true,
-    "main": "./dist/index.js",
-    "types": "./dist/index.d.ts",
-    "scripts": {
-        "build": "prisma generate && tsc",
-        "db:generate": "prisma generate",
-        "db:push": "prisma db push",
-        "lint": "eslint \"src/**/*.ts\""
-    },
-    "dependencies": {
-        "@prisma/client": "^6.2.0"
-    },
-    "devDependencies": {
-        "prisma": "^6.2.0",
-        "typescript": "^5.7.3",
-        "eslint": "^9.10.0",
-        "typescript-eslint": "^8.5.0",
-        "eslint-config-prettier": "^9.1.0"
-    }
+    "name":  "@fresherflow/database",
+    "version":  "1.0.0",
+    "private":  true,
+    "main":  "./dist/index.js",
+    "types":  "./dist/index.d.ts",
+    "scripts":  {
+                    "build":  "prisma generate \u0026\u0026 tsc",
+                    "db:generate":  "prisma generate",
+                    "db:push":  "prisma db push",
+                    "lint":  "eslint ."
+                },
+    "dependencies":  {
+                         "@prisma/client":  "^6.2.0"
+                     },
+    "devDependencies":  {
+                            "prisma":  "^6.2.0",
+                            "typescript":  "^5.7.3",
+                            "eslint":  "^9.10.0",
+                            "typescript-eslint":  "^8.5.0",
+                            "eslint-config-prettier":  "^9.1.0"
+                        }
 }
