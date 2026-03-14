@@ -96,7 +96,7 @@ export enum LinkHealth {
 export interface User {
     id: string;
     email: string;
-    fullName: string;
+    fullName: string | null;
     role: Role;
     createdAt: Date;
     profile?: Profile;

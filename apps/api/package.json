@@ -18,7 +18,8 @@
         "test:watch": "vitest",
         "test:ui": "vitest --ui",
         "build:api": "npm run build",
-        "start:api": "npm run start"
+        "start:api": "npm run start",
+        "lint": "eslint \"src/**/*.ts\""
     },
     "keywords": [
         "jobs",
@@ -86,6 +87,9 @@
         "supertest": "^7.1.1",
         "vitest": "^4.0.18",
         "prisma": "^6.2.0",
-        "typescript": "^5.7.3"
+        "typescript": "^5.7.3",
+        "eslint": "^9.10.0",
+        "typescript-eslint": "^8.5.0",
+        "eslint-config-prettier": "^9.1.0"
     }
 }

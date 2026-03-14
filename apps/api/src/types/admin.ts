@@ -1,0 +1,50 @@
+import { OpportunityType, OpportunityStatus, EducationLevel, WorkMode, SalaryPeriod } from '@fresherflow/types';
+
+export interface AdminOpportunityRequest {
+    startDate?: string;
+    endDate?: string;
+    type?: OpportunityType;
+    status?: OpportunityStatus;
+    category?: 'job' | 'internship' | 'walk-in';
+    title: string;
+    company: string;
+    companyWebsite?: string;
+    description?: string;
+    allowedDegrees?: EducationLevel[];
+    allowedCourses?: string[];
+    allowedSpecializations?: string[];
+    allowedPassoutYears?: number[];
+    requiredSkills?: string[];
+    locations: string[];
+    workMode?: WorkMode;
+    salaryMin?: number;
+    salaryMax?: number;
+    salaryRange?: string;
+    stipend?: string;
+    salaryPeriod?: SalaryPeriod;
+    incentives?: string;
+    jobFunction?: string;
+    selectionProcess?: string;
+    notesHighlights?: string;
+    experienceMin?: number;
+    experienceMax?: number;
+    employmentType?: string;
+    sourceLink?: string;
+    applyLink?: string;
+    expiresAt?: string;
+    walkInDetails?: {
+        date?: string;
+        dates?: string[];
+        dateRange?: string;
+        timeRange?: string;
+        venueAddress?: string;
+        venue?: string;
+        venueLink?: string;
+        reportingTime?: string;
+        startTime?: string;
+        endTime?: string;
+        requiredDocuments?: string[];
+        contactPerson?: string;
+        contactPhone?: string;
+    };
+}
