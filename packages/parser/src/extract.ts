@@ -7,7 +7,7 @@ import * as natural from 'natural';
 import { City } from 'country-state-city';
 import {
     COMMON_SKILLS, COMMON_CITIES, KNOWN_COMPANIES, TITLE_KEYWORDS,
-    STOP_WORDS, GENERIC_TITLES, MONTH_INDEX,
+    STOP_WORDS, GENERIC_TITLES,
     splitMergedWords, isValidSkill,
 } from './heuristics';
 

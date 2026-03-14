@@ -1,7 +1,7 @@
 import { ingestionQueue } from '../index';
 import { logger } from '@fresherflow/logger';
 
-export async function enqueueIngestionPayload(payload: any) {
+export async function enqueueIngestionPayload(payload: Record<string, unknown>) {
     try {
         await ingestionQueue.add('save-ingestion', { payload }, {
             attempts: 3,

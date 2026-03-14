@@ -1,5 +1,4 @@
-import { Worker, Job } from 'bullmq';
-import { redis } from '@fresherflow/redis';
+import { Job } from 'bullmq';
 import { logger } from '@fresherflow/logger';
 import prisma from '@fresherflow/database';
 

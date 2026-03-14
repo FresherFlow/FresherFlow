@@ -26,9 +26,10 @@ export async function processTelegramJob(job: Job<TelegramJobData>): Promise<voi
         );
         const messageId = response?.data?.result?.message_id;
         logger.info('Telegram broadcast sent', { opportunityId, messageId });
-    } catch (error: any) {
-        const status = error?.response?.status;
-        const description = error?.response?.data?.description;
+    } catch (error: unknown) {
+        const err = error as { response?: { status?: number; data?: { description?: string } } };
+        const status = err?.response?.status;
+        const description = err?.response?.data?.description;
         logger.error('Telegram broadcast failed', { opportunityId, status, description });
         throw error; // BullMQ will retry
     }

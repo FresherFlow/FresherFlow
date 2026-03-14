@@ -33,6 +33,10 @@ const connection: RedisOptions = {
     tls: redis.options.tls as RedisOptions['tls'],
 };
 
+export async function enqueueIngestionPayload(payload: Record<string, unknown>) {
+    await ingestionQueue.add('ingestion-payload', payload);
+}
+
 export function getQueueConnection(): ConnectionOptions {
     return { ...connection } as ConnectionOptions;
 }

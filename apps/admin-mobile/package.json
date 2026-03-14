@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.ts",
   "scripts": {
-    "lint": "expo lint",
+    "lint": "eslint \"src/**/*.{ts,tsx}\" \"App.tsx\" \"index.ts\" --cache",
     "typecheck": "tsc --noEmit",
     "start": "expo start",
     "start:offline": "expo start --offline",

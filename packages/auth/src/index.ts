@@ -23,13 +23,11 @@ export interface AdminTokenPayload {
 // User Tokens
 export function generateAccessToken(userId: string): string {
     const expiry = '15m';
-    // @ts-ignore - JWT type issue
     return jwt.sign({ userId, type: 'access' }, getAccessSecret(), { expiresIn: expiry });
 }
 
 export function generateRefreshToken(userId: string): { token: string; hash: string } {
     const expiry = '90d';
-    // @ts-ignore - JWT type issue
     const token = jwt.sign({ userId, type: 'refresh' }, getRefreshSecret(), { expiresIn: expiry });
 
     // Hash for DB storage
@@ -65,7 +63,6 @@ export function hashRefreshToken(token: string): string {
 // Admin Tokens
 export function generateAdminToken(adminId: string): string {
     const expiry = '7d';
-    // @ts-ignore - JWT type issue
     return jwt.sign({ adminId, role: 'admin' }, getAccessSecret(), { expiresIn: expiry });
 }
 

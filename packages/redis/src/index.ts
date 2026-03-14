@@ -8,13 +8,13 @@ type MinimalRedisLike = {
         username?: string;
         tls?: unknown;
     };
-    on: (event: string, handler: (...args: any[]) => void) => MinimalRedisLike;
+    on: (event: string, handler: (...args: unknown[]) => void) => MinimalRedisLike;
     get: (key: string) => Promise<string | null>;
-    set: (...args: any[]) => Promise<'OK'>;
+    set: (...args: unknown[]) => Promise<'OK'>;
     setex: (key: string, seconds: number, value: string) => Promise<'OK'>;
     del: (...keys: string[]) => Promise<number>;
     keys: (pattern: string) => Promise<string[]>;
-    scan: (cursor: string, ...args: any[]) => Promise<[string, string[]]>;
+    scan: (cursor: string, ...args: unknown[]) => Promise<[string, string[]]>;
     incr: (key: string) => Promise<number>;
     expire: (key: string, seconds: number) => Promise<0 | 1>;
     pexpire: (key: string, milliseconds: number) => Promise<0 | 1>;
@@ -37,7 +37,7 @@ const createTestRedisClient = (): MinimalRedisLike => {
         async get(key: string) {
             return store.has(key) ? store.get(key)! : null;
         },
-        async set(...args: any[]) {
+        async set(...args: unknown[]) {
             const [key, value] = args;
             store.set(String(key), String(value));
             return 'OK';
@@ -102,10 +102,11 @@ const redisClientSingleton = () => {
         maxRetriesPerRequest: null,
     });
 
-    client.on('error', (err: any) => {
+    client.on('error', (err: unknown) => {
         // Suppress connection errors in dev — don't crash the process
         if (process.env.NODE_ENV !== 'production') {
-            console.warn('[redis] Connection error (dev):', err.message);
+            const message = err instanceof Error ? err.message : String(err);
+            console.warn('[redis] Connection error (dev):', message);
         }
     });
 

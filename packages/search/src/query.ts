@@ -1,4 +1,4 @@
-import { Opportunity, OpportunityStatus } from '@fresherflow/types';
+import { Opportunity } from '@fresherflow/types';
 import { prisma, Prisma } from '@fresherflow/database';
 import { logger } from '@fresherflow/logger';
 

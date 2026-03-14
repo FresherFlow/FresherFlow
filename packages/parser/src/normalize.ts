@@ -75,15 +75,15 @@ export function normalizeSalary(text: string): NormalizedSalary {
  */
 export function normalizeExpiry(text: string): string | undefined {
     const patterns = [
-        /(?:apply\s*by|last\s*date(?:\s*to\s*apply)?|deadline)\s*[:\-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
-        /(?:apply\s*before)\s*[:\-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
-        /(?:apply\s*by|last\s*date|deadline)\s*[:\-]?\s*(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})/i,
+        /(?:apply\s*by|last\s*date(?:\s*to\s*apply)?|deadline)\s*[:-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
+        /(?:apply\s*before)\s*[:-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
+        /(?:apply\s*by|last\s*date|deadline)\s*[:-]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
     ];
     for (const p of patterns) {
         const m = text.match(p);
         if (!m) continue;
         const raw = m[1];
-        if (/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/.test(raw)) {
+        if (/\d{1,2}[/-]\d{1,2}[/-]\d{2,4}/.test(raw)) {
             const parts = raw.replace(/-/g, '/').split('/').map(Number);
             if (parts.length === 3) {
                 const [d, mo, y] = parts;

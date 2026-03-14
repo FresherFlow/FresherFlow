@@ -26,10 +26,11 @@ async function sendExpoPush(data: PushJobData) {
             sound: 'default',
         });
         logger.info('Expo push notification sent', { userId: data.userId });
-    } catch (err: any) {
+    } catch (err: unknown) {
+        const error = err as { response?: { data?: unknown }; message?: string };
         logger.error('Expo push notification failed', {
             userId: data.userId,
-            error: err.response?.data || err.message
+            error: error.response?.data || error.message
         });
         // We don't throw here to avoid infinite BullMQ retries for invalid tokens
     }

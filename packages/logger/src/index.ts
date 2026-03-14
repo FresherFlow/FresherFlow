@@ -97,13 +97,13 @@ export function setupCleanLogging() {
     const originalWarn = console.warn;
     const originalError = console.error;
 
-    console.warn = (...args: any[]) => {
+    console.warn = (...args: unknown[]) => {
         const msg = args.join(' ');
         if (BANNED_MESSAGES.some(b => msg.includes(b))) return;
         originalWarn(...args);
     };
 
-    console.error = (...args: any[]) => {
+    console.error = (...args: unknown[]) => {
         const msg = args.join(' ');
         // Suppress common health-check connection resets in production logs
         if (BANNED_ERRORS.some(b => msg.includes(b)) && process.env.NODE_ENV === 'production') {

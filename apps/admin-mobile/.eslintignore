@@ -2,5 +2,9 @@ node_modules/
 dist/
 .expo/
 .turbo/
+assets/
 build/
+*.txt
 *.log
+*.js
+!src/**/*.js

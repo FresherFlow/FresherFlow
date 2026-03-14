@@ -5,7 +5,7 @@
     "main":  "./dist/index.js",
     "types":  "./dist/index.d.ts",
     "scripts":  {
-                    "build":  "prisma generate \u0026\u0026 tsc",
+                    "build":  "prisma generate && tsc",
                     "db:generate":  "prisma generate",
                     "db:push":  "prisma db push",
                     "lint":  "eslint ."
@@ -21,3 +21,4 @@
                             "eslint-config-prettier":  "^9.1.0"
                         }
 }
+
