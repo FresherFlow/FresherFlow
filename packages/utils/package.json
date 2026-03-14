@@ -12,6 +12,7 @@
         "dev": "tsc -w"
     },
     "dependencies": {
+        "@fresherflow/parser": "*",
         "compromise": "^14.14.5",
         "natural": "^8.1.0",
         "country-state-city": "^3.2.1"
