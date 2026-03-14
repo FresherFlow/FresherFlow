@@ -1,6 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
-import { logger } from '@fresherflow/logger';
+import { logger, setupCleanLogging } from '@fresherflow/logger';
+
+setupCleanLogging();
 
 import { startIngestionScheduler } from './scheduler';
 
