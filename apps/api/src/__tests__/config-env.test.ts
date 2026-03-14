@@ -23,4 +23,33 @@ describe('config env parsing', () => {
             )
         ).not.toThrow();
     });
+
+    it('normalizes flexible APP_MODE values for single-render deployments', () => {
+        const cwd = path.resolve(__dirname, '..', '..');
+
+        const run = (appMode: string) =>
+            execFileSync(
+                process.execPath,
+                [
+                    '-e',
+                    "const { env } = require('@fresherflow/config'); process.stdout.write(env.APP_MODE);",
+                ],
+                {
+                    cwd,
+                    env: {
+                        ...process.env,
+                        NODE_ENV: 'test',
+                        APP_MODE: appMode,
+                        JWT_ACCESS_SECRET: 'test-access-secret',
+                        JWT_REFRESH_SECRET: 'test-refresh-secret',
+                    },
+                    stdio: 'pipe',
+                }
+            ).toString();
+
+        expect(run('ALL')).toBe('all');
+        expect(run(' user admin ')).toBe('all');
+        expect(run('user,admin')).toBe('all');
+        expect(run('admin')).toBe('admin');
+    });
 });

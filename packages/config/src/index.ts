@@ -1,6 +1,26 @@
 import { z } from 'zod';
 
 const nodeEnvSchema = z.enum(['development', 'test', 'production']).default('development');
+const appModeSchema = z.preprocess((value) => {
+    if (typeof value !== 'string') return value;
+
+    const normalized = value.trim().toLowerCase();
+    if (!normalized) return 'all';
+    if (normalized === 'user' || normalized === 'admin' || normalized === 'all') return normalized;
+    if (['both', 'full', 'combined'].includes(normalized)) return 'all';
+
+    const collapsed = normalized.replace(/[\s,_-]+/g, '');
+    if (collapsed === 'useradmin' || collapsed === 'adminuser') return 'all';
+
+    const tokens = normalized
+        .split(/[\s,|+/]+/)
+        .map((token) => token.trim())
+        .filter(Boolean);
+
+    if (tokens.includes('user') && tokens.includes('admin')) return 'all';
+
+    return normalized;
+}, z.enum(['user', 'admin', 'all']).default('all'));
 
 const envSchema = z.object({
     NODE_ENV: nodeEnvSchema,
@@ -13,7 +33,7 @@ const envSchema = z.object({
     FRONTEND_URL: z.string().optional(),
     FRONTEND_URLS: z.string().optional(),
     SENTRY_DSN: z.string().optional(),
-    APP_MODE: z.enum(['user', 'admin', 'all']).default('all'),
+    APP_MODE: appModeSchema,
 }).superRefine((value, ctx) => {
     if (value.NODE_ENV !== 'test' && !value.DATABASE_URL) {
         ctx.addIssue({
