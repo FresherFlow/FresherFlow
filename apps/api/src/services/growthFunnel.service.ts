@@ -20,6 +20,20 @@ export type GrowthWindow = '24h' | '7d' | '30d' | 'all';
 
 type SourceCounters = Record<FunnelEvent, number>;
 
+type GrowthEventStore = {
+    create: (args: {
+        data: {
+            source: string;
+            event: GrowthFunnelEvent;
+        };
+    }) => Promise<unknown>;
+    groupBy: (args: unknown) => Promise<Array<{
+        source: string;
+        event: GrowthFunnelEvent;
+        _count: { _all: number };
+    }>>;
+};
+
 // Safety fallback when DB migration is pending/unavailable.
 const fallbackSourceMetrics = new Map<string, SourceCounters>();
 
@@ -72,6 +86,11 @@ function fallbackRecord(source: string, event: FunnelEvent) {
     fallbackSourceMetrics.set(source, existing);
 }
 
+function getGrowthEventStore(): GrowthEventStore | null {
+    const candidate = (prisma as unknown as { growthEvent?: GrowthEventStore }).growthEvent;
+    return candidate ?? null;
+}
+
 function toDateRange(window: GrowthWindow): Date | null {
     if (window === 'all') return null;
     const now = Date.now();
@@ -120,8 +139,14 @@ export async function recordGrowthEvent(source?: string, event?: string) {
     const normalizedEvent = normalizeEvent(event);
     if (!normalizedEvent) return;
 
+    const growthEventStore = getGrowthEventStore();
+    if (!growthEventStore) {
+        fallbackRecord(sanitizedSource, normalizedEvent);
+        return;
+    }
+
     try {
-        await prisma.growthEvent.create({
+        await growthEventStore.create({
             data: {
                 source: sanitizedSource,
                 event: normalizedEvent as GrowthFunnelEvent
@@ -143,9 +168,14 @@ export async function recordAuthSuccess(source?: string, isSignup = false) {
 export async function getGrowthFunnelMetrics(window: GrowthWindow = '30d') {
     const since = toDateRange(window);
     const fallbackRows = Array.from(fallbackSourceMetrics.entries()).map(([source, counters]) => ({ source, counters }));
+    const growthEventStore = getGrowthEventStore();
+
+    if (!growthEventStore) {
+        return formatRows(fallbackRows);
+    }
 
     try {
-        const grouped = await prisma.growthEvent.groupBy({
+        const grouped = await growthEventStore.groupBy({
             by: ['source', 'event'],
             ...(since ? { where: { createdAt: { gte: since } } } : {}),
             _count: { _all: true }

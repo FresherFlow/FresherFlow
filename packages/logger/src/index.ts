@@ -30,7 +30,13 @@ const consoleFormat = winston.format.printf(({ level, message, timestamp, reques
     const renderLevel = (levelStyles[level] || chalk.white)(level.toUpperCase().padEnd(5));
     const metaEntries = Object.keys(meta).length > 0 ? chalk.dim(JSON.stringify(sanitizeMeta(meta as Record<string, unknown>))) : '';
 
-    return `${time} ${svc} ${renderLevel} ${chalk.white(String(message))} ${reqId} ${metaEntries}`.trim();
+    const baseLog = `${time} ${svc} ${renderLevel} ${chalk.white(String(message))} ${reqId} ${metaEntries}`.trim();
+
+    if (level === 'error') {
+        return `\n${chalk.red('╔════════════════════ ERROR ════════════════════')}\n${baseLog}\n${chalk.red('╚══════════════════════════════════════════════')}\n`;
+    }
+
+    return baseLog;
 });
 
 export const createLogger = (serviceName: string) => {

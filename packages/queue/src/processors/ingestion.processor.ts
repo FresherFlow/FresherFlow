@@ -5,13 +5,14 @@ import prisma from '@fresherflow/database';
 
 export async function processIngestionJob(job: Job) {
     try {
-        logger.info(`Processing ingestion job ${job.id}`);
-        // Create a draft opportunity or raw payload in the DB
         const payload = job.data.payload;
+        const sourceId = payload.sourceId || 'SYSTEM_DEFAULT';
+        
+        logger.info(`Processing ingestion job ${job.id} for source ${sourceId}`, { payload });
 
         await prisma.rawOpportunity.create({
             data: {
-                sourceId: payload.sourceId || 'SYSTEM_DEFAULT', // Fallback or defined static
+                sourceId,
                 rawPayload: payload.rawPayload,
                 title: payload.title,
                 company: payload.company,

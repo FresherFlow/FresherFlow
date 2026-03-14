@@ -1,61 +1,95 @@
 import 'dotenv/config';
-import './bootstrap'; // explicit processor registration — do not remove
-import { Worker } from 'bullmq';
-import { redis } from '@fresherflow/redis';
+import './bootstrap'; // explicit processor registration: do not remove
+import { Worker, Queue } from 'bullmq';
 import { logger } from '@fresherflow/logger';
-import { setupSearchIndex } from '@fresherflow/search';
 import {
-    processEmailJob,
-    processCronJob,
-    processPushJob,
-    processTelegramJob,
-    processSearchJob,
-    processIngestionJob,
+    WORKER_DEFINITIONS,
+    WORKER_QUEUE_NAMES,
+    getQueueConnection,
 } from '@fresherflow/queue';
 import http from 'http';
+import { setupCleanLogging } from './utils/clean-logs';
 
-const connection = {
-    host: redis.options.host,
-    port: redis.options.port,
-    password: redis.options.password,
-    username: redis.options.username,
-    tls: redis.options.tls,
-};
+setupCleanLogging();
+
+const connection = getQueueConnection();
+const startedAt = new Date().toISOString();
 
 logger.info('Starting FresherFlow Background Worker...');
 
-// Ensure search indices exist on boot
-setupSearchIndex().catch((err: any) => {
-    logger.error('Failed to setup search index on boot:', err);
-});
+// Per-queue concurrency — default 2; email/push can handle more concurrency.
+const CONCURRENCY: Record<string, number> = {
+    email: 5,
+    push: 5,
+    cron: 1,
+    telegram: 2,
+    ingestion: 2,
+};
 
-// BullMQ Workers
-const emailWorker = new Worker('email', async (job) => { await processEmailJob(job); }, { connection });
-const cronWorker = new Worker('cron', async (job) => { await processCronJob(job); }, { connection });
-const pushWorker = new Worker('push', async (job) => { await processPushJob(job); }, { connection });
-const telegramWorker = new Worker('telegram', async (job) => { await processTelegramJob(job); }, { connection });
-const searchWorker = new Worker('search', async (job) => { await processSearchJob(job); }, { connection });
-const ingestionWorker = new Worker('ingestion', async (job) => { await processIngestionJob(job); }, { connection });
+const workers = WORKER_DEFINITIONS.map(({ name, handler }) => ({
+    name,
+    worker: new Worker(
+        name,
+        async (job) => { await handler(job); },
+        { connection, concurrency: CONCURRENCY[name] ?? 2 },
+    ),
+}));
+
+// One Queue reference per name for health reporting (read-only, no processing)
+const queues = WORKER_QUEUE_NAMES.map(name => ({ name, queue: new Queue(name, { connection }) }));
 
 // Event listeners
-for (const [name, worker] of [
-    ['email', emailWorker],
-    ['cron', cronWorker],
-    ['push', pushWorker],
-    ['telegram', telegramWorker],
-    ['search', searchWorker],
-    ['ingestion', ingestionWorker],
-] as const) {
-    worker.on('completed', (job) => logger.info(`[${name}] job ${job.id} completed`));
-    worker.on('failed', (job, err) => logger.error(`[${name}] job ${job?.id} failed: ${err.message}`));
+for (const { name, worker } of workers) {
+    worker.on('completed', (job) =>
+        logger.info(`[${name}] job ${job.id} completed`, { queue: name, jobId: job.id }),
+    );
+    worker.on('failed', (job, err) =>
+        logger.error(`[${name}] job ${job?.id} failed`, { queue: name, jobId: job?.id, error: err.message }),
+    );
+    worker.on('error', (err) =>
+        logger.error(`[${name}] worker error`, { queue: name, error: err.message }),
+    );
 }
 
-// Minimal HTTP health server — Render free-tier web services require a port binding.
-// Without this, Render kills the process thinking it failed to start.
+// Health endpoint — includes per-queue backlog and failed counts
+// Required by Render to keep the free-tier web service alive.
 const PORT = parseInt(process.env.PORT || '5001', 10);
-http.createServer((_, res) => {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', service: 'fresherflow-worker' }));
+
+http.createServer(async (_, res) => {
+    try {
+        const queueStats = await Promise.allSettled(
+            queues.map(async ({ name, queue }) => {
+                const [waiting, active, failed] = await Promise.all([
+                    queue.getWaitingCount(),
+                    queue.getActiveCount(),
+                    queue.getFailedCount(),
+                ]);
+                return { name, waiting, active, failed };
+            }),
+        );
+
+        const stats = queueStats.map((r) => {
+            if (r.status === 'fulfilled') return r.value;
+            logger.warn(`Failed to fetch stats for queue: ${r.reason?.message || 'unknown error'}`);
+            return { name: 'unknown', error: r.reason?.message || 'unknown error' };
+        });
+
+        const totalFailed = stats.reduce((acc, s) => acc + (('failed' in s ? (s.failed as number) : 0)), 0);
+        const totalWaiting = stats.reduce((acc, s) => acc + (('waiting' in s ? (s.waiting as number) : 0)), 0);
+
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+            status: 'ok',
+            service: 'fresherflow-worker',
+            startedAt,
+            uptime: Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000),
+            summary: { totalWaiting, totalFailed },
+            queues: stats,
+        }));
+    } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ status: 'error', error: err instanceof Error ? err.message : 'unknown' }));
+    }
 }).listen(PORT, () => {
     logger.info(`Worker health server listening on port ${PORT}`);
 });
@@ -63,12 +97,8 @@ http.createServer((_, res) => {
 async function shutdown() {
     logger.info('Shutting down workers...');
     await Promise.all([
-        emailWorker.close(),
-        cronWorker.close(),
-        pushWorker.close(),
-        telegramWorker.close(),
-        searchWorker.close(),
-        ingestionWorker.close(),
+        ...workers.map(({ worker }) => worker.close()),
+        ...queues.map(({ queue }) => queue.close()),
     ]);
     process.exit(0);
 }

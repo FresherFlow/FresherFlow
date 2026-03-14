@@ -1,10 +1,9 @@
-import prisma from '../../lib/prisma';
+import prisma, { Prisma } from '../../lib/prisma';
 
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { EligibilityService } from '../eligibility/eligibility.service';
 import { generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
-import { enqueueIndexOpportunity } from '@fresherflow/queue';
-import { searchOpportunitiesQuery } from '@fresherflow/search';
+import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '@fresherflow/search';
 import { logger } from '@fresherflow/logger';
 
 /**
@@ -19,40 +18,13 @@ import { logger } from '@fresherflow/logger';
 
 export class OpportunityService {
     /**
-     * Search Opportunities using Meilisearch.
+     * Search Opportunities using PostgreSQL Full-Text Search.
      */
-    static async searchOpportunities(query: string, options: {
-        filterType?: string;
-        limit?: number;
-        offset?: number;
-        locations?: string[];
-    } = {}) {
+    static async searchOpportunities(query: string, options: SearchOptions = {}): Promise<SearchResult> {
         return searchOpportunitiesQuery(query, options);
     }
 
-    private static async enqueueSearchUpdate(action: 'UPSERT' | 'DELETE', opp: any) {
-        try {
-            await enqueueIndexOpportunity({
-                action,
-                opportunity: {
-                    id: opp.id,
-                    title: opp.title,
-                    company: opp.company,
-                    description: opp.description,
-                    role: opp.role,
-                    locations: opp.locations,
-                    skills: opp.skills,
-                    allowedPassoutYears: opp.allowedPassoutYears,
-                    academicDegrees: opp.academicDegrees,
-                    type: opp.type,
-                    createdAt: opp.createdAt?.getTime(),
-                    deadline: opp.deadline?.getTime() || null,
-                }
-            });
-        } catch (e) {
-            logger.error(`Failed to enqueue search update for ${opp?.id}`, e);
-        }
-    }
+
 
     /**
      * Create new opportunity (starts as DRAFT)
@@ -76,9 +48,7 @@ export class OpportunityService {
             },
         });
 
-        if (created.status === OpportunityStatus.PUBLISHED) {
-            await this.enqueueSearchUpdate('UPSERT', created);
-        }
+
         return created;
     }
 
@@ -110,7 +80,6 @@ export class OpportunityService {
             },
         });
 
-        await this.enqueueSearchUpdate('UPSERT', published);
         return published;
     }
 
@@ -154,9 +123,6 @@ export class OpportunityService {
             },
         });
 
-        if (updated.status === OpportunityStatus.PUBLISHED) {
-            await this.enqueueSearchUpdate('UPSERT', updated);
-        }
         return updated;
     }
 
@@ -186,7 +152,7 @@ export class OpportunityService {
             },
         });
 
-        await this.enqueueSearchUpdate('DELETE', { id });
+
         return deleted;
     }
 
@@ -201,7 +167,6 @@ export class OpportunityService {
             },
         });
 
-        await this.enqueueSearchUpdate('DELETE', { id });
         return expired;
     }
 
@@ -246,15 +211,64 @@ export class OpportunityService {
             throw new Error('Profile not found - complete profile setup first');
         }
 
-        // Get all active, non-deleted opportunities
+        // Build dynamic filters based on profile preferences
+        const andConditions: Prisma.OpportunityWhereInput[] = [
+            { status: OpportunityStatus.PUBLISHED },
+            { deletedAt: null },
+            {
+                OR: [
+                    { expiresAt: null }, 
+                    { expiresAt: { gt: new Date() } },
+                ],
+            }
+        ];
+
+        // Hard Gate: Engineering/Degree Match
+        andConditions.push({
+            OR: [
+                { allowedDegrees: { has: profile.educationLevel as any } },
+                { allowedDegrees: { isEmpty: true } }
+            ]
+        });
+
+        // Hard Gate: Batch/Passout Year Match
+        andConditions.push({
+            OR: [
+                { allowedPassoutYears: { has: profile.gradYear || 0 } },
+                { allowedPassoutYears: { isEmpty: true } }
+            ]
+        });
+
+        // Preference Filter: Opportunity Type
+        if (profile.interestedIn && profile.interestedIn.length > 0) {
+            andConditions.push({
+                type: { in: profile.interestedIn as any }
+            });
+        }
+
+        // Preference Filter: Work Mode
+        if (profile.workModes && profile.workModes.length > 0) {
+            andConditions.push({
+                OR: [
+                    { workMode: { in: profile.workModes as any } },
+                    { workMode: null }
+                ]
+            });
+        }
+
+        // Preference Filter: Locations
+        if (profile.preferredCities && profile.preferredCities.length > 0) {
+            andConditions.push({
+                OR: [
+                    { locations: { hasSome: profile.preferredCities } },
+                    { locations: { isEmpty: true } }
+                ]
+            });
+        }
+
         const opportunities = await prisma.opportunity.findMany({
             where: {
-                status: OpportunityStatus.PUBLISHED,
-                deletedAt: null,
-                OR: [
-                    { expiresAt: null }, // No expiry date
-                    { expiresAt: { gt: new Date() } }, // Not yet expired
-                ],
+                AND: andConditions
             },
             include: {
                 walkInDetails: true,

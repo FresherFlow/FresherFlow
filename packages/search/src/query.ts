@@ -1,105 +1,113 @@
-import { prisma } from '@fresherflow/database';
+import { Opportunity, OpportunityStatus } from '@fresherflow/types';
+import { prisma, Prisma } from '@fresherflow/database';
 import { logger } from '@fresherflow/logger';
 
 export interface SearchOptions {
     filterType?: string;
     limit?: number;
     offset?: number;
+    cursor?: string; // ISO string of postedAt for keyset pagination
     locations?: string[];
+    // Admin-specific filters
+    statuses?: string[];
+    includeDeleted?: boolean;
+    includeExpired?: boolean;
+}
+
+export interface OpportunitySearchHit extends Partial<Opportunity> {
+    id: string;
+    slug: string;
+    title: string;
+    company: string;
+    postedAt: Date;
+    rank?: number;
 }
 
 export interface SearchResult {
-    hits: any[];
+    hits: OpportunitySearchHit[];
     totalHits: number;
     query: string;
+    nextCursor?: string;
 }
 
 /**
  * Searches opportunities using PostgreSQL full-text search (tsvector/tsquery).
- * Uses the GIN indexes already on the Opportunity table.
- * No external search service required.
+ * Uses keyset (cursor) pagination for stable O(log n) scrolling.
+ * Count queries use baseConditions (no cursor) for accurate totals.
  */
 export async function searchOpportunitiesQuery(
     query: string,
     options: SearchOptions = {}
 ): Promise<SearchResult> {
-    const { filterType, limit = 20, offset = 0, locations } = options;
+    const {
+        filterType,
+        limit = 20,
+        offset = 0,
+        cursor,
+        locations,
+        statuses = ['PUBLISHED'],
+        includeDeleted = false,
+        includeExpired = false,
+    } = options;
 
     try {
-        // Build WHERE conditions
-        const conditions: string[] = [
-            `"deletedAt" IS NULL`,
-            `"expiredAt" IS NULL`,
-            `status = 'PUBLISHED'`,
-        ];
+        // baseConditions: stable filters used for count queries (no cursor)
+        const baseConditions: Prisma.Sql[] = [];
+        if (!includeDeleted) baseConditions.push(Prisma.sql`"deletedAt" IS NULL`);
+        if (!includeExpired) baseConditions.push(Prisma.sql`"expiredAt" IS NULL`);
+        if (statuses.length > 0) baseConditions.push(Prisma.sql`status::text = ANY(${statuses})`);
+        if (filterType) baseConditions.push(Prisma.sql`type = ${filterType}`);
+        if (locations && locations.length > 0) baseConditions.push(Prisma.sql`locations && ${locations}::text[]`);
 
-        if (filterType) {
-            conditions.push(`type = '${filterType}'`);
-        }
+        // pageConditions: adds cursor for keyset pagination
+        const pageConditions: Prisma.Sql[] = [...baseConditions];
+        if (cursor) pageConditions.push(Prisma.sql`"postedAt" < ${new Date(cursor)}`);
 
-        if (locations && locations.length > 0) {
-            const locList = locations.map(l => `'${l.replace(/'/g, "''")}'`).join(', ');
-            conditions.push(`locations && ARRAY[${locList}]::text[]`);
-        }
 
-        const whereClause = conditions.join(' AND ');
+        const searchExpr = query && query.trim().length > 0
+            ? Prisma.sql`search_vector @@ plainto_tsquery('english', ${query.trim()})`
+            : null;
 
-        let results: any[];
-        let countResult: any[];
+        const allPageConditions = [...pageConditions];
+        if (searchExpr) allPageConditions.push(searchExpr);
 
-        if (query && query.trim().length > 0) {
-            // Use PostgreSQL FTS — searches title + company + description
-            results = await prisma.$queryRawUnsafe(`
-                SELECT id, slug, title, company, type, "workMode", locations,
-                       "salaryMin", "salaryMax", "salaryRange", "postedAt", "expiresAt",
-                       "companyLogoUrl", "allowedDegrees", "requiredSkills",
-                       ts_rank(
-                         to_tsvector('english', coalesce(title,'') || ' ' || coalesce(company,'') || ' ' || coalesce(description,'')),
-                         plainto_tsquery('english', $1)
-                       ) AS rank
-                FROM "Opportunity"
-                WHERE ${whereClause}
-                  AND to_tsvector('english', coalesce(title,'') || ' ' || coalesce(company,'') || ' ' || coalesce(description,''))
-                      @@ plainto_tsquery('english', $1)
-                ORDER BY rank DESC, "postedAt" DESC
-                LIMIT $2 OFFSET $3
-            `, query, limit, offset);
+        const allBaseConditions = [...baseConditions];
+        if (searchExpr) allBaseConditions.push(searchExpr);
 
-            countResult = await prisma.$queryRawUnsafe(`
-                SELECT COUNT(*) as count FROM "Opportunity"
-                WHERE ${whereClause}
-                  AND to_tsvector('english', coalesce(title,'') || ' ' || coalesce(company,'') || ' ' || coalesce(description,''))
-                      @@ plainto_tsquery('english', $1)
-            `, query);
-        } else {
-            // No query — return latest published
-            results = await prisma.$queryRawUnsafe(`
-                SELECT id, slug, title, company, type, "workMode", locations,
-                       "salaryMin", "salaryMax", "salaryRange", "postedAt", "expiresAt",
-                       "companyLogoUrl", "allowedDegrees", "requiredSkills"
-                FROM "Opportunity"
-                WHERE ${whereClause}
-                ORDER BY "postedAt" DESC
-                LIMIT $1 OFFSET $2
-            `, limit, offset);
+        const whereClause = allPageConditions.length > 0
+            ? Prisma.sql`WHERE ${Prisma.join(allPageConditions, ' AND ')}`
+            : Prisma.empty;
 
-            countResult = await prisma.$queryRawUnsafe(`
-                SELECT COUNT(*) as count FROM "Opportunity"
-                WHERE ${whereClause}
-            `);
-        }
+        const countWhere = allBaseConditions.length > 0
+            ? Prisma.sql`WHERE ${Prisma.join(allBaseConditions, ' AND ')}`
+            : Prisma.empty;
 
-        const totalHits = Number(countResult[0]?.count ?? 0);
+        let hits: OpportunitySearchHit[] = [];
+        let totalHits = 0;
 
-        logger.debug(`PG FTS search "${query}" → ${results.length} hits (total: ${totalHits})`);
+        hits = await prisma.$queryRaw<OpportunitySearchHit[]>`
+            SELECT id, slug, title, company, type, "workMode", locations,
+                   "salaryMin", "salaryMax", "salaryRange", "postedAt", "expiresAt",
+                   "companyLogoUrl", "allowedDegrees", "requiredSkills", status
+                   ${searchExpr ? Prisma.sql`, ts_rank(search_vector, plainto_tsquery('english', ${query.trim()})) AS rank` : Prisma.empty}
+            FROM "Opportunity"
+            ${whereClause}
+            ORDER BY ${searchExpr ? Prisma.sql`rank DESC,` : Prisma.empty} "postedAt" DESC
+            OFFSET ${offset}
+            LIMIT ${limit}
+        `;
 
-        return {
-            hits: results,
-            totalHits,
-            query,
-        };
-    } catch (e: any) {
-        logger.error('PostgreSQL FTS search failed:', e.message);
+        const countResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
+            SELECT COUNT(*) as count FROM "Opportunity" ${countWhere}
+        `;
+        totalHits = Number(countResult[0]?.count ?? 0);
+
+
+        const nextCursor = hits.length > 0 ? hits[hits.length - 1].postedAt.toISOString() : undefined;
+
+        return { hits, totalHits, query, nextCursor };
+    } catch (err: unknown) {
+        logger.error('Search query failed:', err);
         throw new Error('Search failed');
     }
 }

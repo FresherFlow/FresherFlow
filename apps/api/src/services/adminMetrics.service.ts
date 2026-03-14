@@ -2,8 +2,12 @@ import prisma from '../lib/prisma';
 import { Prisma } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { getObservabilityMetrics } from '../middleware/observability';
+import redis from '@fresherflow/redis';
 
 export type MetricsWindow = '24h' | '7d' | '30d';
+
+const CACHE_KEY_PREFIX = 'admin:metrics:v2:';
+const CACHE_TTL_SECONDS = 300; // 5 minutes
 
 type RouteMetric = {
     route: string;
@@ -76,8 +80,7 @@ type MetricsV2Response = {
     }>;
 };
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
-const cache = new Map<MetricsWindow, { expiresAt: number; data: MetricsV2Response }>();
+// Local cache removal in favor of Redis
 
 function toWindowStart(window: MetricsWindow): Date {
     const now = Date.now();
@@ -116,17 +119,19 @@ function toPercent(numerator: number, denominator: number): number {
     return Math.round((numerator / denominator) * 100);
 }
 
-export function clearAdminMetricsCache() {
-    cache.clear();
+export async function clearAdminMetricsCache() {
+    const keys = ['24h', '7d', '30d'].map(w => CACHE_KEY_PREFIX + w);
+    await Promise.all(keys.map(k => redis.del(k)));
 }
 
 export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV2Response> {
-    const nowMs = Date.now();
-    const cached = cache.get(window);
-    if (cached && cached.expiresAt > nowMs) {
-        return cached.data;
-    }
+    const cacheKey = CACHE_KEY_PREFIX + window;
+    try {
+        const cached = await redis.get(cacheKey);
+        if (cached) return JSON.parse(cached);
+    } catch { /* ignore cache read error */ }
 
+    const nowMs = Date.now();
     const now = new Date();
     const oneDayAgo = new Date(nowMs - 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(nowMs - 7 * 24 * 60 * 60 * 1000);
@@ -142,13 +147,9 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
     };
 
     const [
-        published,
-        drafts,
-        deleted,
-        expired,
-        live,
-        liveWalkins,
-        new24h,
+        statusStats,
+        deletedCount,
+        new24hCount,
         linkHealthStats,
         applications30d,
         newUsers30d,
@@ -159,23 +160,18 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
         savedWindow,
         channelSources30d,
         recentListings,
-        actionUsers14d,
-        savedUsers14d,
-        clickUsers14d,
-        alertUsers14d,
+        actionUsers14dCount,
+        savedUsers14dCount,
+        clickUsers14dCount,
+        alertUsers14dCount,
     ] = await Promise.all([
-        prisma.opportunity.count({ where: { status: OpportunityStatus.PUBLISHED, deletedAt: null } }),
-        prisma.opportunity.count({ where: { status: OpportunityStatus.DRAFT, deletedAt: null } }),
-        prisma.opportunity.count({ where: { deletedAt: { not: null } } }),
-        prisma.opportunity.count({
-            where: {
-                status: OpportunityStatus.PUBLISHED,
-                deletedAt: null,
-                OR: [{ expiredAt: { not: null } }, { expiresAt: { lte: now } }],
-            },
+        // Consolidate listing counts
+        prisma.opportunity.groupBy({
+            by: ['status'],
+            _count: true,
+            where: { deletedAt: null }
         }),
-        prisma.opportunity.count({ where: liveWhere }),
-        prisma.opportunity.count({ where: { ...liveWhere, type: OpportunityType.WALKIN } }),
+        prisma.opportunity.count({ where: { deletedAt: { not: null } } }),
         prisma.opportunity.count({
             where: {
                 deletedAt: null,
@@ -235,21 +231,52 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
                 postedAt: true,
             },
         }),
-        prisma.userAction.findMany({
+        // Efficient distinct user counts for DAU/WAU
+        prisma.userAction.groupBy({
+            by: ['userId'],
             where: { createdAt: { gte: fourteenDaysAgo } },
-            select: { userId: true, createdAt: true },
+            _max: { createdAt: true }
         }),
-        prisma.savedOpportunity.findMany({
+        prisma.savedOpportunity.groupBy({
+            by: ['userId'],
             where: { createdAt: { gte: fourteenDaysAgo } },
-            select: { userId: true, createdAt: true },
+            _max: { createdAt: true }
         }),
-        prisma.opportunityClick.findMany({
+        prisma.opportunityClick.groupBy({
+            by: ['userId'],
             where: { createdAt: { gte: fourteenDaysAgo }, userId: { not: null } },
-            select: { userId: true, createdAt: true },
+            _max: { createdAt: true }
         }),
-        prisma.alertDelivery.findMany({
+        prisma.alertDelivery.groupBy({
+            by: ['userId'],
             where: { sentAt: { gte: fourteenDaysAgo } },
-            select: { userId: true, sentAt: true },
+            _count: true
+        }),
+    ]);
+
+    // Process status stats
+    const stats: Record<string, number> = { PUBLISHED: 0, DRAFT: 0, ARCHIVED: 0 };
+    for (const s of statusStats) {
+        if (s.status) stats[s.status] = s._count;
+    }
+
+    const published = stats.PUBLISHED || 0;
+    const drafts = stats.DRAFT || 0;
+    const deleted = deletedCount;
+    const new24h = new24hCount;
+
+    // Live counts still need a specific query if complexity grows, but for now we can approximate
+    // or keep the specific liveWhere query if needed. 
+    // Actually, let's just do the live counts separately for accuracy since they depend on expiresAt.
+    const [live, liveWalkins, expired] = await Promise.all([
+        prisma.opportunity.count({ where: liveWhere }),
+        prisma.opportunity.count({ where: { ...liveWhere, type: OpportunityType.WALKIN } }),
+        prisma.opportunity.count({
+            where: {
+                status: OpportunityStatus.PUBLISHED,
+                deletedAt: null,
+                OR: [{ expiredAt: { not: null } }, { expiresAt: { lte: now } }],
+            },
         }),
     ]);
 
@@ -281,14 +308,19 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
         else sourceBuckets.others += row._count._all;
     }
 
-    const activitySignals = [
-        ...actionUsers14d.map((item: any) => ({ userId: item.userId, createdAt: item.createdAt })),
-        ...savedUsers14d.map((item: any) => ({ userId: item.userId, createdAt: item.createdAt })),
-        ...clickUsers14d
-            .filter((item: any): item is { userId: string; createdAt: Date } => Boolean(item.userId))
-            .map((item: any) => ({ userId: item.userId, createdAt: item.createdAt })),
-    ];
-    const notifiedUsers14d = new Set(alertUsers14d.map((item: any) => item.userId));
+    const activitySignals: Array<{ userId: string, createdAt: Date }> = [];
+
+    for (const row of actionUsers14dCount) {
+        if (row.userId && row._max.createdAt) activitySignals.push({ userId: row.userId, createdAt: row._max.createdAt });
+    }
+    for (const row of savedUsers14dCount) {
+        if (row.userId && row._max.createdAt) activitySignals.push({ userId: row.userId, createdAt: row._max.createdAt });
+    }
+    for (const row of clickUsers14dCount) {
+        if (row.userId && row._max.createdAt) activitySignals.push({ userId: row.userId, createdAt: row._max.createdAt });
+    }
+
+    const notifiedUsers14d = new Set(alertUsers14dCount.map((item: any) => item.userId));
     const dau = new Set(activitySignals.filter((item: any) => item.createdAt >= oneDayAgo).map((item) => item.userId));
     const wau = new Set(activitySignals.filter((item: any) => item.createdAt >= sevenDaysAgo).map((item) => item.userId));
     const previousWeek = new Set(
@@ -303,7 +335,7 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
     const response: MetricsV2Response = {
         window,
         generatedAt: new Date().toISOString(),
-        cacheTtlSeconds: Math.floor(CACHE_TTL_MS / 1000),
+        cacheTtlSeconds: CACHE_TTL_SECONDS,
         listings: {
             live,
             published,
@@ -350,10 +382,9 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
         })),
     };
 
-    cache.set(window, {
-        expiresAt: nowMs + CACHE_TTL_MS,
-        data: response,
-    });
+    try {
+        await redis.set(cacheKey, JSON.stringify(response), 'EX', CACHE_TTL_SECONDS);
+    } catch { /* ignore cache write error */ }
 
     return response;
 }

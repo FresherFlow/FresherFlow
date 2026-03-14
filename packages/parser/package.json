@@ -1,0 +1,22 @@
+{
+    "name": "@fresherflow/parser",
+    "version": "1.0.0",
+    "description": "Shared job parsing logic for FresherFlow",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc -w"
+    },
+    "dependencies": {
+        "compromise": "^14.14.5",
+        "natural": "^8.1.0",
+        "country-state-city": "^3.2.1"
+    },
+    "devDependencies": {
+        "typescript": "^5.7.3"
+    }
+}

@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { userActionSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
+import { checkEligibility } from '../domain/eligibility';
 
 
 const router: Router = express.Router();
@@ -46,25 +47,19 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
             return next(new AppError('Profile not found', 404));
         }
 
-        // Cast to any to bypass strict adminId check if internal types differ, 
-        // or ensure the type matches the expected domain entity.
-        // Assuming checkEligibility expects 'adminId', but Prisma result has 'postedByAdminId'.
         const opportunityForCheck = {
             ...opportunity,
             adminId: opportunity.postedByUserId
         };
 
-        // TESTING: Commenting out eligibility check
-        // const eligibilityResult = checkEligibility(opportunityForCheck as any, profile as any, req.userId);
+        const eligibilityResult = checkEligibility(opportunityForCheck as any, profile as any, req.userId);
 
-        /* TESTING: Commenting out eligibility blocker
         if (!eligibilityResult.eligible) {
             return next(new AppError(
                 eligibilityResult.reason || 'Not eligible for this opportunity',
                 403
             ));
         }
-        */
 
         // WALK-IN ATTENDED VALIDATION (Backend Only)
         // Can only mark ATTENDED after EARLIEST date has passed

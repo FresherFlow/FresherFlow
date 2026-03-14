@@ -1,26 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
+import { redis } from '@fresherflow/redis';
 import { AppError } from './errorHandler';
-import Redis from 'ioredis';
 
 // In-memory fallback store
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
 
-let redisClient: Redis | null = null;
-
-function getRedisClient() {
-    if (process.env.NODE_ENV === 'development' || process.env.REDIS_ENABLED === 'false') return null;
-    const url = process.env.REDIS_URL;
-    if (!url) return null;
-    if (!redisClient) {
-        redisClient = new Redis(url, {
-            maxRetriesPerRequest: 1,
-            connectTimeout: 2000
-        });
-        redisClient.on('error', (err: any) => {
-            console.error('[Redis] Rate limit connection error:', err.message);
-        });
-    }
-    return redisClient;
+function isRedisEnabled() {
+    return process.env.REDIS_ENABLED !== 'false';
 }
 
 interface RateLimitOptions {
@@ -35,8 +21,8 @@ interface RateLimitOptions {
  */
 export function createRateLimiter(options: RateLimitOptions) {
     return async (req: Request, res: Response, next: NextFunction) => {
-        // Skip rate limiting in development
-        if (process.env.NODE_ENV === 'development') {
+        // Skip rate limiting in development or test
+        if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
             return next();
         }
 
@@ -44,9 +30,8 @@ export function createRateLimiter(options: RateLimitOptions) {
         const ip = (req.headers['x-forwarded-for'] as string) || req.ip || 'unknown-ip';
         const key = `${options.keyPrefix || 'rl'}:${ip}`;
         const now = Date.now();
-        const redis = getRedisClient();
 
-        if (redis) {
+        if (isRedisEnabled()) {
             try {
                 const count = await redis.incr(key);
                 if (count === 1) {

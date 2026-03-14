@@ -48,7 +48,7 @@ export class FeedCacheService {
         try {
             const keys = await redis.keys(`feed:opportunities:${filterType || '*'}*`);
             if (keys.length > 0) {
-                await redis.del(keys);
+                await redis.del(...keys);
             }
         } catch (error) {
             logger.error('Failed to invalidate FeedCacheService namespace:', error);

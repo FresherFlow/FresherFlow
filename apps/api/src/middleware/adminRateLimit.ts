@@ -1,20 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
+import { redis } from '@fresherflow/redis';
 import { AppError } from './errorHandler';
-import Redis from 'ioredis';
 
 // In-memory store for rate limiting (per admin, per hour)
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
-let redisClient: Redis | null = null;
 
-function getRedisClient() {
-    if (process.env.NODE_ENV === 'development' || process.env.REDIS_ENABLED === 'false') return null;
-    const url = process.env.REDIS_URL;
-    if (!url) return null;
-    if (!redisClient) {
-        redisClient = new Redis(url, { maxRetriesPerRequest: 1 });
-        redisClient.on('error', () => { });
-    }
-    return redisClient;
+function isRedisEnabled() {
+    return process.env.REDIS_ENABLED !== 'false';
 }
 
 /**
@@ -24,8 +16,8 @@ function getRedisClient() {
  * Keyed by: adminId + hour window
  */
 export async function adminRateLimit(req: Request, res: Response, next: NextFunction) {
-    // Skip rate limiting in development
-    if (process.env.NODE_ENV === 'development') {
+    // Skip rate limiting in development or test
+    if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'test') {
         return next();
     }
 
@@ -36,9 +28,8 @@ export async function adminRateLimit(req: Request, res: Response, next: NextFunc
     const nowMs = Date.now();
     const currentHour = Math.floor(nowMs / (1000 * 60 * 60));
     const key = `${req.adminId}:${currentHour}`;
-    const redis = getRedisClient();
 
-    if (redis) {
+    if (isRedisEnabled()) {
         try {
             const resetAt = (currentHour + 1) * (1000 * 60 * 60);
             const ttlSeconds = Math.max(1, Math.ceil((resetAt - nowMs) / 1000));

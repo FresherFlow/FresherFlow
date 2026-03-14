@@ -1,4 +1,4 @@
-﻿import prisma from '../../lib/prisma';
+import prisma from '../../lib/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
 import { requireAdmin } from '../../middleware/auth';
 import { getVerificationStats, runLinkVerification } from '../../services/verificationBot';
@@ -12,6 +12,19 @@ import { clearAdminMetricsCache, getAdminMetricsV2, MetricsWindow } from '../../
 
 const router = Router();
 
+// --- Shared helpers ---
+const METRICS_WINDOWS: MetricsWindow[] = ['24h', '7d', '30d'];
+const GROWTH_WINDOWS: GrowthWindow[] = ['24h', '7d', '30d', 'all'];
+
+function parseMetricsWindow(raw: unknown, defaultWindow: MetricsWindow = '30d'): MetricsWindow {
+    const val = String(raw || '').toLowerCase();
+    return METRICS_WINDOWS.includes(val as MetricsWindow) ? (val as MetricsWindow) : defaultWindow;
+}
+
+function parseGrowthWindow(raw: unknown, defaultWindow: GrowthWindow = '30d'): GrowthWindow {
+    const val = String(raw || '').toLowerCase();
+    return GROWTH_WINDOWS.includes(val as GrowthWindow) ? (val as GrowthWindow) : defaultWindow;
+}
 
 /**
  * Trigger Link Verification Bot
@@ -334,12 +347,7 @@ router.get('/metrics', requireAdmin, async (_req: Request, res: Response, next: 
  */
 router.get('/metrics-v2', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const rawWindow = String(req.query.window || '30d').toLowerCase();
-        const allowedWindows: MetricsWindow[] = ['24h', '7d', '30d'];
-        const window = allowedWindows.includes(rawWindow as MetricsWindow)
-            ? (rawWindow as MetricsWindow)
-            : '30d';
-
+        const window = parseMetricsWindow(req.query.window);
         const metrics = await getAdminMetricsV2(window);
         res.json(metrics);
     } catch (error) {
@@ -353,12 +361,7 @@ router.get('/metrics-v2', requireAdmin, async (req: Request, res: Response, next
  */
 router.post('/metrics-v2/refresh', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const rawWindow = String(req.query.window || '30d').toLowerCase();
-        const allowedWindows: MetricsWindow[] = ['24h', '7d', '30d'];
-        const window = allowedWindows.includes(rawWindow as MetricsWindow)
-            ? (rawWindow as MetricsWindow)
-            : '30d';
-
+        const window = parseMetricsWindow(req.query.window);
         clearAdminMetricsCache();
         const metrics = await getAdminMetricsV2(window);
         res.json({ refreshed: true, metrics });
@@ -373,12 +376,7 @@ router.post('/metrics-v2/refresh', requireAdmin, async (req: Request, res: Respo
  */
 router.get('/growth-funnel', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const rawWindow = String(req.query.window || '30d').toLowerCase();
-        const allowedWindows: GrowthWindow[] = ['24h', '7d', '30d', 'all'];
-        const window = allowedWindows.includes(rawWindow as GrowthWindow)
-            ? (rawWindow as GrowthWindow)
-            : '30d';
-
+        const window = parseGrowthWindow(req.query.window);
         const metrics = await getGrowthFunnelMetrics(window);
         res.json({ metrics });
     } catch (error) {
@@ -519,8 +517,7 @@ router.get('/telegram-broadcasts', requireAdmin, async (req: Request, res: Respo
  */
 router.post('/telegram-broadcasts/:id/retry', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const idParam = req.params.id;
-        const id = Array.isArray(idParam) ? idParam[0] : idParam;
+        const id = req.params.id as string;
         if (!id) {
             return res.status(400).json({ message: 'Broadcast ID is required' });
         }
@@ -543,10 +540,10 @@ router.post('/telegram-broadcasts/:id/retry', requireAdmin, async (req: Request,
         });
 
         if (!broadcast || !broadcast.opportunity) {
-            return res.status(404).json({ message: 'Broadcast not found' });
+            return res.status(404).json({ message: 'Broadcast or opportunity not found' });
         }
 
-        const opp = broadcast.opportunity;
+        const opp = (broadcast as any).opportunity;
         await TelegramService.broadcastNewOpportunity(
             opp.id,
             opp.title,
@@ -557,7 +554,7 @@ router.post('/telegram-broadcasts/:id/retry', requireAdmin, async (req: Request,
             { force: true }
         );
 
-        const refreshed = await prisma.telegramBroadcast.findUnique({ where: { id } });
+        const refreshed = await prisma.telegramBroadcast.findUnique({ where: { id: id as string } });
         res.json({
             success: true,
             broadcast: refreshed

@@ -39,6 +39,8 @@ export async function sendNewJobPush(userId: string, payload: NewJobPushPayload)
         return;
     }
 
+    const isExpo = subscription.p256dh === 'EXPO';
+
     await enqueuePushNotification({
         endpoint: subscription.endpoint,
         p256dh: subscription.p256dh,
@@ -49,6 +51,7 @@ export async function sendNewJobPush(userId: string, payload: NewJobPushPayload)
         url: buildOpportunityUrl(payload.opportunitySlug),
         kind: 'NEW_JOB',
         opportunityId: payload.opportunityId,
+        platform: isExpo ? 'expo' : 'web',
     });
 
     logger.debug('Push notification queued', { userId });

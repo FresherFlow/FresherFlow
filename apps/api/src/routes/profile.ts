@@ -200,7 +200,6 @@ router.put('/readiness', requireAuth, validate(readinessSchema), async (req: Req
     }
 });
 
-// GET /api/profile/completion
 router.get('/completion', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const profile = await prisma.profile.findUnique({
@@ -215,6 +214,38 @@ router.get('/completion', requireAuth, async (req: Request, res: Response, next:
             completionPercentage: profile.completionPercentage,
             isComplete: profile.completionPercentage === 100
         });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// POST /api/profile/push-token
+router.post('/push-token', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { token, platform } = req.body;
+        if (!token) {
+            return next(new AppError('Push token is required', 400));
+        }
+
+        // We use PushSubscription model. For Expo, we store token in endpoint
+        // and set a flag in p256dh to distinguish from Web Push
+        await prisma.pushSubscription.upsert({
+            where: { userId: req.userId as string },
+            create: {
+                userId: req.userId as string,
+                endpoint: token,
+                p256dh: platform === 'expo' ? 'EXPO' : 'NATIVE',
+                auth: 'NONE',
+                userAgent: req.headers['user-agent']
+            },
+            update: {
+                endpoint: token,
+                p256dh: platform === 'expo' ? 'EXPO' : 'NATIVE',
+                userAgent: req.headers['user-agent']
+            }
+        });
+
+        res.json({ success: true, message: 'Push token registered' });
     } catch (error) {
         next(error);
     }

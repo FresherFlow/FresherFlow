@@ -381,9 +381,13 @@ model Opportunity {
   rawIngestions RawOpportunity[]
   events OpportunityEvent[]
 
+  // Performance Search optimization
+  search_vector  Unsupported("tsvector")? @default(dbgenerated("''::tsvector"))
+
   // DB-level filtering indexes
   @@index([status, deletedAt, type, postedAt(desc)])
   @@index([status, postedAt(desc)])
+  @@index([search_vector], type: Gin)
   @@index([allowedPassoutYears], type: Gin)
   @@index([allowedDegrees], type: Gin)
   @@index([allowedCourses], type: Gin)

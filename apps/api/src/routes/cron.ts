@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { cronQueue } from '@fresherflow/queue';
+import { runExpiryCycle } from '../cron/expiryCron';
+import { runLinkVerification } from '../services/verificationBot';
+import { runAlertsCycle } from '../services/alerts.service';
 import { logger } from '@fresherflow/logger';
 
 const router = Router();
@@ -30,33 +32,33 @@ router.use((req, res, next) => {
 
 router.post('/verify', async (req, res) => {
     try {
-        logger.info('Queuing link verification cycle via cron API');
-        await cronQueue.add('LINK_VERIFICATION', { task: 'LINK_VERIFICATION' });
-        res.json({ success: true, message: 'Link verification task queued' });
+        logger.info('Starting link verification cycle via cron API');
+        const results = await runLinkVerification();
+        res.json({ success: true, message: 'Link verification complete', results });
     } catch (error) {
-        logger.error('Failed to queue verification cron', error);
+        logger.error('Failed to run cron', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 router.post('/alerts', async (req, res) => {
     try {
-        logger.info('Queuing alerts cycle via cron API');
-        await cronQueue.add('ALERTS_CYCLE', { task: 'ALERTS_CYCLE' });
-        res.json({ success: true, message: 'Alerts cycle task queued' });
+        logger.info('Starting alerts cycle via cron API');
+        const results = await runAlertsCycle();
+        res.json({ success: true, message: 'Alerts cycle complete', results });
     } catch (error) {
-        logger.error('Failed to queue alerts cron', error);
+        logger.error('Failed to run cron', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });
 
 router.post('/expire', async (req, res) => {
     try {
-        logger.info('Queuing expiry cycle via cron API');
-        await cronQueue.add('EXPIRY_CHECK', { task: 'EXPIRY_CHECK' });
-        res.json({ success: true, message: 'Expiry cycle task queued' });
+        logger.info('Starting expiry cycle via cron API');
+        const results = await runExpiryCycle();
+        res.json({ success: true, message: 'Expiry cycle complete', results });
     } catch (error) {
-        logger.error('Failed to queue expiry cron', error);
+        logger.error('Failed to run cron', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });

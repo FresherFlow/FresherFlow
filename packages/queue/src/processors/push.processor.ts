@@ -1,18 +1,10 @@
 import { Job } from 'bullmq';
 import { logger } from '@fresherflow/logger';
 import webpush from 'web-push';
+import axios from 'axios';
+import type { PushJobData } from '../index';
 
-interface PushJobData {
-    endpoint: string;
-    p256dh: string;
-    auth: string;
-    userId: string;
-    title: string;
-    body: string;
-    url: string;
-    kind: string;
-    opportunityId: string;
-}
+type PushError = { statusCode?: number; status?: number; message?: string };
 
 function ensureVapidConfigured(): boolean {
     const publicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY;
@@ -23,8 +15,32 @@ function ensureVapidConfigured(): boolean {
     return true;
 }
 
+async function sendExpoPush(data: PushJobData) {
+    const { endpoint, title, body, url, opportunityId } = data;
+    try {
+        await axios.post('https://exp.host/--/api/v2/push/send', {
+            to: endpoint,
+            title,
+            body,
+            data: { url, opportunityId },
+            sound: 'default',
+        });
+        logger.info('Expo push notification sent', { userId: data.userId });
+    } catch (err: any) {
+        logger.error('Expo push notification failed', {
+            userId: data.userId,
+            error: err.response?.data || err.message
+        });
+        // We don't throw here to avoid infinite BullMQ retries for invalid tokens
+    }
+}
+
 export async function processPushJob(job: Job<PushJobData>): Promise<void> {
-    const { endpoint, p256dh, auth, userId, title, body, url, kind, opportunityId } = job.data;
+    const { endpoint, p256dh, auth, userId, title, body, url, kind, opportunityId, platform } = job.data;
+
+    if (platform === 'expo') {
+        return sendExpoPush(job.data);
+    }
 
     if (!ensureVapidConfigured()) {
         logger.warn('VAPID keys not configured — skipping push notification', { userId });
@@ -35,14 +51,15 @@ export async function processPushJob(job: Job<PushJobData>): Promise<void> {
 
     try {
         await webpush.sendNotification({ endpoint, keys: { p256dh, auth } }, payload);
-        logger.info('Push notification sent', { userId, kind });
-    } catch (error: any) {
+        logger.info('Web push notification sent', { userId, kind });
+    } catch (err: unknown) {
+        const error = err as PushError;
         const statusCode = Number(error?.statusCode || error?.status || 0);
-        logger.error('Push notification failed', { userId, statusCode, message: error?.message });
-        // Re-throw so BullMQ retries (except for stale subscriptions)
+        logger.error('Web push notification failed', { userId, statusCode, message: error?.message });
+        // Do not retry stale subscriptions (410 Gone, 404 Not Found)
         if (statusCode !== 404 && statusCode !== 410) {
-            throw error;
+            throw err;
         }
-        logger.info('Stale push subscription — not retrying', { userId, statusCode });
+        logger.info('Stale web push subscription — not retrying', { userId, statusCode });
     }
 }
