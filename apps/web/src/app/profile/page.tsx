@@ -105,7 +105,7 @@ export default function ProfilePage() {
                 <div className="min-h-screen bg-gradient-to-b from-background via-background to-muted/30">
                     <div className="max-w-6xl mx-auto px-4 md:px-6 py-5 md:py-8 pb-20 font-sans">
 
-                        <div className="mb-4 md:mb-5">
+                        <div className="hidden md:block mb-4 md:mb-5">
                             <Link href="/dashboard" className="inline-flex p-2 rounded-xl hover:bg-muted transition-colors active:scale-95" aria-label="Back to dashboard">
                                 <ArrowLeftIcon className="w-5 h-5 text-muted-foreground" />
                             </Link>

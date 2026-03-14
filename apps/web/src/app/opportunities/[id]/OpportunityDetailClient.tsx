@@ -1,17 +1,16 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState, useRef } from 'react';
+import { useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { type Opportunity } from '@fresherflow/types';
-import toast from 'react-hot-toast';
-import { toastError } from '@/lib/utils/error';
+// removed unused toast imports
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
-import { feedbackApi } from '@/lib/api/client';
+// removed unused feedbackApi import
 
 // Components
 import { EligibilitySnapshotCard } from './components/EligibilitySnapshotCard';
@@ -98,17 +97,19 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         <div className="min-h-screen bg-background pb-16 selection:bg-primary/20">
             <main className="relative z-10 max-w-6xl mx-auto px-4 pt-2 pb-4 md:py-7 space-y-3 md:space-y-5">
                 
-                <DetailActionHeader 
-                    user={user}
-                    opp={opp}
-                    router={router}
-                    handleShare={handleShare}
-                    handleCopyLink={handleCopyLink}
-                    showReports={showReports}
-                    setShowReports={setShowReports}
-                    reportMenuRef={reportMenuRef}
-                    handleReport={handleReport}
-                />
+                <div className="hidden md:block">
+                    <DetailActionHeader 
+                        user={user}
+                        opp={opp}
+                        router={router}
+                        handleShare={handleShare}
+                        handleCopyLink={handleCopyLink}
+                        showReports={showReports}
+                        setShowReports={setShowReports}
+                        reportMenuRef={reportMenuRef}
+                        handleReport={handleReport}
+                    />
+                </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-start">
                     
@@ -149,7 +150,6 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                         {ds.isCampusDrive && (
                             <DetailCampusDriveInfo 
-                                opp={opp}
                                 driveMeta={ds.driveMeta}
                                 hasApplyLink={ds.hasApplyLink}
                                 handleApply={handleApply}
