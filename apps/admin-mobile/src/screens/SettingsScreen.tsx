@@ -32,7 +32,6 @@ export const SettingsScreen = () => {
         runtimeVersion,
         channel,
         updateId,
-        logout, // in case it's needed, though handleLogout uses it
     } = useSettingsScreen();
     
     const { colors: c, mode, toggle } = useTheme();

@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Linking, type ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Edit3, ExternalLink, MessageSquare } from 'lucide-react-native';
 import { CompanyLogo } from '../CompanyLogo';
 import { theme } from '../../theme';
