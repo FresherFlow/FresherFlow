@@ -11,10 +11,12 @@ import * as Sentry from '@sentry/node';
 import { requestIdMiddleware } from './middleware/requestId';
 import { errorHandler } from './middleware/errorHandler';
 import { env } from '@fresherflow/config';
-import { logger } from '@fresherflow/logger';
-import { redis } from '@fresherflow/redis';
+import { logger, setupCleanLogging } from '@fresherflow/logger';
+// redis not used here
 import { observabilityMiddleware } from './middleware/observability';
 import httpLogger from './middleware/httpLogger';
+
+setupCleanLogging();
 
 import { csrfGate } from './middleware/csrf';
 
@@ -69,33 +71,10 @@ function extractClientIp(req: express.Request): string {
     return raw.replace(/^::ffff:/, '');
 }
 
-// Lightweight Health Check (Zero-DB, Zero-Auth)
-app.use('/api', healthRoutes);
-if (isUserMode) {
-    app.use('/api/public/growth', growthRoutes);
-    app.use('/api/public', opportunityClickRoutes);
-    app.use('/api/cron', cronRoutes);
-}
-
 // Trust proxy for Render/Vercel/Load Balancers
 if (process.env.NODE_ENV === 'production') {
     app.set('trust proxy', 1);
 }
-
-// ============================================================================
-// Sentry Error Monitoring (Disabled for first run)
-// ============================================================================
-if (env.SENTRY_DSN) {
-    Sentry.init({
-        dsn: env.SENTRY_DSN,
-        environment: env.NODE_ENV,
-        tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
-    });
-}
-
-// ============================================================================
-// Middleware Setup
-// ============================================================================
 
 // Request ID (must be first for logging)
 app.use(requestIdMiddleware);
@@ -159,12 +138,31 @@ function isAllowedOrigin(origin: string): boolean {
 
 app.use(cors({
     origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
-        if (isAllowedOrigin(origin)) return callback(null, true);
+        
+        if (isAllowedOrigin(origin)) {
+            return callback(null, true);
+        }
+
         logger.warn('CORS blocked request origin', { origin, mode: APP_MODE });
-        return callback(new Error('Not allowed by CORS'));
+        return callback(null, false); // Return false instead of error to avoid crashing req
     },
-    credentials: true
+    credentials: true,
+    allowedHeaders: [
+        'Content-Type',
+        'Authorization',
+        'X-Requested-With',
+        'X-Requested-From',
+        'X-Request-Id',
+        'sentry-trace',
+        'baggage',
+        'Cache-Control',
+        'Pragma'
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS', 'HEAD'],
+    exposedHeaders: ['Content-Range', 'X-Content-Range'],
+    maxAge: 3600 // Cache preflight for 1 hour
 }));
 
 // Body parsing
@@ -173,6 +171,29 @@ app.use(express.urlencoded({ extended: true }));
 
 // observabilityMiddleware
 app.use(observabilityMiddleware);
+
+// Lightweight Health Check (Zero-DB, Zero-Auth)
+app.use('/api', healthRoutes);
+if (isUserMode) {
+    app.use('/api/public/growth', growthRoutes);
+    app.use('/api/public', opportunityClickRoutes);
+    app.use('/api/cron', cronRoutes);
+}
+
+// ============================================================================
+// Sentry Error Monitoring (Disabled for first run)
+// ============================================================================
+if (env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: env.SENTRY_DSN,
+        environment: env.NODE_ENV,
+        tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    });
+}
+
+// ============================================================================
+// Middleware Setup
+// ============================================================================
 
 // CSRF Protection (Gate)
 app.use(csrfGate);

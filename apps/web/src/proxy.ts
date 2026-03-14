@@ -14,7 +14,7 @@ function normalizeHost(value: string | undefined, fallback: string): string {
 const ADMIN_WEB_HOST = normalizeHost(process.env.ADMIN_WEB_HOST, 'admin.fresherflow.in');
 const PUBLIC_WEB_HOST = normalizeHost(process.env.PUBLIC_WEB_HOST, 'fresherflow.in');
 const APP_WEB_HOST = normalizeHost(process.env.APP_WEB_HOST || process.env.NEXT_PUBLIC_APP_WEB_HOST, 'app.fresherflow.in');
-const USER_LOGIN_HOST = normalizeHost(process.env.USER_LOGIN_HOST || process.env.NEXT_PUBLIC_USER_LOGIN_HOST, APP_WEB_HOST);
+const USER_LOGIN_HOST = normalizeHost(process.env.USER_LOGIN_HOST || process.env.NEXT_PUBLIC_USER_LOGIN_HOST, PUBLIC_WEB_HOST);
 const ADMIN_ROOT_PREFIXES = [
     '/dashboard',
     '/opportunities',
@@ -27,7 +27,7 @@ const ADMIN_ROOT_PREFIXES = [
     '/telegram',
     '/settings',
 ];
-const APP_ONLY_PREFIXES = ['/dashboard', '/account', '/profile', '/alerts', '/login'];
+const APP_ONLY_PREFIXES = ['/dashboard', '/account', '/profile', '/alerts'];
 const SOCIAL_PREVIEW_BOT_UA = /(facebookexternalhit|facebot|twitterbot|xbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot|skypeuripreview|applebot)/i;
 const KNOWN_CRAWLER_UA = /(bot|crawler|spider|slurp|bingpreview|curl|wget|python-requests|headless)/i;
 
@@ -64,7 +64,7 @@ function isPublicDetailPath(pathname: string): boolean {
 }
 
 function isPublicCanonicalPath(pathname: string): boolean {
-    if (pathname === '/' || pathname === '/jobs' || pathname === '/internships' || pathname === '/walk-ins' || pathname === '/opportunities') {
+    if (pathname === '/' || pathname === '/login' || pathname === '/jobs' || pathname === '/internships' || pathname === '/walk-ins' || pathname === '/opportunities') {
         return true;
     }
     if (pathname.startsWith('/jobs/')) return true;
@@ -130,15 +130,17 @@ export function proxy(request: NextRequest) {
     const isPublicHubPath = pathname === '/' || pathname === '/jobs' || pathname === '/internships' || pathname === '/walk-ins' || pathname === '/opportunities';
     const shouldNoIndex = isAdminHost || isAppHost || isAdminRoute || (isAdminRootPath && !isPublicHubPath) || pathname === '/logout' || pathname === '/index' || pathname === '/admin-manifest.json';
 
+    let response: NextResponse | undefined;
+
     if ((isKnownCrawler(request) || isLowValuePrefetch(request)) && !isAdminRoute && !isAdminRootPath && !isUserPath) {
         if (isAppHost && isPublicPath) {
             const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
             return redirectWithMethodAwareness(request, target, true);
         }
-        return shouldNoIndex ? withNoIndex(NextResponse.next()) : NextResponse.next();
+        response = shouldNoIndex ? withNoIndex(NextResponse.next()) : NextResponse.next();
     }
 
-    if (process.env.NODE_ENV === 'production' && pathname.startsWith('/dev')) {
+    if (!response && process.env.NODE_ENV === 'production' && pathname.startsWith('/dev')) {
         return redirectWithMethodAwareness(request, '/');
     }
 
@@ -146,17 +148,27 @@ export function proxy(request: NextRequest) {
     const isAdminAuthenticated = request.cookies.has('adminAccessToken');
     const userLoginUrl = `${request.nextUrl.protocol}//${USER_LOGIN_HOST}/login`;
 
-    if (process.env.NODE_ENV === 'production' && normalizedHost === PUBLIC_WEB_HOST && isUserPath) {
-        const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
-        return redirectWithMethodAwareness(request, target, true);
+    if (!response && process.env.NODE_ENV === 'production' && normalizedHost === PUBLIC_WEB_HOST) {
+        // On Public Domain:
+        if (isUserPath || (isPublicPath && isAuthenticated)) {
+            // Move logged-in users to the App domain for ALL paths (Private OR Public)
+            // Move guests to App domain for Private paths (triggering login redirect there)
+            const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
+            return redirectWithMethodAwareness(request, target, true);
+        }
     }
 
-    if (process.env.NODE_ENV === 'production' && isAppHost && isPublicPath && pathname !== '/login') {
-        const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
-        return redirectWithMethodAwareness(request, target, true);
+    if (!response && process.env.NODE_ENV === 'production' && isAppHost) {
+        // On App Domain:
+        if (isPublicPath && !isAuthenticated) {
+            // Force Guests back to Public domain for Public paths
+            const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
+            return redirectWithMethodAwareness(request, target, true);
+        }
     }
 
     if (
+        !response &&
         process.env.NODE_ENV === 'production' &&
         normalizedHost === PUBLIC_WEB_HOST &&
         pathname !== '/' &&
@@ -167,78 +179,72 @@ export function proxy(request: NextRequest) {
         return redirectWithMethodAwareness(request, target, true);
     }
 
-    if (process.env.NODE_ENV === 'production' && isAdminHost && isPublicDetailPath(pathname)) {
+    if (!response && process.env.NODE_ENV === 'production' && isAdminHost && isPublicDetailPath(pathname)) {
         const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
         return redirectWithMethodAwareness(request, target, true);
     }
 
-    if (process.env.NODE_ENV === 'production' && isAdminRoute && !isAdminHost) {
+    if (!response && process.env.NODE_ENV === 'production' && isAdminRoute && !isAdminHost) {
         const targetPath = pathname === '/admin' ? '/dashboard' : (pathname.replace(/^\/admin/, '') || '/');
         const target = `${request.nextUrl.protocol}//${ADMIN_WEB_HOST}${targetPath}${request.nextUrl.search}`;
         return redirectWithMethodAwareness(request, target, true);
     }
 
-    if (isAdminHost) {
-        if (pathname === '/admin') {
+    if (!response && isAdminHost) {
+        if (pathname === '/admin-manifest.json') {
+            response = withNoIndex(NextResponse.next());
+        } else if (pathname === '/admin') {
             return redirectWithMethodAwareness(request, '/dashboard', true);
-        }
-        if (pathname.startsWith('/admin/')) {
+        } else if (pathname.startsWith('/admin/')) {
             const targetPath = pathname === '/admin/login' ? '/login' : (pathname.replace(/^\/admin/, '') || '/');
             return redirectWithMethodAwareness(request, `${targetPath}${request.nextUrl.search}`, true);
-        }
-        if (pathname === '/') {
+        } else if (pathname === '/') {
             return withNoIndex(redirectWithMethodAwareness(request, isAdminAuthenticated ? '/dashboard' : '/login'));
-        }
-        if (pathname === '/login') {
+        } else if (pathname === '/login') {
             if (isAdminAuthenticated) {
                 return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
             }
             const rewriteUrl = request.nextUrl.clone();
             rewriteUrl.pathname = '/admin/login';
-            return withNoIndex(NextResponse.rewrite(rewriteUrl));
-        }
-        if (isAdminRootPath) {
+            response = withNoIndex(NextResponse.rewrite(rewriteUrl));
+        } else if (isAdminRootPath) {
             if (!isAdminAuthenticated) {
                 return withNoIndex(redirectWithMethodAwareness(request, '/login'));
             }
             const rewriteUrl = request.nextUrl.clone();
             rewriteUrl.pathname = `/admin${pathname}`;
-            return withNoIndex(NextResponse.rewrite(rewriteUrl));
+            response = withNoIndex(NextResponse.rewrite(rewriteUrl));
+        } else {
+            const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
+            return redirectWithMethodAwareness(request, target, true);
         }
-
-        const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
-        return redirectWithMethodAwareness(request, target, true);
     }
 
-    if (isAppHost) {
+    if (!response && isAppHost) {
         if (pathname === '/') {
             if (isAuthenticated) return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
             const loginTarget = new URL(userLoginUrl);
             if (loginTarget.hostname !== normalizedHost || loginTarget.pathname !== '/login') {
                 return withNoIndex(redirectWithMethodAwareness(request, userLoginUrl));
             }
-            return withNoIndex(NextResponse.next());
-        }
-
-        if (pathname === '/login') {
+            response = withNoIndex(NextResponse.next());
+        } else if (pathname === '/login') {
             if (isAuthenticated) return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
-            return withNoIndex(NextResponse.next());
-        }
-
-        if (!isAppOnlyPath(pathname)) {
+            response = withNoIndex(NextResponse.next());
+        } else if (!isAppOnlyPath(pathname)) {
             const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
             return redirectWithMethodAwareness(request, target, true);
         }
     }
 
-    if (isAdminRoute && !isAdminLogin) {
+    if (!response && isAdminRoute && !isAdminLogin) {
         if (!isAdminAuthenticated) {
             const target = `${request.nextUrl.protocol}//${ADMIN_WEB_HOST}/login`;
             return withNoIndex(redirectWithMethodAwareness(request, target));
         }
     }
 
-    if (isUserPath && !isAuthenticated) {
+    if (!response && isUserPath && !isAuthenticated) {
         const loginUrl = new URL(userLoginUrl);
         loginUrl.searchParams.set('redirect', pathname);
         const method = request.method.toUpperCase();
@@ -246,20 +252,33 @@ export function proxy(request: NextRequest) {
         return withNoIndex(NextResponse.redirect(loginUrl, status));
     }
 
-    if (pathname === '/login' && isAuthenticated) {
+    if (!response && pathname === '/login' && isAuthenticated) {
         const dashboardUrl = `${request.nextUrl.protocol}//${APP_WEB_HOST}/dashboard`;
         return withNoIndex(redirectWithMethodAwareness(request, dashboardUrl));
     }
 
-    if (normalizedHost === PUBLIC_WEB_HOST && pathname === '/') {
-        return NextResponse.next();
+    if (!response && normalizedHost === PUBLIC_WEB_HOST && pathname === '/') {
+        response = NextResponse.next();
     }
 
-    if (pathname === '/' && isAuthenticated) {
+    if (!response && pathname === '/' && isAuthenticated) {
         return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
     }
 
-    return shouldNoIndex ? withNoIndex(NextResponse.next()) : NextResponse.next();
+    if (!response) {
+        response = shouldNoIndex ? withNoIndex(NextResponse.next()) : NextResponse.next();
+    }
+
+    // CORS logic for cross-subdomain redirects and fetches
+    const origin = request.headers.get('origin');
+    if (origin && (origin.endsWith('.fresherflow.in') || origin === 'https://fresherflow.in')) {
+        response.headers.set('Access-Control-Allow-Origin', origin);
+        response.headers.set('Access-Control-Allow-Credentials', 'true');
+        response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, HEAD');
+        response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Requested-From, X-Request-Id, sentry-trace, baggage');
+    }
+
+    return response;
 }
 
 export const config = {
