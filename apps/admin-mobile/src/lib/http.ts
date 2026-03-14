@@ -1,11 +1,11 @@
 import { Platform } from 'react-native';
 import { API_URL } from '../config/api';
 import { ADMIN_AUTH_TOKEN_KEY } from './constants';
+import { captureException } from './sentry';
 import { toast } from './toast';
 
 interface RequestOptions extends RequestInit {
   timeoutMs?: number;
-  /** Skip the global 401 handler for this request (e.g. the login call itself) */
   skipAuthRefresh?: boolean;
 }
 
@@ -21,17 +21,11 @@ export class HttpError extends Error {
   }
 }
 
-// ─── Global 401 handler ───────────────────────────────────────────────────────
-// AuthContext calls setUnauthorizedHandler(logout) on mount so any screen that
-// gets a 401 automatically redirects to LoginScreen without a dead-end.
-
 let _unauthorizedHandler: (() => void) | null = null;
 
 export function setUnauthorizedHandler(fn: () => void) {
   _unauthorizedHandler = fn;
 }
-
-// ─── Token storage (SecureStore on native, localStorage on web) ───────────────
 
 async function getToken(): Promise<string | null> {
   if (Platform.OS === 'web') {
@@ -67,7 +61,7 @@ export async function saveToken(value: string): Promise<void> {
 
 async function withTimeout(input: RequestInfo | URL, init: RequestOptions = {}) {
   const controller = new AbortController();
-  const timeoutMs = init.timeoutMs ?? 8000;  // fast-fail: 8s not 30s
+  const timeoutMs = init.timeoutMs ?? 8000;
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
   const token = await getToken();
@@ -100,17 +94,15 @@ async function withTimeout(input: RequestInfo | URL, init: RequestOptions = {}) 
 export async function apiRequest<T>(path: string, init: RequestOptions = {}): Promise<T> {
   const { skipAuthRefresh, ...fetchInit } = init;
   const method = (fetchInit.method ?? 'GET').toUpperCase();
-  // Only retry idempotent requests (GET/HEAD) — never retry mutations
   const isIdempotent = method === 'GET' || method === 'HEAD';
-  const MAX_RETRIES = isIdempotent ? 1 : 0;  // max 1 retry = 2 total attempts
-  const BASE_DELAY_MS = 800;
+  const maxRetries = isIdempotent ? 1 : 0;
+  const baseDelayMs = 800;
 
   let lastError: unknown;
 
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
-      // Exponential backoff: 600ms, 1200ms
-      await new Promise(r => setTimeout(r, BASE_DELAY_MS * attempt));
+      await new Promise((resolve) => setTimeout(resolve, baseDelayMs * attempt));
     }
 
     let response: Response;
@@ -122,14 +114,20 @@ export async function apiRequest<T>(path: string, init: RequestOptions = {}): Pr
       const isTimeout = msg.toLowerCase().includes('timeout') || msg.toLowerCase().includes('abort');
       const label = isTimeout ? 'Request timed out' : 'No connection';
 
-      console.error(`[API] ${method} ${path} → ${isTimeout ? 'Timeout' : 'Network'} (attempt ${attempt + 1}/${MAX_RETRIES + 1}): ${msg}`);
+      console.error(`[API] ${method} ${path} -> ${isTimeout ? 'Timeout' : 'Network'} (attempt ${attempt + 1}/${maxRetries + 1}): ${msg}`);
+      captureException(networkErr, {
+        area: 'admin-mobile-api',
+        kind: isTimeout ? 'timeout' : 'network',
+        method,
+        path,
+        attempt: attempt + 1,
+      });
 
-      if (attempt === MAX_RETRIES) {
-        // Don't toast for background auth checks — they'll log out silently if needed
+      if (attempt === maxRetries) {
         const isAuthCheck = path.includes('/auth/me');
         if (!isAuthCheck) toast.error(label, path);
       }
-      continue; // retry
+      continue;
     }
 
     const text = await response.text();
@@ -141,41 +139,46 @@ export async function apiRequest<T>(path: string, init: RequestOptions = {}): Pr
     if (!response.ok) {
       const serverMsg =
         payload &&
-          typeof payload === 'object' &&
-          'message' in payload &&
-          typeof (payload as Record<string, unknown>).message === 'string'
+        typeof payload === 'object' &&
+        'message' in payload &&
+        typeof (payload as Record<string, unknown>).message === 'string'
           ? (payload as Record<string, unknown>).message as string
           : `Unexpected error (${response.status})`;
 
-      const s = response.status;
-      console.error(`[API] ${method} ${path} → ${s}: ${serverMsg}`);
-
-      // 401 — silent logout, no toast
-      if (s === 401 && !skipAuthRefresh && _unauthorizedHandler) {
-        _unauthorizedHandler();
-        throw new HttpError(serverMsg, s, payload);
+      const status = response.status;
+      console.error(`[API] ${method} ${path} -> ${status}: ${serverMsg}`);
+      if (status >= 500) {
+        captureException(new Error(serverMsg), {
+          area: 'admin-mobile-api',
+          kind: 'server',
+          method,
+          path,
+          status,
+        });
       }
 
-      // 5xx — retry if idempotent
-      if (s >= 500 && attempt < MAX_RETRIES) {
-        toast.warning(`Server error (${s}), retrying…`, path);
-        lastError = new HttpError(serverMsg, s, payload);
+      if (status === 401 && !skipAuthRefresh && _unauthorizedHandler) {
+        _unauthorizedHandler();
+        throw new HttpError(serverMsg, status, payload);
+      }
+
+      if (status >= 500 && attempt < maxRetries) {
+        toast.warning(`Server error (${status}), retrying...`, path);
+        lastError = new HttpError(serverMsg, status, payload);
         continue;
       }
 
-      // Categorised toasts
-      if (s === 403) toast.error('Access denied', serverMsg);
-      else if (s === 404) toast.warning('Not found', path);
-      else if (s === 400 || s === 422) toast.warning('Bad request', serverMsg);
-      else if (s >= 500) toast.error(`Server error (${s})`, serverMsg);
-      else toast.error(`Error (${s})`, serverMsg);
+      if (status === 403) toast.error('Access denied', serverMsg);
+      else if (status === 404) toast.warning('Not found', path);
+      else if (status === 400 || status === 422) toast.warning('Bad request', serverMsg);
+      else if (status >= 500) toast.error(`Server error (${status})`, serverMsg);
+      else toast.error(`Error (${status})`, serverMsg);
 
-      throw new HttpError(serverMsg, s, payload);
+      throw new HttpError(serverMsg, status, payload);
     }
 
     return payload as T;
   }
 
-  // All retries exhausted — rethrow last network error
   throw lastError;
 }

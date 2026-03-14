@@ -1,13 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Trash2, Plus, Key } from 'lucide-react-native';
+import { Passkey } from 'react-native-passkey';
 import { ThemeColors } from '../../theme';
 import { useAuth } from '../../context/AuthContext';
-
-type Passkey = {
-    id: string;
-    name: string;
-};
+import type { PasskeySummary } from '../../lib/api';
 
 type PasskeysSectionProps = {
     colors: ThemeColors;
@@ -15,15 +12,13 @@ type PasskeysSectionProps = {
 
 export const PasskeysSection = React.memo(({ colors: c }: PasskeysSectionProps) => {
     const auth = useAuth();
-    const getPasskeys = (auth as any)?.getPasskeys;
-    const deletePasskey = (auth as any)?.deletePasskey;
+    const { admin, getPasskeys, registerPasskey, deletePasskey } = auth;
 
-    const [passkeys, setPasskeys] = useState<Passkey[]>([]);
+    const [passkeys, setPasskeys] = useState<PasskeySummary[]>([]);
     const [status, setStatus] = useState<'idle' | 'loading' | 'registering' | 'deleting'>('loading');
 
     const loadPasskeys = useCallback(async () => {
         try {
-            if (!getPasskeys) return;
             const res = await getPasskeys();
             setPasskeys(res.keys);
             setStatus('idle');
@@ -33,19 +28,33 @@ export const PasskeysSection = React.memo(({ colors: c }: PasskeysSectionProps) 
     }, [getPasskeys]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        loadPasskeys();
+        void loadPasskeys();
     }, [loadPasskeys]);
 
     const handleAddPasskey = async () => {
-        // Implement Expo WebAuthn / Passkeys flow later if needed
-        // For right now, admin-mobile might depend on native libraries or a webview for WebAuthn.
-        // We will show an alert explaining it's a web-only feature for now if no native lib is installed.
-        Alert.alert(
-            "Passkey Registration",
-            "To register a new passkey, please log in to the FresherFlow Admin portal on your web browser. Native passkey registration is coming soon.",
-            [{ text: "OK" }]
-        );
+        if (!Passkey.isSupported()) {
+            Alert.alert(
+                'Passkey Unsupported',
+                'This device does not support native passkeys yet. Use the admin web app for this device.',
+            );
+            return;
+        }
+
+        if (!admin?.email) {
+            Alert.alert('Unavailable', 'Sign in again before adding a passkey.');
+            return;
+        }
+
+        try {
+            setStatus('registering');
+            await registerPasskey();
+            await loadPasskeys();
+            Alert.alert('Passkey Added', 'This device can now be used for admin sign-in.');
+        } catch (err: unknown) {
+            const errorMsg = err instanceof Error ? err.message : 'Failed to register passkey';
+            Alert.alert('Passkey Registration Failed', errorMsg);
+            setStatus('idle');
+        }
     };
 
     const handleRemove = (id: string, name: string) => {
@@ -59,7 +68,6 @@ export const PasskeysSection = React.memo(({ colors: c }: PasskeysSectionProps) 
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            if (!deletePasskey) return;
                             setStatus('deleting');
                             await deletePasskey(id);
                             await loadPasskeys(); // reload list

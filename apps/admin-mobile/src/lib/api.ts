@@ -3,6 +3,7 @@
  * All calls go through `apiRequest` from http.ts — no raw fetch here.
  */
 import { apiRequest } from './http';
+import type { PasskeyCreateRequest } from 'react-native-passkey';
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -16,6 +17,10 @@ export type LoginOptions = {
 };
 
 export type LoginVerifyResponse = { verified: boolean; accessToken?: string };
+export type PasskeySummary = { id: string; name: string };
+export type PasskeyListResponse = { keys: PasskeySummary[] };
+export type PasskeyRegisterOptions = PasskeyCreateRequest;
+export type PasskeyRegisterVerifyResponse = { verified: boolean };
 
 export type TotpGenerateResponse = {
     secret: string;
@@ -122,7 +127,8 @@ export type OpportunityListParams = {
     limit?: number;
     status?: string;
     type?: string;
-    search?: string;
+    /** Full-text search query — matches title, company, description, source link, apply link */
+    q?: string;
     sort?: string;
 };
 
@@ -146,6 +152,18 @@ export type AppFeedbackItem = {
 export const Auth = {
     me: () => apiRequest<MeResponse>('/api/admin/auth/me'),
 
+    registerOptions: (email: string) =>
+        apiRequest<PasskeyRegisterOptions>('/api/admin/auth/register/options', {
+            method: 'POST',
+            body: JSON.stringify({ email }),
+        }),
+
+    registerVerify: (email: string, body: unknown) =>
+        apiRequest<PasskeyRegisterVerifyResponse>('/api/admin/auth/register/verify', {
+            method: 'POST',
+            body: JSON.stringify({ email, body }),
+        }),
+
     loginOptions: (email: string) =>
         apiRequest<LoginOptions>('/api/admin/auth/login/options', {
             method: 'POST',
@@ -162,6 +180,14 @@ export const Auth = {
         apiRequest<LoginVerifyResponse>('/api/admin/auth/login/totp', {
             method: 'POST',
             body: JSON.stringify({ email, code }),
+        }),
+
+    passkeys: () =>
+        apiRequest<PasskeyListResponse>('/api/admin/auth/passkeys'),
+
+    deletePasskey: (id: string) =>
+        apiRequest<{ success: boolean }>(`/api/admin/auth/passkeys/${id}`, {
+            method: 'DELETE',
         }),
 
     logout: () =>
@@ -278,6 +304,7 @@ export const Opportunities = {
         ).toString();
         return apiRequest<OpportunityListResponse>(`/api/admin/opportunities${qs ? '?' + qs : ''}`);
     },
+
 
     get: (id: string) =>
         apiRequest<{ opportunity: Opportunity }>(`/api/admin/opportunities/${id}`),

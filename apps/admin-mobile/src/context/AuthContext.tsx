@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useState } fr
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { HttpError, saveToken, deleteToken, setUnauthorizedHandler } from '../lib/http';
 import { ADMIN_CACHE_KEY } from '../lib/constants';
-import { Auth, Totp, type TotpGenerateResponse } from '../lib/api';
+import { Auth, Totp, type PasskeySummary, type TotpGenerateResponse } from '../lib/api';
 import { setUserContext, clearUserContext } from '../lib/sentry';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -20,6 +20,9 @@ type AuthContextType = {
   isLoading: boolean;
   /** TOTP-based login (primary fallback path) */
   verifyTotp: (email: string, code: string) => Promise<void>;
+  getPasskeys: () => Promise<{ keys: PasskeySummary[] }>;
+  registerPasskey: () => Promise<void>;
+  deletePasskey: (id: string) => Promise<void>;
   /** Passkey-based login — step 1: get challenge options */
   getPasskeyOptions: (email: string) => Promise<unknown>;
   /** Passkey-based login — step 2: submit assertion */
@@ -129,6 +132,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [refreshMe]);
 
+  const getPasskeys = useCallback(async () => {
+    return Auth.passkeys();
+  }, []);
+
+  const registerPasskey = useCallback(async () => {
+    if (!admin?.email) throw new Error('Admin profile is required to register a passkey');
+    const options = await Auth.registerOptions(admin.email);
+    const { Passkey } = await import('react-native-passkey');
+    const attestation = await Passkey.create(options);
+    const result = await Auth.registerVerify(admin.email, attestation);
+    if (!result.verified) throw new Error('Passkey registration failed');
+  }, [admin?.email]);
+
+  const deletePasskey = useCallback(async (id: string) => {
+    await Auth.deletePasskey(id);
+  }, []);
+
   // ── TOTP management ───────────────────────────────────────────────────────
   const totpGenerate = useCallback(async () => {
     return Totp.generate();
@@ -149,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   return (
     <AuthContext.Provider value={{
       admin, isLoading,
-      verifyTotp, getPasskeyOptions, verifyPasskey,
+      verifyTotp, getPasskeys, registerPasskey, deletePasskey, getPasskeyOptions, verifyPasskey,
       logout, refreshMe,
       totpGenerate, totpVerifySetup, totpDisable,
     }}>
