@@ -1,12 +1,15 @@
-import { ActionType, type Opportunity } from '@fresherflow/types';
+import { TimelineEventView } from '../detailUtils';
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
 
 interface DetailTimelineProps {
-    timelineEvents: any[]; // Use proper event type if available
-    upcomingTimelineEvents: any[];
+    timelineEvents: TimelineEventView[];
+    upcomingTimelineEvents: TimelineEventView[];
 }
 
 export function DetailTimeline({ timelineEvents, upcomingTimelineEvents }: DetailTimelineProps) {
+    const [now] = useState(() => Date.now());
+
     if (timelineEvents.length === 0) return null;
 
     return (
@@ -21,7 +24,7 @@ export function DetailTimeline({ timelineEvents, upcomingTimelineEvents }: Detai
             </div>
             <div className="space-y-2">
                 {timelineEvents.map((event) => {
-                    const isPast = event._dt.getTime() < Date.now();
+                    const isPast = event._dt.getTime() < now;
                     return (
                         <div
                             key={event.id}

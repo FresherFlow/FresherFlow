@@ -1,16 +1,16 @@
-import { Opportunity } from '@fresherflow/types';
+// removed unused Opportunity import
 import { Button } from '@/components/ui/Button';
 import { formatLpaValue } from '../detailUtils';
+import { DriveMetadata, DriveSalaryRow } from '@/shared/utils/driveTimeline';
 
 interface DetailCampusDriveInfoProps {
-    opp: Opportunity;
-    driveMeta: any;
+    driveMeta: DriveMetadata;
     hasApplyLink: boolean;
     handleApply: () => void;
 }
 
-export function DetailCampusDriveInfo({ opp, driveMeta, hasApplyLink, handleApply }: DetailCampusDriveInfoProps) {
-    const isCampusDrive = true; // This component is only used if isCampusDrive is true
+export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: DetailCampusDriveInfoProps) {
+    // Component used for campus drive logic cleanup
 
     return (
         <div className="space-y-3 md:space-y-4">
@@ -42,7 +42,7 @@ export function DetailCampusDriveInfo({ opp, driveMeta, hasApplyLink, handleAppl
                                 </tr>
                             </thead>
                             <tbody>
-                                {driveMeta.salaryRows.map((row: any) => (
+                                {driveMeta.salaryRows.map((row: DriveSalaryRow) => (
                                     <tr key={`${row.cadre}-${row.experience}`} className="border-t border-border/60 text-foreground font-medium">
                                         <td className="py-2">{row.cadre}</td>
                                         <td className="py-2">{row.experience}</td>
@@ -55,13 +55,13 @@ export function DetailCampusDriveInfo({ opp, driveMeta, hasApplyLink, handleAppl
                     </div>
                     <div className="grid grid-cols-1 gap-2 md:hidden">
                         {(['Prime', 'Digital'] as const).map((cadre) => {
-                            const rows = driveMeta.salaryRows.filter((row: any) => row.cadre === cadre);
+                            const rows = driveMeta.salaryRows.filter((row: DriveSalaryRow) => row.cadre === cadre);
                             if (rows.length === 0) return null;
                             return (
                                 <div key={cadre} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
                                     <p className="text-xs md:text-sm font-bold text-primary uppercase tracking-wider">{cadre} Cadre</p>
                                     <div className="mt-2 space-y-1.5">
-                                        {rows.map((row: any) => (
+                                        {rows.map((row: DriveSalaryRow) => (
                                             <div key={`${row.cadre}-${row.experience}`} className="rounded-md border border-border/70 bg-background/30 px-2 py-1.5">
                                                 <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">{row.experience}</p>
                                                 <div className="mt-0.5 flex items-center justify-between gap-2 text-sm font-semibold text-foreground">

@@ -5,13 +5,14 @@ import Link from 'next/link';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import { OpportunityDeadlineBadge } from './OpportunityDeadlineBadge';
+import { DriveMetadata } from '@/shared/utils/driveTimeline';
 
 interface DetailHeroSectionProps {
     opp: Opportunity;
     isCampusDrive: boolean;
     listingState: string;
     driveDateItems: { label: string; date: Date | null }[];
-    driveMeta: any;
+    driveMeta: DriveMetadata;
     displaySalary: string | null;
     locationInfo: { shortLabel: string; fullLabel: string };
     formatDeadline: (opp: Opportunity) => string | null;

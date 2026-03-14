@@ -1,16 +1,16 @@
-import { ActionType, type Opportunity } from '@fresherflow/types';
+import { ActionType, type Opportunity, type User, type OpportunityEvent } from '@fresherflow/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
-import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
+// removed unused ClockIcon import
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
 import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import Link from 'next/link';
 
 interface DetailSidebarActionsProps {
-    user: any;
+    user: User | null;
     opp: Opportunity;
     currentAction: ActionType | null;
     trackerOptions: { key: ActionType; label: string }[];
@@ -18,7 +18,7 @@ interface DetailSidebarActionsProps {
     handleSetAction: (actionType: ActionType) => void;
     hasApplyLink: boolean;
     isCampusDrive: boolean;
-    timelineEvents: any[];
+    timelineEvents: OpportunityEvent[];
     jumpToTimeline: () => void;
     handleApply: () => void;
     handleToggleSave: () => void;

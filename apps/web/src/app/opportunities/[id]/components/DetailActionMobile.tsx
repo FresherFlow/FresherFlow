@@ -1,4 +1,6 @@
-import { ActionType, type Opportunity } from '@fresherflow/types';
+import { type Opportunity, type User } from '@fresherflow/types';
+import { TimelineEventView } from '../detailUtils';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
@@ -9,10 +11,10 @@ import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 
 interface DetailActionMobileProps {
-    user: any;
+    user: User | null;
     opp: Opportunity;
     isCampusDrive: boolean;
-    timelineEvents: any[];
+    timelineEvents: TimelineEventView[];
     hasApplyLink: boolean;
     handleApply: () => void;
     handleToggleSave: () => void;
@@ -20,7 +22,7 @@ interface DetailActionMobileProps {
     handleCopyLink: () => void;
     jumpToTimeline: () => void;
     loginFromDetailHref: string;
-    router: any;
+    router: ReturnType<typeof useRouter>;
 }
 
 export function DetailActionMobile({

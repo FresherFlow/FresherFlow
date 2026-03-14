@@ -1,6 +1,6 @@
 import { getStatusLabel } from '@/features/admin/opportunities/listUtils';
 import { getOpportunityPath } from '@/lib/opportunityPath';
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, OpportunityType } from '@fresherflow/types';
 
 export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Date | null; deletedAt?: string | Date | null }) => {
     const label = getStatusLabel(opp);
@@ -12,7 +12,7 @@ export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Da
 };
 
 export const getPublicOpportunityHref = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) =>
-    getOpportunityPath(opp.type as any, opp.slug || opp.id);
+    getOpportunityPath(opp.type as OpportunityType, opp.slug || opp.id);
 
 export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {
     const configuredOrigin =

@@ -6,7 +6,7 @@ import { opportunitiesApi, dashboardApi, savedApi } from '@/lib/api/client';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
-import { getFeedLastSyncAt } from '@/lib/offline/syncStatus';
+// removed unused sync status import
 import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { OpportunityEventType } from '@fresherflow/types';
 import { OfflineError } from '@/lib/api/client';
@@ -64,7 +64,7 @@ type HighlightsData = {
 };
 
 const hasAppliedAction = (opp: Opportunity): boolean =>
-    (opp.actions as any[] | undefined)?.some((a) => 
+    (opp.actions as { actionType: string }[] | undefined)?.some((a) => 
         ['APPLIED', 'PLANNED', 'INTERVIEWED', 'SELECTED', 'PLANNING', 'ATTENDED'].includes(a.actionType)
     ) ?? false;
 

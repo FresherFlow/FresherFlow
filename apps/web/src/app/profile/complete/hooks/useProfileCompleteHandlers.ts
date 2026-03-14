@@ -4,8 +4,26 @@ import toast from 'react-hot-toast';
 import { profileApi } from '@/lib/api/client';
 import { validateEducationData } from '@/lib/profileFormValidation';
 
+export interface ProfileCompleteForm {
+    fullName: string;
+    educationLevel: string;
+    tenthYear: string;
+    twelfthYear: string;
+    gradCourse: string;
+    gradSpecialization: string;
+    gradYear: string;
+    hasPG: boolean;
+    pgCourse: string;
+    pgSpecialization: string;
+    pgYear: string;
+    interestedIn: string[];
+    preferredCities: string[];
+    workModes: string[];
+    skills: string[];
+}
+
 export function useProfileCompleteHandlers(
-    form: any, 
+    form: ProfileCompleteForm, 
     refreshUser: () => Promise<void>,
     setCurrentStep: (step: 'education' | 'preferences' | 'readiness') => void
 ) {

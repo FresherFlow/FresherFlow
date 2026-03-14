@@ -1,5 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
+import { Opportunity } from '@fresherflow/types';
+import { SocialOpportunity } from '@/features/admin/opportunities/listUtils';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import { 
     MapPinIcon, 
@@ -21,7 +23,7 @@ import {
 } from '@/features/admin/opportunities/listUtils';
 
 interface AdminOpportunitiesTableProps {
-    opportunities: any[];
+    opportunities: (Opportunity & { deletedAt?: string | Date | null; expiredAt?: string | Date | null })[];
     selectedIds: string[];
     bulkActionPending: boolean;
     toggleSelect: (id: string) => void;
@@ -30,8 +32,8 @@ interface AdminOpportunitiesTableProps {
     handleStatusUpdate: (id: string, status: string) => void;
     handleDelete: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
-    copySocialCaption: (opp: any) => void;
-    getPublicOpportunityHref: (opp: any) => string;
+    copySocialCaption: (opp: SocialOpportunity) => void;
+    getPublicOpportunityHref: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
     page: number;
     pageSize: number;
     totalCount: number;

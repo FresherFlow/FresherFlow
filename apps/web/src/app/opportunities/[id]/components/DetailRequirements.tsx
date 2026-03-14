@@ -1,5 +1,5 @@
 import { Opportunity } from '@fresherflow/types';
-import { cn } from '@/lib/utils';
+// removed unused cn import
 
 interface DetailRequirementsProps {
     opp: Opportunity;

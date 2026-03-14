@@ -117,7 +117,7 @@ export const PreferencesSection = ({
                             <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
                                 {filteredCityOptions.map(city => (
                                     <button key={city} onMouseDown={() => {
-                                        const result = togglePreferredCity(city);
+                                        togglePreferredCity(city);
                                         // result check handled in parent or here via toast if we want to pass toast
                                         setCityInput('');
                                         setCityOpen(false);

@@ -3,9 +3,9 @@ import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
 import { feedbackApi } from '@/lib/api/client';
-import { type Opportunity } from '@fresherflow/types';
+import { type Opportunity, type User } from '@fresherflow/types';
 
-export function useOpportunityReport(opp: Opportunity | null, user: any) {
+export function useOpportunityReport(opp: Opportunity | null, user: User | null) {
     const router = useRouter();
     const [showReports, setShowReports] = useState(false);
 

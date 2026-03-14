@@ -67,11 +67,11 @@ export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Da
     return 'bg-slate-50 text-slate-600 ring-slate-500/10';
 };
 
+import { OpportunityType } from '@fresherflow/types';
 import { getOpportunityPath } from '@/lib/opportunityPath';
-export { getOpportunityPath } from '@/lib/opportunityPath';
 
 export const getPublicOpportunityHref = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {
-    return getOpportunityPath(opp.type as any, opp.slug || opp.id);
+    return getOpportunityPath(opp.type as OpportunityType, opp.slug || opp.id);
 };
 
 export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {

@@ -9,6 +9,9 @@ import {
 } from '@/features/jobs/actions/opportunity';
 import { buildSocialCaption } from '@/features/admin/opportunities/listUtils';
 
+import { SocialOpportunity } from '@/features/admin/opportunities/listUtils';
+import { OpportunityStatus } from '@fresherflow/types';
+
 export function useAdminOpportunityActions(loadOpportunities: () => Promise<void>) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [bulkActionPending, setBulkActionPending] = useState(false);
@@ -52,8 +55,8 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                     toast.success('Opportunity expired', { id: tid });
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err: any) {
-                    toast.error(err.message, { id: tid });
+                } catch (err: unknown) {
+                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
                 }
             }
         });
@@ -62,12 +65,12 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
     const handleStatusUpdate = async (id: string, newStatus: string) => {
         const tid = toast.loading(`Updating to ${newStatus}...`);
         try {
-            const res = await updateOpportunityAction(id, { status: newStatus as any });
+            const res = await updateOpportunityAction(id, { status: newStatus as OpportunityStatus });
             if (!res.success) throw new Error(res.error);
             toast.success('Listing updated', { id: tid });
             loadOpportunities();
-        } catch (err: any) {
-            toast.error(err.message, { id: tid });
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
         }
     };
 
@@ -86,8 +89,8 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                     toast.success('Opportunity removed', { id: tid });
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err: any) {
-                    toast.error(err.message, { id: tid });
+                } catch (err: unknown) {
+                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
                 }
             }
         });
@@ -119,8 +122,8 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                     setSelectedIds([]);
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
-                } catch (err: any) {
-                    toast.error(err.message, { id: tid });
+                } catch (err: unknown) {
+                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
                 } finally {
                     setBulkActionPending(false);
                 }
@@ -135,12 +138,12 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
             if (!res.success) throw new Error(res.error);
             toast.success('Listing restored', { id: tid });
             loadOpportunities();
-        } catch (err: any) {
-            toast.error(err.message, { id: tid });
+        } catch (err: unknown) {
+            toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
         }
     };
 
-    const handleCopySocialCaption = async (opp: any) => {
+    const handleCopySocialCaption = async (opp: SocialOpportunity) => {
         try {
             await navigator.clipboard.writeText(buildSocialCaption(opp));
             toast.success('Caption copied.');

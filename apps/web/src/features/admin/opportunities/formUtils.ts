@@ -22,6 +22,7 @@ export interface ParsedJob {
     salaryRange?: string;
     salaryMin?: number;
     salaryMax?: number;
+    salaryAmount?: number | string;
     salaryPeriod?: string;
     jobFunction?: string;
     employmentType?: string;
@@ -35,14 +36,30 @@ export interface ParsedJob {
     sourceLink?: string;
     applyLink?: string;
     expiresAt?: string;
+    workMode?: string;
     venueAddress?: string;
     venueLink?: string;
     dateRange?: string;
     timeRange?: string;
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
+    endTime?: string;
     requiredDocuments?: string[];
     contactPerson?: string;
     contactPhone?: string;
     description?: string;
+    walkInDetails?: {
+        dateRange?: string;
+        timeRange?: string;
+        reportingTime?: string;
+        venueAddress?: string;
+        venueLink?: string;
+        requiredDocuments?: string[];
+        contactPerson?: string;
+        contactPhone?: string;
+        dates?: string[];
+    };
 }
 
 export type DuplicateOpportunity = {

@@ -3,8 +3,10 @@ import { adminApi } from '@/lib/api/admin';
 import toast from 'react-hot-toast';
 import { buildOpportunityPayload } from '../../opportunityPayload';
 import { buildAdminSharePack, buildPlatformCaption, type SharePlatform } from '@/features/admin/opportunities/formUtils';
+import { useOpportunityForm } from '@/features/admin/opportunities/useOpportunityForm';
+import { Opportunity } from '@fresherflow/types';
 
-export function useOpportunityFormHandlers(form: any, mode: 'create' | 'edit', opportunityId?: string) {
+export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunityForm>, mode: 'create' | 'edit', opportunityId?: string) {
     const router = useRouter();
     const isEditMode = mode === 'edit' && !!opportunityId;
 
@@ -55,8 +57,8 @@ export function useOpportunityFormHandlers(form: any, mode: 'create' | 'edit', o
 
         try {
             const data = (isEditMode && opportunityId)
-                ? await adminApi.updateOpportunity(opportunityId, payload) as { opportunity: any }
-                : await adminApi.createOpportunity(payload) as { opportunity: any };
+                ? await adminApi.updateOpportunity(opportunityId, payload) as { opportunity: Opportunity }
+                : await adminApi.createOpportunity(payload) as { opportunity: Opportunity };
 
             toast.success(isEditMode ? 'Listing updated successfully.' : 'New listing published!', { id: toastId });
             

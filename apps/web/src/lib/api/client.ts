@@ -36,7 +36,10 @@ function normalizeApiBase(raw?: string): string {
 
 const DEFAULT_API_URL = normalizeApiBase(process.env.NEXT_PUBLIC_API_URL);
 const USER_API_URL = normalizeApiBase(process.env.NEXT_PUBLIC_USER_API_URL) || DEFAULT_API_URL;
-const ADMIN_API_URL = normalizeApiBase(process.env.NEXT_PUBLIC_ADMIN_API_URL) || DEFAULT_API_URL;
+const USE_SEPARATE_ADMIN_API = process.env.NEXT_PUBLIC_USE_SEPARATE_ADMIN_API === 'true';
+const ADMIN_API_URL = USE_SEPARATE_ADMIN_API
+    ? (normalizeApiBase(process.env.NEXT_PUBLIC_ADMIN_API_URL) || DEFAULT_API_URL)
+    : DEFAULT_API_URL;
 
 export function getApiBaseForEndpoint(endpoint: string): string {
     if (endpoint.startsWith('/api/admin')) {

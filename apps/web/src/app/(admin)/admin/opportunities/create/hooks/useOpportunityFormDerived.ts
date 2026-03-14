@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
 import { ALL_COURSE_OPTIONS, ALL_SPECIALIZATION_OPTIONS } from '@/lib/profileConstants';
+import { useOpportunityForm } from '@/features/admin/opportunities/useOpportunityForm';
 
-export function useOpportunityFormDerived(form: any) {
-    const commonDegrees = ['DIPLOMA', 'DEGREE', 'PG'];
-    
+const commonDegrees = ['DIPLOMA', 'DEGREE', 'PG'];
+
+export function useOpportunityFormDerived(form: ReturnType<typeof useOpportunityForm>) {
     const customDegrees = useMemo(() => 
         form.allowedDegrees.filter((d: string) => !commonDegrees.includes(d)),
     [form.allowedDegrees]);

@@ -1,13 +1,9 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { adminApi } from '@/lib/api/admin';
-import type { Opportunity } from '@fresherflow/types';
-import toast from 'react-hot-toast';
+import { useRouter } from 'next/navigation';
 import { AdminOpportunitiesSkeleton } from '@/components/ui/Skeleton';
-import { useDebounce } from '@/lib/hooks/useDebounce';
 import { getPublicOpportunityHref } from '@/features/admin/opportunities/listUtils';
 
 // Hooks

@@ -1,6 +1,5 @@
 'use client';
 
-import { Suspense, useMemo } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
@@ -83,7 +82,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                     <ShareListingBanner 
                         title={form.publishedListing.title} 
                         company={form.publishedListing.company} 
-                        onCopyCaption={handleCopyCaption as any}
+                        onCopyCaption={handleCopyCaption as (text: string) => void}
                         onCopyFullPack={handleCopyFullPack}
                     />
                 </div>

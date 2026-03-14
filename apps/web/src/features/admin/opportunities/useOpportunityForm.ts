@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { adminApi } from '@/lib/api/admin';
 import { Opportunity } from '@fresherflow/types';
@@ -7,6 +7,7 @@ import {
     type OpportunityKind,
     type TimelineEvent,
     type DuplicateOpportunity,
+    type ParsedJob,
     tokenSet,
     overlapRatio,
     extractDomain,
@@ -157,7 +158,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
                     .sort((a, b) => b.score - a.score)
                     .slice(0, 4);
                 
-                setDuplicateCandidates(scored as any);
+                setDuplicateCandidates(scored as Array<DuplicateOpportunity & { score: number }>);
             } catch {
                 setDuplicateCandidates([]);
             } finally {
@@ -183,7 +184,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
             setRequiredSkills((opp.requiredSkills || []).join(', '));
             setAllowedDegrees(opp.allowedDegrees || []);
             setAllowedCourses(opp.allowedCourses || []);
-            setAllowedSpecializations((opp as any).allowedSpecializations || []);
+            setAllowedSpecializations(opp.allowedSpecializations || []);
             setPassoutYears(opp.allowedPassoutYears || []);
             setWorkMode(opp.workMode || 'ONSITE');
             setSalaryRange(opp.salaryRange || '');
@@ -315,7 +316,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         const toastId = toast.loading('Auto-filling from text...');
 
         try {
-            const { parsed } = await adminApi.parseJobText(text) as { parsed: any };
+            const { parsed } = await adminApi.parseJobText(text) as { parsed: ParsedJob };
 
             if (parsed.title) setTitle(parsed.title);
             if (parsed.company) setCompany(parsed.company);
@@ -374,7 +375,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         }
     };
 
-    const applyJsonData = (data: any) => {
+    const applyJsonData = (data: Partial<ParsedJob>) => {
         if (data.type) {
             const normalizedType = typeParamToEnum(String(data.type));
             if (normalizedType === 'JOB' || normalizedType === 'INTERNSHIP' || normalizedType === 'WALKIN') {

@@ -1,4 +1,5 @@
-import { ActionType, type Opportunity } from '@fresherflow/types';
+import { type Opportunity, type User } from '@fresherflow/types';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
@@ -9,9 +10,9 @@ import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 
 interface DetailActionHeaderProps {
-    user: any;
+    user: User | null;
     opp: Opportunity;
-    router: any;
+    router: ReturnType<typeof useRouter>;
     handleShare: () => void;
     handleCopyLink: () => void;
     showReports: boolean;

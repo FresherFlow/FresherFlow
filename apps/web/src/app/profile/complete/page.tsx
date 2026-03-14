@@ -6,7 +6,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { AuthGate } from '@/components/gates/ProfileGate';
 import { useProfileForm } from '@/features/profile/hooks/useProfileForm';
-import toast from 'react-hot-toast';
 import { useClickOutside } from '@/lib/hooks/useClickOutside';
 
 // Hooks
