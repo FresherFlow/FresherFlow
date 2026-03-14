@@ -32,6 +32,7 @@
     "exclude": [
         "node_modules",
         "dist",
+        "src/**/*.test.ts",
         "prisma/seed.ts"
     ]
 }
