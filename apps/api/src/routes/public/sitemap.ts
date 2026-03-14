@@ -1,6 +1,7 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../lib/prisma';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import { Prisma } from '@fresherflow/database';
 
 const router: Router = express.Router();
 const DEFAULT_LIMIT = 1000;
@@ -16,7 +17,7 @@ router.get('/opportunities', async (req: Request, res: Response, next: NextFunct
         const skip = (page - 1) * limit;
         const graceCutoff = new Date(Date.now() - EXPIRED_GRACE_DAYS * 24 * 60 * 60 * 1000);
 
-        const where: any = {
+        const where: Prisma.OpportunityWhereInput = {
             status: OpportunityStatus.PUBLISHED,
             deletedAt: null,
             OR: [
@@ -42,7 +43,7 @@ router.get('/opportunities', async (req: Request, res: Response, next: NextFunct
             })
         ]);
 
-        const output = items.map((item: any) => ({
+        const output = items.map((item) => ({
             id: item.id,
             slug: item.slug,
             type: item.type as OpportunityType,

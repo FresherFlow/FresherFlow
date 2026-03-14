@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import { User } from '@fresherflow/types';
 import express, { Router, Request, Response, NextFunction } from 'express';
 
 import bcrypt from 'bcrypt';
@@ -63,7 +64,7 @@ const COOKIE_OPTIONS = {
 const ACCESS_TOKEN_MAX_AGE_MS = 15 * 60 * 1000;
 const REFRESH_TOKEN_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 
-async function setAuthCookies(user: any, res: Response) {
+async function setAuthCookies(user: User, res: Response) {
     const accessToken = generateAccessToken(user.id);
     const { token: refreshToken, hash: tokenHash } = generateRefreshToken(user.id);
 
@@ -98,15 +99,16 @@ router.post('/otp/verify', authVerifyLimiter, validate(verifyOtpSchema), async (
         const { email, code, source, ref } = req.body;
         const { user, isNewUser } = await AuthService.verifyOtp(email, code, ref);
 
-        await setAuthCookies(user, res);
+        await setAuthCookies(user as User, res);
         await recordAuthSuccess(source, isNewUser);
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: (user as any).profile || null
+            profile: (user as User).profile || null
         });
-    } catch (error: any) {
-        next(new AppError(error.message, 401));
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Authentication failed';
+        next(new AppError(message, 401));
     }
 });
 
@@ -118,15 +120,16 @@ router.post('/google', authVerifyLimiter, async (req: Request, res: Response, ne
 
         const { user, isNewUser } = await AuthService.verifyGoogleIdToken(token, ref);
 
-        await setAuthCookies(user, res);
+        await setAuthCookies(user as User, res);
         await recordAuthSuccess(source, isNewUser);
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: (user as any).profile || null
+            profile: (user as User).profile || null
         });
-    } catch (error: any) {
-        next(new AppError(error.message, 401));
+    } catch (error) {
+        const message = error instanceof Error ? error.message : 'Google authentication failed';
+        next(new AppError(message, 401));
     }
 });
 
@@ -146,7 +149,7 @@ router.post('/login', authVerifyLimiter, validate(loginSchema), async (req: Requ
         const isValid = await bcrypt.compare(password, user.passwordHash);
         if (!isValid) return next(new AppError('Invalid email or password', 401));
 
-        await setAuthCookies(user, res);
+        await setAuthCookies(user as User, res);
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },

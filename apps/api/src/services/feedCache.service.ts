@@ -15,7 +15,7 @@ export class FeedCacheService {
     /**
      * Retrieves feed from cache if available.
      */
-    static async get(key: string): Promise<any | null> {
+    static async get<T = unknown>(key: string): Promise<T | null> {
         if (!redis) return null;
         try {
             const data = await redis.get(key);
@@ -31,7 +31,7 @@ export class FeedCacheService {
     /**
      * Stores feed in cache for a short TTL.
      */
-    static async set(key: string, data: any): Promise<void> {
+    static async set(key: string, data: unknown): Promise<void> {
         if (!redis || env.NODE_ENV === 'development') return; // Don't cache rigidly locally for dev velocity
         try {
             await redis.set(key, JSON.stringify(data), 'EX', this.TTL_SECONDS);

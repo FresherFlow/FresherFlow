@@ -3,6 +3,7 @@ import { verifyAccessToken, verifyAdminToken } from '@fresherflow/auth';
 import { AppError } from './errorHandler';
 
 declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Express {
         interface Request {
             userId?: string;

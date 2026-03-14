@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { redis } from '@fresherflow/redis';
 import { AppError } from './errorHandler';
+import { logger } from '@fresherflow/logger';
 
 // In-memory fallback store
 const rateLimitStore = new Map<string, { count: number; resetAt: number }>();
@@ -49,7 +50,7 @@ export function createRateLimiter(options: RateLimitOptions) {
                 }
                 return next();
             } catch (err: unknown) {
-                console.error('[RateLimit] Redis failure, falling back to memory:', err);
+                logger.error('[RateLimit] Redis failure, falling back to memory', { error: err });
             }
         }
 

@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -110,7 +110,6 @@ describe('auth and profile gate', () => {
             .post('/api/auth/otp/verify')
             .send({ email: 'test@example.com', code: '123456' });
 
-        console.log('TEST ERROR RESPONSE:', res.body);
 
         expect(res.status).toBe(200);
         expect(res.body.user.email).toBe('test@example.com');
@@ -125,21 +124,21 @@ describe('middleware: requireAuth, requireAdmin, profileGate', () => {
 
     it('requireAuth blocks when no token', async () => {
         const { requireAuth } = await import('../middleware/auth');
-        const req = { cookies: {} } as any;
-        const res = {} as any;
+        const req = { cookies: {} } as Partial<Request>;
+        const res = {} as Partial<Response>;
         const next = vi.fn();
 
-        requireAuth(req, res, next);
+        requireAuth(req as Request, res as Response, next);
         expect(next).toHaveBeenCalled();
     });
 
     it('requireAdmin blocks when no admin token', async () => {
         const { requireAdmin } = await import('../middleware/auth');
-        const req = { cookies: {} } as any;
-        const res = {} as any;
+        const req = { cookies: {} } as Partial<Request>;
+        const res = {} as Partial<Response>;
         const next = vi.fn();
 
-        requireAdmin(req, res, next);
+        requireAdmin(req as Request, res as Response, next);
         expect(next).toHaveBeenCalled();
     });
 
@@ -163,14 +162,14 @@ describe('middleware: requireAuth, requireAdmin, profileGate', () => {
             },
         });
 
-        const req = { userId: 'user-1' } as any;
+        const req = { userId: 'user-1' } as Partial<Request>;
         const res = {
             status: vi.fn().mockReturnThis(),
             json: vi.fn(),
-        } as any;
+        } as unknown as Partial<Response>;
         const next = vi.fn();
 
-        await profileGate(req, res, next);
+        await profileGate(req as Request, res as Response, next);
         expect(res.status).toHaveBeenCalledWith(403);
     });
 
@@ -194,14 +193,14 @@ describe('middleware: requireAuth, requireAdmin, profileGate', () => {
             },
         });
 
-        const req = { userId: 'user-1' } as any;
+        const req = { userId: 'user-1' } as Partial<Request>;
         const res = {
             status: vi.fn().mockReturnThis(),
             json: vi.fn(),
-        } as any;
+        } as unknown as Partial<Response>;
         const next = vi.fn();
 
-        await profileGate(req, res, next);
+        await profileGate(req as Request, res as Response, next);
         expect(next).toHaveBeenCalled();
     });
 
@@ -213,14 +212,14 @@ describe('middleware: requireAuth, requireAdmin, profileGate', () => {
             profile: { completionPercentage: 0 },
         });
 
-        const req = { userId: 'admin-1' } as any;
+        const req = { userId: 'admin-1' } as Partial<Request>;
         const res = {
             status: vi.fn().mockReturnThis(),
             json: vi.fn(),
-        } as any;
+        } as unknown as Partial<Response>;
         const next = vi.fn();
 
-        await profileGate(req, res, next);
+        await profileGate(req as Request, res as Response, next);
         expect(next).toHaveBeenCalled();
     });
 });

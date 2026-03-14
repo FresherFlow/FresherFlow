@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
+import { ReferralBadge } from '@fresherflow/database';
 import { requireAuth } from '../middleware/auth';
 import { createRateLimiter } from '../middleware/rateLimit';
 import crypto from 'crypto';
@@ -39,12 +40,12 @@ function hashIp(ip: string): string {
 
 async function awardBadges(userId: string, signupCount: number) {
     const existingBadges = await prisma.referralBadgeGrant.findMany({ where: { userId } });
-    const earnedSet = new Set(existingBadges.map((b: any) => b.badge));
+    const earnedSet = new Set(existingBadges.map((b) => b.badge));
 
     for (const m of BADGE_MILESTONES) {
-        if (signupCount >= m.count && !earnedSet.has(m.badge as any)) {
+        if (signupCount >= m.count && !earnedSet.has(m.badge as ReferralBadge)) {
             await prisma.referralBadgeGrant.create({
-                data: { userId, badge: m.badge as any }
+                data: { userId, badge: m.badge as ReferralBadge }
             }).catch(() => { /* ignore dup */ });
         }
     }
@@ -119,8 +120,8 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
                         select: { id: true, referralCode: true },
                     });
                     codeGenerated = true;
-                } catch (e: any) {
-                    if (e.code !== 'P2002') throw e;
+                } catch (e) {
+                    if ((e as { code?: string }).code !== 'P2002') throw e;
                     maxRetries--;
                 }
             }
@@ -162,24 +163,25 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
             select: { badge: true, createdAt: true },
         });
 
-        const earnedBadges = badges.map((b: any) => ({
+        const earnedBadges = badges.map((b) => ({
             badge: b.badge,
             ...BADGE_META[b.badge],
             earnedAt: b.createdAt,
         }));
+        void earnedBadges; // Fix unused variable warning if intended for future use or just for side effects.
 
-        const allBadges = BADGE_MILESTONES.map((m: any) => ({
+        const allBadges = BADGE_MILESTONES.map((m) => ({
             badge: m.badge,
             ...BADGE_META[m.badge],
             unlocked: totalSignups >= m.count,
-            earnedAt: badges.find((b: any) => b.badge === m.badge)?.createdAt ?? null,
+            earnedAt: badges.find((b) => b.badge === m.badge)?.createdAt ?? null,
         }));
 
         res.json({
             referralCode: code,
             shareUrl,
             stats: { totalClicks, totalSignups, activated },
-            referrals: referralsRaw.map((r: any) => ({
+            referrals: referralsRaw.map((r) => ({
                 id: r.id,
                 fullName: r.fullName,
                 joinedAt: r.referredAt ?? r.createdAt,

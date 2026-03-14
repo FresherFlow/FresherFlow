@@ -5,6 +5,26 @@ import { requireAdmin } from '../../middleware/auth';
 
 const router: Router = express.Router();
 
+interface FeedbackGroup {
+    opportunity: {
+        id: string;
+        title: string;
+        company: string;
+        type: string;
+    } | null;
+    feedbackCount: number;
+    negativeCount: number;
+    feedback: Array<{
+        id: string;
+        reason: string;
+        createdAt: Date;
+        user: {
+            fullName: string | null;
+            email: string;
+        };
+    }>;
+}
+
 
 // GET /api/admin/feedback/alerts - Unread-style counters since a timestamp
 router.get('/alerts', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
@@ -55,7 +75,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
         });
 
         // Group by opportunity and count
-        const feedbackByOpportunity = feedback.reduce((acc: any, item) => {
+        const feedbackByOpportunity = feedback.reduce((acc: Record<string, FeedbackGroup>, item) => {
             const oppId = item.opportunityId;
             if (!acc[oppId]) {
                 acc[oppId] = {
@@ -76,10 +96,10 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
                 user: item.user
             });
             return acc;
-        }, {});
+        }, {} as Record<string, FeedbackGroup>);
 
         // Sort by negative count
-        const sorted = Object.values(feedbackByOpportunity).sort((a: any, b: any) =>
+        const sorted = Object.values(feedbackByOpportunity).sort((a, b) =>
             b.negativeCount - a.negativeCount
         );
 

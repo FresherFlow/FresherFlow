@@ -34,8 +34,8 @@ export async function invalidatePublicOpportunityCache(options?: {
             await redis.del(...detailKeys);
         }
         logger.debug('Invalidated public opportunity cache', { idsOrSlugs, purgeFeed });
-    } catch (error: any) {
-        logger.error('[Redis] Failed to invalidate public opportunity cache', { error: error.message });
+    } catch (error: unknown) {
+        logger.error('[Redis] Failed to invalidate public opportunity cache', { error: error instanceof Error ? error.message : String(error) });
     }
 }
 

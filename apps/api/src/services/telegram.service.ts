@@ -2,6 +2,7 @@ import prisma from '../lib/prisma';
 import axios from 'axios';
 import { enqueueTelegramBroadcast } from '@fresherflow/queue';
 import { buildSocialOpportunityUrl } from '../utils/share';
+import { logger } from '@fresherflow/logger';
 
 class TelegramService {
     private botToken: string;
@@ -70,7 +71,7 @@ class TelegramService {
                 const reason = process.env.NODE_ENV !== 'production' && !this.allowInDev
                     ? 'disabled in non-production'
                     : 'credentials missing';
-                console.warn(`TelegramService: ${reason}, skipping message.`);
+                logger.warn(`TelegramService: ${reason}, skipping message.`);
                 this.hasWarnedFailure = true;
             }
             return;
@@ -82,12 +83,13 @@ class TelegramService {
                 text,
                 parse_mode: 'HTML'
             });
-        } catch (error: any) {
+        } catch (error: unknown) {
             if (this.hasWarnedFailure) return;
-            const status = error?.response?.status;
-            const description = error?.response?.data?.description;
-            const reason = description ? `(${status}) ${description}` : (status ? `(${status})` : 'unknown error');
-            console.error(`TelegramService Error: ${reason}`);
+            const axiosError = error as { response?: { status?: number; data?: { description?: string } } };
+            const status = axiosError?.response?.status;
+            const description = axiosError?.response?.data?.description;
+            const reason = description ? `(${status}) ${description}` : (status ? `(${status})` : (error instanceof Error ? error.message : 'unknown error'));
+            logger.error(`TelegramService Error: ${reason}`);
             this.hasWarnedFailure = true;
         }
     }
@@ -104,7 +106,7 @@ class TelegramService {
         await this.sendMessage(message);
     }
 
-    async notifyError(context: string, error: any): Promise<void> {
+    async notifyError(context: string, error: unknown): Promise<void> {
         const errorMessage = error instanceof Error ? error.message : JSON.stringify(error);
         const dedupeKey = `${context}::${errorMessage}`;
         const now = Date.now();
@@ -238,7 +240,7 @@ class TelegramService {
             const messageId = response?.data?.result?.message_id;
             return messageId ? String(messageId) : null;
         } catch (error) {
-            console.error(`TelegramService Broadcast Error (${channelUsername}):`, error);
+            logger.error(`TelegramService Broadcast Error (${channelUsername}):`, error instanceof Error ? error.message : String(error));
             return null;
         }
     }
@@ -256,7 +258,7 @@ class TelegramService {
         const dedupeKey = `${opportunityId}:${publicChannel || 'unknown'}`;
 
         if (!publicChannel || !this.botToken) {
-            console.log('TelegramService: Public channel not configured, skipping broadcast.');
+            logger.info('TelegramService: Public channel not configured, skipping broadcast.');
             await prisma.telegramBroadcast.upsert({
                 where: { dedupeKey },
                 create: {

@@ -1,6 +1,6 @@
-import prisma from '../lib/prisma';
+import prisma, { Prisma } from '../lib/prisma';
 import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind } from '@fresherflow/database';
-import { OpportunityStatus } from '@fresherflow/types';
+import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
@@ -54,7 +54,7 @@ async function logDispatch(params: {
             reason: params.reason ?? null,
             dedupeKey: params.dedupeKey ?? null,
             errorMessage: params.errorMessage ?? null,
-            metadata: (params.metadata ?? undefined) as any,
+            metadata: (params.metadata ?? undefined) as Prisma.InputJsonValue,
             attemptedAt: params.attemptedAt,
             deliveredAt: params.deliveredAt,
         },
@@ -72,7 +72,7 @@ async function resolveNewJobKind(): Promise<AlertKind> {
             WHERE t.typname = 'AlertKind'
         `;
 
-        const supportedKinds = new Set(labels.map((row: any) => row.enumlabel));
+        const supportedKinds = new Set(labels.map((row) => row.enumlabel));
         cachedNewJobKind = supportedKinds.has('NEW_JOB') ? AlertKind.NEW_JOB : AlertKind.HIGHLIGHT;
     } catch {
         cachedNewJobKind = AlertKind.NEW_JOB;
@@ -83,7 +83,7 @@ async function resolveNewJobKind(): Promise<AlertKind> {
 
 export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNotificationResult> {
     const correlationId = typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
+        ? (crypto as { randomUUID: () => string }).randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const alertKind = await resolveNewJobKind();
@@ -127,11 +127,11 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
 
     let emailsSent = 0;
     let appAlertsSent = 0;
-    const usersSent = new Set<string>();
+    const usersSentCount = new Set<string>();
     let skippedDisabled = 0;
     let skippedDailyCap = 0;
     let skippedNotEligible = 0;
-    let pushSent = 0;
+    let pushSentCount = 0;
     const dayStart = new Date();
     dayStart.setHours(0, 0, 0, 0);
     const sentTodayRows = await prisma.alertDelivery.groupBy({
@@ -146,7 +146,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         },
     });
     const sentTodayByUser = new Map<string, number>(
-        sentTodayRows.map((row: any) => [row.userId, row._count._all])
+        sentTodayRows.map((row) => [row.userId, row._count._all])
     );
 
     for (const user of users) {
@@ -162,7 +162,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             attemptedAt: userAttemptedAt,
         });
 
-        const preference = user.alertPreference ?? {
+        const preference = (user.alertPreference as unknown as { enabled: boolean; emailEnabled: boolean; minRelevanceScore: number }) ?? {
             enabled: true,
             emailEnabled: false,
             minRelevanceScore: 35,
@@ -216,7 +216,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             continue;
         }
 
-        const eligible = filterOpportunitiesForUser([opportunity as any], user.profile as any);
+        const eligible = filterOpportunitiesForUser([opportunity as unknown as Opportunity], user.profile as unknown as Profile);
         if (eligible.length === 0) {
             skippedNotEligible += 1;
             await logDispatch({
@@ -232,7 +232,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             continue;
         }
 
-        const ranked = rankOpportunitiesForUser(eligible as any, user.profile as any);
+        const ranked = rankOpportunitiesForUser(eligible as Opportunity[], user.profile as unknown as Profile);
         if (ranked.length === 0) {
             skippedNotEligible += 1;
             await logDispatch({
@@ -386,7 +386,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 opportunityId: opportunity.id,
                 opportunitySlug: opportunity.slug,
             });
-            pushSent += 1;
+            pushSentCount += 1;
             await prisma.alertDelivery.create({
                 data: {
                     userId: user.id,
@@ -427,25 +427,25 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         }
 
         appAlertsSent++;
-        usersSent.add(user.id);
+        usersSentCount.add(user.id);
         sentTodayByUser.set(user.id, alreadySentToday + 1);
     }
 
     logger.info('New job alerts sent', {
         opportunityId,
-        usersSent: usersSent.size,
+        usersSent: usersSentCount.size,
         emailsSent,
         appAlertsSent,
         skippedDisabled,
         skippedDailyCap,
         skippedNotEligible,
-        pushSent,
+        pushSent: pushSentCount,
     });
 
     return {
-        usersSent: usersSent.size,
+        usersSent: usersSentCount.size,
         emailsSent,
         appAlertsSent,
-        pushSent,
+        pushSent: pushSentCount,
     };
 }

@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma';
 import { AppError } from './errorHandler';
 import { calculateCompletion } from '@fresherflow/utils';
+import { Profile } from '@fresherflow/types';
 
 /**
  * Profile Gating Middleware
@@ -33,7 +34,7 @@ export async function profileGate(req: Request, res: Response, next: NextFunctio
             return next(new AppError('Profile not found. Please complete your profile.', 403));
         }
 
-        if (calculateCompletion(profile as any) < 100) {
+        if (calculateCompletion(profile as Profile) < 100) {
             return res.status(403).json({
                 error: 'Complete your profile to access this feature',
                 completionPercentage: profile.completionPercentage,
@@ -42,9 +43,10 @@ export async function profileGate(req: Request, res: Response, next: NextFunctio
         }
 
         next();
-    } catch (error: any) {
+    } catch (error) {
         // Explicitly mask database connection errors early
-        if (error.message?.toLowerCase().includes('prisma') || error.message?.toLowerCase().includes('neon')) {
+        const message = error instanceof Error ? error.message : '';
+        if (message.toLowerCase().includes('prisma') || message.toLowerCase().includes('neon')) {
             return next(new AppError('Database connection issue. Please try again later.', 503));
         }
         next(error);

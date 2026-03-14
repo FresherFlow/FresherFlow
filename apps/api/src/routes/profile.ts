@@ -6,6 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { educationSchema, preferencesSchema, readinessSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
+import { Profile } from '@fresherflow/types';
 import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/utils';
 
 const router: Router = express.Router();
@@ -66,7 +67,7 @@ router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunct
         });
 
         // Recalculate completion percentage
-        const newCompletion = calculateCompletion(profile as any);
+        const newCompletion = calculateCompletion((profile as unknown) as Profile);
         profile = await prisma.profile.update({
             where: { userId: req.userId },
             data: { completionPercentage: newCompletion }
@@ -120,7 +121,7 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
         });
 
         // Recalculate completion percentage (DERIVED FIELD)
-        const newCompletion = calculateCompletion(profile as any);
+        const newCompletion = calculateCompletion((profile as unknown) as Profile);
         profile = await prisma.profile.update({
             where: { userId: req.userId },
             data: { completionPercentage: newCompletion }
@@ -155,7 +156,7 @@ router.put('/preferences', requireAuth, validate(preferencesSchema), async (req:
         });
 
         // Recalculate completion
-        const newCompletion = calculateCompletion(profile as any);
+        const newCompletion = calculateCompletion((profile as unknown) as Profile);
         profile = await prisma.profile.update({
             where: { userId: req.userId },
             data: { completionPercentage: newCompletion }
@@ -185,7 +186,7 @@ router.put('/readiness', requireAuth, validate(readinessSchema), async (req: Req
         });
 
         // Recalculate completion
-        const newCompletion = calculateCompletion(profile as any);
+        const newCompletion = calculateCompletion((profile as unknown) as Profile);
         profile = await prisma.profile.update({
             where: { userId: req.userId },
             data: { completionPercentage: newCompletion }

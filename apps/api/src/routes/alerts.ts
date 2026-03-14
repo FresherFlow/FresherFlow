@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import express, { NextFunction, Request, Response, Router } from 'express';
-import { OpportunityStatus } from '@fresherflow/types';
+import { OpportunityStatus, Profile, Opportunity } from '@fresherflow/types';
 
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
@@ -45,7 +45,7 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
         where.channel = 'APP';
 
         if (['DAILY_DIGEST', 'CLOSING_SOON', 'HIGHLIGHT', 'APP_UPDATE', 'NEW_JOB', 'EVENT_REMINDER'].includes(kindRaw)) {
-            where.kind = kindRaw as any;
+            where.kind = kindRaw as typeof where.kind;
         }
 
         const userWithProfile = await prisma.user.findUnique({
@@ -94,7 +94,7 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
             if (item.opportunity.deletedAt || item.opportunity.expiredAt) return false;
             if (item.opportunity.expiresAt && new Date(item.opportunity.expiresAt) <= now) return false;
             if (!profile) return false;
-            return checkEligibility(item.opportunity as any, profile as any, userId).eligible;
+            return checkEligibility(item.opportunity as unknown as Opportunity, profile as unknown as Profile, userId).eligible;
         }).slice(0, limit);
 
         const normalizedDeliveries = filteredDeliveries.map((item) => ({
@@ -110,12 +110,12 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
 
         const summary = {
             total: normalizedDeliveries.length,
-            dailyDigest: normalizedDeliveries.filter((item) => (item.kind as any) === 'DAILY_DIGEST').length,
-            closingSoon: normalizedDeliveries.filter((item) => (item.kind as any) === 'CLOSING_SOON').length,
-            highlight: normalizedDeliveries.filter((item) => (item.kind as any) === 'HIGHLIGHT').length,
-            appUpdate: normalizedDeliveries.filter((item) => (item.kind as any) === 'APP_UPDATE').length,
-            newJob: normalizedDeliveries.filter((item) => (item.kind as any) === 'NEW_JOB').length,
-            eventReminder: normalizedDeliveries.filter((item) => (item.kind as any) === 'EVENT_REMINDER').length,
+            dailyDigest: normalizedDeliveries.filter((item) => (item.kind as string) === 'DAILY_DIGEST').length,
+            closingSoon: normalizedDeliveries.filter((item) => (item.kind as string) === 'CLOSING_SOON').length,
+            highlight: normalizedDeliveries.filter((item) => (item.kind as string) === 'HIGHLIGHT').length,
+            appUpdate: normalizedDeliveries.filter((item) => (item.kind as string) === 'APP_UPDATE').length,
+            newJob: normalizedDeliveries.filter((item) => (item.kind as string) === 'NEW_JOB').length,
+            eventReminder: normalizedDeliveries.filter((item) => (item.kind as string) === 'EVENT_REMINDER').length,
         };
 
         const unreadRaw = await prisma.alertDelivery.findMany({
@@ -145,7 +145,7 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
             if (item.opportunity.deletedAt || item.opportunity.expiredAt) return false;
             if (item.opportunity.expiresAt && new Date(item.opportunity.expiresAt) <= now) return false;
             if (!profile) return false;
-            return checkEligibility(item.opportunity as any, profile as any, userId).eligible;
+            return checkEligibility(item.opportunity as unknown as Opportunity, profile as unknown as Profile, userId).eligible;
         }).length;
 
         res.json({ deliveries: normalizedDeliveries, summary, unreadCount });
@@ -240,7 +240,7 @@ router.get('/:id/digest-items', requireAuth, async (req: Request, res: Response,
 
         const eligibleOpportunities = opportunities.filter((item) => {
             if (!profile) return false;
-            return checkEligibility(item as any, profile as any, userId).eligible;
+            return checkEligibility(item as unknown as Opportunity, profile as unknown as Profile, userId).eligible;
         });
 
         const byId = new Map(eligibleOpportunities.map((item) => [item.id, item]));
@@ -302,7 +302,7 @@ router.get('/unread-count', requireAuth, async (req: Request, res: Response, nex
             if (item.opportunity.deletedAt || item.opportunity.expiredAt) return false;
             if (item.opportunity.expiresAt && new Date(item.opportunity.expiresAt) <= now) return false;
             if (!profile) return false;
-            return checkEligibility(item.opportunity as any, profile as any, userId).eligible;
+            return checkEligibility(item.opportunity as unknown as Opportunity, profile as unknown as Profile, userId).eligible;
         }).length;
 
         res.json({ count });

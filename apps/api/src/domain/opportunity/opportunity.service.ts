@@ -1,10 +1,9 @@
 import prisma, { Prisma } from '../../lib/prisma';
 
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import { OpportunityStatus, OpportunityType, EducationLevel, WorkMode, Availability, Opportunity } from '@fresherflow/types';
 import { EligibilityService } from '../eligibility/eligibility.service';
 import { generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
 import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '@fresherflow/search';
-import { logger } from '@fresherflow/logger';
 
 /**
  * Opportunity Service - Business Logic Layer
@@ -29,19 +28,23 @@ export class OpportunityService {
     /**
      * Create new opportunity (starts as DRAFT)
      */
-    static async createOpportunity(data: any, adminId: string) {
+    static async createOpportunity(data: Partial<Opportunity>, adminId: string) {
         // Generate unique slug
         const tempId = crypto.randomUUID();
-        const slug = generateSlug(data.title, data.company, tempId);
+        const slug = generateSlug(data.title || '', data.company || '', tempId);
 
         const created = await prisma.opportunity.create({
             data: {
-                ...data,
+                ...(data as unknown as Prisma.OpportunityUncheckedCreateInput),
                 companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
                 id: tempId,
                 slug,
                 postedByUserId: adminId,
-                status: OpportunityStatus.PUBLISHED, // Default to published for admin ease
+                status: OpportunityStatus.PUBLISHED,
+                type: data.type || OpportunityType.JOB,
+                title: data.title || '',
+                company: data.company || '',
+                description: data.description || '',
             },
             include: {
                 walkInDetails: true,
@@ -86,7 +89,7 @@ export class OpportunityService {
     /**
      * Update opportunity
      */
-    static async updateOpportunity(id: string, data: any, adminId: string) {
+    static async updateOpportunity(id: string, data: Partial<Opportunity>, adminId: string) {
         const existing = await prisma.opportunity.findUnique({
             where: { id },
         });
@@ -100,8 +103,8 @@ export class OpportunityService {
         }
 
         // Regenerate slug if title or company changed
-        const updateData: any = {
-            ...data,
+        const updateData: Prisma.OpportunityUpdateInput = {
+            ...(data as unknown as Prisma.OpportunityUpdateInput),
             lastVerified: new Date(),
         };
 
@@ -174,7 +177,7 @@ export class OpportunityService {
      * Get all opportunities for admin (includes drafts, expired, removed)
      */
     static async getAllForAdmin(adminId?: string) {
-        const where: any = {};
+        const where: Prisma.OpportunityWhereInput = {};
 
         if (adminId) {
             where.postedByUserId = adminId;
@@ -226,7 +229,7 @@ export class OpportunityService {
         // Hard Gate: Engineering/Degree Match
         andConditions.push({
             OR: [
-                { allowedDegrees: { has: profile.educationLevel as any } },
+                { allowedDegrees: { has: (profile.educationLevel as unknown) as EducationLevel } },
                 { allowedDegrees: { isEmpty: true } }
             ]
         });
@@ -240,17 +243,17 @@ export class OpportunityService {
         });
 
         // Preference Filter: Opportunity Type
-        if (profile.interestedIn && profile.interestedIn.length > 0) {
+        if (profile.interestedIn && (profile.interestedIn as unknown[]).length > 0) {
             andConditions.push({
-                type: { in: profile.interestedIn as any }
+                type: { in: (profile.interestedIn as unknown) as OpportunityType[] }
             });
         }
 
         // Preference Filter: Work Mode
-        if (profile.workModes && profile.workModes.length > 0) {
+        if (profile.workModes && (profile.workModes as unknown[]).length > 0) {
             andConditions.push({
                 OR: [
-                    { workMode: { in: profile.workModes as any } },
+                    { workMode: { in: (profile.workModes as unknown) as WorkMode[] } },
                     { workMode: null }
                 ]
             });
@@ -279,27 +282,27 @@ export class OpportunityService {
         });
 
         // Filter by eligibility
-        const eligibleOpportunities = opportunities
-            .map((opp: any) => {
+        const eligibleOpportunities = (opportunities as unknown as Opportunity[])
+            .map((opp) => {
                 const eligibility = EligibilityService.checkEligibility(
                     {
-                        educationLevel: profile.educationLevel as any,
+                        educationLevel: profile.educationLevel as EducationLevel,
                         passoutYear: profile.gradYear || 0,
-                        interestedIn: profile.interestedIn as any,
+                        interestedIn: profile.interestedIn as OpportunityType[],
                         preferredCities: profile.preferredCities,
-                        workModes: profile.workModes as any,
-                        availability: profile.availability as any,
+                        workModes: profile.workModes as WorkMode[],
+                        availability: profile.availability as Availability,
                         skills: profile.skills,
                     },
                     {
-                        type: opp.type as any,
-                        allowedDegrees: opp.allowedDegrees as any,
-                        allowedCourses: (opp as any).allowedCourses || [],
+                        type: opp.type as OpportunityType,
+                        allowedDegrees: opp.allowedDegrees as EducationLevel[],
+                        allowedCourses: ((opp as unknown) as { allowedCourses: string[] }).allowedCourses || [],
                         allowedPassoutYears: opp.allowedPassoutYears,
-                        allowedAvailability: opp.allowedAvailability as any,
+                        allowedAvailability: (((opp as unknown) as { allowedAvailability: Availability[] }).allowedAvailability || []) as Availability[],
                         requiredSkills: opp.requiredSkills,
                         locations: opp.locations,
-                        workMode: opp.workMode as any,
+                        workMode: opp.workMode as WorkMode,
                     }
                 );
 
@@ -309,36 +312,38 @@ export class OpportunityService {
                     matchScore: eligibility.eligible
                         ? EligibilityService.getMatchScore(
                             {
-                                educationLevel: profile.educationLevel as any,
+                                educationLevel: profile.educationLevel as EducationLevel,
                                 passoutYear: profile.gradYear || 0,
-                                interestedIn: profile.interestedIn as any,
+                                interestedIn: profile.interestedIn as OpportunityType[],
                                 preferredCities: profile.preferredCities,
-                                workModes: profile.workModes as any,
-                                availability: profile.availability as any,
+                                workModes: profile.workModes as WorkMode[],
+                                availability: profile.availability as Availability,
                                 skills: profile.skills,
                             },
                             {
-                                type: opp.type as any,
-                                allowedDegrees: opp.allowedDegrees as any,
-                                allowedCourses: (opp as any).allowedCourses || [],
+                                type: opp.type as OpportunityType,
+                                allowedDegrees: opp.allowedDegrees as EducationLevel[],
+                                allowedCourses: ((opp as unknown) as { allowedCourses: string[] }).allowedCourses || [],
                                 allowedPassoutYears: opp.allowedPassoutYears,
-                                allowedAvailability: opp.allowedAvailability as any,
+                                allowedAvailability: (((opp as unknown) as { allowedAvailability: Availability[] }).allowedAvailability || []) as Availability[],
                                 requiredSkills: opp.requiredSkills,
                                 locations: opp.locations,
-                                workMode: opp.workMode as any,
+                                workMode: opp.workMode as WorkMode,
                             }
                         )
                         : 0,
                 };
             })
-            .filter((opp: any) => opp.eligible)
-            .sort((a: any, b: any) => {
+            .filter((opp) => opp.eligible)
+            .sort((a, b) => {
                 // Walk-ins first
                 if (a.type === OpportunityType.WALKIN && b.type !== OpportunityType.WALKIN) return -1;
                 if (b.type === OpportunityType.WALKIN && a.type !== OpportunityType.WALKIN) return 1;
 
                 // Then by match score
-                return b.matchScore - a.matchScore;
+                const scoreA = (a as unknown as { matchScore: number }).matchScore;
+                const scoreB = (b as unknown as { matchScore: number }).matchScore;
+                return scoreB - scoreA;
             });
 
         return eligibleOpportunities;

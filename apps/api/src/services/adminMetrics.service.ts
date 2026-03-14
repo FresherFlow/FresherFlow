@@ -320,12 +320,12 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
         if (row.userId && row._max.createdAt) activitySignals.push({ userId: row.userId, createdAt: row._max.createdAt });
     }
 
-    const notifiedUsers14d = new Set(alertUsers14dCount.map((item: any) => item.userId));
-    const dau = new Set(activitySignals.filter((item: any) => item.createdAt >= oneDayAgo).map((item) => item.userId));
-    const wau = new Set(activitySignals.filter((item: any) => item.createdAt >= sevenDaysAgo).map((item) => item.userId));
+    const notifiedUsers14d = new Set(alertUsers14dCount.map((item) => (item as { userId: string | null }).userId).filter(Boolean) as string[]);
+    const dau = new Set(activitySignals.filter((item) => item.createdAt >= oneDayAgo).map((item) => item.userId));
+    const wau = new Set(activitySignals.filter((item) => item.createdAt >= sevenDaysAgo).map((item) => item.userId));
     const previousWeek = new Set(
         activitySignals
-            .filter((item: any) => item.createdAt >= fourteenDaysAgo && item.createdAt < sevenDaysAgo)
+            .filter((item) => item.createdAt >= fourteenDaysAgo && item.createdAt < sevenDaysAgo)
             .map((item) => item.userId)
     );
     const returning = new Set(Array.from(wau).filter((userId) => previousWeek.has(userId)));
@@ -376,8 +376,10 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
             loginToAuthPct: toPercent(authSuccess, loginView),
         },
         channelAttribution: sourceBuckets,
-        recentListings: recentListings.map((item: any) => ({
+        recentListings: recentListings.map((item) => ({
             ...item,
+            type: item.type as unknown as OpportunityType,
+            status: item.status as unknown as OpportunityStatus,
             postedAt: item.postedAt.toISOString(),
         })),
     };

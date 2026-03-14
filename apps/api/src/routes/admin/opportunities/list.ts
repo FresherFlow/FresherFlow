@@ -92,7 +92,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         if (andFilters.length > 0) where.AND = andFilters;
 
         const sortKey = typeof sort === 'string' ? sort : '';
-        let orderBy: any = { postedAt: 'desc' };
+        let orderBy: Prisma.OpportunityOrderByWithRelationInput = { postedAt: 'desc' };
         if (sortKey === 'postedAt_asc') orderBy = { postedAt: 'asc' };
         if (sortKey === 'company_asc') orderBy = { company: 'asc' };
         if (sortKey === 'company_desc') orderBy = { company: 'desc' };
@@ -102,7 +102,9 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         if (sortKey === 'status_desc') orderBy = { status: 'desc' };
 
         const total = await prisma.opportunity.count({ where });
-        const orderByClause = Array.isArray(orderBy) ? orderBy : [{ status: 'asc' }, orderBy];
+        const orderByClause: Prisma.OpportunityOrderByWithRelationInput[] = Array.isArray(orderBy)
+            ? (orderBy as Prisma.OpportunityOrderByWithRelationInput[])
+            : [{ status: 'asc' as const }, orderBy];
 
         const opportunities = await prisma.opportunity.findMany({
             where,

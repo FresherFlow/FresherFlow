@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { Prisma } from '@fresherflow/database';
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import { OpportunityStatus, OpportunityType, Profile, Opportunity } from '@fresherflow/types';
 import { env } from '@fresherflow/config';
 import { logger } from '@fresherflow/logger';
 import { redis } from '@fresherflow/redis';
@@ -71,7 +71,7 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
             throw new AppError('Page too deep for anonymous access', 400);
         }
 
-        const userId = (req as any).userId;
+        const userId = req.userId;
         const user = userId ? await prisma.user.findUnique({ where: { id: userId }, include: { profile: true } }) : null;
         const isAdmin = user?.role === 'ADMIN';
         const profile = user?.profile;
@@ -118,26 +118,26 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
             skip: effectiveSkip
         });
 
-        const mappedResults = dbFiltered.map((opp: any) => {
+        const mappedResults = (dbFiltered as unknown as (Opportunity & { savedBy?: unknown[] })[]).map((opp) => {
             const { savedBy, ...rest } = opp;
-            return { ...rest, isSaved: Boolean(savedBy && savedBy.length > 0) };
+            return { ...rest, isSaved: Boolean(savedBy && (savedBy as unknown[]).length > 0) } as unknown as Opportunity;
         });
 
         if (isGuest) res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
         else res.setHeader('Cache-Control', 'private, no-store');
         res.setHeader('Vary', 'Cookie, Authorization');
 
-        let finalResults: any[] = mappedResults;
+        let finalResults = mappedResults;
         if (!isAdmin && profile) {
-            finalResults = filterOpportunitiesForUser(mappedResults as any, profile as any);
+            finalResults = filterOpportunitiesForUser(mappedResults, profile as Profile);
         }
 
         const includeRelevanceDebug = isAdmin && relevanceDebug === 'true' && Boolean(profile);
         let sorted = finalResults;
-        let debug: any[] | undefined;
+        let debug: { opportunityId: string; title: string; score: number; breakdown: unknown }[] | undefined;
 
         if (profile) {
-            const ranked = rankOpportunitiesForUser(finalResults as any, profile as any);
+            const ranked = rankOpportunitiesForUser(finalResults, profile as Profile);
             sorted = ranked.map((item) => item.opportunity);
             if (includeRelevanceDebug) {
                 debug = ranked.map((item) => ({
@@ -151,7 +151,7 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
 
         if (sortKey === 'freshness_v2') {
             const daySeed = Number(`${new Date().toISOString().slice(0, 10).replace(/-/g, '')}${userId || '0'}`.slice(-6));
-            sorted = [...sorted].sort((a: any, b: any) => getFreshnessScore(b, daySeed) - getFreshnessScore(a, daySeed));
+            sorted = [...sorted].sort((a, b) => getFreshnessScore(b as unknown as Opportunity, daySeed) - getFreshnessScore(a as unknown as Opportunity, daySeed));
         }
 
         const responsePayload = {

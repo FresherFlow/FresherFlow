@@ -1,7 +1,7 @@
 import prisma from '../lib/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
 import { OpportunityEventType } from '@fresherflow/database';
-import { OpportunityStatus } from '@fresherflow/types';
+import { OpportunityStatus, Profile, Opportunity } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { profileGate } from '../middleware/profileGate';
 import { filterOpportunitiesForUser, sortOpportunitiesForUser } from '../domain/eligibility';
@@ -56,8 +56,8 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
         });
 
         // 3. Apply eligibility filtering
-        const eligiblePotentials = filterOpportunitiesForUser(potentials as any, profile as any);
-        const rankedUrgent = sortOpportunitiesForUser(eligiblePotentials as any, profile as any);
+        const eligiblePotentials = filterOpportunitiesForUser(potentials as unknown as Opportunity[], (profile as unknown) as Profile);
+        const rankedUrgent = sortOpportunitiesForUser(eligiblePotentials as unknown as Opportunity[], (profile as unknown) as Profile);
 
         // 4. Categorize for the UI
         const walkins = rankedUrgent.filter(o => o.type === 'WALKIN');
@@ -74,8 +74,8 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
             orderBy: { postedAt: 'desc' },
             take: 5
         });
-        const eligibleNew = filterOpportunitiesForUser(newOpps as any, profile as any);
-        const rankedNew = sortOpportunitiesForUser(eligibleNew as any, profile as any);
+        const eligibleNew = filterOpportunitiesForUser(newOpps as unknown as Opportunity[], (profile as unknown) as Profile);
+        const rankedNew = sortOpportunitiesForUser(eligibleNew as unknown as Opportunity[], (profile as unknown) as Profile);
 
         // 6. New since last visit (based on latest VIEWED action)
         const latestViewed = await prisma.userAction.findFirst({
@@ -100,8 +100,8 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
             take: 12
         });
         const newSinceLastVisit = sortOpportunitiesForUser(
-            filterOpportunitiesForUser(newSinceLastVisitCandidates as any, profile as any),
-            profile as any
+            filterOpportunitiesForUser(newSinceLastVisitCandidates as unknown as Opportunity[], (profile as unknown) as Profile),
+            (profile as unknown) as Profile
         );
 
         const fortyFiveDaysFromNow = new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000);
@@ -145,19 +145,19 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
 
         const seenDriveIds = new Set<string>();
         const driveMilestones = upcomingDriveEvents
-            .filter((item: any) => {
+            .filter((item) => {
                 if (seenDriveIds.has(item.opportunityId)) return false;
                 seenDriveIds.add(item.opportunityId);
                 return true;
             })
-            .sort((a: any, b: any) => {
-                const aPriority = /tcs/i.test(a.opportunity.company) && /nqt/i.test(a.opportunity.title) ? 1 : 0;
-                const bPriority = /tcs/i.test(b.opportunity.company) && /nqt/i.test(b.opportunity.title) ? 1 : 0;
+            .sort((a, b) => {
+                const aPriority = /tcs/i.test(a.opportunity?.company || '') && /nqt/i.test(a.opportunity?.title || '') ? 1 : 0;
+                const bPriority = /tcs/i.test(b.opportunity?.company || '') && /nqt/i.test(b.opportunity?.title || '') ? 1 : 0;
                 if (aPriority !== bPriority) return bPriority - aPriority;
                 return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
             })
             .slice(0, 4)
-            .map((item: any) => ({
+            .map((item) => ({
                 opportunityId: item.opportunityId,
                 eventId: item.id,
                 eventType: item.eventType,

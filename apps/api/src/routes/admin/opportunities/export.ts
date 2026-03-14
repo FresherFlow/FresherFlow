@@ -26,7 +26,7 @@ router.get('/export', async (req: Request, res: Response, next: NextFunction) =>
         } else if (statusFilter === 'DELETED') {
             where.deletedAt = { not: null };
         } else if (statusFilter) {
-            where.status = statusFilter as any;
+            where.status = statusFilter as typeof where.status;
             where.deletedAt = null;
         } else {
             where.deletedAt = null;
@@ -36,7 +36,7 @@ router.get('/export', async (req: Request, res: Response, next: NextFunction) =>
         const opportunities = await prisma.opportunity.findMany({ where, orderBy: { postedAt: 'desc' } });
 
         const header = ['id', 'slug', 'type', 'status', 'title', 'company', 'locations', 'postedAt', 'expiresAt', 'linkHealth'].join(',');
-        const rows = opportunities.map((opp: any) =>
+        const rows = opportunities.map((opp) =>
             [
                 toCsvValue(opp.id), toCsvValue(opp.slug), toCsvValue(opp.type),
                 toCsvValue(opp.status), toCsvValue(opp.title), toCsvValue(opp.company),

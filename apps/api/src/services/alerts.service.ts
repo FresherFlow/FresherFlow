@@ -1,5 +1,5 @@
 import prisma from '../lib/prisma';
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import { OpportunityStatus, OpportunityType, Opportunity, Profile } from '@fresherflow/types';
 import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
@@ -31,14 +31,14 @@ function buildOpportunityUrl(frontendUrl: string, slug: string) {
 }
 
 function getClosingSoonHours(opportunity: {
-    type: OpportunityType;
-    expiresAt: Date | null;
-    walkInDetails?: { dates: Date[] } | null;
+    type: string | OpportunityType;
+    expiresAt?: Date | string | null;
+    walkInDetails?: { dates: unknown[] } | null;
 }, now: Date): number | null {
     if (opportunity.type === 'WALKIN') {
-        const dates = opportunity.walkInDetails?.dates ?? [];
+        const dates = (opportunity.walkInDetails?.dates ?? []) as Array<string | Date>;
         if (dates.length === 0) return null;
-        const lastDate = new Date(Math.max(...dates.map((d: any) => new Date(d).getTime())));
+        const lastDate = new Date(Math.max(...dates.map((d: string | Date) => new Date(d).getTime())));
         lastDate.setUTCHours(23, 59, 59, 999);
         const diffHours = (lastDate.getTime() - now.getTime()) / (1000 * 60 * 60);
         return diffHours > 0 && diffHours <= CLOSING_SOON_WINDOW_HOURS ? diffHours : null;
@@ -51,8 +51,8 @@ function getClosingSoonHours(opportunity: {
 
 async function sendDailyDigestForUser(
     frontendUrl: string,
-    user: { id: string; email: string; fullName: string | null; profile: any },
-    preference: any,
+    user: { id: string; email: string; fullName: string | null; profile: unknown },
+    preference: { dailyDigest: boolean; timezone?: string; preferredHour: number; lastDigestSentAt?: Date | null; emailEnabled: boolean; minRelevanceScore: number },
     now: Date
 ): Promise<boolean> {
     if (!preference.dailyDigest) return false;
@@ -79,9 +79,9 @@ async function sendDailyDigestForUser(
         take: 200,
     });
 
-    const eligible = filterOpportunitiesForUser(opportunities as any, user.profile as any);
-    const ranked = rankOpportunitiesForUser(eligible as any, user.profile as any)
-        .filter((item) => item.score >= preference.minRelevanceScore)
+    const eligible = filterOpportunitiesForUser(opportunities as unknown as Opportunity[], user.profile as Profile);
+    const ranked = rankOpportunitiesForUser(eligible as Opportunity[], user.profile as Profile)
+        .filter((item) => item.score >= (preference.minRelevanceScore || 35))
         .slice(0, 8);
 
     if (ranked.length === 0) return false;
@@ -137,8 +137,8 @@ async function sendDailyDigestForUser(
 
 async function sendClosingSoonForUser(
     frontendUrl: string,
-    user: { id: string; email: string; fullName: string | null; profile: any },
-    preference: any,
+    user: { id: string; email: string; fullName: string | null; profile: unknown },
+    preference: { closingSoon: boolean; emailEnabled: boolean; minRelevanceScore: number },
     now: Date
 ): Promise<boolean> {
     if (!preference.closingSoon) return false;
@@ -156,13 +156,13 @@ async function sendClosingSoonForUser(
         take: 200,
     });
 
-    const eligible = filterOpportunitiesForUser(opportunities as any, user.profile as any);
-    const ranked = rankOpportunitiesForUser(eligible as any, user.profile as any)
-        .filter((item) => item.score >= preference.minRelevanceScore)
+    const eligible = filterOpportunitiesForUser(opportunities as unknown as Opportunity[], user.profile as Profile);
+    const ranked = rankOpportunitiesForUser(eligible as Opportunity[], user.profile as Profile)
+        .filter((item) => item.score >= (preference.minRelevanceScore || 35))
         .sort((a, b) => b.score - a.score);
 
     for (const item of ranked) {
-        const hoursLeft = getClosingSoonHours(item.opportunity as any, now);
+        const hoursLeft = getClosingSoonHours(item.opportunity as unknown as Opportunity, now);
         if (!hoursLeft) continue;
 
         const dayKey = now.toISOString().slice(0, 10);
@@ -211,8 +211,8 @@ async function sendClosingSoonForUser(
 
 async function sendEventRemindersForUser(
     frontendUrl: string,
-    user: { id: string; profile: any },
-    preference: any,
+    user: { id: string; profile: unknown },
+    preference: { enabled: boolean },
     now: Date
 ): Promise<boolean> {
     if (!preference.enabled) return false;
@@ -240,7 +240,7 @@ async function sendEventRemindersForUser(
 
     if (upcoming.length === 0) return false;
     for (const event of upcoming) {
-        const eligible = filterOpportunitiesForUser([event.opportunity] as any, user.profile as any);
+        const eligible = filterOpportunitiesForUser([event.opportunity as unknown as Opportunity], user.profile as Profile);
         if (eligible.length === 0) continue;
 
         const diffHours = (new Date(event.eventDate).getTime() - now.getTime()) / (1000 * 60 * 60);
@@ -306,7 +306,7 @@ export async function runAlertsCycle() {
     let usersMissingProfile = 0;
 
     for (const user of users) {
-        const preference = user.alertPreference ?? {
+        const preference = (user.alertPreference as unknown as { enabled: boolean; emailEnabled: boolean; dailyDigest: boolean; closingSoon: boolean; minRelevanceScore: number; preferredHour: number; timezone: string; lastDigestSentAt: Date | null }) ?? {
             enabled: true,
             emailEnabled: true,
             dailyDigest: true,
@@ -325,9 +325,9 @@ export async function runAlertsCycle() {
         usersEnabled += 1;
         if (!user.profile) usersMissingProfile += 1;
 
-        const sentDigest = await sendDailyDigestForUser(frontendUrl, user as any, preference as any, now);
-        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as any, preference as any, now);
-        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as any, preference as any, now);
+        const sentDigest = await sendDailyDigestForUser(frontendUrl, user, preference, now);
+        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user, preference, now);
+        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user, preference, now);
         if (sentDigest) digestSent += 1;
         if (sentClosingSoon) closingSoonSent += 1;
         if (sentEventReminder) eventRemindersSent += 1;

@@ -1,10 +1,7 @@
-/**
- * Shared helpers used across admin opportunity route handlers.
- * Keep this file to pure, stateless functions — no router, no middleware.
- */
 import { Prisma, OpportunityEventType } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { normalizeEducationBuckets } from '@fresherflow/utils';
+import { AdminOpportunityRequest } from '../../../types/admin';
 
 // ── Type normalisation ────────────────────────────────────────────────────────
 
@@ -63,7 +60,7 @@ export function toDateOrNull(value: unknown): Date | null {
     return parsed;
 }
 
-export function normalizeWalkInDates(data: any): Date[] {
+export function normalizeWalkInDates(data: AdminOpportunityRequest): Date[] {
     const walkInDetails = data?.walkInDetails || {};
     const rawDates: string[] = [];
     if (Array.isArray(walkInDetails.dates)) rawDates.push(...walkInDetails.dates);
@@ -73,7 +70,7 @@ export function normalizeWalkInDates(data: any): Date[] {
     return rawDates.map(toDateOrNull).filter((v): v is Date => Boolean(v));
 }
 
-export function deriveOpportunityExpiryDate(data: any, type: OpportunityType): Date | null {
+export function deriveOpportunityExpiryDate(data: AdminOpportunityRequest, type: OpportunityType): Date | null {
     const explicit = toDateOrNull(data?.expiresAt);
     if (explicit) return explicit;
     if (type !== OpportunityType.WALKIN) return null;
@@ -84,7 +81,7 @@ export function deriveOpportunityExpiryDate(data: any, type: OpportunityType): D
     return endDate;
 }
 
-export function normalizeEducationRequirements(data: any) {
+export function normalizeEducationRequirements(data: AdminOpportunityRequest) {
     const normalized = normalizeEducationBuckets(
         data.allowedCourses || [],
         data.allowedSpecializations || []
@@ -96,7 +93,7 @@ export function normalizeEducationRequirements(data: any) {
     };
 }
 
-export function buildWalkInCreate(data: any) {
+export function buildWalkInCreate(data: AdminOpportunityRequest) {
     const walkInDetails = data.walkInDetails || {};
     const dates = normalizeWalkInDates(data);
     const venueAddress = walkInDetails.venueAddress || walkInDetails.venue;
@@ -117,7 +114,7 @@ export function buildWalkInCreate(data: any) {
     };
 }
 
-export function buildWalkInUpsert(data: any) {
+export function buildWalkInUpsert(data: AdminOpportunityRequest) {
     const walkInDetails = data.walkInDetails || {};
     const dates = normalizeWalkInDates(data);
     const venueAddress = walkInDetails.venueAddress || walkInDetails.venue;

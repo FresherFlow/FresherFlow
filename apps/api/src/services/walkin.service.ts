@@ -1,8 +1,10 @@
 import prisma from '../lib/prisma';
+import { OpportunityType, OpportunityStatus } from '@fresherflow/types';
+import { Prisma } from '@fresherflow/database';
 
-import { OpportunityType, OpportunityStatus, Opportunity } from '@fresherflow/types';
-
-
+type OpportunityWithWalkin = Prisma.OpportunityGetPayload<{
+    include: { walkInDetails: true }
+}>;
 
 /**
  * Walk-in Service - Walk-in Event Management
@@ -41,7 +43,7 @@ export class WalkinService {
         });
 
         // Filter by date match in code
-        const filtered = walkins.filter((w: any) =>
+        const filtered = (walkins as OpportunityWithWalkin[]).filter((w) =>
             w.walkInDetails?.dates.some((d: Date) => {
                 const date = new Date(d);
                 return date >= now && date <= futureDate;
@@ -49,7 +51,7 @@ export class WalkinService {
         );
 
         // Sort by nearest date
-        return filtered.sort((a: any, b: any) => {
+        return filtered.sort((a, b) => {
             const aNextDate = a.walkInDetails?.dates.map((d: Date) => new Date(d)).find((d: Date) => d >= now) || now;
             const bNextDate = b.walkInDetails?.dates.map((d: Date) => new Date(d)).find((d: Date) => d >= now) || now;
             return aNextDate.getTime() - bNextDate.getTime();
@@ -80,7 +82,7 @@ export class WalkinService {
             },
         });
 
-        return walkins.filter((w: any) =>
+        return (walkins as OpportunityWithWalkin[]).filter((w) =>
             w.walkInDetails?.dates.some((d: Date) => {
                 const date = new Date(d);
                 return date >= today && date < tomorrow;
@@ -145,7 +147,6 @@ export class WalkinService {
             },
         });
 
-        return actions.map((action: any) => action.opportunity);
+        return actions.map((action) => action.opportunity);
     }
 }
-

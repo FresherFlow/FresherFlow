@@ -3,14 +3,20 @@ import { logger } from '@fresherflow/logger';
 import chalk from 'chalk';
 import TelegramService from '../services/telegram.service';
 
+interface ExtendedError extends Error {
+    statusCode?: number;
+    code?: string;
+    isAppError?: boolean;
+    isOperational?: boolean;
+    name: string;
+}
+
 export function errorHandler(
-    err: any,
+    err: ExtendedError,
     req: Request,
     res: Response,
-    next: NextFunction
+    _next: NextFunction
 ) {
-    // ... (existing logging code)
-
     const statusCode = err.statusCode || 500;
 
     // Alert Admin on Critical 500 Errors (excluding 404/401/403)
@@ -19,34 +25,32 @@ export function errorHandler(
         TelegramService.notifyError(`${req.method} ${req.path}`, err).catch(() => { });
     }
 
-    // Clean error logging (no messy stack traces in terminal)
+    // Clean error logging
     const errorMsg = err.message || 'Unknown error';
     const location = `${req.method} ${req.path}`;
 
     // Detect Prisma database errors and show clean message
     const isPrismaError = errorMsg.includes('Prisma') || errorMsg.includes('does not exist in the current database');
-    // statusCode is already defined above
 
     if (isPrismaError) {
-        console.log(chalk.red(`✖ Database Error`));
-        console.log(chalk.gray(`  ${errorMsg.split('\n')[0]}`)); // First line only
-        console.log(chalk.yellow(`  → Run: npm run db:push to sync database`));
+        logger.error(chalk.red(`✖ Database Error`));
+        logger.error(chalk.gray(`  ${errorMsg.split('\n')[0]}`)); // First line only
+        logger.error(chalk.yellow(`  → Run: npm run db:push to sync database`));
     } else if (statusCode === 401 || statusCode === 404) {
         // Log authentication or not found as warnings (less alarming)
-        console.log(chalk.yellow(`⚠ ${statusCode === 401 ? 'Auth' : 'NotFound'}: ${errorMsg.split('\n')[0]}`));
-        console.log(chalk.gray(`  at ${location}`));
+        logger.warn(chalk.yellow(`⚠ ${statusCode === 401 ? 'Auth' : 'NotFound'}: ${errorMsg.split('\n')[0]}`));
+        logger.warn(chalk.gray(`  at ${location}`));
     } else {
         // Log clean error message
-        console.log(chalk.red(`✖ Error: ${errorMsg.split('\n')[0]}`)); // First line only
-        console.log(chalk.gray(`  at ${location}`));
+        logger.error(chalk.red(`✖ Error: ${errorMsg.split('\n')[0]}`)); // First line only
+        logger.error(chalk.gray(`  at ${location}`));
     }
 
     // Always log full stack in dev so nothing is hidden
     if (process.env.NODE_ENV !== 'production') {
-        console.error(chalk.red('[DEV] Full error:'), err);
+        logger.error(chalk.red('[DEV] Full error:'), err);
     } else if (process.env.DEBUG) {
         logger.error('Full error details', {
-            requestId: req.requestId,
             error: err.message,
             stack: err.stack,
             path: req.path,
@@ -73,7 +77,6 @@ export function errorHandler(
             message,
             code: err.code || err.name || 'UNKNOWN_ERROR',
             statusCode,
-            requestId: req.requestId,
             ...(isDev && {
                 stack: err.stack,
             })

@@ -543,7 +543,7 @@ router.post('/telegram-broadcasts/:id/retry', requireAdmin, async (req: Request,
             return res.status(404).json({ message: 'Broadcast or opportunity not found' });
         }
 
-        const opp = (broadcast as any).opportunity;
+        const opp = broadcast.opportunity;
         await TelegramService.broadcastNewOpportunity(
             opp.id,
             opp.title,

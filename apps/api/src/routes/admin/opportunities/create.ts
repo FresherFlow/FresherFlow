@@ -11,7 +11,7 @@ import { normalizeOpportunityLinks } from '../../../utils/opportunityLinks';
 import { invalidatePublicOpportunityCache } from '../../../services/publicOpportunityCache.service';
 import TelegramService from '../../../services/telegram.service';
 import {
-    normalizeTypeParam, normalizeEducationRequirements, buildWalkInCreate,
+    normalizeEducationRequirements, buildWalkInCreate,
     deriveOpportunityExpiryDate, queueNewJobAlerts,
 } from './_helpers';
 
@@ -25,7 +25,7 @@ router.post(
     '/',
     adminRateLimit,
     withAdminAudit('CREATE'),
-    validate(opportunitySchema as any),
+    validate(opportunitySchema),
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const data = req.body;
@@ -101,7 +101,7 @@ router.post(
     '/ingest-draft',
     adminRateLimit,
     withAdminAudit('CREATE'),
-    validate(opportunitySchema as any),
+    validate(opportunitySchema),
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const data = req.body;
@@ -191,7 +191,7 @@ router.put(
     '/:id',
     adminRateLimit,
     withAdminAudit('UPDATE'),
-    validate(opportunitySchema as any),
+    validate(opportunitySchema),
     async (req: Request, res: Response, next: NextFunction) => {
         try {
             const idParam = req.params.id as string;
@@ -214,7 +214,7 @@ router.put(
                 return res.status(400).json({ message: 'At least one sourceLink or applyLink is required' });
             }
 
-            const updateData: any = {
+            const updateData: Prisma.OpportunityUpdateInput = {
                 ...education, type, status: data.status,
                 title: data.title, company: data.company,
                 companyWebsite: data.companyWebsite,

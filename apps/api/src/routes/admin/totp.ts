@@ -5,9 +5,11 @@ import { generateSecret, generateURI, verify } from 'otplib';
 import QRCode from 'qrcode';
 import { requireAdmin } from '../../middleware/auth';
 import { AppError } from '../../middleware/errorHandler';
+import logger from '@fresherflow/logger';
 
 // Extend Request type to include adminId (added by requireAdmin middleware)
 declare global {
+    // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Express {
         interface Request {
             adminId?: string;
@@ -43,7 +45,7 @@ router.post('/generate', async (req: Request, res: Response, next: NextFunction)
         try {
             imageUrl = await QRCode.toDataURL(otpauth);
         } catch (err: unknown) {
-            console.error('QR Code generation failed', err);
+            logger.error('QR Code generation failed', err);
             return next(new AppError('Failed to generate QR code', 500));
         }
 

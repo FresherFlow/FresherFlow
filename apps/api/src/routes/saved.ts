@@ -96,7 +96,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
         });
 
         // Map to return just the opportunity objects, with a 'saved' flag for consistency
-        const opportunities = saved.map((s: any) => ({
+        const opportunities = saved.map((s) => ({
             ...s.opportunity,
             isSaved: true
         }));

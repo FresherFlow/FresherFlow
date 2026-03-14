@@ -2,7 +2,7 @@
 // Deterministic, explainable, logged
 
 import { Opportunity, Profile } from '@fresherflow/types';
-import { HARD_RULES, SOFT_RULES, EligibilityRule } from './rules';
+import { HARD_RULES, SOFT_RULES } from './rules';
 import { logger } from '@fresherflow/logger';
 import { normalizeSkillList } from '@fresherflow/constants';
 import {
@@ -223,7 +223,7 @@ function getEducationLevelScore(opportunity: Opportunity, profile: Profile): num
     // Higher education should still partially match lower requirement buckets.
     const hierarchy = ['DIPLOMA', 'DEGREE', 'PG'];
     const userLevel = hierarchy.indexOf(profile.educationLevel);
-    const hasLowerAllowed = allowed.some((deg: any) => hierarchy.indexOf(deg) <= userLevel);
+    const hasLowerAllowed = allowed.some((deg) => hierarchy.indexOf(deg) <= userLevel);
     return hasLowerAllowed ? 0.6 : 0;
 }
 
@@ -240,7 +240,7 @@ function getCourseMatchScore(opportunity: Opportunity, profile: Profile): number
 }
 
 function getSpecializationMatchScore(opportunity: Opportunity, profile: Profile): number {
-    const allowed = ((opportunity as any).allowedSpecializations || []).map((s: string) => normalizeAcademicToken(normalizeSpecializationName(s)));
+    const allowed = (opportunity.allowedSpecializations || []).map((s: string) => normalizeAcademicToken(normalizeSpecializationName(s)));
     if (allowed.length === 0) return 1;
 
     const userSpecializations = [profile.gradSpecialization, profile.pgSpecialization]

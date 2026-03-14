@@ -51,9 +51,9 @@ router.post('/:id/feedback', requireAuth, validate(feedbackSchema), async (req: 
             feedback,
             message: 'Feedback submitted successfully'
         });
-    } catch (error: any) {
+    } catch (error: unknown) {
         // Handle unique constraint violation
-        if (error.code === 'P2002') {
+        if (error && typeof error === 'object' && 'code' in error && error.code === 'P2002') {
             return next(new AppError('You have already submitted feedback for this opportunity', 400));
         }
         next(error);
@@ -61,4 +61,3 @@ router.post('/:id/feedback', requireAuth, validate(feedbackSchema), async (req: 
 });
 
 export default router;
-

@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
-import { OpportunityType, OpportunityStatus } from '@fresherflow/types';
+import { Opportunity, Profile, OpportunityType, OpportunityStatus } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { userActionSchema } from '../utils/validation';
@@ -52,7 +52,7 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
             adminId: opportunity.postedByUserId
         };
 
-        const eligibilityResult = checkEligibility(opportunityForCheck as any, profile as any, req.userId);
+        const eligibilityResult = checkEligibility(opportunityForCheck as unknown as Opportunity, profile as unknown as Profile, req.userId);
 
         if (!eligibilityResult.eligible) {
             return next(new AppError(

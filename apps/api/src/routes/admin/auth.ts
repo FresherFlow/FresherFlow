@@ -10,15 +10,14 @@ import {
 import { verify as verifyTotpToken } from 'otplib';
 import type {
     GenerateRegistrationOptionsOpts,
-    VerifyRegistrationResponseOpts,
     GenerateAuthenticationOptionsOpts,
-    VerifyAuthenticationResponseOpts,
     AuthenticatorTransportFuture,
 } from '@simplewebauthn/server';
 import { generateAdminToken, verifyAdminToken } from '@fresherflow/auth';
 import { AppError } from '../../middleware/errorHandler';
 import { requireAdmin } from '../../middleware/auth';
 import rateLimit from 'express-rate-limit';
+import logger from '@fresherflow/logger';
 
 const router: Router = express.Router();
 
@@ -352,7 +351,7 @@ router.post('/login/verify', adminAuthLimiter, async (req: Request, res: Respons
             res.status(400).json({ verified: false });
         }
     } catch (error) {
-        console.error('[Admin Auth] login/options failed', {
+        logger.error('[Admin Auth] login/options failed', {
             message: error instanceof Error ? error.message : String(error),
         });
         next(error);
@@ -419,7 +418,7 @@ router.get('/me', async (req: Request, res: Response) => {
         });
 
         res.json({ admin: user });
-    } catch (error) {
+    } catch {
         res.json({ admin: null });
     }
 });

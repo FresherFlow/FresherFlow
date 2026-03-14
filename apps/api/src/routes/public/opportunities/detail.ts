@@ -1,5 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { env } from '@fresherflow/config';
+import { Opportunity, Profile } from '@fresherflow/types';
 import { redis } from '@fresherflow/redis';
 import prisma from '../../../lib/prisma';
 import { AppError } from '../../../middleware/errorHandler';
@@ -97,7 +98,7 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
         if (userId) {
             const profile = await prisma.profile.findUnique({ where: { userId } });
             if (profile) {
-                const result = checkEligibility(opportunity as any, profile as any, userId);
+                const result = checkEligibility(opportunity as unknown as Opportunity, profile as unknown as Profile, userId);
                 isEligible = result.eligible;
                 eligibilityReason = result.reason;
             }

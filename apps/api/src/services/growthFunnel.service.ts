@@ -116,7 +116,7 @@ function formatRows(rows: Array<{ source: string; counters: SourceCounters }>) {
         };
     }).sort((a, b) => b.AUTH_SUCCESS - a.AUTH_SUCCESS);
 
-    const totals = sources.reduce((acc: any, row: any) => {
+    const totals = sources.reduce((acc: SourceCounters, row) => {
         acc.DETAIL_VIEW += row.DETAIL_VIEW;
         acc.LOGIN_VIEW += row.LOGIN_VIEW;
         acc.AUTH_SUCCESS += row.AUTH_SUCCESS;
