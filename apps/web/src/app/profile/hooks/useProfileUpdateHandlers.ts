@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { profileApi } from '@/lib/api/client';
 import { validateEducationData } from '@/lib/profileFormValidation';
 
-export function useProfileUpdateHandlers(form: any, refreshUser: () => Promise<void>) {
+export function useProfileUpdateHandlers(form: any, refreshUser: () => Promise<void>) { // eslint-disable-line @typescript-eslint/no-explicit-any
     const [saving, setSaving] = useState<string | null>(null);
     const [editingSection, setEditingSection] = useState<string | null>(null);
 

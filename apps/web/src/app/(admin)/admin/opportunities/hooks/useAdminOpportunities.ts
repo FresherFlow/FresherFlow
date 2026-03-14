@@ -89,7 +89,7 @@ export function useAdminOpportunities(pageSize: number = 20) {
         setSearch(prev => prev === nextSearch ? prev : nextSearch);
         setSort(prev => prev === nextSort ? prev : nextSort);
         setPage(1);
-    }, [searchParamsKey]);
+    }, [searchParamsKey, searchParams]);
 
     // Update Search Params
     useEffect(() => {
@@ -106,7 +106,7 @@ export function useAdminOpportunities(pageSize: number = 20) {
             isInternalUrlSyncRef.current = true;
             router.replace(`${pathname}?${next}`);
         }
-    }, [typeFilter, statusFilter, linkHealthFilter, activeOnly, debouncedSearch, sort, searchParamsKey, pathname, router]);
+    }, [typeFilter, statusFilter, linkHealthFilter, activeOnly, debouncedSearch, sort, searchParamsKey, searchParams, pathname, router]);
 
     return {
         opportunities,

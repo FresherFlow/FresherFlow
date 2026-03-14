@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { type Opportunity } from '@fresherflow/types';
+import { useMemo, useState } from 'react';
+import { type Opportunity, type Profile } from '@fresherflow/types';
 import { parseOpportunityLocation, getOpportunityDisplaySalary, normalizeSalaryInput } from '@/lib/opportunityDisplay';
 import { getDriveDates, getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 import {
@@ -17,14 +17,15 @@ import {
     getTrackerOptions,
 } from './detailInteractionUtils';
 
-export function useOpportunityDerivedState(opp: Opportunity, profile: any, searchParams: URLSearchParams) {
+export function useOpportunityDerivedState(opp: Opportunity, profile: Profile | null, searchParams: URLSearchParams) {
+    const [now] = useState(() => Date.now());
     return useMemo(() => {
         const hasApplyLink = Boolean(opp.applyLink || opp.companyWebsite);
         const isWalkinFlow = opp.type === 'WALKIN';
         const currentAction = getCurrentActionType(opp);
         const trackerOptions = getTrackerOptions(isWalkinFlow);
         const timelineEvents = sortTimelineEvents(opp.events || []);
-        const upcomingTimelineEvents = timelineEvents.filter((event) => event._dt.getTime() >= Date.now());
+        const upcomingTimelineEvents = timelineEvents.filter((event) => event._dt.getTime() >= now);
         const isCampusDrive = isCampusDriveOpportunity(opp);
         const driveDates = getDriveDates(opp);
         const driveMeta = getDriveMetadata(opp);
@@ -35,7 +36,7 @@ export function useOpportunityDerivedState(opp: Opportunity, profile: any, searc
         const educationDetails = getEducationDetails(
             opp.allowedDegrees || [],
             opp.allowedCourses || [],
-            (opp as any).allowedSpecializations || []
+            opp.allowedSpecializations || []
         );
         const loginFromDetailHref = buildLoginFromDetailHref(
             `/opportunities/${opp.id}`,
@@ -70,5 +71,5 @@ export function useOpportunityDerivedState(opp: Opportunity, profile: any, searc
             isExpired,
             isClosingSoon
         };
-    }, [opp, profile, searchParams]);
+    }, [opp, profile, searchParams, now]);
 }
