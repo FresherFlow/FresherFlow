@@ -4,6 +4,10 @@ import type { Metadata } from 'next';
 export const metadata: Metadata = {
     title: 'Join FresherFlow',
     description: 'Create your free account on FresherFlow — discover verified jobs, internships, and walk-ins for freshers.',
+    robots: {
+        index: false,
+        follow: false,
+    },
 };
 
 interface PageProps {

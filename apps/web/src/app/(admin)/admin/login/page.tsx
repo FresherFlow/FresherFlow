@@ -54,7 +54,11 @@ export default function AdminLoginPage() {
                 setShowOtherOptions(false);
             }
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Registration failed.';
+            const error = err as { statusCode?: number; status?: number; message?: string };
+            const status = error?.statusCode || error?.status;
+            const message = status === 503 || status === 504 
+                ? 'Infrastructure is currently unavailable. Please check the database status.'
+                : error.message || 'Registration failed.';
             toast.error(message);
         } finally {
             setIsLoading(false);
@@ -90,7 +94,11 @@ export default function AdminLoginPage() {
                 }, 500);
             }
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Verification failed.';
+            const error = err as { statusCode?: number; status?: number; message?: string };
+            const status = error?.statusCode || error?.status;
+            const message = status === 503 || status === 504 
+                ? 'Authentication service or database is unavailable. Please try again later.'
+                : error.message || 'Verification failed.';
             toast.error(message);
         } finally {
             setIsLoading(false);
@@ -123,7 +131,11 @@ export default function AdminLoginPage() {
                 }, 500);
             }
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'TOTP verification failed.';
+            const error = err as { statusCode?: number; status?: number; message?: string };
+            const status = error?.statusCode || error?.status;
+            const message = status === 503 || status === 504 
+                ? 'Database connection failed. Admin services are temporarily offline.'
+                : error.message || 'TOTP verification failed.';
             toast.error(message);
         } finally {
             setIsLoading(false);

@@ -4,19 +4,20 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
 import { opportunitiesApi, dashboardApi, savedApi } from '@/lib/api/client';
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import Link from 'next/link';
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
-import UserIcon from '@heroicons/react/24/outline/UserIcon';
-import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
-import { SkeletonJobCard } from '@/components/ui/Skeleton';
-import JobCard from '@/features/jobs/components/JobCard';
-import { Button } from '@/components/ui/Button';
 import { getFeedLastSyncAt } from '@/lib/offline/syncStatus';
 import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { OpportunityEventType } from '@fresherflow/types';
 import { OfflineError } from '@/lib/api/client';
-import { ProfileCompletionBanner, ReferralLinkButton } from '@/components/dashboard/DashboardBanners';
+import { ProfileCompletionBanner } from '@/components/dashboard/DashboardBanners';
+import { Button } from '@/components/ui/Button';
+
+// Components
+import { DashboardHeader } from './components/DashboardHeader';
+import { DashboardTabs } from './components/DashboardTabs';
+import { DashboardFeed } from './components/DashboardFeed';
+import { DashboardPulse } from './components/DashboardPulse';
 
 // ── Dashboard feed cache ─────────────────────────────────────────────────────
 const DASH_CACHE_KEY = 'ff_dashboard_cache_v1';
@@ -42,7 +43,6 @@ function writeDashCache(opportunities: Opportunity[]) {
 const HOURS_24_IN_MS = 24 * 60 * 60 * 1000;
 const MOBILE_DASHBOARD_LIMIT = 10;
 const MOBILE_DASHBOARD_STEP = 10;
-const DESKTOP_DASHBOARD_LIMIT = 24;
 
 type TabKey = 'featured' | 'latest' | 'expiring' | 'all' | 'applied' | 'archived';
 
@@ -63,12 +63,10 @@ type HighlightsData = {
     driveMilestones?: DriveMilestone[];
 };
 
-type OpportunityAction = {
-    actionType: string;
-};
-
 const hasAppliedAction = (opp: Opportunity): boolean =>
-    (opp.actions as OpportunityAction[] | undefined)?.some((a) => a.actionType === 'APPLIED') ?? false;
+    (opp.actions as any[] | undefined)?.some((a) => 
+        ['APPLIED', 'PLANNED', 'INTERVIEWED', 'SELECTED', 'PLANNING', 'ATTENDED'].includes(a.actionType)
+    ) ?? false;
 
 export default function DashboardClient() {
     const { user, profile, isLoading: authLoading } = useAuth();
@@ -82,11 +80,9 @@ export default function DashboardClient() {
     const [hasLoaded, setHasLoaded] = useState(false);
     const [recentError, setRecentError] = useState<string | null>(null);
     const [highlightsError, setHighlightsError] = useState<string | null>(null);
-    const [, setIsOnline] = useState(true);
-    const [, setFeedLastSyncAt] = useState<number | null>(null);
+    const [showBackToTop, setShowBackToTop] = useState(false);
     const [dashboardVisitCounter, setDashboardVisitCounter] = useState(0);
     const [activeTab, setActiveTab] = useState<TabKey>('featured');
-    const [showBackToTop, setShowBackToTop] = useState(false);
     const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_DASHBOARD_LIMIT);
 
     useEffect(() => {
@@ -109,7 +105,6 @@ export default function DashboardClient() {
             setRecentError((err as Error)?.message || 'Unable to load recommended listings');
         } finally {
             setIsLoadingOpps(false);
-            setFeedLastSyncAt(getFeedLastSyncAt());
         }
     }, []);
 
@@ -123,11 +118,9 @@ export default function DashboardClient() {
             setHighlightsError((err as Error)?.message || 'Unable to load highlights');
         } finally {
             setIsLoadingHighlights(false);
-            setFeedLastSyncAt(getFeedLastSyncAt());
         }
     }, []);
 
-    // On auth ready: load feed first, then stagger highlights
     useEffect(() => {
         if (!authLoading && user && (profile?.completionPercentage ?? 0) >= 100 && !hasLoaded) {
             setHasLoaded(true);
@@ -140,20 +133,6 @@ export default function DashboardClient() {
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
-        setIsOnline(window.navigator.onLine);
-        setFeedLastSyncAt(getFeedLastSyncAt());
-        const handleOnline = () => setIsOnline(true);
-        const handleOffline = () => setIsOnline(false);
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, []);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
         const handleScroll = () => setShowBackToTop(window.scrollY > 420);
         handleScroll();
         window.addEventListener('scroll', handleScroll, { passive: true });
@@ -162,9 +141,7 @@ export default function DashboardClient() {
 
     useEffect(() => {
         if (typeof window === 'undefined' || !user) return;
-        const lastSeenStorageKey = 'ff_dashboard_last_seen_at';
         const visitStorageKey = 'ff_dashboard_visit_counter';
-        window.localStorage.setItem(lastSeenStorageKey, String(Date.now()));
         const previousVisits = Number(window.localStorage.getItem(visitStorageKey) || '0');
         const nextVisits = Number.isFinite(previousVisits) ? previousVisits + 1 : 1;
         window.localStorage.setItem(visitStorageKey, String(nextVisits));
@@ -200,7 +177,6 @@ export default function DashboardClient() {
         loadHighlights();
     };
 
-    // ── Tab Virtualization: compute ONLY the active tab's data ────────────────
     const { activeItems, totalActive, jobsCount, internshipsCount, walkinsCount, latestBadgeCount } = useMemo(() => {
         const rotateByOffset = <T,>(items: T[], offset: number) => {
             if (items.length <= 1) return items;
@@ -223,9 +199,6 @@ export default function DashboardClient() {
                 return { ...opp, matchScore: match.score, matchReason: match.reason };
             });
 
-
-        const rotationOffset = Math.max(0, dashboardVisitCounter - 1) * 4;
-
         const latestSorted = [...active].sort((a, b) => {
             if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
             return new Date(b.postedAt as string | Date).getTime() - new Date(a.postedAt as string | Date).getTime();
@@ -236,7 +209,7 @@ export default function DashboardClient() {
                 if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
                 return (b.matchScore || 0) - (a.matchScore || 0);
             }),
-            rotationOffset
+            Math.max(0, dashboardVisitCounter - 1) * 4
         );
 
         const closing = active
@@ -271,23 +244,20 @@ export default function DashboardClient() {
         ]);
         const latestCount = highlights?.newSinceLastVisitCount ?? newSinceLastVisit.length ?? newIn24h.length;
 
-        // Only the active tab's items are sliced — no unused computation
-        const limit = (items: Opportunity[], mobile: boolean) => items.slice(0, mobile ? MOBILE_DASHBOARD_LIMIT : DESKTOP_DASHBOARD_LIMIT);
         const tabMap: Record<TabKey, Opportunity[]> = {
             featured, latest: latestSorted, expiring: closing, all: bestMatch, applied, archived
         };
         const currentItems = tabMap[activeTab] || featured;
 
         return {
-            activeItems: { mobile: currentItems, desktop: limit(currentItems, false) },
+            activeItems: currentItems,
             totalActive: active.length || 1,
             jobsCount: active.filter(o => o.type === 'JOB').length,
             internshipsCount: active.filter(o => o.type === 'INTERNSHIP').length,
             walkinsCount: active.filter(o => o.type === 'WALKIN').length,
             latestBadgeCount: latestCount,
         };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [recentOpps, highlights, dashboardVisitCounter, profile?.id, activeTab]);
+    }, [recentOpps, highlights, dashboardVisitCounter, profile, activeTab]);
 
     const tabs: { key: TabKey; title: string }[] = [
         { key: 'featured', title: 'Featured' },
@@ -302,34 +272,8 @@ export default function DashboardClient() {
         <AuthGate>
             <ProfileGate>
                 <div className="w-full max-w-7xl mx-auto space-y-4 md:space-y-8 pb-12 md:pb-20 px-3 md:px-6">
-                    {/* Compact Header */}
-                    <div className="flex flex-col gap-1.5 md:gap-3 pb-2.5 md:pb-4">
-                        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-3">
-                            <div className="space-y-1">
-                                <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
-                                    Welcome back, {user?.fullName?.split(' ')[0] || 'candidate'}.
-                                </h1>
-                                <p className="text-[11px] md:text-xs text-muted-foreground">Move fast on verified listings.</p>
-                            </div>
-                            <div className="hidden md:flex flex-wrap items-center gap-2">
-                                <ReferralLinkButton />
-                                <Button asChild className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest">
-                                    <Link href="/opportunities">
-                                        <MagnifyingGlassIcon className="w-4 h-4 mr-2" />
-                                        Open feed
-                                    </Link>
-                                </Button>
-                                <Button asChild variant="outline" className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest">
-                                    <Link href="/profile">
-                                        <UserIcon className="w-4 h-4 mr-2" />
-                                        Update profile
-                                    </Link>
-                                </Button>
-                            </div>
-                        </div>
-                    </div>
+                    <DashboardHeader userName={user?.fullName?.split(' ')[0]} />
 
-                    {/* Main Grid */}
                     <div className="space-y-6 md:space-y-8">
                         <div className="space-y-3 md:space-y-6">
                             <ProfileCompletionBanner />
@@ -340,130 +284,31 @@ export default function DashboardClient() {
                                 </div>
                             )}
 
-                            {/* Tab Bar — shared for mobile/desktop, only styling differs */}
-                            <div className="">
-                                {/* Mobile tabs */}
-                                <div className="md:hidden flex items-center gap-1 overflow-x-auto no-scrollbar">
-                                    {tabs.map(s => (
-                                        <button
-                                            key={s.key}
-                                            onClick={() => setActiveTab(s.key)}
-                                            className={`relative whitespace-nowrap px-3 py-2 text-[12px] font-semibold transition-colors ${activeTab === s.key ? 'text-foreground' : 'text-muted-foreground'} flex items-center gap-1.5`}
-                                        >
-                                            {s.title}
-                                            {s.key === 'latest' && latestBadgeCount > 0 && (
-                                                <span className="inline-flex min-w-4 h-4 px-1 rounded-full bg-primary/15 border border-primary/30 text-[9px] leading-4 font-bold text-primary">
-                                                    {latestBadgeCount > 99 ? '99+' : latestBadgeCount}
-                                                </span>
-                                            )}
-                                            {activeTab === s.key && <span className="absolute left-1/2 -translate-x-1/2 bottom-0 h-0.5 w-7 rounded-full bg-primary" />}
-                                        </button>
-                                    ))}
-                                </div>
-                                {/* Desktop tabs */}
-                                <div className="hidden md:flex items-center gap-6">
-                                    {tabs.map(s => (
-                                        <button
-                                            key={`dt-${s.key}`}
-                                            onClick={() => setActiveTab(s.key)}
-                                            className={`relative pb-3 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === s.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'} flex items-center gap-1.5`}
-                                        >
-                                            {s.title}
-                                            {s.key === 'latest' && latestBadgeCount > 0 && (
-                                                <span className="inline-flex min-w-4 h-4 px-1 rounded-full bg-primary/15 border border-primary/30 text-[9px] leading-4 font-bold text-primary normal-case tracking-normal">
-                                                    {latestBadgeCount > 99 ? '99+' : latestBadgeCount}
-                                                </span>
-                                            )}
-                                            {activeTab === s.key && <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary animate-in fade-in zoom-in duration-300" />}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+                            <DashboardTabs 
+                                tabs={tabs}
+                                activeTab={activeTab}
+                                setActiveTab={setActiveTab}
+                                latestBadgeCount={latestBadgeCount}
+                            />
 
-                            {/* Mobile Feed — only active tab rendered */}
-                            <div className="md:hidden min-h-150">
-                                {isLoadingOpps ? (
-                                    <div className="space-y-4"><SkeletonJobCard /><SkeletonJobCard /></div>
-                                ) : activeItems.mobile.length === 0 ? (
-                                    <div className="p-10 text-center border border-dashed border-border rounded-xl text-xs text-muted-foreground">No listings here yet.</div>
-                                ) : (
-                                    <div className="space-y-4">
-                                        {activeItems.mobile.slice(0, mobileVisibleCount).map((opp: Opportunity, idx: number) => (
-                                            <JobCard
-                                                key={`mob-${opp.id}`}
-                                                job={opp}
-                                                jobId={opp.id}
-                                                isApplied={hasAppliedAction(opp)}
-                                                isSaved={opp.isSaved}
-                                                onToggleSave={() => toggleSave(opp.id)}
-                                                isAdmin={user?.role === 'ADMIN'}
-                                                priority={idx < 2}
-                                            />
-                                        ))}
-                                        {activeItems.mobile.length > mobileVisibleCount && (
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => setMobileVisibleCount((prev) => prev + MOBILE_DASHBOARD_STEP)}
-                                                className="w-full h-10 text-[10px] font-bold uppercase tracking-widest"
-                                            >
-                                                Load more
-                                            </Button>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Desktop Feed — only active tab rendered */}
-                            <div className="hidden md:block min-h-150">
-                                {isLoadingOpps ? (
-                                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-4">
-                                        {[1, 2, 3, 4].map(i => <SkeletonJobCard key={i} />)}
-                                    </div>
-                                ) : activeItems.desktop.length === 0 ? (
-                                    <div className="p-12 text-center border border-dashed border-border rounded-xl">
-                                        <p className="text-sm font-medium text-muted-foreground">No results found in this section.</p>
-                                        <Button asChild variant="outline" className="mt-4 h-8 text-[10px] font-bold uppercase tracking-widest">
-                                            <Link href="/opportunities">Browse all feed</Link>
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="grid grid-cols-2 xl:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-                                        {activeItems.desktop.map((opp: Opportunity) => (
-                                            <JobCard
-                                                key={`desk-${opp.id}`}
-                                                job={opp}
-                                                jobId={opp.id}
-                                                isApplied={hasAppliedAction(opp)}
-                                                isSaved={opp.isSaved}
-                                                onToggleSave={() => toggleSave(opp.id)}
-                                                isAdmin={user?.role === 'ADMIN'}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                            <DashboardFeed 
+                                isLoading={isLoadingOpps}
+                                opportunities={activeItems}
+                                onToggleSave={toggleSave}
+                                isAdmin={user?.role === 'ADMIN'}
+                                hasAppliedAction={hasAppliedAction}
+                                mobileVisibleCount={mobileVisibleCount}
+                                setMobileVisibleCount={setMobileVisibleCount}
+                                mobileStep={MOBILE_DASHBOARD_STEP}
+                            />
                         </div>
 
-                        <section className="space-y-4 min-h-50">
-                            <h2 className="text-sm font-bold uppercase tracking-wider">Activity Pulse</h2>
-                            <div className="p-5 rounded-2xl border border-border bg-card/50 space-y-4">
-                                {[
-                                    { label: 'Jobs', count: jobsCount },
-                                    { label: 'Internships', count: internshipsCount },
-                                    { label: 'Walk-ins', count: walkinsCount },
-                                ].map(item => (
-                                    <div key={item.label} className="space-y-1">
-                                        <div className="flex justify-between text-xs md:text-sm">
-                                            <span>{item.label}</span>
-                                            <span>{item.count}</span>
-                                        </div>
-                                        <div className="h-1 bg-muted rounded-full overflow-hidden">
-                                            <div className="h-full bg-primary/60" style={{ width: `${Math.min(100, (item.count / totalActive) * 100)}%` }} />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
+                        <DashboardPulse 
+                            jobsCount={jobsCount}
+                            internshipsCount={internshipsCount}
+                            walkinsCount={walkinsCount}
+                            totalActive={totalActive}
+                        />
                     </div>
                 </div>
                 {showBackToTop && (

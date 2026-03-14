@@ -232,7 +232,7 @@ export function useOpportunitiesFeed({
             const postedB = new Date(b.postedAt || 0).getTime();
             if (postedA !== postedB) return postedB - postedA;
 
-            return a.id.localeCompare(b.id);
+            return (a.id || '').localeCompare(b.id || '');
         });
     }, [opportunities, debouncedSearch, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile]);
 

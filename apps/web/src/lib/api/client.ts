@@ -160,7 +160,7 @@ export async function apiClient<T = unknown>(
                         });
 
                         if (!refreshResponse.ok) {
-                            const err = new Error('Refresh failed') as any;
+                            const err = new Error('Refresh failed') as Error & { status?: number };
                             err.status = refreshResponse.status;
                             throw err;
                         }
@@ -183,7 +183,7 @@ export async function apiClient<T = unknown>(
                 // Retry original request
                 response = await fetchWithRetry();
             } catch (err: unknown) {
-                const error = err as any;
+                const error = err as { status?: number };
                 // Only force logout when refresh proves the session is actually invalid.
                 // Transient refresh failures (timeouts, 5xx, deploy/network blips) should not
                 // wipe the user's session and send them back to login.

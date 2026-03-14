@@ -27,7 +27,7 @@ const ADMIN_ROOT_PREFIXES = [
     '/telegram',
     '/settings',
 ];
-const APP_ONLY_PREFIXES = ['/dashboard', '/account', '/profile', '/alerts'];
+const APP_ONLY_PREFIXES = ['/dashboard', '/account', '/profile', '/alerts', '/login'];
 const SOCIAL_PREVIEW_BOT_UA = /(facebookexternalhit|facebot|twitterbot|xbot|linkedinbot|whatsapp|telegrambot|slackbot|discordbot|skypeuripreview|applebot)/i;
 const KNOWN_CRAWLER_UA = /(bot|crawler|spider|slurp|bingpreview|curl|wget|python-requests|headless)/i;
 
@@ -80,10 +80,15 @@ function isPublicCanonicalPath(pathname: string): boolean {
     return false;
 }
 
-function redirectWithMethodAwareness(request: NextRequest, target: string) {
+function redirectWithMethodAwareness(request: NextRequest, target: string, permanent: boolean = false) {
     const url = new URL(target, request.url);
     const method = request.method.toUpperCase();
-    const status = method === 'GET' || method === 'HEAD' ? 307 : 303;
+    let status = 307;
+    if (permanent) {
+        status = 308;
+    } else if (method !== 'GET' && method !== 'HEAD') {
+        status = 303;
+    }
     return NextResponse.redirect(url, status);
 }
 
@@ -122,12 +127,13 @@ export function proxy(request: NextRequest) {
     const isAdminLogin = pathname === '/admin/login' || pathname === '/login';
     const isUserPath = isUserProtectedPath(pathname);
     const isPublicPath = isPublicCanonicalPath(pathname);
-    const shouldNoIndex = isAdminHost || isAppHost || isAdminRoute || isAdminRootPath || pathname === '/logout' || pathname === '/index' || pathname === '/admin-manifest.json';
+    const isPublicHubPath = pathname === '/' || pathname === '/jobs' || pathname === '/internships' || pathname === '/walk-ins' || pathname === '/opportunities';
+    const shouldNoIndex = isAdminHost || isAppHost || isAdminRoute || (isAdminRootPath && !isPublicHubPath) || pathname === '/logout' || pathname === '/index' || pathname === '/admin-manifest.json';
 
     if ((isKnownCrawler(request) || isLowValuePrefetch(request)) && !isAdminRoute && !isAdminRootPath && !isUserPath) {
         if (isAppHost && isPublicPath) {
             const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
-            return withNoIndex(redirectWithMethodAwareness(request, target));
+            return redirectWithMethodAwareness(request, target, true);
         }
         return shouldNoIndex ? withNoIndex(NextResponse.next()) : NextResponse.next();
     }
@@ -142,44 +148,43 @@ export function proxy(request: NextRequest) {
 
     if (process.env.NODE_ENV === 'production' && normalizedHost === PUBLIC_WEB_HOST && isUserPath) {
         const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
-        return redirectWithMethodAwareness(request, target);
+        return redirectWithMethodAwareness(request, target, true);
     }
 
     if (process.env.NODE_ENV === 'production' && isAppHost && isPublicPath && pathname !== '/login') {
         const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
-        return withNoIndex(redirectWithMethodAwareness(request, target));
+        return redirectWithMethodAwareness(request, target, true);
     }
 
     if (
         process.env.NODE_ENV === 'production' &&
         normalizedHost === PUBLIC_WEB_HOST &&
         pathname !== '/' &&
-        pathname !== '/login' &&
         !isPublicPath &&
         !((isPreviewBot || isSocialShare) && isPublicDetailPath(pathname))
     ) {
         const target = `${request.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${request.nextUrl.search}`;
-        return redirectWithMethodAwareness(request, target);
+        return redirectWithMethodAwareness(request, target, true);
     }
 
     if (process.env.NODE_ENV === 'production' && isAdminHost && isPublicDetailPath(pathname)) {
         const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
-        return withNoIndex(redirectWithMethodAwareness(request, target));
+        return redirectWithMethodAwareness(request, target, true);
     }
 
     if (process.env.NODE_ENV === 'production' && isAdminRoute && !isAdminHost) {
         const targetPath = pathname === '/admin' ? '/dashboard' : (pathname.replace(/^\/admin/, '') || '/');
         const target = `${request.nextUrl.protocol}//${ADMIN_WEB_HOST}${targetPath}${request.nextUrl.search}`;
-        return withNoIndex(redirectWithMethodAwareness(request, target));
+        return redirectWithMethodAwareness(request, target, true);
     }
 
     if (isAdminHost) {
         if (pathname === '/admin') {
-            return withNoIndex(redirectWithMethodAwareness(request, '/dashboard'));
+            return redirectWithMethodAwareness(request, '/dashboard', true);
         }
         if (pathname.startsWith('/admin/')) {
             const targetPath = pathname === '/admin/login' ? '/login' : (pathname.replace(/^\/admin/, '') || '/');
-            return withNoIndex(redirectWithMethodAwareness(request, `${targetPath}${request.nextUrl.search}`));
+            return redirectWithMethodAwareness(request, `${targetPath}${request.nextUrl.search}`, true);
         }
         if (pathname === '/') {
             return withNoIndex(redirectWithMethodAwareness(request, isAdminAuthenticated ? '/dashboard' : '/login'));
@@ -202,7 +207,7 @@ export function proxy(request: NextRequest) {
         }
 
         const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
-        return withNoIndex(redirectWithMethodAwareness(request, target));
+        return redirectWithMethodAwareness(request, target, true);
     }
 
     if (isAppHost) {
@@ -222,7 +227,7 @@ export function proxy(request: NextRequest) {
 
         if (!isAppOnlyPath(pathname)) {
             const target = `${request.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${request.nextUrl.search}`;
-            return withNoIndex(redirectWithMethodAwareness(request, target));
+            return redirectWithMethodAwareness(request, target, true);
         }
     }
 

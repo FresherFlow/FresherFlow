@@ -645,11 +645,11 @@ export default function AlertsCenterPage() {
                                             : "border-primary/30 bg-card shadow-sm hover:border-primary/40"
                                     )}
                                 >
-                                    {!item.readAt && (
-                                        <div className="absolute top-3 right-3">
-                                            <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                                        </div>
-                                    )}
+
+
+
+
+
                                     <div className="flex items-center justify-between gap-2 mb-2.5">
                                         <span className={cn(
                                             "text-xs md:text-sm font-semibold uppercase tracking-wide px-2 py-1 rounded-md border",
@@ -785,6 +785,7 @@ export default function AlertsCenterPage() {
                                                     </div>
                                                 );
                                             })}
+
                                         </div>
                                     )}
                                 </article>

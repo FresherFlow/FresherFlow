@@ -1,414 +1,68 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState, useCallback, useRef } from 'react';
-import { opportunitiesApi, actionsApi, feedbackApi, savedApi, growthApi, opportunityClicksApi } from '@/lib/api/client';
+import { useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { ActionType, type Opportunity } from '@fresherflow/types';
-import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
-import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
+import { type Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
-import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
-import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
-import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
-import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
-import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
-import FlagIcon from '@heroicons/react/24/outline/FlagIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
-import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
-import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
-
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
-import CompanyLogo from '@/components/ui/CompanyLogo';
-import { getRecentViewedByIdOrSlug, saveRecentViewed } from '@/lib/offline/recentViewed';
-import { getDetailLastSyncAt } from '@/lib/offline/syncStatus';
-import { enqueueOfflineActionTrack, enqueueOfflineSaveToggle } from '@/lib/offline/actionQueue';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
-import { buildShareUrl } from '@/lib/share';
-import { sanitizeHtml } from '@/lib/sanitize';
-import { analytics } from '@/lib/analytics';
-import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
-import { getOpportunityDisplaySalary, normalizeSalaryInput, parseOpportunityLocation } from '@/lib/opportunityDisplay';
-import { OpportunityDeadlineBadge } from './components/OpportunityDeadlineBadge';
+import { feedbackApi } from '@/lib/api/client';
+
+// Components
 import { EligibilitySnapshotCard } from './components/EligibilitySnapshotCard';
-import { getDriveDates, getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
-import { formatTimeText12Hour } from '@/lib/timeDisplay';
+import { WalkInDetailsCard } from './components/WalkInDetailsCard';
+import { RelatedOpportunities } from './components/RelatedOpportunities';
+import { DetailRequirements } from './components/DetailRequirements';
+import { DetailTimeline } from './components/DetailTimeline';
+import { DetailCampusDriveInfo } from './components/DetailCampusDriveInfo';
+import { DetailHeroSection } from './components/DetailHeroSection';
+import { DetailActionHeader } from './components/DetailActionHeader';
+import { DetailActionMobile } from './components/DetailActionMobile';
+import { DetailSidebarActions } from './components/DetailSidebarActions';
+import { ExpiredWarning } from './components/ExpiredWarning';
+import { DescriptionSection } from './components/DescriptionSection';
+import { QuickActionsMobile } from './components/QuickActionsMobile';
+import { MobileGuestCTA } from './components/MobileGuestCTA';
+
+// Hooks & Utils
+import { useOpportunityDetail } from './useOpportunityDetail';
+import { useOpportunityDerivedState } from './useOpportunityDerivedState';
+import { useOpportunityReport } from './useOpportunityReport';
 
 export default function OpportunityDetailClient({ id, initialData }: { id: string; initialData?: Opportunity | null }) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, profile } = useAuth();
-    const [opp, setOpp] = useState<Opportunity | null>(() => {
-        if (initialData) return initialData;
-        if (typeof window !== 'undefined') {
-            const cached = getRecentViewedByIdOrSlug(id);
-            if (cached) return cached;
-        }
-        return null;
-    });
-    const [isLoading, setIsLoading] = useState<boolean>(() => {
-        if (initialData) return false;
-        if (typeof window !== 'undefined') {
-            const cached = getRecentViewedByIdOrSlug(id);
-            if (cached) return false;
-        }
-        return true;
-    });
-    const [showReports, setShowReports] = useState(false);
+    
+    // Core Logic Hook
+    const {
+        opp,
+        isLoading,
+        error,
+        relatedOpps,
+        isLoadingRelated,
+        isUpdatingAction,
+        loadOpportunity,
+        handleToggleSave,
+        handleSetAction,
+        handleApply,
+        handleShare,
+        handleCopyLink
+    } = useOpportunityDetail(id, initialData, user);
+
     const reportMenuRef = useRef<HTMLDivElement | null>(null);
-    const hasTrackedDetailViewRef = useRef(false);
-    const hasShownNotFoundRef = useRef(false);
-    const hasAttemptedLoadRef = useRef(false);
-    const [, setIsOnline] = useState(true);
-    const [, setDetailLastSyncAt] = useState<number | null>(null);
-    const [relatedOpps, setRelatedOpps] = useState<Opportunity[]>([]);
-    const [isLoadingRelated, setIsLoadingRelated] = useState(false);
-    const [isUpdatingAction, setIsUpdatingAction] = useState(false);
-
-    const loadOpportunity = useCallback(async () => {
-        if (initialData) return;
-
-        setIsLoading(true);
-        try {
-            const { opportunity } = await opportunitiesApi.getById(id) as { opportunity: Opportunity };
-            // Sanitize data
-            const sanitized = {
-                ...opportunity,
-                locations: opportunity.locations || [],
-                requiredSkills: opportunity.requiredSkills || [],
-                allowedDegrees: opportunity.allowedDegrees || [],
-                allowedPassoutYears: opportunity.allowedPassoutYears || []
-            };
-            setOpp({
-                ...sanitized,
-                isSaved: opportunity.isSaved || false
-            });
-            saveRecentViewed({
-                ...sanitized,
-                isSaved: opportunity.isSaved || false
-            });
-            setDetailLastSyncAt(getDetailLastSyncAt());
-        } catch {
-            const cachedOpportunity = getRecentViewedByIdOrSlug(id);
-            if (cachedOpportunity) {
-                setOpp(cachedOpportunity);
-                toast.success('Offline mode: loaded cached listing.');
-                return;
-            }
-            if (!hasShownNotFoundRef.current) {
-                hasShownNotFoundRef.current = true;
-                toastError(new Error('Listing not found.'));
-            }
-            router.push('/opportunities');
-        } finally {
-            setIsLoading(false);
-        }
-    }, [id, router, initialData]);
-
-    useEffect(() => {
-        if (!initialData && id && !hasAttemptedLoadRef.current) {
-            hasAttemptedLoadRef.current = true;
-            void loadOpportunity();
-        }
-    }, [id, initialData, loadOpportunity]);
-
-    useEffect(() => {
-        if (opp) {
-            saveRecentViewed(opp);
-        }
-    }, [opp]);
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        setIsOnline(window.navigator.onLine);
-        setDetailLastSyncAt(getDetailLastSyncAt());
-
-        const handleOnline = () => setIsOnline(true);
-        const handleOffline = () => setIsOnline(false);
-
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, []);
-
-    useEffect(() => {
-        if (opp && !hasTrackedDetailViewRef.current) {
-            hasTrackedDetailViewRef.current = true;
-            // Track job view in analytics
-            analytics.jobView(opp.id, opp.company, parseOpportunityLocation(opp.locations).shortLabel);
-            growthApi.trackEvent('DETAIL_VIEW', 'opportunity_detail', { opportunityId: opp.id }).catch(() => undefined);
-        }
-    }, [opp]);
-
-    // Auto-track VIEWED action for logged-in users (background, non-blocking)
-    useEffect(() => {
-        if (!opp || !user) return;
-
-        // Fire-and-forget: track view in background
-        const trackView = async () => {
-            try {
-                // Only track if no stronger action exists
-                const currentAction = opp.actions?.[0]?.actionType;
-                if (!currentAction || currentAction === ActionType.VIEWED) {
-                    await actionsApi.track(opp.id, ActionType.VIEWED);
-                }
-            } catch {
-                // Silently fail - don't block user experience
-            }
-        };
-
-        trackView();
-    }, [opp, user]);
-
-    useEffect(() => {
-        if (!opp) return;
-
-        const loadRelated = async () => {
-            if (!opp) return;
-            setIsLoadingRelated(true);
-            try {
-                const data = await opportunitiesApi.list({ type: opp.type }) as { opportunities: Opportunity[] };
-                const currentSkillSet = new Set((opp.requiredSkills || []).map((s) => s.toLowerCase()));
-                const currentLocations = new Set((opp.locations || []).map((l: string) => l.toLowerCase()));
-
-                const scored = (data.opportunities || [])
-                    .filter((item: Opportunity) => item.id !== opp.id)
-                    .filter((item: Opportunity) => !item.expiresAt || new Date(item.expiresAt) > new Date())
-                    .map((item: Opportunity) => {
-                        let score = 0;
-                        if (item.company === opp.company) score += 5;
-
-                        const itemLocations = (item.locations || []).map((l: string) => l.toLowerCase());
-                        if (itemLocations.some((l: string) => currentLocations.has(l))) score += 3;
-
-                        const itemSkills = (item.requiredSkills || []).map((s) => s.toLowerCase());
-                        const sharedSkills = itemSkills.filter((s) => currentSkillSet.has(s)).length;
-                        score += Math.min(sharedSkills, 4);
-
-                        if (item.workMode && item.workMode === opp.workMode) score += 1;
-                        return { item, score };
-                    })
-                    .sort((a: { item: Opportunity; score: number }, b: { item: Opportunity; score: number }) => b.score - a.score)
-                    .slice(0, 6)
-                    .map((x: { item: Opportunity; score: number }) => x.item);
-
-                setRelatedOpps(scored);
-            } catch {
-                setRelatedOpps([]);
-            } finally {
-                setIsLoadingRelated(false);
-            }
-        };
-
-        void loadRelated();
-    }, [opp, opp?.id, opp?.type, opp?.requiredSkills, opp?.locations, opp?.company, opp?.workMode]);
-
-    useEffect(() => {
-        if (!showReports) return;
-
-        const handleClickOutside = (event: Event) => {
-            if (!reportMenuRef.current) return;
-            if (!reportMenuRef.current.contains(event.target as Node)) {
-                setShowReports(false);
-            }
-        };
-
-        const handleEsc = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') setShowReports(false);
-        };
-
-        document.addEventListener('mousedown', handleClickOutside);
-        document.addEventListener('touchstart', handleClickOutside);
-        document.addEventListener('pointerdown', handleClickOutside);
-        document.addEventListener('keydown', handleEsc);
-        return () => {
-            document.removeEventListener('mousedown', handleClickOutside);
-            document.removeEventListener('touchstart', handleClickOutside);
-            document.removeEventListener('pointerdown', handleClickOutside);
-            document.removeEventListener('keydown', handleEsc);
-        };
-    }, [showReports]);
-
-    const handleToggleSave = async () => {
-        if (!opp) return;
-
-        // OPTIMISTIC UPDATE
-        const previousSavedState = opp.isSaved;
-        const newSavedState = !previousSavedState;
-        setOpp(prev => prev ? { ...prev, isSaved: newSavedState } : null);
-
-        if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
-            enqueueOfflineSaveToggle(opp.id, user.id);
-            toast.success('Saved update queued for sync.');
-            return;
-        }
-
-        try {
-            const result = await savedApi.toggle(opp.id) as { saved: boolean };
-
-            // Verify sync result matches optimistic state
-            if (result.saved !== newSavedState) {
-                setOpp(prev => prev ? { ...prev, isSaved: result.saved } : null);
-            }
-
-            if (result.saved) {
-                growthApi.trackEvent('SAVE_JOB', 'opportunity_detail').catch(() => undefined);
-            }
-        } catch (err: unknown) {
-            if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
-                enqueueOfflineSaveToggle(opp.id, user.id);
-                toast.success('Saved update queued for sync.');
-                return;
-            }
-            // ROLLBACK
-            setOpp(prev => prev ? { ...prev, isSaved: previousSavedState } : null);
-            toastError(err, 'Failed to update bookmark');
-        }
-    };
-
-    const getCurrentActionType = (): ActionType | null => {
-        if (!opp?.actions?.length) return null;
-        const current = opp.actions[0].actionType as ActionType;
-        if (current === ActionType.PLANNING) return ActionType.PLANNED;
-        if (current === ActionType.ATTENDED) return ActionType.INTERVIEWED;
-        return current;
-    };
-
-    const handleSetAction = async (actionType: ActionType) => {
-        if (!opp) return;
-        if (!user) {
-            router.push(loginFromDetailHref);
-            return;
-        }
-
-        // OPTIMISTIC UPDATE: Update UI immediately
-        const previousActions = opp.actions;
-        const isWalkinFlow = opp.type === 'WALKIN';
-        const label = actionType === ActionType.PLANNED
-            ? 'Planned'
-            : actionType === ActionType.INTERVIEWED
-                ? (isWalkinFlow ? 'Attended' : 'Interviewed')
-                : actionType === ActionType.SELECTED
-                    ? 'Selected'
-                    : 'Applied';
-
-        setOpp((prev) => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                actions: [
-                    {
-                        id: `local-${prev.id}`,
-                        userId: user.id,
-                        opportunityId: prev.id,
-                        actionType,
-                        createdAt: new Date(),
-                    }
-                ]
-            };
-        });
-        toast.success(`Progress updated: ${label}`);
-
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-            enqueueOfflineActionTrack(opp.id, actionType, user.id);
-            return;
-        }
-
-        // Background sync
-        setIsUpdatingAction(true);
-        try {
-            await actionsApi.track(opp.id, actionType);
-        } catch (err: unknown) {
-            if (typeof navigator !== 'undefined' && !navigator.onLine) {
-                enqueueOfflineActionTrack(opp.id, actionType, user.id);
-                return;
-            }
-            // ROLLBACK: Revert to previous state
-            setOpp((prev) => {
-                if (!prev) return prev;
-                return { ...prev, actions: previousActions };
-            });
-            toastError(err, 'Could not update progress');
-        } finally {
-            setIsUpdatingAction(false);
-        }
-    };
-
-    const handleApply = async () => {
-        if (!opp) return;
-
-        // Track apply click in analytics
-        analytics.applyClick(opp.id, opp.company, !!opp.applyLink);
-
-        // Track analytics event
-        const applyAction = opp.type === 'WALKIN' ? ActionType.PLANNED : ActionType.APPLIED;
-        // Track apply action only for logged-in users
-        if (user) {
-            actionsApi.track(opp.id, applyAction).catch(() => undefined);
-        }
-        growthApi.trackEvent('APPLY_CLICK', 'opportunity_detail').catch(() => undefined);
-        opportunityClicksApi.trackApplyClick(
-            opp.id,
-            'opportunity_detail',
-            opp.applyLink || opp.companyWebsite || null
-        ).catch(() => undefined);
-
-        // Open apply link
-        if (opp.applyLink) {
-            window.open(opp.applyLink, '_blank', 'noopener,noreferrer');
-        } else if (opp.companyWebsite) {
-            window.open(opp.companyWebsite, '_blank', 'noopener,noreferrer');
-        } else {
-            toast.error('No application link available');
-        }
-    };
-
-    const getShareUrl = () => {
-        return buildShareUrl(window.location.href, {
-            platform: 'other',
-            source: 'opportunity_share',
-            medium: 'share',
-            campaign: 'opportunity_share',
-            ref: 'share',
-        });
-    };
-
-    const handleShare = async () => {
-        const shareUrl = getShareUrl();
-        const shareData = {
-            title: `${opp?.title} at ${opp?.company}`,
-            text: `Check out this opportunity: ${opp?.title} at ${opp?.company}`,
-            url: shareUrl,
-        };
-
-        growthApi.trackEvent('SHARE_JOB', 'opportunity_detail').catch(() => undefined);
-        try {
-            if (navigator.share) {
-                await navigator.share(shareData);
-            } else {
-                await navigator.clipboard.writeText(shareUrl);
-                toast.success('Link copied to clipboard!');
-            }
-        } catch {
-            console.error('Share failed');
-        }
-    };
-
-    const handleCopyLink = async () => {
-        try {
-            await navigator.clipboard.writeText(getShareUrl());
-            toast.success('Link copied to clipboard!');
-        } catch (err: unknown) {
-            toastError(err, 'Failed to copy link');
-        }
-    };
+    const ds = useOpportunityDerivedState(opp as Opportunity, profile, searchParams);
+    
+    const { 
+        showReports, 
+        setShowReports, 
+        handleReport 
+    } = useOpportunityReport(opp as Opportunity, user);
 
     const jumpToTimeline = () => {
         if (typeof document === 'undefined') return;
@@ -417,1052 +71,149 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         section.scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    const isExpired = (opportunity: Opportunity) => {
-        if (!opportunity.expiresAt) return false;
-        return new Date(opportunity.expiresAt) < new Date();
-    };
-
-    const isClosingSoon = (opportunity: Opportunity) => {
-        if (!opportunity.expiresAt) return false;
-        const expiryDate = new Date(opportunity.expiresAt);
-        const now = new Date();
-        const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-        return expiryDate >= now && expiryDate <= threeDaysFromNow;
-    };
-
-    const getListingState = (opportunity: Opportunity): 'EXPIRED' | 'CLOSING_SOON' | 'ACTIVE' | 'INACTIVE' => {
-        if (opportunity.status && opportunity.status !== 'PUBLISHED') return 'INACTIVE';
-        if (isExpired(opportunity)) return 'EXPIRED';
-        if (isClosingSoon(opportunity)) return 'CLOSING_SOON';
-        return 'ACTIVE';
-    };
-
-    const formatDeadline = (opportunity: Opportunity) => {
-        if (!opportunity.expiresAt) return null;
-        return new Date(opportunity.expiresAt).toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-        });
-    };
-
-    const formatEducationLevel = (degree: string): string => {
-        switch (degree) {
-            case 'DIPLOMA': return 'Diploma';
-            case 'DEGREE': return 'Any Graduate';
-            case 'PG': return 'Postgraduate';
-            default: return degree;
-        }
-    };
-
-    const getEducationDetails = (degrees: string[], courses: string[], specializations: string[] = []) => {
-        const level = Array.from(new Set((degrees || []).map(formatEducationLevel).filter(Boolean))).join(', ') || 'Any Graduate';
-        const courseList = Array.from(new Set((courses || []).map((item) => item.trim()).filter(Boolean)));
-        const specializationList = Array.from(new Set((specializations || []).map((item) => item.trim()).filter(Boolean)));
-        return {
-            level,
-            courses: courseList.length ? courseList.join(', ') : null,
-            specializations: specializationList.length ? specializationList.join(', ') : null
-        };
-    };
-
-    const normalizeAcademic = (value: string) => value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-
-    const educationDetails = getEducationDetails(
-        opp?.allowedDegrees || [],
-        opp?.allowedCourses || [],
-        (opp as { allowedSpecializations?: string[] } | null)?.allowedSpecializations || []
-    );
-
-    const eligibilitySnapshot = (() => {
-        if (!profile) {
-            return {
-                statusLabel: 'Complete Profile',
-                statusTone: 'neutral' as const,
-                mustFix: ['Add your education details to check eligibility for this role.'],
-                matchedSkills: [] as string[],
-                missingSkills: (opp?.requiredSkills || []).slice(0, 8),
-            };
-        }
-
-        const mustFix: string[] = [];
-        const allowedYears = opp?.allowedPassoutYears || [];
-        if (allowedYears.length > 0) {
-            const hasMatchingGradYear = profile.gradYear && allowedYears.includes(profile.gradYear);
-            const hasMatchingPgYear = profile.pgYear && allowedYears.includes(profile.pgYear);
-
-            if (!profile.gradYear && !profile.pgYear) {
-                mustFix.push(`Passout year is missing in your profile`);
-            } else if (!hasMatchingGradYear && !hasMatchingPgYear) {
-                mustFix.push(`Passout year does not match (${allowedYears.join(', ')})`);
-            }
-        }
-
-        const levels = ['DIPLOMA', 'DEGREE', 'PG'];
-        const allowedDegrees = opp?.allowedDegrees || [];
-        if (allowedDegrees.length > 0) {
-            if (!profile.educationLevel) {
-                mustFix.push('Education level is missing in your profile');
-            } else {
-                const userLevelIndex = levels.indexOf(profile.educationLevel);
-                const levelMatch = allowedDegrees.some((deg) => {
-                    const degIndex = levels.indexOf(deg as string);
-                    return degIndex !== -1 && degIndex <= userLevelIndex;
-                });
-                if (!levelMatch) mustFix.push('Education level does not meet this role');
-            }
-        }
-
-        const allowedCourses = opp?.allowedCourses || [];
-        if (allowedCourses.length > 0) {
-            const normalizedAllowed = allowedCourses.map(normalizeAcademic);
-            const gradCourse = profile.gradCourse ? normalizeAcademic(profile.gradCourse) : '';
-            const pgCourse = profile.pgCourse ? normalizeAcademic(profile.pgCourse) : '';
-            if (!(gradCourse && normalizedAllowed.includes(gradCourse)) && !(pgCourse && normalizedAllowed.includes(pgCourse))) {
-                mustFix.push('Your degree course is not in the allowed list');
-            }
-        }
-
-        const allowedSpecializations = (opp as { allowedSpecializations?: string[] } | null)?.allowedSpecializations || [];
-        if (allowedSpecializations.length > 0) {
-            const normalizedAllowed = allowedSpecializations.map(normalizeAcademic);
-            const gradSpec = profile.gradSpecialization ? normalizeAcademic(profile.gradSpecialization) : '';
-            const pgSpec = profile.pgSpecialization ? normalizeAcademic(profile.pgSpecialization) : '';
-            if (!(gradSpec && normalizedAllowed.includes(gradSpec)) && !(pgSpec && normalizedAllowed.includes(pgSpec))) {
-                mustFix.push('Your specialization is not in the allowed list');
-            }
-        }
-
-        const requiredSkills = Array.from(new Set((opp?.requiredSkills || []).map((s) => s.trim()).filter(Boolean)));
-        const userSkills = new Set((profile.skills || []).map((s) => s.trim().toLowerCase()));
-        const matchedSkills = requiredSkills.filter((skill) => userSkills.has(skill.toLowerCase()));
-        const missingSkills = requiredSkills.filter((skill) => !userSkills.has(skill.toLowerCase()));
-
-        return {
-            statusLabel: mustFix.length > 0 ? 'Not Eligible Yet' : 'Eligible',
-            statusTone: (mustFix.length > 0 ? 'warn' : 'ok') as 'warn' | 'ok',
-            mustFix,
-            matchedSkills,
-            missingSkills,
-        };
-    })();
-
-    const handleReport = async (reason: string) => {
-        if (!user || !opp) {
-            toastError(new Error('Identity required to file report.'));
-            if (!user) router.push('/login');
-            return;
-        }
-
-        const loadingToast = toast.loading('Submitting report...');
-        try {
-            const data = await feedbackApi.submit(opp.id, reason) as { success: boolean; message?: string };
-            if (data.success) {
-                toast.success('Thank you for your feedback', { id: loadingToast });
-                setShowReports(false);
-            } else {
-                toastError(new Error(data.message || 'Unknown error'), 'Report failed.', { id: loadingToast });
-            }
-        } catch (err: unknown) {
-            toastError(err, 'Report failed.', { id: loadingToast });
-        }
-    };
-
     if (isLoading) return <OpportunityDetailSkeleton />;
-    if (!opp) return null;
+    
+    if (error) {
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center p-4 space-y-4">
+                <div className="p-4 bg-destructive/10 rounded-full">
+                    <ExclamationTriangleIcon className="w-8 h-8 text-destructive" />
+                </div>
+                <h2 className="text-xl font-bold text-foreground">Failed to load opportunity</h2>
+                <p className="text-muted-foreground text-center max-w-md">{error}</p>
+                <Button onClick={() => void loadOpportunity()} className="flex items-center gap-2">
+                    <ClockIcon className="w-4 h-4" />
+                    Retry Loading
+                </Button>
+                <Link href="/opportunities">
+                    <Button variant="ghost">Browse other jobs</Button>
+                </Link>
+            </div>
+        );
+    }
 
-    const detailPath = getOpportunityPathFromItem(opp);
-    const hasApplyLink = Boolean(opp.applyLink || opp.companyWebsite);
-    const isWalkinFlow = opp.type === 'WALKIN';
-    const currentAction = getCurrentActionType();
-    const trackerOptions: Array<{ key: ActionType; label: string }> = [
-        ...(isWalkinFlow ? [] : [{ key: ActionType.APPLIED, label: 'Applied' }]),
-        { key: ActionType.PLANNED, label: 'Planned' },
-        { key: ActionType.INTERVIEWED, label: isWalkinFlow ? 'Attended' : 'Interviewed' },
-        { key: ActionType.SELECTED, label: 'Selected' },
-    ];
-    const sourceParam = searchParams.get('source');
-    const fromShare = searchParams.get('ref') === 'share' || sourceParam === 'opportunity_share';
-    const loginSource = fromShare ? 'opportunity_share' : 'opportunity_detail';
-    const loginFromDetailHref = `/login?redirect=${encodeURIComponent(detailPath)}&source=${encodeURIComponent(loginSource)}&intent=signup`;
-    type TimelineEventView = NonNullable<Opportunity['events']>[number] & { _dt: Date };
-    const timelineEvents = (opp.events || [])
-        .map((event): TimelineEventView => ({ ...event, _dt: new Date(event.eventDate) }))
-        .sort((a, b) => a._dt.getTime() - b._dt.getTime());
-    const upcomingTimelineEvents = timelineEvents.filter((event) => event._dt.getTime() >= Date.now());
-    const isCampusDrive = isCampusDriveOpportunity(opp);
-    const driveDates = getDriveDates(opp);
-    const driveMeta = getDriveMetadata(opp);
-    const locationInfo = parseOpportunityLocation(opp.locations);
-    const displaySalary = isCampusDrive
-        ? normalizeSalaryInput(driveMeta.maxCtcLabel)
-        : getOpportunityDisplaySalary(opp);
-    const driveDateItems = [
-        { label: 'Reg starts', date: driveDates.regStart },
-        { label: 'Last date', date: driveDates.regEnd },
-        { label: 'Test', date: driveDates.examDate },
-    ].filter((item) => item.date);
-    const formatLpaValue = (value: string) => (/\bLPA\b/i.test(value) ? value : `${value} LPA`);
-    const listingState = getListingState(opp);
+    if (!opp) return null;
 
     return (
         <div className="min-h-screen bg-background pb-16 selection:bg-primary/20">
             <main className="relative z-10 max-w-6xl mx-auto px-4 pt-2 pb-4 md:py-7 space-y-3 md:space-y-5">
+                
+                <DetailActionHeader 
+                    user={user}
+                    opp={opp}
+                    router={router}
+                    handleShare={handleShare}
+                    handleCopyLink={handleCopyLink}
+                    showReports={showReports}
+                    setShowReports={setShowReports}
+                    reportMenuRef={reportMenuRef}
+                    handleReport={handleReport}
+                />
 
-                {/* Quick actions - Only for logged-in users */}
-                <div className="flex items-center justify-between">
-
-                    {user && (
-                        <button
-                            onClick={() => (window.history.length > 1 ? router.back() : router.push('/opportunities'))}
-                            className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-muted/30 text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground hover:bg-muted transition-all"
-                        >
-                            <ArrowLeftIcon className="w-4 h-4" />
-                            Back
-                        </button>
-                    )}
-
-                    {user && (
-                        <div className="flex items-center gap-1.5">
-                            <button
-                                onClick={handleShare}
-                                aria-label={`Share ${opp?.title} at ${opp?.company}`}
-                                className="p-2 bg-muted/40 hover:bg-primary/10 rounded-lg transition-all text-muted-foreground hover:text-primary border border-border/50 md:px-3 md:gap-2 md:h-9 md:text-xs md:font-semibold md:uppercase md:tracking-widest md:flex md:items-center"
-                            >
-                                <ShareIcon className="w-4 h-4" aria-hidden="true" />
-                                <span className="hidden md:inline">Share</span>
-                            </button>
-                            <button
-                                onClick={handleCopyLink}
-                                aria-label="Copy listing link to clipboard"
-                                className="p-2 bg-muted/40 hover:bg-primary/10 rounded-lg transition-all text-muted-foreground hover:text-primary border border-border/50 md:px-3 md:gap-2 md:h-9 md:text-xs md:font-semibold md:uppercase md:tracking-widest md:flex md:items-center"
-                            >
-                                <LinkIcon className="w-4 h-4" aria-hidden="true" />
-                                <span className="hidden md:inline">Copy link</span>
-                            </button>
-                            <div className="relative" ref={reportMenuRef}>
-                                <button
-                                    onClick={() => setShowReports(!showReports)}
-                                    aria-expanded={showReports}
-                                    aria-haspopup="menu"
-                                    aria-label="Report an issue with this listing"
-                                    className={cn(
-                                        "p-2 rounded-lg transition-all border",
-                                        showReports ? "bg-destructive/10 text-destructive border-destructive/20" : "bg-muted/40 text-muted-foreground border-border/50 hover:bg-destructive/5 hover:text-destructive"
-                                    )}
-                                >
-                                    <FlagIcon className="w-4 h-4" aria-hidden="true" />
-                                </button>
-                                {showReports && (
-                                    <div className="absolute top-full right-0 mt-2 w-48 bg-card border border-border rounded-xl shadow-xl z-50 p-1.5 space-y-0.5 animate-in slide-in-from-top-1 duration-200">
-                                        {[
-                                            { id: 'LINK_BROKEN', label: 'Broken Link', icon: ArrowTopRightOnSquareIcon },
-                                            { id: 'EXPIRED', label: 'Listing Expired', icon: ClockIcon },
-                                            { id: 'DUPLICATE', label: 'Duplicate Item', icon: FlagIcon },
-                                            { id: 'INACCURATE', label: 'Invalid Data', icon: ExclamationTriangleIcon }
-                                        ].map(item => (
-                                            <button
-                                                key={item.id}
-                                                onClick={() => handleReport(item.id)}
-                                                className="w-full flex items-center gap-2.5 px-2.5 py-2 hover:bg-muted rounded-lg text-xs font-bold text-foreground uppercase tracking-tight transition-all text-left group"
-                                            >
-                                                <item.icon className="w-3.5 h-3.5 text-muted-foreground group-hover:text-primary transition-colors" />
-                                                {item.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                {/* Main Content Sections */}
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-start">
-
-                    {/* Left Column: Essential Details (Lg: 8Cols) */}
+                    
+                    {/* Left Column */}
                     <div className="lg:col-span-8 space-y-3 md:space-y-4">
+                        
+                        {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning />}
 
-                        {/* Expired Banner */}
-                        {opp.expiresAt && isExpired(opp) && (
-                            <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-3 md:p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-                                <div className="p-2 bg-destructive/10 rounded-full">
-                                    <ClockIcon className="w-6 h-6 text-destructive" />
-                                </div>
-                                <div>
-                                    <h3 className="text-sm font-bold text-destructive uppercase tracking-wide">Opportunity Expired</h3>
-                                    <p className="text-sm md:text-base text-muted-foreground font-medium">
-                                        This listing is no longer accepting applications. It is visible for historical reference only.
-                                    </p>
-                                </div>
-                            </div>
-                        )}
+                        <DetailHeroSection 
+                            opp={opp}
+                            isCampusDrive={ds.isCampusDrive}
+                            listingState={ds.listingState}
+                            driveDateItems={ds.driveDateItems}
+                            driveMeta={ds.driveMeta}
+                            displaySalary={ds.displaySalary}
+                            locationInfo={ds.locationInfo}
+                            formatDeadline={ds.formatDeadline}
+                            isExpired={ds.isExpired}
+                            isClosingSoon={ds.isClosingSoon}
+                        />
 
-                        {/* Hero Branding Section */}
-                        <div className="bg-card p-4 md:p-5 rounded-xl border border-border relative overflow-hidden group shadow-sm">
-                            <div className="relative z-10 space-y-4">
-                                <div className="flex flex-wrap items-center gap-1.5">
-                                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs md:text-sm font-bold uppercase tracking-tight rounded border border-primary/20">
-                                        {isCampusDrive ? 'CAMPUS DRIVE' : opp.type}
-                                    </span>
-                                    {listingState === 'EXPIRED' ? (
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-destructive/5 border border-destructive/10 text-destructive text-xs md:text-sm font-bold uppercase tracking-tight rounded">
-                                            <div className="w-2 h-2 rounded-full bg-red-500" />
-                                            Expired
-                                        </div>
-                                    ) : listingState === 'CLOSING_SOON' ? (
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-amber-50 border border-amber-300 text-amber-700 text-xs md:text-sm font-bold uppercase tracking-tight rounded">
-                                            <div className="w-2 h-2 rounded-full bg-amber-500" />
-                                            Closing Soon
-                                        </div>
-                                    ) : listingState === 'INACTIVE' ? (
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted border border-border text-muted-foreground text-xs md:text-sm font-bold uppercase tracking-tight rounded">
-                                            <div className="w-2 h-2 rounded-full bg-muted-foreground/70" />
-                                            Inactive
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary text-xs md:text-sm font-bold uppercase tracking-tight rounded">
-                                            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                                            Active
-                                        </div>
-                                    )}
-                                </div>
-                                {driveDateItems.length > 0 && (
-                                    <div className="flex flex-wrap items-center gap-2">
-                                        {driveDateItems.map((item) => (
-                                            <span
-                                                key={item.label}
-                                                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/5 text-primary text-xs font-semibold border border-primary/15"
-                                            >
-                                                <ClockIcon className="w-3 h-3" />
-                                                {item.label}: {item.date?.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
-                                {isCampusDrive && driveMeta.badges.length > 0 && (
-                                    <div className="flex flex-wrap items-center gap-1.5">
-                                        {driveMeta.badges.map((badge) => (
-                                            <span
-                                                key={badge}
-                                                className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/50 text-foreground text-xs font-semibold border border-border"
-                                            >
-                                                {badge}
-                                            </span>
-                                        ))}
-                                    </div>
-                                )}
+                        <DetailActionMobile 
+                            user={user}
+                            opp={opp}
+                            isCampusDrive={ds.isCampusDrive}
+                            timelineEvents={ds.timelineEvents}
+                            hasApplyLink={ds.hasApplyLink}
+                            handleApply={handleApply}
+                            handleToggleSave={handleToggleSave}
+                            handleShare={handleShare}
+                            handleCopyLink={handleCopyLink}
+                            jumpToTimeline={jumpToTimeline}
+                            loginFromDetailHref={ds.loginFromDetailHref}
+                            router={router}
+                        />
 
-                                <div className="space-y-1">
-                                    <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground leading-tight">
-                                        {opp.title}
-                                    </h1>
+                        <DescriptionSection description={opp.description} />
 
-                                    <div className="flex items-center gap-3">
-                                        <CompanyLogo
-                                            companyName={opp.company}
-                                            companyWebsite={opp.companyWebsite}
-                                            applyLink={opp.applyLink}
-                                            className="w-9 h-9 md:w-10 md:h-10 rounded-lg"
-                                        />
-                                        <div>
-                                            <div className="flex flex-wrap items-center gap-1.5">
-                                                <h2 className="text-base font-semibold text-foreground tracking-tight leading-none">
-                                                    <Link href={`/companies/${encodeURIComponent(opp.company)}`} className="hover:text-primary transition-colors">
-                                                        {opp.company}
-                                                    </Link>
-                                                </h2>
-                                                {opp.jobFunction && (
-                                                    <span className="text-xs text-muted-foreground font-medium">- {opp.jobFunction}</span>
-                                                )}
-                                            </div>
-                                            <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
-                                                <MapPinIcon className="w-3 h-3" />
-                                                <span className="font-medium text-sm md:text-base" title={locationInfo.fullLabel}>
-                                                    {locationInfo.shortLabel}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Stats Grid */}
-                                <div className={cn("pt-3 grid grid-cols-2 gap-2.5", displaySalary ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
-                                    {displaySalary && (
-                                        <div className="space-y-0.5">
-                                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Package</p>
-                                            <p className="font-bold text-base md:text-lg text-foreground truncate">{displaySalary}</p>
-                                        </div>
-                                    )}
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Employment</p>
-                                        <p className="font-semibold text-sm md:text-base text-foreground truncate">{opp.employmentType || 'Not specified'}</p>
-                                    </div>
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Batch (YEAR)</p>
-                                        <p className="font-semibold text-sm md:text-base text-foreground leading-snug whitespace-normal">
-                                            {opp.allowedPassoutYears && opp.allowedPassoutYears.length > 0
-                                                ? [...opp.allowedPassoutYears].sort((a, b) => a - b).join(', ')
-                                                : 'Any'}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-0.5">
-                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Experience</p>
-                                        <p className="font-semibold text-sm md:text-base text-foreground truncate">{opp.experienceMax ? `${opp.experienceMin || 0}-${opp.experienceMax}y` : 'Fresher'}</p>
-                                    </div>
-                                </div>
-                                {opp.expiresAt && (
-                                    <OpportunityDeadlineBadge
-                                        isExpired={isExpired(opp)}
-                                        isClosingSoon={isClosingSoon(opp)}
-                                        deadlineLabel={formatDeadline(opp)}
-                                    />
-                                )}
-                            </div>
-                        </div>
-
-
-                        {/* Mobile Actions - Non-logged-in users */}
-                        {!user && (
-                            <div className="lg:hidden bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">
-                                {isCampusDrive && timelineEvents.length > 0 && (
-                                    <button
-                                        onClick={jumpToTimeline}
-                                        className="w-full flex items-center justify-center gap-2 h-12 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-bold uppercase tracking-wide"
-                                    >
-                                        <ClockIcon className="w-4 h-4" />
-                                        Track Updates
-                                    </button>
-                                )}
-                                {hasApplyLink && (
-                                    <Button
-                                        onClick={handleApply}
-                                        className="w-full h-12 text-sm bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-lg flex items-center justify-center gap-2 font-bold uppercase tracking-wide shadow-md"
-                                    >
-                                        Apply Now
-                                        <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                                    </Button>
-                                )}
-
-                                <div className="grid grid-cols-2 gap-2">
-                                    <button
-                                        onClick={handleShare}
-                                        className="flex items-center justify-center gap-2 h-12 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
-                                    >
-                                        <ShareIcon className="w-4 h-4" />
-                                        Share
-                                    </button>
-                                    <button
-                                        onClick={handleCopyLink}
-                                        className="flex items-center justify-center gap-2 h-12 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
-                                    >
-                                        <LinkIcon className="w-4 h-4" />
-                                        Copy Link
-                                    </button>
-                                </div>
-
-                                <button
-                                    onClick={() => router.push(loginFromDetailHref)}
-                                    className="w-full flex items-center justify-center gap-2 h-12 rounded-lg border transition-all text-xs font-bold uppercase tracking-wide bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
-                                >
-                                    <BookmarkIcon className="w-4 h-4" />
-                                    Save
-                                </button>
-                            </div>
-                        )}
-
-                        {/* Mobile Actions - Logged-in users */}
-                        {user && (
-                            <div className="lg:hidden bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">
-                                {isCampusDrive && timelineEvents.length > 0 && (
-                                    <button
-                                        onClick={jumpToTimeline}
-                                        className="w-full flex items-center justify-center gap-2 h-12 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-bold uppercase tracking-wide"
-                                    >
-                                        <ClockIcon className="w-4 h-4" />
-                                        Track Updates
-                                    </button>
-                                )}
-                                {hasApplyLink && (
-                                    <Button
-                                        onClick={handleApply}
-                                        className="w-full h-12 text-sm bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-lg flex items-center justify-center gap-2 font-bold uppercase tracking-wide shadow-md"
-                                    >
-                                        Apply Now
-                                        <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                                    </Button>
-                                )}
-
-                                <button
-                                    onClick={handleToggleSave}
-                                    className={cn(
-                                        "w-full flex items-center justify-center gap-2 h-12 rounded-lg border transition-all text-xs font-bold uppercase tracking-wide",
-                                        opp.isSaved ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
-                                    )}
-                                >
-                                    {opp.isSaved ? <BookmarkSolidIcon className="w-4 h-4" /> : <BookmarkIcon className="w-4 h-4" />}
-                                    {opp.isSaved ? 'Saved' : 'Save'}
-                                </button>
-                            </div>
-                        )}
-
-
-                        {/* Description Section */}
-                        <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Description</h3>
-                            <div
-                                className="prose prose-base max-w-none text-foreground/80 font-medium text-sm md:text-base leading-relaxed whitespace-pre-wrap"
-                                dangerouslySetInnerHTML={{ __html: sanitizeHtml(opp.description) }}
+                        {ds.isCampusDrive && (
+                            <DetailCampusDriveInfo 
+                                opp={opp}
+                                driveMeta={ds.driveMeta}
+                                hasApplyLink={ds.hasApplyLink}
+                                handleApply={handleApply}
                             />
-                        </div>
-
-                        {isCampusDrive && driveMeta.isTcsNqt && (
-                            <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-4">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">About the Drive</h3>
-                                <ul className="space-y-1.5 text-sm md:text-base text-foreground/90 font-medium">
-                                    {driveMeta.overviewPoints.map((point) => (
-                                        <li key={point} className="flex items-start gap-2">
-                                            <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
-                                            <span>{point}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
                         )}
 
-                        {isCampusDrive && driveMeta.salaryRows.length > 0 && (
-                            <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">Salary Breakdown</h3>
-                                <div className="hidden md:block overflow-x-auto">
-                                    <table className="w-full min-w-130 text-sm">
-                                        <thead>
-                                            <tr className="text-muted-foreground uppercase tracking-wider">
-                                                <th className="text-left py-2">Cadre</th>
-                                                <th className="text-left py-2">Experience</th>
-                                                <th className="text-left py-2">UG CTC (LPA)</th>
-                                                <th className="text-left py-2">PG CTC (LPA)</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {driveMeta.salaryRows.map((row) => (
-                                                <tr key={`${row.cadre}-${row.experience}`} className="border-t border-border/60 text-foreground font-medium">
-                                                    <td className="py-2">{row.cadre}</td>
-                                                    <td className="py-2">{row.experience}</td>
-                                                    <td className="py-2">{formatLpaValue(row.ug)}</td>
-                                                    <td className="py-2">{formatLpaValue(row.pg)}</td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                                <div className="grid grid-cols-1 gap-2 md:hidden">
-                                    {(['Prime', 'Digital'] as const).map((cadre) => {
-                                        const rows = driveMeta.salaryRows.filter((row) => row.cadre === cadre);
-                                        if (rows.length === 0) return null;
-                                        return (
-                                            <div key={cadre} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
-                                                <p className="text-xs md:text-sm font-bold text-primary uppercase tracking-wider">{cadre} Cadre</p>
-                                                <div className="mt-2 space-y-1.5">
-                                                    {rows.map((row) => (
-                                                        <div key={`${row.cadre}-${row.experience}`} className="rounded-md border border-border/70 bg-background/30 px-2 py-1.5">
-                                                            <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">{row.experience}</p>
-                                                            <div className="mt-0.5 flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
-                                                                <span>UG: {formatLpaValue(row.ug)}</span>
-                                                                <span>PG: {formatLpaValue(row.pg)}</span>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <p className="text-sm text-muted-foreground">{driveMeta.salaryNote}</p>
-                            </div>
+                        <DetailTimeline 
+                            timelineEvents={ds.timelineEvents}
+                            upcomingTimelineEvents={ds.upcomingTimelineEvents}
+                        />
+
+                        <DetailRequirements 
+                            opp={opp}
+                            educationDetails={ds.educationDetails}
+                        />
+
+                        {opp.type === 'WALKIN' && opp.walkInDetails && (
+                            <WalkInDetailsCard walkInDetails={opp.walkInDetails} />
                         )}
 
-                        {timelineEvents.length > 0 && (
-                            <div id="drive-timeline" className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <div className="flex items-center justify-between gap-2 pb-2">
-                                    <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground">Drive timeline</h3>
-                                    {upcomingTimelineEvents.length > 0 && (
-                                        <span className="text-xs font-semibold text-primary">
-                                            {upcomingTimelineEvents.length} upcoming
-                                        </span>
-                                    )}
-                                </div>
-                                <div className="space-y-2">
-                                    {timelineEvents.map((event) => {
-                                        const isPast = event._dt.getTime() < Date.now();
-                                        return (
-                                            <div
-                                                key={event.id}
-                                                className={cn(
-                                                    "rounded-lg border p-2.5",
-                                                    isPast ? "border-border/70 bg-muted/20" : "border-primary/20 bg-primary/5"
-                                                )}
-                                            >
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <p className="text-sm md:text-base font-semibold text-foreground">{event.title}</p>
-                                                    <span className="text-sm font-semibold text-muted-foreground">
-                                                        {event._dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                                                    </span>
-                                                </div>
-                                                <p className="mt-1 text-sm text-muted-foreground uppercase tracking-wide">{event.eventType.replace('_', ' ')}</p>
-                                                {event.notes ? (
-                                                    <p className="mt-1 text-sm md:text-base text-foreground/80 leading-relaxed whitespace-pre-wrap">{event.notes}</p>
-                                                ) : null}
-                                                {event.sourceLink ? (
-                                                    <a
-                                                        href={event.sourceLink}
-                                                        target="_blank"
-                                                        rel="noopener noreferrer"
-                                                        className="mt-2 inline-flex text-sm font-semibold text-primary hover:underline"
-                                                    >
-                                                        Source update
-                                                    </a>
-                                                ) : null}
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        )}
-
-                        {isCampusDrive && driveMeta.selectionSteps.length > 0 && (
-                            <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Selection Process</h3>
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {driveMeta.selectionSteps.map((step, index) => (
-                                        <span key={step} className="inline-flex items-center rounded-md border border-border bg-muted/20 px-2.5 py-1.5 text-[12px] font-semibold text-foreground">
-                                            {index + 1}. {step}
-                                        </span>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {isCampusDrive && driveMeta.applySteps.length > 0 && (
-                            <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                                <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">How to Apply</h3>
-                                <ol className="space-y-2 text-sm text-foreground/90 font-medium list-decimal pl-5">
-                                    {driveMeta.applySteps.map((step) => (
-                                        <li key={step}>{step}</li>
-                                    ))}
-                                </ol>
-                                {hasApplyLink && (
-                                    <Button
-                                        onClick={handleApply}
-                                        className="w-full md:w-auto h-10 text-xs bg-primary/80 text-primary-foreground border border-primary/60 hover:bg-primary rounded-lg font-bold uppercase tracking-widest"
-                                    >
-                                        Apply on Official Website
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-
-                        {/* Requirements Section */}
-                        <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-4">
-                            <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Requirements</h3>
-
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
-                                    <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-widest">Education</p>
-                                    <div className="mt-2 space-y-2.5">
-                                        <p className="text-sm md:text-base text-foreground leading-relaxed">
-                                            <span className="font-semibold">Level:</span>{' '}
-                                            <span className="font-medium">{educationDetails.level}</span>
-                                        </p>
-                                        {educationDetails.courses && (
-                                            <p className="text-sm md:text-base text-foreground leading-relaxed">
-                                                <span className="font-semibold">Courses:</span>{' '}
-                                                <span className="font-medium">{educationDetails.courses}</span>
-                                            </p>
-                                        )}
-                                        {educationDetails.specializations && (
-                                            <p className="text-sm md:text-base text-foreground leading-relaxed">
-                                                <span className="font-semibold">Specializations:</span>{' '}
-                                                <span className="font-medium">{educationDetails.specializations}</span>
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                                {opp.requiredSkills && opp.requiredSkills.length > 0 && (
-                                    <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
-                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase tracking-widest">Key Skills</p>
-                                        <div className="flex flex-wrap gap-1 mt-0.5">
-                                            {opp.requiredSkills.map((s: string) => (
-                                                <span key={s} className="px-2 py-1 bg-primary/5 text-primary text-xs md:text-sm font-semibold rounded">
-                                                    {s}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                {(opp.jobFunction || opp.incentives) && (
-                                    <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg">
-                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Role details</p>
-                                        <p className="text-sm font-semibold text-foreground">{opp.jobFunction || 'General'}</p>
-                                        {opp.incentives ? (
-                                            <p className="text-sm text-muted-foreground">Incentives: {opp.incentives}</p>
-                                        ) : null}
-                                    </div>
-                                )}
-                                {opp.selectionProcess && (
-                                    <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg md:col-span-2">
-                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Selection process</p>
-                                        <p className="text-sm md:text-base font-medium text-foreground leading-relaxed whitespace-pre-wrap">{opp.selectionProcess}</p>
-                                    </div>
-                                )}
-                                {opp.notesHighlights && !opp.notesHighlights.includes('[AUTO-INGEST') && (
-                                    <div className="space-y-0.5 p-2.5 bg-muted/20 border border-border rounded-lg md:col-span-2">
-                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Notes / Highlights</p>
-                                        <p className="text-sm md:text-base font-medium text-foreground leading-relaxed whitespace-pre-wrap">{opp.notesHighlights}</p>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Walk-in Drive */}
-                        {opp.type === 'WALKIN' && (
-                            <div className="bg-card border border-border p-4 md:p-5 rounded-xl space-y-4">
-                                <h2 className="text-xs font-bold uppercase tracking-wider text-primary pb-2">Walk-in Details</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div className="space-y-1">
-                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Date & Time</p>
-                                        <p className="text-sm md:text-base font-semibold text-foreground">
-                                            {opp.walkInDetails?.dateRange} | {formatTimeText12Hour(opp.walkInDetails?.timeRange || opp.walkInDetails?.reportingTime)}
-                                        </p>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Venue</p>
-                                        <p className="text-sm md:text-base font-medium text-foreground leading-relaxed">{opp.walkInDetails?.venueAddress}</p>
-                                        {opp.walkInDetails?.venueLink && (
-                                            <Button
-                                                variant="outline"
-                                                onClick={() => window.open(opp.walkInDetails?.venueLink, '_blank')}
-                                                className="h-8 bg-primary hover:bg-primary/90 border-none text-primary-foreground font-bold uppercase text-xs px-3 shadow-sm"
-                                            >
-                                                View on Maps
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-                                {(opp.walkInDetails?.requiredDocuments?.length || opp.walkInDetails?.contactPerson || opp.walkInDetails?.contactPhone) && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {opp.walkInDetails?.requiredDocuments?.length ? (
-                                            <div className="space-y-1">
-                                                <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Documents</p>
-                                                <ul className="text-sm text-foreground space-y-1 list-disc list-inside">
-                                                    {opp.walkInDetails.requiredDocuments.map((doc) => (
-                                                        <li key={doc}>{doc}</li>
-                                                    ))}
-                                                </ul>
-                                            </div>
-                                        ) : null}
-                                        {(opp.walkInDetails?.contactPerson || opp.walkInDetails?.contactPhone) && (
-                                            <div className="space-y-1">
-                                                <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">Contact</p>
-                                                {opp.walkInDetails?.contactPerson && (
-                                                    <p className="text-sm md:text-base font-medium text-foreground">{opp.walkInDetails.contactPerson}</p>
-                                                )}
-                                                {opp.walkInDetails?.contactPhone && (
-                                                    <p className="text-sm md:text-base font-medium text-foreground">{opp.walkInDetails.contactPhone}</p>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                        <div className="lg:hidden bg-card p-4 rounded-xl border border-border space-y-3">
-                            <h4 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Quick actions</h4>
-                            <button
-                                onClick={() => {
+                        {!user && (
+                            <QuickActionsMobile 
+                                onReportClick={() => {
                                     setShowReports(true);
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
                                 }}
-                                className="w-full h-9 rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/5 transition-all text-xs font-bold uppercase"
-                            >
-                                Report issue
-                            </button>
-                            <p className="text-xs text-muted-foreground">
-                                We never charge for placement. Report suspicious activity.
-                            </p>
-                        </div>
+                            />
+                        )}
                     </div>
 
-                    {/* Right Column: Dynamic Action Sidebar */}
+                    {/* Right Column */}
                     <aside className="lg:col-span-4 space-y-3 lg:sticky lg:top-24">
-
-                        {opp.type === 'WALKIN' && (
-                            <div className="hidden lg:block bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">
-                                <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Walk-in snapshot</h4>
-                                <div className="space-y-2 text-xs text-muted-foreground">
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Date & Time</p>
-                                        <p className="text-foreground font-semibold">
-                                            {opp.walkInDetails?.dateRange} {opp.walkInDetails?.timeRange ? `• ${formatTimeText12Hour(opp.walkInDetails.timeRange)}` : ''}
-                                        </p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Venue</p>
-                                        <p className="text-foreground">{opp.walkInDetails?.venueAddress}</p>
-                                    </div>
-                                    {opp.walkInDetails?.requiredDocuments?.length ? (
-                                        <div>
-                                            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Documents</p>
-                                            <ul className="list-disc list-inside text-foreground space-y-1">
-                                                {opp.walkInDetails.requiredDocuments.map((doc) => (
-                                                    <li key={doc}>{doc}</li>
-                                                ))}
-                                            </ul>
-                                        </div>
-                                    ) : null}
-                                </div>
-                                {opp.walkInDetails?.venueLink && (
-                                    <Button
-                                        variant="outline"
-                                        onClick={() => window.open(opp.walkInDetails?.venueLink, '_blank')}
-                                        className="h-9 w-full bg-primary hover:bg-primary/90 border-none text-primary-foreground font-bold uppercase text-xs tracking-widest"
-                                    >
-                                        Open Maps
-                                    </Button>
-                                )}
-                            </div>
-                        )}
                         <EligibilitySnapshotCard
-                            statusLabel={eligibilitySnapshot.statusLabel}
-                            statusTone={eligibilitySnapshot.statusTone}
-                            mustFix={eligibilitySnapshot.mustFix}
-                            matchedSkills={eligibilitySnapshot.matchedSkills}
-                            missingSkills={eligibilitySnapshot.missingSkills}
+                            statusLabel={ds.eligibilitySnapshot.statusLabel}
+                            statusTone={ds.eligibilitySnapshot.statusTone}
+                            mustFix={ds.eligibilitySnapshot.mustFix}
+                            matchedSkills={ds.eligibilitySnapshot.matchedSkills}
+                            missingSkills={ds.eligibilitySnapshot.missingSkills}
                         />
-                        <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                            <div className="space-y-3">
-                                {user && (
-                                    <div className="space-y-2">
-                                        <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                                            Track your progress
-                                        </h4>
-                                        <div className="grid grid-cols-2 gap-2">
-                                            {trackerOptions.map((option) => {
-                                                const isActive = currentAction === option.key;
-                                                return (
-                                                    <button
-                                                        key={option.key}
-                                                        onClick={() => handleSetAction(option.key)}
-                                                        disabled={isUpdatingAction}
-                                                        className={cn(
-                                                            "h-8 rounded-lg border text-xs font-bold uppercase tracking-tight transition-all",
-                                                            isActive
-                                                                ? "bg-primary/10 text-primary border-primary/20"
-                                                                : "bg-muted/20 border-border text-muted-foreground hover:bg-muted/40",
-                                                            isUpdatingAction && "opacity-50 cursor-not-allowed"
-                                                        )}
-                                                    >
-                                                        {option.label}
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                )}
-
-                                {hasApplyLink && (
-                                    <div className="space-y-2">
-                                        {isCampusDrive && timelineEvents.length > 0 && (
-                                            <button
-                                                onClick={jumpToTimeline}
-                                                className="w-full h-10 rounded-lg border border-primary/25 bg-primary/5 text-primary hover:bg-primary/10 transition-all text-xs font-bold uppercase tracking-widest"
-                                            >
-                                                Track Updates
-                                            </button>
-                                        )}
-                                        <Button
-                                            onClick={handleApply}
-                                            className="w-full h-12 text-base bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-tight shadow-lg hover:shadow-xl transition-all"
-                                        >
-                                            Apply Now
-                                            <ArrowTopRightOnSquareIcon className="w-5 h-5" />
-                                        </Button>
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-1 gap-2">
-                                    <button
-                                        onClick={() => {
-                                            if (!user) {
-                                                router.push(loginFromDetailHref);
-                                                return;
-                                            }
-                                            handleToggleSave();
-                                        }}
-                                        className={cn(
-                                            "flex items-center justify-center gap-2 h-9 rounded-lg border transition-all text-xs font-bold uppercase",
-                                            opp.isSaved ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
-                                        )}
-                                    >
-                                        {opp.isSaved ? <BookmarkSolidIcon className="w-3.5 h-3.5" /> : <BookmarkIcon className="w-3.5 h-3.5" />}
-                                        {opp.isSaved ? 'Saved' : 'Save'}
-                                    </button>
-                                </div>
-                                {!user && (
-                                    <p className="text-xs text-center text-muted-foreground leading-relaxed">
-                                        <Link href={loginFromDetailHref} className="text-primary hover:underline font-semibold">
-                                            Create account
-                                        </Link> to track and save jobs
-                                    </p>
-                                )}
-                            </div>
-
-                            <div className="pt-3 flex items-center justify-between">
-                                <span className="text-xs font-semibold text-muted-foreground/90 uppercase">Listing Verified</span>
-                                <ShieldCheckIcon className="w-3.5 h-3.5 text-primary/40" />
-                            </div>
-                        </div>
-
-                        <div className="hidden lg:block bg-card p-5 rounded-xl border border-border shadow-sm space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Listing Status</h4>
-                                {listingState === 'EXPIRED' ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-destructive/20 bg-destructive/5 text-destructive text-xs font-bold uppercase tracking-wide">
-                                        <span className="w-2 h-2 rounded-full bg-destructive" />
-                                        Expired
-                                    </span>
-                                ) : listingState === 'CLOSING_SOON' ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-300 bg-amber-50 text-amber-700 text-xs font-bold uppercase tracking-wide">
-                                        <span className="w-2 h-2 rounded-full bg-amber-500" />
-                                        Closing Soon
-                                    </span>
-                                ) : listingState === 'INACTIVE' ? (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                                        <span className="w-2 h-2 rounded-full bg-muted-foreground/70" />
-                                        Inactive
-                                    </span>
-                                ) : (
-                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-primary/20 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide">
-                                        <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                                        Active
-                                    </span>
-                                )}
-                            </div>
-                            <div className="space-y-2.5">
-                                <p className="text-sm font-medium text-foreground leading-relaxed">
-                                    {listingState === 'EXPIRED'
-                                        ? 'This listing is expired. You can review details, but new applications are usually closed.'
-                                        : listingState === 'INACTIVE'
-                                            ? 'This listing is currently inactive. Check status updates from the source link before applying.'
-                                            : 'This listing is currently active and accepting applications.'}
-                                </p>
-                                {opp.expiresAt && (
-                                    <p className="text-sm text-muted-foreground">
-                                        Deadline: <span className="font-semibold text-foreground">{formatDeadline(opp)}</span>
-                                    </p>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="hidden lg:flex p-3.5 items-start gap-3 bg-muted/10 border border-border border-dashed rounded-xl">
-                            <InformationCircleIcon className="w-4 h-4 text-primary/40 shrink-0 mt-0.5" />
-                            <p className="text-sm font-medium text-muted-foreground leading-relaxed uppercase tracking-tight">
-                                Fraud protection: We never charge for placement. Report suspicious activity.
-                            </p>
-                        </div>
-
-                        {user?.role === 'ADMIN' && (
-                            <div className="bg-card p-4 border border-primary/20 rounded-xl space-y-2">
-                                <h4 className="text-xs font-bold uppercase tracking-tight text-primary">Admin Control</h4>
-                                <Link href={`/opportunities/edit/${opp.id}`} className="block">
-                                    <Button variant="outline" className="w-full text-xs font-bold uppercase h-8 hover:bg-primary/5">
-                                        Edit Opportunity
-                                    </Button>
-                                </Link>
-                                <div className="grid grid-cols-2 gap-1.5">
-                                    <button className="text-[8px] font-bold uppercase h-7 border border-border rounded">Sync</button>
-                                    <button className="text-[8px] font-bold uppercase h-7 border border-destructive/20 text-destructive rounded">Abort</button>
-                                </div>
-                            </div>
-                        )}
+                        
+                        <DetailSidebarActions 
+                            user={user}
+                            opp={opp}
+                            currentAction={ds.currentAction}
+                            trackerOptions={ds.trackerOptions}
+                            isUpdatingAction={isUpdatingAction}
+                            handleSetAction={handleSetAction}
+                            hasApplyLink={ds.hasApplyLink}
+                            isCampusDrive={ds.isCampusDrive}
+                            timelineEvents={ds.timelineEvents}
+                            jumpToTimeline={jumpToTimeline}
+                            handleApply={handleApply}
+                            handleToggleSave={handleToggleSave}
+                            loginFromDetailHref={ds.loginFromDetailHref}
+                            listingState={ds.listingState}
+                            formatDeadline={ds.formatDeadline}
+                        />
                     </aside>
                 </div>
 
-                {/* Related Opportunities - Moved to end for better content flow */}
-                <div className="mt-8 space-y-4">
-                    <div className="flex items-center justify-between px-1">
-                        <h2 className="text-xs font-bold uppercase tracking-wider text-primary flex items-center gap-2">
-                            <span className="w-1 h-4 bg-primary rounded-full" />
-                            Related opportunities
-                        </h2>
-                        <Link href="/opportunities" className="text-xs font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors">
-                            Explore all →
-                        </Link>
-                    </div>
-
-                    {isLoadingRelated ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {[1, 2, 3].map(i => (
-                                <div key={i} className="h-24 bg-card border border-border rounded-xl animate-pulse" />
-                            ))}
-                        </div>
-                    ) : relatedOpps.length === 0 ? (
-                        <div className="bg-muted/10 border border-border border-dashed rounded-xl p-6 text-center">
-                            <p className="text-sm md:text-base text-muted-foreground">No close matches yet. Check full feed for more roles.</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                            {relatedOpps.map((item) => (
-                                <button
-                                    key={item.id}
-                                    onClick={() => router.push(getOpportunityPathFromItem(item))}
-                                    className="text-left rounded-xl border border-border bg-card hover:border-primary/30 hover:shadow-md p-4 transition-all group"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <CompanyLogo
-                                            companyName={item.company}
-                                            companyWebsite={item.companyWebsite}
-                                            applyLink={item.applyLink}
-                                            className="w-9 h-9 rounded-lg shrink-0 mt-0.5"
-                                        />
-                                        <div className="min-w-0 flex-1">
-                                            <p className="text-sm font-bold text-foreground line-clamp-2 group-hover:text-primary transition-colors leading-snug">{item.title}</p>
-                                            <p className="text-sm font-medium text-muted-foreground mt-0.5 line-clamp-1">{item.company}</p>
-                                            <div className="flex items-center gap-3 mt-3">
-                                                <div className="flex items-center gap-1 text-xs text-muted-foreground truncate">
-                                                    <MapPinIcon className="w-3 h-3" />
-                                                    {parseOpportunityLocation(item.locations).shortLabel}
-                                                </div>
-                                                <div className="flex items-center gap-1 text-xs text-primary font-bold uppercase tracking-tight shrink-0">
-                                                    {item.type}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                <RelatedOpportunities relatedOpps={relatedOpps} isLoadingRelated={isLoadingRelated} />
             </main>
 
-            {/* Mobile guest CTA */}
-            {!user && (
-                /* Guest CTA - Sticky Bottom or Inline */
-                <div className="md:hidden fixed bottom-4 left-3 right-3 z-40">
-                    <Link href={loginFromDetailHref}>
-                        <div className="bg-primary/95 backdrop-blur-md text-primary-foreground p-3 rounded-xl shadow-2xl flex items-center justify-between border border-primary/20 animate-in slide-in-from-bottom-4 duration-500">
-                            <div>
-                                <p className="text-xs font-bold uppercase tracking-wide">Join FresherFlow</p>
-                                <p className="text-xs opacity-90">Unlock more verified listings.</p>
-                            </div>
-                            <div className="h-8 px-4 bg-card text-foreground border border-border rounded-lg flex items-center justify-center text-xs font-bold uppercase tracking-tight shadow-sm">
-                                Sign Up Free
-                            </div>
-                        </div>
-                    </Link>
-                </div>
-            )}
+            {!user && <MobileGuestCTA loginFromDetailHref={ds.loginFromDetailHref} />}
         </div>
     );
 }
-

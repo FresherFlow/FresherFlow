@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useParams } from 'next/navigation';
-import { OpportunityFormPage } from '../../create/page';
+import { OpportunityFormPage } from '@/features/admin/opportunities/components/OpportunityFormPage';
 
 export default function EditOpportunityPage() {
     const params = useParams<{ id: string }>();
