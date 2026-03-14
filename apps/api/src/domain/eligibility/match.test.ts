@@ -38,6 +38,10 @@ describe('Eligibility Matching Engine', () => {
         status: OpportunityStatus.PUBLISHED,
         workMode: WorkMode.REMOTE,
         adminId: 'admin-1',
+        slug: 'software-engineer',
+        linkHealth: LinkHealth.HEALTHY,
+        verificationFailures: 0,
+        lastVerifiedAt: new Date(),
     };
 
     test('should match eligible user', () => {
@@ -111,8 +115,8 @@ describe('Sorting Logic', () => {
         { id: '1', type: 'FULL_TIME', postedAt: '2024-01-01' },
         { id: '2', type: 'WALKIN', postedAt: '2024-01-02' },
         { id: '3', type: 'FULL_TIME', postedAt: '2024-01-03' },
-    ] as any[];
-
+    ];
+ 
     test('should sort walk-ins first, then by date', () => {
         const sorted = sortOpportunitiesWithWalkinsFirst(opps);
         expect(sorted[0].id).toBe('2'); // Walk-in

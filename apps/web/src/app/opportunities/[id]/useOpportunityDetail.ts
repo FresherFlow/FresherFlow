@@ -1,11 +1,11 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { opportunitiesApi, actionsApi, savedApi, growthApi, opportunityClicksApi } from '@/lib/api/client';
-import { ActionType, type Opportunity } from '@fresherflow/types';
+import { ActionType, type Opportunity, type User } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
 import { getRecentViewedByIdOrSlug, saveRecentViewed } from '@/lib/offline/recentViewed';
-import { getDetailLastSyncAt } from '@/lib/offline/syncStatus';
+// removed unused sync status import
 import { enqueueOfflineActionTrack, enqueueOfflineSaveToggle } from '@/lib/offline/actionQueue';
 import { analytics } from '@/lib/analytics';
 import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
@@ -13,7 +13,7 @@ import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { buildLoginFromDetailHref, getDetailShareUrl } from './detailInteractionUtils';
 import { getRelatedOpportunities } from './detailUtils';
 
-export function useOpportunityDetail(id: string, initialData?: Opportunity | null, user?: any) {
+export function useOpportunityDetail(id: string, initialData?: Opportunity | null, user?: User | null) {
     const router = useRouter();
     const searchParams = useSearchParams();
     
@@ -154,7 +154,7 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
         };
 
         void loadRelated();
-    }, [opp?.id, opp?.type, opp?.requiredSkills, opp?.locations, opp?.company, opp?.workMode]);
+    }, [opp?.id, opp?.type, opp?.requiredSkills, opp?.locations, opp?.company, opp?.workMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleToggleSave = async () => {
         if (!opp) return;
