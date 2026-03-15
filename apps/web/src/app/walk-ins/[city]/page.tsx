@@ -16,6 +16,9 @@ export function generateMetadata({ params }: { params: { city: string } }): Meta
     return {
         title,
         description,
+        robots: {
+            index: false,
+        },
         openGraph: {
             title,
             description,

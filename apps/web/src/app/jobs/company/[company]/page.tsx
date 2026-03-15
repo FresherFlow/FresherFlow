@@ -16,6 +16,9 @@ export function generateMetadata({ params }: { params: { company: string } }): M
     return {
         title,
         description,
+        robots: {
+            index: false,
+        },
         openGraph: {
             title,
             description,

@@ -16,6 +16,9 @@ export function generateMetadata({ params }: { params: { role: string } }): Meta
     return {
         title,
         description,
+        robots: {
+            index: false,
+        },
         openGraph: {
             title,
             description,
