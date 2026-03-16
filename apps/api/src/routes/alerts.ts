@@ -30,6 +30,58 @@ function invalidateUnreadCount(userId: string) {
     unreadCountCache.delete(userId);
 }
 
+async function countVisibleUnreadAlerts(userId: string, profile: Profile | null) {
+    const now = new Date();
+    const genericUnreadCount = await prisma.alertDelivery.count({
+        where: {
+            userId,
+            readAt: null,
+            channel: 'APP',
+            opportunityId: null,
+        }
+    });
+
+    if (!profile) {
+        return genericUnreadCount;
+    }
+
+    const unreadOpportunityAlerts = await prisma.alertDelivery.findMany({
+        where: {
+            userId,
+            readAt: null,
+            channel: 'APP',
+            opportunityId: { not: null },
+        },
+        select: {
+            opportunity: {
+                select: {
+                    id: true,
+                    type: true,
+                    allowedDegrees: true,
+                    allowedCourses: true,
+                    allowedSpecializations: true,
+                    allowedPassoutYears: true,
+                    requiredSkills: true,
+                    expiresAt: true,
+                    status: true,
+                    deletedAt: true,
+                    expiredAt: true,
+                }
+            }
+        }
+    });
+
+    const eligibleOpportunityCount = unreadOpportunityAlerts.filter(({ opportunity }) => {
+        if (!opportunity) return false;
+        if (opportunity.status !== OpportunityStatus.PUBLISHED) return false;
+        if (opportunity.deletedAt || opportunity.expiredAt) return false;
+        if (opportunity.expiresAt && new Date(opportunity.expiresAt) <= now) return false;
+        return checkEligibility(opportunity as unknown as Opportunity, profile as unknown as Profile, userId).eligible;
+    }).length;
+
+    return genericUnreadCount + eligibleOpportunityCount;
+}
+
 
 router.get('/preferences', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -138,35 +190,7 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
             eventReminder: normalizedDeliveries.filter((item) => (item.kind as string) === 'EVENT_REMINDER').length,
         };
 
-        const unreadRaw = await prisma.alertDelivery.findMany({
-            where: { userId, readAt: null, channel: 'APP' },
-            include: {
-                opportunity: {
-                    select: {
-                        id: true,
-                        type: true,
-                        allowedDegrees: true,
-                        allowedCourses: true,
-                        allowedSpecializations: true,
-                        allowedPassoutYears: true,
-                        requiredSkills: true,
-                        expiresAt: true,
-                        status: true,
-                        deletedAt: true,
-                        expiredAt: true,
-                    }
-                }
-            }
-        });
-
-        const unreadCount = unreadRaw.filter((item) => {
-            if (!item.opportunity) return true;
-            if (item.opportunity.status !== OpportunityStatus.PUBLISHED) return false;
-            if (item.opportunity.deletedAt || item.opportunity.expiredAt) return false;
-            if (item.opportunity.expiresAt && new Date(item.opportunity.expiresAt) <= now) return false;
-            if (!profile) return false;
-            return checkEligibility(item.opportunity as unknown as Opportunity, profile as unknown as Profile, userId).eligible;
-        }).length;
+        const unreadCount = await countVisibleUnreadAlerts(userId, profile as Profile | null);
 
         res.json({ deliveries: normalizedDeliveries, summary, unreadCount });
     } catch (error) {
@@ -297,37 +321,7 @@ router.get('/unread-count', requireAuth, async (req: Request, res: Response, nex
             select: { profile: true }
         });
         const profile = userWithProfile?.profile || null;
-        const now = new Date();
-
-        const unreadRaw = await prisma.alertDelivery.findMany({
-            where: { userId, readAt: null, channel: 'APP' },
-            include: {
-                opportunity: {
-                    select: {
-                        id: true,
-                        type: true,
-                        allowedDegrees: true,
-                        allowedCourses: true,
-                        allowedSpecializations: true,
-                        allowedPassoutYears: true,
-                        requiredSkills: true,
-                        expiresAt: true,
-                        status: true,
-                        deletedAt: true,
-                        expiredAt: true,
-                    }
-                }
-            }
-        });
-
-        const count = unreadRaw.filter((item) => {
-            if (!item.opportunity) return true;
-            if (item.opportunity.status !== OpportunityStatus.PUBLISHED) return false;
-            if (item.opportunity.deletedAt || item.opportunity.expiredAt) return false;
-            if (item.opportunity.expiresAt && new Date(item.opportunity.expiresAt) <= now) return false;
-            if (!profile) return false;
-            return checkEligibility(item.opportunity as unknown as Opportunity, profile as unknown as Profile, userId).eligible;
-        }).length;
+        const count = await countVisibleUnreadAlerts(userId, profile as Profile | null);
 
         setCachedUnreadCount(userId, count);
         res.json({ count });
