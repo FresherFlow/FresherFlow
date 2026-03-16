@@ -41,6 +41,54 @@ const ADMIN_API_URL = USE_SEPARATE_ADMIN_API
     ? (normalizeApiBase(process.env.NEXT_PUBLIC_ADMIN_API_URL) || DEFAULT_API_URL)
     : DEFAULT_API_URL;
 
+function isUserLoggingOut() {
+    return typeof window !== 'undefined' && Boolean((window as Window & { __isLoggingOut?: boolean }).__isLoggingOut);
+}
+
+function isAdminLoggingOut() {
+    return typeof window !== 'undefined' && Boolean((window as Window & { __isAdminLoggingOut?: boolean }).__isAdminLoggingOut);
+}
+
+function hasCookie(name: string): boolean {
+    if (typeof document === 'undefined') return false;
+    return document.cookie.split(';').some((part) => part.trim().startsWith(`${name}=`));
+}
+
+function isUserProtectedEndpoint(endpoint: string): boolean {
+    const publicPrefixes = [
+        '/api/public',
+        '/api/opportunities',
+        '/api/health',
+        '/api/og',
+    ];
+    if (publicPrefixes.some((prefix) => endpoint.startsWith(prefix))) return false;
+    const protectedPrefixes = [
+        '/api/auth/me',
+        '/api/auth/logout',
+        '/api/auth/refresh',
+        '/api/profile',
+        '/api/alerts',
+        '/api/actions',
+        '/api/saved',
+        '/api/dashboard',
+        '/api/referrals/me',
+        '/api/feedback',
+    ];
+    return protectedPrefixes.some((prefix) => endpoint.startsWith(prefix));
+}
+
+function isAdminProtectedEndpoint(endpoint: string): boolean {
+    if (!endpoint.startsWith('/api/admin')) return false;
+    const authPublicEndpoints = [
+        '/api/admin/auth/login/options',
+        '/api/admin/auth/login/verify',
+        '/api/admin/auth/login/totp',
+        '/api/admin/auth/register/options',
+        '/api/admin/auth/register/verify',
+    ];
+    return !authPublicEndpoints.some((prefix) => endpoint.startsWith(prefix));
+}
+
 export function getApiBaseForEndpoint(endpoint: string): string {
     if (endpoint.startsWith('/api/admin')) {
         return ADMIN_API_URL;
@@ -73,6 +121,13 @@ export async function apiClient<T = unknown>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
+    if (isUserProtectedEndpoint(endpoint) && (isUserLoggingOut() || !hasCookie('ff_logged_in'))) {
+        throw new UnauthorizedError();
+    }
+    if (isAdminProtectedEndpoint(endpoint) && isAdminLoggingOut()) {
+        throw new UnauthorizedError('Admin session expired');
+    }
+
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-Requested-From': 'fresherflow-web', // Basic CSRF protection against cross-site forms

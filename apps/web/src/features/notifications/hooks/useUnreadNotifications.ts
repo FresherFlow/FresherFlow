@@ -11,6 +11,16 @@ const SEEN_TOAST_ALERTS_KEY = 'ff_seen_toast_alerts';
 const ALERTS_UPDATED_EVENT = 'ff-alerts-updated';
 const FOCUS_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_ALERTS_FOCUS_COOLDOWN_MS || 120000);
 
+function isLogoutInProgress() {
+    if (typeof window === 'undefined') return false;
+    return Boolean((window as Window & { __isLoggingOut?: boolean }).__isLoggingOut);
+}
+
+function hasActiveSessionCookie() {
+    if (typeof document === 'undefined') return false;
+    return document.cookie.includes('ff_logged_in=true');
+}
+
 function readCache(): { count: number; at: number } | null {
     if (typeof window === 'undefined') return null;
     try {
@@ -88,7 +98,10 @@ export function useUnreadNotifications() {
     const lastSuccessfulFetchAtRef = useRef(readRawCache()?.at ?? 0);
 
     const fetchCount = useCallback(async (options?: { force?: boolean }) => {
-        if (!user) return;
+        if (!user || isLogoutInProgress() || !hasActiveSessionCookie()) {
+            setUnreadCount(0);
+            return;
+        }
         const force = options?.force === true;
         if (!force && isCacheFresh(lastSuccessfulFetchAtRef.current)) {
             const cached = readCache();
@@ -100,6 +113,10 @@ export function useUnreadNotifications() {
 
         try {
             const data = await alertsApi.getUnreadCount() as { count: number };
+            if (isLogoutInProgress() || !hasActiveSessionCookie()) {
+                setUnreadCount(0);
+                return;
+            }
             setUnreadCount(data.count);
             writeCache(data.count);
             lastSuccessfulFetchAtRef.current = Date.now();
@@ -109,7 +126,7 @@ export function useUnreadNotifications() {
     }, [user]);
 
     const showNewAlertToasts = useCallback(async () => {
-        if (!user) return;
+        if (!user || isLogoutInProgress() || !hasActiveSessionCookie()) return;
         try {
             const response = await alertsApi.getFeed('all', 10) as {
                 deliveries?: Array<{
@@ -140,7 +157,10 @@ export function useUnreadNotifications() {
     }, [user]);
 
     useEffect(() => {
-        if (!user) return;
+        if (!user || isLogoutInProgress() || !hasActiveSessionCookie()) {
+            setUnreadCount(0);
+            return;
+        }
 
         const cached = readCache();
         if (cached) {
@@ -183,6 +203,10 @@ export function useUnreadNotifications() {
             void maybeRunFocusRefresh();
         };
         const onAlertsUpdated = () => {
+            if (isLogoutInProgress() || !hasActiveSessionCookie()) {
+                setUnreadCount(0);
+                return;
+            }
             void fetchCount({ force: true });
         };
 

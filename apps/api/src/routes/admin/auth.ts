@@ -23,8 +23,38 @@ const router: Router = express.Router();
 
 
 const RP_ID = process.env.RP_ID || 'localhost';
-const EXPECTED_ORIGIN = process.env.FRONTEND_URL || 'http://localhost:3000';
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@fresherflow.com').toLowerCase();
+
+function normalizeOrigin(value: string): string | null {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+    try {
+        return new URL(trimmed).origin;
+    } catch {
+        try {
+            return new URL(`https://${trimmed}`).origin;
+        } catch {
+            return null;
+        }
+    }
+}
+
+function resolveExpectedOrigins(): string[] {
+    const configuredOrigins = [
+        process.env.FRONTEND_URL,
+        process.env.ADMIN_FRONTEND_URL,
+        ...(process.env.FRONTEND_URLS || '').split(','),
+        process.env.NODE_ENV === 'production' ? 'https://admin.fresherflow.in' : null,
+    ]
+        .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
+        .map(normalizeOrigin)
+        .filter((value): value is string => Boolean(value));
+
+    const uniqueOrigins = Array.from(new Set(configuredOrigins));
+    return uniqueOrigins.length > 0 ? uniqueOrigins : ['http://localhost:3000'];
+}
+
+const EXPECTED_ORIGINS = resolveExpectedOrigins();
 
 function resolveCookieDomain(): string | undefined {
     const explicit = process.env.COOKIE_DOMAIN?.trim();
@@ -223,7 +253,7 @@ router.post('/register/verify', adminAuthLimiter, async (req: Request, res: Resp
         const verification = await verifyRegistrationResponse({
             response: body,
             expectedChallenge,
-            expectedOrigin: EXPECTED_ORIGIN,
+            expectedOrigin: EXPECTED_ORIGINS.length === 1 ? EXPECTED_ORIGINS[0] : EXPECTED_ORIGINS,
             expectedRPID: RP_ID,
         });
 
@@ -321,7 +351,7 @@ router.post('/login/verify', adminAuthLimiter, async (req: Request, res: Respons
         const verification = await verifyAuthenticationResponse({
             response: body,
             expectedChallenge,
-            expectedOrigin: EXPECTED_ORIGIN,
+            expectedOrigin: EXPECTED_ORIGINS.length === 1 ? EXPECTED_ORIGINS[0] : EXPECTED_ORIGINS,
             expectedRPID: RP_ID,
             credential: {
                 id: authenticator.credentialID,
@@ -351,8 +381,9 @@ router.post('/login/verify', adminAuthLimiter, async (req: Request, res: Respons
             res.status(400).json({ verified: false });
         }
     } catch (error) {
-        logger.error('[Admin Auth] login/options failed', {
+        logger.error('[Admin Auth] login/verify failed', {
             message: error instanceof Error ? error.message : String(error),
+            expectedOrigins: EXPECTED_ORIGINS,
         });
         next(error);
     }

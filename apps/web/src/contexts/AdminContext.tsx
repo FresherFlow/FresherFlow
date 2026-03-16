@@ -43,6 +43,9 @@ export function AdminProvider({ children }: { children: ReactNode }) {
 
     async function logout() {
         try {
+            if (typeof window !== 'undefined') {
+                (window as Window & { __isAdminLoggingOut?: boolean }).__isAdminLoggingOut = true;
+            }
             await adminAuthApi.logout();
         } catch {
             // Ignore logout errors
