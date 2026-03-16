@@ -45,6 +45,17 @@ const verificationStats: VerificationStats = {
     lastRun: null
 };
 
+function getVerificationUrl(opportunity: {
+    applyLink?: string | null;
+    sourceLink?: string | null;
+}): string | null {
+    const applyLink = typeof opportunity.applyLink === 'string' ? opportunity.applyLink.trim() : '';
+    if (applyLink) return applyLink;
+
+    const sourceLink = typeof opportunity.sourceLink === 'string' ? opportunity.sourceLink.trim() : '';
+    return sourceLink || null;
+}
+
 /**
  * Verification Bot Service
  * Performs lightweight health pings on published listings.
@@ -71,8 +82,13 @@ export async function runLinkVerification() {
                 title: true,
                 company: true,
                 applyLink: true,
+                sourceLink: true,
                 verificationFailures: true
             },
+            orderBy: [
+                { lastVerifiedAt: 'asc' },
+                { postedAt: 'asc' }
+            ],
             take: 50
         });
 
@@ -85,9 +101,13 @@ export async function runLinkVerification() {
         let archived = 0;
 
         for (const opp of opportunities) {
-            if (!opp.applyLink) continue;
+            const verificationUrl = getVerificationUrl(opp);
+            if (!verificationUrl) {
+                logger.warn(`Verification Bot: skipping "${opp.title}" because it has no verification URL`);
+                continue;
+            }
 
-            const checkResult = await pingUrl(opp.applyLink);
+            const checkResult = await pingUrl(verificationUrl);
             processed++;
 
             if (checkResult === 'HEALTHY') {
