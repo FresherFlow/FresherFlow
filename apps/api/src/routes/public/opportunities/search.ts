@@ -85,6 +85,7 @@ router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response,
         return res.json({
             hits,
             totalHits: searchResults.totalHits,
+            hasMore: searchResults.hasMore,
             processingTimeMs: 0,
             page: p,
             limit: l,

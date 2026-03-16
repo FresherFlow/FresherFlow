@@ -8,6 +8,7 @@ export interface SearchOptions {
     offset?: number;
     cursor?: string; // ISO string of postedAt for keyset pagination
     locations?: string[];
+    includeTotal?: boolean;
     // Admin-specific filters
     statuses?: string[];
     includeDeleted?: boolean;
@@ -25,7 +26,8 @@ export interface OpportunitySearchHit extends Partial<Opportunity> {
 
 export interface SearchResult {
     hits: OpportunitySearchHit[];
-    totalHits: number;
+    totalHits?: number;
+    hasMore: boolean;
     query: string;
     nextCursor?: string;
 }
@@ -45,6 +47,7 @@ export async function searchOpportunitiesQuery(
         offset = 0,
         cursor,
         locations,
+        includeTotal = false,
         statuses = ['PUBLISHED'],
         includeDeleted = false,
         includeExpired = false,
@@ -64,48 +67,84 @@ export async function searchOpportunitiesQuery(
         if (cursor) pageConditions.push(Prisma.sql`"postedAt" < ${new Date(cursor)}`);
 
 
-        const searchExpr = query && query.trim().length > 0
-            ? Prisma.sql`search_vector @@ plainto_tsquery('english', ${query.trim()})`
+        const sanitizedQuery = query.trim();
+        if (sanitizedQuery.length === 0) {
+            return { hits: [], totalHits: includeTotal ? 0 : undefined, hasMore: false, query, nextCursor: undefined };
+        }
+
+        const lowerQuery = sanitizedQuery.toLowerCase();
+        const titlePrefixQuery = `${lowerQuery}%`;
+        const phraseQuery = `%${lowerQuery}%`;
+        
+        // 1. Build a prefix term for query matching
+        const cleanWords = sanitizedQuery.split(/\s+/)
+            .map(w => w.replace(/[*:&|!'( )]/g, ''))
+            .filter(w => w.length > 0);
+            
+        const prefixTerm = cleanWords.length > 0 
+            ? cleanWords.map(w => `${w}:*`).join(' & ')
             : null;
 
+        // Combine them: (WebQuery English OR WebQuery Simple OR Prefix Query)
+        // In this environment, || is the operator for tsquery OR combination.
+        const fullTsQuery = prefixTerm 
+            ? Prisma.sql`(websearch_to_tsquery('english', ${sanitizedQuery}) || websearch_to_tsquery('simple', ${sanitizedQuery}) || to_tsquery('simple', ${prefixTerm}))`
+            : Prisma.sql`(websearch_to_tsquery('english', ${sanitizedQuery}) || websearch_to_tsquery('simple', ${sanitizedQuery}))`;
+
         const allPageConditions = [...pageConditions];
-        if (searchExpr) allPageConditions.push(searchExpr);
+        allPageConditions.push(Prisma.sql`search_vector @@ ${fullTsQuery}`);
 
         const allBaseConditions = [...baseConditions];
-        if (searchExpr) allBaseConditions.push(searchExpr);
+        allBaseConditions.push(Prisma.sql`search_vector @@ ${fullTsQuery}`);
 
-        const whereClause = allPageConditions.length > 0
-            ? Prisma.sql`WHERE ${Prisma.join(allPageConditions, ' AND ')}`
-            : Prisma.empty;
-
-        const countWhere = allBaseConditions.length > 0
-            ? Prisma.sql`WHERE ${Prisma.join(allBaseConditions, ' AND ')}`
-            : Prisma.empty;
-
+        const whereClause = Prisma.sql`WHERE ${Prisma.join(allPageConditions, ' AND ')}`;
         let hits: OpportunitySearchHit[] = [];
-        let totalHits = 0;
+        let totalHits: number | undefined;
 
         hits = await prisma.$queryRaw<OpportunitySearchHit[]>`
             SELECT id, slug, title, company, type, "workMode", locations,
                    "salaryMin", "salaryMax", "salaryRange", "postedAt", "expiresAt",
-                   "companyLogoUrl", "allowedDegrees", "requiredSkills", status
-                   ${searchExpr ? Prisma.sql`, ts_rank(search_vector, plainto_tsquery('english', ${query.trim()})) AS rank` : Prisma.empty}
+                   "companyLogoUrl", "companyWebsite", "applyLink",
+                   "allowedDegrees", "allowedCourses", "allowedSpecializations",
+                   "allowedPassoutYears", "requiredSkills", status,
+                   CASE WHEN lower(title) = ${lowerQuery} THEN 1 ELSE 0 END AS exact_title_match,
+                   CASE WHEN lower(company) = ${lowerQuery} THEN 1 ELSE 0 END AS exact_company_match,
+                   CASE WHEN lower(title) LIKE ${titlePrefixQuery} THEN 1 ELSE 0 END AS title_prefix_match,
+                   CASE WHEN lower(company) LIKE ${titlePrefixQuery} THEN 1 ELSE 0 END AS company_prefix_match,
+                   CASE WHEN lower(title) LIKE ${phraseQuery} THEN 1 ELSE 0 END AS title_phrase_match,
+                   CASE WHEN lower(company) LIKE ${phraseQuery} THEN 1 ELSE 0 END AS company_phrase_match,
+                   ts_rank_cd(search_vector, ${fullTsQuery}) AS rank
             FROM "Opportunity"
             ${whereClause}
-            ORDER BY ${searchExpr ? Prisma.sql`rank DESC,` : Prisma.empty} "postedAt" DESC
+            ORDER BY
+                exact_title_match DESC,
+                exact_company_match DESC,
+                title_prefix_match DESC,
+                company_prefix_match DESC,
+                title_phrase_match DESC,
+                company_phrase_match DESC,
+                rank DESC,
+                "postedAt" DESC
             OFFSET ${offset}
-            LIMIT ${limit}
+            LIMIT ${includeTotal ? limit : limit + 1}
         `;
 
-        const countResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
-            SELECT COUNT(*) as count FROM "Opportunity" ${countWhere}
-        `;
-        totalHits = Number(countResult[0]?.count ?? 0);
+        const hasMore = hits.length > limit;
+        if (hasMore) {
+            hits = hits.slice(0, limit);
+        }
 
+        if (includeTotal) {
+            const countWhere = Prisma.sql`WHERE ${Prisma.join(allBaseConditions, ' AND ')}`;
+            const countResult = await prisma.$queryRaw<Array<{ count: bigint }>>`
+                SELECT COUNT(*) as count FROM "Opportunity" ${countWhere}
+            `;
+            totalHits = Number(countResult[0]?.count ?? 0);
+        }
 
         const nextCursor = hits.length > 0 ? hits[hits.length - 1].postedAt.toISOString() : undefined;
 
-        return { hits, totalHits, query, nextCursor };
+        return { hits, totalHits, hasMore, query, nextCursor };
     } catch (err: unknown) {
         logger.error('Search query failed:', err);
         throw new Error('Search failed');

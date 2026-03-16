@@ -73,6 +73,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
                 limit: take,
                 offset: skip,
                 cursor: typeof cursor === 'string' ? cursor : undefined,
+                includeTotal: true,
                 statuses: statusFilter && statusFilter !== 'EXPIRED' && statusFilter !== 'DELETED'
                     ? [statusFilter]
                     : ['PUBLISHED', 'DRAFT', 'ARCHIVED'],
@@ -81,11 +82,11 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
             });
             return res.json({
                 opportunities: searchResults.hits,
-                total: searchResults.totalHits,
+                total: searchResults.totalHits ?? 0,
                 nextCursor: searchResults.nextCursor,
                 page: pageNumber,
                 pageSize: take || searchResults.hits.length || 1,
-                totalPages: take ? Math.max(1, Math.ceil(searchResults.totalHits / take)) : 1,
+                totalPages: take ? Math.max(1, Math.ceil((searchResults.totalHits ?? 0) / take)) : 1,
             });
         }
 
@@ -113,6 +114,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
             include: {
                 ...(shouldIncludeWalkInDetails ? { walkInDetails: true } : {}),
                 ...(shouldIncludeCounts ? { _count: { select: { actions: true, feedback: true } } } : {}),
+                socialPosts: true,
             },
             orderBy: orderByClause,
         });
@@ -169,6 +171,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
             include: {
                 walkInDetails: true,
                 events: { orderBy: { eventDate: 'asc' } },
+                socialPosts: { orderBy: { createdAt: 'desc' } },
                 _count: { select: { actions: true, feedback: true } },
             },
         });

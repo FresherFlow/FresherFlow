@@ -69,7 +69,9 @@ export function useOpportunitiesFeed({
     const [profileIncomplete, setProfileIncomplete] = useState<{ percentage: number; message: string } | null>(null);
     const lastRequestTimestamp = useRef(0);
     const opportunitiesCountRef = useRef(opportunities.length);
-    const debouncedSearch = useDebounce(search, 300);
+    const debouncedSearch = useDebounce(search, 500);
+    const normalizedSearch = debouncedSearch.trim();
+    const shouldUseBackendSearch = normalizedSearch.length >= 2;
     const cacheScope = useMemo(() => {
         return `type:${(type || 'all').toLowerCase()}`;
     }, [type]);
@@ -111,6 +113,22 @@ export function useOpportunitiesFeed({
                 if (type) {
                     data.opportunities = data.opportunities?.filter((opp: Opportunity) => opp.type === type) || [];
                 }
+            } else if (shouldUseBackendSearch) {
+                const searchData = (await opportunitiesApi.search({
+                    q: normalizedSearch,
+                    type: type || undefined,
+                    city: selectedLoc || undefined,
+                    page: pageNum,
+                    limit: 50,
+                })) as FeedResponse & { hits?: Opportunity[]; totalHits?: number; hasMore?: boolean };
+                data = {
+                    opportunities: searchData.hits || [],
+                    total: searchData.totalHits ?? searchData.total ?? (searchData.hits?.length || 0),
+                    limit: searchData.limit,
+                };
+                if (lastRequestTimestamp.current === timestamp) {
+                    setHasMore(Boolean(searchData.hasMore));
+                }
             } else {
                 data = (await opportunitiesApi.list({
                     type: type || undefined,
@@ -134,10 +152,12 @@ export function useOpportunitiesFeed({
             } else {
                 setTotalCount(newOpps.length);
             }
-            setHasMore(newOpps.length >= (data.limit || 50));
+            if (!shouldUseBackendSearch) {
+                setHasMore(newOpps.length >= (data.limit || 50));
+            }
             setPage(pageNum);
 
-            if (!showOnlySaved && pageNum === 1) {
+            if (!showOnlySaved && !shouldUseBackendSearch && pageNum === 1) {
                 saveFeedCache(newOpps, data.total || data.count || newOpps.length, cacheScope);
                 setCachedAt(Date.now());
             }
@@ -151,7 +171,7 @@ export function useOpportunitiesFeed({
                 });
             } else {
                 const cached = readFeedCache(cacheScope);
-                if (cached && !showOnlySaved && pageNum === 1) {
+                if (cached && !showOnlySaved && !shouldUseBackendSearch && pageNum === 1) {
                     // Silently fall back to cache — no toast, user doesn't need to know
                     setOpportunities(cached.opportunities);
                     setTotalCount(cached.count || cached.opportunities.length);
@@ -170,7 +190,7 @@ export function useOpportunitiesFeed({
                 setIsLoading(false);
             }
         }
-    }, [type, selectedLoc, user, authLoading, showOnlySaved, minSalary, maxSalary, closingSoon, cacheScope]);
+    }, [type, selectedLoc, user, authLoading, showOnlySaved, minSalary, maxSalary, closingSoon, cacheScope, normalizedSearch, shouldUseBackendSearch]);
 
     useEffect(() => {
         if (!authLoading) {
@@ -180,10 +200,6 @@ export function useOpportunitiesFeed({
 
     const filteredOpps = useMemo(() => {
         const filtered = opportunities.filter(opp => {
-            const matchesSearch = !debouncedSearch ||
-                opp.title.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
-                opp.company.toLowerCase().includes(debouncedSearch.toLowerCase());
-
             const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => loc.toLowerCase().includes(selectedLoc.toLowerCase()));
 
             const matchesClosingSoon = !closingSoon || (() => {
@@ -199,7 +215,7 @@ export function useOpportunitiesFeed({
 
             const matchesYear = !selectedYear || (opp.allowedPassoutYears || []).includes(selectedYear);
 
-            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSalary && matchesYear;
+            return matchesLoc && matchesClosingSoon && matchesSalary && matchesYear;
         });
 
         const enriched = filtered.map((opp) => {
@@ -234,7 +250,7 @@ export function useOpportunitiesFeed({
 
             return (a.id || '').localeCompare(b.id || '');
         });
-    }, [opportunities, debouncedSearch, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
