@@ -9,6 +9,26 @@ import { alertPreferencesSchema, pushSubscriptionSchema } from '../utils/validat
 import { checkEligibility } from '../domain/eligibility';
 
 const router: Router = express.Router();
+const UNREAD_COUNT_CACHE_TTL_MS = 30 * 1000;
+const unreadCountCache = new Map<string, { count: number; expiresAt: number }>();
+
+function getCachedUnreadCount(userId: string): number | null {
+    const cached = unreadCountCache.get(userId);
+    if (!cached) return null;
+    if (cached.expiresAt <= Date.now()) {
+        unreadCountCache.delete(userId);
+        return null;
+    }
+    return cached.count;
+}
+
+function setCachedUnreadCount(userId: string, count: number) {
+    unreadCountCache.set(userId, { count, expiresAt: Date.now() + UNREAD_COUNT_CACHE_TTL_MS });
+}
+
+function invalidateUnreadCount(userId: string) {
+    unreadCountCache.delete(userId);
+}
 
 
 router.get('/preferences', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
@@ -267,6 +287,10 @@ router.get('/unread-count', requireAuth, async (req: Request, res: Response, nex
     try {
         const userId = req.userId;
         if (!userId) return next(new AppError('Unauthorized', 401));
+        const cachedCount = getCachedUnreadCount(userId);
+        if (cachedCount !== null) {
+            return res.json({ count: cachedCount });
+        }
 
         const userWithProfile = await prisma.user.findUnique({
             where: { id: userId },
@@ -305,6 +329,7 @@ router.get('/unread-count', requireAuth, async (req: Request, res: Response, nex
             return checkEligibility(item.opportunity as unknown as Opportunity, profile as unknown as Profile, userId).eligible;
         }).length;
 
+        setCachedUnreadCount(userId, count);
         res.json({ count });
     } catch (error) {
         next(error);
@@ -327,6 +352,7 @@ router.post('/mark-all-read', requireAuth, async (req: Request, res: Response, n
             }
         });
 
+        invalidateUnreadCount(userId);
         res.json({ success: true });
     } catch (error) {
         next(error);
@@ -350,6 +376,7 @@ router.post('/:id/read', requireAuth, async (req: Request, res: Response, next: 
             }
         });
 
+        invalidateUnreadCount(userId);
         res.json({ success: true });
     } catch (error) {
         next(error);
@@ -370,6 +397,7 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response, next: Nex
             }
         });
 
+        invalidateUnreadCount(userId);
         res.json({ success: true, deleted: result.count > 0 });
     } catch (error) {
         next(error);

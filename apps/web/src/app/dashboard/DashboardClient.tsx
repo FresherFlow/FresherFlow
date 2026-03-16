@@ -21,21 +21,54 @@ import { DashboardPulse } from './components/DashboardPulse';
 
 // ── Dashboard feed cache ─────────────────────────────────────────────────────
 const DASH_CACHE_KEY = 'ff_dashboard_cache_v1';
+const HIGHLIGHTS_CACHE_KEY = 'ff_dashboard_highlights_cache_v1';
+const DASH_CACHE_TTL_MS = 5 * 60 * 1000;
 
-function readDashCache(): Opportunity[] {
-    if (typeof window === 'undefined') return [];
+function isCacheFresh(savedAt?: number | null) {
+    return typeof savedAt === 'number' && (Date.now() - savedAt) < DASH_CACHE_TTL_MS;
+}
+
+function readDashCacheMeta(): { opportunities: Opportunity[]; savedAt: number | null } {
+    if (typeof window === 'undefined') return { opportunities: [], savedAt: null };
     try {
         const raw = localStorage.getItem(DASH_CACHE_KEY);
-        if (!raw) return [];
-        const parsed = JSON.parse(raw) as { opportunities: Opportunity[] };
-        return Array.isArray(parsed.opportunities) ? parsed.opportunities : [];
-    } catch { return []; }
+        if (!raw) return { opportunities: [], savedAt: null };
+        const parsed = JSON.parse(raw) as { opportunities?: Opportunity[]; savedAt?: number };
+        return {
+            opportunities: Array.isArray(parsed.opportunities) ? parsed.opportunities : [],
+            savedAt: typeof parsed.savedAt === 'number' ? parsed.savedAt : null,
+        };
+    } catch {
+        return { opportunities: [], savedAt: null };
+    }
 }
 
 function writeDashCache(opportunities: Opportunity[]) {
     if (typeof window === 'undefined') return;
     try {
         localStorage.setItem(DASH_CACHE_KEY, JSON.stringify({ opportunities, savedAt: Date.now() }));
+    } catch { /* ignore quota */ }
+}
+
+function readHighlightsCache(): { data: HighlightsData | null; savedAt: number | null } {
+    if (typeof window === 'undefined') return { data: null, savedAt: null };
+    try {
+        const raw = localStorage.getItem(HIGHLIGHTS_CACHE_KEY);
+        if (!raw) return { data: null, savedAt: null };
+        const parsed = JSON.parse(raw) as { data?: HighlightsData; savedAt?: number };
+        return {
+            data: parsed.data ?? null,
+            savedAt: typeof parsed.savedAt === 'number' ? parsed.savedAt : null,
+        };
+    } catch {
+        return { data: null, savedAt: null };
+    }
+}
+
+function writeHighlightsCache(data: HighlightsData) {
+    if (typeof window === 'undefined') return;
+    try {
+        localStorage.setItem(HIGHLIGHTS_CACHE_KEY, JSON.stringify({ data, savedAt: Date.now() }));
     } catch { /* ignore quota */ }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -70,13 +103,10 @@ const hasAppliedAction = (opp: Opportunity): boolean =>
 
 export default function DashboardClient() {
     const { user, profile, isLoading: authLoading } = useAuth();
-    const [recentOpps, setRecentOpps] = useState<Opportunity[]>(() => readDashCache());
-    const [isLoadingOpps, setIsLoadingOpps] = useState<boolean>(() => {
-        if (typeof window === 'undefined') return true;
-        try { return !localStorage.getItem(DASH_CACHE_KEY); } catch { return true; }
-    });
-    const [highlights, setHighlights] = useState<HighlightsData | null>(null);
-    const [, setIsLoadingHighlights] = useState(true);
+    const [recentOpps, setRecentOpps] = useState<Opportunity[]>(() => readDashCacheMeta().opportunities);
+    const [isLoadingOpps, setIsLoadingOpps] = useState<boolean>(() => !isCacheFresh(readDashCacheMeta().savedAt));
+    const [highlights, setHighlights] = useState<HighlightsData | null>(() => readHighlightsCache().data);
+    const [, setIsLoadingHighlights] = useState(() => !isCacheFresh(readHighlightsCache().savedAt));
     const [hasLoaded, setHasLoaded] = useState(false);
     const [recentError, setRecentError] = useState<string | null>(null);
     const [highlightsError, setHighlightsError] = useState<string | null>(null);
@@ -89,7 +119,13 @@ export default function DashboardClient() {
         setMobileVisibleCount(MOBILE_DASHBOARD_LIMIT);
     }, [activeTab]);
 
-    const loadRecentOpportunities = useCallback(async () => {
+    const loadRecentOpportunities = useCallback(async (options?: { force?: boolean }) => {
+        const cached = readDashCacheMeta();
+        if (!options?.force && isCacheFresh(cached.savedAt) && cached.opportunities.length > 0) {
+            setRecentOpps(cached.opportunities);
+            setIsLoadingOpps(false);
+            return;
+        }
         setRecentError(null);
         try {
             const data = await opportunitiesApi.list({ sort: 'freshness_v2' }) as { opportunities: Opportunity[] };
@@ -108,11 +144,18 @@ export default function DashboardClient() {
         }
     }, []);
 
-    const loadHighlights = useCallback(async () => {
+    const loadHighlights = useCallback(async (options?: { force?: boolean }) => {
+        const cached = readHighlightsCache();
+        if (!options?.force && isCacheFresh(cached.savedAt) && cached.data) {
+            setHighlights(cached.data);
+            setIsLoadingHighlights(false);
+            return;
+        }
         setHighlightsError(null);
         try {
             const data = await dashboardApi.getHighlights() as HighlightsData;
             setHighlights(data);
+            writeHighlightsCache(data);
         } catch (err: unknown) {
             if (err instanceof OfflineError) return;
             setHighlightsError((err as Error)?.message || 'Unable to load highlights');
@@ -173,8 +216,8 @@ export default function DashboardClient() {
     const retryAll = () => {
         setIsLoadingOpps(true);
         setIsLoadingHighlights(true);
-        loadRecentOpportunities();
-        loadHighlights();
+        void loadRecentOpportunities({ force: true });
+        void loadHighlights({ force: true });
     };
 
     const { activeItems, totalActive, jobsCount, internshipsCount, walkinsCount, latestBadgeCount } = useMemo(() => {

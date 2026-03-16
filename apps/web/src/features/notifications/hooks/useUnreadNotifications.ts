@@ -10,6 +10,10 @@ const CACHE_TTL = Number(process.env.NEXT_PUBLIC_ALERTS_CACHE_TTL_MS || 15 * 60 
 const SEEN_TOAST_ALERTS_KEY = 'ff_seen_toast_alerts';
 const ALERTS_UPDATED_EVENT = 'ff-alerts-updated';
 const FOCUS_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_ALERTS_FOCUS_COOLDOWN_MS || 120000);
+const sharedListeners = new Set<(count: number) => void>();
+let sharedUnreadCount = 0;
+let sharedLastSuccessfulFetchAt = 0;
+let sharedFetchPromise: Promise<number> | null = null;
 
 function isLogoutInProgress() {
     if (typeof window === 'undefined') return false;
@@ -79,6 +83,18 @@ function writeSeenIds(ids: string[]) {
     }
 }
 
+function broadcastUnreadCount(count: number) {
+    sharedUnreadCount = count;
+    sharedListeners.forEach((listener) => listener(count));
+}
+
+function subscribeUnreadCount(listener: (count: number) => void) {
+    sharedListeners.add(listener);
+    return () => {
+        sharedListeners.delete(listener);
+    };
+}
+
 export function clearUnreadCache() {
     if (typeof window === 'undefined') return;
     try {
@@ -86,42 +102,66 @@ export function clearUnreadCache() {
     } catch {
         // ignore quota issues
     }
+    sharedLastSuccessfulFetchAt = 0;
+    broadcastUnreadCount(0);
 }
 
 export function useUnreadNotifications() {
     const authContext = useContext(AuthContext);
     const user = authContext?.user;
 
-    const [unreadCount, setUnreadCount] = useState<number>(() => readCache()?.count ?? 0);
+    const [unreadCount, setUnreadCount] = useState<number>(() => {
+        const cached = readCache();
+        const initialCount = cached?.count ?? sharedUnreadCount;
+        if (cached) {
+            sharedUnreadCount = cached.count;
+            sharedLastSuccessfulFetchAt = cached.at;
+        }
+        return initialCount;
+    });
     const lastFocusRefreshAtRef = useRef(0);
     const focusRefreshInFlightRef = useRef(false);
-    const lastSuccessfulFetchAtRef = useRef(readRawCache()?.at ?? 0);
+    const lastSuccessfulFetchAtRef = useRef(readRawCache()?.at ?? sharedLastSuccessfulFetchAt);
 
     const fetchCount = useCallback(async (options?: { force?: boolean }) => {
         if (!user || isLogoutInProgress() || !hasActiveSessionCookie()) {
-            setUnreadCount(0);
+            broadcastUnreadCount(0);
             return;
         }
         const force = options?.force === true;
-        if (!force && isCacheFresh(lastSuccessfulFetchAtRef.current)) {
+        const freshestFetchAt = Math.max(lastSuccessfulFetchAtRef.current, sharedLastSuccessfulFetchAt);
+        if (!force && isCacheFresh(freshestFetchAt)) {
             const cached = readCache();
             if (cached) {
-                setUnreadCount(cached.count);
+                lastSuccessfulFetchAtRef.current = cached.at;
+                sharedLastSuccessfulFetchAt = cached.at;
+                broadcastUnreadCount(cached.count);
                 return;
             }
         }
 
         try {
-            const data = await alertsApi.getUnreadCount() as { count: number };
-            if (isLogoutInProgress() || !hasActiveSessionCookie()) {
-                setUnreadCount(0);
+            if (!force && sharedFetchPromise) {
+                await sharedFetchPromise;
                 return;
             }
-            setUnreadCount(data.count);
-            writeCache(data.count);
+            sharedFetchPromise = (async () => {
+                const data = await alertsApi.getUnreadCount() as { count: number };
+                return data.count;
+            })();
+            const count = await sharedFetchPromise;
+            if (isLogoutInProgress() || !hasActiveSessionCookie()) {
+                broadcastUnreadCount(0);
+                return;
+            }
+            writeCache(count);
             lastSuccessfulFetchAtRef.current = Date.now();
+            sharedLastSuccessfulFetchAt = lastSuccessfulFetchAtRef.current;
+            broadcastUnreadCount(count);
         } catch {
             // silent fail, keep stale value
+        } finally {
+            sharedFetchPromise = null;
         }
     }, [user]);
 
@@ -157,15 +197,20 @@ export function useUnreadNotifications() {
     }, [user]);
 
     useEffect(() => {
+        return subscribeUnreadCount(setUnreadCount);
+    }, []);
+
+    useEffect(() => {
         if (!user || isLogoutInProgress() || !hasActiveSessionCookie()) {
-            setUnreadCount(0);
+            broadcastUnreadCount(0);
             return;
         }
 
         const cached = readCache();
         if (cached) {
-            setUnreadCount(cached.count);
+            broadcastUnreadCount(cached.count);
             lastSuccessfulFetchAtRef.current = cached.at;
+            sharedLastSuccessfulFetchAt = cached.at;
         } else {
             setTimeout(() => {
                 void fetchCount({ force: true });
@@ -204,7 +249,7 @@ export function useUnreadNotifications() {
         };
         const onAlertsUpdated = () => {
             if (isLogoutInProgress() || !hasActiveSessionCookie()) {
-                setUnreadCount(0);
+                broadcastUnreadCount(0);
                 return;
             }
             void fetchCount({ force: true });

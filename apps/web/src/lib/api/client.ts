@@ -128,15 +128,20 @@ export async function apiClient<T = unknown>(
         throw new UnauthorizedError('Admin session expired');
     }
 
-    const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-        'X-Requested-From': 'fresherflow-web', // Basic CSRF protection against cross-site forms
-        'X-Request-Id': `web-${Math.random().toString(36).slice(2, 10)}`, // Tracing
-        ...(options.headers as Record<string, string> || {}),
-    };
-
-
     const method = (options.method || 'GET').toUpperCase();
+    const rawHeaders = { ...(options.headers as Record<string, string> || {}) };
+    const headers: Record<string, string> = { ...rawHeaders };
+    const hasJsonBody = options.body != null && (typeof FormData === 'undefined' || !(options.body instanceof FormData));
+    const isSimpleRead = method === 'GET' || method === 'HEAD';
+
+    if (hasJsonBody && !('Content-Type' in headers)) {
+        headers['Content-Type'] = 'application/json';
+    }
+    if (!isSimpleRead) {
+        headers['X-Requested-From'] = headers['X-Requested-From'] || 'fresherflow-web';
+        headers['X-Request-Id'] = headers['X-Request-Id'] || `web-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
     const bypassCache = shouldBypassBrowserCache(endpoint, method);
 
     // Defaults: credentials include for cookies
@@ -574,6 +579,15 @@ export const opportunitiesApi = {
 
         const queryString = query.toString();
         return apiClient(`/api/opportunities${queryString ? `?${queryString}` : ''}`);
+    },
+    search: (params: { q: string; type?: string; city?: string; page?: number; limit?: number }) => {
+        const query = new URLSearchParams();
+        query.append('q', params.q);
+        if (params.type) query.append('type', params.type);
+        if (params.city) query.append('city', params.city);
+        if (params.page) query.append('page', String(params.page));
+        if (params.limit) query.append('limit', String(params.limit));
+        return apiClient(`/api/opportunities/search?${query.toString()}`);
     },
 
     getById: (id: string) => apiClient(`/api/opportunities/${id}`)
