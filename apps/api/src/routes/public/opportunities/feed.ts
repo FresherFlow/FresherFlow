@@ -106,17 +106,20 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
             }
         }
 
-        const totalAvailable = isGuest ? undefined : await prisma.opportunity.count({ where: whereClause });
         const effectiveLimit = isGuest ? Math.min(l, GUEST_FEED_LIMIT) : l;
         const effectiveSkip = isGuest ? 0 : (p - 1) * effectiveLimit;
+        const shouldIncludeExactTotal = !isGuest && p === 1;
 
-        const dbFiltered = await prisma.opportunity.findMany({
-            where: whereClause,
-            select: isGuest ? buildGuestOpportunitySelect() : buildPublicOpportunitySelect(userId),
-            orderBy: { postedAt: 'desc' },
-            take: effectiveLimit,
-            skip: effectiveSkip
-        });
+        const [totalAvailable, dbFiltered] = await Promise.all([
+            shouldIncludeExactTotal ? prisma.opportunity.count({ where: whereClause }) : Promise.resolve<number | undefined>(undefined),
+            prisma.opportunity.findMany({
+                where: whereClause,
+                select: isGuest ? buildGuestOpportunitySelect() : buildPublicOpportunitySelect(userId),
+                orderBy: { postedAt: 'desc' },
+                take: effectiveLimit,
+                skip: effectiveSkip
+            })
+        ]);
 
         const mappedResults = (dbFiltered as unknown as (Opportunity & { savedBy?: unknown[] })[]).map((opp) => {
             const { savedBy, ...rest } = opp;
