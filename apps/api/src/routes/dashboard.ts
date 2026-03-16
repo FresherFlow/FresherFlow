@@ -4,7 +4,7 @@ import { OpportunityEventType } from '@fresherflow/database';
 import { OpportunityStatus, Profile, Opportunity } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { profileGate } from '../middleware/profileGate';
-import { filterOpportunitiesForUser, sortOpportunitiesForUser } from '../domain/eligibility';
+import { filterAndRankOpportunitiesForUser } from '../domain/eligibility';
 
 const router = Router();
 
@@ -56,8 +56,11 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
         });
 
         // 3. Apply eligibility filtering
-        const eligiblePotentials = filterOpportunitiesForUser(potentials as unknown as Opportunity[], (profile as unknown) as Profile);
-        const rankedUrgent = sortOpportunitiesForUser(eligiblePotentials as unknown as Opportunity[], (profile as unknown) as Profile);
+        const rankedUrgent = filterAndRankOpportunitiesForUser(
+            potentials as unknown as Opportunity[],
+            (profile as unknown) as Profile,
+            userId
+        ).map((item) => item.opportunity);
 
         // 4. Categorize for the UI
         const walkins = rankedUrgent.filter(o => o.type === 'WALKIN');
@@ -74,8 +77,11 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
             orderBy: { postedAt: 'desc' },
             take: 5
         });
-        const eligibleNew = filterOpportunitiesForUser(newOpps as unknown as Opportunity[], (profile as unknown) as Profile);
-        const rankedNew = sortOpportunitiesForUser(eligibleNew as unknown as Opportunity[], (profile as unknown) as Profile);
+        const rankedNew = filterAndRankOpportunitiesForUser(
+            newOpps as unknown as Opportunity[],
+            (profile as unknown) as Profile,
+            userId
+        ).map((item) => item.opportunity);
 
         // 6. New since last visit (based on latest VIEWED action)
         const latestViewed = await prisma.userAction.findFirst({
@@ -99,10 +105,11 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
             orderBy: { postedAt: 'desc' },
             take: 12
         });
-        const newSinceLastVisit = sortOpportunitiesForUser(
-            filterOpportunitiesForUser(newSinceLastVisitCandidates as unknown as Opportunity[], (profile as unknown) as Profile),
-            (profile as unknown) as Profile
-        );
+        const newSinceLastVisit = filterAndRankOpportunitiesForUser(
+            newSinceLastVisitCandidates as unknown as Opportunity[],
+            (profile as unknown) as Profile,
+            userId
+        ).map((item) => item.opportunity);
 
         const fortyFiveDaysFromNow = new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000);
         const driveEventTypes: OpportunityEventType[] = [

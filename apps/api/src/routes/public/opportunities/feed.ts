@@ -6,7 +6,7 @@ import { logger } from '@fresherflow/logger';
 import { redis } from '@fresherflow/redis';
 import prisma from '../../../lib/prisma';
 import { AppError } from '../../../middleware/errorHandler';
-import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../../../domain/eligibility';
+import { filterAndRankOpportunitiesForUser, rankOpportunitiesForUser } from '../../../domain/eligibility';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
     GUEST_FEED_LIMIT, MAX_FEED_LIMIT, MAX_FEED_PAGE, GUEST_FEED_CACHE_TTL_SECONDS,
@@ -129,14 +129,18 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
 
         let finalResults = mappedResults;
         if (!isAdmin && profile) {
-            finalResults = filterOpportunitiesForUser(mappedResults, profile as Profile);
+            finalResults = filterAndRankOpportunitiesForUser(
+                mappedResults,
+                profile as Profile,
+                userId || undefined
+            ).map((item) => item.opportunity);
         }
 
         const includeRelevanceDebug = isAdmin && relevanceDebug === 'true' && Boolean(profile);
         let sorted = finalResults;
         let debug: { opportunityId: string; title: string; score: number; breakdown: unknown }[] | undefined;
 
-        if (profile) {
+        if (profile && isAdmin) {
             const ranked = rankOpportunitiesForUser(finalResults, profile as Profile);
             sorted = ranked.map((item) => item.opportunity);
             if (includeRelevanceDebug) {

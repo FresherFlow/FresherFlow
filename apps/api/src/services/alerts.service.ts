@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
-import { OpportunityStatus, OpportunityType, Opportunity, Profile } from '@fresherflow/types';
-import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
+import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
+import { filterAndRankOpportunitiesForUser } from '../domain/eligibility';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 
@@ -30,11 +30,7 @@ function buildOpportunityUrl(frontendUrl: string, slug: string) {
     return `${frontendUrl.replace(/\/$/, '')}/opportunities/${slug}`;
 }
 
-function getClosingSoonHours(opportunity: {
-    type: string | OpportunityType;
-    expiresAt?: Date | string | null;
-    walkInDetails?: { dates: unknown[] } | null;
-}, now: Date): number | null {
+function getClosingSoonHours(opportunity: Opportunity, now: Date): number | null {
     if (opportunity.type === 'WALKIN') {
         const dates = (opportunity.walkInDetails?.dates ?? []) as Array<string | Date>;
         if (dates.length === 0) return null;
@@ -51,9 +47,10 @@ function getClosingSoonHours(opportunity: {
 
 async function sendDailyDigestForUser(
     frontendUrl: string,
-    user: { id: string; email: string; fullName: string | null; profile: unknown },
+    user: { id: string; email: string; fullName: string | null; profile: Profile | null },
     preference: { dailyDigest: boolean; timezone?: string; preferredHour: number; lastDigestSentAt?: Date | null; emailEnabled: boolean; minRelevanceScore: number },
-    now: Date
+    now: Date,
+    activeOpportunities: Opportunity[]
 ): Promise<boolean> {
     if (!preference.dailyDigest) return false;
     if (!user.profile) return false;
@@ -67,20 +64,11 @@ async function sendDailyDigestForUser(
         if (last.dateKey === current.dateKey) return false;
     }
 
-    const opportunities = await prisma.opportunity.findMany({
-        where: {
-            status: OpportunityStatus.PUBLISHED,
-            deletedAt: null,
-            expiredAt: null,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        },
-        include: { walkInDetails: true },
-        orderBy: { postedAt: 'desc' },
-        take: 200,
-    });
-
-    const eligible = filterOpportunitiesForUser(opportunities as unknown as Opportunity[], user.profile as Profile);
-    const ranked = rankOpportunitiesForUser(eligible as Opportunity[], user.profile as Profile)
+    const ranked = filterAndRankOpportunitiesForUser(
+        activeOpportunities,
+        user.profile as Profile,
+        user.id
+    )
         .filter((item) => item.score >= (preference.minRelevanceScore || 35))
         .slice(0, 8);
 
@@ -137,32 +125,24 @@ async function sendDailyDigestForUser(
 
 async function sendClosingSoonForUser(
     frontendUrl: string,
-    user: { id: string; email: string; fullName: string | null; profile: unknown },
+    user: { id: string; email: string; fullName: string | null; profile: Profile | null },
     preference: { closingSoon: boolean; emailEnabled: boolean; minRelevanceScore: number },
-    now: Date
+    now: Date,
+    activeOpportunities: Opportunity[]
 ): Promise<boolean> {
     if (!preference.closingSoon) return false;
     if (!user.profile) return false;
 
-    const opportunities = await prisma.opportunity.findMany({
-        where: {
-            status: OpportunityStatus.PUBLISHED,
-            deletedAt: null,
-            expiredAt: null,
-            OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-        },
-        include: { walkInDetails: true },
-        orderBy: { postedAt: 'desc' },
-        take: 200,
-    });
-
-    const eligible = filterOpportunitiesForUser(opportunities as unknown as Opportunity[], user.profile as Profile);
-    const ranked = rankOpportunitiesForUser(eligible as Opportunity[], user.profile as Profile)
+    const ranked = filterAndRankOpportunitiesForUser(
+        activeOpportunities,
+        user.profile as Profile,
+        user.id
+    )
         .filter((item) => item.score >= (preference.minRelevanceScore || 35))
         .sort((a, b) => b.score - a.score);
 
     for (const item of ranked) {
-        const hoursLeft = getClosingSoonHours(item.opportunity as unknown as Opportunity, now);
+        const hoursLeft = getClosingSoonHours(item.opportunity, now);
         if (!hoursLeft) continue;
 
         const dayKey = now.toISOString().slice(0, 10);
@@ -211,37 +191,22 @@ async function sendClosingSoonForUser(
 
 async function sendEventRemindersForUser(
     frontendUrl: string,
-    user: { id: string; profile: unknown },
+    user: { id: string; profile: Profile | null },
     preference: { enabled: boolean },
-    now: Date
+    now: Date,
+    activeEvents: unknown[]
 ): Promise<boolean> {
     if (!preference.enabled) return false;
     if (!user.profile) return false;
 
-    const upcoming = await prisma.opportunityEvent.findMany({
-        where: {
-            eventDate: {
-                gte: new Date(now.getTime() - 30 * 60 * 1000),
-                lte: new Date(now.getTime() + 3.5 * 24 * 60 * 60 * 1000),
-            },
-            opportunity: {
-                status: OpportunityStatus.PUBLISHED,
-                deletedAt: null,
-            }
-        },
-        include: {
-            opportunity: {
-                include: { walkInDetails: true }
-            }
-        },
-        orderBy: { eventDate: 'asc' },
-        take: 200
-    });
-
-    if (upcoming.length === 0) return false;
-    for (const event of upcoming) {
-        const eligible = filterOpportunitiesForUser([event.opportunity as unknown as Opportunity], user.profile as Profile);
-        if (eligible.length === 0) continue;
+    if (activeEvents.length === 0) return false;
+    for (const event of activeEvents as any[]) {
+        const ranked = filterAndRankOpportunitiesForUser(
+            [event.opportunity as unknown as Opportunity],
+            user.profile as Profile,
+            user.id
+        );
+        if (ranked.length === 0) continue;
 
         const diffHours = (new Date(event.eventDate).getTime() - now.getTime()) / (1000 * 60 * 60);
         const windows = [
@@ -284,10 +249,42 @@ export async function runAlertsCycle() {
     const now = new Date();
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
 
+    // OPTIMIZATION: Fetch active data ONCE per cycle instead of per user (saves thousands of DB calls)
+    const [activeOpportunities, activeEvents] = await Promise.all([
+        prisma.opportunity.findMany({
+            where: {
+                status: OpportunityStatus.PUBLISHED,
+                deletedAt: null,
+                expiredAt: null,
+                OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
+            },
+            include: { walkInDetails: true },
+            orderBy: { postedAt: 'desc' },
+            take: 300,
+        }) as unknown as Promise<Opportunity[]>,
+        prisma.opportunityEvent.findMany({
+            where: {
+                eventDate: {
+                    gte: new Date(now.getTime() - 60 * 60 * 1000), // 1h grace
+                    lte: new Date(now.getTime() + 4 * 24 * 60 * 60 * 1000),
+                },
+                opportunity: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                }
+            },
+            include: {
+                opportunity: {
+                    include: { walkInDetails: true }
+                }
+            },
+            orderBy: { eventDate: 'asc' },
+            take: 200
+        })
+    ]);
+
     const users = await prisma.user.findMany({
-        where: {
-            role: { in: ['USER', 'ADMIN'] },
-        },
+        where: { role: { in: ['USER', 'ADMIN'] } },
         select: {
             id: true,
             email: true,
@@ -301,12 +298,9 @@ export async function runAlertsCycle() {
     let digestSent = 0;
     let closingSoonSent = 0;
     let eventRemindersSent = 0;
-    let usersEnabled = 0;
-    let usersDisabled = 0;
-    let usersMissingProfile = 0;
 
     for (const user of users) {
-        const preference = (user.alertPreference as unknown as { enabled: boolean; emailEnabled: boolean; dailyDigest: boolean; closingSoon: boolean; minRelevanceScore: number; preferredHour: number; timezone: string; lastDigestSentAt: Date | null }) ?? {
+        const preference = (user.alertPreference as any) ?? {
             enabled: true,
             emailEnabled: true,
             dailyDigest: true,
@@ -318,16 +312,17 @@ export async function runAlertsCycle() {
         };
 
         if (!preference.enabled) {
-            usersDisabled += 1;
             continue;
         }
 
-        usersEnabled += 1;
-        if (!user.profile) usersMissingProfile += 1;
+        if (!user.profile) {
+            continue;
+        }
 
-        const sentDigest = await sendDailyDigestForUser(frontendUrl, user, preference, now);
-        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user, preference, now);
-        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user, preference, now);
+        const sentDigest = await sendDailyDigestForUser(frontendUrl, user as any, preference, now, activeOpportunities as Opportunity[]);
+        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as any, preference, now, activeOpportunities as Opportunity[]);
+        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as any, preference, now, activeEvents);
+        
         if (sentDigest) digestSent += 1;
         if (sentClosingSoon) closingSoonSent += 1;
         if (sentEventReminder) eventRemindersSent += 1;
@@ -335,21 +330,10 @@ export async function runAlertsCycle() {
 
     logger.info('Alerts cycle completed', {
         usersChecked: users.length,
-        usersEnabled,
-        usersDisabled,
-        usersMissingProfile,
         digestSent,
         closingSoonSent,
         eventRemindersSent,
     });
 
-    return {
-        usersChecked: users.length,
-        usersEnabled,
-        usersDisabled,
-        usersMissingProfile,
-        digestSent,
-        closingSoonSent,
-        eventRemindersSent
-    };
+    return { usersChecked: users.length, digestSent, closingSoonSent, eventRemindersSent };
 }

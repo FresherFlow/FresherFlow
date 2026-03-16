@@ -19,6 +19,8 @@ export interface EligibilityResult {
     failedRules: string[];
 }
 
+const SHOULD_LOG_ELIGIBILITY_CHECKS = process.env.LOG_ELIGIBILITY_CHECKS === 'true';
+
 /**
  * Check if user is eligible for an opportunity
  * Deterministic - same input always produces same output
@@ -48,12 +50,14 @@ export function checkEligibility(
             reason = rule.getReason(opportunity, profile);
 
             // Log ineligibility
-            logger.debug('Eligibility check failed', {
-                userId,
-                opportunityId: opportunity.id,
-                rule: rule.name,
-                reason
-            });
+            if (SHOULD_LOG_ELIGIBILITY_CHECKS) {
+                logger.debug('Eligibility check failed', {
+                    userId,
+                    opportunityId: opportunity.id,
+                    rule: rule.name,
+                    reason
+                });
+            }
 
             break; // Stop at first hard rule failure
         }
@@ -71,24 +75,28 @@ export function checkEligibility(
                 warnings.push(warning);
 
                 // Log warning
-                logger.debug('Soft rule warning', {
-                    userId,
-                    opportunityId: opportunity.id,
-                    rule: rule.name,
-                    warning
-                });
+                if (SHOULD_LOG_ELIGIBILITY_CHECKS) {
+                    logger.debug('Soft rule warning', {
+                        userId,
+                        opportunityId: opportunity.id,
+                        rule: rule.name,
+                        warning
+                    });
+                }
             }
         }
     }
 
     // Log successful match
     if (eligible) {
-        logger.debug('Eligibility check passed', {
-            userId,
-            opportunityId: opportunity.id,
-            matchedRules,
-            warnings: warnings.length
-        });
+        if (SHOULD_LOG_ELIGIBILITY_CHECKS) {
+            logger.debug('Eligibility check passed', {
+                userId,
+                opportunityId: opportunity.id,
+                matchedRules,
+                warnings: warnings.length
+            });
+        }
     }
 
     return {
@@ -345,6 +353,22 @@ export function rankOpportunitiesForUser<T extends Opportunity>(opportunities: T
 
             return new Date(b.opportunity.postedAt).getTime() - new Date(a.opportunity.postedAt).getTime();
         });
+}
+
+export function filterAndRankOpportunitiesForUser<T extends Opportunity>(
+    opportunities: T[],
+    profile: Profile,
+    userId?: string
+): RankedOpportunity<T>[] {
+    const eligibleOpportunities: T[] = [];
+
+    for (const opportunity of opportunities) {
+        if (checkEligibility(opportunity, profile, userId).eligible) {
+            eligibleOpportunities.push(opportunity);
+        }
+    }
+
+    return rankOpportunitiesForUser(eligibleOpportunities, profile);
 }
 
 /**

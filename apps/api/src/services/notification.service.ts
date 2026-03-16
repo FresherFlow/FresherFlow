@@ -1,7 +1,7 @@
 import prisma, { Prisma } from '../lib/prisma';
 import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind } from '@fresherflow/database';
 import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
-import { filterOpportunitiesForUser, rankOpportunitiesForUser } from '../domain/eligibility';
+import { filterAndRankOpportunitiesForUser } from '../domain/eligibility';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 import { sendNewJobPush } from './push.service';
@@ -216,23 +216,11 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             continue;
         }
 
-        const eligible = filterOpportunitiesForUser([opportunity as unknown as Opportunity], user.profile as unknown as Profile);
-        if (eligible.length === 0) {
-            skippedNotEligible += 1;
-            await logDispatch({
-                correlationId,
-                userId: user.id,
-                opportunityId: opportunity.id,
-                kind: alertKind,
-                status: AlertDispatchStatus.SKIPPED,
-                reason: AlertDispatchReason.NOT_ELIGIBLE,
-                metadata: { stage: 'eligibility_filter', source: 'profile' },
-                attemptedAt: userAttemptedAt,
-            });
-            continue;
-        }
-
-        const ranked = rankOpportunitiesForUser(eligible as Opportunity[], user.profile as unknown as Profile);
+        const ranked = filterAndRankOpportunitiesForUser(
+            [opportunity as unknown as Opportunity],
+            user.profile as unknown as Profile,
+            user.id
+        );
         if (ranked.length === 0) {
             skippedNotEligible += 1;
             await logDispatch({
@@ -242,7 +230,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 kind: alertKind,
                 status: AlertDispatchStatus.SKIPPED,
                 reason: AlertDispatchReason.NOT_ELIGIBLE,
-                metadata: { stage: 'ranking', source: 'profile' },
+                metadata: { stage: 'eligibility_filter', source: 'profile' },
                 attemptedAt: userAttemptedAt,
             });
             continue;

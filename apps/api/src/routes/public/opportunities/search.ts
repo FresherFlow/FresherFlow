@@ -1,6 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { AppError } from '../../../middleware/errorHandler';
 import { OpportunityService } from '../../../domain/opportunity';
+import prisma from '../../../lib/prisma';
+import { filterAndRankOpportunitiesForUser } from '../../../domain/eligibility';
+import { Opportunity, Profile } from '@fresherflow/types';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
     normalizeSafeQueryString, parseStrictPositiveInt, parseOpportunityType
@@ -36,9 +39,51 @@ router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response,
             locations
         });
 
+        let hits = searchResults.hits;
+
+        if (req.userId && hits.length > 0) {
+            const [user, savedRows] = await Promise.all([
+                prisma.user.findUnique({
+                    where: { id: req.userId },
+                    select: { role: true, profile: true }
+                }),
+                prisma.opportunity.findMany({
+                    where: { id: { in: hits.map((hit) => hit.id) } },
+                    select: {
+                        id: true,
+                        savedBy: {
+                            where: { userId: req.userId },
+                            select: { id: true },
+                            take: 1,
+                        }
+                    }
+                })
+            ]);
+
+            const savedIds = new Set(
+                savedRows
+                    .filter((row) => row.savedBy.length > 0)
+                    .map((row) => row.id)
+            );
+
+            hits = hits.map((hit) => ({
+                ...hit,
+                isSaved: savedIds.has(hit.id),
+            }));
+
+            if (user?.role !== 'ADMIN' && user?.profile) {
+                hits = filterAndRankOpportunitiesForUser(
+                    hits as Opportunity[],
+                    user.profile as Profile,
+                    req.userId
+                )
+                    .map((item) => item.opportunity) as typeof hits;
+            }
+        }
+
         res.setHeader('Cache-Control', 'private, no-store');
         return res.json({
-            hits: searchResults.hits,
+            hits,
             totalHits: searchResults.totalHits,
             processingTimeMs: 0,
             page: p,
