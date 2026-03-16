@@ -81,6 +81,10 @@ const COOKIE_OPTIONS = {
     path: '/',
     ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {})
 };
+const ADMIN_SESSION_MARKER_OPTIONS = {
+    ...COOKIE_OPTIONS,
+    httpOnly: false,
+};
 
 function getAdminIdFromRequest(req: Request): string | null {
     const cookieToken = req.cookies.adminAccessToken as string | undefined;
@@ -376,6 +380,10 @@ router.post('/login/verify', adminAuthLimiter, async (req: Request, res: Respons
                 ...COOKIE_OPTIONS,
                 maxAge: accessMaxAge
             });
+            res.cookie('ff_admin_logged_in', 'true', {
+                ...ADMIN_SESSION_MARKER_OPTIONS,
+                maxAge: accessMaxAge
+            });
             return res.json({ verified: true, accessToken: token });
         } else {
             res.status(400).json({ verified: false });
@@ -427,6 +435,10 @@ router.post('/login/totp', adminAuthLimiter, async (req: Request, res: Response,
 
         res.cookie('adminAccessToken', token, {
             ...COOKIE_OPTIONS,
+            maxAge: accessMaxAge
+        });
+        res.cookie('ff_admin_logged_in', 'true', {
+            ...ADMIN_SESSION_MARKER_OPTIONS,
             maxAge: accessMaxAge
         });
         return res.json({ verified: true, accessToken: token });
@@ -512,6 +524,7 @@ router.delete('/passkeys/:id', requireAdmin, async (req: Request, res: Response,
  */
 router.post('/logout', (req, res) => {
     res.cookie('adminAccessToken', '', { ...COOKIE_OPTIONS, maxAge: 0 });
+    res.cookie('ff_admin_logged_in', '', { ...ADMIN_SESSION_MARKER_OPTIONS, maxAge: 0 });
     res.json({ success: true });
 });
 
