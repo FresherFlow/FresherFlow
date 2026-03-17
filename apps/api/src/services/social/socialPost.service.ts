@@ -1,7 +1,7 @@
 import { prisma } from '@fresherflow/database';
 import { SocialPlatform, SocialPostStatus } from '@prisma/client';
 import { OpportunityType } from '@fresherflow/types';
-import { logger } from '@fresherflow/logger';
+
 import { buildCaption } from './caption.service';
 import { enqueueSocialPost } from '@fresherflow/queue';
 import { buildSocialOpportunityUrl } from '../../utils/share';

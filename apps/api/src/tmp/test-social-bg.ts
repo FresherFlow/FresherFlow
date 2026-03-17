@@ -14,6 +14,7 @@ async function main() {
 
   // Trigger publish side-effects (Social Posting should now ENQUEUE jobs)
   await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: false });
+  // eslint-disable-next-line no-console
   console.log('Enqueued social posts. Check your worker logs.');
 }
 

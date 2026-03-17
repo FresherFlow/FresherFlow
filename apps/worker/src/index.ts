@@ -84,7 +84,7 @@ http.createServer(async (_, res) => {
 
         const [dbStatus, redisStatus] = await Promise.allSettled([
             prisma.$queryRaw`SELECT 1`,
-            (redis as any).ping(),
+            redis.ping(),
         ]);
 
         res.writeHead(200, { 'Content-Type': 'application/json' });

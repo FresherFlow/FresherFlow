@@ -8,7 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default tseslint.config(
   {
-    ignores: ['dist/', 'node_modules/', 'eslint.config.mjs'],
+    ignores: ['dist/', 'node_modules/', 'eslint.config.mjs', 'src/__tests__/', 'vitest.config.ts'],
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommended,
@@ -17,9 +17,7 @@ export default tseslint.config(
     files: ['**/*.ts'],
     languageOptions: {
       parserOptions: {
-        projectService: {
-          allowDefaultProject: ['vitest.config.ts'],
-        },
+        projectService: true,
         tsconfigRootDir: __dirname,
       },
     },

@@ -24,7 +24,7 @@ router.get('/health', (req: Request, res: Response) => {
 router.get('/health/deep', async (req: Request, res: Response) => {
     const [dbStatus, redisStatus] = await Promise.allSettled([
         prisma.$queryRaw`SELECT 1`,
-        (redis as any).ping(),
+        redis.ping(),
     ]);
 
     const isHealthy = dbStatus.status === 'fulfilled' && redisStatus.status === 'fulfilled';

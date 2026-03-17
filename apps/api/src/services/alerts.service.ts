@@ -9,6 +9,29 @@ const CLOSING_SOON_WINDOW_HOURS = 48;
 
 type TzParts = { dateKey: string; hour: number };
 
+interface AlertPreference {
+    enabled: boolean;
+    emailEnabled: boolean;
+    dailyDigest: boolean;
+    closingSoon: boolean;
+    minRelevanceScore: number;
+    preferredHour: number;
+    timezone: string;
+    lastDigestSentAt: Date | null;
+}
+
+interface OpportunityEvent {
+    id: string;
+    opportunityId: string;
+    eventType: string;
+    title: string;
+    eventDate: string | Date;
+    sourceLink?: string | null;
+    opportunity: Opportunity;
+}
+
+
+
 function getTimezoneParts(date: Date, timezone: string): TzParts {
     const formatter = new Intl.DateTimeFormat('en-CA', {
         timeZone: timezone,
@@ -194,13 +217,13 @@ async function sendEventRemindersForUser(
     user: { id: string; profile: Profile | null },
     preference: { enabled: boolean },
     now: Date,
-    activeEvents: unknown[]
+    activeEvents: OpportunityEvent[]
 ): Promise<boolean> {
     if (!preference.enabled) return false;
     if (!user.profile) return false;
 
     if (activeEvents.length === 0) return false;
-    for (const event of activeEvents as any[]) {
+    for (const event of activeEvents) {
         const ranked = filterAndRankOpportunitiesForUser(
             [event.opportunity as unknown as Opportunity],
             user.profile as Profile,
@@ -300,7 +323,7 @@ export async function runAlertsCycle() {
     let eventRemindersSent = 0;
 
     for (const user of users) {
-        const preference = (user.alertPreference as any) ?? {
+        const preference: AlertPreference = (user.alertPreference as unknown as AlertPreference) ?? {
             enabled: true,
             emailEnabled: true,
             dailyDigest: true,
@@ -319,9 +342,9 @@ export async function runAlertsCycle() {
             continue;
         }
 
-        const sentDigest = await sendDailyDigestForUser(frontendUrl, user as any, preference, now, activeOpportunities as Opportunity[]);
-        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as any, preference, now, activeOpportunities as Opportunity[]);
-        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as any, preference, now, activeEvents);
+        const sentDigest = await sendDailyDigestForUser(frontendUrl, user as unknown as { id: string; email: string; fullName: string | null; profile: Profile | null }, preference, now, activeOpportunities as Opportunity[]);
+        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as unknown as { id: string; email: string; fullName: string | null; profile: Profile | null }, preference, now, activeOpportunities as Opportunity[]);
+        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as unknown as { id: string; profile: Profile | null }, preference, now, activeEvents as unknown as OpportunityEvent[]);
         
         if (sentDigest) digestSent += 1;
         if (sentClosingSoon) closingSoonSent += 1;
