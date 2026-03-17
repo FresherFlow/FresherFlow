@@ -37,7 +37,7 @@ export const INTERNSHIP_TEMPLATE = `{
   "workMode": "HYBRID",
   "experienceMin": 0,
   "experienceMax": 0,
-  "salaryRange": "20k-30k",
+  "salaryRange": "20-30k/month",
   "salaryPeriod": "MONTHLY",
   "employmentType": "Internship",
   "jobFunction": "Engineering",

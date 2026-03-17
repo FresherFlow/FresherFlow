@@ -37,6 +37,8 @@ import adminAppFeedbackRoutes from './routes/admin/appFeedback';
 import adminSystemRoutes from './routes/admin/system';
 import adminAnalyticsRoutes from './routes/admin/analytics';
 import adminTotpRoutes from './routes/admin/totp';
+import adminSocialRoutes from './routes/admin/social';
+import adminQueuesRoutes from './routes/admin/queues';
 import healthRoutes from './routes/public/health';
 import growthRoutes from './routes/public/growth';
 import companyRoutes from './routes/public/companies';
@@ -125,6 +127,7 @@ function isAllowedOrigin(origin: string): boolean {
     const normalized = normalizeOrigin(origin);
     if (!normalized) return false;
     if (allowedOrigins.has(normalized)) return true;
+    if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) return true;
 
     if (!allowFresherflowSubdomains) return false;
     try {
@@ -309,6 +312,8 @@ if (isAdminMode) {
     app.use('/api/admin/app-feedback', adminAppFeedbackRoutes);
     app.use('/api/admin/system', adminSystemRoutes);
     app.use('/api/admin/analytics', adminAnalyticsRoutes);
+    app.use('/api/admin/social-posts', adminSocialRoutes);
+    app.use('/api/admin/queues', adminQueuesRoutes);
 }
 
 // ============================================================================
@@ -372,3 +377,5 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 export default app;
+ 
+ 

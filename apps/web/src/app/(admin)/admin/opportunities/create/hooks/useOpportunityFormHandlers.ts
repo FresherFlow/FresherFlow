@@ -57,10 +57,10 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
 
         try {
             const data = (isEditMode && opportunityId)
-                ? await adminApi.updateOpportunity(opportunityId, payload) as { opportunity: Opportunity }
-                : await adminApi.createOpportunity(payload) as { opportunity: Opportunity };
+                ? await adminApi.updateOpportunity(opportunityId, payload) as { opportunity: Opportunity; message?: string }
+                : await adminApi.createOpportunity(payload) as { opportunity: Opportunity; message?: string };
 
-            toast.success(isEditMode ? 'Listing updated successfully.' : 'New listing published!', { id: toastId });
+            toast.success(data.message || (isEditMode ? 'Listing updated successfully.' : 'New listing published!'), { id: toastId });
             
             const opp = data.opportunity;
             form.setPublishedListing({

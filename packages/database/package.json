@@ -11,6 +11,8 @@
                     "lint":  "eslint ."
                 },
     "dependencies":  {
+                         "@fresherflow/config":  "*",
+                         "@fresherflow/logger":  "*",
                          "@prisma/client":  "^6.2.0"
                      },
     "devDependencies":  {

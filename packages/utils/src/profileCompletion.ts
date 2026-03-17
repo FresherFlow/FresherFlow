@@ -1,49 +1,57 @@
 import { Profile } from '@fresherflow/types';
 
-export function calculateCompletion(profile: Profile): number {
+export interface CompletionDetails {
+    percentage: number;
+    missingFields: string[];
+}
+
+export function getProfileCompletionDetails(profile: Profile): CompletionDetails {
     let completion = 0;
+    const missingFields: string[] = [];
 
-    // Education Details (40% weight total)
     // Part 1: Graduation/Degree (25%)
-    const gradComplete =
-        profile.educationLevel &&
-        profile.gradCourse &&
-        profile.gradSpecialization &&
-        profile.gradYear;
-
-    if (gradComplete) {
+    const hasGrad = profile.gradCourse && profile.gradSpecialization && profile.gradYear;
+    if (hasGrad) {
         completion += 25;
+    } else {
+        missingFields.push('graduationDetails');
     }
 
     // Part 2: Secondary Education (15%)
-    const secondaryComplete =
-        profile.tenthYear &&
-        profile.twelfthYear;
-
-    if (secondaryComplete) {
+    const hasSecondary = profile.tenthYear && profile.twelfthYear;
+    if (hasSecondary) {
         completion += 15;
+    } else {
+        missingFields.push('schoolingDetails');
     }
 
     // Opportunity Preferences (40% weight)
-    const preferencesComplete =
-        profile.interestedIn.length > 0 &&
-        profile.preferredCities.length > 0 &&
-        profile.workModes && profile.workModes.length > 0;
+    const hasPrefs = (profile.interestedIn?.length || 0) > 0 &&
+        (profile.preferredCities?.length || 0) > 0 &&
+        (profile.workModes?.length || 0) > 0;
 
-    if (preferencesComplete) {
+    if (hasPrefs) {
         completion += 40;
+    } else {
+        missingFields.push('preferences');
     }
 
     // Readiness Status (20% weight)
-    const readinessComplete =
-        profile.availability &&
-        profile.skills.length > 0;
-
-    if (readinessComplete) {
+    const hasReadiness = (profile.availability) && (profile.skills?.length || 0) > 0;
+    if (hasReadiness) {
         completion += 20;
+    } else {
+        missingFields.push('readiness');
     }
 
-    return completion;
+    return {
+        percentage: completion,
+        missingFields
+    };
+}
+
+export function calculateCompletion(profile: Profile): number {
+    return getProfileCompletionDetails(profile).percentage;
 }
 
 // Validation helpers

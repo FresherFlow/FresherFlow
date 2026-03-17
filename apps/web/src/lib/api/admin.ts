@@ -163,6 +163,21 @@ export const adminApi = {
             method: 'POST'
         }),
 
+    // Social Posts (X, LinkedIn, Facebook)
+    getSocialPosts: (filters?: { platform?: string; status?: string; page?: number }) => {
+        const query = new URLSearchParams();
+        if (filters?.platform) query.append('platform', filters.platform);
+        if (filters?.status) query.append('status', filters.status);
+        if (filters?.page !== undefined) query.append('page', String(filters.page));
+        const queryString = query.toString();
+        return apiClient(`/api/admin/social-posts${queryString ? `?${queryString}` : ''}`);
+    },
+
+    retrySocialPost: (id: string) =>
+        apiClient(`/api/admin/social-posts/${id}/retry`, {
+            method: 'POST'
+        }),
+
     // Parse job description text
     parseJobText: (text: string) =>
         apiClient('/api/admin/opportunities/parse', {

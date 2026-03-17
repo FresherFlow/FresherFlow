@@ -9,6 +9,7 @@
                     "lint":  "eslint ."
                 },
     "dependencies":  {
+                         "@fresherflow/config":  "*",
                          "ioredis":  "^5.5.0"
                      },
     "devDependencies":  {

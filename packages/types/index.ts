@@ -89,6 +89,20 @@ export enum LinkHealth {
     RETRYING = 'RETRYING'
 }
 
+export enum SocialPlatform {
+    X = 'X',
+    LINKEDIN = 'LINKEDIN',
+    FACEBOOK = 'FACEBOOK'
+}
+
+export enum SocialPostStatus {
+    PENDING = 'PENDING',
+    PUBLISHED = 'PUBLISHED',
+    FAILED = 'FAILED',
+    DISABLED = 'DISABLED',
+    DRY_RUN = 'DRY_RUN'
+}
+
 // ========================================
 // CORE ENTITY TYPES
 // ========================================
@@ -214,6 +228,27 @@ export interface Opportunity {
     // Walk-in Details (only if type === WALKIN)
     walkInDetails?: WalkInDetails;
     events?: OpportunityEvent[];
+    socialPosts?: SocialPost[];
+}
+
+export interface SocialPost {
+    id: string;
+    opportunityId: string;
+    platform: SocialPlatform;
+    status: SocialPostStatus;
+    externalPostId?: string | null;
+    errorMessage?: string | null;
+    publishedAt?: Date | string | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    retryCount: number;
+    dedupeKey: string;
+    opportunity?: {
+        id: string;
+        title: string;
+        company: string;
+    } | null;
+    payload?: unknown;
 }
 
 export interface OpportunityEvent {

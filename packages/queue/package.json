@@ -1,31 +1,34 @@
 {
-    "name":  "@fresherflow/queue",
-    "version":  "1.0.0",
-    "private":  true,
-    "main":  "./dist/index.js",
-    "types":  "./dist/index.d.ts",
-    "scripts":  {
-                    "build":  "tsc",
-                    "lint":  "eslint ."
-                },
-    "dependencies":  {
-                         "bullmq":  "^5.41.6",
-                         "ioredis":  "^5.5.0",
-                         "resend":  "^6.9.1",
-                         "web-push":  "^3.6.7",
-                         "axios":  "^1.7.9",
-                         "@fresherflow/redis":  "*",
-                         "@fresherflow/search":  "*",
-                         "@fresherflow/database":  "*",
-                         "@fresherflow/logger":  "*"
-                     },
-    "devDependencies":  {
-                            "typescript":  "^5.7.3",
-                            "@types/node":  "^22.10.5",
-                            "@types/web-push":  "^3.6.4",
-                            "eslint":  "^9.10.0",
-                            "typescript-eslint":  "^8.5.0",
-                            "eslint-config-prettier":  "^9.1.0"
-                        }
+    "name": "@fresherflow/queue",
+    "version": "1.0.0",
+    "private": true,
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "lint": "eslint ."
+    },
+    "dependencies": {
+        "@fresherflow/config": "*",
+        "@fresherflow/database": "*",
+        "@fresherflow/logger": "*",
+        "@fresherflow/redis": "*",
+        "@fresherflow/schemas": "*",
+        "@fresherflow/search": "*",
+        "@fresherflow/types": "*",
+        "axios": "^1.7.9",
+        "bullmq": "^5.41.6",
+        "ioredis": "^5.5.0",
+        "resend": "^6.9.1",
+        "twitter-api-v2": "^1.29.0",
+        "web-push": "^3.6.7"
+    },
+    "devDependencies": {
+        "@types/node": "^22.10.5",
+        "@types/web-push": "^3.6.4",
+        "eslint": "^9.10.0",
+        "eslint-config-prettier": "^9.1.0",
+        "typescript": "^5.7.3",
+        "typescript-eslint": "^8.5.0"
+    }
 }
-

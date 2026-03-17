@@ -13,7 +13,7 @@ import { clearAdminMetricsCache, getAdminMetricsV2, MetricsWindow } from '../../
 const router = Router();
 
 // --- Shared helpers ---
-const METRICS_WINDOWS: MetricsWindow[] = ['24h', '7d', '30d'];
+const METRICS_WINDOWS: MetricsWindow[] = ['24h', '7d', '14d', '30d'];
 const GROWTH_WINDOWS: GrowthWindow[] = ['24h', '7d', '30d', 'all'];
 
 function parseMetricsWindow(raw: unknown, defaultWindow: MetricsWindow = '30d'): MetricsWindow {

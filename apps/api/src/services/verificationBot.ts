@@ -125,15 +125,22 @@ export async function runLinkVerification() {
             }
 
             if (checkResult === 'SOFT_FAIL') {
-                // Keep retrying for protected/rate-limited links without adding hard failures.
+                // Increment failures but don't archive immediately.
+                // This prevents infinite retries for protected (403) or rate-limited (429) links.
+                const newFailures = opp.verificationFailures + 1;
+                const shouldArchive = newFailures >= MAX_FAILURES + 2; // Allow more grace for soft fails
+                
                 softFailures++;
                 await prisma.opportunity.update({
                     where: { id: opp.id },
                     data: {
-                        linkHealth: LinkHealth.RETRYING,
-                        lastVerifiedAt: new Date()
+                        linkHealth: shouldArchive ? LinkHealth.BROKEN : LinkHealth.RETRYING,
+                        verificationFailures: newFailures,
+                        lastVerifiedAt: new Date(),
+                        ...(shouldArchive ? { status: OpportunityStatus.ARCHIVED } : {})
                     }
                 });
+                logger.info(`Verification Bot: soft fail (e.g. 403/429) for "${opp.title}". failures=${newFailures}${shouldArchive ? ' [ARCHIVING]' : ''}`);
                 continue;
             }
 

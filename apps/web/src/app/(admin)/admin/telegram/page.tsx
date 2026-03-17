@@ -1,17 +1,18 @@
 import TelegramBroadcastPanel from "@/components/admin/TelegramBroadcastPanel";
+import SocialBroadcastPanel from "@/components/admin/SocialBroadcastPanel";
 
 export const metadata = {
-    title: "Telegram | FresherFlow Admin",
-    description: "Monitor Telegram channel broadcasts and retry failed posts."
+    title: "Broadcasts | FresherFlow Admin",
+    description: "Monitor Telegram and social channel posts, and retry failed posts."
 };
 
 export default function AdminTelegramPage() {
     return (
         <div className="space-y-6">
             <div className="space-y-1">
-                <h1 className="text-3xl font-bold tracking-tight">Telegram</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Channel Broadcasts</h1>
                 <p className="text-muted-foreground">
-                    Channel posting status, failures, and retry controls.
+                    Telegram and Social channel posting status, failures, and retry controls.
                 </p>
             </div>
 
@@ -22,6 +23,9 @@ export default function AdminTelegramPage() {
             </div>
 
             <TelegramBroadcastPanel />
+            <div className="pt-6 border-t">
+                <SocialBroadcastPanel />
+            </div>
         </div>
     );
 }

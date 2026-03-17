@@ -1,3 +1,5 @@
+import { OpportunityType } from '@fresherflow/types';
+
 export type SharePlatform = 'telegram' | 'linkedin' | 'x' | 'instagram' | 'facebook' | 'other';
 
 const PLATFORM_MEDIUM: Record<SharePlatform, string> = {
@@ -13,6 +15,7 @@ type BuildSocialOpportunityUrlArgs = {
     frontendOrigin: string;
     slug: string;
     platform: SharePlatform;
+    type?: OpportunityType;
     campaign?: string;
     source?: string;
     ref?: string;
@@ -22,11 +25,18 @@ export function buildSocialOpportunityUrl({
     frontendOrigin,
     slug,
     platform,
+    type,
     campaign = 'job_share',
     source = 'opportunity_share',
     ref = 'social',
 }: BuildSocialOpportunityUrlArgs) {
-    const url = new URL(`/opportunities/${slug}`, frontendOrigin);
+    let path = `/opportunities/${slug}`;
+    
+    if (type === OpportunityType.JOB) path = `/jobs/${slug}`;
+    else if (type === OpportunityType.INTERNSHIP) path = `/internships/${slug}`;
+    else if (type === OpportunityType.WALKIN) path = `/walk-ins/details/${slug}`;
+
+    const url = new URL(path, frontendOrigin);
     url.searchParams.set('ref', ref);
     url.searchParams.set('source', source);
     url.searchParams.set('utm_source', platform);

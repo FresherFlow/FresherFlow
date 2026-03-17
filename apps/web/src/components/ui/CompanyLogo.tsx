@@ -34,7 +34,7 @@ interface CompanyLogoProps {
     priority?: boolean;
 }
 
-export default function CompanyLogo({ companyName, companyWebsite, companyLogoUrl, className, priority = false }: CompanyLogoProps) {
+export default function CompanyLogo({ companyName, companyWebsite, companyLogoUrl, applyLink, className, priority = false }: CompanyLogoProps) {
     const [imgError, setImgError] = useState(false);
     const normalizedCompanyName = (companyName || '').toLowerCase();
     const isTcsBrand = normalizedCompanyName.includes('tata consultancy services') || normalizedCompanyName.includes(' tcs') || normalizedCompanyName === 'tcs';
@@ -71,7 +71,9 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         : undefined;
 
     const websiteDomain = companyWebsite ? getDomainFromUrl(companyWebsite) : null;
+    const applyDomain = applyLink ? getDomainFromUrl(applyLink) : null;
     const normalizedWebsiteDomain = websiteDomain ? getRootDomain(websiteDomain) : null;
+    const normalizedApplyDomain = applyDomain ? getRootDomain(applyDomain) : null;
 
     const [attemptIndex, setAttemptIndex] = useState(0);
 
@@ -89,6 +91,9 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
     // and will cause DuckDuckGo to return its generic globe icon instead of a real logo.
     if (normalizedWebsiteDomain) {
         addLogoProvider(normalizedWebsiteDomain);
+    }
+    if (normalizedApplyDomain) {
+        addLogoProvider(normalizedApplyDomain);
     }
     if (knownDomain) {
         addLogoProvider(knownDomain);

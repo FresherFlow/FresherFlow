@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
 import prisma from '../../lib/prisma';
 import { createRateLimiter } from '../../middleware/rateLimit';
+import TelegramService from '../../services/telegram.service';
 
 const router = express.Router();
 
@@ -46,6 +47,9 @@ router.post('/submit-job-link', submitLimiter, async (req: Request, res: Respons
                 rawPayload: { url, source, submittedAt: new Date().toISOString() }
             }
         });
+
+        // Notify Admin instantly via Telegram
+        void TelegramService.notifyJobSubmission(url, source);
 
         res.status(201).json({ success: true, message: 'Thank you for your submission!' });
     } catch (e) {

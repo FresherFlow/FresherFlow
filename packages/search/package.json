@@ -10,7 +10,8 @@
                 },
     "dependencies":  {
                          "@fresherflow/database":  "*",
-                         "@fresherflow/logger":  "*"
+                         "@fresherflow/logger":  "*",
+                         "@fresherflow/types":  "*"
                      },
     "devDependencies":  {
                             "@types/node":  "^20.10.6",

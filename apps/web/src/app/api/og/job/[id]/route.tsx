@@ -213,15 +213,15 @@ const formatSalary = (opportunity: OpportunityDto) => {
   const max = opportunity.salaryMax;
   if (min == null && max == null) return "Not disclosed";
   const monthly = opportunity.salaryPeriod === "MONTHLY";
-  const suffix = monthly ? "/mo" : " LPA";
+  const suffix = monthly ? "k/month" : " LPA";
   const toDisplay = (v: number) =>
-    monthly ? v.toLocaleString("en-IN") : (Math.floor(v / 10000) / 10).toString().replace(/\.0$/, "");
+    monthly ? (Math.round(v / 1000).toString()) : (Math.floor(v / 10000) / 10).toString().replace(/\.0$/, "");
   if (min != null && max != null) {
-    if (min === max) return `INR ${toDisplay(min)}${suffix}`;
-    return `INR ${toDisplay(min)}-${toDisplay(max)}${suffix}`;
+    if (min === max) return `${toDisplay(min)}${suffix}`;
+    return `${toDisplay(min)}-${toDisplay(max)}${suffix}`;
   }
-  if (min != null) return `INR ${toDisplay(min)}${suffix}`;
-  return `Up to INR ${toDisplay(max as number)}${suffix}`;
+  if (min != null) return `${toDisplay(min)}${suffix}`;
+  return `Up to ${toDisplay(max as number)}${suffix}`;
 };
 
 const getCompactDriveSalary = (opportunity: OpportunityDto, driveMode: boolean) => {

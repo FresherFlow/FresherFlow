@@ -2,6 +2,7 @@
  * Normalization functions — convert raw strings into typed, structured values.
  */
 import { NormalizedSalary } from './types';
+import { SalaryPeriod } from '@fresherflow/types';
 import { MONTH_INDEX } from './heuristics';
 
 // ── Date / datetime helpers ───────────────────────────────────────────────────
@@ -38,30 +39,36 @@ function parseDayMonth(input: string): Date | null {
  */
 export function normalizeSalary(text: string): NormalizedSalary {
     const textLower = text.toLowerCase();
-    const period: 'MONTHLY' | 'YEARLY' =
+    const period: SalaryPeriod =
         textLower.includes('per month') || textLower.includes('/ month') ||
         textLower.includes('monthly') || /\bpm\b/.test(textLower)
-            ? 'MONTHLY'
-            : 'YEARLY';
+            ? SalaryPeriod.MONTHLY
+            : SalaryPeriod.YEARLY;
 
     const lpaMatch = text.match(/([\d.]+)\s*(?:-|to)\s*([\d.]+)\s*(?:Lac|Lacs|LPA|L\.?P\.?A\.?|P\.A\.)/i);
     if (lpaMatch) {
         const min = parseFloat(lpaMatch[1]);
         const max = parseFloat(lpaMatch[2]);
-        return { min, max, period: 'YEARLY', range: `${min}-${max} LPA` };
+        return { min, max, period: SalaryPeriod.YEARLY, range: `${min}-${max} LPA` };
     }
 
     const singleLpaMatch = text.match(/([\d.]+)\s*(?:Lac|Lacs|LPA|L\.?P\.?A\.?)/i);
     if (singleLpaMatch) {
         const val = parseFloat(singleLpaMatch[1]);
-        return { min: val, period: 'YEARLY', range: `${val} LPA` };
+        return { min: val, period: SalaryPeriod.YEARLY, range: `${val} LPA` };
     }
 
     const monthlyMatch = text.match(/(?:₹|Rs\.?\s*)?(\d[\d,]+)(?:k)?\s*(?:\/\s*month|per\s*month|pm\b)/i);
     if (monthlyMatch) {
         const raw = monthlyMatch[1].replace(/,/g, '');
-        const val = parseInt(raw) * (monthlyMatch[0].toLowerCase().includes('k') ? 1000 : 1);
-        return { min: val, period: 'MONTHLY', range: `₹${(val / 1000).toFixed(0)}k/month` };
+        const isK = monthlyMatch[0].toLowerCase().includes('k');
+        const val = parseInt(raw) * (isK ? 1000 : 1);
+        const kVal = val / 1000;
+        return { 
+            min: val, 
+            period: SalaryPeriod.MONTHLY, 
+            range: `${Number.isInteger(kVal) ? kVal.toFixed(0) : kVal.toFixed(1)}k/month` 
+        };
     }
 
     return { period };

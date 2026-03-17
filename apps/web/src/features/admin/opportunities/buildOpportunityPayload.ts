@@ -53,7 +53,8 @@ const formatSalaryRange = (amount: string, period: SalaryPeriod) => {
     const raw = parseFloat(String(amount).replace(/[^0-9.]/g, ''));
     if (!raw || Number.isNaN(raw)) return '';
     if (period === 'YEARLY') return `${raw} LPA`;
-    return `Rs ${raw.toLocaleString('en-IN')}/mo`;
+    const kVal = raw / 1000;
+    return `${Number.isInteger(kVal) ? kVal.toFixed(0) : kVal.toFixed(1)}k/month`;
 };
 
 export function buildOpportunityPayload(input: BuildOpportunityPayloadInput): Record<string, unknown> {

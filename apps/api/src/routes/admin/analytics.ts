@@ -10,6 +10,12 @@ interface ActivitySignal {
     createdAt: Date;
 }
 
+function parseDays(raw: unknown, fallback = 30): number {
+    const value = Number(raw);
+    if (!Number.isFinite(value)) return fallback;
+    return Math.min(Math.max(Math.round(value), 1), 90);
+}
+
 
 /**
  * GET /api/admin/analytics/overview
@@ -17,11 +23,12 @@ interface ActivitySignal {
  */
 router.get('/overview', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
+        const days = parseDays(req.query.days, 30);
         const now = new Date();
-        const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const windowStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+        const previousWindowStart = new Date(now.getTime() - days * 2 * 24 * 60 * 60 * 1000);
+        const previousWindowEnd = windowStart;
         const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-        const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
 
         // 1. Link Health Distribution
         const linkHealthStats = await prisma.opportunity.groupBy({
@@ -68,13 +75,13 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
         const recentApplications = await prisma.userAction.count({
             where: {
                 actionType: 'APPLIED',
-                createdAt: { gte: thirtyDaysAgo }
+                createdAt: { gte: windowStart }
             }
         });
 
         const recentUsers = await prisma.user.count({
             where: {
-                createdAt: { gte: thirtyDaysAgo }
+                createdAt: { gte: windowStart }
             }
         });
 
@@ -90,7 +97,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
         // 5. Recent Bookmarks (Last 7 days)
         const recentBookmarks = await prisma.savedOpportunity.count({
             where: {
-                createdAt: { gte: sevenDaysAgo }
+                createdAt: { gte: windowStart }
             }
         });
 
@@ -99,7 +106,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
             by: ['reason'],
             _count: true,
             where: {
-                createdAt: { gte: thirtyDaysAgo }
+                createdAt: { gte: windowStart }
             }
         });
 
@@ -126,7 +133,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
             by: ['event'],
             _count: true,
             where: {
-                createdAt: { gte: thirtyDaysAgo }
+                createdAt: { gte: windowStart }
             }
         });
 
@@ -137,7 +144,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
 
         // 9. Apply click quality metrics (exclude internal/test traffic)
         const clickWhere = {
-            createdAt: { gte: thirtyDaysAgo },
+            createdAt: { gte: windowStart },
             isInternal: false
         } as const;
 
@@ -177,19 +184,19 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
             channelSources30d
         ] = await Promise.all([
             prisma.userAction.findMany({
-                where: { createdAt: { gte: fourteenDaysAgo } },
+                where: { createdAt: { gte: windowStart } },
                 select: { userId: true, createdAt: true }
             }),
             prisma.savedOpportunity.findMany({
-                where: { createdAt: { gte: fourteenDaysAgo } },
+                where: { createdAt: { gte: windowStart } },
                 select: { userId: true, createdAt: true }
             }),
             prisma.opportunityClick.findMany({
-                where: { createdAt: { gte: fourteenDaysAgo }, userId: { not: null } },
+                where: { createdAt: { gte: windowStart }, userId: { not: null } },
                 select: { userId: true, createdAt: true }
             }),
             prisma.alertDelivery.findMany({
-                where: { sentAt: { gte: fourteenDaysAgo } },
+                where: { sentAt: { gte: windowStart } },
                 select: { userId: true, sentAt: true }
             }),
             prisma.opportunityClick.groupBy({
@@ -215,12 +222,12 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
         );
         const activeUsers7d = new Set(
             activitySignals
-                .filter((item) => item.createdAt >= sevenDaysAgo)
+                .filter((item) => item.createdAt >= windowStart)
                 .map((item) => item.userId)
         );
         const previous7dUsers = new Set(
             activitySignals
-                .filter((item) => item.createdAt >= fourteenDaysAgo && item.createdAt < sevenDaysAgo)
+                .filter((item) => item.createdAt >= previousWindowStart && item.createdAt < previousWindowEnd)
                 .map((item) => item.userId)
         );
         const returningUsers7d = new Set(
@@ -267,6 +274,7 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
         }));
 
         res.json({
+            windowDays: days,
             linkHealth: healthDistribution,
             opportunityStatus: statusDistribution,
             activity: {

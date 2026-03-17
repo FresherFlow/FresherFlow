@@ -12,6 +12,7 @@ import { TypeSelection } from './OpportunityForm/sections/TypeSelection';
 import { JobInfoSection } from './OpportunityForm/sections/JobInfoSection';
 import { LogisticsSection } from './OpportunityForm/sections/LogisticsSection';
 import { EligibilitySection } from './OpportunityForm/sections/EligibilitySection';
+import { SocialStatusSection } from './OpportunityForm/sections/SocialStatusSection';
 import { SalarySection } from './OpportunityForm/sections/SalarySection';
 import { ApplyLinkSection } from './OpportunityForm/sections/ApplyLinkSection';
 import { ExpirationSection } from './OpportunityForm/sections/ExpirationSection';
@@ -84,6 +85,15 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                         company={form.publishedListing.company} 
                         onCopyCaption={handleCopyCaption as (text: string) => void}
                         onCopyFullPack={handleCopyFullPack}
+                    />
+                </div>
+            )}
+
+            {isEditMode && form.socialPosts?.length > 0 && (
+                <div className="mb-8 animate-in zoom-in-95 duration-200">
+                    <SocialStatusSection 
+                        socialPosts={form.socialPosts} 
+                        onRefresh={form.fetchOpportunityForEdit} 
                     />
                 </div>
             )}

@@ -1,27 +1,30 @@
 {
-    "name":  "@fresherflow/parser",
-    "version":  "1.0.0",
-    "description":  "Shared job parsing logic for FresherFlow",
-    "main":  "dist/index.js",
-    "types":  "dist/index.d.ts",
-    "files":  [
-                  "dist"
-              ],
-    "scripts":  {
-                    "build":  "tsc",
-                    "dev":  "tsc -w",
-                    "lint":  "eslint ."
-                },
-    "dependencies":  {
-                         "compromise":  "^14.14.5",
-                         "natural":  "^8.1.0",
-                         "country-state-city":  "^3.2.1"
-                     },
-    "devDependencies":  {
-                            "typescript":  "^5.7.3",
-                            "eslint":  "^9.10.0",
-                            "typescript-eslint":  "^8.5.0",
-                            "eslint-config-prettier":  "^9.1.0"
-                        }
+    "name": "@fresherflow/parser",
+    "version": "1.0.0",
+    "description": "Shared job parsing logic for FresherFlow",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsc -w",
+        "lint": "eslint .",
+        "test": "vitest run",
+        "test:watch": "vitest"
+    },
+    "dependencies": {
+        "@fresherflow/types": "*",
+        "compromise": "^14.14.5",
+        "country-state-city": "^3.2.1",
+        "natural": "^8.1.0"
+    },
+    "devDependencies": {
+        "eslint": "^9.10.0",
+        "eslint-config-prettier": "^9.1.0",
+        "typescript": "^5.7.3",
+        "typescript-eslint": "^8.5.0",
+        "vitest": "^4.1.0"
+    }
 }
-

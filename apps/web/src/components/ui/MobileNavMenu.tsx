@@ -46,7 +46,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
         { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppIcon },
         { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramIcon },
         { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInIcon },
-        { href: 'https://twitter.com/Fresherflow', label: 'Twitter', Icon: XIcon },
+        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XIcon },
         { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramIcon },
     ];
 

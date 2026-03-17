@@ -1,4 +1,5 @@
 import Redis from 'ioredis';
+import { env } from '@fresherflow/config';
 
 type MinimalRedisLike = {
     options: {
@@ -19,6 +20,7 @@ type MinimalRedisLike = {
     expire: (key: string, seconds: number) => Promise<0 | 1>;
     pexpire: (key: string, milliseconds: number) => Promise<0 | 1>;
     pttl: (key: string) => Promise<number>;
+    ping: () => Promise<string>;
     quit: () => Promise<'OK'>;
     disconnect: () => void;
 };
@@ -33,6 +35,9 @@ const createTestRedisClient = (): MinimalRedisLike => {
         },
         on() {
             return this;
+        },
+        async ping() {
+            return 'PONG';
         },
         async get(key: string) {
             return store.has(key) ? store.get(key)! : null;
@@ -89,14 +94,14 @@ const createTestRedisClient = (): MinimalRedisLike => {
 };
 
 const redisClientSingleton = () => {
-    if (process.env.NODE_ENV === 'test') {
+    if (env.NODE_ENV === 'test') {
         return createTestRedisClient();
     }
 
-    if (!process.env.REDIS_URL) {
+    if (!env.REDIS_URL) {
         console.warn('[redis] REDIS_URL not set, using localhost:6379');
     }
-    const client = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+    const client = new Redis(env.REDIS_URL || 'redis://localhost:6379', {
         lazyConnect: true,
         enableOfflineQueue: false,
         maxRetriesPerRequest: null,
@@ -104,7 +109,7 @@ const redisClientSingleton = () => {
 
     client.on('error', (err: unknown) => {
         // Suppress connection errors in dev — don't crash the process
-        if (process.env.NODE_ENV !== 'production') {
+        if (env.NODE_ENV !== 'production') {
             const message = err instanceof Error ? err.message : String(err);
             console.warn('[redis] Connection error (dev):', message);
         }
@@ -123,6 +128,6 @@ const redis = globalForRedis.redis ?? redisClientSingleton();
 
 export { redis };
 
-if (process.env.NODE_ENV !== 'production') globalForRedis.redis = redis;
+if (env.NODE_ENV !== 'production') globalForRedis.redis = redis;
 
 export default redis;

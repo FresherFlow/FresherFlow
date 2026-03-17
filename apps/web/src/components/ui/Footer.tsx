@@ -37,7 +37,7 @@ export function Footer({ className }: FooterProps) {
         { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon },
         { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon },
         { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon },
-        { href: 'https://twitter.com/Fresherflow', label: 'X', Icon: XBrandIcon },
+        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon },
         { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon },
         { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon },
     ] as const;

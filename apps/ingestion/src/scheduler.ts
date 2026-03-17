@@ -21,5 +21,7 @@ export function startIngestionScheduler() {
         await pipeline.processGreenhouseBoard('airbnb', 'Airbnb');
         // await pipeline.processGreenhouseBoard('stripe', 'Stripe');
 
+        // 3. Crowdsourced User Submissions
+        await pipeline.processCrowdsourcedLinks();
     });
 }

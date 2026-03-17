@@ -52,7 +52,7 @@ const SOCIAL_LINKS = [
     { href: 'https://t.me/fresherflowin', label: 'Telegram', icon: TelegramBrandIcon },
     { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', icon: WhatsAppBrandIcon },
     { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', icon: LinkedInBrandIcon },
-    { href: 'https://twitter.com/Fresherflow', label: 'Twitter', icon: XBrandIcon },
+    { href: 'https://x.com/Fresherflow', label: 'X', icon: XBrandIcon },
     { href: 'https://instagram.com/fresherflow', label: 'Instagram', icon: InstagramBrandIcon },
     { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', icon: FacebookBrandIcon },
 ] as const;

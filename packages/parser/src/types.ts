@@ -1,3 +1,5 @@
+import { OpportunityType, WorkMode, SalaryPeriod } from '@fresherflow/types';
+
 /** Shared output types for the @fresherflow/parser package. */
 
 export interface ParsedJob {
@@ -5,15 +7,15 @@ export interface ParsedJob {
     title?: string;
     locations: string[];
     skills: string[];
-    type: 'JOB' | 'INTERNSHIP' | 'WALKIN';
+    type: OpportunityType;
     allowedPassoutYears: number[];
     isFresherOnly: boolean;
     allowedDegrees: string[];
     isRemote: boolean;
-    workMode: 'REMOTE' | 'HYBRID' | 'ONSITE';
+    workMode: WorkMode;
     jobFunction?: string;
     incentives?: string;
-    salaryPeriod?: 'MONTHLY' | 'YEARLY';
+    salaryPeriod?: SalaryPeriod;
     salaryMin?: number;
     salaryMax?: number;
     salaryRange?: string;
@@ -30,7 +32,7 @@ export interface ParsedJob {
 export interface NormalizedSalary {
     min?: number;
     max?: number;
-    period: 'MONTHLY' | 'YEARLY';
+    period: SalaryPeriod;
     /** Human-readable e.g. "6-8 LPA" or "₹25k/month" */
     range?: string;
 }

@@ -1,28 +1,26 @@
-import { Queue, ConnectionOptions } from 'bullmq';
+import { Queue, ConnectionOptions, Job } from 'bullmq';
 import type { RedisOptions } from 'ioredis';
 import { redis } from '@fresherflow/redis';
 import { processEmailJob } from './processors/email.processor';
 import { processCronJob } from './processors/cron.processor';
 import { processPushJob } from './processors/push.processor';
 import { processTelegramJob } from './processors/telegram.processor';
+import { processSocialJob } from './processors/social.processor';
 import { processIngestionJob } from './processors/ingestion.processor';
 
+// Reduced queue surfaces to save Redis connections (Redis Connection Fix Plan #5)
 export const QUEUE_NAMES = {
-    email: 'email',
-    cron: 'cron',
-    push: 'push',
-    telegram: 'telegram',
-    ingestion: 'ingestion',
+    notifications: 'notifications', // combines email, push
+    broadcast: 'broadcast',       // combines telegram, social
+    internal: 'internal',         // combines cron, ingestion
 } as const;
 
 export type QueueName = typeof QUEUE_NAMES[keyof typeof QUEUE_NAMES];
 
 export const WORKER_QUEUE_NAMES: QueueName[] = [
-    QUEUE_NAMES.email,
-    QUEUE_NAMES.cron,
-    QUEUE_NAMES.push,
-    QUEUE_NAMES.telegram,
-    QUEUE_NAMES.ingestion,
+    QUEUE_NAMES.notifications,
+    QUEUE_NAMES.broadcast,
+    QUEUE_NAMES.internal,
 ];
 
 const connection: RedisOptions = {
@@ -32,10 +30,6 @@ const connection: RedisOptions = {
     username: redis.options.username,
     tls: redis.options.tls as RedisOptions['tls'],
 };
-
-export async function enqueueIngestionPayload(payload: Record<string, unknown>) {
-    await ingestionQueue.add('ingestion-payload', payload);
-}
 
 export function getQueueConnection(): ConnectionOptions {
     return { ...connection } as ConnectionOptions;
@@ -57,47 +51,85 @@ function createNoopQueue(queueName: string): MinimalQueue {
     };
 }
 
-const createQueue = (queueName: QueueName) =>
-    process.env.NODE_ENV === 'test'
+const queueCache: Partial<Record<QueueName, Queue | MinimalQueue>> = {};
+
+export function getQueue(queueName: QueueName): Queue {
+    if (queueCache[queueName]) {
+        return queueCache[queueName] as Queue;
+    }
+
+    const instance = process.env.NODE_ENV === 'test'
         ? createNoopQueue(queueName)
-        : new Queue(queueName, { connection });
+        : new Queue(queueName, { 
+            connection,
+            defaultJobOptions: {
+                removeOnComplete: true,
+                removeOnFail: 1000,
+            }
+        });
 
-// Queue Definitions
-export const emailQueue = createQueue(QUEUE_NAMES.email);
-export const cronQueue = createQueue(QUEUE_NAMES.cron);
-export const pushQueue = createQueue(QUEUE_NAMES.push);
-export const telegramQueue = createQueue(QUEUE_NAMES.telegram);
+    queueCache[queueName] = instance;
+    return instance as Queue;
+}
 
-export const ingestionQueue = createQueue(QUEUE_NAMES.ingestion);
+/**
+ * COMPATIBILITY PROXIES
+ * These allow producers to keep using emailQueue.add() while the underlying
+ * data is routed to consolidated queues.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const emailQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.notifications).add(n || 'send-email', d, o) };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const pushQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.notifications).add(n || 'send-push', d, o) };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const telegramQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.broadcast).add(n || 'send-telegram', d, o) };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const socialQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.broadcast).add(n || 'process-social-post', d, o) };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const cronQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.internal).add(n || 'cron-task', d, o) };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const ingestionQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.internal).add(n || 'ingestion-payload', d, o) };
+
+export async function enqueueIngestionPayload(payload: Record<string, unknown>) {
+    await ingestionQueue.add('ingestion-payload', payload);
+}
 
 // Export Processors
 export * from './processors/email.processor';
 export * from './processors/cron.processor';
 export * from './processors/push.processor';
 export * from './processors/telegram.processor';
-
 export * from './processors/ingestion.processor';
+export * from './processors/social.processor';
 
+/**
+ * CONSOLIDATED WORKER DISPATCHERS
+ * One worker per connection surface.
+ */
 export const WORKER_DEFINITIONS = [
     {
-        name: QUEUE_NAMES.email,
-        handler: processEmailJob,
+        name: QUEUE_NAMES.notifications,
+        handler: async (job: Job) => {
+            if (job.name === 'send-email') return processEmailJob(job);
+            if (job.name === 'send-push') return processPushJob(job);
+            throw new Error(`[notifications] Unknown job name: ${job.name}`);
+        },
     },
     {
-        name: QUEUE_NAMES.cron,
-        handler: processCronJob,
+        name: QUEUE_NAMES.broadcast,
+        handler: async (job: Job) => {
+            if (job.name === 'send-telegram') return processTelegramJob(job);
+            if (job.name === 'process-social-post') return processSocialJob(job);
+            throw new Error(`[broadcast] Unknown job name: ${job.name}`);
+        },
     },
     {
-        name: QUEUE_NAMES.push,
-        handler: processPushJob,
-    },
-    {
-        name: QUEUE_NAMES.telegram,
-        handler: processTelegramJob,
-    },
-    {
-        name: QUEUE_NAMES.ingestion,
-        handler: processIngestionJob,
+        name: QUEUE_NAMES.internal,
+        handler: async (job: Job) => {
+            if (job.name === 'cron-task') return processCronJob(job);
+            if (job.name === 'ingestion-payload') return processIngestionJob(job);
+            throw new Error(`[internal] Unknown job name: ${job.name}`);
+        },
     },
 ] as const;
 
@@ -106,11 +138,10 @@ export * from './producers/email.producer';
 export * from './producers/cron.producer';
 export * from './producers/push.producer';
 export * from './producers/telegram.producer';
-
 export * from './producers/ingestion.producer';
+export * from './producers/social.producer';
 
 // Job Data Types
-// ... existing generic jobs ...
 export interface EmailJobData {
     to: string;
     subject: string;
@@ -142,4 +173,8 @@ export interface TelegramJobData {
     opportunityId: string;
     dedupeKey: string;
     publicChannel: string;
+}
+
+export interface SocialJobData {
+    socialPostId: string;
 }

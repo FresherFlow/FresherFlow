@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
 import axios from 'axios';
+import { OpportunityType } from '@fresherflow/types';
 import { enqueueTelegramBroadcast } from '@fresherflow/queue';
 import { buildSocialOpportunityUrl } from '../utils/share';
 import { logger } from '@fresherflow/logger';
@@ -162,6 +163,7 @@ class TelegramService {
         walkInsExpired: number;
         staleWarnings: number;
         totalExpired: number;
+        prunedCount?: number;
     }): Promise<void> {
         if (summary.totalExpired === 0 && summary.staleWarnings === 0) return;
         const message = [
@@ -171,6 +173,7 @@ class TelegramService {
             `<b>Jobs/Internships:</b> ${summary.jobsInternshipsExpired}`,
             `<b>Walk-ins:</b> ${summary.walkInsExpired}`,
             `<b>Stale warnings:</b> ${summary.staleWarnings}`,
+            `<b>Items pruned:</b> ${summary.prunedCount ?? 0}`,
             '------------------------',
             '<i>FresherFlow Expiry Cron</i>'
         ].join('\n');
@@ -198,6 +201,18 @@ class TelegramService {
             `<b>ID:</b> ${params.opportunityId}`,
             '------------------------',
             '<i>FresherFlow Feedback</i>'
+        ].join('\n');
+        await this.sendMessage(message);
+    }
+
+    async notifyJobSubmission(url: string, source: string): Promise<void> {
+        const message = [
+            '<b>New Job Link Submitted</b>',
+            '------------------------',
+            `<b>URL:</b> ${url}`,
+            `<b>Source:</b> ${source}`,
+            '------------------------',
+            '<i>Action required: Review in DB (RawOpportunity)</i>'
         ].join('\n');
         await this.sendMessage(message);
     }
@@ -287,6 +302,7 @@ class TelegramService {
         const jobUrl = buildSocialOpportunityUrl({
             frontendOrigin,
             slug,
+            type: type as OpportunityType,
             platform: 'telegram',
         });
         const opportunity = await prisma.opportunity.findUnique({

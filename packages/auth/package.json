@@ -10,7 +10,7 @@
                 },
     "dependencies":  {
                          "jsonwebtoken":  "^9.0.2",
-                         "@fresherflow/config":  "^1.0.0",
+                         "@fresherflow/config":  "*",
                          "@types/jsonwebtoken":  "^9.0.7",
                          "@types/node":  "^20.0.0",
                          "typescript":  "^5.0.0"

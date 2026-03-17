@@ -8,3 +8,4 @@ export { processCronJob } from '@fresherflow/queue';
 export { processPushJob } from '@fresherflow/queue';
 export { processTelegramJob } from '@fresherflow/queue';
 export { processIngestionJob } from '@fresherflow/queue';
+export { processSocialJob } from '@fresherflow/queue';

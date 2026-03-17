@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { adminApi } from '@/lib/api/admin';
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, SocialPost } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import {
     type OpportunityKind,
@@ -46,6 +46,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
     const [timelineEvents, setTimelineEvents] = useState<TimelineEvent[]>([]);
     const [timelineLoading, setTimelineLoading] = useState(false);
     const [timelineBusyId, setTimelineBusyId] = useState<string | null>(null);
+    const [socialPosts, setSocialPosts] = useState<SocialPost[]>([]);
 
     // Timeline event state
     const [newEventType, setNewEventType] = useState<TimelineEvent['eventType']>('NOTIFICATION');
@@ -214,6 +215,10 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
                     setStartDate(new Date(sorted[0]).toISOString().split('T')[0]);
                     setEndDate(new Date(sorted[sorted.length - 1]).toISOString().split('T')[0]);
                 }
+            }
+
+            if (opp.socialPosts) {
+                setSocialPosts(opp.socialPosts);
             }
         } catch (err: unknown) {
             toast.error(`Failed to load listing: ${(err as Error).message}`);
@@ -502,6 +507,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         timelineEvents, setTimelineEvents,
         timelineLoading, setTimelineLoading,
         timelineBusyId, setTimelineBusyId,
+        socialPosts, setSocialPosts,
         
         // Handlers
         handleAutoFill,

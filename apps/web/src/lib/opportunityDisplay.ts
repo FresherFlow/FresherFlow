@@ -119,10 +119,14 @@ const sanitizeSalaryToken = (value: string): string =>
 
 const normalizeLpa = (value: number): string => {
     const lpa = Number((value / 100000).toFixed(1));
-    return `₹${Number.isInteger(lpa) ? lpa.toFixed(0) : lpa} LPA`;
+    return `${Number.isInteger(lpa) ? lpa.toFixed(0) : lpa} LPA`;
 };
 
-const normalizeMonthly = (value: number): string => `₹${Math.round(value).toLocaleString('en-IN')}/mo`;
+const normalizeMonthly = (value: number): string => {
+    if (value < 1000) return `${Math.round(value)}/month`;
+    const kVal = value / 1000;
+    return `${Number.isInteger(kVal) ? kVal.toFixed(0) : kVal.toFixed(1)}k/month`;
+};
 
 export const normalizeSalaryInput = (raw?: SalaryPrimitive): string | null => {
     if (raw === null || raw === undefined) return null;
@@ -135,16 +139,37 @@ export const normalizeSalaryInput = (raw?: SalaryPrimitive): string | null => {
     if (!value) return null;
     if (HIDDEN_SALARY_PATTERNS.some((pattern) => pattern.test(value))) return null;
 
+    const lpaRangeMatch = value.match(/(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*(?:lpa|lac|lakh)/i);
+    if (lpaRangeMatch) {
+        return `${lpaRangeMatch[1]}-${lpaRangeMatch[2]} LPA`;
+    }
+
     const lpaMatch = value.match(/(\d+(?:\.\d+)?)\s*(?:lpa|lac|lakh)/i);
     if (lpaMatch) {
         const lpa = Number.parseFloat(lpaMatch[1]);
-        return Number.isNaN(lpa) ? null : `₹${lpa % 1 === 0 ? lpa.toFixed(0) : lpa} LPA`;
+        return Number.isNaN(lpa) ? null : `${lpa % 1 === 0 ? lpa.toFixed(0) : lpa} LPA`;
+    }
+
+    const kRangeMatch = value.match(/(\d+(?:\.\d+)?)(?:k)?\s*(?:-|to)\s*(\d+(?:\.\d+)?)\s*k(?:\s*\/?\s*(?:month|mo|monthly))?/i);
+    if (kRangeMatch) {
+        return `${kRangeMatch[1]}-${kRangeMatch[2]}k/month`;
     }
 
     const kMatch = value.match(/(\d+(?:\.\d+)?)\s*k(?:\s*\/?\s*(?:month|mo|monthly))?/i);
     if (kMatch) {
         const amount = Number.parseFloat(kMatch[1]);
-        return Number.isNaN(amount) ? null : `₹${amount % 1 === 0 ? amount.toFixed(0) : amount}k/mo`;
+        return Number.isNaN(amount) ? null : `${amount % 1 === 0 ? amount.toFixed(0) : amount}k/month`;
+    }
+
+    const numericMatch = value.match(/(\d+(?:\.\d+)?)\s*(?:-|to)\s*(\d+(?:\.\d+)?)/);
+    if (numericMatch) {
+        const min = Number.parseFloat(numericMatch[1]);
+        const max = Number.parseFloat(numericMatch[2]);
+        const monthlyHint = /month|monthly|\/\s*mo|per\s*month/i.test(value);
+        if (monthlyHint) {
+            return `${normalizeMonthly(min).replace('/month', '')}-${normalizeMonthly(max)}`;
+        }
+        return `${normalizeLpa(min).replace(' LPA', '')}-${normalizeLpa(max)}`;
     }
 
     const numeric = Number.parseFloat(value.replace(/[^\d.]/g, ''));
@@ -172,16 +197,19 @@ export const getOpportunityDisplaySalary = (opportunity: Opportunity): string | 
     if (sMin !== null || sMax !== null) {
         const minVal = sMin ?? null;
         const maxVal = sMax ?? null;
-        const formatValue = (value: number) =>
-            salaryPeriod === 'MONTHLY' ? normalizeMonthly(value) : normalizeLpa(value);
 
         if (minVal !== null && maxVal !== null) {
             if (minVal <= 0 && maxVal <= 0 && opportunity.type === 'INTERNSHIP') return 'Unpaid';
-            if (minVal === maxVal) return formatValue(minVal);
-            return `${formatValue(minVal)} - ${formatValue(maxVal)}`;
+            if (minVal === maxVal) return salaryPeriod === 'MONTHLY' ? normalizeMonthly(minVal) : normalizeLpa(minVal);
+
+            if (salaryPeriod === 'MONTHLY') {
+                return `${normalizeMonthly(minVal).replace('/month', '')}-${normalizeMonthly(maxVal)}`;
+            } else {
+                return `${normalizeLpa(minVal).replace(' LPA', '')}-${normalizeLpa(maxVal)}`;
+            }
         }
-        if (minVal !== null) return formatValue(minVal);
-        if (maxVal !== null) return `Up to ${formatValue(maxVal)}`;
+        if (minVal !== null) return salaryPeriod === 'MONTHLY' ? normalizeMonthly(minVal) : normalizeLpa(minVal);
+        if (maxVal !== null) return `Up to ${salaryPeriod === 'MONTHLY' ? normalizeMonthly(maxVal) : normalizeLpa(maxVal)}`;
     }
 
     return null;

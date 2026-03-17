@@ -91,4 +91,59 @@ export class IngestionPipeline {
             logger.error(`Pipeline failed for Greenhouse board ${companyName}:`, error);
         }
     }
+
+    /**
+     * Processes links submitted by users (Crowdsourced).
+     * These are stored in RawOpportunity with status FETCHED.
+     */
+    async processCrowdsourcedLinks() {
+        const { prisma } = await import('@fresherflow/database');
+        const { UrlParserService } = await import('../services/urlParser.service');
+
+        const pending = await prisma.rawOpportunity.findMany({
+            where: {
+                status: 'FETCHED' as any,
+                reasonFlags: { has: 'CROWDSOURCED' }
+            },
+            take: 10
+        });
+
+        if (pending.length === 0) return;
+
+        logger.info(`Processing ${pending.length} crowdsourced links...`);
+
+        for (const raw of pending) {
+            try {
+                if (!raw.sourceLink) continue;
+                const { parsed, meta } = await UrlParserService.parseUrl(raw.sourceLink);
+                if (meta.confidence < 0.4) {
+                    await prisma.rawOpportunity.update({
+                        where: { id: raw.id },
+                        data: { status: 'FAILED' as any, errorMessage: 'Low confidence in parsing' }
+                    });
+                    continue;
+                }
+
+                await enqueueIngestionPayload({
+                    sourceId: raw.sourceId,
+                    rawPayload: { ...parsed, meta },
+                    title: parsed.title || 'Untitled Submission',
+                    company: parsed.company || 'Unknown Company',
+                    sourceLink: raw.sourceLink,
+                    type: parsed.type,
+                });
+
+                await prisma.rawOpportunity.update({
+                    where: { id: raw.id },
+                    data: { status: 'PROCESSED' as any }
+                });
+            } catch (error) {
+                logger.error(`Failed to process crowdsourced link ${raw.sourceLink}:`, error);
+                await prisma.rawOpportunity.update({
+                    where: { id: raw.id },
+                    data: { status: 'FAILED' as any, errorMessage: error instanceof Error ? error.message : String(error) }
+                });
+            }
+        }
+    }
 }

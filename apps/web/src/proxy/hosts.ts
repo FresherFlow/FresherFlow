@@ -5,6 +5,11 @@ import { APP_WEB_HOST, PUBLIC_WEB_HOST, ADMIN_WEB_HOST, USER_LOGIN_HOST, redirec
 export function handleHostRouting(req: NextRequest) {
     const { hostname, pathname, search } = req.nextUrl;
     const normalizedHost = hostname.toLowerCase();
+    const isProd = process.env.NODE_ENV === 'production';
+
+    if (!isProd) {
+        return null;
+    }
 
     // 1. Admin Host handling
     if (normalizedHost === ADMIN_WEB_HOST) {

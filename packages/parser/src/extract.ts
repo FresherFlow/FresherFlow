@@ -2,6 +2,7 @@
  * Field extraction functions.
  * Each function takes raw job text and returns one specific field or group.
  */
+import { OpportunityType, WorkMode } from '@fresherflow/types';
 import nlp from 'compromise';
 import * as natural from 'natural';
 import { City } from 'country-state-city';
@@ -43,10 +44,10 @@ export function extractCompany(text: string): string | undefined {
 
 // ── Opportunity type ──────────────────────────────────────────────────────────
 
-export function extractType(textLower: string): 'JOB' | 'INTERNSHIP' | 'WALKIN' {
-    if (textLower.includes('walkin') || textLower.includes('walk-in') || textLower.includes('venue')) return 'WALKIN';
-    if (textLower.includes('internship') || textLower.includes('stipend')) return 'INTERNSHIP';
-    return 'JOB';
+export function extractType(textLower: string): OpportunityType {
+    if (textLower.includes('walkin') || textLower.includes('walk-in') || textLower.includes('venue')) return OpportunityType.WALKIN;
+    if (textLower.includes('internship') || textLower.includes('stipend')) return OpportunityType.INTERNSHIP;
+    return OpportunityType.JOB;
 }
 
 // ── Locations ─────────────────────────────────────────────────────────────────
@@ -164,10 +165,10 @@ export function extractDegrees(text: string): string[] {
 
 // ── Work mode ─────────────────────────────────────────────────────────────────
 
-export function extractWorkMode(text: string): 'REMOTE' | 'HYBRID' | 'ONSITE' {
-    if (/\b(fully remote|100% remote|remote.?only|work from home|wfh)\b/i.test(text)) return 'REMOTE';
-    if (/\b(hybrid|flexible|remote.?friendly|2.?3 days office|3.?2 days office)\b/i.test(text)) return 'HYBRID';
-    return 'ONSITE';
+export function extractWorkMode(text: string): WorkMode {
+    if (/\b(fully remote|100% remote|remote.?only|work from home|wfh)\b/i.test(text)) return WorkMode.REMOTE;
+    if (/\b(hybrid|flexible|remote.?friendly|2.?3 days office|3.?2 days office)\b/i.test(text)) return WorkMode.HYBRID;
+    return WorkMode.ONSITE;
 }
 
 // ── Experience ────────────────────────────────────────────────────────────────

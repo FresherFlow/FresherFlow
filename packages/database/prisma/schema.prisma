@@ -155,6 +155,20 @@ enum OpportunityEventType {
   OTHER
 }
 
+enum SocialPlatform {
+  X
+  LINKEDIN
+  FACEBOOK
+}
+
+enum SocialPostStatus {
+  PENDING
+  PUBLISHED
+  FAILED
+  DISABLED
+  DRY_RUN
+}
+
 // ============================================================================
 // USER MODELS
 // ============================================================================
@@ -380,6 +394,7 @@ model Opportunity {
   clicks OpportunityClick[]
   rawIngestions RawOpportunity[]
   events OpportunityEvent[]
+  socialPosts SocialPost[]
 
   // Performance Search optimization
   search_vector  Unsupported("tsvector")? @default(dbgenerated("''::tsvector"))
@@ -686,6 +701,27 @@ model TelegramBroadcast {
 
   @@index([opportunityId, status])
   @@index([channel])
+}
+
+model SocialPost {
+  id              String           @id @default(uuid())
+  platform        SocialPlatform
+  opportunityId   String
+  status          SocialPostStatus @default(PENDING)
+  externalPostId  String?
+  dedupeKey       String           @unique
+  errorMessage    String?          @db.Text
+  payload         Json?
+  publishedAt     DateTime?
+  retryCount      Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  opportunity     Opportunity      @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, platform])
+  @@index([status, platform])
+  @@index([createdAt])
 }
 
 model IngestionSource {

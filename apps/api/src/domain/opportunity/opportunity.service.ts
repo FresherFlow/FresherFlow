@@ -279,6 +279,7 @@ export class OpportunityService {
             orderBy: {
                 postedAt: 'desc',
             },
+            take: 200, // SAFETY LIMIT: Prevent memory exhaustion on free tier
         });
 
         // Filter by eligibility

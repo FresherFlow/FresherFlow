@@ -1,10 +1,10 @@
 import prisma from '../lib/prisma';
-import { Prisma } from '@fresherflow/database';
+import { Prisma, RawOpportunityStatus } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { getObservabilityMetrics } from '../middleware/observability';
 import redis from '@fresherflow/redis';
 
-export type MetricsWindow = '24h' | '7d' | '30d';
+export type MetricsWindow = '24h' | '7d' | '14d' | '30d';
 
 const CACHE_KEY_PREFIX = 'admin:metrics:v2:';
 const CACHE_TTL_SECONDS = 300; // 5 minutes
@@ -30,6 +30,7 @@ type MetricsV2Response = {
         deleted: number;
         new24h: number;
         liveWalkins: number;
+        pendingSubmissions: number; // Added for crowdsourced links review
     };
     linkHealth: {
         healthy: number;
@@ -86,6 +87,7 @@ function toWindowStart(window: MetricsWindow): Date {
     const now = Date.now();
     if (window === '24h') return new Date(now - 24 * 60 * 60 * 1000);
     if (window === '7d') return new Date(now - 7 * 24 * 60 * 60 * 1000);
+    if (window === '14d') return new Date(now - 14 * 24 * 60 * 60 * 1000);
     return new Date(now - 30 * 24 * 60 * 60 * 1000);
 }
 
@@ -120,7 +122,7 @@ function toPercent(numerator: number, denominator: number): number {
 }
 
 export async function clearAdminMetricsCache() {
-    const keys = ['24h', '7d', '30d'].map(w => CACHE_KEY_PREFIX + w);
+    const keys = ['24h', '7d', '14d', '30d'].map(w => CACHE_KEY_PREFIX + w);
     await Promise.all(keys.map(k => redis.del(k)));
 }
 
@@ -164,6 +166,7 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
         savedUsers14dCount,
         clickUsers14dCount,
         alertUsers14dCount,
+        pendingSubmissions,
     ] = await Promise.all([
         // Consolidate listing counts
         prisma.opportunity.groupBy({
@@ -251,6 +254,12 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
             by: ['userId'],
             where: { sentAt: { gte: fourteenDaysAgo } },
             _count: true
+        }),
+        prisma.rawOpportunity.count({
+            where: {
+                status: RawOpportunityStatus.FETCHED,
+                reasonFlags: { has: 'CROWDSOURCED' }
+            }
         }),
     ]);
 
@@ -344,6 +353,7 @@ export async function getAdminMetricsV2(window: MetricsWindow): Promise<MetricsV
             deleted,
             new24h,
             liveWalkins,
+            pendingSubmissions,
         },
         linkHealth: {
             ...linkHealth,

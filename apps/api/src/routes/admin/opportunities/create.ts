@@ -8,12 +8,12 @@ import { validate } from '../../../middleware/validate';
 import { opportunitySchema } from '../../../utils/validation';
 import { generateSlug, generateCompanyLogoUrl, normalizeSkills } from '@fresherflow/utils';
 import { normalizeOpportunityLinks } from '../../../utils/opportunityLinks';
-import { invalidatePublicOpportunityCache } from '../../../services/publicOpportunityCache.service';
-import TelegramService from '../../../services/telegram.service';
 import {
     normalizeEducationRequirements, buildWalkInCreate,
-    deriveOpportunityExpiryDate, queueNewJobAlerts,
+    deriveOpportunityExpiryDate,
 } from './_helpers';
+import { handleOpportunityPublished } from '../../../services/publish.service';
+import { Opportunity } from '@fresherflow/types';
 
 const router = Router();
 
@@ -81,12 +81,9 @@ router.post(
                 include: { walkInDetails: true },
             });
 
-            TelegramService.notifyNewJob(opportunity.title, opportunity.company, opportunity.id, true).catch(() => {});
-            TelegramService.broadcastNewOpportunity(opportunity.id, opportunity.title, opportunity.company, opportunity.type, opportunity.locations, opportunity.slug).catch(() => {});
-            queueNewJobAlerts(opportunity.id);
+            await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
 
-            res.status(201).json({ opportunity, message: 'Opportunity created successfully' });
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [opportunity.id, opportunity.slug], purgeFeed: true });
+            res.status(201).json({ opportunity, message: 'Opportunity created successfully. Social posting queued.' });
         } catch (error) {
             next(error);
         }
@@ -175,7 +172,9 @@ router.post(
                 include: { walkInDetails: true },
             });
 
-            TelegramService.notifyNewJob(opportunity.title, opportunity.company, opportunity.id, false).catch(() => {});
+            // Drafts only notify admin privately, no broadcast/alerts/social
+            // But we might want a "draft created" internal notification if we had one.
+            // Keeping it simple for now as it was.
 
             res.status(201).json({ opportunity, message: 'Draft ingested successfully. Review and publish from admin.' });
         } catch (error) {
@@ -246,15 +245,19 @@ router.put(
                 include: { walkInDetails: true },
             });
 
+            let responseMessage = 'Opportunity updated successfully';
             if (existing.status !== OpportunityStatus.PUBLISHED && opportunity.status === OpportunityStatus.PUBLISHED) {
-                queueNewJobAlerts(opportunity.id);
+                await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
+                responseMessage = 'Opportunity published successfully. Social posting queued.';
+            } else if (opportunity.status === OpportunityStatus.PUBLISHED) {
+                // Already published, just update cache and notify update
+                await handleOpportunityPublished(opportunity as unknown as Opportunity, { 
+                    isNew: false, 
+                    oldSlug: existing.slug !== opportunity.slug ? existing.slug : undefined 
+                });
             }
 
-            res.json({ opportunity, message: 'Opportunity updated successfully' });
-            void invalidatePublicOpportunityCache({
-                idsOrSlugs: [existing.id, existing.slug, opportunity.id, opportunity.slug],
-                purgeFeed: true,
-            });
+            res.json({ opportunity, message: responseMessage });
         } catch (error) {
             next(error);
         }
