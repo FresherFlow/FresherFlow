@@ -107,13 +107,21 @@ const redisClientSingleton = () => {
         maxRetriesPerRequest: null,
     });
 
+    client.on('connect', () => {
+        console.log('[redis] connected');
+    });
+
     client.on('error', (err: unknown) => {
-        // Suppress connection errors in dev — don't crash the process
-        if (env.NODE_ENV !== 'production') {
-            const message = err instanceof Error ? err.message : String(err);
+        const message = err instanceof Error ? err.message : String(err);
+        if (env.NODE_ENV === 'production') {
+            console.error('[redis] error:', message);
+        } else {
             console.warn('[redis] Connection error (dev):', message);
         }
     });
+
+    // Trigger connection manually since lazyConnect is true
+    client.connect().catch(() => {});
 
     return client;
 };
