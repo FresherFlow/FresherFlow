@@ -69,6 +69,7 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     let seoTitle = `${role} at ${company} | ${type}`;
     if (batch) seoTitle += ` | ${batch}`;
     seoTitle += ` | ${location}`;
+    seoTitle = seoTitle.length > 65 ? seoTitle.substring(0, 62) + '...' : seoTitle;
 
     const eligibility = opportunity.allowedPassoutYears.length > 0
         ? `${opportunity.allowedPassoutYears.join(', ')} graduates`
@@ -80,7 +81,10 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     const driveInfo = isCampusDrive
         ? ` Registration closes ${driveDates.regEnd ? driveDates.regEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'soon'}.`
         : '';
-    const description = (baseDesc + applyInfo + driveInfo + freshInfo).substring(0, 200);
+    const rawDescription = baseDesc + applyInfo + driveInfo + freshInfo;
+    const description = rawDescription.length > 160 
+        ? rawDescription.substring(0, 157).replace(/\s+\S*$/, '') + '...'
+        : rawDescription;
 
     const canonicalId = opportunity.slug || opportunity.id;
     const canonicalPath = getOpportunityPath(opportunity.type, canonicalId);
@@ -94,10 +98,10 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     return {
         title: seoTitle,
         description,
-        robots: expiry.isExpired ? {
-            index: false,
+        robots: {
+            index: !expiry.pastGrace,
             follow: true,
-        } : undefined,
+        },
         openGraph: {
             title: seoTitle,
             description,
@@ -156,7 +160,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
         '@context': 'https://schema.org',
         '@type': 'JobPosting',
         title: opportunity.title,
-        description: opportunity.description,
+        description: opportunity.description?.replace(/<[^>]+>/g, ''),
         identifier: {
             '@type': 'PropertyValue',
             name: opportunity.company,

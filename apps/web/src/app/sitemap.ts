@@ -59,34 +59,59 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
 
     const firstData = (await firstRes.json()) as SitemapApiResponse;
-    const totalPages = normalizeTotalPages(firstData.totalPages);
+    const MAX_PAGES = 20;
+    const totalPagesCount = normalizeTotalPages(firstData.totalPages);
+    const totalPages = Math.min(totalPagesCount, MAX_PAGES);
     const allItems: SitemapOpportunity[] = Array.isArray(firstData.items) ? [...firstData.items] : [];
 
-    for (let page = 2; page <= totalPages; page += 1) {
-      const res = await fetch(
-        `${apiBase}/api/public/sitemap/opportunities?page=${page}&limit=${limit}`,
-        { next: { revalidate } }
-      );
+    if (totalPagesCount > MAX_PAGES) {
+      console.warn(`Sitemap truncated: ${totalPagesCount} total pages, but only first ${MAX_PAGES} pages are being indexed.`);
+    }
 
-      if (!res.ok) {
-        throw new Error(`Sitemap API failed page=${page} status=${res.status}`);
+    if (totalPages > 1) {
+      const pagePromises = [];
+      for (let page = 2; page <= totalPages; page += 1) {
+        pagePromises.push(
+          fetch(`${apiBase}/api/public/sitemap/opportunities?page=${page}&limit=${limit}`, {
+            next: { revalidate },
+          }).then((res) => {
+            if (!res.ok) throw new Error(`Sitemap API failed page=${page} status=${res.status}`);
+            return res.json() as Promise<SitemapApiResponse>;
+          })
+        );
       }
 
-      const data = (await res.json()) as SitemapApiResponse;
-      if (Array.isArray(data.items)) {
-        allItems.push(...data.items);
+      const BATCH_SIZE = 5;
+      for (let i = 0; i < pagePromises.length; i += BATCH_SIZE) {
+        const batch = pagePromises.slice(i, i + BATCH_SIZE);
+        const results = await Promise.all(batch);
+        for (const data of results) {
+          if (Array.isArray(data.items)) {
+            allItems.push(...data.items);
+          }
+        }
       }
     }
 
-    const opportunityEntries: MetadataRoute.Sitemap = allItems.map((item) => {
+    const seenEntries = new Set<string>();
+    const opportunityEntries: MetadataRoute.Sitemap = [];
+
+    for (const item of allItems) {
       const slugOrId = item.slug ?? item.id;
       const path = `${getPathByType(item.type)}${encodeURIComponent(slugOrId)}`;
+      const url = `${BASE_URL}${path}`;
 
-      return {
-        url: `${BASE_URL}${path}`,
-        lastModified: item.updatedAt ?? item.postedAt,
-      };
-    });
+      if (seenEntries.has(url)) continue;
+      seenEntries.add(url);
+
+      const rawDate = item.updatedAt ?? item.postedAt;
+      const date = rawDate ? new Date(rawDate) : new Date();
+
+      opportunityEntries.push({
+        url,
+        lastModified: Number.isNaN(date.getTime()) ? new Date() : date,
+      });
+    }
 
     return [...staticEntries, ...opportunityEntries];
   } catch (error) {
