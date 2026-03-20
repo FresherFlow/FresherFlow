@@ -2,20 +2,23 @@
     "name": "@fresherflow/parser",
     "version": "1.0.0",
     "description": "Shared job parsing logic for FresherFlow",
+    "type": "module",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "files": [
         "dist"
     ],
     "scripts": {
-        "build": "tsc -p tsconfig.build.json",
+        "build": "tsc && node ../../scripts/fix-esm-imports.mjs dist",
         "dev": "tsc -w",
         "lint": "eslint .",
         "test": "vitest run",
         "test:watch": "vitest"
     },
     "dependencies": {
+        "@fresherflow/domain": "*",
         "@fresherflow/types": "*",
+        "axios": "^1.13.6",
         "compromise": "^14.14.5",
         "country-state-city": "^3.2.1",
         "natural": "^8.1.0"

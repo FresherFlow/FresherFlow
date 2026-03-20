@@ -1,33 +1,7 @@
-import { OpportunityType, WorkMode, SalaryPeriod } from '@fresherflow/types';
+import { SalaryPeriod, ParsedJob } from '@fresherflow/types';
 
 /** Shared output types for the @fresherflow/parser package. */
-
-export interface ParsedJob {
-    company?: string;
-    title?: string;
-    locations: string[];
-    skills: string[];
-    type: OpportunityType;
-    allowedPassoutYears: number[];
-    isFresherOnly: boolean;
-    allowedDegrees: string[];
-    isRemote: boolean;
-    workMode: WorkMode;
-    jobFunction?: string;
-    incentives?: string;
-    salaryPeriod?: SalaryPeriod;
-    salaryMin?: number;
-    salaryMax?: number;
-    salaryRange?: string;
-    experienceMin?: number;
-    experienceMax?: number;
-    dateRange?: string;
-    timeRange?: string;
-    venueLink?: string;
-    venueAddress?: string;
-    expiresAt?: string;
-    description?: string;
-}
+export type { ParsedJob };
 
 export interface NormalizedSalary {
     min?: number;

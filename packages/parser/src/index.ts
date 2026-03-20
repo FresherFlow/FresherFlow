@@ -9,7 +9,7 @@
  */
 
 // Re-export types
-export type { ParsedJob, NormalizedSalary } from './types';
+export type { ParsedJob, NormalizedSalary } from './types.js';
 
 // Re-export individual functions for targeted use
 export {
@@ -25,19 +25,23 @@ export {
     extractIncentives,
     extractJobFunction,
     extractWalkInDetails,
-} from './extract';
+} from './extract.js';
 
-export { normalizeSalary, normalizeExpiry } from './normalize';
+export { parseJobTextLite } from './lite.js';
+
+export { normalizeSalary, normalizeExpiry } from './normalize.js';
+export { UrlParser } from './url-parser.js';
+export type { JobSourceType, UrlParseResult } from './url-parser.js';
 
 // ── parseJobText: the main entry point ───────────────────────────────────────
 
-import { ParsedJob } from './types';
+import { ParsedJob } from './types.js';
 import {
     extractTitle, extractCompany, extractType, extractLocations, extractSkills,
     extractPassoutYears, extractDegrees, extractWorkMode, extractExperience,
     extractIncentives, extractJobFunction, extractWalkInDetails,
-} from './extract';
-import { normalizeSalary, normalizeExpiry } from './normalize';
+} from './extract.js';
+import { normalizeSalary, normalizeExpiry } from './normalize.js';
 
 /**
  * Parse raw job text and return all structured fields.

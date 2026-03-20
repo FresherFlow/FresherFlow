@@ -11,8 +11,16 @@ export const STOP_WORDS = new Set([
     'highlights', 'perks', 'benefits', 'details', 'responsibilities',
     'description', 'carry', 'resume', 'aadhar', 'card', 'mention',
     'coming', 'festive', 'dates', 'saturday', 'sunday', 'monday',
-    'tuesday', 'wednesday', 'thursday', 'friday',
+    'tuesday', 'wednesday', 'thursday', 'friday', 'skip to main content',
+    'join the conversation', 'careers homepage', 'global careers',
 ]);
+
+export const NAV_PATTERNS = [
+    /Skip to Main Content/gi, /JOIN THE CONVERSATION/gi, /Careers Homepage/gi,
+    /Global Careers/gi, /^Apply$/gm, /^Home$/gm, /Who We Are/gi,
+    /Life at .+/gi, /Career Areas/gi, /Join Our Talent Community/gi,
+    /Search Jobs/gi, /View All Jobs/gi, /Back to Search/gi,
+];
 
 export const GENERIC_TITLES = new Set([
     'associate', 'senior', 'junior', 'lead', 'trainee', 'representative',
@@ -20,14 +28,27 @@ export const GENERIC_TITLES = new Set([
 ]);
 
 export const COMMON_SKILLS = [
-    'react', 'node.js', 'aws', 'python', 'java', 'javascript', 'typescript',
-    'sql', 'itil', 'active directory', 'itsm', 'service desk', 'troubleshooting',
+    // Languages
+    'javascript', 'typescript', 'python', 'java', 'c#', 'c++', 'ruby', 'php',
+    'swift', 'kotlin', 'go', 'rust', 'scala', 'r',
+    // Frontend
+    'react', 'angular', 'vue', 'next.js', 'nuxt', 'svelte', 'jquery',
+    'bootstrap', 'tailwind', 'html', 'css', 'sass', 'redux',
+    // Backend
+    'node', 'node.js', 'express', 'django', 'flask', 'fastapi', 'spring', 'asp.net',
+    'laravel', 'rails', '.net',
+    // Databases
+    'sql', 'nosql', 'mongodb', 'postgresql', 'mysql', 'redis', 'cassandra',
+    'dynamodb', 'elasticsearch',
+    // Cloud & DevOps
+    'aws', 'azure', 'gcp', 'docker', 'kubernetes', 'jenkins', 'gitlab',
+    'github', 'ci/cd', 'terraform', 'ansible',
+    // Tools & Misc
+    'git', 'rest', 'graphql', 'kafka', 'rabbitmq', 'oauth', 'jwt',
+    'agile', 'scrum', 'jira', 'selenium', 'jest', 'linux', 'bash',
+    'itil', 'active directory', 'itsm', 'service desk', 'troubleshooting',
     'vpn', 'networking', 'customer support', 'voice process', 'technical support',
-    'service-now', 'o365', 'outlook', 'windows os', 'bmc remedy', 'hpsm',
-    'ca service desk', 'citrix', 'exchange support', 'sccm', 'antivirus',
-    'itil processes', 'docker', 'kubernetes', 'git', 'rest', 'graphql',
-    'mongodb', 'postgresql', 'mysql', 'redis', 'kafka', 'spring', 'django',
-    'flask', 'angular', 'vue', 'next.js',
+    'service-now', 'o365', 'outlook', 'windows os', 'remedy',
 ];
 
 export const COMMON_CITIES = [
