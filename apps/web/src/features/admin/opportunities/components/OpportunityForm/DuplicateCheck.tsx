@@ -6,6 +6,7 @@ interface DuplicateCandidate {
     company: string;
     status: string;
     updatedAt: string;
+    score?: number;
 }
 
 interface DuplicateCheckProps {
@@ -39,7 +40,14 @@ export function DuplicateCheck({ checking, candidates }: DuplicateCheckProps) {
                                     <p className="text-xs font-semibold text-foreground truncate">{dup.title}</p>
                                     <p className="text-[11px] text-muted-foreground truncate">{dup.company}</p>
                                 </div>
-                                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{dup.status}</span>
+                                <div className="shrink-0 text-right">
+                                    {typeof dup.score === 'number' ? (
+                                        <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                                            {Math.round(dup.score * 100)}% match
+                                        </p>
+                                    ) : null}
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{dup.status}</p>
+                                </div>
                             </Link>
                         ))}
                     </div>
