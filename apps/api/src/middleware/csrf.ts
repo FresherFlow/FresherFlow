@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { AppError } from './errorHandler';
+import { logger } from '@fresherflow/logger';
 
 /**
  * CSRF Protection Middleware
@@ -30,9 +31,14 @@ export function csrfGate(req: Request, res: Response, next: NextFunction) {
 
     // 2. Enforce custom header
     const requestedFrom = req.header('X-Requested-From');
-    const expectedValue = 'fresherflow-web';
+    const allowedIdentities = ['fresherflow-web', 'fresherflow-client'];
 
-    if (!requestedFrom || requestedFrom !== expectedValue) {
+    if (!requestedFrom || !allowedIdentities.includes(requestedFrom)) {
+        logger.warn('[CSRF] Forbidden: Missing or invalid X-Requested-From header', { 
+            header: requestedFrom || 'none', 
+            ip: req.ip, 
+            path: req.path 
+        });
         return next(new AppError('CSRF Security Violation: Request must originate from the verified web application.', 403));
     }
 

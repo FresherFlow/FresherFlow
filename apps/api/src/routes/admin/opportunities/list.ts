@@ -1,8 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../../lib/prisma';
+import prisma from '../../../infrastructure/database/prisma';
 import { Prisma } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
-import { OpportunityService } from '../../../domain/opportunity';
+import { searchOpportunities } from '../../../application/opportunity';
 import {
     normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere,
 } from './_helpers';
@@ -68,7 +68,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
         // Full-text search path
         if (keyword) {
-            const searchResults = await OpportunityService.searchOpportunities(keyword, {
+            const searchResults = await searchOpportunities(keyword, {
                 filterType: normalizedType,
                 limit: take,
                 offset: skip,

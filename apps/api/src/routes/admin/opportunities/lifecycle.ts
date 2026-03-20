@@ -1,10 +1,10 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../../lib/prisma';
+import prisma from '../../../infrastructure/database/prisma';
 import { OpportunityStatus } from '@fresherflow/types';
 import { adminRateLimit } from '../../../middleware/adminRateLimit';
 import { withAdminAudit, validateReason } from '../../../middleware/adminAudit';
 import { AppError } from '../../../middleware/errorHandler';
-import { invalidatePublicOpportunityCache } from '../../../services/publicOpportunityCache.service';
+import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
 
 const router = Router();
 

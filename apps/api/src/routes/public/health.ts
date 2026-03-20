@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import prisma from '../../lib/prisma';
+import prisma from '../../infrastructure/database/prisma';
 import { OpportunityStatus } from '@fresherflow/types';
 
 const router = express.Router();

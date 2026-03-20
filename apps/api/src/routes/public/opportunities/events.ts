@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { OpportunityStatus } from '@fresherflow/types';
-import prisma from '../../../lib/prisma';
+import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
 import {
     isLikelyBotTraffic, publicDetailLimiter, publicDetailBotLimiter,

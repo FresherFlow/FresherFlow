@@ -51,7 +51,7 @@ vi.mock('@prisma/client', () => {
     return { PrismaClient };
 });
 
-vi.mock('../lib/prisma', () => ({
+vi.mock('../infrastructure/database/prisma', () => ({
     default: prismaMock,
 }));
 

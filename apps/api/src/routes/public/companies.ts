@@ -1,5 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
-import { CompanyService } from '../../services/company.service';
+import { getCompanyProfile, listCompanies } from '../../application/company/queries';
 import { AppError } from '../../middleware/errorHandler';
 
 const router = express.Router();
@@ -11,7 +11,7 @@ const router = express.Router();
 router.get('/search', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const q = typeof req.query.q === 'string' ? req.query.q : undefined;
-        const companies = await CompanyService.listCompanies(q);
+        const companies = await listCompanies(q);
         res.json({ companies });
     } catch (error) {
         next(error);
@@ -26,7 +26,7 @@ router.get('/:name', async (req: Request, res: Response, next: NextFunction) => 
     try {
         const { name } = req.params;
         if (typeof name !== 'string') return next(new AppError('Invalid company name', 400));
-        const profile = await CompanyService.getCompanyProfile(name);
+        const profile = await getCompanyProfile(name);
 
         if (!profile) {
             return next(new AppError('Company not found', 404));

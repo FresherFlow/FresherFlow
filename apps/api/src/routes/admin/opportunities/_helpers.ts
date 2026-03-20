@@ -1,6 +1,6 @@
 import { Prisma, OpportunityEventType } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
-import { normalizeEducationBuckets } from '@fresherflow/utils';
+import { normalizeEducationBuckets } from '@fresherflow/domain';
 import { AdminOpportunityRequest } from '../../../types/admin';
 
 // ── Type normalisation ────────────────────────────────────────────────────────
@@ -144,7 +144,7 @@ export function toCsvValue(value: unknown): string {
 
 // ── Alert helpers ─────────────────────────────────────────────────────────────
 
-import { sendNewJobAlerts } from '../../../services/notification.service';
+import { sendNewJobAlerts } from '../../../application/notifications/instant';
 import { logger } from '@fresherflow/logger';
 
 export function queueNewJobAlerts(opportunityId: string) {

@@ -1,5 +1,5 @@
-import prisma from '../lib/prisma';
-import { handleOpportunityPublished } from '../services/publish.service';
+import prisma from '../infrastructure/database/prisma';
+import { handleOpportunityPublished } from '../application/opportunity/publish';
 import { Opportunity } from '@fresherflow/types';
 
 async function main() {

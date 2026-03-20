@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '@fresherflow/logger';
-import prisma from '../lib/prisma';
+import prisma from '../infrastructure/database/prisma';
 
 type AdminAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'EXPIRE' | 'BULK_ACTION' | 'EXPORT';
 

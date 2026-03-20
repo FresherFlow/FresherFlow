@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import prisma from '../lib/prisma';
+import prisma from '../infrastructure/database/prisma';
 import { AppError } from './errorHandler';
-import { calculateCompletion } from '@fresherflow/utils';
+import { calculateCompletion } from '@fresherflow/domain';
 import { Profile } from '@fresherflow/types';
 
 /**

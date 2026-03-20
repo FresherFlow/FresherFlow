@@ -1,4 +1,4 @@
-import prisma from '../lib/prisma';
+import prisma from '../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 
 import { z } from 'zod';
@@ -7,7 +7,7 @@ import { validate } from '../middleware/validate';
 import { educationSchema, preferencesSchema, readinessSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
 import { Profile } from '@fresherflow/types';
-import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/utils';
+import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/domain';
 
 const router: Router = express.Router();
 

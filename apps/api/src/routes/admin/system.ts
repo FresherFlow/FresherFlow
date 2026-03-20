@@ -1,14 +1,14 @@
-import prisma from '../../lib/prisma';
+import prisma from '../../infrastructure/database/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
 import { requireAdmin } from '../../middleware/auth';
-import { getVerificationStats, runLinkVerification } from '../../services/verificationBot';
+import { getVerificationStats, runLinkVerification } from '../../infrastructure/services/verificationBot';
 import { getObservabilityMetrics } from '../../middleware/observability';
-import { getGrowthFunnelMetrics, GrowthWindow } from '../../services/growthFunnel.service';
+import { getGrowthFunnelMetrics, GrowthWindow } from '../../application/analytics/growthFunnel';
 import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, TelegramBroadcastStatus } from '@prisma/client';
-import TelegramService from '../../services/telegram.service';
-import { runAlertsCycle } from '../../services/alerts.service';
-import { sendNewJobAlerts } from '../../services/notification.service';
-import { clearAdminMetricsCache, getAdminMetricsV2, MetricsWindow } from '../../services/adminMetrics.service';
+import TelegramService from '../../infrastructure/services/telegram.service';
+import { runAlertsCycle } from '../../application/alerts/cycle';
+import { sendNewJobAlerts } from '../../application/notifications/instant';
+import { getAdminMetricsV2, MetricsWindow, clearAdminMetricsCache } from '../../application/admin/getMetrics';
 
 const router = Router();
 

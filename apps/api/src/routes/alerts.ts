@@ -1,4 +1,4 @@
-import prisma from '../lib/prisma';
+import prisma from '../infrastructure/database/prisma';
 import express, { NextFunction, Request, Response, Router } from 'express';
 import { OpportunityStatus, Profile, Opportunity } from '@fresherflow/types';
 
@@ -6,7 +6,7 @@ import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
 import { validate } from '../middleware/validate';
 import { alertPreferencesSchema, pushSubscriptionSchema } from '../utils/validation';
-import { checkEligibility } from '../domain/eligibility';
+import { checkEligibility } from '@fresherflow/domain';
 
 const router: Router = express.Router();
 const UNREAD_COUNT_CACHE_TTL_MS = 30 * 1000;

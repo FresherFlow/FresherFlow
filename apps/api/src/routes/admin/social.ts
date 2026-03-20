@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { SocialPlatform, SocialPostStatus } from '@prisma/client';
-import { listSocialPosts, retrySocialPost } from '../../services/social/socialPost.service';
+import { listSocialPosts, retrySocialPost } from '../../infrastructure/services/social/socialPost.service';
 
 import { z } from 'zod';
 

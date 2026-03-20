@@ -1,8 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { AppError } from '../../../middleware/errorHandler';
-import { OpportunityService } from '../../../domain/opportunity';
-import prisma from '../../../lib/prisma';
-import { filterAndRankOpportunitiesForUser } from '../../../domain/eligibility';
+import { searchOpportunities } from '../../../application/opportunity';
+import prisma from '../../../infrastructure/database/prisma';
+import { filterAndRankOpportunitiesForUser } from '@fresherflow/domain';
 import { Opportunity, Profile } from '@fresherflow/types';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
@@ -32,7 +32,7 @@ router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response,
         const locations = cityValue ? [cityValue] : undefined;
         const offset = (p - 1) * l;
 
-        const searchResults = await OpportunityService.searchOpportunities(query, {
+        const searchResults = await searchOpportunities(query, {
             filterType,
             limit: l,
             offset,

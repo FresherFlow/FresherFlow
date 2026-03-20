@@ -1,8 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../../lib/prisma';
+import prisma from '../../../infrastructure/database/prisma';
 import { OpportunityStatus } from '@fresherflow/types';
 import { withAdminAudit } from '../../../middleware/adminAudit';
-import { invalidatePublicOpportunityCache } from '../../../services/publicOpportunityCache.service';
+import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
 import { queueNewJobAlerts } from './_helpers';
 
 const router = Router();

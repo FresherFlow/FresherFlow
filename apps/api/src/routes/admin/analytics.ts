@@ -1,4 +1,4 @@
-import prisma from '../../lib/prisma';
+import prisma from '../../infrastructure/database/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
 import { OpportunityStatus } from '@fresherflow/types';
 import { requireAdmin } from '../../middleware/auth';

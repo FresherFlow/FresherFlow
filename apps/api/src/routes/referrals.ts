@@ -1,4 +1,4 @@
-import prisma from '../lib/prisma';
+import prisma from '../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { ReferralBadge } from '@fresherflow/database';
 import { requireAuth } from '../middleware/auth';

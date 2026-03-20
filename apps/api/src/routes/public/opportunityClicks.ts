@@ -1,4 +1,4 @@
-import prisma from '../../lib/prisma';
+import prisma from '../../infrastructure/database/prisma';
 import crypto from 'crypto';
 import express, { NextFunction, Request, Response } from 'express';
 

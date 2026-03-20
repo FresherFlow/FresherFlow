@@ -1,5 +1,5 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../lib/prisma';
+import prisma from '../../infrastructure/database/prisma';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { Prisma } from '@fresherflow/database';
 

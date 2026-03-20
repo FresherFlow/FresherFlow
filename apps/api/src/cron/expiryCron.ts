@@ -2,7 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
-import TelegramService from '../services/telegram.service';
+import TelegramService from '../infrastructure/services/telegram.service';
 
 const prisma = new PrismaClient();
 

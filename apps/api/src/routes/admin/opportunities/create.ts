@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../../lib/prisma';
+import prisma from '../../../infrastructure/database/prisma';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { Prisma } from '@fresherflow/database';
 import { adminRateLimit } from '../../../middleware/adminRateLimit';
@@ -12,7 +12,7 @@ import {
     normalizeEducationRequirements, buildWalkInCreate,
     deriveOpportunityExpiryDate,
 } from './_helpers';
-import { handleOpportunityPublished } from '../../../services/publish.service';
+import { handleOpportunityPublished } from '../../../application/opportunity/publish';
 import { Opportunity } from '@fresherflow/types';
 
 const router = Router();

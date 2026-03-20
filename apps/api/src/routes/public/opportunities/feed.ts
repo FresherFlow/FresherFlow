@@ -4,9 +4,9 @@ import { OpportunityStatus, OpportunityType, Profile, Opportunity } from '@fresh
 import { env } from '@fresherflow/config';
 import { logger } from '@fresherflow/logger';
 import { redis } from '@fresherflow/redis';
-import prisma from '../../../lib/prisma';
+import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
-import { filterAndRankOpportunitiesForUser, rankOpportunitiesForUser } from '../../../domain/eligibility';
+import { filterAndRankOpportunitiesForUser, rankOpportunitiesForUser } from '@fresherflow/domain';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
     GUEST_FEED_LIMIT, MAX_FEED_LIMIT, MAX_FEED_PAGE, GUEST_FEED_CACHE_TTL_SECONDS,

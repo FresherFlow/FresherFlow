@@ -1,11 +1,11 @@
-import prisma from '../lib/prisma';
+import prisma from '../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { feedbackSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
-import TelegramService from '../services/telegram.service';
+import TelegramService from '../infrastructure/services/telegram.service';
 
 const router: Router = express.Router();
 

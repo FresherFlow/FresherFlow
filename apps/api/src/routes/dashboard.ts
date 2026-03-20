@@ -1,10 +1,10 @@
-import prisma from '../lib/prisma';
+import prisma from '../infrastructure/database/prisma';
 import { Router, Request, Response, NextFunction } from 'express';
 import { OpportunityEventType } from '@fresherflow/database';
 import { OpportunityStatus, Profile, Opportunity } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { profileGate } from '../middleware/profileGate';
-import { filterAndRankOpportunitiesForUser } from '../domain/eligibility';
+import { filterAndRankOpportunitiesForUser } from '@fresherflow/domain';
 
 const router = Router();
 
