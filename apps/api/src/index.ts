@@ -12,6 +12,7 @@ import { requestIdMiddleware } from './middleware/requestId';
 import { errorHandler } from './middleware/errorHandler';
 import { env } from '@fresherflow/config';
 import { logger, setupCleanLogging } from '@fresherflow/logger';
+import { ensureDomainHost } from './middleware/ensureDomain';
 // redis not used here
 import { observabilityMiddleware } from './middleware/observability';
 import httpLogger from './middleware/httpLogger';
@@ -303,17 +304,20 @@ if (isUserMode) {
 }
 
 if (isAdminMode) {
-    // Admin routes
-    app.use('/api/admin/auth/totp', adminTotpRoutes);
-    app.use('/api/admin/auth/login', authLimiter);
-    app.use('/api/admin/auth', adminAuthRoutes);
-    app.use('/api/admin/opportunities', adminOpportunitiesRoutes);
-    app.use('/api/admin/feedback', adminFeedbackRoutes);
-    app.use('/api/admin/app-feedback', adminAppFeedbackRoutes);
-    app.use('/api/admin/system', adminSystemRoutes);
-    app.use('/api/admin/analytics', adminAnalyticsRoutes);
-    app.use('/api/admin/social-posts', adminSocialRoutes);
-    app.use('/api/admin/queues', adminQueuesRoutes);
+    // Admin routes - Strictly restricted to admin.ff.in in prod
+    const adminDomain = 'admin.ff.in';
+    const restrictAdmin = ensureDomainHost(adminDomain);
+
+    app.use('/api/admin/auth/totp', restrictAdmin, adminTotpRoutes);
+    app.use('/api/admin/auth/login', authLimiter, restrictAdmin, adminAuthRoutes);
+    app.use('/api/admin/auth', restrictAdmin, adminAuthRoutes);
+    app.use('/api/admin/opportunities', restrictAdmin, adminOpportunitiesRoutes);
+    app.use('/api/admin/feedback', restrictAdmin, adminFeedbackRoutes);
+    app.use('/api/admin/app-feedback', restrictAdmin, adminAppFeedbackRoutes);
+    app.use('/api/admin/system', restrictAdmin, adminSystemRoutes);
+    app.use('/api/admin/analytics', restrictAdmin, adminAnalyticsRoutes);
+    app.use('/api/admin/social-posts', restrictAdmin, adminSocialRoutes);
+    app.use('/api/admin/queues', restrictAdmin, adminQueuesRoutes);
 }
 
 // ============================================================================

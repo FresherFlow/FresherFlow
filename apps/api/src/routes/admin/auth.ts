@@ -1,4 +1,4 @@
-import prisma from '../../lib/prisma';
+import prisma from '../../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 
 import {
@@ -57,8 +57,12 @@ function resolveExpectedOrigins(): string[] {
 const EXPECTED_ORIGINS = resolveExpectedOrigins();
 
 function resolveCookieDomain(): string | undefined {
-    const explicit = process.env.COOKIE_DOMAIN?.trim();
-    if (explicit) return explicit.startsWith('.') ? explicit : `.${explicit}`;
+    let explicit = (process.env.ADMIN_COOKIE_DOMAIN || process.env.COOKIE_DOMAIN)?.trim();
+    if (explicit) {
+        // Sanitize: browser cookies need a hostname, not a URL
+        explicit = explicit.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+        return explicit;
+    }
 
     const frontendUrl = process.env.FRONTEND_URL;
     if (!frontendUrl) return undefined;

@@ -1,4 +1,4 @@
-import prisma from '../lib/prisma';
+import prisma from '../infrastructure/database/prisma';
 import { User } from '@fresherflow/types';
 import express, { Router, Request, Response, NextFunction } from 'express';
 
@@ -13,9 +13,9 @@ import { validate } from '../middleware/validate';
 import { loginSchema, sendOtpSchema, verifyOtpSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
 import { requireAuth } from '../middleware/auth';
-import { AuthService } from '../services/auth.service';
-import { EmailService } from '../services/email.service';
-import { recordAuthSuccess } from '../services/growthFunnel.service';
+import { AuthService } from '../infrastructure/services/auth.service';
+import { EmailService } from '../infrastructure/services/email.service';
+import { recordAuthSuccess } from '../application/analytics/growthFunnel';
 import { createRateLimiter } from '../middleware/rateLimit';
 
 // Rate Limiters
@@ -36,8 +36,13 @@ const authVerifyLimiter = createRateLimiter({
 const router: Router = express.Router();
 
 function resolveCookieDomain(): string | undefined {
-    const explicit = process.env.COOKIE_DOMAIN?.trim();
-    if (explicit) return explicit.startsWith('.') ? explicit : `.${explicit}`;
+    let explicit = (process.env.AUTH_COOKIE_DOMAIN || process.env.COOKIE_DOMAIN)?.trim();
+    if (explicit) {
+        // Sanitize: browser cookies need a hostname, not a URL
+        // Remove protocol and trailing slashes if accidentally provided
+        explicit = explicit.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+        return explicit;
+    }
 
     const frontendUrl = process.env.FRONTEND_URL;
     if (!frontendUrl) return undefined;
@@ -63,6 +68,32 @@ const COOKIE_OPTIONS = {
 
 const ACCESS_TOKEN_MAX_AGE_MS = 15 * 60 * 1000;
 const REFRESH_TOKEN_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+
+function isDatabaseUnavailableError(error: unknown): boolean {
+    if (!(error instanceof Error)) return false;
+
+    const message = error.message || '';
+    return (
+        error.name === 'PrismaClientInitializationError' ||
+        message.includes("Can't reach database server") ||
+        message.includes('Authentication failed against database server') ||
+        message.includes('Invalid `prisma.')
+    );
+}
+
+function toAuthRouteError(
+    error: unknown,
+    fallbackMessage: string,
+    fallbackStatus = 401
+): AppError {
+    if (error instanceof AppError) return error;
+    if (isDatabaseUnavailableError(error)) {
+        return new AppError('Database is temporarily unavailable. Please try again shortly.', 503);
+    }
+
+    const message = error instanceof Error ? error.message : fallbackMessage;
+    return new AppError(message, fallbackStatus);
+}
 
 async function setAuthCookies(user: User, res: Response) {
     const accessToken = generateAccessToken(user.id);
@@ -107,8 +138,7 @@ router.post('/otp/verify', authVerifyLimiter, validate(verifyOtpSchema), async (
             profile: (user as User).profile || null
         });
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'Authentication failed';
-        next(new AppError(message, 401));
+        next(toAuthRouteError(error, 'Authentication failed'));
     }
 });
 
@@ -128,8 +158,7 @@ router.post('/google', authVerifyLimiter, async (req: Request, res: Response, ne
             profile: (user as User).profile || null
         });
     } catch (error) {
-        const message = error instanceof Error ? error.message : 'Google authentication failed';
-        next(new AppError(message, 401));
+        next(toAuthRouteError(error, 'Google authentication failed'));
     }
 });
 
@@ -181,7 +210,7 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
         res.cookie('ff_logged_in', 'true', { ...COOKIE_OPTIONS, httpOnly: false, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
         res.json({ success: true });
     } catch (error) {
-        next(error);
+        next(toAuthRouteError(error, 'Failed to refresh session', 500));
     }
 });
 
