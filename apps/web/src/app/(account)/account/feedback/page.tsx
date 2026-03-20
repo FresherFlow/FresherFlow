@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import { appFeedbackApi } from '@/lib/api/client';
-import LoadingScreen from '@/components/ui/LoadingScreen';
+import { useAuth } from '@/features/auth';
+import { appFeedbackApi } from '@/shared/api/client';
+import LoadingScreen from '@/features/system/components/ui/LoadingScreen';
 import toast from 'react-hot-toast';
 import {
     ArrowLeftIcon,
@@ -166,3 +166,9 @@ export default function FeedbackPage() {
         </div>
     );
 }
+
+
+
+
+
+

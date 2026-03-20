@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { profileApi } from '@/lib/api/client';
-import { validateEducationData } from '@/lib/profileFormValidation';
+import { profileApi } from '@/shared/api/client';
+import { validateEducationData } from '@fresherflow/domain';
 
 export interface ProfileCompleteForm {
     fullName: string;
@@ -129,3 +129,8 @@ export function useProfileCompleteHandlers(
         handleReadinessSubmit
     };
 }
+
+
+
+
+

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { alertsApi } from '@/lib/api/client';
-import { AuthContext } from '@/contexts/AuthContext';
+import { AuthContext } from '@/features/auth';
 import toast from 'react-hot-toast';
 
 const CACHE_KEY = 'ff_unread_count_cache';
@@ -269,3 +269,4 @@ export function useUnreadNotifications() {
 
     return { unreadCount, refresh: () => fetchCount({ force: true }) };
 }
+

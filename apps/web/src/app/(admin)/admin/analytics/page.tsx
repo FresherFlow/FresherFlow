@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState, ReactNode } from 'react';
-import { adminApi } from '@/lib/api/admin';
-import { AdminAnalyticsSkeleton } from '@/components/ui/Skeleton';
+import { adminApi } from '@/shared/api/admin';
+import { AdminAnalyticsSkeleton } from '@/features/system/components/ui/Skeleton';
 
 type MetricsV2 = {
     generatedAt: string;
@@ -126,3 +126,9 @@ function Row({ label, value }: { label: string; value: number }) {
         </div>
     );
 }
+
+
+
+
+
+

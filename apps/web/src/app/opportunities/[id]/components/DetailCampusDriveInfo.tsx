@@ -1,6 +1,6 @@
 // removed unused Opportunity import
 import { Button } from '@/components/ui/Button';
-import { formatLpaValue } from '../detailUtils';
+import { formatLpaValue } from '@fresherflow/domain';
 import { DriveMetadata, DriveSalaryRow } from '@/shared/utils/driveTimeline';
 
 interface DetailCampusDriveInfoProps {

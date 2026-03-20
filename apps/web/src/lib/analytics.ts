@@ -2,7 +2,7 @@
  * Google Analytics Event Tracking
  * 
  * Usage:
- * import { trackEvent } from '@/lib/analytics';
+ * import { trackEvent } from '@/shared/api/analytics';
  * 
  * trackEvent('job_view', { job_id: '123', company: 'Infosys' });
  */
@@ -93,3 +93,4 @@ declare global {
         gtag: (command: string, ...args: unknown[]) => void;
     }
 }
+

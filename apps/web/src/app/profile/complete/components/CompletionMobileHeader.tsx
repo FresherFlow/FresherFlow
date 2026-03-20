@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@repo/ui/utils/cn';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 
 type StepId = 'education' | 'preferences' | 'readiness';
@@ -73,3 +73,9 @@ export const CompletionMobileHeader = ({
         </div>
     );
 };
+
+
+
+
+
+

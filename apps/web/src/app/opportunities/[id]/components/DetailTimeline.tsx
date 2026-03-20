@@ -1,5 +1,5 @@
-import { TimelineEventView } from '../detailUtils';
-import { cn } from '@/lib/utils';
+import { TimelineEventView } from '@fresherflow/domain';
+import { cn } from '@/shared/ui/cn';
 import { useState } from 'react';
 
 interface DetailTimelineProps {

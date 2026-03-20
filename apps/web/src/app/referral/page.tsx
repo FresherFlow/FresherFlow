@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/features/auth';
 import Link from 'next/link';
-import { buildInviteUrl } from '@/lib/share';
+import { buildInviteUrl } from '@fresherflow/domain';
 import { analytics } from '@/lib/analytics';
-import { referralApi } from '@/lib/api/client';
+import { referralApi } from '@/shared/api/client';
 import {
     ClipboardDocumentIcon,
     ShareIcon,
@@ -68,7 +68,7 @@ export default function ReferralPage() {
     if (!user) return null;
 
     const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fresherflow.in';
-    const shortUrl = data ? buildInviteUrl(origin, data.referralCode) : '…';
+    const shortUrl = data ? buildInviteUrl(data.referralCode, { shareBase: origin }) : '…';
 
     const handleCopy = async () => {
         if (!shortUrl || shortUrl === '…') return;
@@ -268,3 +268,9 @@ function ReferralRow({ referral }: { referral: ReferralData['referrals'][0] }) {
         </div>
     );
 }
+
+
+
+
+
+

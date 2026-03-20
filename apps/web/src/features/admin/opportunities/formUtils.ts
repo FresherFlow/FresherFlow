@@ -1,11 +1,11 @@
-import { buildShareUrl, type SharePlatform } from '@/lib/share';
+import { buildShareUrl, type SharePlatform } from '@fresherflow/domain';
 export type { SharePlatform };
 
-import { getOpportunityPath } from '@/lib/opportunityPath';
+import { getOpportunityPath } from '@fresherflow/domain';
 import {
     normalizeCourseName,
     normalizeSpecializationName,
-} from '@/lib/profileConstants';
+} from '@fresherflow/domain';
 
 export type OpportunityKind = 'JOB' | 'INTERNSHIP' | 'WALKIN';
 
@@ -277,3 +277,8 @@ export const normalizeWorkModeValue = (value: unknown): 'ONSITE' | 'HYBRID' | 'R
     if (normalized.includes('REMOTE') || normalized.includes('HOME')) return 'REMOTE';
     return undefined;
 };
+
+
+
+
+

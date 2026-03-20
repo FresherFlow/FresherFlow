@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon, NoSymbolIcon } from '@heroicons/react/24/outline';
-import { adminApi } from '@/lib/api/admin';
+import { adminApi } from '@/shared/api/admin';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
 import { SocialPost } from '@fresherflow/types';
@@ -130,3 +130,9 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
     </div>
   );
 }
+
+
+
+
+
+

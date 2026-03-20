@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/features/auth';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect } from 'react';
 import Link from 'next/link';
@@ -81,4 +81,5 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
     return <>{children}</>;
 }
+
 

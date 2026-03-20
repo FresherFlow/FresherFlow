@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { adminApi } from '@/lib/api/admin';
+import { adminApi } from '@/shared/api/admin';
 import { Opportunity, SocialPost } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import {
@@ -525,3 +525,8 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         newEventSourceLink, setNewEventSourceLink
     };
 }
+
+
+
+
+

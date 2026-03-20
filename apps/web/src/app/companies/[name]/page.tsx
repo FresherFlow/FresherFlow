@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
-import { companiesApi, opportunitiesApi } from '@/lib/api/client';
+import { companiesApi, opportunitiesApi } from '@/shared/api/client';
 import { Opportunity } from '@fresherflow/types';
-import JobCard from '@/features/jobs/components/JobCard';
+import JobCard from '@/features/opportunities/components/JobCard';
 import { SkeletonJobCard } from '@/components/ui/Skeleton';
 import { ArrowLeftIcon, GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';

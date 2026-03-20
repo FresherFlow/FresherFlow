@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, Suspense } from 'react';
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAdmin } from '@/features/admin/AdminContext';
 import { useRouter } from 'next/navigation';
-import { AdminOpportunitiesSkeleton } from '@/components/ui/Skeleton';
+import { AdminOpportunitiesSkeleton } from '@/features/system/components/ui/Skeleton';
 import { getPublicOpportunityHref } from '@/features/admin/opportunities/listUtils';
 
 // Hooks
@@ -153,3 +153,9 @@ function OpportunitiesListPage() {
         </div>
     );
 }
+
+
+
+
+
+

@@ -44,3 +44,8 @@ export default function robots(): MetadataRoute.Robots {
         host: host.replace(/\/+$/, ''),
     };
 }
+
+
+
+
+

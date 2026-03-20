@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { opportunitiesApi, savedApi } from '@/lib/api/client';
+import { opportunitiesApi, savedApi } from '@/shared/api/client';
 import type { Opportunity } from '@fresherflow/types';
 import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
-import JobCard from '@/features/jobs/components/JobCard';
-import { SkeletonJobCard } from '@/components/ui/Skeleton';
-import { Button } from '@/components/ui/Button';
+import JobCard from '@/features/opportunities/components/JobCard';
+import { SkeletonJobCard } from '@/features/system/components/ui/Skeleton';
+import { Button } from '@/features/system/components/ui/Button';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 
 type JobCardOpportunity = Opportunity & { matchScore?: number; matchReason?: string };
@@ -101,3 +101,9 @@ export default function DeadlinesPage() {
         </AuthGate>
     );
 }
+
+
+
+
+
+

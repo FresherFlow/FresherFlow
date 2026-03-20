@@ -1,5 +1,5 @@
 import { useRouter } from 'next/navigation';
-import { adminApi } from '@/lib/api/admin';
+import { adminApi } from '@/shared/api/admin';
 import toast from 'react-hot-toast';
 import { buildOpportunityPayload } from '../../opportunityPayload';
 import { buildAdminSharePack, buildPlatformCaption, type SharePlatform } from '@/features/admin/opportunities/formUtils';
@@ -112,3 +112,8 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
         handleCopyFullPack
     };
 }
+
+
+
+
+

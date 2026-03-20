@@ -1,9 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { Opportunity } from '@fresherflow/types';
-import { SkeletonJobCard } from '@/components/ui/Skeleton';
-import JobCard from '@/features/jobs/components/JobCard';
-import { Button } from '@/components/ui/Button';
+import { SkeletonJobCard } from '@/features/system/components/ui/Skeleton';
+import JobCard from '@/features/opportunities/components/JobCard';
+import { Button } from '@/features/system/components/ui/Button';
 
 interface DashboardFeedProps {
     isLoading: boolean;
@@ -95,3 +95,9 @@ export const DashboardFeed = ({
         </>
     );
 };
+
+
+
+
+
+

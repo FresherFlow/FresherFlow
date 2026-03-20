@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { profileApi } from '@/lib/api/client';
-import { validateEducationData } from '@/lib/profileFormValidation';
+import { profileApi } from '@/shared/api/client';
+import { validateEducationData } from '@fresherflow/domain';
 
 export function useProfileUpdateHandlers(form: any, refreshUser: () => Promise<void>) { // eslint-disable-line @typescript-eslint/no-explicit-any
     const [saving, setSaving] = useState<string | null>(null);
@@ -106,3 +106,8 @@ export function useProfileUpdateHandlers(form: any, refreshUser: () => Promise<v
         handleReadinessUpdate
     };
 }
+
+
+
+
+

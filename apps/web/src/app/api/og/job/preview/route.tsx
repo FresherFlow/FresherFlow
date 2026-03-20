@@ -1,4 +1,4 @@
-﻿import { ImageResponse } from 'next/og';
+import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
 
@@ -29,13 +29,13 @@ function renderCard(mode: Mode) {
   const location = isDrive ? 'PAN India' : 'Gurugram, hyderabd, chennali , banglore';
   const typeLabel = isDrive ? 'OFF-CAMPUS' : 'FULL-TIME';
   const workModeLabel = isDrive ? 'ONSITE' : 'HYBRID';
-  const experienceLabel = isDrive ? '0–2 yrs' : '0–1 yrs';
-  const salaryLabel = '7–12 LPA';
+  const experienceLabel = isDrive ? '0�2 yrs' : '0�1 yrs';
+  const salaryLabel = '7�12 LPA';
   const deadlineTitle = isDrive ? 'Reg Ends' : 'Apply by';
   const deadlineLabel = formatDateLabel(deadline);
   const subtitle = isDrive
-    ? 'Prime + Digital — National Level Hiring Drive'
-    : 'Product Engineering — Backend Platform Team';
+    ? 'Prime + Digital � National Level Hiring Drive'
+    : 'Product Engineering � Backend Platform Team';
 
   return new ImageResponse(
     (
@@ -207,3 +207,9 @@ export function GET(request: Request) {
   const mode = parseMode(searchParams.get('mode'));
   return renderCard(mode);
 }
+
+
+
+
+
+

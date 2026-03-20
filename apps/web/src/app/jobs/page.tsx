@@ -1,5 +1,5 @@
 import { Metadata } from 'next';
-import CategoryPage from '@/features/jobs/components/CategoryPage';
+import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
 
 export const revalidate = 300;
@@ -32,3 +32,9 @@ export const metadata: Metadata = {
 export default function JobsPage() {
     return <CategoryPage type={OpportunityType.JOB} />;
 }
+
+
+
+
+
+

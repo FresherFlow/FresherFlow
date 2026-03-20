@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { adminAuthApi } from '@/lib/api/client';
+import { adminAuthApi } from '@/shared/api/client';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import toast from 'react-hot-toast';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/features/system/components/ui/Button';
 import {
     ShieldCheckIcon,
     FingerPrintIcon
@@ -263,3 +263,9 @@ export default function AdminLoginPage() {
         </div>
     );
 }
+
+
+
+
+
+

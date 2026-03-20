@@ -1,9 +1,9 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
-import { EDUCATION_LEVELS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@/lib/profileConstants';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
+import { cn } from '@repo/ui/utils/cn';
+import { EDUCATION_LEVELS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@fresherflow/domain';
+import { Button } from '@/features/system/components/ui/Button';
+import { Input } from '@/features/system/components/ui/Input';
+import { Select } from '@/features/system/components/ui/Select';
 import { ArrowPathIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 interface EducationStepProps {
@@ -158,3 +158,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
         </div>
     );
 }
+
+
+
+
+
+

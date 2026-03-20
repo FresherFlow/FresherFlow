@@ -1,5 +1,5 @@
 import React from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '@repo/ui/utils/cn';
 
 interface ProfileStatusCardProps {
     pct: number;
@@ -27,3 +27,9 @@ export const ProfileStatusCard = ({ pct, className }: ProfileStatusCardProps) =>
         </div>
     );
 };
+
+
+
+
+
+

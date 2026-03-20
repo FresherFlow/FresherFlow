@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import UserIcon from '@heroicons/react/24/outline/UserIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/features/system/components/ui/Button';
 import { ReferralLinkButton } from '@/components/dashboard/DashboardBanners';
 
 interface DashboardHeaderProps {
@@ -38,3 +38,9 @@ export const DashboardHeader = ({ userName }: DashboardHeaderProps) => {
         </div>
     );
 };
+
+
+
+
+
+

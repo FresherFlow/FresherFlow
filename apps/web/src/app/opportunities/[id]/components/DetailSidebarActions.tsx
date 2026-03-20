@@ -1,5 +1,5 @@
 import { ActionType, type Opportunity, type User, type OpportunityEvent } from '@fresherflow/types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/ui/cn';
 import { Button } from '@/components/ui/Button';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { CompactSection, Field } from '@/features/profile/components/ProfileSection';
-import { EDUCATION_LEVELS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@/lib/profileConstants';
-import { cn } from '@/lib/utils';
+import { EDUCATION_LEVELS, DIPLOMA_DEGREES, UG_DEGREES, PG_DEGREES, getSpecializations } from '@fresherflow/domain';
+import { cn } from '@repo/ui/utils/cn';
 import { Profile } from '@fresherflow/types';
 
 interface EducationSectionProps {
@@ -163,3 +163,9 @@ export const EducationSection = ({
         </CompactSection>
     );
 };
+
+
+
+
+
+

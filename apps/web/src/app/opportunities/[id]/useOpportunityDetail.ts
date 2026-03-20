@@ -1,17 +1,16 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { opportunitiesApi, actionsApi, savedApi, growthApi, opportunityClicksApi } from '@/lib/api/client';
+import { opportunitiesApi, actionsApi, savedApi, growthApi, opportunityClicksApi } from '@/shared/api/client';
 import { ActionType, type Opportunity, type User } from '@fresherflow/types';
 import toast from 'react-hot-toast';
-import { toastError } from '@/lib/utils/error';
-import { getRecentViewedByIdOrSlug, saveRecentViewed } from '@/lib/offline/recentViewed';
+import { toastError } from '@/shared/ui/error';
+import { getRecentViewedByIdOrSlug, saveRecentViewed } from '@/shared/api/offline/recentViewed';
 // removed unused sync status import
-import { enqueueOfflineActionTrack, enqueueOfflineSaveToggle } from '@/lib/offline/actionQueue';
-import { analytics } from '@/lib/analytics';
-import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
-import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
-import { buildLoginFromDetailHref, getDetailShareUrl } from './detailInteractionUtils';
-import { getRelatedOpportunities } from './detailUtils';
+import { enqueueOfflineActionTrack, enqueueOfflineSaveToggle } from '@/shared/api/offline/actionQueue';
+import { analytics } from '@/shared/api/analytics';
+import { parseOpportunityLocation, getOpportunityPathFromItem } from '@fresherflow/domain';
+import { buildLoginFromDetailHref, getDetailShareUrl } from '@fresherflow/domain';
+import { getRelatedOpportunities } from '@fresherflow/domain';
 
 export function useOpportunityDetail(id: string, initialData?: Opportunity | null, user?: User | null) {
     const router = useRouter();

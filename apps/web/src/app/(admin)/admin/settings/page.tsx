@@ -1,6 +1,6 @@
 import TwoFactorSetup from "@/components/admin/TwoFactorSetup";
 import PasskeyManager from "@/components/admin/PasskeyManager";
-import { Badge } from "@/components/ui/Badge";
+import { Badge } from "@/features/system/components/ui/Badge";
 
 export const metadata = {
     title: "Admin Settings | FresherFlow",
@@ -38,3 +38,9 @@ export default function AdminSettingsPage() {
         </div>
     );
 }
+
+
+
+
+
+

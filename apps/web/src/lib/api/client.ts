@@ -41,6 +41,13 @@ const ADMIN_API_URL = USE_SEPARATE_ADMIN_API
     ? (normalizeApiBase(process.env.NEXT_PUBLIC_ADMIN_API_URL) || DEFAULT_API_URL)
     : DEFAULT_API_URL;
 
+function shouldUseRelativeApiBase(): boolean {
+    if (typeof window === 'undefined') return false;
+    if (process.env.NODE_ENV !== 'development') return false;
+    const { hostname } = window.location;
+    return hostname === 'localhost' || hostname === '127.0.0.1';
+}
+
 function isUserLoggingOut() {
     return typeof window !== 'undefined' && Boolean((window as Window & { __isLoggingOut?: boolean }).__isLoggingOut);
 }
@@ -89,7 +96,29 @@ function isAdminProtectedEndpoint(endpoint: string): boolean {
     return !authPublicEndpoints.some((prefix) => endpoint.startsWith(prefix));
 }
 
+function shouldAttemptSessionRefresh(endpoint: string): boolean {
+    const authEndpointsThatShouldNotRefresh = [
+        '/api/auth/login',
+        '/api/auth/google',
+        '/api/auth/otp/send',
+        '/api/auth/otp/verify',
+        '/api/auth/register',
+        '/api/auth/refresh',
+        '/api/admin/auth/login/options',
+        '/api/admin/auth/login/verify',
+        '/api/admin/auth/login/totp',
+        '/api/admin/auth/register/options',
+        '/api/admin/auth/register/verify',
+        '/api/admin/auth/refresh',
+    ];
+
+    return !authEndpointsThatShouldNotRefresh.some((prefix) => endpoint.startsWith(prefix));
+}
+
 export function getApiBaseForEndpoint(endpoint: string): string {
+    if (shouldUseRelativeApiBase()) {
+        return '';
+    }
     if (endpoint.startsWith('/api/admin')) {
         return ADMIN_API_URL;
     }
@@ -204,10 +233,7 @@ export async function apiClient<T = unknown>(
         // If 401, handle token refresh with a singleton lock (mutex)
         const isLoggingOut = typeof window !== 'undefined' && (window as unknown as { __isLoggingOut?: boolean }).__isLoggingOut;
 
-        if (response.status === 401 && !isLoggingOut &&
-            !endpoint.includes('/auth/login') &&
-            !endpoint.includes('/auth/register') &&
-            !endpoint.includes('/auth/refresh')) {
+        if (response.status === 401 && !isLoggingOut && shouldAttemptSessionRefresh(endpoint)) {
 
             if (!isRefreshing) {
                 isRefreshing = (async () => {

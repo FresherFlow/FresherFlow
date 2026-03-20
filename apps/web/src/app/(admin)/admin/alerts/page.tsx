@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { adminApi } from '@/lib/api/admin';
+import { adminApi } from '@/shared/api/admin';
 
 type DispatchStatus = 'INITIATED' | 'SENT' | 'FAILED' | 'SKIPPED';
 type DispatchKind = 'DAILY_DIGEST' | 'CLOSING_SOON' | 'HIGHLIGHT' | 'APP_UPDATE' | 'NEW_JOB' | 'EVENT_REMINDER';
@@ -205,3 +205,9 @@ export default function AdminAlertsPage() {
     </div>
   );
 }
+
+
+
+
+
+

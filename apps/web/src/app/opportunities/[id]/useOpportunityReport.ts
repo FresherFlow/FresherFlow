@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
-import { toastError } from '@/lib/utils/error';
-import { feedbackApi } from '@/lib/api/client';
+import { toastError } from '@/shared/ui/error';
+import { feedbackApi } from '@/shared/api/client';
 import { type Opportunity, type User } from '@fresherflow/types';
 
 export function useOpportunityReport(opp: Opportunity | null, user: User | null) {

@@ -52,11 +52,11 @@ export default function AdminBottomNav() {
                         // Active for opportunities list, but NOT create page
                         isActive =
                             pathname === '/opportunities' ||
-                            (pathname.startsWith('/opportunities') && pathname !== '/opportunities/create') ||
+                            (pathname.startsWith('/opportunities/') && pathname !== '/opportunities/create') ||
                             pathname === '/admin/opportunities' ||
-                            (pathname.startsWith('/admin/opportunities') && pathname !== '/admin/opportunities/create');
+                            (pathname.startsWith('/admin/opportunities/') && pathname !== '/admin/opportunities/create');
                     } else if (item.label === 'Analytics') {
-                        isActive = pathname.startsWith('/analytics') || pathname.startsWith('/admin/analytics');
+                        isActive = pathname === '/analytics' || pathname.startsWith('/admin/analytics');
                     }
 
                     return (

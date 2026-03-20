@@ -1,7 +1,6 @@
 import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
-import { getOpportunityPath } from '@/lib/opportunityPath';
-import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
+import { getOpportunityPath, parseOpportunityLocation } from '@fresherflow/domain';
 import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 
 export interface ExtendedOpportunity extends Opportunity {

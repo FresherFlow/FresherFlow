@@ -1,5 +1,5 @@
 import { Opportunity } from '@fresherflow/types';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/ui/cn';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import Link from 'next/link';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';

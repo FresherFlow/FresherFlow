@@ -68,7 +68,7 @@ export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Da
 };
 
 import { OpportunityType } from '@fresherflow/types';
-import { getOpportunityPath } from '@/lib/opportunityPath';
+import { getOpportunityPath } from '@fresherflow/domain';
 
 export const getPublicOpportunityHref = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {
     return getOpportunityPath(opp.type as OpportunityType, opp.slug || opp.id);
@@ -119,3 +119,8 @@ export const buildSocialCaption = (opp: SocialOpportunity) => {
         hashtags,
     ].join('\n');
 };
+
+
+
+
+

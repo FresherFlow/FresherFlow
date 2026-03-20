@@ -1,5 +1,5 @@
 import { getStatusLabel } from '@/features/admin/opportunities/listUtils';
-import { getOpportunityPath } from '@/lib/opportunityPath';
+import { getOpportunityPath } from '@fresherflow/domain';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 
 export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Date | null; deletedAt?: string | Date | null }) => {
@@ -59,3 +59,8 @@ export const buildSocialCaption = (opp: SocialOpportunity) => {
         hashtags,
     ].join('\n');
 };
+
+
+
+
+

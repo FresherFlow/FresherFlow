@@ -1,5 +1,5 @@
 import React from 'react';
-import { sanitizeHtml } from '@/lib/sanitize';
+import { sanitizeHtml } from '@/shared/ui/sanitize';
 
 interface DescriptionSectionProps {
     description: string;

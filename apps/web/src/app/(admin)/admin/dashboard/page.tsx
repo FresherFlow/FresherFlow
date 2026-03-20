@@ -3,9 +3,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
-import { adminApi } from '@/lib/api/admin';
-import { AdminOverviewSkeleton } from '@/components/ui/Skeleton';
-import { cn } from '@/lib/utils';
+import { adminApi } from '@/shared/api/admin';
+import { AdminOverviewSkeleton } from '@/features/system/components/ui/Skeleton';
+import { cn } from '@repo/ui/utils/cn';
 import {
     ArrowPathIcon,
     BriefcaseIcon,
@@ -286,4 +286,10 @@ export default function AdminDashboardHome() {
         </div>
     );
 }
+
+
+
+
+
+
 

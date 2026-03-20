@@ -1,7 +1,7 @@
 import React, { RefObject } from 'react';
 import { CompactSection, Field } from '@/features/profile/components/ProfileSection';
-import { OPPORTUNITY_TYPES, WORK_MODES } from '@/lib/profileConstants';
-import { cn } from '@/lib/utils';
+import { OPPORTUNITY_TYPES, WORK_MODES } from '@fresherflow/domain';
+import { cn } from '@repo/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import PlusIcon from '@heroicons/react/24/outline/PlusIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
@@ -141,3 +141,9 @@ export const PreferencesSection = ({
         </CompactSection>
     );
 };
+
+
+
+
+
+

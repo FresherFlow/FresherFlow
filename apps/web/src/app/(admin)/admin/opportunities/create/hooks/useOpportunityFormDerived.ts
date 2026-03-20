@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ALL_COURSE_OPTIONS, ALL_SPECIALIZATION_OPTIONS } from '@/lib/profileConstants';
+import { ALL_COURSE_OPTIONS, ALL_SPECIALIZATION_OPTIONS } from '@fresherflow/domain';
 import { useOpportunityForm } from '@/features/admin/opportunities/useOpportunityForm';
 
 const commonDegrees = ['DIPLOMA', 'DEGREE', 'PG'];
@@ -28,3 +28,8 @@ export function useOpportunityFormDerived(form: ReturnType<typeof useOpportunity
         visibleSpecializationOptions
     };
 }
+
+
+
+
+

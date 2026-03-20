@@ -1,6 +1,6 @@
 'use client';
 
-import { Select } from '@/components/ui/Select';
+import { Select } from '@/features/system/components/ui/Select';
 
 type EducationLevelSelectProps = {
     value: string;
@@ -26,4 +26,10 @@ export function EducationLevelSelect({ value, options, onChange }: EducationLeve
         </div>
     );
 }
+
+
+
+
+
+
 

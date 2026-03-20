@@ -6,7 +6,7 @@ import {
     deleteOpportunityAction,
     bulkOpportunityAction,
     restoreOpportunityAction
-} from '@/features/jobs/actions/opportunity';
+} from '@/features/opportunities/actions';
 import { buildSocialCaption } from '@/features/admin/opportunities/listUtils';
 
 import { SocialOpportunity } from '@/features/admin/opportunities/listUtils';
@@ -166,3 +166,8 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
         handleCopySocialCaption
     };
 }
+
+
+
+
+

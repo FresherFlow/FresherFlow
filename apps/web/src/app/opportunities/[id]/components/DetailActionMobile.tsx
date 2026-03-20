@@ -1,7 +1,7 @@
 import { type Opportunity, type User } from '@fresherflow/types';
-import { TimelineEventView } from '../detailUtils';
+import { TimelineEventView } from '@fresherflow/domain';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/lib/utils';
+import { cn } from '@/shared/ui/cn';
 import { Button } from '@/components/ui/Button';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';

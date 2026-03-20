@@ -1,17 +1,17 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/features/auth';
 import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
-import { opportunitiesApi, dashboardApi, savedApi } from '@/lib/api/client';
+import { opportunitiesApi, dashboardApi, savedApi } from '@/shared/api/client';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 // removed unused sync status import
-import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
+import { calculateOpportunityMatch, isNotEligible } from '@fresherflow/domain';
 import { OpportunityEventType } from '@fresherflow/types';
-import { OfflineError } from '@/lib/api/client';
+import { OfflineError } from '@/shared/api/client';
 import { ProfileCompletionBanner } from '@/components/dashboard/DashboardBanners';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/features/system/components/ui/Button';
 
 // Components
 import { DashboardHeader } from './components/DashboardHeader';
@@ -367,3 +367,9 @@ export default function DashboardClient() {
         </AuthGate>
     );
 }
+
+
+
+
+
+

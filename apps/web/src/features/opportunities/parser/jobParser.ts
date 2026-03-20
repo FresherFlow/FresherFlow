@@ -136,3 +136,4 @@ export function parseJobText(rawText: string): ParsedJob {
     result.description = text.trim().substring(0, 2000);
     return result;
 }
+

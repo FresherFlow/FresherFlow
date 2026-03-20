@@ -1,8 +1,8 @@
 import React, { RefObject } from 'react';
-import { cn } from '@/lib/utils';
-import { OPPORTUNITY_TYPES, WORK_MODES } from '@/lib/profileConstants';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { cn } from '@repo/ui/utils/cn';
+import { OPPORTUNITY_TYPES, WORK_MODES } from '@fresherflow/domain';
+import { Button } from '@/features/system/components/ui/Button';
+import { Input } from '@/features/system/components/ui/Input';
 import { ArrowPathIcon, ArrowRightIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface PreferencesStepProps {
@@ -136,3 +136,9 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
         </div>
     );
 }
+
+
+
+
+
+

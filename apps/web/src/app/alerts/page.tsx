@@ -2,15 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/contexts/AuthContext';
-import { alertsApi, savedApi, actionsApi } from '@/lib/api/client';
-import { calculateOpportunityMatch } from '@/lib/matchScore';
+import { useAuth } from '@/features/auth';
+import { alertsApi, savedApi, actionsApi } from '@/shared/api/client';
+import { calculateOpportunityMatch } from '@fresherflow/domain';
 import { BellIcon, ArrowLeftIcon, ClockIcon } from '@heroicons/react/24/outline';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import { Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
-import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
+import { Button } from '@/features/system/components/ui/Button';
+import { cn } from '@repo/ui/utils/cn';
+import { getOpportunityPathFromItem } from '@fresherflow/domain';
 import toast from 'react-hot-toast';
 import { ActionType } from '@fresherflow/types';
 import type { Opportunity, Profile, EducationLevel } from '@fresherflow/types';
@@ -817,3 +817,9 @@ function FilterChip({ label, active, onClick }: {
         </button>
     );
 }
+
+
+
+
+
+

@@ -4,7 +4,7 @@ import { permanentRedirect } from 'next/navigation';
 import { Suspense } from 'react';
 import OpportunityDetailClient from './OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
-import { getOpportunityPath } from '@/lib/opportunityPath';
+import { getOpportunityPath } from '@fresherflow/domain';
 import {
     fetchOpportunityForPage,
     generateOpportunityMetadata,

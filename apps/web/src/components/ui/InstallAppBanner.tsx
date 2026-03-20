@@ -1,6 +1,6 @@
 'use client';
 
-import { useInstallPrompt } from '@/contexts/InstallPromptContext';
+import { useInstallPrompt } from '@/features/system/components/providers/InstallPromptContext';
 
 export default function InstallAppBanner() {
     const { showBanner, dismissBanner, promptInstall } = useInstallPrompt();
@@ -36,3 +36,4 @@ export default function InstallAppBanner() {
         </div>
     );
 }
+

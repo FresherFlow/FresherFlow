@@ -3,8 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeftIcon, LinkIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import { useAuth } from '@/contexts/AuthContext';
-import { joblinksApi } from '@/lib/api/client';
+import { useAuth } from '@/features/auth';
+import { joblinksApi } from '@/shared/api/client';
 
 export default function SubmitLinkPage() {
     const { user } = useAuth();
@@ -119,3 +119,9 @@ export default function SubmitLinkPage() {
         </div>
     );
 }
+
+
+
+
+
+

@@ -103,6 +103,7 @@ function LoginContent() {
     const isSignupIntent = intent === 'signup' || isInviteFlow;
 
     useEffect(() => {
+        if (process.env.NODE_ENV === 'development') return;
         const trackSource = trackingSource || 'unknown';
         if (isSignupIntent) {
             growthApi.trackEvent('SIGNUP_VIEW', trackSource).catch(() => undefined);

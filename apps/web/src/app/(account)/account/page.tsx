@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/features/auth';
 import Link from 'next/link';
 import {
     BookmarkIcon,
@@ -17,7 +17,7 @@ import {
     UserGroupIcon,
     LinkIcon
 } from '@heroicons/react/24/outline';
-import LoadingScreen from '@/components/ui/LoadingScreen';
+import LoadingScreen from '@/features/system/components/ui/LoadingScreen';
 
 export default function AccountPage() {
     const { user, isLoading, logout } = useAuth();
@@ -149,3 +149,9 @@ function MenuRow({ href, icon: Icon, title, subtitle }: { href: string; icon: Re
         </Link>
     );
 }
+
+
+
+
+
+

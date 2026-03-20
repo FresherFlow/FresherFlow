@@ -1,6 +1,6 @@
 'use client';
 
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/features/system/components/providers/ThemeContext';
 import SunIcon from '@heroicons/react/24/outline/SunIcon';
 import MoonIcon from '@heroicons/react/24/outline/MoonIcon';
 import { useState, useEffect } from 'react';
@@ -35,4 +35,5 @@ export function ThemeToggle() {
         </button>
     );
 }
+
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/features/auth';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
 export default function LogoutClient() {
@@ -34,3 +34,9 @@ export default function LogoutClient() {
         </div>
     );
 }
+
+
+
+
+
+

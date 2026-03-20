@@ -1,6 +1,6 @@
 'use client';
 
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAdmin } from '@/features/admin/AdminContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -241,3 +241,9 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         </div>
     );
 }
+
+
+
+
+
+

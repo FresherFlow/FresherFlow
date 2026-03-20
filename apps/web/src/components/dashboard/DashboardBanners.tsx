@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/features/auth';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
@@ -153,3 +153,4 @@ export function ReferralLinkButton() {
         </div>
     );
 }
+

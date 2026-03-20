@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAdmin } from '@/features/admin/AdminContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { adminApi } from '@/lib/api/admin';
+import { adminApi } from '@/shared/api/admin';
 import toast from 'react-hot-toast';
-import { cn } from '@/lib/utils';
-import { AdminFeedbackSkeleton } from '@/components/ui/Skeleton';
+import { cn } from '@repo/ui/utils/cn';
+import { AdminFeedbackSkeleton } from '@/features/system/components/ui/Skeleton';
 import {
     ChatBubbleBottomCenterTextIcon,
     ExclamationTriangleIcon,
@@ -278,4 +278,10 @@ export default function FeedbackPage() {
         </div>
     );
 }
+
+
+
+
+
+
 
