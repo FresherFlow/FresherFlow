@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { COMMON_SKILLS, INDIAN_CITIES, normalizeSkillName } from '@/lib/profileConstants';
+import { COMMON_SKILLS, INDIAN_CITIES, normalizeSkillName } from '@fresherflow/domain';
 
 type ProfileLike = {
   educationLevel?: string | null;
@@ -164,3 +164,8 @@ export function useProfileForm(cityLimit = 5) {
     togglePreferredCity,
   };
 }
+
+
+
+
+
