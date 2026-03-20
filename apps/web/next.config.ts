@@ -1,9 +1,45 @@
 import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
+import path from "node:path";
+
+function resolveDevApiOrigin(): string {
+  const candidates = [
+    process.env.NEXT_PUBLIC_API_URL,
+    process.env.API_URL,
+    process.env.INTERNAL_API_URL,
+    "http://localhost:5000",
+  ];
+
+  for (const candidate of candidates) {
+    const value = candidate?.trim();
+    if (!value) continue;
+    try {
+      const url = new URL(/^https?:\/\//i.test(value) ? value : `http://${value}`);
+      return url.origin;
+    } catch {
+      continue;
+    }
+  }
+
+  return "http://localhost:5000";
+}
+
+const DEV_API_ORIGIN = resolveDevApiOrigin();
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  transpilePackages: ["@fresherflow/types", "@fresherflow/schemas", "@fresherflow/constants"],
+  turbopack: {
+    root: path.join(__dirname, "../.."),
+  },
+  transpilePackages: [
+    "@fresherflow/types", 
+    "@fresherflow/schemas", 
+    "@fresherflow/constants", 
+    "@fresherflow/domain", 
+    "@fresherflow/utils",
+    "@fresherflow/api-client",
+    "@repo/ui"
+  ],
 
   // Twitter-style navigation caching
   // Pages stay cached in router for 5 minutes
@@ -76,9 +112,22 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:5000/api/:path*",
+        destination: `${DEV_API_ORIGIN}/api/:path*`,
       },
     ];
+  },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        tls: false,
+        net: false,
+        fs: false,
+        child_process: false,
+        readline: false,
+      };
+    }
+    return config;
   },
 };
 
