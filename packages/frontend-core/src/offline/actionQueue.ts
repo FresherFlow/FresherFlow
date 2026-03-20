@@ -1,0 +1,198 @@
+import { ActionType } from '@fresherflow/types';
+import { actionsApi, savedApi } from '@fresherflow/api-client';
+
+const OFFLINE_ACTION_QUEUE_KEY = 'ff_offline_action_queue_v1';
+const MAX_RETRY_ATTEMPTS = 10;
+const OFFLINE_ACTION_QUEUE_EVENT = 'ff-offline-action-queue-change';
+
+type OfflineActionBase = {
+    id: string;
+    ownerId?: string;
+    opportunityId: string;
+    createdAt: number;
+    attempts: number;
+};
+
+type SaveToggleAction = OfflineActionBase & {
+    type: 'SAVE_TOGGLE';
+};
+
+type ActionTrack = OfflineActionBase & {
+    type: 'ACTION_TRACK';
+    actionType: ActionType;
+};
+
+type ActionRemove = OfflineActionBase & {
+    type: 'ACTION_REMOVE';
+};
+
+type OfflineAction = SaveToggleAction | ActionTrack | ActionRemove;
+
+type FlushResult = {
+    synced: number;
+    failed: number;
+    remaining: number;
+};
+
+function canUseStorage() {
+    return typeof window !== 'undefined';
+}
+
+function readQueue(): OfflineAction[] {
+    if (!canUseStorage()) return [];
+    try {
+        const raw = window.localStorage.getItem(OFFLINE_ACTION_QUEUE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw) as OfflineAction[];
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function writeQueue(queue: OfflineAction[]) {
+    if (!canUseStorage()) return;
+    window.localStorage.setItem(OFFLINE_ACTION_QUEUE_KEY, JSON.stringify(queue));
+    window.dispatchEvent(new Event(OFFLINE_ACTION_QUEUE_EVENT));
+}
+
+function nextId() {
+    return `offline_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function matchesOwner(action: OfflineAction, ownerId?: string) {
+    return !action.ownerId || !ownerId || action.ownerId === ownerId;
+}
+
+export function enqueueOfflineSaveToggle(opportunityId: string, ownerId?: string) {
+    const queue = readQueue();
+    const lastToggleIdx = [...queue].reverse().findIndex(
+        (item) => item.type === 'SAVE_TOGGLE' && item.opportunityId === opportunityId && item.ownerId === ownerId
+    );
+
+    // Two toggles in a row for the same listing cancel each other out.
+    if (lastToggleIdx >= 0) {
+        const idx = queue.length - 1 - lastToggleIdx;
+        queue.splice(idx, 1);
+        writeQueue(queue);
+        return;
+    }
+
+    queue.push({
+        id: nextId(),
+        type: 'SAVE_TOGGLE',
+        ownerId,
+        opportunityId,
+        createdAt: Date.now(),
+        attempts: 0,
+    });
+    writeQueue(queue);
+}
+
+export function enqueueOfflineActionTrack(opportunityId: string, actionType: ActionType, ownerId?: string) {
+    const queue = readQueue().filter((item) => {
+        if (!matchesOwner(item, ownerId) || item.opportunityId !== opportunityId) return true;
+        // Keep only latest state transition for a listing.
+        return item.type !== 'ACTION_TRACK' && item.type !== 'ACTION_REMOVE';
+    });
+
+    queue.push({
+        id: nextId(),
+        type: 'ACTION_TRACK',
+        ownerId,
+        opportunityId,
+        actionType,
+        createdAt: Date.now(),
+        attempts: 0,
+    });
+    writeQueue(queue);
+}
+
+export function enqueueOfflineActionRemove(opportunityId: string, ownerId?: string) {
+    const queue = readQueue().filter((item) => {
+        if (!matchesOwner(item, ownerId) || item.opportunityId !== opportunityId) return true;
+        return item.type === 'SAVE_TOGGLE';
+    });
+
+    queue.push({
+        id: nextId(),
+        type: 'ACTION_REMOVE',
+        ownerId,
+        opportunityId,
+        createdAt: Date.now(),
+        attempts: 0,
+    });
+    writeQueue(queue);
+}
+
+export function getPendingOfflineActionsCount(ownerId?: string): number {
+    return readQueue().filter((item) => matchesOwner(item, ownerId)).length;
+}
+
+export function subscribeOfflineActionQueue(listener: () => void) {
+    if (!canUseStorage()) return () => undefined;
+    const handler = () => listener();
+    window.addEventListener(OFFLINE_ACTION_QUEUE_EVENT, handler);
+    window.addEventListener('storage', handler);
+    return () => {
+        window.removeEventListener(OFFLINE_ACTION_QUEUE_EVENT, handler);
+        window.removeEventListener('storage', handler);
+    };
+}
+
+async function runOfflineAction(action: OfflineAction) {
+    if (action.type === 'SAVE_TOGGLE') {
+        await savedApi.toggle(action.opportunityId);
+        return;
+    }
+    if (action.type === 'ACTION_TRACK') {
+        await actionsApi.track(action.opportunityId, action.actionType);
+        return;
+    }
+    await actionsApi.remove(action.opportunityId);
+}
+
+export async function flushOfflineActions(ownerId?: string): Promise<FlushResult> {
+    const queue = readQueue();
+    if (!queue.length) return { synced: 0, failed: 0, remaining: 0 };
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        return { synced: 0, failed: 0, remaining: queue.length };
+    }
+
+    let synced = 0;
+    let failed = 0;
+    const remaining: OfflineAction[] = [];
+    let authFailed = false;
+
+    for (const action of queue) {
+        if (!matchesOwner(action, ownerId)) {
+            remaining.push(action);
+            continue;
+        }
+        try {
+            await runOfflineAction(action);
+            synced += 1;
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message.toLowerCase() : '';
+            if (message.includes('session expired') || message.includes('unauthorized') || message.includes('401')) {
+                authFailed = true;
+                remaining.push(action, ...queue.slice(queue.indexOf(action) + 1));
+                break;
+            }
+            failed += 1;
+            if (action.attempts + 1 < MAX_RETRY_ATTEMPTS) {
+                remaining.push({
+                    ...action,
+                    attempts: action.attempts + 1,
+                });
+            }
+        }
+    }
+
+    writeQueue(remaining);
+    return {
+        synced,
+        failed: authFailed ? failed + 1 : failed,
+        remaining: remaining.length,
+    };
+}

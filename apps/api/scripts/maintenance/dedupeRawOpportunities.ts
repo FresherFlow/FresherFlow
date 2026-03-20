@@ -1,4 +1,5 @@
 import stagingPrisma from '../../src/lib/stagingPrisma';
+import { IngestionDedupe } from '@fresherflow/domain';
 
 const APPLY = process.argv.includes('--apply');
 
@@ -13,7 +14,8 @@ async function main() {
     const duplicateIds: string[] = [];
 
     for (const item of allRaw) {
-        const key = `${item.sourceId}::${item.sourceExternalId}`;
+        if (!item.sourceExternalId) continue;
+        const key = IngestionDedupe.generateSourceHash(item.sourceId, item.sourceExternalId);
         if (seen.has(key)) {
             duplicateIds.push(item.id);
             continue;

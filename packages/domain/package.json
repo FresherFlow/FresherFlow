@@ -1,0 +1,23 @@
+{
+    "name": "@fresherflow/domain",
+    "version": "1.0.0",
+    "description": "Core business domain logic for FresherFlow",
+    "type": "module",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc && node ../../scripts/fix-esm-imports.mjs dist",
+        "dev": "tsc -w",
+        "lint": "eslint .",
+        "test": "vitest run"
+    },
+    "dependencies": {
+        "@fresherflow/types": "*",
+        "@fresherflow/constants": "*",
+        "@fresherflow/logger": "*"
+    },
+    "devDependencies": {
+        "typescript": "^5.7.3",
+        "vitest": "^4.1.0"
+    }
+}

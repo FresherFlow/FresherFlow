@@ -1,0 +1,11 @@
+{
+  "name": "@fresherflow/api-client",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@fresherflow/types": "*"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

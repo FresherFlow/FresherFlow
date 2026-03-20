@@ -14,10 +14,12 @@
         "resolveJsonModule": true,
         "moduleResolution": "node",
         "baseUrl": ".",
-        "typeRoots": [
-            "./node_modules/@types",
-            "../../node_modules/@types"
-        ],
+        "paths": {
+            "@fresherflow/domain": ["../../packages/domain/dist/index"],
+            "@repo/domain": ["../../packages/domain/dist/index"],
+            "@fresherflow/utils": ["../../packages/utils/dist/index"],
+            "@repo/utils": ["../../packages/utils/dist/index"]
+        },
         "noEmit": false
     },
     "ts-node": {

@@ -39,7 +39,18 @@ const consoleFormat = winston.format.printf(({ level, message, timestamp, reques
     return baseLog;
 });
 
+const isBrowser = typeof window !== 'undefined' || typeof self !== 'undefined';
+
 export const createLogger = (serviceName: string) => {
+    if (isBrowser) {
+        return {
+            info: (msg: string, meta?: unknown) => console.log(`[${serviceName}] INFO:`, msg, meta || ''),
+            warn: (msg: string, meta?: unknown) => console.warn(`[${serviceName}] WARN:`, msg, meta || ''),
+            error: (msg: string, meta?: unknown) => console.error(`[${serviceName}] ERROR:`, msg, meta || ''),
+            debug: (msg: string, meta?: unknown) => console.debug(`[${serviceName}] DEBUG:`, msg, meta || ''),
+        } as unknown as winston.Logger;
+    }
+
     const isProd = process.env.NODE_ENV === 'production';
     const useJsonLogs = process.env.LOG_FORMAT === 'json' || isProd;
 

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseJobText } from '../index';
+import { parseJobText } from '../index.js';
 import { OpportunityType, WorkMode } from '@fresherflow/types';
 
 describe('Job Parser Logic', () => {

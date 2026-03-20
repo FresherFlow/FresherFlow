@@ -5,7 +5,9 @@
     "main": "dist/index.js",
     "scripts": {
         "prune:api": "turbo prune fresherflow-api --docker",
+        "predev": "npm run db:generate",
         "dev": "nodemon --exec \"npx ts-node\" src/index.ts",
+        "predev:worker": "npm run db:generate",
         "dev:worker": "nodemon --exec \"npx ts-node\" src/worker.ts",
         "build": "tsc",
         "start": "node dist/index.js",
@@ -35,6 +37,7 @@
         "@fresherflow/config": "*",
         "@fresherflow/constants": "*",
         "@fresherflow/database": "*",
+        "@fresherflow/domain": "*",
         "@fresherflow/logger": "*",
         "@fresherflow/parser": "*",
         "@fresherflow/queue": "*",

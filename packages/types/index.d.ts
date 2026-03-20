@@ -1,0 +1,370 @@
+export declare enum OpportunityType {
+    JOB = "JOB",
+    INTERNSHIP = "INTERNSHIP",
+    WALKIN = "WALKIN"
+}
+export declare enum Role {
+    USER = "USER",
+    ADMIN = "ADMIN"
+}
+export declare enum OpportunityStatus {
+    DRAFT = "DRAFT",
+    PUBLISHED = "PUBLISHED",
+    ARCHIVED = "ARCHIVED",
+    EXPIRED = "EXPIRED"
+}
+export declare enum EducationLevel {
+    DIPLOMA = "DIPLOMA",
+    DEGREE = "DEGREE",
+    PG = "PG"
+}
+export declare enum WorkMode {
+    ONSITE = "ONSITE",
+    HYBRID = "HYBRID",
+    REMOTE = "REMOTE"
+}
+export declare enum SalaryPeriod {
+    MONTHLY = "MONTHLY",
+    YEARLY = "YEARLY"
+}
+export declare enum Availability {
+    IMMEDIATE = "IMMEDIATE",
+    DAYS_15 = "DAYS_15",
+    MONTH_1 = "MONTH_1"
+}
+export declare enum ActionType {
+    APPLIED = "APPLIED",
+    PLANNED = "PLANNED",
+    INTERVIEWED = "INTERVIEWED",
+    SELECTED = "SELECTED",
+    VIEWED = "VIEWED",
+    PLANNING = "PLANNING",
+    ATTENDED = "ATTENDED",
+    NOT_ELIGIBLE = "NOT_ELIGIBLE"
+}
+export declare enum OpportunityEventType {
+    NOTIFICATION = "NOTIFICATION",
+    REG_START = "REG_START",
+    REG_END = "REG_END",
+    EXAM_DATE = "EXAM_DATE",
+    RESULT = "RESULT",
+    INTERVIEW = "INTERVIEW",
+    DOC_VERIFICATION = "DOC_VERIFICATION",
+    OTHER = "OTHER"
+}
+export declare enum FeedbackReason {
+    EXPIRED = "EXPIRED",
+    LINK_BROKEN = "LINK_BROKEN",
+    DUPLICATE = "DUPLICATE",
+    INACCURATE = "INACCURATE"
+}
+export declare enum AppFeedbackType {
+    BUG = "BUG",
+    IDEA = "IDEA",
+    PRAISE = "PRAISE",
+    OTHER = "OTHER"
+}
+export declare enum LinkHealth {
+    HEALTHY = "HEALTHY",
+    BROKEN = "BROKEN",
+    RETRYING = "RETRYING"
+}
+export declare enum SocialPlatform {
+    X = "X",
+    LINKEDIN = "LINKEDIN",
+    FACEBOOK = "FACEBOOK"
+}
+export declare enum SocialPostStatus {
+    PENDING = "PENDING",
+    PUBLISHED = "PUBLISHED",
+    FAILED = "FAILED",
+    DISABLED = "DISABLED",
+    DRY_RUN = "DRY_RUN"
+}
+export interface User {
+    id: string;
+    email: string;
+    fullName: string | null;
+    role: Role;
+    createdAt: Date;
+    profile?: Profile;
+    isTwoFactorEnabled?: boolean;
+}
+export interface Profile {
+    id: string;
+    userId: string;
+    completionPercentage: number;
+    educationLevel: EducationLevel | null;
+    tenthYear: number | null;
+    twelfthYear: number | null;
+    gradCourse: string | null;
+    gradSpecialization: string | null;
+    gradYear: number | null;
+    pgCourse: string | null;
+    pgSpecialization: string | null;
+    pgYear: number | null;
+    interestedIn: OpportunityType[];
+    preferredCities: string[];
+    workModes: WorkMode[];
+    availability: Availability | null;
+    skills: string[];
+    skillTags?: string[];
+}
+export interface Admin {
+    id: string;
+    email: string;
+    fullName: string;
+    createdAt: Date;
+    isTwoFactorEnabled?: boolean;
+    totpEnabled?: boolean;
+    totpEnabledAt?: Date | string | null;
+}
+export interface Opportunity {
+    id: string;
+    slug: string;
+    type: OpportunityType;
+    status: OpportunityStatus;
+    title: string;
+    company: string;
+    companyWebsite?: string;
+    companyLogoUrl?: string | null;
+    description: string;
+    allowedDegrees: EducationLevel[];
+    allowedCourses: string[];
+    allowedSpecializations?: string[];
+    allowedPassoutYears: number[];
+    requiredSkills: string[];
+    locations: string[];
+    workMode?: WorkMode;
+    experienceMin?: number;
+    experienceMax?: number;
+    salaryMin?: number;
+    salaryMax?: number;
+    salaryRange?: string;
+    salaryPeriod?: SalaryPeriod;
+    incentives?: string;
+    jobFunction?: string;
+    selectionProcess?: string;
+    notesHighlights?: string;
+    stipend?: string;
+    employmentType?: string;
+    salary?: {
+        min: number;
+        max: number;
+        currency?: string;
+    } | null;
+    experienceRange?: {
+        min: number;
+        max: number;
+    };
+    normalizedRole?: string;
+    sourceLink?: string;
+    applyLink?: string;
+    linkHealth: LinkHealth;
+    verificationFailures: number;
+    lastVerifiedAt: Date;
+    isSaved?: boolean;
+    actions?: UserAction[];
+    postedAt: Date;
+    expiresAt?: Date | string;
+    adminId: string;
+    admin?: Admin;
+    walkInDetails?: WalkInDetails;
+    events?: OpportunityEvent[];
+    socialPosts?: SocialPost[];
+}
+export interface SocialPost {
+    id: string;
+    opportunityId: string;
+    platform: SocialPlatform;
+    status: SocialPostStatus;
+    externalPostId?: string | null;
+    errorMessage?: string | null;
+    publishedAt?: Date | string | null;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+    retryCount: number;
+    dedupeKey: string;
+    opportunity?: {
+        id: string;
+        title: string;
+        company: string;
+    } | null;
+    payload?: unknown;
+}
+export interface OpportunityEvent {
+    id: string;
+    opportunityId: string;
+    eventType: OpportunityEventType;
+    eventDate: Date | string;
+    title: string;
+    notes?: string;
+    sourceLink?: string;
+    createdAt: Date | string;
+    updatedAt: Date | string;
+}
+export interface WalkInDetails {
+    id: string;
+    opportunityId: string;
+    dates: string[];
+    dateRange?: string;
+    timeRange?: string;
+    venueAddress: string;
+    venueLink?: string;
+    reportingTime: string;
+    requiredDocuments: string[];
+    contactPerson?: string;
+    contactPhone?: string;
+}
+export interface UserAction {
+    id: string;
+    userId: string;
+    opportunityId: string;
+    actionType: ActionType;
+    createdAt: Date;
+    opportunity?: Opportunity;
+}
+export interface ListingFeedback {
+    id: string;
+    userId: string;
+    opportunityId: string;
+    reason: FeedbackReason;
+    createdAt: Date;
+    user?: User;
+    opportunity?: Opportunity;
+}
+export interface AppFeedback {
+    id: string;
+    userId: string;
+    type: AppFeedbackType;
+    rating?: number | null;
+    message: string;
+    pageUrl?: string | null;
+    createdAt: Date;
+    user?: User;
+}
+export interface AuthResponse {
+    user: User;
+    profile?: {
+        completionPercentage: number;
+    } | Profile;
+}
+export interface ProfileResponse {
+    profile: Profile;
+}
+export interface OpportunitiesResponse {
+    opportunities: Opportunity[];
+    total: number;
+}
+export type OpportunityListResponse = OpportunitiesResponse;
+export interface OpportunityDetailResponse {
+    opportunity: Opportunity;
+    isEligible: boolean;
+    userAction?: UserAction;
+}
+export interface UserStatsResponse {
+    appliedCount: number;
+    plannedCount: number;
+    interviewedCount: number;
+    selectedCount: number;
+}
+export interface RegisterRequest {
+    email: string;
+    password: string;
+    fullName: string;
+}
+export interface LoginRequest {
+    email: string;
+    password: string;
+}
+export interface UpdateEducationRequest {
+    educationLevel: EducationLevel;
+    course: string;
+    specialization: string;
+    passoutYear: number;
+}
+export interface UpdatePreferencesRequest {
+    interestedIn: OpportunityType[];
+    preferredCities: string[];
+    workModes: WorkMode[];
+}
+export interface UpdateReadinessRequest {
+    availability: Availability;
+    skills: string[];
+}
+export interface CreateOpportunityRequest {
+    type: OpportunityType;
+    title: string;
+    company: string;
+    description: string;
+    allowedDegrees: EducationLevel[];
+    allowedCourses: string[];
+    allowedSpecializations?: string[];
+    allowedPassoutYears: number[];
+    requiredSkills: string[];
+    locations: string[];
+    workMode?: WorkMode;
+    experienceMin?: number;
+    experienceMax?: number;
+    salaryMin?: number;
+    salaryMax?: number;
+    salaryPeriod?: SalaryPeriod;
+    incentives?: string;
+    jobFunction?: string;
+    selectionProcess?: string;
+    notesHighlights?: string;
+    sourceLink?: string;
+    applyLink?: string;
+    expiresAt?: string;
+    walkInDetails?: {
+        dates: string[];
+        venueAddress: string;
+        reportingTime: string;
+        requiredDocuments: string[];
+        contactPerson?: string;
+        contactPhone?: string;
+    };
+}
+export interface TrackActionRequest {
+    status: ActionType;
+}
+export interface SubmitFeedbackRequest {
+    reason: FeedbackReason;
+}
+export interface OpportunityFilters {
+    type?: OpportunityType;
+    city?: string;
+    closingSoon?: boolean;
+}
+export interface AdminOpportunityFilters {
+    type?: OpportunityType;
+    status?: OpportunityStatus;
+}
+/** Shared output types for raw job extraction. */
+export interface ParsedJob {
+    company?: string;
+    title?: string;
+    locations: string[];
+    skills: string[];
+    type: OpportunityType;
+    allowedPassoutYears: number[];
+    isFresherOnly: boolean;
+    allowedDegrees: string[];
+    isRemote: boolean;
+    workMode: WorkMode;
+    jobFunction?: string;
+    incentives?: string;
+    salaryPeriod?: SalaryPeriod;
+    salaryMin?: number;
+    salaryMax?: number;
+    salaryRange?: string;
+    experienceMin?: number;
+    experienceMax?: number;
+    dateRange?: string;
+    timeRange?: string;
+    venueLink?: string;
+    venueAddress?: string;
+    expiresAt?: string;
+    description?: string;
+}
+//# sourceMappingURL=index.d.ts.map

@@ -1,0 +1,27 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "jsx": "react-jsx",
+        "baseUrl": ".",
+        "paths": {
+            "@repo/domain": ["packages/domain/src/index.ts"],
+            "@repo/domain/*": ["packages/domain/src/*"],
+            "@repo/api-client/*": ["packages/api-client/src/*"],
+            "@repo/utils/*": ["packages/utils/src/*"],
+            "@repo/schemas/*": ["packages/schemas/*"],
+            "@repo/frontend-core/*": ["packages/frontend-core/src/*"],
+            "@repo/ui/*": ["packages/ui/src/*"],
+            "@repo/ui": ["packages/ui/src/index.tsx"],
+            "@fresherflow/types": ["packages/types/index.ts"],
+            "@fresherflow/parser": ["packages/parser/src/index.ts"],
+            "@fresherflow/parser/*": ["packages/parser/src/*"]
+        }
+    },
+    "exclude": ["**/node_modules", "**/dist", "**/build", "**/out"]
+}
