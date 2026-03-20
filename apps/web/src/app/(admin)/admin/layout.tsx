@@ -18,9 +18,10 @@ import {
     ShareIcon
 } from '@heroicons/react/24/outline';
 import AdminBottomNav from '@/shared/components/navigation/AdminBottomNav';
-import { ThemeToggle } from '@/components/ui/ThemeToggle';
+import { ThemeToggle } from '@repo/ui/ThemeToggle';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { adminApi } from '@/lib/api/admin';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const ADMIN_FEEDBACK_SEEN_KEY = 'ff_admin_feedback_last_seen_at';
 const ADMIN_ALERT_POLL_MS = Number(process.env.NEXT_PUBLIC_ADMIN_ALERT_POLL_MS || 180000);
@@ -31,6 +32,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const router = useRouter();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [feedbackAlertCount, setFeedbackAlertCount] = useState(0);
+    const { theme, toggleTheme } = useTheme();
 
     // Scroll tracking is disabled per user request to keep navigation constant
 
@@ -133,7 +135,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.18em] mt-1.5 opacity-60">Admin Portal</span>
                         </div>
                     </Link>
-                    <ThemeToggle />
+                    <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
                 </div>
 
                 <nav className="flex-1 px-3 space-y-1 mt-4 overflow-y-auto custom-scrollbar pb-6">
@@ -147,12 +149,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             isActive = pathname === '/admin/dashboard' || pathname === '/admin' || pathname === '/dashboard';
                         } else if (item.label === 'Opportunities') {
                             isActive =
-                                (pathname.startsWith('/admin/opportunities') && pathname !== '/admin/opportunities/create') ||
-                                (pathname.startsWith('/opportunities') && pathname !== '/opportunities/create');
+                                pathname === '/opportunities' ||
+                                pathname === '/admin/opportunities' ||
+                                (pathname.startsWith('/admin/opportunities/') && pathname !== '/admin/opportunities/create');
                         } else if (item.label === 'Post New') {
                             isActive = pathname === '/admin/opportunities/create' || pathname === '/opportunities/create';
                         } else if (item.label === 'Analytics') {
-                            isActive = pathname.startsWith('/admin/analytics') || pathname.startsWith('/analytics');
+                            isActive = pathname === '/analytics' || pathname.startsWith('/admin/analytics');
                         }
 
                         return (
@@ -195,7 +198,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     style={{ height: `calc(3.75rem + env(safe-area-inset-top))` }}
                 >
                     <div className={`pointer-events-auto mx-2 w-[calc(100%-16px)] h-12 rounded-2xl px-2.5 flex items-center justify-between gap-2 transition-all duration-300 ${mobileMenuOpen ? 'border border-[hsl(var(--border))] bg-[hsl(var(--card)/0.97)] shadow-sm' : 'border border-transparent bg-transparent shadow-none'}`}>
-                        <Link href="/dashboard" className="flex items-center gap-2 min-w-0 pl-0.5">
+                        <Link href="/admin/dashboard" className="flex items-center gap-2 min-w-0 pl-0.5">
                             <div
                                 className="w-6 h-6 bg-contain bg-center bg-no-repeat"
                                 style={{ backgroundImage: 'var(--logo-image)' }}
@@ -206,7 +209,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                             </span>
                         </Link>
                         <div className="flex items-center gap-1.5 shrink-0 pr-0.5">
-                            <ThemeToggle />
+                            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
                             <button
                                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                                 className="p-2.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-colors"

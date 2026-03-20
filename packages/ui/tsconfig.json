@@ -1,0 +1,30 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "declaration": true,
+    "jsx": "react-jsx",
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@repo/frontend-core": ["../frontend-core/src/index.tsx"],
+      "@repo/frontend-core/*": ["../frontend-core/src/*"]
+    }
+  },
+  "include": [
+    "src/index.tsx",
+    "src/Badge.tsx",
+    "src/Button.tsx",
+    "src/Card.tsx",
+    "src/CompanyLogo.tsx",
+    "src/Input.tsx",
+    "src/theme.ts",
+    "src/theme/**/*.ts",
+    "src/utils/**/*.ts"
+  ]
+}

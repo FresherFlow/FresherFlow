@@ -7,11 +7,12 @@ import { AuthContext } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import BellIcon from '@heroicons/react/24/outline/BellIcon';
 import UserCircleIcon from '@heroicons/react/24/outline/UserCircleIcon';
-import { ThemeToggle } from '../ThemeToggle';
+import { ThemeToggle } from '@repo/ui/ThemeToggle';
 import { LogoImage } from './LogoImage';
 import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
 import { NAV_ROUTES } from './routeConfig';
+import { useTheme } from '@/contexts/ThemeContext';
 
 const desktopRoutes = NAV_ROUTES.filter(r => r.showInDesktop);
 
@@ -23,6 +24,7 @@ export function DesktopNav() {
     const { unreadCount } = useUnreadNotifications();
     const pendingSyncCount = useOfflineActionQueue(user?.id);
     const [scrolled, setScrolled] = useState(false);
+    const { theme, toggleTheme } = useTheme();
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 8);
@@ -78,7 +80,7 @@ export function DesktopNav() {
                         </span>
                     )}
 
-                    <ThemeToggle />
+                    <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
 
                     {!isLoading && (
                         <>
