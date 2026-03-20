@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, Image, Text } from 'react-native';
-import { theme } from '../theme';
+import { useTheme } from '../theme/ThemeProvider';
 
 interface Props {
     /** Company website URL, e.g. "https://google.com" */
@@ -41,6 +41,7 @@ function avatarColor(name: string): string {
  * Tries logo.clearbit.com first; falls back to coloured initials avatar.
  */
 export const CompanyLogo = ({ website, name, size = 40 }: Props) => {
+    const { colors } = useTheme();
     const [failed, setFailed] = useState(false);
     const domain = extractDomain(website);
     const logoUrl = domain && !failed ? `https://logo.clearbit.com/${domain}` : null;
@@ -53,12 +54,12 @@ export const CompanyLogo = ({ website, name, size = 40 }: Props) => {
         width: size,
         height: size,
         borderRadius: radius,
-        backgroundColor: logoUrl ? theme.colors.surface : bg,
+        backgroundColor: logoUrl ? colors.surface : bg,
         overflow: 'hidden' as const,
         alignItems: 'center' as const,
         justifyContent: 'center' as const,
         borderWidth: 1,
-        borderColor: theme.colors.border,
+        borderColor: colors.border,
     };
 
     if (logoUrl) {

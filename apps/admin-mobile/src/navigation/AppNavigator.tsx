@@ -2,18 +2,24 @@ import React from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { AuthNavigator } from './AuthNavigator';
 import { AdminNavigator } from './AdminNavigator';
-import { useAuth } from '../context/AuthContext';
-import { theme } from '../theme';
+import { useAdminAuth as useAuth } from '@repo/frontend-core';
+import { useTheme } from '../theme/ThemeProvider';
 
 export const AppNavigator = () => {
     const { admin, isLoading } = useAuth();
+    const isInitialLoad = React.useRef(true);
+    const { colors } = useTheme();
 
-    if (isLoading) {
+    if (isLoading && isInitialLoad.current) {
         return (
-            <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
+            <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
+                <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
+    }
+
+    if (!isLoading) {
+        isInitialLoad.current = false;
     }
 
     return admin ? <AdminNavigator /> : <AuthNavigator />;
@@ -24,6 +30,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: theme.colors.background,
     },
 });
+
+

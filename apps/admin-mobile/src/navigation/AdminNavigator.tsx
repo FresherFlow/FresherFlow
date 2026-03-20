@@ -4,52 +4,34 @@ import {
     LayoutDashboard, Briefcase, BarChart3,
     Server, Settings2
 } from 'lucide-react-native';
-import { DashboardScreen } from '../screens/DashboardScreen';
+import { DashboardScreen } from '../features/dashboard/DashboardScreen';
 import { AnalyticsNavigator } from './AnalyticsNavigator';
-import { SettingsScreen } from '../screens/SettingsScreen';
 import { OpportunitiesNavigator } from './OpportunitiesNavigator';
 import { OpsNavigator } from './OpsNavigator';
-import { theme } from '../theme';
+import { SettingsNavigator } from './SettingsNavigator';
+import { useTheme } from '../theme/ThemeProvider';
+import { createTabScreenOptions } from './options';
+import type { AdminTabParamList } from './types';
 
-export type AdminTabParamList = {
-    Dashboard: undefined;
-    Opportunities: undefined;
-    Analytics: undefined;
-    Ops: undefined;
-    Settings: undefined;
-};
+export { type AdminTabParamList };
 
 const Tab = createBottomTabNavigator<AdminTabParamList>();
 
-const headerOpts = {
-    headerShown: true,
-    headerStyle: { backgroundColor: theme.colors.surface },
-    headerTitleStyle: { fontWeight: 'bold' as const, color: theme.colors.text },
-};
-
 export const AdminNavigator = () => {
+    const { colors } = useTheme();
+
     return (
         <Tab.Navigator
-            screenOptions={{
-                headerShown: false,
-                tabBarStyle: {
-                    backgroundColor: theme.colors.surface,
-                    borderTopColor: theme.colors.border,
-                    paddingBottom: 6,
-                    height: 62,
-                },
-                tabBarActiveTintColor: theme.colors.primary,
-                tabBarInactiveTintColor: theme.colors.textMuted,
-                tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: -2 },
-            }}
+            initialRouteName="Dashboard"
+            screenOptions={createTabScreenOptions(colors)}
         >
             <Tab.Screen
                 name="Dashboard"
                 component={DashboardScreen}
                 options={{
-                    ...headerOpts,
                     title: 'Dashboard',
-                    tabBarIcon: ({ color, size }) => <LayoutDashboard color={color} size={size - 2} />,
+                    headerShown: true,
+                    tabBarIcon: ({ color }) => <LayoutDashboard color={color} size={24} />,
                 }}
             />
             <Tab.Screen
@@ -57,7 +39,8 @@ export const AdminNavigator = () => {
                 component={OpportunitiesNavigator}
                 options={{
                     title: 'Jobs',
-                    tabBarIcon: ({ color, size }) => <Briefcase color={color} size={size - 2} />,
+                    headerShown: false,
+                    tabBarIcon: ({ color }) => <Briefcase color={color} size={24} />,
                 }}
             />
             <Tab.Screen
@@ -65,7 +48,8 @@ export const AdminNavigator = () => {
                 component={AnalyticsNavigator}
                 options={{
                     title: 'Analytics',
-                    tabBarIcon: ({ color, size }) => <BarChart3 color={color} size={size - 2} />,
+                    headerShown: false,
+                    tabBarIcon: ({ color }) => <BarChart3 color={color} size={24} />,
                 }}
             />
             <Tab.Screen
@@ -73,16 +57,17 @@ export const AdminNavigator = () => {
                 component={OpsNavigator}
                 options={{
                     title: 'Ops',
-                    tabBarIcon: ({ color, size }) => <Server color={color} size={size - 2} />,
+                    headerShown: false,
+                    tabBarIcon: ({ color }) => <Server color={color} size={24} />,
                 }}
             />
             <Tab.Screen
                 name="Settings"
-                component={SettingsScreen}
+                component={SettingsNavigator}
                 options={{
-                    ...headerOpts,
                     title: 'Settings',
-                    tabBarIcon: ({ color, size }) => <Settings2 color={color} size={size - 2} />,
+                    headerShown: false,
+                    tabBarIcon: ({ color }) => <Settings2 color={color} size={24} />,
                 }}
             />
         </Tab.Navigator>

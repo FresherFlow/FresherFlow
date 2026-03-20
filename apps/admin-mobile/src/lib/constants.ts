@@ -57,3 +57,5 @@ export const DEGREE_SPECIALIZATIONS: Record<string, string[]> = {
 export function getSpecializations(course: string): string[] {
     return DEGREE_SPECIALIZATIONS[course] ?? DEGREE_SPECIALIZATIONS['default'];
 }
+
+

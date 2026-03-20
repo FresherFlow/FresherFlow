@@ -1,5 +1,10 @@
 module.exports = {
+    env: { node: true },
     extends: 'expo',
+    parserOptions: {
+        project: ['./tsconfig.json'],
+        tsconfigRootDir: __dirname,
+    },
     rules: {
         'react/display-name': 'off',
         '@typescript-eslint/array-type': 'off',

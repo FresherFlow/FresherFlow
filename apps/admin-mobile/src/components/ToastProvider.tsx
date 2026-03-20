@@ -31,7 +31,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                 duration: 220,
                 useNativeDriver: true,
             }).start(() => setQueue(prev => prev.filter(t => t.id !== id)));
-            return q; // slide-out happens, filter in callback
+            return q;
         });
     }, []);
 
@@ -72,7 +72,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     const cfg = CONFIGS[t.type];
                     const translateY = t.anim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [80, 0],  // slide up from bottom
+                        outputRange: [80, 0],
                     });
                     const opacity = t.anim;
 
@@ -110,8 +110,7 @@ const styles = StyleSheet.create({
         zIndex: 9999,
         paddingHorizontal: 12,
         gap: 6,
-        pointerEvents: 'box-none',
-    } as any,
+    },
     toast: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -1,9 +1,10 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { AnalyticsScreen } from '../screens/AnalyticsScreen';
-import { FeedbackScreen } from '../screens/FeedbackScreen';
-import { OpportunityFeedbackScreen } from '../screens/OpportunityFeedbackScreen';
-import { theme } from '../theme';
+import { AnalyticsScreen } from '../features/analytics/AnalyticsScreen';
+import { FeedbackScreen } from '../features/feedback/FeedbackScreen';
+import { OpportunityFeedbackScreen } from '../features/opportunities/OpportunityFeedbackScreen';
+import { useTheme } from '../theme/ThemeProvider';
+import { createStackScreenOptions } from './options';
 
 export type AnalyticsStackParamList = {
     AnalyticsOverview: undefined;
@@ -13,30 +14,27 @@ export type AnalyticsStackParamList = {
 
 const Stack = createNativeStackNavigator<AnalyticsStackParamList>();
 
-const headerOpts = {
-    headerStyle: { backgroundColor: theme.colors.surface },
-    headerTitleStyle: { fontWeight: 'bold' as const, color: theme.colors.text },
-    headerTintColor: theme.colors.primary,
-};
-
 export const AnalyticsNavigator = () => {
+    const { colors } = useTheme();
     return (
-        <Stack.Navigator screenOptions={headerOpts}>
+        <Stack.Navigator screenOptions={createStackScreenOptions(colors)}>
             <Stack.Screen
                 name="AnalyticsOverview"
                 component={AnalyticsScreen}
-                options={{ title: 'Analytics' }}
+                options={{ title: 'Analytics', headerShown: true }}
             />
             <Stack.Screen
                 name="Feedback"
                 component={FeedbackScreen}
-                options={{ title: 'Feedback' }}
+                options={{ title: 'Feedback', headerShown: true }}
             />
             <Stack.Screen
                 name="OpportunityFeedback"
                 component={OpportunityFeedbackScreen}
-                options={({ route }) => ({ title: (route.params as any)?.title ?? 'Opportunity Feedback' })}
+                options={({ route }) => ({ title: route.params?.title ?? 'Opportunity Feedback', headerShown: true })}
             />
         </Stack.Navigator>
     );
 };
+
+
