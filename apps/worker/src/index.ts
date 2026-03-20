@@ -8,6 +8,7 @@ import {
     getQueue,
 } from '@fresherflow/queue';
 import http from 'http';
+import { env } from '@fresherflow/config';
 import { logger, setupCleanLogging } from '@fresherflow/logger';
 import { prisma } from '@fresherflow/database';
 import { redis } from '@fresherflow/redis';
@@ -16,7 +17,7 @@ setupCleanLogging();
 
 const connection = getQueueConnection();
 const startedAt = new Date().toISOString();
-const ENABLE_QUEUE_HEALTH = process.env.ENABLE_WORKER_QUEUE_HEALTH === 'true';
+const ENABLE_QUEUE_HEALTH = env.ENABLE_WORKER_QUEUE_HEALTH;
 
 logger.info('Starting FresherFlow Background Worker...');
 
@@ -53,7 +54,7 @@ for (const { name, worker } of workers) {
 
 // Health endpoint — includes per-queue backlog and failed counts
 // Required by Render to keep the free-tier web service alive.
-const PORT = parseInt(process.env.PORT || '5001', 10);
+const PORT = parseInt(env.PORT || '5001', 10);
 
 http.createServer(async (_, res) => {
     try {

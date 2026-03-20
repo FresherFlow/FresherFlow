@@ -1,18 +1,19 @@
 import { Job } from 'bullmq';
 import { logger } from '@fresherflow/logger';
 import { Resend } from 'resend';
+import { env } from '@fresherflow/config';
+import { EmailJobData } from '../index';
 
-interface EmailJobData { to: string; subject: string; html: string; text?: string; }
-
-
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
-const EMAIL_FROM = process.env.EMAIL_FROM || 'FresherFlow <no-reply@fresherflow.in>';
+const getResendClient = () => env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
+const getEmailFrom = () => env.EMAIL_FROM || 'FresherFlow <no-reply@fresherflow.in>';
 
 export async function processEmailJob(job: Job<EmailJobData>) {
     const { to, subject, html, text } = job.data;
+    const resend = getResendClient();
+    const EMAIL_FROM = getEmailFrom();
 
     // Respect email suppression env var
-    if (process.env.ENABLE_EMAIL_SENDING === 'false') {
+    if (!env.ENABLE_EMAIL_SENDING) {
         logger.info('Email sending is disabled via ENABLE_EMAIL_SENDING. Skipping...', { to, subject });
         return;
     }

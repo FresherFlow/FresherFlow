@@ -1,11 +1,11 @@
-import prisma from '../lib/prisma';
+import prisma from '../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
 import { Opportunity, Profile, OpportunityType, OpportunityStatus } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { userActionSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
-import { checkEligibility } from '../domain/eligibility';
+import { checkEligibility } from '@fresherflow/domain';
 
 
 const router: Router = express.Router();

@@ -34,6 +34,26 @@ const envSchema = z.object({
     FRONTEND_URLS: z.string().optional(),
     SENTRY_DSN: z.string().optional(),
     APP_MODE: appModeSchema,
+    RESEND_API_KEY: z.string().optional(),
+    EMAIL_FROM: z.string().optional(),
+    ENABLE_EMAIL_SENDING: z.preprocess((value) => {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+            const normalized = value.toLowerCase().trim();
+            if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+            if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+        }
+        return true; // Default to true if missing or unparseable
+    }, z.boolean().default(true)),
+    ENABLE_WORKER_QUEUE_HEALTH: z.preprocess((value) => {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'string') {
+            const normalized = value.toLowerCase().trim();
+            if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+            if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+        }
+        return true; // Default to true if missing or unparseable
+    }, z.boolean().default(true)),
 }).superRefine((value, ctx) => {
     if (value.NODE_ENV !== 'test' && !value.DATABASE_URL) {
         ctx.addIssue({
