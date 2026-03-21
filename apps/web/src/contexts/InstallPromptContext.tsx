@@ -101,6 +101,7 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
+        if (!isInstallEligibleHost) return;
 
         const onBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
@@ -121,7 +122,7 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
             window.removeEventListener('beforeinstallprompt', onBeforeInstallPrompt);
             window.removeEventListener('appinstalled', onAppInstalled);
         };
-    }, []);
+    }, [isInstallEligibleHost]);
 
     const dismissBanner = useCallback(() => {
         setBannerDismissed(true);

@@ -44,7 +44,17 @@ export function handleHostRouting(req: NextRequest) {
         }
     }
 
-    // 4. Auth explicit host routing
+    // 4. App Host handling
+    if (normalizedHost === APP_WEB_HOST) {
+        if (pathname === '/') {
+            return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${APP_WEB_HOST}/dashboard${search}`);
+        }
+        if (isPublicPath(pathname) && pathname !== '/login' && pathname !== '/signup') {
+            return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${search}`);
+        }
+    }
+
+    // 5. Auth explicit host routing
     if (normalizedHost === PUBLIC_WEB_HOST && (pathname === '/login' || pathname === '/signup')) {
         return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${USER_LOGIN_HOST}${pathname}${search}`);
     }

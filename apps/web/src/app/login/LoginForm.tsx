@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter, useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -22,6 +22,7 @@ declare global {
     interface Window {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         google: any;
+        __ffGoogleGsiInitialized?: boolean;
     }
 }
 
@@ -34,6 +35,7 @@ function LoginContent() {
     const [isProcessing, setIsProcessing] = useState(false);
     const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false);
     const [googleScriptBlocked, setGoogleScriptBlocked] = useState(false);
+    const googleInitializedRef = useRef(false);
 
     const { sendOtp, verifyOtp, loginWithGoogle, user, isLoading } = useAuth();
     const router = useRouter();
@@ -122,11 +124,15 @@ function LoginContent() {
             if (!googleBtn) { setTimeout(initGoogle, 100); return; }
             try {
                 googleBtn.innerHTML = '';
-                window.google.accounts.id.initialize({
-                    client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-                    callback: handleGoogleCallback,
-                    auto_select: false,
-                });
+                if (!window.__ffGoogleGsiInitialized && !googleInitializedRef.current) {
+                    window.google.accounts.id.initialize({
+                        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
+                        callback: handleGoogleCallback,
+                        auto_select: false,
+                    });
+                    window.__ffGoogleGsiInitialized = true;
+                    googleInitializedRef.current = true;
+                }
                 const buttonWidth = Math.min(400, googleBtn.clientWidth || 280);
                 window.google.accounts.id.renderButton(googleBtn, {
                     type: 'standard', theme: 'outline', size: 'large',

@@ -20,7 +20,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === adminHost;
     const isAdminRoute = normalizedPathname.startsWith('/admin') || isAdminHost;
 
-    const hideNav = isAdminRoute;
+    const hideNav = isAdminRoute || isAuthRoute;
     const isHomePage = pathname === '/';
 
     const authContext = useContext(AuthContext);
