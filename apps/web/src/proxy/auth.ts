@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isUserPath } from "./paths";
-import { ADMIN_WEB_HOST, USER_LOGIN_HOST, redirectWithMethodAwareness } from "./utils";
+import { getHostRole, redirectWithMethodAwareness, resolveHosts } from "./utils";
 
 function getSafeRedirectTarget(raw: string | null): string {
     if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
@@ -11,6 +11,8 @@ function getSafeRedirectTarget(raw: string | null): string {
 export function handleAuth(req: NextRequest) {
     const { pathname, hostname } = req.nextUrl;
     const normalizedHost = hostname.toLowerCase();
+    const { ADMIN_WEB_HOST, USER_LOGIN_HOST } = resolveHosts(req);
+    const hostRole = getHostRole(normalizedHost, req);
     const effectivePathname = normalizedHost === ADMIN_WEB_HOST && pathname !== '/login' && !pathname.startsWith('/admin')
         ? `/admin${pathname === '/' ? '' : pathname}`
         : pathname;
@@ -19,7 +21,7 @@ export function handleAuth(req: NextRequest) {
     const adminLoggedIn = req.cookies.has("adminAccessToken");
 
     // Admin Auth
-    if (normalizedHost === ADMIN_WEB_HOST) {
+    if (hostRole === 'admin') {
         if (!adminLoggedIn && effectivePathname !== '/admin/login' && pathname !== '/login') {
              return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${ADMIN_WEB_HOST}/login`);
         }
@@ -35,11 +37,11 @@ export function handleAuth(req: NextRequest) {
         return NextResponse.redirect(loginUrl, 307);
     }
 
-    if (pathname === "/login" && loggedIn && normalizedHost !== ADMIN_WEB_HOST) {
+    if (pathname === "/login" && loggedIn && hostRole !== 'admin') {
         return redirectWithMethodAwareness(req, getSafeRedirectTarget(req.nextUrl.searchParams.get('redirect')));
     }
 
-    if (pathname === "/" && loggedIn && normalizedHost !== ADMIN_WEB_HOST) {
+    if (pathname === "/" && loggedIn && hostRole !== 'admin') {
         return redirectWithMethodAwareness(req, "/dashboard");
     }
 

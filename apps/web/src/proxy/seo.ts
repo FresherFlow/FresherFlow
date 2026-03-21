@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isUserPath } from "./paths";
-import { PUBLIC_WEB_HOST } from "./utils";
+import { getHostRole, resolveHosts } from "./utils";
 
 export function applySeoHeaders(req: NextRequest, res: NextResponse) {
     const { pathname, hostname } = req.nextUrl;
     const normalizedHost = hostname.toLowerCase();
+    const { PUBLIC_WEB_HOST } = resolveHosts(req);
+    const hostRole = getHostRole(normalizedHost, req);
 
     const isAuthUtility = pathname === '/login' || pathname === '/signup' || pathname === '/logout';
     const isExplicitNoIndexPath =
@@ -18,7 +20,7 @@ export function applySeoHeaders(req: NextRequest, res: NextResponse) {
         isExplicitNoIndexPath ||
         isAuthUtility ||
         pathname === '/admin-manifest.json' ||
-        (normalizedHost !== PUBLIC_WEB_HOST && !normalizedHost.includes('localhost')) ||
+        (hostRole !== 'public' && normalizedHost !== PUBLIC_WEB_HOST && !normalizedHost.includes('localhost')) ||
         pathname.startsWith('/admin')
     ) {
         res.headers.set("X-Robots-Tag", "noindex, follow, noarchive");

@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isUserPath, isPublicPath, isPublicDetailPath } from "./paths";
-import { APP_WEB_HOST, PUBLIC_WEB_HOST, ADMIN_WEB_HOST, USER_LOGIN_HOST, redirectWithMethodAwareness } from "./utils";
+import { getHostRole, redirectWithMethodAwareness, resolveHosts } from "./utils";
 
 export function handleHostRouting(req: NextRequest) {
     const { hostname, pathname, search } = req.nextUrl;
     const normalizedHost = hostname.toLowerCase();
+    const { APP_WEB_HOST, PUBLIC_WEB_HOST, ADMIN_WEB_HOST, USER_LOGIN_HOST } = resolveHosts(req);
+    const hostRole = getHostRole(normalizedHost, req);
     const isProd = process.env.NODE_ENV === 'production';
 
     if (!isProd) {
@@ -12,7 +14,7 @@ export function handleHostRouting(req: NextRequest) {
     }
 
     // 1. Admin Host handling
-    if (normalizedHost === ADMIN_WEB_HOST) {
+    if (hostRole === 'admin') {
         if (pathname === '/admin-manifest.json') {
             return NextResponse.next();
         }
@@ -29,13 +31,13 @@ export function handleHostRouting(req: NextRequest) {
     }
 
     // 2. Map /admin to Admin Host
-    if (pathname.startsWith('/admin') && normalizedHost !== ADMIN_WEB_HOST) {
+    if (pathname.startsWith('/admin')) {
         const plainPath = pathname === '/admin' ? '/dashboard' : pathname.replace(/^\/admin/, '');
         return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${ADMIN_WEB_HOST}${plainPath}${search}`);
     }
 
     // 3. Public Host handling
-    if (normalizedHost === PUBLIC_WEB_HOST) {
+    if (hostRole === 'public') {
         if (isUserPath(pathname)) {
             return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${search}`);
         }
@@ -45,7 +47,7 @@ export function handleHostRouting(req: NextRequest) {
     }
 
     // 4. App Host handling
-    if (normalizedHost === APP_WEB_HOST) {
+    if (hostRole === 'app') {
         if (pathname === '/') {
             return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${APP_WEB_HOST}/dashboard${search}`);
         }
@@ -60,11 +62,11 @@ export function handleHostRouting(req: NextRequest) {
     }
 
     // 5. Auth explicit host routing
-    if (normalizedHost === PUBLIC_WEB_HOST && pathname === '/login') {
+    if (hostRole === 'public' && pathname === '/login') {
         return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${USER_LOGIN_HOST}${pathname}${search}`);
     }
 
-    if (normalizedHost === PUBLIC_WEB_HOST && pathname === '/signup') {
+    if (hostRole === 'public' && pathname === '/signup') {
         const loginUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/login`);
         loginUrl.searchParams.set('intent', 'signup');
         return NextResponse.redirect(loginUrl, 307);
