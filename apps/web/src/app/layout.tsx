@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { ConditionalAuthProvider } from "@/components/providers/ConditionalAuthProvider";
 import { SmartToaster } from "@/components/providers/SmartToaster";
@@ -14,12 +13,6 @@ import InstallAppBanner from "@/components/ui/InstallAppBanner";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
-
-const inter = Inter({
-  subsets: ["latin"],
-  variable: "--font-inter",
-  display: "swap",
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -131,7 +124,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} antialiased bg-background text-foreground selection:bg-primary/20`} suppressHydrationWarning>
+      <body className="antialiased bg-background text-foreground selection:bg-primary/20" suppressHydrationWarning>
         <ThemeProvider>
           <AuthFormDataProvider>
             <ConditionalAuthProvider>

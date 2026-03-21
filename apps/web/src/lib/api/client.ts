@@ -27,6 +27,25 @@ export class UnauthorizedError extends Error {
     }
 }
 
+function logClientWarning(message: string, error?: unknown) {
+    if (process.env.NODE_ENV === 'development') {
+        console.warn(message, error);
+    }
+}
+
+function shouldLogClientError(error: unknown): boolean {
+    const err = error as { statusCode?: number; code?: string; message?: string };
+    if (error instanceof OfflineError || error instanceof UnauthorizedError) return false;
+    if (err.code === 'TIMEOUT') return false;
+    if (err.statusCode === 401 || err.statusCode === 403 || err.statusCode === 429) return false;
+    if (typeof err.message === 'string') {
+        if (err.message === 'Refresh failed') return false;
+        if (err.message.includes('Server is temporarily unavailable')) return false;
+        if (err.message.includes('Gateway Timeout')) return false;
+    }
+    return true;
+}
+
 function normalizeApiBase(raw?: string): string {
     const value = (raw || '').trim();
     if (!value) return '';
@@ -255,7 +274,7 @@ export async function apiClient<T = unknown>(
                         }
                         // Refresh successful
                     } catch (error) {
-                        console.error('[Auth] Refresh failed:', error);
+                        logClientWarning('[Auth] Refresh failed:', error);
                         // Let the error propagate to the waiting requests so they can throw proper 401
                         throw error;
                     } finally {
@@ -280,7 +299,6 @@ export async function apiClient<T = unknown>(
                 const isNetworkError = error instanceof OfflineError || (error instanceof TypeError && error.message.includes('fetch'));
                 
                 if (isExplicitAuthFailure && !isNetworkError) {
-                    console.error('[Auth] Refresh failed, session expired.');
                     if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('fresherflow-unauthorized'));
                     }
@@ -345,7 +363,11 @@ export async function apiClient<T = unknown>(
             throw new OfflineError();
         }
 
-        console.error('API Error:', error);
+        if (shouldLogClientError(error)) {
+            console.error('API Error:', error);
+        } else {
+            logClientWarning('API request handled:', error);
+        }
 
         // Filter what we report to Sentry to reduce noise
         const err = error as { statusCode?: number; code?: string; message?: string };

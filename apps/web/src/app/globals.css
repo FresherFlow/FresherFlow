@@ -17,7 +17,7 @@
   --color-accent: hsl(var(--accent));
   --color-accent-foreground: hsl(var(--accent-foreground));
   
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-sans: system-ui, sans-serif;
   
   --spacing-18: 4.5rem;
   --spacing-22: 5.5rem;
