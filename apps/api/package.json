@@ -9,7 +9,7 @@
         "dev": "nodemon --exec \"npx ts-node\" src/index.ts",
         "predev:worker": "npm run db:generate",
         "dev:worker": "nodemon --exec \"npx ts-node\" src/worker.ts",
-        "build": "npm run build:deps && tsc",
+        "build": "npm run build:deps && tsc && node ../../scripts/copy-parser-runtime.mjs",
         "build:deps": "npm --prefix ../.. run build --workspace=@fresherflow/types && npm --prefix ../.. run build --workspace=@fresherflow/constants && npm --prefix ../.. run build --workspace=@fresherflow/logger && npm --prefix ../.. run build --workspace=@fresherflow/config && npm --prefix ../.. run build --workspace=@fresherflow/schemas && npm --prefix ../.. run build --workspace=@fresherflow/domain && npm --prefix ../.. run build --workspace=@fresherflow/parser && npm --prefix ../.. run build --workspace=@fresherflow/utils",
         "start": "node dist/index.js",
         "start:worker": "node dist/worker.js",

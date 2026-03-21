@@ -1,4 +1,4 @@
-import { Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { logger } from '@fresherflow/logger';
 import chalk from 'chalk';
 import TelegramService from '../infrastructure/services/telegram.service';
@@ -25,7 +25,8 @@ function isDatabaseUnavailableError(err: ExtendedError): boolean {
 export function errorHandler(
     err: ExtendedError,
     req: Request,
-    res: Response
+    res: Response,
+    _next: NextFunction
 ) {
     const databaseUnavailable = isDatabaseUnavailableError(err);
     const statusCode = databaseUnavailable ? 503 : (err.statusCode || 500);
