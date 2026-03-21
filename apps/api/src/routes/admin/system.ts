@@ -3,12 +3,12 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { requireAdmin } from '../../middleware/auth';
 import { getVerificationStats, runLinkVerification } from '../../infrastructure/services/verificationBot';
 import { getObservabilityMetrics } from '../../middleware/observability';
-import { getGrowthFunnelMetrics, GrowthWindow } from '../../application/analytics/growthFunnel';
-import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, TelegramBroadcastStatus } from '@prisma/client';
+import { getGrowthFunnelMetrics, GrowthWindow } from '../../infrastructure/services/growthFunnel.service';
+import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, TelegramBroadcastStatus } from '@fresherflow/database';
 import TelegramService from '../../infrastructure/services/telegram.service';
-import { runAlertsCycle } from '../../application/alerts/cycle';
-import { sendNewJobAlerts } from '../../application/notifications/instant';
-import { getAdminMetricsV2, MetricsWindow, clearAdminMetricsCache } from '../../application/admin/getMetrics';
+import { runAlertsCycle } from '../../infrastructure/services/alerts.service';
+import { sendNewJobAlerts } from '../../infrastructure/services/notification.service';
+import { getAdminMetricsV2, MetricsWindow, clearAdminMetricsCache } from '../../infrastructure/services/adminMetrics.service';
 
 const router = Router();
 

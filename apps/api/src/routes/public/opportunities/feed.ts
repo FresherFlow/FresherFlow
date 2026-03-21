@@ -134,7 +134,7 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         if (!isAdmin && profile) {
             finalResults = filterAndRankOpportunitiesForUser(
                 mappedResults,
-                profile as Profile,
+                profile as unknown as Profile,
                 userId || undefined
             ).map((item) => item.opportunity);
         }
@@ -144,7 +144,7 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         let debug: { opportunityId: string; title: string; score: number; breakdown: unknown }[] | undefined;
 
         if (profile && isAdmin) {
-            const ranked = rankOpportunitiesForUser(finalResults, profile as Profile);
+            const ranked = rankOpportunitiesForUser(finalResults, profile as unknown as Profile);
             sorted = ranked.map((item) => item.opportunity);
             if (includeRelevanceDebug) {
                 debug = ranked.map((item) => ({

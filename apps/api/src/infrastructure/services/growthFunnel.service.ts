@@ -1,4 +1,4 @@
-import prisma from '../lib/prisma';
+import prisma from '../database/prisma';
 import { GrowthFunnelEvent } from '@fresherflow/database';
 import { logger } from '@fresherflow/logger';
 

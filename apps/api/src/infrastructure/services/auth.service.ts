@@ -48,7 +48,7 @@ async function bindReferral(newUserId: string, refCode: string | undefined | nul
     });
     if (visit) {
         await prisma.referralVisit.update({
-            where: { id: visit.id },
+            where: { id: visit.id as string },
             data: { visitorUserId: newUserId },
         });
     }
@@ -93,9 +93,9 @@ export class AuthService {
         });
 
         const isNewUser = !existingUser;
-        if (isNewUser) await bindReferral(user.id, refCode);
+        if (isNewUser) await bindReferral(user.id as string, refCode);
 
-        return { user, isNewUser };
+        return { user: user as unknown as User, isNewUser };
     }
 
     /**
@@ -152,8 +152,8 @@ export class AuthService {
         });
 
         const isNewUser = !existingUser;
-        if (isNewUser) await bindReferral(user.id, refCode);
+        if (isNewUser) await bindReferral(user.id as string, refCode);
 
-        return { user, isNewUser };
+        return { user: user as unknown as User, isNewUser };
     }
 }

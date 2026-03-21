@@ -12,7 +12,7 @@ import {
     normalizeEducationRequirements, buildWalkInCreate,
     deriveOpportunityExpiryDate,
 } from './_helpers';
-import { handleOpportunityPublished } from '../../../application/opportunity/publish';
+import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
 import { Opportunity } from '@fresherflow/types';
 
 const router = Router();
@@ -74,7 +74,7 @@ router.post(
                     experienceMin: data.experienceMin, experienceMax: data.experienceMax,
                     sourceLink, applyLink,
                     expiresAt: deriveOpportunityExpiryDate(data, type),
-                    postedByUserId: req.adminId!,
+                    postedByUserId: req.adminId as string,
                     status: OpportunityStatus.PUBLISHED,
                     ...(walkInCreate && { walkInDetails: walkInCreate }),
                 },
@@ -165,7 +165,7 @@ router.post(
                     experienceMin: data.experienceMin, experienceMax: data.experienceMax,
                     sourceLink, applyLink,
                     expiresAt: deriveOpportunityExpiryDate(data, type),
-                    postedByUserId: req.adminId!,
+                    postedByUserId: req.adminId as string,
                     status: OpportunityStatus.DRAFT,
                     ...(walkInCreate && { walkInDetails: walkInCreate }),
                 },
@@ -201,8 +201,7 @@ router.put(
             });
             if (!existing) return res.status(404).json({ message: 'Opportunity not found' });
 
-            const id = existing.id;
-            const type = data.type as OpportunityType;
+             const type = data.type as OpportunityType;
             const walkInUpdate = type === OpportunityType.WALKIN && data.walkInDetails
                 ? { upsert: (() => { const b = buildWalkInCreate(data); return b ? { create: b.create, update: b.create } : undefined; })() }
                 : {};
@@ -236,11 +235,11 @@ router.put(
             };
 
             if (data.title !== existing.title || data.company !== existing.company) {
-                updateData.slug = generateSlug(data.title, data.company, existing.id);
+                updateData.slug = generateSlug(data.title as string, data.company as string, existing.id as string);
             }
 
             const opportunity = await prisma.opportunity.update({
-                where: { id },
+                where: { id: existing.id as string },
                 data: updateData,
                 include: { walkInDetails: true },
             });
@@ -253,7 +252,7 @@ router.put(
                 // Already published, just update cache and notify update
                 await handleOpportunityPublished(opportunity as unknown as Opportunity, { 
                     isNew: false, 
-                    oldSlug: existing.slug !== opportunity.slug ? existing.slug : undefined 
+                    oldSlug: existing.slug !== opportunity.slug ? (existing.slug as string) : undefined 
                 });
             }
 

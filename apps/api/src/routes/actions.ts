@@ -66,12 +66,14 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
         if (opportunity.type === OpportunityType.WALKIN && (normalizedActionType === 'INTERVIEWED' || normalizedActionType === 'ATTENDED')) {
             const nowUTC = new Date();
 
-            if (!opportunity.walkInDetails || !opportunity.walkInDetails.dates.length) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            if (!opportunity.walkInDetails || !opportunity.walkInDetails.dates || !(opportunity.walkInDetails.dates as any).length) {
                 return next(new AppError('Walk-in dates not found', 400));
             }
 
             // Get EARLIEST date (event semantics)
-            const dates = opportunity.walkInDetails.dates.map((d: Date) => new Date(d));
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const dates = (opportunity.walkInDetails.dates as any[]).map((d: any) => new Date(d));
             const earliestDate = dates.sort((a: Date, b: Date) => a.getTime() - b.getTime())[0];
 
             if (nowUTC < earliestDate) {

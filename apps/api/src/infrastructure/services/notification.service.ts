@@ -1,11 +1,10 @@
-import prisma, { Prisma } from '../lib/prisma';
+import prisma, { Prisma } from '../database/prisma';
 import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind } from '@fresherflow/database';
 import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
-import { filterAndRankOpportunitiesForUser } from '../domain/eligibility';
+import { filterAndRankOpportunitiesForUser } from '../../domain/eligibility';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 import { sendNewJobPush } from './push.service';
-
 
 
 /**
@@ -100,16 +99,17 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         });
     }
 
-    // Get the opportunity with details
-    const opportunity = await prisma.opportunity.findUnique({
+    const rawOpportunity = await prisma.opportunity.findUnique({
         where: { id: opportunityId },
         include: { walkInDetails: true }
     });
 
-    if (!opportunity || opportunity.status !== OpportunityStatus.PUBLISHED) {
+    if (!rawOpportunity || rawOpportunity.status !== OpportunityStatus.PUBLISHED) {
         logger.info('Skipping alerts for non-published opportunity', { opportunityId });
         return { usersSent: 0, emailsSent: 0, appAlertsSent: 0, pushSent: 0 };
     }
+
+    const opportunity = rawOpportunity as unknown as Opportunity;
 
     // Get all candidate users. Preferences are optional (defaults apply when missing).
     const users = await prisma.user.findMany({

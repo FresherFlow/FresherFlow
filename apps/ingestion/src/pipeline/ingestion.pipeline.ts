@@ -117,10 +117,10 @@ export class IngestionPipeline {
         for (const raw of pending) {
             try {
                 if (!raw.sourceLink) continue;
-                const { parsed: p, meta } = await UrlParser.parseUrl(raw.sourceLink);
+                const { parsed: p, meta } = await UrlParser.parseUrl(raw.sourceLink as string);
                 if (meta.confidence < 0.4) {
                     await prisma.rawOpportunity.update({
-                        where: { id: raw.id },
+                        where: { id: raw.id as string },
                         data: { status: 'FAILED' as any, errorMessage: 'Low confidence in parsing' }
                     });
                     continue;
@@ -138,13 +138,13 @@ export class IngestionPipeline {
                 });
 
                 await prisma.rawOpportunity.update({
-                    where: { id: raw.id },
+                    where: { id: raw.id as string },
                     data: { status: 'PROCESSED' as any }
                 });
             } catch (error) {
                 logger.error(`Failed to process crowdsourced link ${raw.sourceLink}:`, error);
                 await prisma.rawOpportunity.update({
-                    where: { id: raw.id },
+                    where: { id: raw.id as string },
                     data: { status: 'FAILED' as any, errorMessage: error instanceof Error ? error.message : String(error) }
                 });
             }

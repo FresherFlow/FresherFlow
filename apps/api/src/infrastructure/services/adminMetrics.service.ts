@@ -1,7 +1,7 @@
-import prisma from '../lib/prisma';
+import prisma from '../database/prisma';
 import { Prisma, RawOpportunityStatus } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
-import { getObservabilityMetrics } from '../middleware/observability';
+import { getObservabilityMetrics } from '../../middleware/observability';
 import redis from '@fresherflow/redis';
 
 export type MetricsWindow = '24h' | '7d' | '14d' | '30d';
@@ -80,8 +80,6 @@ type MetricsV2Response = {
         postedAt: string;
     }>;
 };
-
-// Local cache removal in favor of Redis
 
 function toWindowStart(window: MetricsWindow): Date {
     const now = Date.now();

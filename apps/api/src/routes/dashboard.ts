@@ -153,15 +153,15 @@ router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Re
         const seenDriveIds = new Set<string>();
         const driveMilestones = upcomingDriveEvents
             .filter((item) => {
-                if (seenDriveIds.has(item.opportunityId)) return false;
-                seenDriveIds.add(item.opportunityId);
+                if (seenDriveIds.has(item.opportunityId as string)) return false;
+                seenDriveIds.add(item.opportunityId as string);
                 return true;
             })
             .sort((a, b) => {
                 const aPriority = /tcs/i.test(a.opportunity?.company || '') && /nqt/i.test(a.opportunity?.title || '') ? 1 : 0;
                 const bPriority = /tcs/i.test(b.opportunity?.company || '') && /nqt/i.test(b.opportunity?.title || '') ? 1 : 0;
                 if (aPriority !== bPriority) return bPriority - aPriority;
-                return new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime();
+                return new Date(a.eventDate as Date).getTime() - new Date(b.eventDate as Date).getTime();
             })
             .slice(0, 4)
             .map((item) => ({

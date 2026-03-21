@@ -77,7 +77,7 @@ async function postOnePlatform(
       });
     } else {
       await prisma.socialPost.update({
-        where: { id: existing.id },
+        where: { id: existing.id as string },
         data: {
           payload: { ...(typeof existing.payload === 'object' && existing.payload ? existing.payload : {}), text, configState: 'disabled_by_env' }
         }
@@ -109,7 +109,7 @@ async function postOnePlatform(
   }
 
   // Enqueue for background processing (The "Hurdle-proof" Worker Thing)
-  await enqueueSocialPost({ socialPostId: record.id });
+  await enqueueSocialPost({ socialPostId: record.id as string });
 }
 
 export async function enqueueSocialPosts(opportunity: SocialOpportunity): Promise<void> {
@@ -129,7 +129,7 @@ export async function retrySocialPost(socialPostId: string): Promise<void> {
     data: { status: SocialPostStatus.PENDING }
   });
 
-  await enqueueSocialPost({ socialPostId: post.id });
+  await enqueueSocialPost({ socialPostId: post.id as string });
 }
 
 export async function listSocialPosts(params: {

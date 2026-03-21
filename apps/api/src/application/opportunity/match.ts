@@ -1,4 +1,4 @@
-import prisma, { Prisma } from '../../infrastructure/database/prisma';
+import prisma, { Prisma, EducationLevel } from '../../infrastructure/database/prisma';
 import { 
     OpportunityStatus, 
     Opportunity, 
@@ -14,15 +14,15 @@ import {
  * Use Case: Match Opportunities for a specific user
  */
 export async function matchOpportunitiesForUser(userId: string): Promise<RankedOpportunity<Opportunity>[]> {
-    const profile = await prisma.profile.findUnique({
+    const profile = (await prisma.profile.findUnique({
         where: { userId },
-    });
+    })) as unknown as Profile | null;
 
     if (!profile) throw new Error('Profile not found');
 
     // SQL Tier: High-level filtering for performance
     const conditions: Prisma.OpportunityWhereInput[] = [
-        { status: OpportunityStatus.PUBLISHED },
+        { status: OpportunityStatus.PUBLISHED as unknown as Prisma.EnumOpportunityStatusFilter<"Opportunity"> },
         { deletedAt: null },
         {
             OR: [
@@ -36,7 +36,7 @@ export async function matchOpportunitiesForUser(userId: string): Promise<RankedO
     if (profile.educationLevel) {
         conditions.push({
             OR: [
-                { allowedDegrees: { has: profile.educationLevel } },
+                { allowedDegrees: { has: profile.educationLevel as unknown as EducationLevel } },
                 { allowedDegrees: { isEmpty: true } }
             ]
         });

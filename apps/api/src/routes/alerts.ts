@@ -182,12 +182,18 @@ router.get('/feed', requireAuth, async (req: Request, res: Response, next: NextF
 
         const summary = {
             total: normalizedDeliveries.length,
-            dailyDigest: normalizedDeliveries.filter((item) => (item.kind as string) === 'DAILY_DIGEST').length,
-            closingSoon: normalizedDeliveries.filter((item) => (item.kind as string) === 'CLOSING_SOON').length,
-            highlight: normalizedDeliveries.filter((item) => (item.kind as string) === 'HIGHLIGHT').length,
-            appUpdate: normalizedDeliveries.filter((item) => (item.kind as string) === 'APP_UPDATE').length,
-            newJob: normalizedDeliveries.filter((item) => (item.kind as string) === 'NEW_JOB').length,
-            eventReminder: normalizedDeliveries.filter((item) => (item.kind as string) === 'EVENT_REMINDER').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            dailyDigest: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'DAILY_DIGEST').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            closingSoon: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'CLOSING_SOON').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            highlight: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'HIGHLIGHT').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            appUpdate: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'APP_UPDATE').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            newJob: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'NEW_JOB').length,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            eventReminder: normalizedDeliveries.filter((item: any) => (item.kind as string) === 'EVENT_REMINDER').length,
         };
 
         const unreadCount = await countVisibleUnreadAlerts(userId, profile as Profile | null);

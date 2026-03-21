@@ -55,7 +55,7 @@ vi.mock('../infrastructure/database/prisma', () => ({
     default: prismaMock,
 }));
 
-vi.mock('../services/auth.service', () => ({
+vi.mock('../infrastructure/services/auth.service', () => ({
     AuthService: {
         generateOtp: vi.fn(() => '123456'),
         verifyOtp: vi.fn(),
@@ -63,7 +63,7 @@ vi.mock('../services/auth.service', () => ({
     },
 }));
 
-vi.mock('../services/email.service', () => ({
+vi.mock('../infrastructure/services/email.service', () => ({
     EmailService: {
         sendOtp: vi.fn(),
     },
@@ -89,7 +89,7 @@ describe('auth and profile gate', () => {
     });
 
     it('POST /api/auth/otp/verify sets cookies and returns user', async () => {
-        const { AuthService } = await import('../services/auth.service');
+        const { AuthService } = await import('../infrastructure/services/auth.service');
         (AuthService.verifyOtp as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
             user: {
                 id: 'user-1',

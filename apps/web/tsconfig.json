@@ -1,11 +1,8 @@
 {
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "target": "ES2017",
-    "lib": [
-      "dom",
-      "dom.iterable",
-      "esnext"
-    ],
+    "baseUrl": ".",
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
     "strict": true,
@@ -23,45 +20,31 @@
       }
     ],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
-      "@/features/auth": [
-        "./src/contexts/AuthContext.tsx"
-      ],
-      "@/features/system/components/ui/*": [
-        "./src/components/ui/*"
-      ],
-      "@/shared/api/client": [
-        "./src/lib/api/client.ts"
-      ],
-      "@/shared/api/admin": [
-        "./src/lib/api/admin.ts"
-      ],
-      "@/shared/api/analytics": [
-        "./src/lib/analytics.ts"
-      ],
-      "@/shared/api/offline/*": [
-        "./src/lib/offline/*"
-      ],
-      "@/shared/ui/error": [
-        "./src/lib/utils/error.ts"
-      ],
-      "@/shared/ui/cn": [
-        "../../packages/ui/src/utils/cn.ts"
-      ],
-      "@/shared/ui/sanitize": [
-        "../../packages/ui/src/utils/sanitize.ts"
-      ],
-      "@fresherflow/types": [
-        "../../packages/types/index.ts"
-      ],
-      "@fresherflow/utils": [
-        "../../packages/utils/src/index.ts"
-      ],
-      "@repo/ui/*": [
-        "../../packages/ui/src/*"
-      ]
+      "@/*": ["src/*"],
+      "@/features/auth": ["./src/contexts/AuthContext.tsx"],
+      "@/features/system/components/ui/*": ["./src/components/ui/*"],
+      "@/shared/api/client": ["./src/lib/api/client.ts"],
+      "@/shared/api/admin": ["./src/lib/api/admin.ts"],
+      "@/shared/api/analytics": ["./src/lib/analytics.ts"],
+      "@/shared/api/offline/*": ["./src/lib/offline/*"],
+      "@/shared/ui/error": ["./src/lib/utils/error.ts"],
+      "@/shared/ui/cn": ["../../packages/ui/src/utils/cn.ts"],
+      "@/shared/ui/sanitize": ["../../packages/ui/src/utils/sanitize.ts"],
+      "@repo/domain": ["../../packages/domain/src"],
+      "@repo/domain/*": ["../../packages/domain/src/*"],
+      "@repo/api-client": ["../../packages/api-client/src"],
+      "@repo/api-client/*": ["../../packages/api-client/src/*"],
+      "@repo/utils": ["../../packages/utils/src"],
+      "@repo/utils/*": ["../../packages/utils/src/*"],
+      "@repo/schemas": ["../../packages/schemas"],
+      "@repo/schemas/*": ["../../packages/schemas/*"],
+      "@repo/frontend-core": ["../../packages/frontend-core/src"],
+      "@repo/frontend-core/*": ["../../packages/frontend-core/src/*"],
+      "@repo/ui": ["../../packages/ui/src"],
+      "@repo/ui/*": ["../../packages/ui/src/*"],
+      "@fresherflow/types": ["../../packages/types/index.ts"],
+      "@fresherflow/parser": ["../../packages/parser/src/index.ts"],
+      "@fresherflow/parser/*": ["../../packages/parser/src/*"]
     }
   },
   "include": [

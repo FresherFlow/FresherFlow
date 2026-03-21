@@ -31,7 +31,7 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
   if (process.env.SOCIAL_DRY_RUN === 'true') {
      logger.info('[worker:social] dry run executed', { socialPostId: post.id });
      await prisma.socialPost.update({
-       where: { id: post.id },
+       where: { id: post.id as string },
        data: { 
          status: SocialPostStatus.DRY_RUN,
          payload: { ...(typeof post.payload === 'object' && post.payload ? post.payload : {}), configState: 'dry_run_executed' } 
@@ -58,7 +58,7 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
     }
 
     await prisma.socialPost.update({
-      where: { id: post.id },
+      where: { id: post.id as string },
       data: {
         status: SocialPostStatus.PUBLISHED,
         externalPostId,
@@ -84,11 +84,12 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
       errorMessage = `${errorMessage} - Response: ${data}`;
     }
 
-    const newRetryCount = (post.retryCount || 0) + 1;
+    const currentRetryCount = post.retryCount as number;
+    const newRetryCount = (currentRetryCount || 0) + 1;
     const shouldDisable = newRetryCount >= 5;
 
     await prisma.socialPost.update({
-      where: { id: post.id },
+      where: { id: post.id as string },
       data: { 
         status: shouldDisable ? SocialPostStatus.DISABLED : SocialPostStatus.FAILED, 
         errorMessage: errorMessage.slice(0, 1000), // Increased limit to capture more info

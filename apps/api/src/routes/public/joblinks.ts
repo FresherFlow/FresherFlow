@@ -40,7 +40,7 @@ router.post('/submit-job-link', submitLimiter, async (req: Request, res: Respons
         // Store the URL in RawOpportunity to be processed by admins/ParserService later
         await prisma.rawOpportunity.create({
             data: {
-                sourceId: ingestionSource.id,
+                sourceId: ingestionSource.id as string,
                 sourceLink: url,
                 status: 'FETCHED',
                 reasonFlags: ['CROWDSOURCED', `submitted_by:${source}`],

@@ -26,7 +26,7 @@ router.post(
             if (!existing) throw new AppError('Opportunity not found', 404);
 
             const opportunity = await prisma.opportunity.update({
-                where: { id: existing.id },
+                where: { id: existing.id as string },
                 data: {
                     expiresAt: new Date(Date.now() - 60 * 60 * 1000), // backdated
                     expiredAt: new Date(),
@@ -34,7 +34,7 @@ router.post(
             });
 
             res.json({ opportunity, message: 'Opportunity marked as expired' });
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id, existing.slug], purgeFeed: true });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
         } catch (error) {
             next(error);
         }
@@ -59,13 +59,13 @@ router.post(
             if (!existing) throw new AppError('Opportunity not found', 404);
 
             const opportunity = await prisma.opportunity.update({
-                where: { id: existing.id },
+                where: { id: existing.id as string },
                 data: { deletedAt: null, deletionReason: null, status: OpportunityStatus.ARCHIVED },
             });
 
             res.json({ opportunity, message: 'Opportunity restored from deleted list' });
             void invalidatePublicOpportunityCache({
-                idsOrSlugs: [existing.id, existing.slug, opportunity.id, opportunity.slug],
+                idsOrSlugs: [existing.id as string, existing.slug as string, opportunity.id as string, opportunity.slug as string],
                 purgeFeed: true,
             });
         } catch (error) {
@@ -95,7 +95,7 @@ router.delete(
             if (!existing) throw new AppError('Opportunity not found', 404);
 
             const opportunity = await prisma.opportunity.update({
-                where: { id: existing.id },
+                where: { id: existing.id as string },
                 data: {
                     status: OpportunityStatus.ARCHIVED,
                     deletedAt: new Date(),
@@ -104,7 +104,7 @@ router.delete(
             });
 
             res.json({ opportunity, message: 'Opportunity removed successfully (soft delete)' });
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id, existing.slug], purgeFeed: true });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
         } catch (error) {
             next(error);
         }

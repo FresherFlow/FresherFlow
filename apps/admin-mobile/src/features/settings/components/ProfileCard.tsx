@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Admin } from '../../../context/AuthContext';
 import { LogOut } from 'lucide-react-native';
 import { ThemeColors } from '../../../theme';
@@ -15,14 +15,9 @@ export const ProfileCard = React.memo(({ admin, colors: c, onLogout }: ProfileCa
         <View style={[styles.card, { backgroundColor: c.surface, borderColor: c.border }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <View style={[styles.avatar, { backgroundColor: 'rgba(255, 255, 255, 0.08)' }]}>
-                    {/* Assuming admin might have an image property in the future, otherwise just use initials */}
-                    {false ? (
-                        <Image source={{ uri: '' /* admin.image */ }} style={styles.avatarImg} />
-                    ) : (
-                        <Text style={[styles.avatarText, { color: c.primary }]}>
-                            {admin?.fullName?.charAt(0).toUpperCase() || admin?.email?.charAt(0).toUpperCase() || 'A'}
-                        </Text>
-                    )}
+                    <Text style={[styles.avatarText, { color: c.primary }]}>
+                        {admin?.fullName?.charAt(0).toUpperCase() || admin?.email?.charAt(0).toUpperCase() || 'A'}
+                    </Text>
                 </View>
                 <View style={{ marginLeft: 20, flex: 1 }}>
                     <Text style={[styles.name, { color: c.text }]}>{admin?.fullName || 'Admin'}</Text>

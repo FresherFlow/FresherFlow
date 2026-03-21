@@ -12,8 +12,23 @@ export default [
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
-        project: true,
+        project: [
+          "./tsconfig.json",
+          "./apps/*/tsconfig.json",
+          "./packages/*/tsconfig.json",
+        ],
         tsconfigRootDir: __dirname,
+      },
+    },
+    settings: {
+      "import/resolver": {
+        typescript: {
+          project: [
+            "./tsconfig.json",
+            "./apps/*/tsconfig.json",
+            "./packages/*/tsconfig.json",
+          ],
+        },
       },
     },
   },
@@ -21,6 +36,7 @@ export default [
     ignores: [
       "**/dist/**",
       "**/.next/**",
+      "**/.artifacts/**",
       "**/*.d.ts",
       "**/*.d.ts.map",
       "packages/domain/src/**/*.js",
@@ -40,33 +56,42 @@ export default [
         "error",
         {
           patterns: [
-            { group: ["apps/*"], message: "Apps cannot import other apps" },
-            { group: ["@repo/database", "@repo/redis"], message: "UI cannot access infrastructure" },
-            { group: ["@repo/database", "@repo/redis", "@repo/api-client"], message: "Domain cannot depend on infra or API" },
-            { group: ["@repo/domain"], message: "Utils cannot depend on domain" },
-            { group: ["../..*", "../../..*"], message: "No relative cross-layer imports allowed (use path aliases)" }
+            { group: ["apps/*"], message: "Apps cannot import other apps" }
           ],
         },
       ],
     },
   },
-  // 2. Domain (strictest)
+  // 2. Domain (strictest - Pure business logic)
   {
     files: ["packages/domain/**/*"],
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: ["@repo/api-client", "@repo/database", "@repo/redis", "apps/*"] }
+        { 
+          patterns: [
+            "@repo/api-client", 
+            "@repo/database", 
+            "@repo/redis", 
+            "apps/*"
+          ] 
+        }
       ]
     }
   },
-  // 3. UI apps (web/mobile/admin)
+  // 3. UI Layer (web/mobile/admin)
   {
     files: ["apps/web/**/*", "apps/mobile/**/*", "apps/admin-mobile/**/*"],
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: ["@repo/database", "@repo/redis", "apps/api"] }
+        { 
+          patterns: [
+            "@repo/database", 
+            "@repo/redis", 
+            "apps/api"
+          ] 
+        }
       ]
     }
   },

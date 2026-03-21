@@ -1,13 +1,12 @@
-import prisma from '../lib/prisma';
+import prisma from '../database/prisma';
 import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
-import { filterAndRankOpportunitiesForUser } from '../domain/eligibility';
+import { 
+    filterAndRankOpportunitiesForUser,
+    getTimezoneParts, buildOpportunityUrl, getClosingSoonHours, formatExpiresText 
+} from '@fresherflow/domain';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 
-
-const CLOSING_SOON_WINDOW_HOURS = 48;
-
-type TzParts = { dateKey: string; hour: number };
 
 interface AlertPreference {
     enabled: boolean;
@@ -28,44 +27,6 @@ interface OpportunityEvent {
     eventDate: string | Date;
     sourceLink?: string | null;
     opportunity: Opportunity;
-}
-
-
-
-function getTimezoneParts(date: Date, timezone: string): TzParts {
-    const formatter = new Intl.DateTimeFormat('en-CA', {
-        timeZone: timezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        hour12: false,
-    });
-    const parts = formatter.formatToParts(date);
-    const map = Object.fromEntries(parts.map((p) => [p.type, p.value]));
-    return {
-        dateKey: `${map.year}-${map.month}-${map.day}`,
-        hour: Number(map.hour ?? 0),
-    };
-}
-
-function buildOpportunityUrl(frontendUrl: string, slug: string) {
-    return `${frontendUrl.replace(/\/$/, '')}/opportunities/${slug}`;
-}
-
-function getClosingSoonHours(opportunity: Opportunity, now: Date): number | null {
-    if (opportunity.type === 'WALKIN') {
-        const dates = (opportunity.walkInDetails?.dates ?? []) as Array<string | Date>;
-        if (dates.length === 0) return null;
-        const lastDate = new Date(Math.max(...dates.map((d: string | Date) => new Date(d).getTime())));
-        lastDate.setUTCHours(23, 59, 59, 999);
-        const diffHours = (lastDate.getTime() - now.getTime()) / (1000 * 60 * 60);
-        return diffHours > 0 && diffHours <= CLOSING_SOON_WINDOW_HOURS ? diffHours : null;
-    }
-
-    if (!opportunity.expiresAt) return null;
-    const diffHours = (new Date(opportunity.expiresAt).getTime() - now.getTime()) / (1000 * 60 * 60);
-    return diffHours > 0 && diffHours <= CLOSING_SOON_WINDOW_HOURS ? diffHours : null;
 }
 
 async function sendDailyDigestForUser(
@@ -173,9 +134,7 @@ async function sendClosingSoonForUser(
         const alreadySent = await prisma.alertDelivery.findUnique({ where: { dedupeKey } });
         if (alreadySent) continue;
 
-        const expiresText = hoursLeft <= 24
-            ? `Expires in ${Math.max(1, Math.round(hoursLeft))} hours`
-            : `Expires in ${Math.ceil(hoursLeft / 24)} days`;
+        const expiresText = formatExpiresText(hoursLeft);
 
         if (preference.emailEnabled) {
             await EmailService.sendClosingSoonAlert(user.email, user.fullName, {

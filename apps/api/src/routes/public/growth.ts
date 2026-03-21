@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { recordGrowthEvent } from '../../application/analytics/growthFunnel';
+import { recordGrowthEvent } from '../../infrastructure/services/growthFunnel.service';
 import { createRateLimiter } from '../../middleware/rateLimit';
 
 const router = express.Router();

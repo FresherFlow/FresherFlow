@@ -76,7 +76,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
 
         // Group by opportunity and count
         const feedbackByOpportunity = feedback.reduce((acc: Record<string, FeedbackGroup>, item) => {
-            const oppId = item.opportunityId;
+            const oppId = item.opportunityId as string;
             if (!acc[oppId]) {
                 acc[oppId] = {
                     opportunity: item.opportunity,
@@ -86,14 +86,15 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
                 };
             }
             acc[oppId].feedbackCount++;
-            if (['EXPIRED', 'LINK_BROKEN', 'DUPLICATE'].includes(item.reason)) {
+            if (['EXPIRED', 'LINK_BROKEN', 'DUPLICATE'].includes(item.reason as string)) {
                 acc[oppId].negativeCount++;
             }
             acc[oppId].feedback.push({
-                id: item.id,
-                reason: item.reason,
-                createdAt: item.createdAt,
-                user: item.user
+                id: item.id as string,
+                reason: item.reason as string,
+                createdAt: item.createdAt as Date,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                user: item.user as any
             });
             return acc;
         }, {} as Record<string, FeedbackGroup>);

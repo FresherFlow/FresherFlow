@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { runExpiryCycle } from '../cron/expiryCron';
 import { runLinkVerification } from '../infrastructure/services/verificationBot';
-import { runAlertsCycle } from '../application/alerts/cycle';
+import { runAlertsCycle } from '../infrastructure/services/alerts.service';
 import { logger } from '@fresherflow/logger';
 
 const router = Router();

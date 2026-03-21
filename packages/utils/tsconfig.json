@@ -9,12 +9,19 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "composite": true
+        "composite": true,
+        "baseUrl": ".",
+        "paths": {
+            "@fresherflow/parser": ["../parser/dist/index"],
+            "@fresherflow/domain": ["../domain/dist/index"],
+            "@fresherflow/types": ["../types/dist/index"]
+        }
     },
     "include": [
         "src/**/*"
     ],
     "exclude": [
-        "node_modules"
+        "node_modules",
+        "**/*.test.ts"
     ]
 }

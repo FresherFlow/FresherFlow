@@ -37,7 +37,7 @@ router.post('/generate', async (req: Request, res: Response, next: NextFunction)
         const secret = generateSecret();
         const otpauth = generateURI({
             issuer: APP_NAME,
-            label: user.email,
+            label: user.email as string,
             secret
         });
 
@@ -77,31 +77,10 @@ router.post('/verify', async (req: Request, res: Response, next: NextFunction) =
 
         // Verify returns { valid: boolean, delta: number }
         // We use await because verify is async in v13 default
-        const isValid = await verify({ token: code, secret: user.totpSecret });
+        const isValidResult = await verify({ token: code, secret: user.totpSecret as string }) as unknown;
+        const isValid = typeof isValidResult === 'boolean' ? isValidResult : Boolean((isValidResult as { valid: boolean })?.valid);
 
-        if (!isValid) { // verify returns boolean? NO, verify returns object in v13 types above? 
-            // Wait, functional.d.ts line 211: Promise<VerifyResult>
-            // VerifyResult usually has 'valid' property, or it might be just { valid: true }...
-            // line 184 example: // Returns: { valid: true, delta: 0 }
-            // So we need isValid.valid?
-            // Actually, let's double check if I should use verifySync or check the return type carefully.
-            // The example says "const result = await verify(...); // Returns { valid: true ... }"
-            // So it MUST be object.
-
-            // Let's assume object and check .valid (if verify returns boolean in some versions, this might fail, but v13 says object)
-        }
-
-        // Actually, verify returns boolean in otplib v12, but functional verify in v13 returns object?
-        // Let's use `const { valid } = await verify(...)` style.
-
-        // BUT wait, types above in functional.d.ts say `VerifyResult`.
-        // Let's check `VerifyResult` definition if I can... 
-        // It says `export { VerifyResult } from '@otplib/totp'`.
-        // I will assume it returns an object with `valid` property based on the example in functional.d.ts line 184.
-
-        const { valid } = await verify({ token: code, secret: user.totpSecret });
-
-        if (!valid) {
+        if (!isValid) {
             return next(new AppError('Invalid code', 400));
         }
 

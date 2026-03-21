@@ -18,14 +18,24 @@ export async function updateOpportunity(id: string, data: Partial<Opportunity>, 
         lastVerified: new Date(),
     };
 
+    // If data.status is provided, ensure it's correctly typed
+    if (data.status !== undefined) {
+        updateData.status = data.status as unknown as Prisma.EnumOpportunityStatusFieldUpdateOperationsInput;
+    }
+
     if (data.companyWebsite !== undefined) {
         updateData.companyLogoUrl = generateCompanyLogoUrl(data.companyWebsite);
     }
 
     if (data.title || data.company) {
-        const newTitle = data.title || existing.title;
-        const newCompany = data.company || existing.company;
-        updateData.slug = generateSlug(newTitle, newCompany, existing.id);
+        const newTitle = (data.title || existing.title) as string;
+        const newCompany = (data.company || existing.company) as string;
+        updateData.slug = generateSlug(newTitle, newCompany, existing.id as string);
+    }
+
+    // If data.type is provided, ensure it's correctly typed
+    if (data.type !== undefined) {
+        updateData.type = data.type as unknown as Prisma.EnumOpportunityTypeFieldUpdateOperationsInput;
     }
 
     return await prisma.opportunity.update({

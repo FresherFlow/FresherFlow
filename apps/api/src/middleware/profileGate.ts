@@ -28,7 +28,7 @@ export async function profileGate(req: Request, res: Response, next: NextFunctio
             return next();
         }
 
-        const profile = user.profile;
+        const profile = (user.profile as unknown as Profile) || null;
 
         if (!profile) {
             return next(new AppError('Profile not found. Please complete your profile.', 403));
@@ -52,4 +52,3 @@ export async function profileGate(req: Request, res: Response, next: NextFunctio
         next(error);
     }
 }
-

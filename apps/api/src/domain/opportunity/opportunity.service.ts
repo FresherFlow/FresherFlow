@@ -113,9 +113,9 @@ export class OpportunityService {
         }
 
         if (data.title || data.company) {
-            const newTitle = data.title || existing.title;
-            const newCompany = data.company || existing.company;
-            updateData.slug = generateSlug(newTitle, newCompany, existing.id);
+            const newTitle = (data.title || existing.title) as string;
+            const newCompany = (data.company || existing.company) as string;
+            updateData.slug = generateSlug(newTitle, newCompany, existing.id as string);
         }
 
         const updated = await prisma.opportunity.update({
@@ -237,7 +237,7 @@ export class OpportunityService {
         // Hard Gate: Batch/Passout Year Match
         andConditions.push({
             OR: [
-                { allowedPassoutYears: { has: profile.gradYear || 0 } },
+                { allowedPassoutYears: { has: (profile.gradYear as number) || 0 } },
                 { allowedPassoutYears: { isEmpty: true } }
             ]
         });
@@ -260,10 +260,10 @@ export class OpportunityService {
         }
 
         // Preference Filter: Locations
-        if (profile.preferredCities && profile.preferredCities.length > 0) {
+        if (profile.preferredCities && (profile.preferredCities as string[]).length > 0) {
             andConditions.push({
                 OR: [
-                    { locations: { hasSome: profile.preferredCities } },
+                    { locations: { hasSome: profile.preferredCities as string[] } },
                     { locations: { isEmpty: true } }
                 ]
             });
@@ -288,12 +288,12 @@ export class OpportunityService {
                 const eligibility = EligibilityService.checkEligibility(
                     {
                         educationLevel: profile.educationLevel as EducationLevel,
-                        passoutYear: profile.gradYear || 0,
+                        passoutYear: (profile.gradYear as number) || 0,
                         interestedIn: profile.interestedIn as OpportunityType[],
-                        preferredCities: profile.preferredCities,
+                        preferredCities: profile.preferredCities as string[],
                         workModes: profile.workModes as WorkMode[],
                         availability: profile.availability as Availability,
-                        skills: profile.skills,
+                        skills: profile.skills as string[],
                     },
                     {
                         type: opp.type as OpportunityType,
@@ -314,12 +314,12 @@ export class OpportunityService {
                         ? EligibilityService.getMatchScore(
                             {
                                 educationLevel: profile.educationLevel as EducationLevel,
-                                passoutYear: profile.gradYear || 0,
+                                passoutYear: (profile.gradYear as number) || 0,
                                 interestedIn: profile.interestedIn as OpportunityType[],
-                                preferredCities: profile.preferredCities,
+                                preferredCities: profile.preferredCities as string[],
                                 workModes: profile.workModes as WorkMode[],
                                 availability: profile.availability as Availability,
-                                skills: profile.skills,
+                                skills: profile.skills as string[],
                             },
                             {
                                 type: opp.type as OpportunityType,

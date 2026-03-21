@@ -42,9 +42,9 @@ export async function sendNewJobPush(userId: string, payload: NewJobPushPayload)
     const isExpo = subscription.p256dh === 'EXPO';
 
     await enqueuePushNotification({
-        endpoint: subscription.endpoint,
-        p256dh: subscription.p256dh,
-        auth: subscription.auth,
+        endpoint: subscription.endpoint as string,
+        p256dh: subscription.p256dh as string,
+        auth: subscription.auth as string,
         userId,
         title: `New job: ${payload.title}`,
         body: `${payload.company} posted a new opening for freshers.`,

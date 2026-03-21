@@ -74,7 +74,7 @@ router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response,
             if (user?.role !== 'ADMIN' && user?.profile) {
                 hits = filterAndRankOpportunitiesForUser(
                     hits as Opportunity[],
-                    user.profile as Profile,
+                    user.profile as unknown as Profile,
                     req.userId
                 )
                     .map((item) => item.opportunity) as typeof hits;

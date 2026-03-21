@@ -1,7 +1,5 @@
-import prisma from '../lib/prisma';
-
-
-
+import prisma from '../database/prisma';
+import { OpportunityStatus } from '@fresherflow/types';
 
 export class CompanyService {
     /**
@@ -12,7 +10,7 @@ export class CompanyService {
         const latestOpportunity = await prisma.opportunity.findFirst({
             where: {
                 company: { equals: name, mode: 'insensitive' },
-                status: 'PUBLISHED',
+                status: OpportunityStatus.PUBLISHED,
                 deletedAt: null
             },
             orderBy: { postedAt: 'desc' }
@@ -25,7 +23,7 @@ export class CompanyService {
         const activeCount = await prisma.opportunity.count({
             where: {
                 company: { equals: name, mode: 'insensitive' },
-                status: 'PUBLISHED',
+                status: OpportunityStatus.PUBLISHED,
                 deletedAt: null,
                 OR: [
                     { expiresAt: null },
@@ -53,7 +51,7 @@ export class CompanyService {
         const companies = await prisma.opportunity.groupBy({
             by: ['company'],
             where: {
-                status: 'PUBLISHED',
+                status: OpportunityStatus.PUBLISHED,
                 deletedAt: null,
                 ...(query ? { company: { contains: query, mode: 'insensitive' } } : {})
             },

@@ -15,7 +15,7 @@ import { AppError } from '../middleware/errorHandler';
 import { requireAuth } from '../middleware/auth';
 import { AuthService } from '../infrastructure/services/auth.service';
 import { EmailService } from '../infrastructure/services/email.service';
-import { recordAuthSuccess } from '../application/analytics/growthFunnel';
+import { recordAuthSuccess } from '../infrastructure/services/growthFunnel.service';
 import { createRateLimiter } from '../middleware/rateLimit';
 
 // Rate Limiters
@@ -175,10 +175,11 @@ router.post('/login', authVerifyLimiter, validate(loginSchema), async (req: Requ
         if (!user) return next(new AppError('Invalid email or password', 401));
         if (!user.passwordHash) return next(new AppError('Account setup incomplete. Use Google or Email OTP to login.', 401));
 
-        const isValid = await bcrypt.compare(password, user.passwordHash);
+        const passwordHash = user.passwordHash as string;
+        const isValid = await bcrypt.compare(password, passwordHash);
         if (!isValid) return next(new AppError('Invalid email or password', 401));
 
-        await setAuthCookies(user as User, res);
+        await setAuthCookies(user as unknown as User, res);
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },

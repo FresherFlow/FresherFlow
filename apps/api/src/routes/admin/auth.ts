@@ -209,7 +209,8 @@ router.post('/register/options', adminAuthLimiter, async (req: Request, res: Res
         // Security: 
         // 1. If NO authenticators exist, allow bootstrap registration.
         // 2. If authenticators exist, the user MUST be already logged in as admin to add another.
-        const authenticators = await prisma.authenticator.findMany({ where: { userId: user.id } });
+        const userId = user.id as string;
+        const authenticators = await prisma.authenticator.findMany({ where: { userId } });
 
         if (authenticators.length > 0) {
             const adminToken = req.cookies.adminAccessToken;
@@ -223,22 +224,22 @@ router.post('/register/options', adminAuthLimiter, async (req: Request, res: Res
         const options: GenerateRegistrationOptionsOpts = {
             rpName: 'FresherFlow Admin',
             rpID: RP_ID,
-            userID: new TextEncoder().encode(user.id), // Cast string to Uint8Array
-            userName: user.email,
+            userID: new TextEncoder().encode(user.id as string), // Cast string to Uint8Array
+            userName: user.email as string,
             attestationType: 'none',
             authenticatorSelection: {
                 residentKey: 'required',
                 userVerification: 'preferred',
             },
             excludeCredentials: authenticators.map(auth => ({
-                id: auth.credentialID,
+                id: auth.credentialID as string,
                 type: 'public-key',
-                transports: auth.transports ? (auth.transports.split(',') as AuthenticatorTransportFuture[]) : undefined,
+                transports: (auth.transports as string) ? ((auth.transports as string).split(',') as AuthenticatorTransportFuture[]) : undefined,
             })),
         };
 
         const registrationOptions = await generateRegistrationOptions(options);
-        await setChallenge(`reg_${user.id}`, user.id, 'reg', registrationOptions.challenge);
+        await setChallenge(`reg_${user.id}`, user.id as string, 'reg', registrationOptions.challenge as string);
 
         res.json(registrationOptions);
     } catch (error) {
@@ -260,7 +261,7 @@ router.post('/register/verify', adminAuthLimiter, async (req: Request, res: Resp
 
         const verification = await verifyRegistrationResponse({
             response: body,
-            expectedChallenge,
+            expectedChallenge: expectedChallenge as string | ((challenge: string) => boolean | Promise<boolean>),
             expectedOrigin: EXPECTED_ORIGINS.length === 1 ? EXPECTED_ORIGINS[0] : EXPECTED_ORIGINS,
             expectedRPID: RP_ID,
         });
@@ -270,8 +271,8 @@ router.post('/register/verify', adminAuthLimiter, async (req: Request, res: Resp
 
             await prisma.authenticator.create({
                 data: {
-                    credentialID: credential.id,
-                    userId: user.id,
+                    credentialID: credential.id as string,
+                    userId: user.id as string,
                     publicKey: Buffer.from(credential.publicKey),
                     counter: credential.counter,
                     deviceType: verification.registrationInfo.credentialDeviceType,
@@ -317,9 +318,9 @@ router.post('/login/options', adminAuthLimiter, async (req: Request, res: Respon
         const allowCredentials = user.authenticators
             .filter((auth) => typeof auth.credentialID === 'string' && auth.credentialID.length > 0)
             .map((auth) => ({
-                id: auth.credentialID,
+                id: auth.credentialID as string,
                 type: 'public-key' as const,
-                transports: auth.transports ? (auth.transports.split(',') as AuthenticatorTransportFuture[]) : undefined,
+                transports: (auth.transports as string) ? ((auth.transports as string).split(',') as AuthenticatorTransportFuture[]) : undefined,
             }));
 
         const options: GenerateAuthenticationOptionsOpts = {
@@ -329,7 +330,7 @@ router.post('/login/options', adminAuthLimiter, async (req: Request, res: Respon
         };
 
         const authenticationOptions = await generateAuthenticationOptions(options);
-        await setChallenge(`auth_${user.id}`, user.id, 'auth', authenticationOptions.challenge);
+        await setChallenge(`auth_${user.id}`, user.id as string, 'auth', authenticationOptions.challenge as string);
 
         res.json(authenticationOptions);
     } catch (error) {
@@ -358,27 +359,27 @@ router.post('/login/verify', adminAuthLimiter, async (req: Request, res: Respons
 
         const verification = await verifyAuthenticationResponse({
             response: body,
-            expectedChallenge,
+            expectedChallenge: expectedChallenge as string | ((challenge: string) => boolean | Promise<boolean>),
             expectedOrigin: EXPECTED_ORIGINS.length === 1 ? EXPECTED_ORIGINS[0] : EXPECTED_ORIGINS,
             expectedRPID: RP_ID,
             credential: {
-                id: authenticator.credentialID,
-                publicKey: new Uint8Array(authenticator.publicKey) as unknown as Uint8Array<ArrayBuffer>,
-                counter: authenticator.counter,
-                transports: authenticator.transports ? (authenticator.transports.split(',') as AuthenticatorTransportFuture[]) : undefined,
+                id: authenticator.credentialID as string,
+                publicKey: new Uint8Array(authenticator.publicKey as unknown as ArrayLike<number>) as unknown as Uint8Array<ArrayBuffer>,
+                counter: authenticator.counter as number,
+                transports: (authenticator.transports as string) ? ((authenticator.transports as string).split(',') as AuthenticatorTransportFuture[]) : undefined,
             },
         });
 
         if (verification.verified && verification.authenticationInfo) {
             await prisma.authenticator.update({
-                where: { credentialID: authenticator.credentialID },
+                where: { credentialID: authenticator.credentialID as string },
                 data: { counter: verification.authenticationInfo.newCounter }
             });
 
             await clearChallenge(`auth_${user.id}`);
 
             // Set Admin Token
-            const token = generateAdminToken(user.id);
+            const token = generateAdminToken(user.id as string);
             const accessMaxAge = getAdminCookieMaxAgeMs();
             res.cookie('adminAccessToken', token, {
                 ...COOKIE_OPTIONS,
@@ -424,11 +425,11 @@ router.post('/login/totp', adminAuthLimiter, async (req: Request, res: Response,
             return next(new AppError('TOTP login is not enabled for this admin', 401));
         }
 
-        const totpResult = await verifyTotpToken({ token: code, secret: user.totpSecret });
+        const totpVerificationResult = await verifyTotpToken({ token: code, secret: user.totpSecret as string });
         const isValidTotp =
-            typeof totpResult === 'boolean'
-                ? totpResult
-                : Boolean((totpResult as { valid?: boolean }).valid);
+            typeof totpVerificationResult === 'boolean'
+                ? totpVerificationResult
+                : Boolean((totpVerificationResult as { valid: boolean })?.valid);
 
         if (!isValidTotp) {
             return next(new AppError('Invalid authenticator code', 400));

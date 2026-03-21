@@ -41,8 +41,8 @@ router.post('/:id/feedback', requireAuth, validate(feedbackSchema), async (req: 
 
         TelegramService.notifyListingFeedback({
             opportunityId,
-            title: opportunity.title,
-            company: opportunity.company,
+            title: opportunity.title as string,
+            company: opportunity.company as string,
             reason,
             userEmail: reporter?.email
         }).catch(() => { });
