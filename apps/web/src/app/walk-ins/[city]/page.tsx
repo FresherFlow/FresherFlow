@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = 300;
 
@@ -43,7 +44,7 @@ export function generateMetadata({ params }: { params: { city: string } }): Meta
 
 export default function WalkInsCityLandingPage({ params }: { params: { city: string } }) {
     const cityLabel = formatLabel(params.city);
-    const pageUrl = `https://fresherflow.in/walk-ins/${params.city}`;
+    const pageUrl = `${SITE_URL}/walk-ins/${params.city}`;
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',

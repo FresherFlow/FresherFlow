@@ -14,6 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { formatSyncTime } from '@/lib/offline/syncStatus';
 import dynamic from 'next/dynamic';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
+import { SITE_URL } from '@/lib/runtimeConfig';
 import { FilterDropdownBar, type FilterBarFilters } from '@/features/jobs/components/FilterDropdownBar';
 
 const MobileFilterDrawer = dynamic(() => import('@/features/jobs/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer));
@@ -150,7 +151,7 @@ function OpportunitiesContent() {
         'itemListElement': filteredOpps.slice(0, 10).map((opp, index) => ({
             '@type': 'ListItem',
             'position': index + 1,
-            'url': `https://fresherflow.in${getOpportunityPathFromItem(opp)}`,
+            'url': `${SITE_URL}${getOpportunityPathFromItem(opp)}`,
             'name': opp.title
         }))
     };

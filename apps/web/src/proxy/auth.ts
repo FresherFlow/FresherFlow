@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { isUserPath } from "./paths";
 import { ADMIN_WEB_HOST, USER_LOGIN_HOST, redirectWithMethodAwareness } from "./utils";
 
+function getSafeRedirectTarget(raw: string | null): string {
+    if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
+    if (raw === '/login' || raw.startsWith('/login?')) return '/dashboard';
+    return raw;
+}
+
 export function handleAuth(req: NextRequest) {
     const { pathname, hostname } = req.nextUrl;
     const normalizedHost = hostname.toLowerCase();
@@ -30,7 +36,7 @@ export function handleAuth(req: NextRequest) {
     }
 
     if (pathname === "/login" && loggedIn && normalizedHost !== ADMIN_WEB_HOST) {
-        return redirectWithMethodAwareness(req, "/dashboard");
+        return redirectWithMethodAwareness(req, getSafeRedirectTarget(req.nextUrl.searchParams.get('redirect')));
     }
 
     if (pathname === "/" && loggedIn && normalizedHost !== ADMIN_WEB_HOST) {

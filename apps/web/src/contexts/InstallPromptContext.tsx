@@ -3,6 +3,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { growthApi } from '@/lib/api/client';
 import { AuthContext } from './AuthContext';
+import { ADMIN_WEB_HOST, APP_WEB_HOST } from '@/lib/runtimeConfig';
 
 type BeforeInstallPromptEvent = Event & {
     prompt: () => Promise<void>;
@@ -60,20 +61,11 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
     const [isInstalled, setIsInstalled] = useState(false);
     const [bannerDismissed, setBannerDismissed] = useState(false);
     const [visitCount, setVisitCount] = useState(0);
-    const appWebHost = (process.env.NEXT_PUBLIC_APP_WEB_HOST || 'app.fresherflow.in')
-        .replace(/^https?:\/\//i, '')
-        .replace(/\/.*$/, '')
-        .toLowerCase();
-    const adminWebHost = (process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in')
-        .replace(/^https?:\/\//i, '')
-        .replace(/\/.*$/, '')
-        .toLowerCase();
-
     const isInstallEligibleHost = useMemo(() => {
         if (typeof window === 'undefined') return false;
         const host = window.location.hostname.toLowerCase();
-        return host === appWebHost || host === adminWebHost || host === 'localhost' || host === '127.0.0.1';
-    }, [adminWebHost, appWebHost]);
+        return host === APP_WEB_HOST || host === ADMIN_WEB_HOST || host === 'localhost' || host === '127.0.0.1';
+    }, []);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -134,7 +126,7 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
             void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', source);
         }
         if (typeof window !== 'undefined' && !isInstallEligibleHost) {
-            window.location.href = `https://${appWebHost}/dashboard?install=1`;
+            window.location.href = `https://${APP_WEB_HOST}/dashboard?install=1`;
             return false;
         }
         if (!deferredPromptRef.current) return false;
@@ -152,7 +144,7 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
         }
 
         return false;
-    }, [appWebHost, isInstallEligibleHost]);
+    }, [isInstallEligibleHost]);
 
     const canInstall = isInstallEligibleHost && hasPromptEvent && !isInstalled;
     const showBanner = Boolean(user) && canInstall && !bannerDismissed && visitCount >= 3;

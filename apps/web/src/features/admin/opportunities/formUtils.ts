@@ -1,5 +1,6 @@
 import { buildShareUrl, type SharePlatform } from '@fresherflow/domain';
 export type { SharePlatform };
+import { SITE_URL } from '@/lib/runtimeConfig';
 
 import { getOpportunityPath } from '@fresherflow/domain';
 import {
@@ -116,9 +117,9 @@ export const getPublicOpportunityUrl = (slugOrId: string, opportunityType: Oppor
     const configuredOrigin =
         process.env.NEXT_PUBLIC_SITE_URL
         || process.env.NEXT_PUBLIC_APP_URL
-        || 'https://fresherflow.in';
+        || SITE_URL;
     const origin = /localhost|127\.0\.0\.1/i.test(configuredOrigin)
-        ? 'https://fresherflow.in'
+        ? SITE_URL
         : configuredOrigin;
     return `${origin}${getOpportunityPath(opportunityType, slugOrId)}`;
 };

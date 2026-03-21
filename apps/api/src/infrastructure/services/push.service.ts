@@ -1,6 +1,7 @@
 import prisma from '../../infrastructure/database/prisma';
 import { logger } from '@fresherflow/logger';
 import { enqueuePushNotification } from '@fresherflow/queue';
+import { getPublicSiteUrl } from '../../utils/runtimeConfig';
 
 export type NewJobPushPayload = {
     title: string;
@@ -14,9 +15,9 @@ function getFrontendOrigin() {
         process.env.SOCIAL_FRONTEND_URL
         || process.env.PUBLIC_FRONTEND_URL
         || process.env.FRONTEND_URL
-        || 'https://fresherflow.in';
+        || getPublicSiteUrl();
     return /localhost|127\.0\.0\.1/i.test(configuredOrigin)
-        ? 'https://fresherflow.in'
+        ? getPublicSiteUrl()
         : configuredOrigin;
 }
 

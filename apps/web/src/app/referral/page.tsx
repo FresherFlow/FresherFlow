@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { buildInviteUrl } from '@fresherflow/domain';
 import { analytics } from '@/lib/analytics';
 import { referralApi } from '@/shared/api/client';
+import { SITE_URL } from '@/lib/runtimeConfig';
 import {
     ClipboardDocumentIcon,
     ShareIcon,
@@ -67,7 +68,7 @@ export default function ReferralPage() {
 
     if (!user) return null;
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fresherflow.in';
+    const origin = typeof window !== 'undefined' ? window.location.origin : SITE_URL;
     const shortUrl = data ? buildInviteUrl(data.referralCode, { shareBase: origin }) : '…';
 
     const handleCopy = async () => {

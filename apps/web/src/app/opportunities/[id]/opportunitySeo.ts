@@ -2,13 +2,14 @@ import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
 import { getOpportunityPath, parseOpportunityLocation } from '@fresherflow/domain';
 import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
+import { API_URL, SITE_URL } from '@/lib/runtimeConfig';
 
 export interface ExtendedOpportunity extends Opportunity {
     updatedAt?: string | Date;
     normalizedRole?: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in';
+const API_BASE = API_URL;
 const EXPIRED_GRACE_DAYS = 45;
 
 export function getExpiryState(opportunity: ExtendedOpportunity) {
@@ -87,9 +88,8 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
 
     const canonicalId = opportunity.slug || opportunity.id;
     const canonicalPath = getOpportunityPath(opportunity.type, canonicalId);
-    const url = `https://fresherflow.in${canonicalPath}`;
-
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://fresherflow.in';
+    const url = `${SITE_URL}${canonicalPath}`;
+    const baseUrl = SITE_URL;
     const ogImageVersion = process.env.NEXT_PUBLIC_OG_IMAGE_VERSION || '1';
     const ogUpdatedAt = opportunity.updatedAt || opportunity.postedAt || '';
     const ogImageUrl = `${baseUrl}/api/og/job/${encodeURIComponent(opportunity.id)}?v=${encodeURIComponent(ogImageVersion)}&t=${encodeURIComponent(String(ogUpdatedAt))}`;
@@ -133,7 +133,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
     const fallbackValidThrough = postedDate && !Number.isNaN(postedDate.getTime())
         ? new Date(postedDate.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString()
         : undefined;
-    let logoUrl = 'https://fresherflow.in/fresherflow-logo-v2.png';
+    let logoUrl = `${SITE_URL}/fresherflow-logo-v2.png`;
     try {
         const sourceUrl = opportunity.companyWebsite || opportunity.applyLink;
         if (sourceUrl) {

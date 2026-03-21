@@ -7,17 +7,13 @@ import { Footer } from '@/components/ui/Footer';
 import { cn } from '@/lib/utils';
 import OfflineActionSync from '@/components/providers/OfflineActionSync';
 import { AuthContext } from '@/contexts/AuthContext';
+import { ADMIN_WEB_HOST } from '@/lib/runtimeConfig';
 
 export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const normalizedPathname = pathname?.toLowerCase() || '';
     const isAuthRoute = normalizedPathname === '/login' || normalizedPathname === '/register';
-    const adminHostRaw = process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in';
-    const adminHost = adminHostRaw
-        .replace(/^https?:\/\//i, '')
-        .replace(/\/.*$/, '')
-        .toLowerCase();
-    const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === adminHost;
+    const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
     const isAdminRoute = normalizedPathname.startsWith('/admin') || isAdminHost;
 
     const hideNav = isAdminRoute || isAuthRoute;

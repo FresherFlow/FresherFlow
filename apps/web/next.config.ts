@@ -2,6 +2,34 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import path from "node:path";
 
+function resolveHost(value: string | undefined, fallback: string): string {
+  const raw = (value || '').trim();
+  if (!raw) return fallback;
+  try {
+    return new URL(raw).hostname.toLowerCase();
+  } catch {
+    return raw.replace(/^https?:\/\//i, '').replace(/\/.*$/, '').toLowerCase();
+  }
+}
+
+function resolveWebOrigin(...values: Array<string | undefined>): string {
+  for (const candidate of values) {
+    const raw = candidate?.trim();
+    if (!raw) continue;
+    try {
+      return new URL(raw).origin;
+    } catch {
+      try {
+        return new URL(`https://${raw}`).origin;
+      } catch {
+        continue;
+      }
+    }
+  }
+
+  return 'http://localhost:3000';
+}
+
 function resolveDevApiOrigin(): string {
   const candidates = [
     process.env.NEXT_PUBLIC_API_URL,
@@ -25,6 +53,13 @@ function resolveDevApiOrigin(): string {
 }
 
 const DEV_API_ORIGIN = resolveDevApiOrigin();
+const ADMIN_HOST = resolveHost(process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST, 'localhost');
+const APP_ORIGIN = resolveWebOrigin(
+  process.env.NEXT_PUBLIC_APP_WEB_HOST,
+  process.env.APP_WEB_HOST,
+  process.env.NEXT_PUBLIC_APP_URL,
+  process.env.NEXT_PUBLIC_SITE_URL
+);
 
 const nextConfig: NextConfig = {
   output: 'standalone',
@@ -65,7 +100,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: "/:path*",
-        has: [{ type: "host", value: "admin.fresherflow.in" }],
+        has: [{ type: "host", value: ADMIN_HOST }],
         headers: [
           { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
         ],
@@ -96,7 +131,7 @@ const nextConfig: NextConfig = {
           { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
           // CORS Headers
           { key: "Access-Control-Allow-Credentials", value: "true" },
-          { key: "Access-Control-Allow-Origin", value: "https://app.fresherflow.in" },
+          { key: "Access-Control-Allow-Origin", value: APP_ORIGIN },
           { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
           { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, X-Requested-From, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, sentry-trace, baggage" },
         ],

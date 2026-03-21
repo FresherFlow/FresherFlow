@@ -3,14 +3,11 @@
 import { AuthProvider } from "@/contexts/AuthContext";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
+import { ADMIN_WEB_HOST } from "@/lib/runtimeConfig";
 
 export function ConditionalAuthProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
-    const adminHost = (process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in')
-        .replace(/^https?:\/\//i, '')
-        .replace(/\/.*$/, '')
-        .toLowerCase();
-    const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === adminHost;
+    const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
     const isAdminRoute = pathname?.startsWith('/admin') || isAdminHost;
     const isLandingPage = pathname === '/';
 

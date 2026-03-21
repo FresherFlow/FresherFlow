@@ -1,4 +1,5 @@
 import type { MetadataRoute } from 'next';
+import { API_URL, SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = 86400; // 24 hours; daily sitemap refresh is enough.
 
@@ -15,7 +16,7 @@ type SitemapApiResponse = {
   totalPages: number;
 };
 
-const BASE_URL = 'https://fresherflow.in';
+const BASE_URL = SITE_URL;
 const STATIC_ROUTES = ['/', '/opportunities', '/jobs', '/internships', '/walk-ins'];
 
 function getApiBase(): string {
@@ -23,7 +24,7 @@ function getApiBase(): string {
     process.env.NEXT_PUBLIC_USER_API_URL ||
     process.env.NEXT_PUBLIC_API_URL ||
     process.env.API_URL ||
-    'https://api.fresherflow.in';
+    API_URL;
 
   return apiBase.replace(/\/+$/, '');
 }

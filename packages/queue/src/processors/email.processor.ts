@@ -5,7 +5,7 @@ import { env } from '@fresherflow/config';
 import { EmailJobData } from '../index';
 
 const getResendClient = () => env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
-const getEmailFrom = () => env.EMAIL_FROM || 'FresherFlow <no-reply@fresherflow.in>';
+const getEmailFrom = () => env.EMAIL_FROM || 'FresherFlow <no-reply@localhost>';
 
 export async function processEmailJob(job: Job<EmailJobData>) {
     const { to, subject, html, text } = job.data;

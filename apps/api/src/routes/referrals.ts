@@ -4,6 +4,7 @@ import { ReferralBadge } from '@fresherflow/database';
 import { requireAuth } from '../middleware/auth';
 import { createRateLimiter } from '../middleware/rateLimit';
 import crypto from 'crypto';
+import { getPublicSiteUrl } from '../utils/runtimeConfig';
 
 const router: Router = express.Router();
 
@@ -131,7 +132,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
         }
 
         const code = user.referralCode!;
-        const origin = process.env.FRONTEND_URL ?? 'https://fresherflow.in';
+        const origin = process.env.FRONTEND_URL ?? getPublicSiteUrl();
         const shareUrl = `${origin}/r/${code}`;
 
         // Stats

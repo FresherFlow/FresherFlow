@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = 300;
 
@@ -43,7 +44,7 @@ export function generateMetadata({ params }: { params: { role: string } }): Meta
 
 export default function RoleLandingPage({ params }: { params: { role: string } }) {
     const roleLabel = formatLabel(params.role);
-    const pageUrl = `https://fresherflow.in/jobs/role/${params.role}`;
+    const pageUrl = `${SITE_URL}/jobs/role/${params.role}`;
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',

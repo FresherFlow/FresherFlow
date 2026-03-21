@@ -10,6 +10,7 @@ import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import { analytics } from '@/lib/analytics';
 import { buildInviteUrl } from '@fresherflow/domain';
 import { referralApi } from '@/shared/api/client';
+import { SHARE_BASE_URL } from '@/lib/runtimeConfig';
 
 // Profile completion banner
 export function ProfileCompletionBanner() {
@@ -63,7 +64,7 @@ export function ReferralLinkButton() {
 
     if (!user?.id) return null;
 
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fresherflow.in';
+    const origin = typeof window !== 'undefined' ? window.location.origin : SHARE_BASE_URL;
     // Use short code if loaded, otherwise fall back to user id (will update once fetched)
     const referralUrl = buildInviteUrl(referralCode ?? user.id, { shareBase: origin });
 

@@ -21,6 +21,7 @@ interface AuthContextType {
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 const AUTH_VISIBILITY_REFRESH_COOLDOWN_MS = Number(process.env.NEXT_PUBLIC_AUTH_VISIBILITY_REFRESH_COOLDOWN_MS || 300000);
 const SESSION_REVALIDATE_MS = Number(process.env.NEXT_PUBLIC_SESSION_REVALIDATE_MS || 30 * 60 * 1000);
+const SESSION_HINT_COOKIE_MAX_AGE_SECONDS = Number(process.env.NEXT_PUBLIC_SESSION_HINT_COOKIE_MAX_AGE_SECONDS || 90 * 24 * 60 * 60);
 
 const SESSION_CACHE_KEY = 'ff_cached_session_v1';
 
@@ -64,6 +65,12 @@ function clearClientSessionHints() {
             document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=${hostname};`;
         }
     });
+}
+
+function setClientSessionHints() {
+    if (typeof document === 'undefined') return;
+    const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `ff_logged_in=true; path=/; max-age=${SESSION_HINT_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
 }
 
 function isCachedSessionFresh(cached: CachedSession | null) {
@@ -142,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const response = await authApi.me() as { user: User; profile: Profile };
             setUser(response.user);
             setProfile(response.profile);
+            setClientSessionHints();
             writeCachedSession(response.user, response.profile);
             lastSuccessfulLoadAtRef.current = Date.now();
         } catch (error) {
@@ -195,6 +203,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const meResponse = await authApi.me() as { user: User; profile: Profile };
         setUser(meResponse.user);
         setProfile(meResponse.profile);
+        setClientSessionHints();
         writeCachedSession(meResponse.user, meResponse.profile);
         lastSuccessfulLoadAtRef.current = Date.now();
     }
@@ -207,6 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await authApi.verifyOtp(email, code, source, ref);
         setUser(response.user);
         setProfile(response.profile as Profile);
+        setClientSessionHints();
         writeCachedSession(response.user, response.profile as Profile);
         lastSuccessfulLoadAtRef.current = Date.now();
     }
@@ -215,6 +225,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const response = await authApi.googleLogin(token, source, ref);
         setUser(response.user);
         setProfile(response.profile as Profile);
+        setClientSessionHints();
         writeCachedSession(response.user, response.profile as Profile);
         lastSuccessfulLoadAtRef.current = Date.now();
     }

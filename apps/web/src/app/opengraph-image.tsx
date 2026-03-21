@@ -13,10 +13,10 @@ function resolveSiteOrigin(): string {
         process.env.SITE_URL ||
         process.env.VERCEL_PROJECT_PRODUCTION_URL ||
         process.env.VERCEL_URL ||
-        'https://fresherflow.in';
+        'http://localhost:3000';
 
     const value = raw.trim();
-    if (!value) return 'https://fresherflow.in';
+    if (!value) return 'http://localhost:3000';
     if (/^https?:\/\//i.test(value)) return value.replace(/\/$/, '');
     return `https://${value.replace(/\/$/, '')}`;
 }
@@ -159,7 +159,7 @@ export default function OpenGraphImage() {
                             padding: '14px 16px',
                         }}
                     >
-                        <div style={{ display: 'flex', fontSize: 40, fontWeight: 850, color: '#ffffff' }}>fresherflow.in</div>
+                        <div style={{ display: 'flex', fontSize: 40, fontWeight: 850, color: '#ffffff' }}>{new URL(resolveSiteOrigin()).hostname}</div>
                         <div style={{ display: 'flex', fontSize: 22, color: 'rgba(226, 239, 255, 0.95)', marginLeft: 16 }}>
                             Built for students and fresh graduates
                         </div>

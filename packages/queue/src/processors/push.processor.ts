@@ -9,7 +9,7 @@ type PushError = { statusCode?: number; status?: number; message?: string };
 function ensureVapidConfigured(): boolean {
     const publicKey = process.env.WEB_PUSH_VAPID_PUBLIC_KEY;
     const privateKey = process.env.WEB_PUSH_VAPID_PRIVATE_KEY;
-    const subject = process.env.WEB_PUSH_SUBJECT || 'mailto:support@fresherflow.in';
+    const subject = process.env.WEB_PUSH_SUBJECT || process.env.SUPPORT_EMAIL || 'mailto:support@localhost';
     if (!publicKey || !privateKey) return false;
     webpush.setVapidDetails(subject, publicKey, privateKey);
     return true;

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
 import {
@@ -38,16 +38,29 @@ function LoginContent() {
     const googleInitializedRef = useRef(false);
 
     const { sendOtp, verifyOtp, loginWithGoogle, user, isLoading } = useAuth();
-    const router = useRouter();
     const searchParams = useSearchParams();
     const source = searchParams.get('source') || undefined;
     const refCode = searchParams.get('ref') || undefined;
+    const redirectParam = searchParams.get('redirect');
     const isInviteFlow = source === 'dashboard_invite' || Boolean(refCode);
+    const redirectTarget = useMemo(() => {
+        if (!redirectParam || !redirectParam.startsWith('/') || redirectParam.startsWith('//')) {
+            return '/dashboard';
+        }
+        if (redirectParam === '/login' || redirectParam.startsWith('/login?')) {
+            return '/dashboard';
+        }
+        return redirectParam;
+    }, [redirectParam]);
     const trackingSource = useMemo(() => {
         if (!source && !refCode) return undefined;
         if (source && refCode) return `${source}|ref:${refCode}`;
         return source || `ref:${refCode}`;
     }, [source, refCode]);
+
+    const navigateAfterLogin = useCallback(() => {
+        window.location.replace(redirectTarget);
+    }, [redirectTarget]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -66,9 +79,9 @@ function LoginContent() {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const isLoggingOut = typeof window !== 'undefined' && (window as any).__isLoggingOut;
         if (user && !isLoading && !isLoggingOut) {
-            router.push('/dashboard');
+            navigateAfterLogin();
         }
-    }, [user, isLoading, router]);
+    }, [user, isLoading, navigateAfterLogin]);
 
     useEffect(() => {
         let retries = 0;
@@ -94,12 +107,12 @@ function LoginContent() {
         try {
             await loginWithGoogle(response.credential, trackingSource || source, refCode);
             toast.success('Welcome! Redirecting...');
-            router.push('/dashboard');
+            navigateAfterLogin();
         } catch (err: unknown) {
             setIsProcessing(false);
             toast.error((err as Error).message || 'Google login failed.');
         }
-    }, [loginWithGoogle, refCode, router, trackingSource, source]);
+    }, [loginWithGoogle, navigateAfterLogin, refCode, trackingSource, source]);
 
     const intent = searchParams.get('intent');
     const isSignupIntent = intent === 'signup' || isInviteFlow;
@@ -160,17 +173,17 @@ function LoginContent() {
         }
     };
 
-    const handleVerifyOtp = async (e: React.FormEvent) => {
+    const handleVerifyOtp = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         setIsProcessing(true);
         try {
             await verifyOtp(email, otp, trackingSource || source, refCode);
-            router.push('/dashboard');
+            navigateAfterLogin();
         } catch (err: unknown) {
             setIsProcessing(false);
             toastError(err, 'Invalid or expired code.');
         }
-    };
+    }, [email, otp, verifyOtp, trackingSource, source, refCode, navigateAfterLogin]);
 
     if (isProcessing) return <LoadingScreen />;
 

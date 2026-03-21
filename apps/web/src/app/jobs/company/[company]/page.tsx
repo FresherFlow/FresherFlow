@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = 300;
 
@@ -43,7 +44,7 @@ export function generateMetadata({ params }: { params: { company: string } }): M
 
 export default function CompanyLandingPage({ params }: { params: { company: string } }) {
     const companyLabel = formatLabel(params.company);
-    const pageUrl = `https://fresherflow.in/jobs/company/${params.company}`;
+    const pageUrl = `${SITE_URL}/jobs/company/${params.company}`;
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',

@@ -14,6 +14,7 @@ type ParserApi = {
 
 // Use runtime resolution here so utils does not need parser's built typings to exist first.
 // That keeps clean Turbo builds stable on Linux deploy environments.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const parser = require('@fresherflow/parser') as ParserApi;
 
 export const parseJobText = parser.parseJobText;

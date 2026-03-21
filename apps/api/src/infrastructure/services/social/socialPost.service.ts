@@ -5,6 +5,7 @@ import { OpportunityType } from '@fresherflow/types';
 import { buildCaption } from './caption.service';
 import { enqueueSocialPost } from '@fresherflow/queue';
 import { buildSocialOpportunityUrl } from '../../../utils/share';
+import { getPublicSiteUrl } from '../../../utils/runtimeConfig';
 
 /** Minimal interface for social posting logic to avoid tight coupling */
 export interface SocialOpportunity {
@@ -40,7 +41,7 @@ async function postOnePlatform(
 ): Promise<void> {
   const dedupeKey = `${platform}:${opportunity.id}`;
 
-  const baseUrl = process.env.FRONTEND_URL?.replace(/\/$/, '') || 'https://fresherflow.in';
+  const baseUrl = (process.env.FRONTEND_URL?.replace(/\/$/, '') || getPublicSiteUrl());
   
   // Use the standardized share utility (Issue #7 cleanup)
   const socialLink = buildSocialOpportunityUrl({

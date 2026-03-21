@@ -11,9 +11,9 @@ export function normalizeHost(value: string | undefined, fallback: string): stri
     }
 }
 
-export const ADMIN_WEB_HOST = normalizeHost(process.env.ADMIN_WEB_HOST, 'admin.fresherflow.in');
-export const PUBLIC_WEB_HOST = normalizeHost(process.env.PUBLIC_WEB_HOST, 'fresherflow.in');
-export const APP_WEB_HOST = normalizeHost(process.env.APP_WEB_HOST || process.env.NEXT_PUBLIC_APP_WEB_HOST, 'app.fresherflow.in');
+export const ADMIN_WEB_HOST = normalizeHost(process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST, 'localhost');
+export const PUBLIC_WEB_HOST = normalizeHost(process.env.PUBLIC_WEB_HOST || process.env.NEXT_PUBLIC_PUBLIC_WEB_HOST || process.env.NEXT_PUBLIC_SITE_URL, 'localhost');
+export const APP_WEB_HOST = normalizeHost(process.env.APP_WEB_HOST || process.env.NEXT_PUBLIC_APP_WEB_HOST, 'localhost');
 export const USER_LOGIN_HOST = normalizeHost(process.env.USER_LOGIN_HOST || process.env.NEXT_PUBLIC_USER_LOGIN_HOST, APP_WEB_HOST);
 
 export function redirectWithMethodAwareness(request: NextRequest, target: string) {

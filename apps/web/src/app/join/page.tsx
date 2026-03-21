@@ -24,10 +24,6 @@ interface PageProps {
 export default async function JoinPage({ searchParams }: PageProps) {
     const { ref } = await searchParams;
 
-    const loginUrl = new URL('/login', 'https://fresherflow.in');
-    loginUrl.searchParams.set('intent', 'signup');
-    if (ref) loginUrl.searchParams.set('ref', ref);
-
     // Relative redirect — works in any environment
     const destination = `/login?intent=signup${ref ? `&ref=${encodeURIComponent(ref)}` : ''}`;
     redirect(destination);

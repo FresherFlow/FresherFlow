@@ -10,6 +10,12 @@ import TelegramService from './telegram.service';
 const MAX_FAILURES = 3; // Quarantine after 3 hard fails
 const REQUEST_TIMEOUT = 8000; // 8 seconds per ping
 const SOFT_FAIL_STATUSES = new Set([401, 403, 429, 503]);
+const VERIFICATION_BOT_CONTACT_URL =
+    process.env.SITE_URL ||
+    process.env.FRONTEND_URL ||
+    process.env.PUBLIC_WEB_URL ||
+    'http://localhost:3000';
+const VERIFICATION_BOT_USER_AGENT = `FresherFlow-VerificationBot/1.0 (+${VERIFICATION_BOT_CONTACT_URL})`;
 
 type LinkCheckResult = 'HEALTHY' | 'SOFT_FAIL' | 'HARD_FAIL';
 
@@ -216,7 +222,7 @@ async function pingUrl(url: string): Promise<LinkCheckResult> {
             method: 'HEAD',
             signal: controller.signal,
             headers: {
-                'User-Agent': 'FresherFlow-VerificationBot/1.0 (+https://fresherflow.in)'
+                'User-Agent': VERIFICATION_BOT_USER_AGENT
             }
         });
 
@@ -234,7 +240,7 @@ async function pingUrl(url: string): Promise<LinkCheckResult> {
                 method: 'GET',
                 signal: controller.signal,
                 headers: {
-                    'User-Agent': 'FresherFlow-VerificationBot/1.0 (+https://fresherflow.in)',
+                    'User-Agent': VERIFICATION_BOT_USER_AGENT,
                     'Range': 'bytes=0-0'
                 }
             });

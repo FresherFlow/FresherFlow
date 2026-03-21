@@ -1,4 +1,5 @@
 import { getStatusLabel } from '@/features/admin/opportunities/listUtils';
+import { SITE_URL } from '@/lib/runtimeConfig';
 import { getOpportunityPath } from '@fresherflow/domain';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 
@@ -18,9 +19,9 @@ export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null;
     const configuredOrigin =
         process.env.NEXT_PUBLIC_SITE_URL
         || process.env.NEXT_PUBLIC_APP_URL
-        || 'https://fresherflow.in';
+        || SITE_URL;
     const origin = /localhost|127\.0\.0\.1/i.test(configuredOrigin)
-        ? 'https://fresherflow.in'
+        ? SITE_URL
         : configuredOrigin;
     return `${origin}${getPublicOpportunityHref(opp)}`;
 };

@@ -1,4 +1,5 @@
 import { getApiBaseForEndpoint } from '@/lib/api/client';
+import { SITE_URL } from '@/lib/runtimeConfig';
 import type { Opportunity } from '@fresherflow/types';
 
 export const typeParamToEnum = (value: string) => {
@@ -78,9 +79,9 @@ export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null;
     const configuredOrigin =
         process.env.NEXT_PUBLIC_SITE_URL
         || process.env.NEXT_PUBLIC_APP_URL
-        || 'https://fresherflow.in';
+        || SITE_URL;
     const origin = /localhost|127\.0\.0\.1/i.test(configuredOrigin)
-        ? 'https://fresherflow.in'
+        ? SITE_URL
         : configuredOrigin;
     return `${origin}${getPublicOpportunityHref(opp)}`;
 };

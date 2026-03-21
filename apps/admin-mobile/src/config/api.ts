@@ -1,6 +1,6 @@
 import { Platform } from 'react-native';
 
-const FALLBACK_API_URL = 'https://api-admin.fresherflow.in';
+const FALLBACK_API_URL = 'http://localhost:5000';
 
 function resolveApiUrl(): string {
   const rawApiUrl = (process.env.EXPO_PUBLIC_API_URL || FALLBACK_API_URL).replace(/\/+$/, '');

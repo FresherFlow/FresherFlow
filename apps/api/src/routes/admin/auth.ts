@@ -18,6 +18,7 @@ import { AppError } from '../../middleware/errorHandler';
 import { requireAdmin } from '../../middleware/auth';
 import rateLimit from 'express-rate-limit';
 import logger from '@fresherflow/logger';
+import { getAdminSiteUrl } from '../../utils/runtimeConfig';
 
 const router: Router = express.Router();
 
@@ -44,7 +45,7 @@ function resolveExpectedOrigins(): string[] {
         process.env.FRONTEND_URL,
         process.env.ADMIN_FRONTEND_URL,
         ...(process.env.FRONTEND_URLS || '').split(','),
-        process.env.NODE_ENV === 'production' ? 'https://admin.fresherflow.in' : null,
+        process.env.NODE_ENV === 'production' ? getAdminSiteUrl() : null,
     ]
         .filter((value): value is string => typeof value === 'string' && value.trim().length > 0)
         .map(normalizeOrigin)

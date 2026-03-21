@@ -4,6 +4,7 @@ import { OpportunityType } from '@fresherflow/types';
 import { enqueueTelegramBroadcast } from '@fresherflow/queue';
 import { buildSocialOpportunityUrl } from '../../utils/share';
 import { logger } from '@fresherflow/logger';
+import { getCanonicalShareOrigin, getPublicSiteUrl, getRootDomainHost } from '../../utils/runtimeConfig';
 
 class TelegramService {
     private botToken: string;
@@ -40,29 +41,23 @@ class TelegramService {
     }
 
     private resolveCanonicalShareOrigin(): string {
-        const configuredOrigin =
-            process.env.SOCIAL_FRONTEND_URL
-            || process.env.PUBLIC_FRONTEND_URL
-            || process.env.APP_FRONTEND_URL
-            || process.env.FRONTEND_URL
-            || 'https://fresherflow.in';
-
-        if (/localhost|127\.0\.0\.1/i.test(configuredOrigin)) {
-            return 'https://fresherflow.in';
-        }
+        const configuredOrigin = getCanonicalShareOrigin();
 
         try {
             const parsed = new URL(configuredOrigin);
             const host = parsed.hostname.toLowerCase();
             const protocol = parsed.protocol || 'https:';
+            const rootDomainHost = getRootDomainHost();
 
-            if (host === 'fresherflow.in' || host === 'www.fresherflow.in') return `${protocol}//fresherflow.in`;
+            if (rootDomainHost && (host === rootDomainHost || host === `www.${rootDomainHost}`)) {
+                return `${protocol}//${rootDomainHost}`;
+            }
             if (host.startsWith('admin.')) {
                 return `${protocol}//${host.slice('admin.'.length)}`;
             }
             return `${protocol}//${host}`;
         } catch {
-            return 'https://fresherflow.in';
+            return getPublicSiteUrl();
         }
     }
 
@@ -323,7 +318,7 @@ class TelegramService {
             `<b>Company:</b> ${company}`,
             `<b>Location:</b> ${locationText}`,
             `<b>Batch:</b> ${batchText}`,
-            `<b>View details:</b> <a href="${jobUrl}">fresherflow.in</a>`,
+            `<b>View details:</b> <a href="${jobUrl}">${new URL(frontendOrigin).hostname}</a>`,
             '',
             `<i>${['#FresherJobs', locationTag, '#FresherFlow'].filter(Boolean).join(' ')}</i>`
         ].join('\n');

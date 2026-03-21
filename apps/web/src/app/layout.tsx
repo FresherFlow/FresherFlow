@@ -13,6 +13,12 @@ import InstallAppBanner from "@/components/ui/InstallAppBanner";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { ADMIN_WEB_HOST, SITE_URL } from "@/lib/runtimeConfig";
+
+const SITE_ORIGIN = SITE_URL;
+const OG_IMAGE_URL = `${SITE_ORIGIN}/opengraph-image`;
+const TWITTER_IMAGE_URL = `${SITE_ORIGIN}/twitter-image`;
+const LOGO_URL = `${SITE_ORIGIN}/fresherflow-logo-v2.png`;
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -21,7 +27,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://fresherflow.in"),
+  metadataBase: new URL(SITE_ORIGIN),
   applicationName: "FresherFlow",
   title: {
     default: "FresherFlow",
@@ -38,7 +44,7 @@ export const metadata: Metadata = {
     description: "Verified fresher jobs, internships, and walk-ins in India with direct apply links.",
     images: [
       {
-        url: "https://fresherflow.in/opengraph-image",
+        url: OG_IMAGE_URL,
         width: 1200,
         height: 630,
         type: "image/png",
@@ -50,7 +56,7 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "FresherFlow - Verified Fresher Jobs & Internships in India",
     description: "Verified fresher jobs, internships, and walk-ins in India with direct apply links.",
-    images: ["https://fresherflow.in/twitter-image"],
+    images: [TWITTER_IMAGE_URL],
   },
   icons: {
     icon: "/favicon-32x32.png",
@@ -72,9 +78,6 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const adminWebHost = (process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST || 'admin.fresherflow.in')
-    .replace(/^https?:\/\//i, '')
-    .replace(/\/.*$/, '');
   const gaId = process.env.NEXT_PUBLIC_GA_ID || '';
   const enableVercelAnalytics = process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
   const enableSpeedInsights = process.env.NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS === 'true';
@@ -85,8 +88,8 @@ export default function RootLayout({
         <meta name="theme-color" content="#e2eaf2" id="theme-color-meta" />
         {/* Dynamic theme-color updated via ThemeScript & ThemeContext */}
         <ThemeScript />
-        <meta property="og:image" content="https://fresherflow.in/opengraph-image" />
-        <meta property="og:image:secure_url" content="https://fresherflow.in/opengraph-image" />
+        <meta property="og:image" content={OG_IMAGE_URL} />
+        <meta property="og:image:secure_url" content={OG_IMAGE_URL} />
         <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
@@ -99,8 +102,8 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "FresherFlow",
-              url: "https://fresherflow.in",
-              logo: "https://fresherflow.in/fresherflow-logo-v2.png",
+              url: SITE_ORIGIN,
+              logo: LOGO_URL,
             }),
           }}
         />
@@ -108,7 +111,7 @@ export default function RootLayout({
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              var isAdminHost = window.location.hostname === '${adminWebHost}';
+              var isAdminHost = window.location.hostname === '${ADMIN_WEB_HOST}';
               if (isAdminHost || window.location.pathname.startsWith('/admin')) {
                 var link = document.createElement('link');
                 link.rel = 'manifest';

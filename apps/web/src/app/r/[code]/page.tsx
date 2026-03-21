@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
+import { API_URL } from '@/lib/runtimeConfig';
 
 export const metadata: Metadata = {
     robots: {
@@ -21,7 +22,7 @@ interface PageProps {
 export default async function ReferralRedirectPage({ params }: PageProps) {
     const { code } = await params;
 
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'https://api.fresherflow.in';
+    const apiUrl = API_URL;
 
     // Fire-and-forget click tracking (don't block redirect)
     void fetch(`${apiUrl}/api/public/referrals/${code}/click`, {

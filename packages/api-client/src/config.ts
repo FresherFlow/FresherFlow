@@ -37,9 +37,10 @@ function getUrl(keys: string[], localFallback: string): string {
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             return localFallback;
         }
+        return normalizeUrl(window.location.origin);
     }
 
-    return 'https://api.fresherflow.in';
+    return localFallback;
 }
 
 function normalizeUrl(url: string): string {

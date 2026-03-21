@@ -13,6 +13,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { env } from '@fresherflow/config';
 import { logger, setupCleanLogging } from '@fresherflow/logger';
 import { ensureDomainHost } from './middleware/ensureDomain';
+import { getAdminHost, getRootDomainHost } from './utils/runtimeConfig';
 // redis not used here
 import { observabilityMiddleware } from './middleware/observability';
 import httpLogger from './middleware/httpLogger';
@@ -54,6 +55,7 @@ const PORT = env.PORT || 5000;
 const APP_MODE = env.APP_MODE;
 const isUserMode = APP_MODE === 'all' || APP_MODE === 'user';
 const isAdminMode = APP_MODE === 'all' || APP_MODE === 'admin';
+const rootDomainHost = getRootDomainHost();
 
 function extractClientIp(req: express.Request): string {
     const forwarded = req.headers['x-forwarded-for'];
@@ -112,9 +114,6 @@ function normalizeOrigin(value: string): string | null {
 const configuredOrigins = [
     ...(env.FRONTEND_URLS || '').split(','),
     ...(env.FRONTEND_URL ? [env.FRONTEND_URL] : []),
-    'https://fresherflow.in',
-    'https://app.fresherflow.in',
-    'https://admin.fresherflow.in',
     'http://localhost:3000',
     'http://localhost:3001'
 ]
@@ -122,7 +121,7 @@ const configuredOrigins = [
     .filter((origin): origin is string => Boolean(origin));
 
 const allowedOrigins = new Set(configuredOrigins);
-const allowFresherflowSubdomains = true; // Could also move to config
+const allowManagedSubdomains = Boolean(rootDomainHost);
 
 function isAllowedOrigin(origin: string): boolean {
     const normalized = normalizeOrigin(origin);
@@ -130,11 +129,11 @@ function isAllowedOrigin(origin: string): boolean {
     if (allowedOrigins.has(normalized)) return true;
     if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) return true;
 
-    if (!allowFresherflowSubdomains) return false;
+    if (!allowManagedSubdomains || !rootDomainHost) return false;
     try {
         const parsed = new URL(normalized);
         const host = parsed.hostname.toLowerCase();
-        return parsed.protocol === 'https:' && (host === 'fresherflow.in' || host.endsWith('.fresherflow.in'));
+        return parsed.protocol === 'https:' && (host === rootDomainHost || host.endsWith(`.${rootDomainHost}`));
     } catch {
         return false;
     }
@@ -304,8 +303,7 @@ if (isUserMode) {
 }
 
 if (isAdminMode) {
-    // Admin routes - Strictly restricted to admin.ff.in in prod
-    const adminDomain = 'admin.ff.in';
+    const adminDomain = getAdminHost();
     const restrictAdmin = ensureDomainHost(adminDomain);
 
     app.use('/api/admin/auth/totp', restrictAdmin, adminTotpRoutes);

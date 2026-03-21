@@ -1,3 +1,5 @@
+import { SHARE_BASE_URL } from '@/lib/runtimeConfig';
+
 export type SharePlatform = 'instagram' | 'linkedin' | 'x' | 'telegram' | 'facebook' | 'other';
 
 type ShareLinkOptions = {
@@ -17,10 +19,14 @@ const PLATFORM_MEDIUM: Record<SharePlatform, string> = {
     other: 'share',
 };
 
+function getConfiguredShareBase(): string {
+    return process.env.NEXT_PUBLIC_SHARE_BASE_URL || SHARE_BASE_URL;
+}
+
 export function buildShareUrl(rawUrl: string, options: ShareLinkOptions = {}) {
     try {
         const url = new URL(rawUrl);
-        const configuredShareBase = process.env.NEXT_PUBLIC_SHARE_BASE_URL || 'https://fresherflow.in';
+        const configuredShareBase = getConfiguredShareBase();
 
         try {
             const shareBase = new URL(configuredShareBase);
@@ -47,7 +53,7 @@ export function buildShareUrl(rawUrl: string, options: ShareLinkOptions = {}) {
 
 export function buildInviteUrl(rawOrigin: string, referralCode: string) {
     try {
-        const configuredShareBase = process.env.NEXT_PUBLIC_SHARE_BASE_URL || 'https://fresherflow.in';
+        const configuredShareBase = getConfiguredShareBase();
         let base = rawOrigin;
         try {
             const shareBase = new URL(configuredShareBase);
