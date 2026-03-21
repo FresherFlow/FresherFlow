@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import { authApi } from '@/lib/api/client';
+import { authApi, UnauthorizedError } from '@/lib/api/client';
 import { clearUnreadCache } from '@/features/notifications/hooks/useUnreadNotifications';
 import { User, Profile } from '@fresherflow/types';
 
@@ -52,6 +52,18 @@ function writeCachedSession(user: User, profile: Profile | null) {
 function clearCachedSession() {
     if (typeof window === 'undefined') return;
     try { localStorage.removeItem(SESSION_CACHE_KEY); } catch { /* empty */ }
+}
+
+function clearClientSessionHints() {
+    if (typeof document === 'undefined') return;
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : undefined;
+    const cookiesToClear = ['ff_logged_in', 'accessToken', 'refreshToken'];
+    cookiesToClear.forEach((name) => {
+        document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+        if (hostname) {
+            document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=${hostname};`;
+        }
+    });
 }
 
 function isCachedSessionFresh(cached: CachedSession | null) {
@@ -132,7 +144,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setProfile(response.profile);
             writeCachedSession(response.user, response.profile);
             lastSuccessfulLoadAtRef.current = Date.now();
-        } catch {
+        } catch (error) {
+            if (error instanceof UnauthorizedError) {
+                clearCachedSession();
+                clearClientSessionHints();
+            }
             const cached = readCachedSession();
             if (cached) {
                 setUser(cached.user);

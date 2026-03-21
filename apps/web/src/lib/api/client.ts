@@ -46,6 +46,18 @@ function shouldLogClientError(error: unknown): boolean {
     return true;
 }
 
+function clearClientSessionHints() {
+    if (typeof document === 'undefined') return;
+    const hostname = typeof window !== 'undefined' ? window.location.hostname : undefined;
+    const cookiesToClear = ['ff_logged_in', 'accessToken', 'refreshToken'];
+    cookiesToClear.forEach((name) => {
+        document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;`;
+        if (hostname) {
+            document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=${hostname};`;
+        }
+    });
+}
+
 function normalizeApiBase(raw?: string): string {
     const value = (raw || '').trim();
     if (!value) return '';
@@ -333,12 +345,24 @@ export async function apiClient<T = unknown>(
             if (response.status === 403 && errorData.completionPercentage !== undefined) {
                 const error = new Error(errorMessage) as Error & { code: string; completionPercentage: number; requiredCompletion: number };
                 error.code = 'PROFILE_INCOMPLETE';
+                (error as Error & { statusCode?: number }).statusCode = response.status;
                 error.completionPercentage = errorData.completionPercentage;
                 error.requiredCompletion = errorData.requiredCompletion || 100;
                 throw error;
             }
 
-            throw new Error(errorMessage);
+            if (response.status === 401) {
+                clearClientSessionHints();
+                throw new UnauthorizedError(errorMessage);
+            }
+
+            const httpError = new Error(errorMessage) as Error & {
+                statusCode?: number;
+                data?: typeof errorData;
+            };
+            httpError.statusCode = response.status;
+            httpError.data = errorData;
+            throw httpError;
         }
 
         if (method === 'GET') {
