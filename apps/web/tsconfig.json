@@ -42,9 +42,7 @@
       "@repo/frontend-core/*": ["../../packages/frontend-core/src/*"],
       "@repo/ui": ["../../packages/ui/src"],
       "@repo/ui/*": ["../../packages/ui/src/*"],
-      "@fresherflow/types": ["../../packages/types/index.ts"],
-      "@fresherflow/parser": ["../../packages/parser/src/index.ts"],
-      "@fresherflow/parser/*": ["../../packages/parser/src/*"]
+      "@fresherflow/types": ["../../packages/types/index.ts"]
     }
   },
   "include": [
