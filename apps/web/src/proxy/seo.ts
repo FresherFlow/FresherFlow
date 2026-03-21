@@ -6,7 +6,7 @@ export function applySeoHeaders(req: NextRequest, res: NextResponse) {
     const { pathname, hostname } = req.nextUrl;
     const normalizedHost = hostname.toLowerCase();
 
-    const isAuthUtility = pathname === '/login' || pathname === '/signup' || pathname === '/logout' || pathname === '/index';
+    const isAuthUtility = pathname === '/login' || pathname === '/signup' || pathname === '/logout';
     const isExplicitNoIndexPath =
         pathname === '/deadlines' ||
         pathname === '/referral' ||
