@@ -17,6 +17,8 @@
         "paths": {
             "@fresherflow/domain": ["../../packages/domain/dist/index"],
             "@repo/domain": ["../../packages/domain/dist/index"],
+            "@fresherflow/parser": ["../../packages/parser/dist/index"],
+            "@repo/parser": ["../../packages/parser/dist/index"],
             "@fresherflow/utils": ["../../packages/utils/dist/index"],
             "@repo/utils": ["../../packages/utils/dist/index"]
         },
