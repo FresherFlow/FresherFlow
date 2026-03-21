@@ -49,14 +49,25 @@ export function handleHostRouting(req: NextRequest) {
         if (pathname === '/') {
             return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${APP_WEB_HOST}/dashboard${search}`);
         }
+        if (pathname === '/signup') {
+            const loginUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/login`);
+            loginUrl.searchParams.set('intent', 'signup');
+            return NextResponse.redirect(loginUrl, 307);
+        }
         if (isPublicPath(pathname) && pathname !== '/login' && pathname !== '/signup') {
             return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${search}`);
         }
     }
 
     // 5. Auth explicit host routing
-    if (normalizedHost === PUBLIC_WEB_HOST && (pathname === '/login' || pathname === '/signup')) {
+    if (normalizedHost === PUBLIC_WEB_HOST && pathname === '/login') {
         return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${USER_LOGIN_HOST}${pathname}${search}`);
+    }
+
+    if (normalizedHost === PUBLIC_WEB_HOST && pathname === '/signup') {
+        const loginUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/login`);
+        loginUrl.searchParams.set('intent', 'signup');
+        return NextResponse.redirect(loginUrl, 307);
     }
 
     return null;
