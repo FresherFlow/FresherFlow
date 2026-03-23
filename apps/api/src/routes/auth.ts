@@ -17,6 +17,7 @@ import { AuthService } from '../infrastructure/services/auth.service';
 import { EmailService } from '../infrastructure/services/email.service';
 import { recordAuthSuccess } from '../infrastructure/services/growthFunnel.service';
 import { createRateLimiter } from '../middleware/rateLimit';
+import { getCookieDomain } from '../utils/runtimeConfig';
 
 // Rate Limiters
 const otpSendLimiter = createRateLimiter({
@@ -35,28 +36,7 @@ const authVerifyLimiter = createRateLimiter({
 
 const router: Router = express.Router();
 
-function resolveCookieDomain(): string | undefined {
-    let explicit = (process.env.AUTH_COOKIE_DOMAIN || process.env.COOKIE_DOMAIN)?.trim();
-    if (explicit) {
-        // Sanitize: browser cookies need a hostname, not a URL
-        // Remove protocol and trailing slashes if accidentally provided
-        explicit = explicit.replace(/^https?:\/\//i, '').replace(/\/$/, '');
-        return explicit;
-    }
-
-    const frontendUrl = process.env.FRONTEND_URL;
-    if (!frontendUrl) return undefined;
-
-    try {
-        const hostname = new URL(frontendUrl).hostname.toLowerCase();
-        if (hostname === 'localhost' || /^[0-9.]+$/.test(hostname)) return undefined;
-        return `.${hostname.replace(/^\./, '')}`;
-    } catch {
-        return undefined;
-    }
-}
-
-const COOKIE_DOMAIN = resolveCookieDomain();
+const COOKIE_DOMAIN = getCookieDomain();
 
 const COOKIE_OPTIONS = {
     httpOnly: true,

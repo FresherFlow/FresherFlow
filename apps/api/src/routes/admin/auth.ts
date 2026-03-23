@@ -18,7 +18,7 @@ import { AppError } from '../../middleware/errorHandler';
 import { requireAdmin } from '../../middleware/auth';
 import rateLimit from 'express-rate-limit';
 import logger from '@fresherflow/logger';
-import { getAdminSiteUrl } from '../../utils/runtimeConfig';
+import { getAdminSiteUrl, getCookieDomain } from '../../utils/runtimeConfig';
 
 const router: Router = express.Router();
 
@@ -57,27 +57,7 @@ function resolveExpectedOrigins(): string[] {
 
 const EXPECTED_ORIGINS = resolveExpectedOrigins();
 
-function resolveCookieDomain(): string | undefined {
-    let explicit = (process.env.ADMIN_COOKIE_DOMAIN || process.env.COOKIE_DOMAIN)?.trim();
-    if (explicit) {
-        // Sanitize: browser cookies need a hostname, not a URL
-        explicit = explicit.replace(/^https?:\/\//i, '').replace(/\/$/, '');
-        return explicit;
-    }
-
-    const frontendUrl = process.env.FRONTEND_URL;
-    if (!frontendUrl) return undefined;
-
-    try {
-        const hostname = new URL(frontendUrl).hostname.toLowerCase();
-        if (hostname === 'localhost' || /^[0-9.]+$/.test(hostname)) return undefined;
-        return `.${hostname.replace(/^\./, '')}`;
-    } catch {
-        return undefined;
-    }
-}
-
-const COOKIE_DOMAIN = resolveCookieDomain();
+const COOKIE_DOMAIN = getCookieDomain();
 
 const COOKIE_OPTIONS = {
     httpOnly: true,
