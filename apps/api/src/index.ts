@@ -155,6 +155,7 @@ app.use(cors({
     allowedHeaders: [
         'Content-Type',
         'Authorization',
+        'X-Refresh-Token',
         'X-Requested-With',
         'X-Requested-From',
         'X-Request-Id',

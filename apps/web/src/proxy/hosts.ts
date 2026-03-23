@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { isUserPath, isPublicPath, isPublicDetailPath } from "./paths";
 import { getHostRole, redirectWithMethodAwareness, resolveHosts } from "./utils";
 
+function isPublicOnlyPath(pathname: string) {
+    if (pathname === '/') return true;
+    if (pathname === '/privacy') return true;
+    if (pathname === '/terms') return true;
+    if (pathname === '/join') return true;
+    if (pathname.startsWith('/r/')) return true;
+    return false;
+}
+
 export function handleHostRouting(req: NextRequest) {
     const { hostname, pathname, search } = req.nextUrl;
     const normalizedHost = hostname.toLowerCase();
@@ -56,7 +65,7 @@ export function handleHostRouting(req: NextRequest) {
             loginUrl.searchParams.set('intent', 'signup');
             return NextResponse.redirect(loginUrl, 307);
         }
-        if (isPublicPath(pathname) && pathname !== '/login' && pathname !== '/signup') {
+        if (isPublicOnlyPath(pathname) && pathname !== '/login' && pathname !== '/signup') {
             return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${search}`);
         }
     }
