@@ -170,6 +170,31 @@ export interface RankedOpportunity<T extends Opportunity> {
     breakdown: RelevanceBreakdown;
 }
 
+function getRelevanceWeightTotal(profile: Profile): number {
+    const profileStrength = getProfileStrength(profile);
+    const experienceWeight = 18 + Math.round(profileStrength * 6);
+    const passoutWeight = 14 + Math.round(profileStrength * 4);
+    const educationWeight = 12 + Math.round(profileStrength * 4);
+    const courseWeight = 10 + Math.round(profileStrength * 3);
+    const specializationWeight = 10 + Math.round(profileStrength * 3);
+    const skillsWeight = 8 + Math.round(profileStrength * 4);
+    const locationWeight = 5 + Math.round(profileStrength * 2);
+    const workModeWeight = 3 + Math.round(profileStrength * 2);
+    const freshnessWeight = 4 + Math.round((1 - profileStrength) * 3);
+    const urgencyWeight = 4 + Math.round((1 - profileStrength) * 5);
+
+    return experienceWeight
+        + passoutWeight
+        + educationWeight
+        + courseWeight
+        + specializationWeight
+        + skillsWeight
+        + locationWeight
+        + workModeWeight
+        + freshnessWeight
+        + urgencyWeight;
+}
+
 function isLikelyFresher(profile: Profile): boolean {
     const baseYear = profile.pgYear || profile.gradYear;
     if (!baseYear) return false;
@@ -383,9 +408,17 @@ export function sortOpportunitiesForUser<T extends Opportunity>(opportunities: T
  */
 export function calculateOpportunityMatch(profile: Profile | null, opportunity: Opportunity): { score: number; reason: string } {
     if (!profile) return { score: 0, reason: 'Complete profile to see fit' };
+    const eligibility = checkEligibility(opportunity, profile);
+    if (!eligibility.eligible) {
+        return { score: 0, reason: `Not eligible (${eligibility.reason || 'Eligibility mismatch'})` };
+    }
+
     const breakdown = computeRelevanceBreakdown(opportunity, profile);
-    const score = Object.values(breakdown).reduce((acc, val) => acc + val, 0);
-    return { score, reason: 'Personalized Match' };
+    const rawScore = Object.values(breakdown).reduce((acc, val) => acc + val, 0);
+    const maxScore = getRelevanceWeightTotal(profile);
+    const score = Math.max(0, Math.min(100, Math.round((rawScore / Math.max(1, maxScore)) * 100)));
+    const reason = score >= 85 ? 'Strong match' : score >= 65 ? 'Good match' : 'Potential match';
+    return { score, reason };
 }
 
 /**

@@ -55,6 +55,9 @@ const formatMatchReason = (reason: string): string => {
 export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin, priority = false, variant = 'default' }: JobCardProps) {
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
+    const displayMatchScore = typeof job.matchScore === 'number'
+        ? Math.max(0, Math.min(100, Math.round(job.matchScore)))
+        : undefined;
 
     // Derive tracker status from actions array if available
     const trackerAction = (job as JobWithActions).actions?.find?.((a: JobAction) =>
@@ -212,30 +215,30 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         >
                             {job.company}
                         </Link>
-                        {(getPostedLabel() || typeof job.matchScore === 'number') && (
+                        {(getPostedLabel() || typeof displayMatchScore === 'number') && (
                             <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                                 {getPostedLabel() && (
                                     <span className={cn(isFreshlyPosted() && "text-primary/90")}>{getPostedLabel()}</span>
                                 )}
-                                {getPostedLabel() && typeof job.matchScore === 'number' && (
+                                {getPostedLabel() && typeof displayMatchScore === 'number' && (
                                     <span className="opacity-40">-</span>
                                 )}
-                                {typeof job.matchScore === 'number' && (
-                                    job.matchScore === 0 && job.matchReason?.includes('Not eligible') ? (
+                                {typeof displayMatchScore === 'number' && (
+                                    displayMatchScore === 0 && job.matchReason?.includes('Not eligible') ? (
                                         <span className="text-destructive/90 font-medium">
                                             Not Eligible
                                         </span>
-                                    ) : job.matchScore === 0 && job.matchReason === 'Eligible' ? (
+                                    ) : displayMatchScore === 0 && job.matchReason === 'Eligible' ? (
                                         <span className="text-foreground/85 font-medium">
                                             Eligible
                                         </span>
-                                    ) : job.matchScore === 0 && job.matchReason?.includes('Complete profile') ? (
+                                    ) : displayMatchScore === 0 && job.matchReason?.includes('Complete profile') ? (
                                         <span className="text-muted-foreground/70 font-medium">
                                             Setup profile
                                         </span>
                                     ) : (
                                         <span className="text-primary/80 font-medium">
-                                            {job.matchScore}% match
+                                            {displayMatchScore}% match
                                         </span>
                                     )
                                 )}
@@ -272,7 +275,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             {isSaved ? <BookmarkSolidIcon className="w-5 h-5" aria-hidden="true" /> : <BookmarkIcon className="w-5 h-5" aria-hidden="true" />}
                         </button>
                     </div>
-                    {typeof job.matchScore === 'number' && job.matchReason && job.matchReason !== 'General fit' && job.matchReason !== 'Eligible' && (
+                    {typeof displayMatchScore === 'number' && job.matchReason && job.matchReason !== 'General fit' && job.matchReason !== 'Eligible' && (
                         <div
                             title={formatMatchReason(job.matchReason)}
                             className="mt-3 flex justify-end"
@@ -280,7 +283,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             <InformationCircleIcon
                                 className={cn(
                                     'w-4 h-4',
-                                    job.matchScore === 0 && job.matchReason.includes('Not eligible')
+                                    displayMatchScore === 0 && job.matchReason.includes('Not eligible')
                                         ? 'text-destructive/70'
                                         : 'text-muted-foreground/50'
                                 )}
