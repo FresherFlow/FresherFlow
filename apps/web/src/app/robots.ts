@@ -1,9 +1,11 @@
 import type { MetadataRoute } from 'next';
-
-const PUBLIC_WEB_HOST = process.env.PUBLIC_WEB_HOST || 'fresherflow.in';
+import { PUBLIC_WEB_HOST } from '@/lib/runtimeConfig';
 
 export default function robots(): MetadataRoute.Robots {
-    const host = /^https?:\/\//i.test(PUBLIC_WEB_HOST) ? PUBLIC_WEB_HOST : `https://${PUBLIC_WEB_HOST}`;
+    const host = PUBLIC_WEB_HOST
+        ? (/^https?:\/\//i.test(PUBLIC_WEB_HOST) ? PUBLIC_WEB_HOST : `https://${PUBLIC_WEB_HOST}`)
+        : '';
+    const normalizedHost = host.replace(/\/+$/, '');
 
     return {
         rules: [
@@ -39,8 +41,7 @@ export default function robots(): MetadataRoute.Robots {
                 disallow: ['/'],
             },
         ],
-        sitemap: `${host.replace(/\/+$/, '')}/sitemap.xml`,
-        host: host.replace(/\/+$/, ''),
+        ...(normalizedHost ? { sitemap: `${normalizedHost}/sitemap.xml`, host: normalizedHost } : {}),
     };
 }
 

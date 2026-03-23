@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
+import { API_URL } from '@/lib/runtimeConfig';
 
 export const metadata: Metadata = {
     title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
@@ -34,7 +35,8 @@ export const revalidate = 86400;
 
 async function getLiveOpportunityCount(): Promise<number> {
     try {
-        const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = API_URL;
+        if (!apiUrl) return 0;
         const base = apiUrl.replace(/\/+$/, '');
         const res = await fetch(`${base}/api/stats`, {
             next: { revalidate: 86400 },

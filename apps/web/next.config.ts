@@ -2,6 +2,8 @@ import { withSentryConfig } from "@sentry/nextjs";
 import type { NextConfig } from "next";
 import path from "node:path";
 
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
+
 function resolveHost(value: string | undefined, fallback: string): string {
   const raw = (value || '').trim();
   if (!raw) return fallback;
@@ -27,7 +29,7 @@ function resolveWebOrigin(...values: Array<string | undefined>): string {
     }
   }
 
-  return 'http://localhost:3000';
+  return IS_PRODUCTION ? "" : "http://localhost:3000";
 }
 
 function resolveDevApiOrigin(): string {
@@ -53,7 +55,10 @@ function resolveDevApiOrigin(): string {
 }
 
 const DEV_API_ORIGIN = resolveDevApiOrigin();
-const ADMIN_HOST = resolveHost(process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST, 'localhost');
+const ADMIN_HOST = resolveHost(
+  process.env.ADMIN_WEB_HOST || process.env.NEXT_PUBLIC_ADMIN_WEB_HOST,
+  IS_PRODUCTION ? "" : "localhost"
+);
 const APP_ORIGIN = resolveWebOrigin(
   process.env.NEXT_PUBLIC_APP_WEB_HOST,
   process.env.APP_WEB_HOST,
@@ -97,14 +102,36 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const baseHeaders = [
+      // Needed for Google Identity popup/postMessage flows on login.
+      { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
+      { key: "Cross-Origin-Embedder-Policy", value: "unsafe-none" },
+      // Standard Security Headers
+      { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" },
+      { key: "X-Content-Type-Options", value: "nosniff" },
+      { key: "X-Frame-Options", value: "DENY" },
+      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+      ...(APP_ORIGIN
+        ? [
+            { key: "Access-Control-Allow-Credentials", value: "true" },
+            { key: "Access-Control-Allow-Origin", value: APP_ORIGIN },
+            { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
+            { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, X-Requested-From, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, sentry-trace, baggage" },
+          ]
+        : []),
+    ];
+
     return [
-      {
-        source: "/:path*",
-        has: [{ type: "host", value: ADMIN_HOST }],
-        headers: [
-          { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
-        ],
-      },
+      ...(ADMIN_HOST
+        ? [{
+            source: "/:path*",
+            has: [{ type: "host" as const, value: ADMIN_HOST }],
+            headers: [
+              { key: "X-Robots-Tag", value: "noindex, nofollow, noarchive, nosnippet" },
+            ],
+          }]
+        : []),
       {
         source: "/admin",
         headers: [
@@ -119,22 +146,7 @@ const nextConfig: NextConfig = {
       },
       {
         source: "/:path*",
-        headers: [
-          // Needed for Google Identity popup/postMessage flows on login.
-          { key: "Cross-Origin-Opener-Policy", value: "same-origin-allow-popups" },
-          { key: "Cross-Origin-Embedder-Policy", value: "unsafe-none" },
-          // Standard Security Headers
-          { key: "Strict-Transport-Security", value: "max-age=31536000; includeSubDomains; preload" },
-          { key: "X-Content-Type-Options", value: "nosniff" },
-          { key: "X-Frame-Options", value: "DENY" },
-          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-          // CORS Headers
-          { key: "Access-Control-Allow-Credentials", value: "true" },
-          { key: "Access-Control-Allow-Origin", value: APP_ORIGIN },
-          { key: "Access-Control-Allow-Methods", value: "GET,OPTIONS,PATCH,DELETE,POST,PUT" },
-          { key: "Access-Control-Allow-Headers", value: "X-CSRF-Token, X-Requested-With, X-Requested-From, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, sentry-trace, baggage" },
-        ],
+        headers: baseHeaders,
       },
     ];
   },

@@ -16,9 +16,10 @@ import { GoogleAnalytics } from "@next/third-parties/google";
 import { ADMIN_WEB_HOST, SITE_URL } from "@/lib/runtimeConfig";
 
 const SITE_ORIGIN = SITE_URL;
-const OG_IMAGE_URL = `${SITE_ORIGIN}/opengraph-image`;
-const TWITTER_IMAGE_URL = `${SITE_ORIGIN}/twitter-image`;
-const LOGO_URL = `${SITE_ORIGIN}/fresherflow-logo-v2.png`;
+const METADATA_BASE = SITE_ORIGIN ? new URL(SITE_ORIGIN) : undefined;
+const OG_IMAGE_URL = SITE_ORIGIN ? `${SITE_ORIGIN}/opengraph-image` : '/opengraph-image';
+const TWITTER_IMAGE_URL = SITE_ORIGIN ? `${SITE_ORIGIN}/twitter-image` : '/twitter-image';
+const LOGO_URL = SITE_ORIGIN ? `${SITE_ORIGIN}/fresherflow-logo-v2.png` : '/fresherflow-logo-v2.png';
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -27,7 +28,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL(SITE_ORIGIN),
+  metadataBase: METADATA_BASE,
   applicationName: "FresherFlow",
   title: {
     default: "FresherFlow",
@@ -102,7 +103,7 @@ export default function RootLayout({
               "@context": "https://schema.org",
               "@type": "Organization",
               name: "FresherFlow",
-              url: SITE_ORIGIN,
+              ...(SITE_ORIGIN ? { url: SITE_ORIGIN } : {}),
               logo: LOGO_URL,
             }),
           }}

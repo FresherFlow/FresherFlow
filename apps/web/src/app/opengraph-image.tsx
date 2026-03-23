@@ -13,16 +13,18 @@ function resolveSiteOrigin(): string {
         process.env.SITE_URL ||
         process.env.VERCEL_PROJECT_PRODUCTION_URL ||
         process.env.VERCEL_URL ||
-        'http://localhost:3000';
+        (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000');
 
     const value = raw.trim();
-    if (!value) return 'http://localhost:3000';
+    if (!value) return process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000';
     if (/^https?:\/\//i.test(value)) return value.replace(/\/$/, '');
     return `https://${value.replace(/\/$/, '')}`;
 }
 
 export default function OpenGraphImage() {
-    const logoUrl = `${resolveSiteOrigin()}/logo-white-optimized.png`;
+    const siteOrigin = resolveSiteOrigin();
+    const logoUrl = siteOrigin ? `${siteOrigin}/logo-white-optimized.png` : null;
+    const displayHost = siteOrigin ? new URL(siteOrigin).hostname : 'fresherflow';
 
     return new ImageResponse(
         (
@@ -80,14 +82,32 @@ export default function OpenGraphImage() {
                         }}
                     >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img
-                                src={logoUrl}
-                                alt="FresherFlow logo"
-                                width={50}
-                                height={50}
-                                style={{ display: 'flex', objectFit: 'contain' }}
-                            />
+                            {logoUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={logoUrl}
+                                    alt="FresherFlow logo"
+                                    width={50}
+                                    height={50}
+                                    style={{ display: 'flex', objectFit: 'contain' }}
+                                />
+                            ) : (
+                                <div
+                                    style={{
+                                        display: 'flex',
+                                        width: 50,
+                                        height: 50,
+                                        borderRadius: 14,
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        background: 'rgba(255, 255, 255, 0.12)',
+                                        fontSize: 24,
+                                        fontWeight: 900,
+                                    }}
+                                >
+                                    FF
+                                </div>
+                            )}
                             <div style={{ display: 'flex', fontSize: 38, fontWeight: 850, letterSpacing: 0.4 }}>FresherFlow</div>
                         </div>
                         <div
@@ -159,7 +179,7 @@ export default function OpenGraphImage() {
                             padding: '14px 16px',
                         }}
                     >
-                        <div style={{ display: 'flex', fontSize: 40, fontWeight: 850, color: '#ffffff' }}>{new URL(resolveSiteOrigin()).hostname}</div>
+                        <div style={{ display: 'flex', fontSize: 40, fontWeight: 850, color: '#ffffff' }}>{displayHost}</div>
                         <div style={{ display: 'flex', fontSize: 22, color: 'rgba(226, 239, 255, 0.95)', marginLeft: 16 }}>
                             Built for students and fresh graduates
                         </div>
