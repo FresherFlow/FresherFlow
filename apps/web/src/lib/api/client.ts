@@ -27,6 +27,10 @@ export class UnauthorizedError extends Error {
     }
 }
 
+const USER_ACCESS_TOKEN_KEY = 'ff_user_access_token_v1';
+const USER_REFRESH_TOKEN_KEY = 'ff_user_refresh_token_v1';
+const ADMIN_ACCESS_TOKEN_KEY = 'ff_admin_access_token_v1';
+
 function logClientWarning(message: string, error?: unknown) {
     if (process.env.NODE_ENV === 'development') {
         console.warn(message, error);
@@ -56,6 +60,69 @@ function clearClientSessionHints() {
             document.cookie = `${name}=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=${hostname};`;
         }
     });
+}
+
+function readStorage(key: string): string | null {
+    if (typeof window === 'undefined') return null;
+    try {
+        return window.localStorage.getItem(key);
+    } catch {
+        return null;
+    }
+}
+
+function writeStorage(key: string, value: string) {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.setItem(key, value);
+    } catch {
+        // Ignore storage errors
+    }
+}
+
+function clearStorage(key: string) {
+    if (typeof window === 'undefined') return;
+    try {
+        window.localStorage.removeItem(key);
+    } catch {
+        // Ignore storage errors
+    }
+}
+
+export function setUserTokens(accessToken?: string | null, refreshToken?: string | null) {
+    if (accessToken) {
+        writeStorage(USER_ACCESS_TOKEN_KEY, accessToken);
+    }
+    if (refreshToken) {
+        writeStorage(USER_REFRESH_TOKEN_KEY, refreshToken);
+    }
+}
+
+export function getUserAccessToken() {
+    return readStorage(USER_ACCESS_TOKEN_KEY);
+}
+
+export function getUserRefreshToken() {
+    return readStorage(USER_REFRESH_TOKEN_KEY);
+}
+
+export function clearUserTokens() {
+    clearStorage(USER_ACCESS_TOKEN_KEY);
+    clearStorage(USER_REFRESH_TOKEN_KEY);
+}
+
+export function setAdminAccessToken(token?: string | null) {
+    if (token) {
+        writeStorage(ADMIN_ACCESS_TOKEN_KEY, token);
+    }
+}
+
+export function getAdminAccessToken() {
+    return readStorage(ADMIN_ACCESS_TOKEN_KEY);
+}
+
+export function clearAdminAccessToken() {
+    clearStorage(ADMIN_ACCESS_TOKEN_KEY);
 }
 
 function normalizeApiBase(raw?: string): string {
@@ -146,6 +213,12 @@ function shouldAttemptSessionRefresh(endpoint: string): boolean {
     return !authEndpointsThatShouldNotRefresh.some((prefix) => endpoint.startsWith(prefix));
 }
 
+function setAdminSessionHint() {
+    if (typeof document === 'undefined') return;
+    const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+    document.cookie = `ff_admin_logged_in=true; path=/; max-age=${90 * 24 * 60 * 60}; SameSite=Lax${secure}`;
+}
+
 export function getApiBaseForEndpoint(endpoint: string): string {
     if (shouldUseRelativeApiBase()) {
         return '';
@@ -200,6 +273,20 @@ export async function apiClient<T = unknown>(
     if (!isSimpleRead) {
         headers['X-Requested-From'] = headers['X-Requested-From'] || 'fresherflow-web';
         headers['X-Request-Id'] = headers['X-Request-Id'] || `web-${Math.random().toString(36).slice(2, 10)}`;
+    }
+
+    if (isUserProtectedEndpoint(endpoint)) {
+        const userAccessToken = getUserAccessToken();
+        if (userAccessToken && !headers.Authorization) {
+            headers.Authorization = `Bearer ${userAccessToken}`;
+        }
+    }
+
+    if (isAdminProtectedEndpoint(endpoint)) {
+        const adminAccessToken = getAdminAccessToken();
+        if (adminAccessToken && !headers.Authorization) {
+            headers.Authorization = `Bearer ${adminAccessToken}`;
+        }
     }
 
     const bypassCache = shouldBypassBrowserCache(endpoint, method);
@@ -275,6 +362,7 @@ export async function apiClient<T = unknown>(
                                 'Content-Type': 'application/json',
                                 'X-Requested-From': 'fresherflow-web',
                                 'X-Request-Id': `web-refresh-${Math.random().toString(36).slice(2, 10)}`,
+                                ...(getUserRefreshToken() ? { 'X-Refresh-Token': getUserRefreshToken() as string } : {}),
                             },
                             credentials: 'include'
                         });
@@ -283,6 +371,14 @@ export async function apiClient<T = unknown>(
                             const err = new Error('Refresh failed') as Error & { status?: number };
                             err.status = refreshResponse.status;
                             throw err;
+                        }
+                        try {
+                            const refreshPayload = await refreshResponse.json() as { accessToken?: string };
+                            if (refreshPayload.accessToken) {
+                                setUserTokens(refreshPayload.accessToken, null);
+                            }
+                        } catch {
+                            // Ignore malformed refresh body
                         }
                         // Refresh successful
                     } catch (error) {
@@ -353,6 +449,8 @@ export async function apiClient<T = unknown>(
 
             if (response.status === 401) {
                 clearClientSessionHints();
+                clearUserTokens();
+                clearAdminAccessToken();
                 throw new UnauthorizedError(errorMessage);
             }
 
@@ -474,13 +572,13 @@ export const adminAuthApi = {
         }),
 
     verifyLogin: (email: string, body: AuthenticationResponseJSON) =>
-        apiClient<{ verified: boolean }>('/api/admin/auth/login/verify', {
+        apiClient<{ verified: boolean; accessToken?: string }>('/api/admin/auth/login/verify', {
             method: 'POST',
             body: JSON.stringify({ email, body })
         }),
 
     verifyLoginTotp: (email: string, code: string) =>
-        apiClient<{ verified: boolean }>('/api/admin/auth/login/totp', {
+        apiClient<{ verified: boolean; accessToken?: string }>('/api/admin/auth/login/totp', {
             method: 'POST',
             body: JSON.stringify({ email, code })
         }),

@@ -316,6 +316,8 @@ export interface AuthResponse {
     profile?: {
         completionPercentage: number;
     } | Profile;
+    accessToken?: string;
+    refreshToken?: string;
 }
 
 export interface ProfileResponse {

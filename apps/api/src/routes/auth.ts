@@ -115,6 +115,7 @@ async function setAuthCookies(user: User, res: Response) {
     res.cookie('accessToken', accessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE_MS });
     res.cookie('refreshToken', refreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
     res.cookie('ff_logged_in', 'true', { ...COOKIE_OPTIONS, httpOnly: false, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
+    return { accessToken, refreshToken };
 }
 
 // POST /api/auth/otp/send
@@ -135,12 +136,13 @@ router.post('/otp/verify', authVerifyLimiter, validate(verifyOtpSchema), async (
         const { email, code, source, ref } = req.body;
         const { user, isNewUser } = await AuthService.verifyOtp(email, code, ref);
 
-        await setAuthCookies(user as User, res);
+        const tokens = await setAuthCookies(user as User, res);
         await recordAuthSuccess(source, isNewUser);
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: (user as User).profile || null
+            profile: (user as User).profile || null,
+            ...tokens,
         });
     } catch (error) {
         next(toAuthRouteError(error, 'Authentication failed'));
@@ -155,12 +157,13 @@ router.post('/google', authVerifyLimiter, async (req: Request, res: Response, ne
 
         const { user, isNewUser } = await AuthService.verifyGoogleIdToken(token, ref);
 
-        await setAuthCookies(user as User, res);
+        const tokens = await setAuthCookies(user as User, res);
         await recordAuthSuccess(source, isNewUser);
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: (user as User).profile || null
+            profile: (user as User).profile || null,
+            ...tokens,
         });
     } catch (error) {
         next(toAuthRouteError(error, 'Google authentication failed'));
@@ -184,11 +187,12 @@ router.post('/login', authVerifyLimiter, validate(loginSchema), async (req: Requ
         const isValid = await bcrypt.compare(password, passwordHash);
         if (!isValid) return next(new AppError('Invalid email or password', 401));
 
-        await setAuthCookies(user as unknown as User, res);
+        const tokens = await setAuthCookies(user as unknown as User, res);
 
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: user.profile || null
+            profile: user.profile || null,
+            ...tokens,
         });
     } catch (error) {
         next(error);
@@ -198,7 +202,8 @@ router.post('/login', authVerifyLimiter, validate(loginSchema), async (req: Requ
 // POST /api/auth/refresh
 router.post('/refresh', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const refreshToken = req.cookies.refreshToken;
+        const headerRefreshToken = req.header('x-refresh-token') || req.header('x-refresh-token'.toLowerCase());
+        const refreshToken = req.cookies.refreshToken || headerRefreshToken;
         if (!refreshToken) return next(new AppError('No refresh token provided', 401));
 
         const userId = verifyRefreshToken(refreshToken);
@@ -214,7 +219,7 @@ router.post('/refresh', async (req: Request, res: Response, next: NextFunction) 
         const newAccessToken = generateAccessToken(userId);
         res.cookie('accessToken', newAccessToken, { ...COOKIE_OPTIONS, maxAge: ACCESS_TOKEN_MAX_AGE_MS });
         res.cookie('ff_logged_in', 'true', { ...COOKIE_OPTIONS, httpOnly: false, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
-        res.json({ success: true });
+        res.json({ success: true, accessToken: newAccessToken });
     } catch (error) {
         next(toAuthRouteError(error, 'Failed to refresh session', 500));
     }

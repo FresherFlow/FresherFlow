@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import { adminAuthApi } from '@/lib/api/client';
+import { adminAuthApi, clearAdminAccessToken, getAdminAccessToken } from '@/lib/api/client';
 import { useRouter } from 'next/navigation';
 
 import { Admin } from '@fresherflow/types';
@@ -59,7 +59,7 @@ function isCachedAdminSessionFresh(cached: CachedAdminSession | null) {
 
 function hasAdminSessionCookie() {
     if (typeof document === 'undefined') return false;
-    return document.cookie.includes('ff_admin_logged_in=true');
+    return document.cookie.includes('ff_admin_logged_in=true') || Boolean(getAdminAccessToken());
 }
 
 export function AdminProvider({ children }: { children: ReactNode }) {
@@ -134,6 +134,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
                 (window as Window & { __isAdminLoggingOut?: boolean }).__isAdminLoggingOut = true;
             }
             clearCachedAdminSession();
+            clearAdminAccessToken();
             await adminAuthApi.logout();
         } catch {
             // Ignore logout errors
@@ -142,6 +143,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
             document.cookie = 'ff_admin_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
             document.cookie = `ff_admin_logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=${window.location.hostname};`;
         }
+        clearAdminAccessToken();
         setAdmin(null);
         router.push('/admin/login');
     }

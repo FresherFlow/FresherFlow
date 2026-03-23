@@ -14,7 +14,12 @@ declare global {
 
 // Optional User Authentication Middleware
 export function optionalAuth(req: Request, res: Response, next: NextFunction) {
-    const token = req.cookies?.accessToken;
+    const authHeader = req.headers.authorization;
+    const bearerToken =
+        authHeader && authHeader.toLowerCase().startsWith('bearer ')
+            ? authHeader.slice(7).trim()
+            : undefined;
+    const token = req.cookies?.accessToken || bearerToken;
     if (token) {
         try {
             const userId = verifyAccessToken(token);
@@ -30,8 +35,12 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
 
 // User Authentication Middleware
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
-    // Cookie-based auth only
-    const token = req.cookies?.accessToken;
+    const authHeader = req.headers.authorization;
+    const bearerToken =
+        authHeader && authHeader.toLowerCase().startsWith('bearer ')
+            ? authHeader.slice(7).trim()
+            : undefined;
+    const token = req.cookies?.accessToken || bearerToken;
 
     if (!token) {
         return next(new AppError('No token provided', 401));

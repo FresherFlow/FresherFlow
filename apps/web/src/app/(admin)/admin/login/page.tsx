@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { adminAuthApi } from '@/shared/api/client';
+import { setAdminAccessToken } from '@/lib/api/client';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import toast from 'react-hot-toast';
 import { Button } from '@/features/system/components/ui/Button';
@@ -17,6 +18,11 @@ export default function AdminLoginPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [showOtherOptions, setShowOtherOptions] = useState(false);
     const [totpCode, setTotpCode] = useState('');
+
+    function setAdminSessionHint() {
+        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `ff_admin_logged_in=true; path=/; max-age=${90 * 24 * 60 * 60}; SameSite=Lax${secure}`;
+    }
 
     // Check if user has passkeys on mount
     useEffect(() => {
@@ -88,6 +94,8 @@ export default function AdminLoginPage() {
             const verification = await adminAuthApi.verifyLogin(effectiveEmail, asseResp);
 
             if (verification.verified) {
+                setAdminAccessToken(verification.accessToken);
+                setAdminSessionHint();
                 toast.success('Access Granted');
                 setTimeout(() => {
                     window.location.href = '/admin/dashboard';
@@ -125,6 +133,8 @@ export default function AdminLoginPage() {
         try {
             const verification = await adminAuthApi.verifyLoginTotp(effectiveEmail, totpCode);
             if (verification.verified) {
+                setAdminAccessToken(verification.accessToken);
+                setAdminSessionHint();
                 toast.success('Access Granted');
                 setTimeout(() => {
                     window.location.href = '/admin/dashboard';

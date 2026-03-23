@@ -18,7 +18,7 @@ export function handleAuth(req: NextRequest) {
         : pathname;
 
     const loggedIn = req.cookies.has("accessToken") || req.cookies.has("ff_logged_in");
-    const adminLoggedIn = req.cookies.has("adminAccessToken");
+    const adminLoggedIn = req.cookies.has("adminAccessToken") || req.cookies.has("ff_admin_logged_in");
 
     // Admin Auth
     if (hostRole === 'admin') {

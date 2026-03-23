@@ -1,7 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useRef } from 'react';
-import { authApi, UnauthorizedError } from '@/lib/api/client';
+import { authApi, UnauthorizedError, clearUserTokens, setUserTokens } from '@/lib/api/client';
 import { clearUnreadCache } from '@/features/notifications/hooks/useUnreadNotifications';
 import { User, Profile } from '@fresherflow/types';
 
@@ -100,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(null);
             setProfile(null);
             clearCachedSession();
+            clearUserTokens();
             clearUnreadCache();
             await authApi.logout();
         } catch { /* Ignore logout errors */ } finally {
@@ -156,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (error instanceof UnauthorizedError) {
                 clearCachedSession();
                 clearClientSessionHints();
+                clearUserTokens();
             }
             const cached = readCachedSession();
             if (cached) {
@@ -199,12 +201,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, [loadUser, logout]);
 
     async function login(email: string, password: string) {
-        await authApi.login(email, password);
-        const meResponse = await authApi.me() as { user: User; profile: Profile };
-        setUser(meResponse.user);
-        setProfile(meResponse.profile);
+        const response = await authApi.login(email, password);
+        setUserTokens(response.accessToken, response.refreshToken);
+        setUser(response.user);
+        setProfile(response.profile as Profile);
         setClientSessionHints();
-        writeCachedSession(meResponse.user, meResponse.profile);
+        writeCachedSession(response.user, response.profile as Profile);
         lastSuccessfulLoadAtRef.current = Date.now();
     }
 
@@ -214,6 +216,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function verifyOtp(email: string, code: string, source?: string, ref?: string) {
         const response = await authApi.verifyOtp(email, code, source, ref);
+        setUserTokens(response.accessToken, response.refreshToken);
         setUser(response.user);
         setProfile(response.profile as Profile);
         setClientSessionHints();
@@ -223,6 +226,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     async function loginWithGoogle(token: string, source?: string, ref?: string) {
         const response = await authApi.googleLogin(token, source, ref);
+        setUserTokens(response.accessToken, response.refreshToken);
         setUser(response.user);
         setProfile(response.profile as Profile);
         setClientSessionHints();
