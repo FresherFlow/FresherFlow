@@ -41,13 +41,36 @@ const COOKIE_DOMAIN = getCookieDomain();
 const COOKIE_OPTIONS = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' as 'none' | 'lax' | 'strict',
+    sameSite: 'lax' as 'lax' | 'strict' | 'none',
     path: '/',
     ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {})
 };
 
 const ACCESS_TOKEN_MAX_AGE_MS = 15 * 60 * 1000;
 const REFRESH_TOKEN_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
+
+function clearCookieVariants(res: Response, name: string, httpOnly = true) {
+    const baseOptions = {
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as 'lax' | 'strict' | 'none',
+        httpOnly,
+    };
+
+    res.clearCookie(name, baseOptions);
+
+    if (COOKIE_DOMAIN) {
+        const normalizedDomain = COOKIE_DOMAIN.replace(/^\./, '');
+        res.clearCookie(name, { ...baseOptions, domain: COOKIE_DOMAIN });
+        res.clearCookie(name, { ...baseOptions, domain: normalizedDomain });
+    }
+}
+
+function clearAuthCookieVariants(res: Response) {
+    clearCookieVariants(res, 'accessToken');
+    clearCookieVariants(res, 'refreshToken');
+    clearCookieVariants(res, 'ff_logged_in', false);
+}
 
 function isDatabaseUnavailableError(error: unknown): boolean {
     if (!(error instanceof Error)) return false;
@@ -78,6 +101,8 @@ function toAuthRouteError(
 async function setAuthCookies(user: User, res: Response) {
     const accessToken = generateAccessToken(user.id);
     const { token: refreshToken, hash: tokenHash } = generateRefreshToken(user.id);
+
+    clearAuthCookieVariants(res);
 
     await prisma.refreshToken.create({
         data: {
@@ -209,9 +234,7 @@ router.post('/logout', async (req: Request, res: Response, next: NextFunction) =
             } catch { /* ignore malformed token */ }
         }
 
-        res.clearCookie('accessToken', COOKIE_OPTIONS);
-        res.clearCookie('refreshToken', COOKIE_OPTIONS);
-        res.clearCookie('ff_logged_in', { ...COOKIE_OPTIONS, httpOnly: false });
+        clearAuthCookieVariants(res);
 
         res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
         res.setHeader('Pragma', 'no-cache');

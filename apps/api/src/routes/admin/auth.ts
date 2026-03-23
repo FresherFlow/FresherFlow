@@ -62,7 +62,7 @@ const COOKIE_DOMAIN = getCookieDomain();
 const COOKIE_OPTIONS = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax' as 'none' | 'lax' | 'strict',
+    sameSite: 'lax' as 'lax' | 'strict' | 'none',
     path: '/',
     ...(COOKIE_DOMAIN ? { domain: COOKIE_DOMAIN } : {})
 };
@@ -70,6 +70,28 @@ const ADMIN_SESSION_MARKER_OPTIONS = {
     ...COOKIE_OPTIONS,
     httpOnly: false,
 };
+
+function clearCookieVariants(res: Response, name: string, httpOnly = true) {
+    const baseOptions = {
+        path: '/',
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as 'lax' | 'strict' | 'none',
+        httpOnly,
+    };
+
+    res.clearCookie(name, baseOptions);
+
+    if (COOKIE_DOMAIN) {
+        const normalizedDomain = COOKIE_DOMAIN.replace(/^\./, '');
+        res.clearCookie(name, { ...baseOptions, domain: COOKIE_DOMAIN });
+        res.clearCookie(name, { ...baseOptions, domain: normalizedDomain });
+    }
+}
+
+function clearAdminCookieVariants(res: Response) {
+    clearCookieVariants(res, 'adminAccessToken');
+    clearCookieVariants(res, 'ff_admin_logged_in', false);
+}
 
 function getAdminIdFromRequest(req: Request): string | null {
     const cookieToken = req.cookies.adminAccessToken as string | undefined;
@@ -362,6 +384,7 @@ router.post('/login/verify', adminAuthLimiter, async (req: Request, res: Respons
             // Set Admin Token
             const token = generateAdminToken(user.id as string);
             const accessMaxAge = getAdminCookieMaxAgeMs();
+            clearAdminCookieVariants(res);
             res.cookie('adminAccessToken', token, {
                 ...COOKIE_OPTIONS,
                 maxAge: accessMaxAge
@@ -419,6 +442,7 @@ router.post('/login/totp', adminAuthLimiter, async (req: Request, res: Response,
         const token = generateAdminToken(user.id);
         const accessMaxAge = getAdminCookieMaxAgeMs();
 
+        clearAdminCookieVariants(res);
         res.cookie('adminAccessToken', token, {
             ...COOKIE_OPTIONS,
             maxAge: accessMaxAge
@@ -509,8 +533,7 @@ router.delete('/passkeys/:id', requireAdmin, async (req: Request, res: Response,
  * 8. Logout
  */
 router.post('/logout', (req, res) => {
-    res.cookie('adminAccessToken', '', { ...COOKIE_OPTIONS, maxAge: 0 });
-    res.cookie('ff_admin_logged_in', '', { ...ADMIN_SESSION_MARKER_OPTIONS, maxAge: 0 });
+    clearAdminCookieVariants(res);
     res.json({ success: true });
 });
 
