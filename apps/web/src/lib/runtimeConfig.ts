@@ -32,11 +32,21 @@ function getFallbackHost(): string {
     return IS_PRODUCTION ? '' : 'localhost';
 }
 
+function getFallbackUrlFromHost(value: string | undefined): string {
+    const host = normalizeHost(value, '');
+    if (!host) return '';
+    return `https://${host}`;
+}
+
 export const SITE_URL = normalizeUrl(
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.SITE_URL ||
     process.env.PUBLIC_WEB_URL,
-    getFallbackUrl(3000)
+    getFallbackUrlFromHost(
+        process.env.PUBLIC_WEB_HOST ||
+        process.env.NEXT_PUBLIC_PUBLIC_WEB_HOST ||
+        process.env.NEXT_PUBLIC_SITE_URL
+    ) || getFallbackUrl(3000)
 );
 
 export const API_URL = normalizeUrl(

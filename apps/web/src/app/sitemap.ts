@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { API_URL, SITE_URL } from '@/lib/runtimeConfig';
+import { API_URL, PUBLIC_WEB_HOST, SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = 86400; // 24 hours; daily sitemap refresh is enough.
 
@@ -16,7 +16,17 @@ type SitemapApiResponse = {
   totalPages: number;
 };
 
-const BASE_URL = SITE_URL;
+function getBaseUrl(): string {
+  const normalizedSiteUrl = SITE_URL.replace(/\/+$/, '');
+  if (normalizedSiteUrl) return normalizedSiteUrl;
+
+  const host = PUBLIC_WEB_HOST.trim().replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+  if (host) return `https://${host}`;
+
+  return '';
+}
+
+const BASE_URL = getBaseUrl();
 const STATIC_ROUTES = ['/', '/opportunities', '/jobs', '/internships', '/walk-ins'];
 
 function getApiBase(): string {
