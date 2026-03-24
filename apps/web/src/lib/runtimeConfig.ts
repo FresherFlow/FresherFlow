@@ -41,11 +41,15 @@ function getFallbackUrlFromHost(value: string | undefined): string {
 export const SITE_URL = normalizeUrl(
     process.env.NEXT_PUBLIC_SITE_URL ||
     process.env.SITE_URL ||
-    process.env.PUBLIC_WEB_URL,
+    process.env.PUBLIC_WEB_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL,
     getFallbackUrlFromHost(
         process.env.PUBLIC_WEB_HOST ||
         process.env.NEXT_PUBLIC_PUBLIC_WEB_HOST ||
-        process.env.NEXT_PUBLIC_SITE_URL
+        process.env.NEXT_PUBLIC_SITE_URL ||
+        process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+        process.env.VERCEL_URL
     ) || getFallbackUrl(3000)
 );
 
@@ -66,7 +70,9 @@ export const SHARE_BASE_URL = normalizeUrl(
 export const PUBLIC_WEB_HOST = normalizeHost(
     process.env.PUBLIC_WEB_HOST ||
     process.env.NEXT_PUBLIC_PUBLIC_WEB_HOST ||
-    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    process.env.VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.VERCEL_URL,
     getFallbackHost()
 );
 
