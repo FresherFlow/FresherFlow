@@ -134,12 +134,15 @@ export function JobInfoSection({
 
             <div className="space-y-1.5">
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</label>
+                <p className="text-[11px] text-muted-foreground">
+                    Supports line breaks, bullet lines like <span className="font-mono">- Requirement</span>, and bold section headings like <span className="font-mono">**Responsibilities**</span>.
+                </p>
                 <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     rows={8}
                     className="flex min-h-40 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 resize-y transition-all shadow-sm"
-                    placeholder="Roles and responsibilities..."
+                    placeholder={"**Responsibilities**\n- Build features\n- Write tests\n\n**Requirements**\n- React\n- TypeScript"}
                 />
             </div>
         </div>
