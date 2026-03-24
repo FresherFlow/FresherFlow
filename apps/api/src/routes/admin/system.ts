@@ -9,6 +9,7 @@ import TelegramService from '../../infrastructure/services/telegram.service';
 import { runAlertsCycle } from '../../infrastructure/services/alerts.service';
 import { sendNewJobAlerts } from '../../infrastructure/services/notification.service';
 import { getAdminMetricsV2, MetricsWindow, clearAdminMetricsCache } from '../../infrastructure/services/adminMetrics.service';
+import { getAdminDeliveryControls, updateAdminDeliveryControls } from '../../infrastructure/services/adminDeliveryControl.service';
 
 const router = Router();
 
@@ -25,6 +26,54 @@ function parseGrowthWindow(raw: unknown, defaultWindow: GrowthWindow = '30d'): G
     const val = String(raw || '').toLowerCase();
     return GROWTH_WINDOWS.includes(val as GrowthWindow) ? (val as GrowthWindow) : defaultWindow;
 }
+
+/**
+ * Admin delivery controls
+ * GET /api/admin/system/delivery-controls
+ */
+router.get('/delivery-controls', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+        const controls = await getAdminDeliveryControls();
+        res.json(controls);
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * Update admin delivery controls
+ * PUT /api/admin/system/delivery-controls
+ */
+router.put('/delivery-controls', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const body = req.body as Partial<{
+            socialAutoPostingEnabled: boolean;
+            userAlertsEnabled: boolean;
+            userEmailNotificationsEnabled: boolean;
+        }>;
+
+        const updates: Partial<{
+            socialAutoPostingEnabled: boolean;
+            userAlertsEnabled: boolean;
+            userEmailNotificationsEnabled: boolean;
+        }> = {};
+
+        if (typeof body.socialAutoPostingEnabled === 'boolean') {
+            updates.socialAutoPostingEnabled = body.socialAutoPostingEnabled;
+        }
+        if (typeof body.userAlertsEnabled === 'boolean') {
+            updates.userAlertsEnabled = body.userAlertsEnabled;
+        }
+        if (typeof body.userEmailNotificationsEnabled === 'boolean') {
+            updates.userEmailNotificationsEnabled = body.userEmailNotificationsEnabled;
+        }
+
+        const controls = await updateAdminDeliveryControls(updates, req.adminId as string);
+        res.json(controls);
+    } catch (error) {
+        next(error);
+    }
+});
 
 /**
  * Trigger Link Verification Bot

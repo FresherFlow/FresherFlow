@@ -117,6 +117,19 @@ export const adminApi = {
             method: 'POST'
         }),
 
+    getDeliveryControls: () =>
+        apiClient('/api/admin/system/delivery-controls'),
+
+    updateDeliveryControls: (data: {
+        socialAutoPostingEnabled?: boolean;
+        userAlertsEnabled?: boolean;
+        userEmailNotificationsEnabled?: boolean;
+    }) =>
+        apiClient('/api/admin/system/delivery-controls', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+
     // Alert dispatch observability
     getAlertDispatchLogs: (filters?: {
         status?: 'INITIATED' | 'SENT' | 'FAILED' | 'SKIPPED';

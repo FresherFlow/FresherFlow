@@ -5,6 +5,7 @@ import { filterAndRankOpportunitiesForUser } from '../../domain/eligibility';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 import { sendNewJobPush } from './push.service';
+import { getAdminDeliveryControls } from './adminDeliveryControl.service';
 
 
 /**
@@ -86,6 +87,13 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const alertKind = await resolveNewJobKind();
+    const deliveryControls = await getAdminDeliveryControls();
+
+    if (!deliveryControls.userAlertsEnabled) {
+        logger.info('Skipping user job alerts because admin delivery controls disabled them', { opportunityId });
+        return { usersSent: 0, emailsSent: 0, appAlertsSent: 0, pushSent: 0 };
+    }
+
     if (alertKind !== AlertKind.NEW_JOB) {
         logger.warn('AlertKind.NEW_JOB not present in DB enum, falling back to HIGHLIGHT', { alertKind });
         await logDispatch({
@@ -300,7 +308,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             ];
 
         // Send email if enabled
-        if (preference.emailEnabled) {
+        if (deliveryControls.userEmailNotificationsEnabled && preference.emailEnabled) {
             try {
                 await EmailService.sendNewJobAlert(user.email, user.fullName, {
                     title: opportunity.title,

@@ -210,12 +210,27 @@ model User {
   auditLogs           AdminAudit[]
   authenticators     Authenticator[]
   webAuthnChallenges WebAuthnChallenge[]
+  updatedAdminDeliveryControls AdminDeliveryControl[]
 
   // Security - TOTP
   totpSecret         String?
   isTwoFactorEnabled Boolean  @default(false)
 
   @@index([referredByUserId])
+}
+
+model AdminDeliveryControl {
+  id                           String   @id @default("global")
+  socialAutoPostingEnabled     Boolean  @default(true)
+  userAlertsEnabled            Boolean  @default(true)
+  userEmailNotificationsEnabled Boolean @default(true)
+  updatedByUserId              String?
+  createdAt                    DateTime @default(now())
+  updatedAt                    DateTime @updatedAt
+
+  updatedBy User? @relation(fields: [updatedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([updatedByUserId])
 }
 
 model Authenticator {

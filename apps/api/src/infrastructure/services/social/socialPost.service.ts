@@ -6,6 +6,7 @@ import { buildCaption } from './caption.service';
 import { enqueueSocialPost } from '@fresherflow/queue';
 import { buildSocialOpportunityUrl } from '../../../utils/share';
 import { getPublicSiteUrl } from '../../../utils/runtimeConfig';
+import { getAdminDeliveryControls } from '../adminDeliveryControl.service';
 
 /** Minimal interface for social posting logic to avoid tight coupling */
 export interface SocialOpportunity {
@@ -26,9 +27,11 @@ const PLATFORM_ENV: Record<SocialPlatform, string> = {
   FACEBOOK: 'SOCIAL_FACEBOOK_ENABLED',
 };
 
-function isPlatformEnabled(platform: SocialPlatform): boolean {
-  if (process.env.SOCIAL_AUTO_POST_ENABLED !== 'true') return false;
-  return process.env[PLATFORM_ENV[platform]] === 'true';
+function getPlatformDisabledState(platform: SocialPlatform, socialAutoPostingEnabled: boolean): 'disabled_by_admin' | 'disabled_by_env' | null {
+  if (!socialAutoPostingEnabled) return 'disabled_by_admin';
+  if (process.env.SOCIAL_AUTO_POST_ENABLED !== 'true') return 'disabled_by_env';
+  if (process.env[PLATFORM_ENV[platform]] !== 'true') return 'disabled_by_env';
+  return null;
 }
 
 /**
@@ -38,6 +41,7 @@ function isPlatformEnabled(platform: SocialPlatform): boolean {
 async function postOnePlatform(
   opportunity: SocialOpportunity,
   platform: SocialPlatform,
+  socialAutoPostingEnabled: boolean,
 ): Promise<void> {
   const dedupeKey = `${platform}:${opportunity.id}`;
 
@@ -65,7 +69,9 @@ async function postOnePlatform(
 
   const existing = await prisma.socialPost.findUnique({ where: { dedupeKey } });
 
-  if (!isPlatformEnabled(platform)) {
+  const disabledState = getPlatformDisabledState(platform, socialAutoPostingEnabled);
+
+  if (disabledState) {
     if (!existing) {
       await prisma.socialPost.create({
         data: {
@@ -73,14 +79,15 @@ async function postOnePlatform(
           opportunityId: opportunity.id,
           dedupeKey,
           status: SocialPostStatus.DISABLED,
-          payload: { text, configState: 'disabled_by_env' },
+          payload: { text, configState: disabledState },
         }
       });
     } else {
       await prisma.socialPost.update({
         where: { id: existing.id as string },
         data: {
-          payload: { ...(typeof existing.payload === 'object' && existing.payload ? existing.payload : {}), text, configState: 'disabled_by_env' }
+          payload: { ...(typeof existing.payload === 'object' && existing.payload ? existing.payload : {}), text, configState: disabledState },
+          status: SocialPostStatus.DISABLED,
         }
       });
     }
@@ -114,8 +121,9 @@ async function postOnePlatform(
 }
 
 export async function enqueueSocialPosts(opportunity: SocialOpportunity): Promise<void> {
+  const deliveryControls = await getAdminDeliveryControls();
   const platforms: SocialPlatform[] = ['X', 'LINKEDIN', 'FACEBOOK'];
-  await Promise.allSettled(platforms.map((p) => postOnePlatform(opportunity, p)));
+  await Promise.allSettled(platforms.map((p) => postOnePlatform(opportunity, p, deliveryControls.socialAutoPostingEnabled)));
 }
 
 export async function retrySocialPost(socialPostId: string): Promise<void> {

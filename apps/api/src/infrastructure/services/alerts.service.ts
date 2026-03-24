@@ -6,6 +6,7 @@ import {
 } from '@fresherflow/domain';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
+import { getAdminDeliveryControls } from './adminDeliveryControl.service';
 
 
 interface AlertPreference {
@@ -34,8 +35,10 @@ async function sendDailyDigestForUser(
     user: { id: string; email: string; fullName: string | null; profile: Profile | null },
     preference: { dailyDigest: boolean; timezone?: string; preferredHour: number; lastDigestSentAt?: Date | null; emailEnabled: boolean; minRelevanceScore: number },
     now: Date,
-    activeOpportunities: Opportunity[]
+    activeOpportunities: Opportunity[],
+    controls: { userAlertsEnabled: boolean; userEmailNotificationsEnabled: boolean }
 ): Promise<boolean> {
+    if (!controls.userAlertsEnabled) return false;
     if (!preference.dailyDigest) return false;
     if (!user.profile) return false;
 
@@ -62,7 +65,9 @@ async function sendDailyDigestForUser(
     const existing = await prisma.alertDelivery.findUnique({ where: { dedupeKey } });
     if (existing) return false;
 
-    if (preference.emailEnabled) {
+    const shouldSendEmail = controls.userEmailNotificationsEnabled && preference.emailEnabled;
+
+    if (shouldSendEmail) {
         await EmailService.sendOpportunityDigest(
             user.email,
             user.fullName,
@@ -75,16 +80,7 @@ async function sendDailyDigestForUser(
         );
     }
 
-    await prisma.$transaction([
-        prisma.alertDelivery.create({
-            data: {
-                userId: user.id,
-                kind: 'DAILY_DIGEST',
-                channel: 'EMAIL',
-                dedupeKey: `${dedupeKey}:EMAIL`,
-                metadata: JSON.stringify({ count: ranked.length }),
-            },
-        }),
+    const operations = [
         prisma.alertDelivery.create({
             data: {
                 userId: user.id,
@@ -103,7 +99,23 @@ async function sendDailyDigestForUser(
             where: { userId: user.id },
             data: { lastDigestSentAt: now },
         }),
-    ]);
+    ];
+
+    if (shouldSendEmail) {
+        operations.unshift(
+            prisma.alertDelivery.create({
+                data: {
+                    userId: user.id,
+                    kind: 'DAILY_DIGEST',
+                    channel: 'EMAIL',
+                    dedupeKey: `${dedupeKey}:EMAIL`,
+                    metadata: JSON.stringify({ count: ranked.length }),
+                },
+            })
+        );
+    }
+
+    await prisma.$transaction(operations);
     return true;
 }
 
@@ -112,8 +124,10 @@ async function sendClosingSoonForUser(
     user: { id: string; email: string; fullName: string | null; profile: Profile | null },
     preference: { closingSoon: boolean; emailEnabled: boolean; minRelevanceScore: number },
     now: Date,
-    activeOpportunities: Opportunity[]
+    activeOpportunities: Opportunity[],
+    controls: { userAlertsEnabled: boolean; userEmailNotificationsEnabled: boolean }
 ): Promise<boolean> {
+    if (!controls.userAlertsEnabled) return false;
     if (!preference.closingSoon) return false;
     if (!user.profile) return false;
 
@@ -136,7 +150,9 @@ async function sendClosingSoonForUser(
 
         const expiresText = formatExpiresText(hoursLeft);
 
-        if (preference.emailEnabled) {
+        const shouldSendEmail = controls.userEmailNotificationsEnabled && preference.emailEnabled;
+
+        if (shouldSendEmail) {
             await EmailService.sendClosingSoonAlert(user.email, user.fullName, {
                 title: item.opportunity.title,
                 company: item.opportunity.company,
@@ -151,18 +167,18 @@ async function sendClosingSoonForUser(
                     userId: user.id,
                     opportunityId: item.opportunity.id,
                     kind: 'CLOSING_SOON',
-                    channel: 'EMAIL',
-                    dedupeKey: `${dedupeKey}:EMAIL`,
-                    metadata: JSON.stringify({ hoursLeft: Math.round(hoursLeft), relevanceScore: item.score }),
-                },
-                {
-                    userId: user.id,
-                    opportunityId: item.opportunity.id,
-                    kind: 'CLOSING_SOON',
                     channel: 'APP',
                     dedupeKey: `${dedupeKey}:APP`,
                     metadata: JSON.stringify({ hoursLeft: Math.round(hoursLeft), relevanceScore: item.score }),
-                }
+                },
+                ...(shouldSendEmail ? [{
+                    userId: user.id,
+                    opportunityId: item.opportunity.id,
+                    kind: 'CLOSING_SOON' as const,
+                    channel: 'EMAIL' as const,
+                    dedupeKey: `${dedupeKey}:EMAIL`,
+                    metadata: JSON.stringify({ hoursLeft: Math.round(hoursLeft), relevanceScore: item.score }),
+                }] : [])
             ],
             skipDuplicates: true
         });
@@ -176,8 +192,10 @@ async function sendEventRemindersForUser(
     user: { id: string; profile: Profile | null },
     preference: { enabled: boolean },
     now: Date,
-    activeEvents: OpportunityEvent[]
+    activeEvents: OpportunityEvent[],
+    controls: { userAlertsEnabled: boolean }
 ): Promise<boolean> {
+    if (!controls.userAlertsEnabled) return false;
     if (!preference.enabled) return false;
     if (!user.profile) return false;
 
@@ -230,6 +248,12 @@ async function sendEventRemindersForUser(
 export async function runAlertsCycle() {
     const now = new Date();
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const deliveryControls = await getAdminDeliveryControls();
+
+    if (!deliveryControls.userAlertsEnabled) {
+        logger.info('Skipping alerts cycle because admin delivery controls disabled user alerts');
+        return { usersChecked: 0, digestSent: 0, closingSoonSent: 0, eventRemindersSent: 0 };
+    }
 
     // OPTIMIZATION: Fetch active data ONCE per cycle instead of per user (saves thousands of DB calls)
     const [activeOpportunities, activeEvents] = await Promise.all([
@@ -301,9 +325,9 @@ export async function runAlertsCycle() {
             continue;
         }
 
-        const sentDigest = await sendDailyDigestForUser(frontendUrl, user as unknown as { id: string; email: string; fullName: string | null; profile: Profile | null }, preference, now, activeOpportunities as Opportunity[]);
-        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as unknown as { id: string; email: string; fullName: string | null; profile: Profile | null }, preference, now, activeOpportunities as Opportunity[]);
-        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as unknown as { id: string; profile: Profile | null }, preference, now, activeEvents as unknown as OpportunityEvent[]);
+        const sentDigest = await sendDailyDigestForUser(frontendUrl, user as unknown as { id: string; email: string; fullName: string | null; profile: Profile | null }, preference, now, activeOpportunities as Opportunity[], deliveryControls);
+        const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as unknown as { id: string; email: string; fullName: string | null; profile: Profile | null }, preference, now, activeOpportunities as Opportunity[], deliveryControls);
+        const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as unknown as { id: string; profile: Profile | null }, preference, now, activeEvents as unknown as OpportunityEvent[], deliveryControls);
         
         if (sentDigest) digestSent += 1;
         if (sentClosingSoon) closingSoonSent += 1;
