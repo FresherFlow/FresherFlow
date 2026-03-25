@@ -21,6 +21,7 @@ export function LogoImage({ width, height, className }: LogoImageProps) {
             height={height}
             priority
             className={className}
+            suppressHydrationWarning
         />
     );
 }

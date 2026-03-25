@@ -7,7 +7,11 @@ import { ADMIN_WEB_HOST } from "@/lib/runtimeConfig";
 
 export function ConditionalAuthProvider({ children }: { children: ReactNode }) {
     const pathname = usePathname();
-    const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
+    // In dev, never treat localhost as an admin host — ADMIN_WEB_HOST is a prod domain.
+    // In prod, compare against the configured admin host.
+    const isAdminHost = process.env.NODE_ENV === 'production' &&
+        typeof window !== 'undefined' &&
+        window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
     const isAdminRoute = pathname?.startsWith('/admin') || isAdminHost;
     const isLandingPage = pathname === '/';
 

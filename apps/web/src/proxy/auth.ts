@@ -11,7 +11,7 @@ function getSafeRedirectTarget(raw: string | null): string {
 export function handleAuth(req: NextRequest) {
     const { pathname, hostname } = req.nextUrl;
     const normalizedHost = hostname.toLowerCase();
-    const { ADMIN_WEB_HOST, USER_LOGIN_HOST } = resolveHosts(req);
+    const { ADMIN_WEB_HOST } = resolveHosts(req);
     const hostRole = getHostRole(normalizedHost, req);
     const effectivePathname = normalizedHost === ADMIN_WEB_HOST && pathname !== '/login' && !pathname.startsWith('/admin')
         ? `/admin${pathname === '/' ? '' : pathname}`
@@ -32,7 +32,7 @@ export function handleAuth(req: NextRequest) {
 
     // App/Public Auth
     if (isUserPath(pathname) && !loggedIn) {
-        const loginUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/login`);
+        const loginUrl = new URL(`${req.nextUrl.protocol}//${req.nextUrl.host}/login`);
         loginUrl.searchParams.set("redirect", pathname);
         return NextResponse.redirect(loginUrl, 307);
     }

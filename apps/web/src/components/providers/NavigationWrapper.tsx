@@ -13,7 +13,9 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const normalizedPathname = pathname?.toLowerCase() || '';
     const isAuthRoute = normalizedPathname === '/login' || normalizedPathname === '/register';
-    const isAdminHost = typeof window !== 'undefined' && window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
+    const isAdminHost = process.env.NODE_ENV === 'production' &&
+        typeof window !== 'undefined' &&
+        window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
     const isAdminRoute = normalizedPathname.startsWith('/admin') || isAdminHost;
 
     const hideNav = isAdminRoute || isAuthRoute;

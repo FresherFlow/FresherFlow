@@ -9,7 +9,7 @@ import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
-import CompanyLogo from '@/features/system/components/ui/CompanyLogo';
+import CompanyLogo from '@/components/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@repo/ui/utils/error-web';
 import { getOpportunityPathFromItem } from '@fresherflow/domain';

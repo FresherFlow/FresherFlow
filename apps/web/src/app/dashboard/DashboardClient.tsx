@@ -7,7 +7,7 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 // removed unused sync status import
-import { calculateOpportunityMatch, isNotEligible } from '@fresherflow/domain';
+import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { OpportunityEventType } from '@fresherflow/types';
 import { OfflineError } from '@/shared/api/client';
 import { ProfileCompletionBanner } from '@/components/dashboard/DashboardBanners';
@@ -103,10 +103,24 @@ const hasAppliedAction = (opp: Opportunity): boolean =>
 
 export default function DashboardClient() {
     const { user, profile, isLoading: authLoading } = useAuth();
-    const [recentOpps, setRecentOpps] = useState<Opportunity[]>(() => readDashCacheMeta().opportunities);
-    const [isLoadingOpps, setIsLoadingOpps] = useState<boolean>(() => !isCacheFresh(readDashCacheMeta().savedAt));
-    const [highlights, setHighlights] = useState<HighlightsData | null>(() => readHighlightsCache().data);
-    const [, setIsLoadingHighlights] = useState(() => !isCacheFresh(readHighlightsCache().savedAt));
+    const [recentOpps, setRecentOpps] = useState<Opportunity[]>([]);
+    const [isLoadingOpps, setIsLoadingOpps] = useState<boolean>(true);
+    const [highlights, setHighlights] = useState<HighlightsData | null>(null);
+    const [, setIsLoadingHighlights] = useState<boolean>(true);
+
+    useEffect(() => {
+        const cache = readDashCacheMeta();
+        if (isCacheFresh(cache.savedAt)) {
+            setRecentOpps(cache.opportunities);
+            setIsLoadingOpps(false);
+        }
+        
+        const hlCache = readHighlightsCache();
+        if (isCacheFresh(hlCache.savedAt)) {
+            setHighlights(hlCache.data);
+            setIsLoadingHighlights(false);
+        }
+    }, []);
     const [hasLoaded, setHasLoaded] = useState(false);
     const [recentError, setRecentError] = useState<string | null>(null);
     const [highlightsError, setHighlightsError] = useState<string | null>(null);

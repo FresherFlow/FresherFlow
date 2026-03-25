@@ -110,13 +110,19 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         const effectiveSkip = isGuest ? 0 : (p - 1) * effectiveLimit;
         const shouldIncludeExactTotal = !isGuest && p === 1;
 
+        // Fetch a larger pool so profile-based filtering doesn't silently reduce results.
+        // After filtering we slice down to effectiveLimit.
+        const fetchMultiplier = profile && !isAdmin ? 3 : 1;
+        const fetchLimit = Math.min(effectiveLimit * fetchMultiplier, MAX_FEED_LIMIT * fetchMultiplier);
+
         const [totalAvailable, dbFiltered] = await Promise.all([
             shouldIncludeExactTotal ? prisma.opportunity.count({ where: whereClause }) : Promise.resolve<number | undefined>(undefined),
             prisma.opportunity.findMany({
                 where: whereClause,
                 select: isGuest ? buildGuestOpportunitySelect() : buildPublicOpportunitySelect(userId),
                 orderBy: { postedAt: 'desc' },
-                take: effectiveLimit,
+                distinct: ['id'],
+                take: fetchLimit,
                 skip: effectiveSkip
             })
         ]);
@@ -132,11 +138,16 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
 
         let finalResults = mappedResults;
         if (!isAdmin && profile) {
-            finalResults = filterAndRankOpportunitiesForUser(
+            const ranked = filterAndRankOpportunitiesForUser(
                 mappedResults,
                 profile as unknown as Profile,
                 userId || undefined
-            ).map((item) => item.opportunity);
+            );
+            // Attach matchScore to each opportunity and slice to the requested limit
+            finalResults = ranked.slice(0, effectiveLimit).map((item) => ({
+                ...item.opportunity,
+                matchScore: item.score,
+            })) as unknown as Opportunity[];
         }
 
         const includeRelevanceDebug = isAdmin && relevanceDebug === 'true' && Boolean(profile);

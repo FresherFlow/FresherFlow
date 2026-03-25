@@ -4,8 +4,6 @@ import { OpportunityStatus } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
 import TelegramService from './telegram.service';
 
-
-
 // Bot Configuration
 const MAX_FAILURES = 3; // Quarantine after 3 hard fails
 const REQUEST_TIMEOUT = 8000; // 8 seconds per ping
@@ -71,7 +69,6 @@ export async function runLinkVerification() {
     logger.info('Verification Bot: initiating link health scan');
 
     try {
-        // Fetch published opportunities not verified recently or already retrying.
         const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
 
         const opportunities = await prisma.opportunity.findMany({
@@ -131,11 +128,9 @@ export async function runLinkVerification() {
             }
 
             if (checkResult === 'SOFT_FAIL') {
-                // Increment failures but don't archive immediately.
-                // This prevents infinite retries for protected (403) or rate-limited (429) links.
                 const newFailures = opp.verificationFailures + 1;
-                const shouldArchive = newFailures >= MAX_FAILURES + 2; // Allow more grace for soft fails
-                
+                const shouldArchive = newFailures >= MAX_FAILURES + 2;
+
                 softFailures++;
                 await prisma.opportunity.update({
                     where: { id: opp.id },
@@ -146,7 +141,7 @@ export async function runLinkVerification() {
                         ...(shouldArchive ? { status: OpportunityStatus.ARCHIVED } : {})
                     }
                 });
-                logger.info(`Verification Bot: soft fail (e.g. 403/429) for "${opp.title}". failures=${newFailures}${shouldArchive ? ' [ARCHIVING]' : ''}`);
+                logger.info(`Verification Bot: soft fail for "${opp.title}". failures=${newFailures}${shouldArchive ? ' [ARCHIVING]' : ''}`);
                 continue;
             }
 
@@ -211,7 +206,27 @@ export function getVerificationStats(): VerificationStats {
 }
 
 /**
- * Lightweight request to check if a URL exists.
+ * Closed-job redirect detection.
+ * Some ATS systems (e.g. IBM) return HTTP 200 but redirect to a "job closed" page.
+ * We check the final resolved URL to catch these soft-closed listings.
+ */
+const CLOSED_URL_INDICATORS = [
+    'closedjob',
+    'job-closed',
+    '/404',
+    'notfound',
+    'not-found',
+    'unavailable',
+    'no-longer-available'
+];
+
+function isRedirectedToClosedPage(finalUrl: string): boolean {
+    const lowerUrl = finalUrl.toLowerCase();
+    return CLOSED_URL_INDICATORS.some(indicator => lowerUrl.includes(indicator));
+}
+
+/**
+ * Lightweight request to check if a URL is alive and not closed.
  */
 async function pingUrl(url: string): Promise<LinkCheckResult> {
     try {
@@ -221,17 +236,17 @@ async function pingUrl(url: string): Promise<LinkCheckResult> {
         const response = await fetch(url, {
             method: 'HEAD',
             signal: controller.signal,
-            headers: {
-                'User-Agent': VERIFICATION_BOT_USER_AGENT
-            }
+            headers: { 'User-Agent': VERIFICATION_BOT_USER_AGENT }
         });
 
         clearTimeout(timeoutId);
+
+        if (response.url && isRedirectedToClosedPage(response.url)) return 'HARD_FAIL';
         if (response.ok || (response.status >= 300 && response.status < 400)) return 'HEALTHY';
         if (SOFT_FAIL_STATUSES.has(response.status)) return 'SOFT_FAIL';
         return 'HARD_FAIL';
     } catch {
-        // If HEAD fails, try GET with range (some sites block HEAD).
+        // HEAD failed — some sites block it. Try GET with Range header instead.
         try {
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
@@ -246,6 +261,8 @@ async function pingUrl(url: string): Promise<LinkCheckResult> {
             });
 
             clearTimeout(timeoutId);
+
+            if (response.url && isRedirectedToClosedPage(response.url)) return 'HARD_FAIL';
             if (response.ok || (response.status >= 300 && response.status < 400)) return 'HEALTHY';
             if (SOFT_FAIL_STATUSES.has(response.status)) return 'SOFT_FAIL';
             return 'HARD_FAIL';

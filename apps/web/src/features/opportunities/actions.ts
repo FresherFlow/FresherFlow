@@ -10,7 +10,7 @@ async function getClient() {
     return new ApiClient(getInferredAdminBaseUrl(), undefined, {
         defaultHeaders: {
             'Cookie': cookieStore.toString(),
-            'X-Requested-From': 'fresherflow-web-server'
+            'X-Requested-From': 'fresherflow-web'
         }
     });
 }

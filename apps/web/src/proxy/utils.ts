@@ -64,6 +64,14 @@ function deriveSiblingHosts(hostname: string) {
 
 export function getHostRole(hostname: string, request: NextRequest) {
     const normalizedHost = hostname.toLowerCase();
+
+    // On localhost we can't distinguish between app/admin/public hosts —
+    // all are on the same machine. Return 'other' so none of the host-specific
+    // redirect rules fire in development.
+    if (normalizedHost === 'localhost' || normalizedHost === '127.0.0.1') {
+        return 'other' as const;
+    }
+
     const { PUBLIC_WEB_HOST, APP_WEB_HOST, ADMIN_WEB_HOST } = resolveHosts(request);
     const baseHost = getRegistrableBaseHost(normalizedHost);
 

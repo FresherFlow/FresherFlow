@@ -29,7 +29,12 @@ export function ProfileGate({ children }: { children: React.ReactNode }) {
     }, [profile, isLoading, pathname, router, isOnProfilePage]);
 
     if (isLoading) {
-        return <LoadingScreen message="Loading..." fullScreen={false} />;
+        return (
+            <div className="relative w-full">
+                <LoadingScreen message="Loading..." fullScreen={true} className="z-[40] bg-background/95 backdrop-blur-xl" />
+                <div className="opacity-0 pointer-events-none">{children}</div>
+            </div>
+        );
     }
 
     if (profile && profile.completionPercentage < 40 && !isOnProfilePage) {
@@ -72,11 +77,16 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     }, [user, isLoading, router]);
 
     if (isLoading) {
-        return <LoadingScreen message="Loading..." fullScreen={false} />;
+        return (
+            <div className="relative w-full">
+                <LoadingScreen message="Loading..." fullScreen={true} className="z-[40] bg-background/95 backdrop-blur-xl" />
+                <div className="opacity-0 pointer-events-none">{children}</div>
+            </div>
+        );
     }
 
     if (!user) {
-        return null; // Will redirect
+        return <div className="opacity-0 pointer-events-none">{children}</div>; // Will redirect
     }
 
     return <>{children}</>;
