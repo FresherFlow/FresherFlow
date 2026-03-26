@@ -125,9 +125,6 @@ const getLogoCandidates = (opportunity: OpportunityDto) => {
 };
 
 const resolveLogoUrl = async (opportunity: OpportunityDto) => {
-  if (process.env.OG_FETCH_REMOTE_LOGOS !== "true") {
-    return "";
-  }
 
   const candidates = getLogoCandidates(opportunity);
   if (!candidates.length) return "";
