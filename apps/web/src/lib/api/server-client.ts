@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+
 
 const DEFAULT_API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '';
 function normalizeApiBase(raw?: string): string {
@@ -39,13 +39,19 @@ function shouldBypassCache(endpoint: string, method: string) {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export async function serverApiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
+    const { cookies, headers } = await import('next/headers');
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.toString();
+    const headersStore = await headers();
+    const host = headersStore.get('host') || 'admin.fresherflow.in';
+    const proto = headersStore.get('x-forwarded-proto') || 'https';
 
-    const headers: Record<string, string> = {
+    const headersObj: Record<string, string> = {
         'Content-Type': 'application/json',
         'X-Requested-From': 'fresherflow-web',
         'Cookie': cookieHeader,
+        'Origin': `${proto}://${host}`,
+        'X-Forwarded-Host': host,
         ...(options.headers as Record<string, string> || {}),
     };
     const method = (options.method || 'GET').toUpperCase();
@@ -59,7 +65,7 @@ export async function serverApiClient<T = any>(endpoint: string, options: Reques
     try {
         const response = await fetch(`${resolveApiBase(endpoint)}${endpoint}`, {
             ...options,
-            headers,
+            headers: headersObj,
             ...cacheOptions,
         });
 
