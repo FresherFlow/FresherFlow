@@ -32,8 +32,15 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         } else if (statusFilter === OpportunityStatus.ARCHIVED) {
             where.status = OpportunityStatus.ARCHIVED;
             where.deletedAt = null;
+        } else if (statusFilter === OpportunityStatus.PUBLISHED) {
+            where.status = OpportunityStatus.PUBLISHED;
+            where.deletedAt = null;
+            // A published job is only "Live" if it hasn't passed its deadline & hasn't been manually expired
+            where.expiredAt = null;
+            andFilters.push({ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] });
         } else if (statusFilter) {
-            where.status = statusFilter;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            where.status = statusFilter as any;
             where.deletedAt = null;
         } else {
             where.deletedAt = null;
