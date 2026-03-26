@@ -13,7 +13,7 @@ async function getClient() {
 
     return new ApiClient(getInferredAdminBaseUrl(), undefined, {
         defaultHeaders: {
-            'Cookie': cookieStore.toString(),
+            'Cookie': cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; '),
             'X-Requested-From': 'fresherflow-web',
             'Origin': `${proto}://${host}`,
             'X-Forwarded-Host': host

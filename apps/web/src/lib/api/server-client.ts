@@ -41,7 +41,7 @@ function shouldBypassCache(endpoint: string, method: string) {
 export async function serverApiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const { cookies, headers } = await import('next/headers');
     const cookieStore = await cookies();
-    const cookieHeader = cookieStore.toString();
+    const cookieHeader = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ');
     const headersStore = await headers();
     const host = headersStore.get('host') || 'admin.fresherflow.in';
     const proto = headersStore.get('x-forwarded-proto') || 'https';
