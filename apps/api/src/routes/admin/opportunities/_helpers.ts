@@ -5,7 +5,7 @@ import { AdminOpportunityRequest } from '../../../types/admin';
 
 // ── Type normalisation ────────────────────────────────────────────────────────
 
-export type AdminStatusFilter = OpportunityStatus | 'EXPIRED' | 'DELETED';
+export type AdminStatusFilter = OpportunityStatus | 'EXPIRED' | 'DELETED' | 'LIVE';
 
 export function normalizeTypeParam(raw?: string): OpportunityType | undefined {
     if (!raw) return undefined;
@@ -23,6 +23,7 @@ export function parseAdminStatusFilter(raw?: string): AdminStatusFilter | undefi
     const normalized = raw.toUpperCase();
     if (normalized === 'EXPIRED') return 'EXPIRED';
     if (normalized === 'DELETED') return 'DELETED';
+    if (normalized === 'LIVE') return 'LIVE';
     if (Object.values(OpportunityStatus).includes(normalized as OpportunityStatus)) {
         return normalized as OpportunityStatus;
     }

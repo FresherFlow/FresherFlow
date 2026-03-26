@@ -60,7 +60,7 @@ export const AdminOpportunitiesFilters = ({
                         className="h-9 w-full md:w-auto rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
                         <option value="">All status</option>
-                        <option value="PUBLISHED">Published</option>
+                        <option value="LIVE">Live</option>
                         <option value="EXPIRED">Expired</option>
                         <option value="ARCHIVED">Archived</option>
                         <option value="DELETED">Deleted</option>
