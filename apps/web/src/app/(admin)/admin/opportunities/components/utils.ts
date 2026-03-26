@@ -16,14 +16,23 @@ export const getPublicOpportunityHref = (opp: { id: string; slug?: string | null
     getOpportunityPath(opp.type as OpportunityType, opp.slug || opp.id);
 
 export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {
+    // Dynamically infer from the current window (e.g., https://admin.fresherflow.in -> https://fresherflow.in)
+    const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+    const dynamicOrigin = browserOrigin.replace('://admin.', '://');
+
     const configuredOrigin =
         process.env.NEXT_PUBLIC_SITE_URL
         || process.env.NEXT_PUBLIC_APP_URL
+        || dynamicOrigin
         || SITE_URL;
+    
     const origin = /localhost|127\.0\.0\.1/i.test(configuredOrigin)
-        ? SITE_URL
+        ? SITE_URL || dynamicOrigin || 'http://localhost:3000'
         : configuredOrigin;
-    return `${origin}${getPublicOpportunityHref(opp)}`;
+    
+    // Ensure origin does not end with /
+    const cleanOrigin = origin.replace(/\/$/, "");
+    return `${cleanOrigin}${getPublicOpportunityHref(opp)}`;
 };
 
 export type SocialOpportunity = Pick<Opportunity, 'id' | 'slug' | 'type' | 'title' | 'company' | 'locations' | 'allowedPassoutYears' | 'allowedCourses' | 'allowedDegrees'>;
