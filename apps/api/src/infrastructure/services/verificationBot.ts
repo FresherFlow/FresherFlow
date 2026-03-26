@@ -4,10 +4,16 @@ import { OpportunityStatus } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
 import TelegramService from './telegram.service';
 
-// Bot Configuration
-const MAX_FAILURES = 3; // Quarantine after 3 hard fails
-const REQUEST_TIMEOUT = 8000; // 8 seconds per ping
-const SOFT_FAIL_STATUSES = new Set([401, 403, 429, 503]);
+// ── Bot Configuration ─────────────────────────────────────────────────────────
+const MAX_HARD_FAILURES = 5; // Archive after 5 consecutive hard fails (was 3 — too aggressive)
+const MAX_SOFT_FAILURES = 7; // Archive after 7 soft fails (rate-limits, WAF blocks)
+const REQUEST_TIMEOUT = 10000; // 10s
+
+// 403 deliberately excluded: many valid ATS portals (Workday, SuccessFactors)
+// return 403 to bots even when the job is live. Treating it as soft-fail avoids
+// false-positive archiving.
+const SOFT_FAIL_STATUSES = new Set([401, 429, 502, 503, 504]);
+
 const VERIFICATION_BOT_CONTACT_URL =
     process.env.SITE_URL ||
     process.env.FRONTEND_URL ||
@@ -15,6 +21,7 @@ const VERIFICATION_BOT_CONTACT_URL =
     'http://localhost:3000';
 const VERIFICATION_BOT_USER_AGENT = `FresherFlow-VerificationBot/1.0 (+${VERIFICATION_BOT_CONTACT_URL})`;
 
+// ── Types ─────────────────────────────────────────────────────────────────────
 type LinkCheckResult = 'HEALTHY' | 'SOFT_FAIL' | 'HARD_FAIL';
 
 type VerificationRunResult = {
@@ -49,20 +56,21 @@ const verificationStats: VerificationStats = {
     lastRun: null
 };
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function getVerificationUrl(opportunity: {
     applyLink?: string | null;
     sourceLink?: string | null;
 }): string | null {
     const applyLink = typeof opportunity.applyLink === 'string' ? opportunity.applyLink.trim() : '';
     if (applyLink) return applyLink;
-
     const sourceLink = typeof opportunity.sourceLink === 'string' ? opportunity.sourceLink.trim() : '';
     return sourceLink || null;
 }
 
+// ── Main Run ──────────────────────────────────────────────────────────────────
 /**
  * Verification Bot Service
- * Performs lightweight health pings on published listings.
+ * Performs link health scans on all published listings.
  */
 export async function runLinkVerification() {
     const startTime = Date.now();
@@ -77,6 +85,8 @@ export async function runLinkVerification() {
                 deletedAt: null,
                 OR: [
                     { lastVerifiedAt: { lt: twelveHoursAgo } },
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    { lastVerifiedAt: null as any },
                     { linkHealth: LinkHealth.RETRYING }
                 ]
             },
@@ -97,16 +107,12 @@ export async function runLinkVerification() {
 
         logger.info(`Verification Bot: found ${opportunities.length} candidates for verification`);
 
-        let processed = 0;
-        let healthy = 0;
-        let softFailures = 0;
-        let hardFailures = 0;
-        let archived = 0;
+        let processed = 0, healthy = 0, softFailures = 0, hardFailures = 0, archived = 0;
 
         for (const opp of opportunities) {
             const verificationUrl = getVerificationUrl(opp);
             if (!verificationUrl) {
-                logger.warn(`Verification Bot: skipping "${opp.title}" because it has no verification URL`);
+                logger.warn(`Verification Bot: skipping "${opp.title}" — no URL`);
                 continue;
             }
 
@@ -116,7 +122,7 @@ export async function runLinkVerification() {
             if (checkResult === 'HEALTHY') {
                 healthy++;
                 await prisma.opportunity.update({
-                    where: { id: opp.id },
+                    where: { id: String(opp.id) },
                     data: {
                         linkHealth: LinkHealth.HEALTHY,
                         verificationFailures: 0,
@@ -124,16 +130,18 @@ export async function runLinkVerification() {
                         lastVerified: new Date()
                     }
                 });
+                logger.info(`Verification Bot: ✓ healthy — "${opp.title}"`);
                 continue;
             }
 
             if (checkResult === 'SOFT_FAIL') {
-                const newFailures = opp.verificationFailures + 1;
-                const shouldArchive = newFailures >= MAX_FAILURES + 2;
-
+                const newFailures = Number(opp.verificationFailures ?? 0) + 1;
+                const shouldArchive = newFailures >= MAX_SOFT_FAILURES;
                 softFailures++;
+                if (shouldArchive) archived++;
+
                 await prisma.opportunity.update({
-                    where: { id: opp.id },
+                    where: { id: String(opp.id) },
                     data: {
                         linkHealth: shouldArchive ? LinkHealth.BROKEN : LinkHealth.RETRYING,
                         verificationFailures: newFailures,
@@ -141,19 +149,24 @@ export async function runLinkVerification() {
                         ...(shouldArchive ? { status: OpportunityStatus.ARCHIVED } : {})
                     }
                 });
-                logger.info(`Verification Bot: soft fail for "${opp.title}". failures=${newFailures}${shouldArchive ? ' [ARCHIVING]' : ''}`);
+                logger.warn(`Verification Bot: ~ soft-fail "${opp.title}" failures=${newFailures}/${MAX_SOFT_FAILURES}${shouldArchive ? ' [ARCHIVING]' : ''}`);
+
+                if (shouldArchive) {
+                    await TelegramService.notifyLinkArchived(String(opp.title), String(opp.company), String(opp.id), newFailures);
+                }
                 continue;
             }
 
+            // HARD_FAIL
             hardFailures++;
-            const newFailures = opp.verificationFailures + 1;
-            const shouldArchive = newFailures >= MAX_FAILURES;
+            const newFailures = Number(opp.verificationFailures ?? 0) + 1;
+            const shouldArchive = newFailures >= MAX_HARD_FAILURES;
             if (shouldArchive) archived++;
 
-            logger.warn(`Verification Bot: link failed for "${opp.title}" @ ${opp.company}. failures=${newFailures}`);
+            logger.warn(`Verification Bot: ✗ hard-fail "${opp.title}" @ ${opp.company} failures=${newFailures}/${MAX_HARD_FAILURES}${shouldArchive ? ' [ARCHIVING]' : ''}`);
 
             await prisma.opportunity.update({
-                where: { id: opp.id },
+                where: { id: String(opp.id) },
                 data: {
                     verificationFailures: newFailures,
                     linkHealth: shouldArchive ? LinkHealth.BROKEN : LinkHealth.RETRYING,
@@ -163,12 +176,7 @@ export async function runLinkVerification() {
             });
 
             if (shouldArchive) {
-                await TelegramService.notifyLinkArchived(
-                    opp.title,
-                    opp.company,
-                    opp.id,
-                    newFailures
-                );
+                await TelegramService.notifyLinkArchived(String(opp.title), String(opp.company), String(opp.id), newFailures);
             }
         }
 
@@ -183,18 +191,13 @@ export async function runLinkVerification() {
             ? Number(((verificationStats.totalHealthy / verificationStats.totalProcessed) * 100).toFixed(2))
             : 0;
         verificationStats.lastRun = {
-            processed,
-            healthy,
-            softFailures,
-            hardFailures,
-            archived,
-            duration,
+            processed, healthy, softFailures, hardFailures, archived, duration,
             runAt: new Date().toISOString()
         };
 
-        logger.info(`Verification Bot: scan complete processed=${processed} healthy=${healthy} softFailures=${softFailures} hardFailures=${hardFailures} archived=${archived} duration=${duration}s`);
-
+        logger.info(`Verification Bot: done processed=${processed} healthy=${healthy} soft=${softFailures} hard=${hardFailures} archived=${archived} duration=${duration}s`);
         return { processed, healthy, softFailures, hardFailures, archived, duration };
+
     } catch (error) {
         logger.error('Verification Bot error:', error);
         throw error;
@@ -205,69 +208,107 @@ export function getVerificationStats(): VerificationStats {
     return verificationStats;
 }
 
-/**
- * Closed-job redirect detection.
- * Some ATS systems (e.g. IBM) return HTTP 200 but redirect to a "job closed" page.
- * We check the final resolved URL to catch these soft-closed listings.
- */
+// ── Closed-job detection ─────────────────────────────────────────────────────
+
 const CLOSED_URL_INDICATORS = [
-    'closedjob',
-    'job-closed',
-    '/404',
-    'notfound',
-    'not-found',
-    'unavailable',
-    'no-longer-available'
+    'closedjob', 'job-closed', '/404', 'notfound', 'not-found',
+    'unavailable', 'no-longer-available', 'position-closed', 'expired'
+];
+
+const CLOSED_BODY_INDICATORS = [
+    "you can't view this job because it's not available at this time",
+    "this job is no longer available",
+    "this position is no longer available",
+    "job has been closed",
+    "position has been filled",
+    "no longer accepting applications",
+    "this position is no longer accepting",
+    "this job listing has expired",
+    "this job has expired",
+    "position is closed",
+    "job posting has been removed",
+    "this vacancy has been closed",
+    "application for this job is closed",
+    "not currently hiring",
 ];
 
 function isRedirectedToClosedPage(finalUrl: string): boolean {
-    const lowerUrl = finalUrl.toLowerCase();
-    return CLOSED_URL_INDICATORS.some(indicator => lowerUrl.includes(indicator));
+    const lower = finalUrl.toLowerCase();
+    return CLOSED_URL_INDICATORS.some(i => lower.includes(i));
 }
 
+function containsClosedText(html: string): boolean {
+    const lower = html.toLowerCase();
+    return CLOSED_BODY_INDICATORS.some(i => lower.includes(i));
+}
+
+// ── Ping Logic ────────────────────────────────────────────────────────────────
 /**
- * Lightweight request to check if a URL is alive and not closed.
+ * Strategy: try HEAD first (fast, no body download).
+ * If HEAD is unsupported (405/501) or network fails, fall back to GET + body scan.
+ *
+ * 403: treated as SOFT_FAIL — many valid ATS sites WAF-block bots.
+ *      Only promotes to HARD_FAIL if GET body confirms job is closed.
  */
 async function pingUrl(url: string): Promise<LinkCheckResult> {
+    // ── HEAD attempt ──────────────────────────────────────────────────────────
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT);
 
-        const response = await fetch(url, {
+        const res = await fetch(url, {
             method: 'HEAD',
-            signal: controller.signal,
+            signal: ctrl.signal,
+            redirect: 'follow',
             headers: { 'User-Agent': VERIFICATION_BOT_USER_AGENT }
         });
+        clearTimeout(tid);
 
-        clearTimeout(timeoutId);
-
-        if (response.url && isRedirectedToClosedPage(response.url)) return 'HARD_FAIL';
-        if (response.ok || (response.status >= 300 && response.status < 400)) return 'HEALTHY';
-        if (SOFT_FAIL_STATUSES.has(response.status)) return 'SOFT_FAIL';
-        return 'HARD_FAIL';
-    } catch {
-        // HEAD failed — some sites block it. Try GET with Range header instead.
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT);
-
-            const response = await fetch(url, {
-                method: 'GET',
-                signal: controller.signal,
-                headers: {
-                    'User-Agent': VERIFICATION_BOT_USER_AGENT,
-                    'Range': 'bytes=0-0'
-                }
-            });
-
-            clearTimeout(timeoutId);
-
-            if (response.url && isRedirectedToClosedPage(response.url)) return 'HARD_FAIL';
-            if (response.ok || (response.status >= 300 && response.status < 400)) return 'HEALTHY';
-            if (SOFT_FAIL_STATUSES.has(response.status)) return 'SOFT_FAIL';
-            return 'HARD_FAIL';
-        } catch {
+        if (res.url && isRedirectedToClosedPage(res.url)) return 'HARD_FAIL';
+        if (res.ok || (res.status >= 300 && res.status < 400)) return 'HEALTHY';
+        if (res.status === 404 || res.status === 410) return 'HARD_FAIL';
+        if (res.status === 405 || res.status === 501) {
+            // HEAD not allowed by server — fall through to GET
+        } else if (res.status === 403) {
+            // WAF/bot block — soft-fail, fall through to GET for confirmation
+        } else if (SOFT_FAIL_STATUSES.has(res.status)) {
+            return 'SOFT_FAIL';
+        } else {
             return 'HARD_FAIL';
         }
+    } catch {
+        // Network error/timeout — fall through to GET
+    }
+
+    // ── GET fallback ──────────────────────────────────────────────────────────
+    try {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), REQUEST_TIMEOUT);
+
+        const res = await fetch(url, {
+            method: 'GET',
+            signal: ctrl.signal,
+            redirect: 'follow',
+            headers: { 'User-Agent': VERIFICATION_BOT_USER_AGENT }
+        });
+        clearTimeout(tid);
+
+        if (res.url && isRedirectedToClosedPage(res.url)) return 'HARD_FAIL';
+
+        if (res.ok || (res.status >= 300 && res.status < 400)) {
+            try {
+                const html = await res.text();
+                if (containsClosedText(html)) return 'HARD_FAIL';
+            } catch { /* ignore parse errors */ }
+            return 'HEALTHY';
+        }
+
+        if (res.status === 403) return 'SOFT_FAIL'; // bot-blocked, not necessarily closed
+        if (res.status === 404 || res.status === 410) return 'HARD_FAIL';
+        if (SOFT_FAIL_STATUSES.has(res.status)) return 'SOFT_FAIL';
+
+        return 'HARD_FAIL';
+    } catch {
+        return 'HARD_FAIL';
     }
 }

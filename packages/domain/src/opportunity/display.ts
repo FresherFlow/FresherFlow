@@ -123,8 +123,9 @@ export type EligibilitySnapshot = {
     missingSkills: string[];
 };
 
-export function getListingState(opportunity: Opportunity): ListingState {
-    if (opportunity.status && opportunity.status !== 'PUBLISHED') return 'INACTIVE';
+export function getListingState(opportunity: Opportunity & { linkHealth?: string }): string {
+    if (opportunity.status && opportunity.status !== 'PUBLISHED') return opportunity.status;
+    if (opportunity.linkHealth === 'BROKEN') return 'BROKEN';
     if (isExpired(opportunity)) return 'EXPIRED';
     if (isClosingSoon(opportunity)) return 'CLOSING_SOON';
     return 'ACTIVE';

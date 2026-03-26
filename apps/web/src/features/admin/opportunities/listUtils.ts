@@ -76,14 +76,7 @@ export const getPublicOpportunityHref = (opp: { id: string; slug?: string | null
 };
 
 export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {
-    const configuredOrigin =
-        process.env.NEXT_PUBLIC_SITE_URL
-        || process.env.NEXT_PUBLIC_APP_URL
-        || SITE_URL;
-    const origin = /localhost|127\.0\.0\.1/i.test(configuredOrigin)
-        ? SITE_URL
-        : configuredOrigin;
-    return `${origin}${getPublicOpportunityHref(opp)}`;
+    return `${SITE_URL}${getPublicOpportunityHref(opp)}`;
 };
 
 export type SocialOpportunity = Pick<Opportunity, 'id' | 'slug' | 'type' | 'title' | 'company' | 'locations' | 'allowedPassoutYears' | 'allowedCourses' | 'allowedDegrees'>;

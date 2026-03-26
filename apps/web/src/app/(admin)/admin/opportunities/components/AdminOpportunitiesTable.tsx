@@ -12,7 +12,8 @@ import {
     CheckCircleIcon, 
     ArrowPathIcon, 
     EyeIcon, 
-    DocumentDuplicateIcon 
+    DocumentDuplicateIcon,
+    ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
 import { 
     formatLastVerified, 
@@ -157,6 +158,17 @@ export const AdminOpportunitiesTable = ({
                                     >
                                         <DocumentDuplicateIcon className="w-4 h-4" />
                                     </button>
+                                    {(opp.applyLink || opp.sourceLink) && (
+                                        <a
+                                            href={(opp.applyLink || opp.sourceLink) as string}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all"
+                                            title="Open apply link"
+                                        >
+                                            <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                                        </a>
+                                    )}
                                     <Link
                                         href={getPublicOpportunityHref(opp)}
                                         target="_blank"

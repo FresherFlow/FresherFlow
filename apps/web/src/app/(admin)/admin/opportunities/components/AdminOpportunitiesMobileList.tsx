@@ -12,7 +12,8 @@ import {
     CheckCircleIcon, 
     ArrowPathIcon, 
     EyeIcon, 
-    DocumentDuplicateIcon 
+    DocumentDuplicateIcon,
+    ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
 import { 
     formatLastVerified, 
@@ -104,15 +105,25 @@ export const AdminOpportunitiesMobileList = ({
                     </div>
 
                     <div className="mt-3 space-y-2">
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                             <button
                                 onClick={() => void copySocialCaption(opp)}
                                 className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-background text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                                 title="Copy social caption"
                             >
-                                <DocumentDuplicateIcon className="w-4 h-4 mr-1.5" />
-                                Copy
+                                <DocumentDuplicateIcon className="w-4 h-4" />
                             </button>
+                            {(opp.applyLink || opp.sourceLink) && (
+                                <a
+                                    href={(opp.applyLink || opp.sourceLink) as string}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-blue-200 bg-blue-50 text-xs font-medium text-blue-700 hover:bg-blue-100"
+                                    title="Open apply link"
+                                >
+                                    <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                                </a>
+                            )}
                             <Link
                                 href={getPublicOpportunityHref(opp)}
                                 target="_blank"
@@ -120,16 +131,14 @@ export const AdminOpportunitiesMobileList = ({
                                 className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-background text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                                 title="View as user"
                             >
-                                <EyeIcon className="w-4 h-4 mr-1.5" />
-                                View
+                                <EyeIcon className="w-4 h-4" />
                             </Link>
                             <Link
                                 href={`/admin/opportunities/edit/${opp.slug || opp.id}`}
                                 className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-background text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                                 title="Edit"
                             >
-                                <PencilSquareIcon className="w-4 h-4 mr-1.5" />
-                                Edit
+                                <PencilSquareIcon className="w-4 h-4" />
                             </Link>
                         </div>
                         <div className="grid grid-cols-2 gap-2">

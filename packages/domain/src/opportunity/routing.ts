@@ -16,10 +16,20 @@ export function getDetailShareUrl(currentUrl: string) {
     });
 }
 
-export function getOpportunityPathFromItem(item: { id: string; slug?: string }) {
-    return `/opportunities/${item.slug || item.id}`;
+export function getOpportunityPathFromItem(item: { id: string; slug?: string; type?: string }) {
+    const prefix = getTypePrefix(item.type);
+    return `${prefix}/${item.slug || item.id}`;
+}
+
+function getTypePrefix(type?: string): string {
+    if (!type) return '/opportunities';
+    const t = type.toUpperCase();
+    if (t === 'JOB') return '/jobs';
+    if (t === 'INTERNSHIP') return '/internships';
+    if (t === 'WALKIN') return '/walk-ins';
+    return '/opportunities';
 }
 
 export function getOpportunityPath(type: string, slugOrId: string) {
-    return `/opportunities/${slugOrId}`;
+    return `${getTypePrefix(type)}/${slugOrId}`;
 }

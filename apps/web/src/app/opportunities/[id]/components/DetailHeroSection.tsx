@@ -49,15 +49,15 @@ export function DetailHeroSection({
                             <div className="w-2 h-2 rounded-full bg-amber-500" />
                             Closing Soon
                         </div>
-                    ) : listingState === 'INACTIVE' ? (
-                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted border border-border text-muted-foreground text-xs md:text-sm font-bold uppercase tracking-tight rounded">
-                            <div className="w-2 h-2 rounded-full bg-muted-foreground/70" />
-                            Inactive
-                        </div>
-                    ) : (
+                    ) : listingState === 'ACTIVE' ? (
                         <div className="flex items-center gap-1.5 px-2 py-0.5 bg-primary/10 border border-primary/20 text-primary text-xs md:text-sm font-bold uppercase tracking-tight rounded">
                             <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                             Active
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-1.5 px-2 py-0.5 bg-muted border border-border text-muted-foreground text-xs md:text-sm font-bold uppercase tracking-tight rounded">
+                            <div className="w-2 h-2 rounded-full bg-muted-foreground/70" />
+                            {listingState}
                         </div>
                     )}
                 </div>

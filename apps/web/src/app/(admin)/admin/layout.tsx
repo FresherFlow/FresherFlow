@@ -21,6 +21,7 @@ import AdminBottomNav from '@/shared/components/navigation/AdminBottomNav';
 import { ThemeToggle } from '@repo/ui/ThemeToggle';
 import LoadingScreen from '@/components/ui/LoadingScreen';
 import { adminApi } from '@/lib/api/admin';
+import { getApiBaseForEndpoint } from '@/lib/api/client';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const ADMIN_FEEDBACK_SEEN_KEY = 'ff_admin_feedback_last_seen_at';
@@ -33,6 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [feedbackAlertCount, setFeedbackAlertCount] = useState(0);
     const { theme, toggleTheme } = useTheme();
+    const [apiStatus, setApiStatus] = useState<'live' | 'down' | 'checking'>('checking');
 
     // Scroll tracking is disabled per user request to keep navigation constant
 
@@ -87,6 +89,23 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             window.removeEventListener('focus', onFocus);
         };
     }, [isAuthenticated, isLoginPage, pathname]);
+
+    // Poll backend health
+    useEffect(() => {
+        if (!isAuthenticated || isLoginPage) return;
+        const checkHealth = async () => {
+            try {
+                const base = getApiBaseForEndpoint('/api/health');
+                const res = await fetch(`${base}/api/health`, { method: 'GET', cache: 'no-store' });
+                setApiStatus(res.ok ? 'live' : 'down');
+            } catch {
+                setApiStatus('down');
+            }
+        };
+        void checkHealth();
+        const id = window.setInterval(checkHealth, 30000);
+        return () => window.clearInterval(id);
+    }, [isAuthenticated, isLoginPage]);
 
 
     if (isLoading) {
@@ -180,6 +199,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </nav>
 
                 <div className="p-3 border-t border-border mb-4">
+                    <div className="flex items-center gap-2 px-3 py-2 mb-1">
+                        <span className={`relative flex h-2 w-2 ${apiStatus === 'checking' ? '' : ''}`}>
+                            {apiStatus === 'live' && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />}
+                            <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                                apiStatus === 'live' ? 'bg-emerald-500' :
+                                apiStatus === 'down' ? 'bg-red-500' :
+                                'bg-yellow-400'
+                            }`} />
+                        </span>
+                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                            {apiStatus === 'live' ? 'API Live' : apiStatus === 'down' ? 'API Down' : 'Checking...'}
+                        </span>
+                    </div>
                     <button
                         onClick={logout}
                         className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm font-medium text-destructive hover:bg-destructive/10 transition-all duration-200"

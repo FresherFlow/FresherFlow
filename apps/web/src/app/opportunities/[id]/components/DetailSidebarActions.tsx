@@ -157,15 +157,15 @@ export function DetailSidebarActions({
                             <span className="w-2 h-2 rounded-full bg-amber-500" />
                             Closing Soon
                         </span>
-                    ) : listingState === 'INACTIVE' ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                            <span className="w-2 h-2 rounded-full bg-muted-foreground/70" />
-                            Inactive
-                        </span>
-                    ) : (
+                    ) : listingState === 'ACTIVE' ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-primary/20 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide">
                             <span className="w-2 h-2 rounded-full bg-emerald-500" />
                             Active
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wide">
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/70" />
+                            {listingState}
                         </span>
                     )}
                 </div>
@@ -173,10 +173,11 @@ export function DetailSidebarActions({
                     <p className="text-sm font-medium text-foreground leading-relaxed">
                         {listingState === 'EXPIRED'
                             ? 'This listing is expired. You can review details, but new applications are usually closed.'
-                            : listingState === 'INACTIVE'
-                                ? 'This listing is currently inactive. Check status updates from the source link before applying.'
+                            : listingState !== 'ACTIVE' && listingState !== 'CLOSING_SOON'
+                                ? `This listing is marked as ${listingState.toLowerCase()}. Check status updates from the source before applying.`
                                 : 'This listing is currently active and accepting applications.'}
                     </p>
+
                     {opp.expiresAt && (
                         <p className="text-sm text-muted-foreground">
                             Deadline: <span className="font-semibold text-foreground">{formatDeadline(opp)}</span>
