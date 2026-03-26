@@ -1,12 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import {
-    expireOpportunityAction,
-    updateOpportunityAction,
-    deleteOpportunityAction,
-    bulkOpportunityAction,
-    restoreOpportunityAction
-} from '@/features/opportunities/actions';
+import { adminApi } from '@/lib/api/admin';
 import { buildSocialCaption } from '@/features/admin/opportunities/listUtils';
 
 import { SocialOpportunity } from '@/features/admin/opportunities/listUtils';
@@ -50,8 +44,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
             action: async () => {
                 const tid = toast.loading('Updating status...');
                 try {
-                    const res = await expireOpportunityAction(id);
-                    if (!res.success) throw new Error(res.error);
+                    await adminApi.expireOpportunity(id);
                     toast.success('Opportunity expired', { id: tid });
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
@@ -65,8 +58,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
     const handleStatusUpdate = async (id: string, newStatus: string) => {
         const tid = toast.loading(`Updating to ${newStatus}...`);
         try {
-            const res = await updateOpportunityAction(id, { status: newStatus as OpportunityStatus });
-            if (!res.success) throw new Error(res.error);
+            await adminApi.updateOpportunity(id, { status: newStatus as OpportunityStatus });
             toast.success('Listing updated', { id: tid });
             loadOpportunities();
         } catch (err: unknown) {
@@ -84,8 +76,8 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
             action: async () => {
                 const tid = toast.loading('Removing listing...');
                 try {
-                    const res = await deleteOpportunityAction(id, 'Removed by admin');
-                    if (!res.success) throw new Error(res.error);
+                    // Note: deleteOpportunity payload accepts body with reason
+                    await adminApi.deleteOpportunity(id, 'Removed by admin');
                     toast.success('Opportunity removed', { id: tid });
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
@@ -109,8 +101,8 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                 try {
                     setBulkActionPending(true);
                     setBulkActionLabel(labels[action]);
-                    const res = await bulkOpportunityAction(selectedIds, action);
-                    if (!res.success) throw new Error(res.error);
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    const res = await adminApi.bulkAction(selectedIds, action) as any;
                     setLastBulkResult({ 
                         action, 
                         requestedCount: res.requestedCount || selectedIds.length, 
@@ -134,8 +126,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
     const handleRestore = async (id: string) => {
         const tid = toast.loading('Restoring listing...');
         try {
-            const res = await restoreOpportunityAction(id);
-            if (!res.success) throw new Error(res.error);
+            await adminApi.restoreOpportunity(id);
             toast.success('Listing restored', { id: tid });
             loadOpportunities();
         } catch (err: unknown) {
