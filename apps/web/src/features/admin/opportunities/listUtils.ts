@@ -76,7 +76,13 @@ export const getPublicOpportunityHref = (opp: { id: string; slug?: string | null
 };
 
 export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {
-    return `${SITE_URL}${getPublicOpportunityHref(opp)}`;
+    // NEXT_PUBLIC_* vars are available in the client bundle; SITE_URL is server-only so may be empty
+    const envOrigin = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || SITE_URL;
+    // Fallback: infer from admin window origin (e.g. https://admin.fresherflow.in -> https://fresherflow.in)
+    const browserOrigin = typeof window !== 'undefined' ? window.location.origin : '';
+    const inferredOrigin = browserOrigin.replace('://admin.', '://');
+    const origin = (envOrigin || inferredOrigin || '').replace(/\/$/, '');
+    return `${origin}${getPublicOpportunityHref(opp)}`;
 };
 
 export type SocialOpportunity = Pick<Opportunity, 'id' | 'slug' | 'type' | 'title' | 'company' | 'locations' | 'allowedPassoutYears' | 'allowedCourses' | 'allowedDegrees'>;
