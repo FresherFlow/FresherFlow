@@ -13,7 +13,7 @@ const USE_SEPARATE_ADMIN_API = process.env.USE_SEPARATE_ADMIN_API === 'true' || 
 const ADMIN_API_URL = USE_SEPARATE_ADMIN_API
     ? (normalizeApiBase(process.env.ADMIN_API_URL || process.env.NEXT_PUBLIC_ADMIN_API_URL) || normalizeApiBase(DEFAULT_API_URL))
     : normalizeApiBase(DEFAULT_API_URL);
-const DEFAULT_PUBLIC_REVALIDATE_SECONDS = 120;
+const DEFAULT_PUBLIC_REVALIDATE_SECONDS = 1800;
 
 function resolveApiBase(endpoint: string) {
     if (endpoint.startsWith('/api/admin')) return ADMIN_API_URL;

@@ -3,11 +3,28 @@ import { OpportunityType } from '@fresherflow/types';
 import { verifyAccessToken } from '@fresherflow/auth';
 import { createRateLimiter } from '../../../middleware/rateLimit';
 
-export const GUEST_FEED_LIMIT = 12;
-export const MAX_FEED_LIMIT = 100;
-export const MAX_FEED_PAGE = 200;
-export const GUEST_FEED_CACHE_TTL_SECONDS = 300;
-export const GUEST_DETAIL_CACHE_TTL_SECONDS = 300;
+function parsePositiveIntEnv(value: string | undefined, fallback: number): number {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
+}
+
+export const GUEST_FEED_LIMIT = parsePositiveIntEnv(process.env.GUEST_FEED_LIMIT, 12);
+export const MAX_FEED_LIMIT = parsePositiveIntEnv(
+    process.env.PUBLIC_FEED_MAX_LIMIT,
+    process.env.NODE_ENV === 'production' ? 50 : 100
+);
+export const MAX_FEED_PAGE = parsePositiveIntEnv(
+    process.env.PUBLIC_FEED_MAX_PAGE,
+    process.env.NODE_ENV === 'production' ? 50 : 200
+);
+export const GUEST_FEED_CACHE_TTL_SECONDS = parsePositiveIntEnv(
+    process.env.PUBLIC_FEED_CACHE_TTL_SECONDS,
+    process.env.NODE_ENV === 'production' ? 1800 : 300
+);
+export const GUEST_DETAIL_CACHE_TTL_SECONDS = parsePositiveIntEnv(
+    process.env.PUBLIC_DETAIL_CACHE_TTL_SECONDS,
+    process.env.NODE_ENV === 'production' ? 3600 : 300
+);
 export const MAX_DETAIL_ID_LENGTH = 200;
 export const MAX_SALARY_FILTER = 100000000;
 export const ALLOWED_SORT_KEYS = new Set(['', 'freshness_v2']);
@@ -76,6 +93,7 @@ export function buildGuestOpportunitySelect() {
         salaryRange: true,
         salaryPeriod: true,
         employmentType: true,
+        tags: true,
         expiresAt: true,
         postedAt: true,
         linkHealth: true,
@@ -123,6 +141,7 @@ export function buildPublicOpportunitySelect(userId?: string) {
         notesHighlights: true,
         stipend: true,
         employmentType: true,
+        tags: true,
         applyLink: true,
         expiresAt: true,
         postedAt: true,
@@ -155,6 +174,33 @@ export function buildPublicOpportunitySelect(userId?: string) {
                 requiredDocuments: true,
                 contactPerson: true,
                 contactPhone: true,
+            },
+        },
+        governmentJobDetails: {
+            select: {
+                id: true,
+                department: true,
+                organization: true,
+                officialWebsiteUrl: true,
+                officialNotificationUrl: true,
+                advertisementNumber: true,
+                postName: true,
+                applicationMode: true,
+                vacancyCount: true,
+                applicationFee: true,
+                ageMin: true,
+                ageMax: true,
+                ageRelaxation: true,
+                reservationNotes: true,
+                importantInstructions: true,
+                applicationStartDate: true,
+                applicationEndDate: true,
+                examDate: true,
+                admitCardDate: true,
+                resultDate: true,
+                selectionStages: true,
+                requiredDocuments: true,
+                seoTags: true,
             },
         },
         ...(userId

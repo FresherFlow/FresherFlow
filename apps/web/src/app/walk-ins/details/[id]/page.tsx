@@ -1,6 +1,6 @@
 import OpportunityDetailPage, { generateMetadata as generateOpportunityMetadata } from '../../../opportunities/[id]/page';
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 export const generateMetadata = generateOpportunityMetadata;
 

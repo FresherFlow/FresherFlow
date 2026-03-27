@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 export const metadata: Metadata = {
     title: 'Jobs for Freshers',

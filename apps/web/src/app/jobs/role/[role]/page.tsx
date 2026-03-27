@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SITE_URL } from '@/lib/runtimeConfig';
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 const formatLabel = (value: string) =>
     value

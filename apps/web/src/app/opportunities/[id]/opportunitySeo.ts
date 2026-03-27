@@ -114,7 +114,7 @@ export async function fetchOpportunityForPage(slugOrId: string): Promise<Extende
             headers: {
                 'X-Requested-From': 'fresherflow-web',
             },
-            next: { revalidate: 300 },
+            next: { revalidate: 3600 },
         });
 
         if (!response.ok) return null;
@@ -137,6 +137,8 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     const driveDates = getDriveDates(opportunity as Opportunity);
     const type = isCampusDrive
         ? 'Campus Drive'
+        : opportunity.governmentJobDetails
+            ? 'Government Job'
         : opportunity.type === 'INTERNSHIP'
             ? 'Internship'
             : opportunity.type === 'WALKIN'
@@ -174,6 +176,15 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     return {
         title: seoTitle,
         description,
+        keywords: Array.from(new Set([
+            opportunity.title,
+            opportunity.company,
+            type,
+            ...(opportunity.tags || []),
+            ...(opportunity.governmentJobDetails?.seoTags || []),
+            opportunity.governmentJobDetails?.department || '',
+            opportunity.governmentJobDetails?.organization || '',
+        ].filter(Boolean))),
         robots: {
             index: !expiry.pastGrace,
             follow: true,
@@ -248,7 +259,8 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
         hiringOrganization: {
             '@type': 'Organization',
             name: opportunity.company,
-            logo: logoUrl
+            logo: logoUrl,
+            ...(opportunity.companyWebsite ? { sameAs: opportunity.companyWebsite } : {})
         },
         jobLocation: {
             '@type': 'Place',
@@ -263,6 +275,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
         },
         employmentType: opportunity.type === 'INTERNSHIP' ? 'INTERN' : 'FULL_TIME',
         directApply: true,
+        skills: opportunity.requiredSkills?.join(', '),
     };
 
     const locationLabel = parsedLocation.fullLabel.toLowerCase();
@@ -290,6 +303,19 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
                 unitText: salary.unitText
             }
         };
+    }
+
+    if (opportunity.governmentJobDetails) {
+        const govt = opportunity.governmentJobDetails;
+        schema.occupationalCategory = govt.department || 'Government Jobs';
+        schema.qualifications = [
+            govt.ageMin != null || govt.ageMax != null
+                ? `Age limit: ${govt.ageMin ?? '?'} - ${govt.ageMax ?? '?'}`
+                : '',
+            govt.ageRelaxation || '',
+            govt.applicationFee ? `Application fee: ${govt.applicationFee}` : '',
+            ...(govt.selectionStages || []),
+        ].filter(Boolean).join(' | ');
     }
 
     return schema;

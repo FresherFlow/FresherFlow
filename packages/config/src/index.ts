@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+function parseBooleanEnv(value: unknown, defaultValue: boolean): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+        const normalized = value.toLowerCase().trim();
+        if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
+        if (['false', '0', 'no', 'off'].includes(normalized)) return false;
+    }
+    return defaultValue;
+}
+
 const nodeEnvSchema = z.enum(['development', 'test', 'production']).default('development');
 const appModeSchema = z.preprocess((value) => {
     if (typeof value !== 'string') return value;
@@ -36,24 +46,9 @@ const envSchema = z.object({
     APP_MODE: appModeSchema,
     RESEND_API_KEY: z.string().optional(),
     EMAIL_FROM: z.string().optional(),
-    ENABLE_EMAIL_SENDING: z.preprocess((value) => {
-        if (typeof value === 'boolean') return value;
-        if (typeof value === 'string') {
-            const normalized = value.toLowerCase().trim();
-            if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
-            if (['false', '0', 'no', 'off'].includes(normalized)) return false;
-        }
-        return true; // Default to true if missing or unparseable
-    }, z.boolean().default(true)),
-    ENABLE_WORKER_QUEUE_HEALTH: z.preprocess((value) => {
-        if (typeof value === 'boolean') return value;
-        if (typeof value === 'string') {
-            const normalized = value.toLowerCase().trim();
-            if (['true', '1', 'yes', 'on'].includes(normalized)) return true;
-            if (['false', '0', 'no', 'off'].includes(normalized)) return false;
-        }
-        return true; // Default to true if missing or unparseable
-    }, z.boolean().default(true)),
+    ENABLE_EMAIL_SENDING: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
+    ENABLE_WORKER_QUEUE_HEALTH: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
+    ENABLE_WORKER_DEEP_HEALTH: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
 }).superRefine((value, ctx) => {
     if (value.NODE_ENV !== 'test' && !value.DATABASE_URL) {
         ctx.addIssue({

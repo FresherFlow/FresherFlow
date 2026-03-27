@@ -19,7 +19,7 @@ type Props = {
 };
 
 // ISR for public detail pages to absorb bot/preview traffic at CDN.
-export const revalidate = 300;
+export const revalidate = 3600;
 
 // Generate dynamic SEO metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

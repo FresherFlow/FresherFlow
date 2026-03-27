@@ -20,6 +20,8 @@ const VERIFICATION_BOT_CONTACT_URL =
     process.env.PUBLIC_WEB_URL ||
     'http://localhost:3000';
 const VERIFICATION_BOT_USER_AGENT = `FresherFlow-VerificationBot/1.0 (+${VERIFICATION_BOT_CONTACT_URL})`;
+const DEFAULT_VERIFICATION_LOOKBACK_HOURS = process.env.NODE_ENV === 'production' ? 72 : 12;
+const DEFAULT_VERIFICATION_BATCH_SIZE = process.env.NODE_ENV === 'production' ? 20 : 50;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type LinkCheckResult = 'HEALTHY' | 'SOFT_FAIL' | 'HARD_FAIL';
@@ -77,14 +79,16 @@ export async function runLinkVerification() {
     logger.info('Verification Bot: initiating link health scan');
 
     try {
-        const twelveHoursAgo = new Date(Date.now() - 12 * 60 * 60 * 1000);
+        const verificationLookbackHours = Number(process.env.VERIFICATION_LOOKBACK_HOURS || DEFAULT_VERIFICATION_LOOKBACK_HOURS);
+        const verificationBatchSize = Number(process.env.VERIFICATION_BATCH_SIZE || DEFAULT_VERIFICATION_BATCH_SIZE);
+        const verificationThreshold = new Date(Date.now() - verificationLookbackHours * 60 * 60 * 1000);
 
         const opportunities = await prisma.opportunity.findMany({
             where: {
                 status: OpportunityStatus.PUBLISHED,
                 deletedAt: null,
                 OR: [
-                    { lastVerifiedAt: { lt: twelveHoursAgo } },
+                    { lastVerifiedAt: { lt: verificationThreshold } },
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     { lastVerifiedAt: null as any },
                     { linkHealth: LinkHealth.RETRYING }
@@ -102,10 +106,13 @@ export async function runLinkVerification() {
                 { lastVerifiedAt: 'asc' },
                 { postedAt: 'asc' }
             ],
-            take: 50
+            take: verificationBatchSize
         });
 
-        logger.info(`Verification Bot: found ${opportunities.length} candidates for verification`);
+        logger.info(`Verification Bot: found ${opportunities.length} candidates for verification`, {
+            verificationLookbackHours,
+            verificationBatchSize,
+        });
 
         let processed = 0, healthy = 0, softFailures = 0, hardFailures = 0, archived = 0;
 

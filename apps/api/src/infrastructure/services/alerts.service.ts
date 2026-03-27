@@ -248,6 +248,9 @@ async function sendEventRemindersForUser(
 export async function runAlertsCycle() {
     const now = new Date();
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const maxUsers = Number(process.env.ALERTS_MAX_USERS || (process.env.NODE_ENV === 'production' ? 250 : 1000));
+    const maxOpportunities = Number(process.env.ALERTS_MAX_OPPORTUNITIES || (process.env.NODE_ENV === 'production' ? 120 : 300));
+    const maxEvents = Number(process.env.ALERTS_MAX_EVENTS || (process.env.NODE_ENV === 'production' ? 80 : 200));
     const deliveryControls = await getAdminDeliveryControls();
 
     if (!deliveryControls.userAlertsEnabled) {
@@ -266,7 +269,7 @@ export async function runAlertsCycle() {
             },
             include: { walkInDetails: true },
             orderBy: { postedAt: 'desc' },
-            take: 300,
+            take: maxOpportunities,
         }) as unknown as Promise<Opportunity[]>,
         prisma.opportunityEvent.findMany({
             where: {
@@ -285,12 +288,20 @@ export async function runAlertsCycle() {
                 }
             },
             orderBy: { eventDate: 'asc' },
-            take: 200
+            take: maxEvents
         })
     ]);
 
     const users = await prisma.user.findMany({
-        where: { role: { in: ['USER', 'ADMIN'] } },
+        where: {
+            role: { in: ['USER', 'ADMIN'] },
+            profile: { isNot: null },
+            alertPreference: {
+                is: {
+                    enabled: true,
+                }
+            }
+        },
         select: {
             id: true,
             email: true,
@@ -298,7 +309,7 @@ export async function runAlertsCycle() {
             profile: true,
             alertPreference: true,
         },
-        take: 1000,
+        take: maxUsers,
     });
 
     let digestSent = 0;

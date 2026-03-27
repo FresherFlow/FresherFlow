@@ -1,10 +1,7 @@
-
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
 import TelegramService from '../infrastructure/services/telegram.service';
-
-const prisma = new PrismaClient();
 
 function formatDateKeyInTimezone(date: Date, timezone: string): string {
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -63,11 +60,14 @@ export async function runExpiryCycle() {
 
         const walkInIdsToExpire: string[] = [];
         for (const walkIn of activeWalkIns) {
-            const dates = walkIn.walkInDetails?.dates?.map(d => new Date(d)) || [];
+            const walkInDates = Array.isArray(walkIn.walkInDetails?.dates)
+                ? (walkIn.walkInDetails.dates as Array<string | Date>)
+                : [];
+            const dates = walkInDates.map((dateValue) => new Date(dateValue));
             const validDates = dates.filter((d: Date) => !Number.isNaN(d.getTime()));
             const maxDate = validDates.length > 0
                 ? new Date(Math.max(...validDates.map(d => d.getTime())))
-                : (walkIn.expiresAt ? new Date(walkIn.expiresAt) : null);
+                : (walkIn.expiresAt instanceof Date ? new Date(walkIn.expiresAt) : null);
 
             if (!maxDate) continue;
 
@@ -75,7 +75,7 @@ export async function runExpiryCycle() {
             const lastDateKey = formatDateKeyInTimezone(maxDate, timezone);
 
             if (lastDateKey < todayKey) {
-                walkInIdsToExpire.push(walkIn.id);
+                walkInIdsToExpire.push(String(walkIn.id));
             }
         }
 

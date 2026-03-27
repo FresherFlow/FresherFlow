@@ -10,7 +10,6 @@ import {
 import http from 'http';
 import { env } from '@fresherflow/config';
 import { logger, setupCleanLogging } from '@fresherflow/logger';
-import { prisma } from '@fresherflow/database';
 import { redis } from '@fresherflow/redis';
 
 setupCleanLogging();
@@ -18,6 +17,9 @@ setupCleanLogging();
 const connection = getQueueConnection();
 const startedAt = new Date().toISOString();
 const ENABLE_QUEUE_HEALTH = env.ENABLE_WORKER_QUEUE_HEALTH;
+const ENABLE_DEEP_HEALTH = ['true', '1', 'yes', 'on'].includes(
+    String(process.env.ENABLE_WORKER_DEEP_HEALTH || '').trim().toLowerCase()
+);
 
 logger.info('Starting FresherFlow Background Worker...');
 
@@ -52,12 +54,26 @@ for (const { name, worker } of workers) {
     );
 }
 
-// Health endpoint — includes per-queue backlog and failed counts
-// Required by Render to keep the free-tier web service alive.
+// Render only needs a fast 200 response. Keep root health zero-DB by default
+// so periodic health checks do not keep Neon compute awake.
 const PORT = parseInt(env.PORT || '5001', 10);
 
-http.createServer(async (_, res) => {
+http.createServer(async (req, res) => {
     try {
+        const requestUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+
+        if (!ENABLE_DEEP_HEALTH || requestUrl.pathname === '/' || requestUrl.pathname === '/health') {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                status: 'ok',
+                service: 'fresherflow-worker',
+                startedAt,
+                uptime: Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000),
+                deepHealthEnabled: ENABLE_DEEP_HEALTH,
+            }));
+            return;
+        }
+
         const queueStats = ENABLE_QUEUE_HEALTH
             ? await Promise.allSettled(
                 WORKER_QUEUE_NAMES.map(async (name) => {
@@ -73,18 +89,17 @@ http.createServer(async (_, res) => {
             : [];
 
         const stats = ENABLE_QUEUE_HEALTH
-            ? queueStats.map((r) => {
-                if (r.status === 'fulfilled') return r.value;
-                logger.warn(`Failed to fetch stats for queue: ${r.reason?.message || 'unknown error'}`);
-                return { name: 'unknown', error: r.reason?.message || 'unknown error' };
+            ? queueStats.map((result) => {
+                if (result.status === 'fulfilled') return result.value;
+                logger.warn(`Failed to fetch stats for queue: ${result.reason?.message || 'unknown error'}`);
+                return { name: 'unknown', error: result.reason?.message || 'unknown error' };
             })
             : [];
 
-        const totalFailed = stats.reduce((acc, s) => acc + (('failed' in s ? (s.failed as number) : 0)), 0);
-        const totalWaiting = stats.reduce((acc, s) => acc + (('waiting' in s ? (s.waiting as number) : 0)), 0);
+        const totalFailed = stats.reduce((acc, stat) => acc + (('failed' in stat ? (stat.failed as number) : 0)), 0);
+        const totalWaiting = stats.reduce((acc, stat) => acc + (('waiting' in stat ? (stat.waiting as number) : 0)), 0);
 
-        const [dbStatus, redisStatus] = await Promise.allSettled([
-            prisma.$queryRaw`SELECT 1`,
+        const redisStatus = await Promise.allSettled([
             redis.ping(),
         ]);
 
@@ -95,8 +110,8 @@ http.createServer(async (_, res) => {
             startedAt,
             uptime: Math.floor((Date.now() - new Date(startedAt).getTime()) / 1000),
             health: {
-                database: dbStatus.status === 'fulfilled' ? 'connected' : 'disconnected',
-                redis: redisStatus.status === 'fulfilled' ? 'connected' : 'disconnected',
+                database: 'skipped',
+                redis: redisStatus[0]?.status === 'fulfilled' ? 'connected' : 'disconnected',
             },
             summary: { totalWaiting, totalFailed },
             queueHealthEnabled: ENABLE_QUEUE_HEALTH,
