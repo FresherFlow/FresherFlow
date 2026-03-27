@@ -4,7 +4,7 @@
     "version": "1.6.0",
     "description": "Verified job platform for freshers.",
     "id": "/",
-    "start_url": "/opportunities",
+    "start_url": "/dashboard",
     "scope": "/",
     "display": "standalone",
     "display_override": [
@@ -29,9 +29,9 @@
     ],
     "shortcuts": [
         {
-            "name": "Open Feed",
-            "short_name": "Feed",
-            "url": "/opportunities",
+            "name": "Dashboard",
+            "short_name": "Home",
+            "url": "/dashboard",
             "icons": [
                 {
                     "src": "/icon-192x192.png",
