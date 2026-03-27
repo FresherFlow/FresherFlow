@@ -9,6 +9,12 @@ export interface ExtendedOpportunity extends Opportunity {
     normalizedRole?: string;
 }
 
+type ParsedSalary = {
+    minValue?: number;
+    maxValue?: number;
+    unitText: 'MONTH' | 'YEAR';
+};
+
 const API_BASE = API_URL;
 const EXPIRED_GRACE_DAYS = 45;
 
@@ -28,6 +34,77 @@ export function getTypeHubPath(type?: Opportunity['type']) {
     if (type === 'INTERNSHIP') return '/internships';
     if (type === 'WALKIN') return '/walk-ins';
     return '/opportunities';
+}
+
+function parseNumericAmount(input: string): number | null {
+    const normalized = input.trim().toLowerCase().replace(/,/g, '');
+    const match = normalized.match(/(\d+(?:\.\d+)?)(\s*)(lpa|lac|lakh|lakhs|k|m|cr|crore|crores)?/i);
+    if (!match) return null;
+
+    const rawValue = Number(match[1]);
+    if (!Number.isFinite(rawValue)) return null;
+
+    const suffix = (match[3] || '').toLowerCase();
+    if (suffix === 'lpa' || suffix === 'lac' || suffix === 'lakh' || suffix === 'lakhs') {
+        return Math.round(rawValue * 100000);
+    }
+    if (suffix === 'k') {
+        return Math.round(rawValue * 1000);
+    }
+    if (suffix === 'm') {
+        return Math.round(rawValue * 1000000);
+    }
+    if (suffix === 'cr' || suffix === 'crore' || suffix === 'crores') {
+        return Math.round(rawValue * 10000000);
+    }
+
+    return Math.round(rawValue);
+}
+
+function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
+    const unitText: 'MONTH' | 'YEAR' = opportunity.salaryPeriod === 'MONTHLY' ? 'MONTH' : 'YEAR';
+    const explicitMin = opportunity.salaryMin ?? opportunity.salary?.min ?? null;
+    const explicitMax = opportunity.salaryMax ?? opportunity.salary?.max ?? null;
+
+    if (explicitMin != null || explicitMax != null) {
+        return {
+            ...(explicitMin != null ? { minValue: explicitMin } : {}),
+            ...(explicitMax != null ? { maxValue: explicitMax } : {}),
+            unitText,
+        };
+    }
+
+    const rawText = opportunity.salaryRange || opportunity.stipend || '';
+    if (!rawText || /not disclosed|undisclosed|n\/a|na|tbd/i.test(rawText)) {
+        return null;
+    }
+
+    const inferredUnit: 'MONTH' | 'YEAR' =
+        /month|monthly|\/mo|\/month|per month|stipend/i.test(rawText)
+            ? 'MONTH'
+            : /year|yearly|annum|annual|lpa|ctc|pa\b|p\.a/i.test(rawText)
+                ? 'YEAR'
+                : unitText;
+
+    const rangeMatch = rawText.match(/(\d+(?:\.\d+)?(?:\s*(?:lpa|lac|lakh|lakhs|k|m|cr|crore|crores))?)\s*(?:-|to)\s*(\d+(?:\.\d+)?(?:\s*(?:lpa|lac|lakh|lakhs|k|m|cr|crore|crores))?)/i);
+    if (rangeMatch) {
+        const minValue = parseNumericAmount(rangeMatch[1]);
+        const maxValue = parseNumericAmount(rangeMatch[2]);
+        if (minValue != null || maxValue != null) {
+            return {
+                ...(minValue != null ? { minValue } : {}),
+                ...(maxValue != null ? { maxValue } : {}),
+                unitText: inferredUnit,
+            };
+        }
+    }
+
+    const singleValue = parseNumericAmount(rawText);
+    if (singleValue != null) {
+        return { minValue: singleValue, maxValue: singleValue, unitText: inferredUnit };
+    }
+
+    return null;
 }
 
 export async function fetchOpportunityForPage(slugOrId: string): Promise<ExtendedOpportunity | null> {
@@ -155,6 +232,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
         .trim();
     const rawLocationText = Array.isArray(opportunity.locations) ? opportunity.locations.join(', ') : '';
     const postalCodeMatch = rawLocationText.match(/\b\d{6}\b/);
+    const salary = parseStructuredSalary(opportunity);
     const schema: Record<string, unknown> = {
         '@context': 'https://schema.org',
         '@type': 'JobPosting',
@@ -178,7 +256,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
                 '@type': 'PostalAddress',
                 streetAddress: primaryLocality,
                 addressLocality: primaryLocality,
-                ...(parsedLocation.state ? { addressRegion: parsedLocation.state } : {}),
+                addressRegion: parsedLocation.state || primaryLocality,
                 ...(postalCodeMatch ? { postalCode: postalCodeMatch[0] } : {}),
                 addressCountry: 'IN'
             }
@@ -195,19 +273,21 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
 
     if (isRemoteRole) {
         schema.jobLocationType = 'TELECOMMUTE';
+        schema.applicantLocationRequirements = {
+            '@type': 'Country',
+            name: 'India',
+        };
     }
 
-    const schemaSalaryMin = opportunity.salaryMin ?? opportunity.salary?.min ?? null;
-    const schemaSalaryMax = opportunity.salaryMax ?? opportunity.salary?.max ?? null;
-    if (schemaSalaryMin != null || schemaSalaryMax != null) {
+    if (salary && (salary.minValue != null || salary.maxValue != null)) {
         schema.baseSalary = {
             '@type': 'MonetaryAmount',
             currency: 'INR',
             value: {
                 '@type': 'QuantitativeValue',
-                ...(schemaSalaryMin != null ? { minValue: schemaSalaryMin } : {}),
-                ...(schemaSalaryMax != null ? { maxValue: schemaSalaryMax } : {}),
-                unitText: opportunity.salaryPeriod === 'MONTHLY' ? 'MONTH' : 'YEAR'
+                ...(salary.minValue != null ? { minValue: salary.minValue } : {}),
+                ...(salary.maxValue != null ? { maxValue: salary.maxValue } : {}),
+                unitText: salary.unitText
             }
         };
     }
