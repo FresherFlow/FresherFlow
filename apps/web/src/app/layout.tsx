@@ -94,6 +94,7 @@ export default function RootLayout({
         <meta property="og:image:type" content="image/png" />
         <meta property="og:image:width" content="1200" />
         <meta property="og:image:height" content="630" />
+        <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
         <link rel="preload" as="image" href="/logo-optimized.png?v=3" fetchPriority="high" />
         <link rel="preload" as="image" href="/logo-white-optimized.png?v=3" fetchPriority="high" />
         <script
@@ -108,22 +109,17 @@ export default function RootLayout({
             }),
           }}
         />
-        {/* Dynamic Manifest Loader for Admin PWA */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              var isAdminHost = window.location.hostname === '${ADMIN_WEB_HOST}';
-              if (isAdminHost || window.location.pathname.startsWith('/admin')) {
-                var link = document.createElement('link');
-                link.rel = 'manifest';
-                link.href = '/admin-manifest.json';
-                document.head.appendChild(link);
-              } else {
-                var link = document.createElement('link');
-                link.rel = 'manifest';
-                link.href = '/manifest.webmanifest';
-                document.head.appendChild(link);
-              }
+              (function () {
+                var manifestLink = document.getElementById('ff-manifest-link');
+                if (!manifestLink) return;
+                var hostname = window.location.hostname.toLowerCase();
+                if (hostname === '${ADMIN_WEB_HOST}'.toLowerCase()) {
+                  manifestLink.setAttribute('href', '/admin-manifest.json');
+                }
+              })();
             `,
           }}
         />
