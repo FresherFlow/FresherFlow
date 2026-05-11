@@ -6,21 +6,23 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
-// 1. Watch all files within the monorepo
-config.watchFolders = [...config.watchFolders, workspaceRoot];
+// Watch all files within the monorepo
+config.watchFolders = [workspaceRoot];
 
-// 2. Let Metro look for modules in both the project's and workspace's node_modules
+// Resolve modules from both project and workspace node_modules
 config.resolver.nodeModulesPaths = [
-    path.resolve(projectRoot, 'node_modules'),
-    path.resolve(workspaceRoot, 'node_modules'),
+  path.resolve(projectRoot, 'node_modules'),
+  path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-// 3. Force all react-related modules to resolve from the workspace root
-//    where npm hoisted them, ensuring a single copy is used.
+// Enable Package Exports for React 19 support
+config.resolver.unstable_enablePackageExports = true;
+
+// Ensure single instance of core libraries
 config.resolver.extraNodeModules = {
-    react: path.resolve(workspaceRoot, 'node_modules/react'),
-    'react-native': path.resolve(workspaceRoot, 'node_modules/react-native'),
-    'react-dom': path.resolve(workspaceRoot, 'node_modules/react-dom'),
+  react: path.resolve(workspaceRoot, 'node_modules/react'),
+  'react-native': path.resolve(workspaceRoot, 'node_modules/react-native'),
+  '@react-navigation/native': path.resolve(workspaceRoot, 'node_modules/@react-navigation/native'),
 };
 
 module.exports = config;

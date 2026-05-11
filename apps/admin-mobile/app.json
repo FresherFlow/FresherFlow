@@ -3,46 +3,37 @@
     "name": "FresherFlow Admin",
     "slug": "fresherflow-admin",
     "version": "1.0.0",
-    "runtimeVersion": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "automatic",
-    "updates": {
-      "url": "https://u.expo.dev/10ec20f1-4b86-464c-9a55-24b5ad0204ba",
-      "fallbackToCacheTimeout": 0,
-      "checkAutomatically": "ON_LOAD"
-    },
+    "userInterfaceStyle": "dark",
+    "scheme": "fresherflow-admin",
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0ea5e9"
+      "backgroundColor": "#020404"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.fresherflow.admin"
+      "bundleIdentifier": "in.fresherflow.admin"
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0ea5e9"
+        "backgroundColor": "#020404"
       },
-      "package": "com.fresherflow.admin"
-    },
-    "web": {
-      "favicon": "./assets/favicon.png"
+      "package": "in.fresherflow.admin",
+      "edgeToEdgeEnabled": true
     },
     "plugins": [
       "expo-secure-store",
       "expo-updates"
     ],
     "extra": {
+      "apiUrl": "https://api.fresherflow.in",
       "eas": {
-        "projectId": "10ec20f1-4b86-464c-9a55-24b5ad0204ba"
+        "projectId": "fresherflow-admin-mobile"
       }
-    },
-    "owner": "mukesh.cheekatla"
+    }
   }
 }

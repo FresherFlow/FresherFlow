@@ -12,7 +12,7 @@ import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import { ToastProvider } from './src/components/ToastProvider';
 import { ErrorBoundary } from './src/features/system/components/ErrorBoundary';
 import { initSentry } from './src/lib/sentry';
-import { configureClient } from '@repo/api-client';
+import { configureClient } from '@fresherflow/api-client';
 
 initSentry();
 configureClient(undefined, secureStorage);

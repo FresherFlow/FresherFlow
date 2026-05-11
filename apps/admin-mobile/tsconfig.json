@@ -1,21 +1,19 @@
 {
-    "extends": "expo/tsconfig.base",
-    "compilerOptions": {
-        "strict": true,
-        "baseUrl": ".",
-        "paths": {
-            "@/*": ["./src/*"],
-            "@repo/domain/*": ["../../packages/domain/src/*"],
-            "@repo/domain": ["../../packages/domain/src/index.ts"],
-            "@repo/api-client/*": ["../../packages/api-client/src/*"],
-            "@repo/api-client": ["../../packages/api-client/src/index.ts"],
-            "@repo/utils/*": ["../../packages/utils/src/*"],
-            "@repo/utils": ["../../packages/utils/src/index.ts"],
-            "@repo/schemas/*": ["../../packages/schemas/*"],
-            "@repo/frontend-core/*": ["../../packages/frontend-core/src/*"],
-            "@repo/frontend-core": ["../../packages/frontend-core/src/index.tsx"],
-            "@repo/ui/*": ["../../packages/ui/src/*"],
-            "@repo/ui": ["../../packages/ui/src/index.tsx"]
-        }
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "src/*"
+      ]
     }
+  },
+  "include": [
+    "**/*.ts",
+    "**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }
