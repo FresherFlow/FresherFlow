@@ -6,6 +6,7 @@ import {
     View,
 } from 'react-native';
 import { useUITheme, alpha } from '../../../theme';
+import { mScale, SPACING, RADIUS } from '../../../theme/dimensions';
 
 export const SegmentedControl = <T extends string>({
     options,
@@ -24,7 +25,7 @@ export const SegmentedControl = <T extends string>({
                 {
                     backgroundColor: alpha(colors.text, 0.05),
                     borderColor: colors.border,
-                    borderRadius: 16,
+                    borderRadius: RADIUS.lg,
                     padding: 4,
                 },
             ]}
@@ -39,7 +40,7 @@ export const SegmentedControl = <T extends string>({
                             styles.segment,
                             {
                                 backgroundColor: active ? colors.primary : 'transparent',
-                                borderRadius: 12,
+                                borderRadius: RADIUS.md,
                             },
                         ]}
                     >
@@ -72,9 +73,9 @@ export const FilterChip = ({
             style={[
                 styles.chip,
                 {
-                    borderRadius: 16,
-                    paddingHorizontal: 20,
-                    height: 42,
+                    borderRadius: RADIUS.xl,
+                    paddingHorizontal: SPACING.lg,
+                    height: mScale(42),
                     borderColor: active ? activeColor : colors.border,
                     backgroundColor: active ? activeColor : alpha(colors.text, 0.03),
                 },
@@ -91,10 +92,10 @@ export const FieldLabel = ({ children }: { children: React.ReactNode }) => {
 };
 
 const styles = StyleSheet.create({
-    segmentedControl: { flexDirection: 'row', borderWidth: 1.5, gap: 6 },
-    segment: { flex: 1, minHeight: 48, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-    segmentLabel: { fontSize: 14, fontWeight: '700' },
-    chip: { alignItems: 'center', justifyContent: 'center', borderWidth: 2 },
-    chipLabel: { fontSize: 14, fontWeight: '900' },
-    fieldLabel: { fontSize: 12, fontWeight: '900', letterSpacing: 1.2, marginBottom: 10, textTransform: 'uppercase' },
+    segmentedControl: { flexDirection: 'row', borderWidth: 0.5, gap: 6 },
+    segment: { flex: 1, minHeight: mScale(44), alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.md },
+    segmentLabel: { fontSize: mScale(13), fontWeight: '600' },
+    chip: { alignItems: 'center', justifyContent: 'center', borderWidth: 0.5 },
+    chipLabel: { fontSize: mScale(14), fontWeight: '700' },
+    fieldLabel: { fontSize: mScale(11), fontWeight: '800', letterSpacing: 1.5, marginBottom: SPACING.sm, textTransform: 'uppercase', opacity: 0.8 },
 });

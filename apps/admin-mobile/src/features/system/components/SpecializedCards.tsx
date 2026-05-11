@@ -1,67 +1,53 @@
 import React from 'react';
-import {
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
-} from 'react-native';
+import { StyleSheet, Text, View, Pressable, ViewStyle, StyleProp } from 'react-native';
 import { alpha } from '../../../theme';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { Card } from '@repo/ui';
+import { mScale, SPACING, RADIUS } from '../../../theme/dimensions';
 
-export const SurfaceCard = Card;
-
-export const HeroCard = ({
-    title,
-    subtitle,
-    accent,
-    children,
-}: {
+export interface HeroCardProps {
     title: string;
     subtitle?: string;
-    accent?: string;
     children?: React.ReactNode;
-}) => {
-    const { colors, sizes, typography } = useTheme();
-    const heroAccent = accent ?? colors.primary;
+    accent?: string;
+}
+
+export const HeroCard = ({ title, subtitle, children, accent }: HeroCardProps) => {
+    const { colors, typography } = useTheme();
+    const heroAccent = accent || colors.primary;
 
     return (
         <View
             style={[
                 styles.heroCard,
                 {
-                    borderRadius: sizes.card.xl.borderRadius,
-                    borderColor: alpha(heroAccent, 0.4),
+                    borderColor: alpha(heroAccent, 0.15),
                     backgroundColor: colors.surface,
-                    padding: sizes.card.xl.padding,
+                    padding: SPACING.lg,
+                    borderRadius: RADIUS.xl,
                 },
             ]}
         >
             <View style={[styles.heroGlow, { backgroundColor: alpha(heroAccent, 0.25) }]} />
-            <Text style={[typography.title1, { color: colors.text }]}>{title}</Text>
-            {subtitle ? <Text style={[typography.body, { color: colors.textMuted, marginTop: sizes.card.md.gap }]}>{subtitle}</Text> : null}
+            <Text style={[typography.title1, { fontSize: mScale(22), color: colors.text }]}>{title}</Text>
+            {subtitle ? <Text style={[typography.body, { fontSize: mScale(14), color: colors.textMuted, marginTop: SPACING.xs }]}>{subtitle}</Text> : null}
             {children}
         </View>
     );
 };
 
-export const MetricCard = ({
-    label,
-    value,
-    meta,
-    accent,
-    icon,
-    onPress,
-}: {
+export interface MetricCardProps {
     label: string;
     value: string | number;
     meta?: string;
-    accent?: string;
     icon?: React.ReactNode;
+    accent?: string;
     onPress?: () => void;
-}) => {
-    const { colors, sizes, typography } = useTheme();
-    const cardAccent = accent ?? colors.primary;
+}
+
+export const MetricCard = ({ label, value, meta, icon, accent, onPress }: MetricCardProps) => {
+    const { colors, typography } = useTheme();
+    const cardAccent = accent || colors.primary;
 
     return (
         <Pressable
@@ -71,10 +57,10 @@ export const MetricCard = ({
                 styles.metricCard,
                 {
                     backgroundColor: colors.surface,
-                    borderColor: alpha(cardAccent, 0.4),
-                    borderRadius: sizes.card.md.borderRadius,
-                    padding: sizes.card.md.padding,
-                    paddingLeft: sizes.card.md.padding + 4, // More padding for the accent bar
+                    borderColor: alpha(cardAccent, 0.15),
+                    borderRadius: RADIUS.lg,
+                    padding: SPACING.md,
+                    paddingLeft: SPACING.md + 4, // More padding for the accent bar
                 },
             ]}
         >
@@ -83,52 +69,85 @@ export const MetricCard = ({
                     styles.accentBar, 
                     { 
                         backgroundColor: cardAccent,
-                        borderTopLeftRadius: sizes.card.md.borderRadius,
-                        borderBottomLeftRadius: sizes.card.md.borderRadius,
+                        borderTopLeftRadius: RADIUS.lg,
+                        borderBottomLeftRadius: RADIUS.lg,
                     }
                 ]} 
             />
-            <View style={[styles.metricHeader, { gap: sizes.card.sm.gap }]}>
-                <Text style={[typography.eyebrow, { color: colors.textMuted }]}>{label}</Text>
+            <View style={[styles.metricHeader, { gap: SPACING.xs }]}>
+                <Text style={[typography.eyebrow, { fontSize: mScale(10), color: colors.textMuted }]}>{label}</Text>
                 {icon}
             </View>
-            <Text style={[typography.title1, { color: colors.text, marginTop: sizes.card.sm.gap }]}>{value}</Text>
-            {meta ? <Text style={[typography.footnote, { color: colors.textMuted, marginTop: sizes.card.sm.gap }]}>{meta}</Text> : null}
+            <Text style={[typography.title1, { fontSize: mScale(20), color: colors.text, marginTop: SPACING.xs }]}>{value}</Text>
+            {meta ? <Text style={[typography.footnote, { fontSize: mScale(11), color: colors.textMuted, marginTop: SPACING.xs }]}>{meta}</Text> : null}
+        </Pressable>
+    );
+};
+
+export const SurfaceCard = ({ 
+    children, 
+    style, 
+    onPress 
+}: { 
+    children: React.ReactNode; 
+    style?: StyleProp<ViewStyle>; 
+    onPress?: () => void;
+}) => {
+    const { colors } = useTheme();
+    
+    return (
+        <Pressable onPress={onPress} disabled={!onPress}>
+            <Card 
+                style={[
+                    { 
+                        backgroundColor: colors.surface, 
+                        borderRadius: RADIUS.lg,
+                        borderWidth: 0.5,
+                        borderColor: alpha(colors.border, 0.4),
+                        padding: SPACING.md,
+                    }, 
+                    style
+                ]}
+            >
+                {children}
+            </Card>
         </Pressable>
     );
 };
 
 const styles = StyleSheet.create({
     heroCard: {
+        width: '100%',
+        borderWidth: 0.5,
         overflow: 'hidden',
-        borderWidth: 1.5,
         position: 'relative',
     },
     heroGlow: {
         position: 'absolute',
-        width: 280,
-        height: 280,
-        borderRadius: 140,
-        right: -80,
-        top: -100,
+        top: -40,
+        right: -40,
+        width: 120,
+        height: 120,
+        borderRadius: 60,
+        opacity: 0.5,
+        transform: [{ scale: 2 }],
     },
     metricCard: {
-        width: '48%',
-        borderWidth: 1.5,
-        minHeight: 110,
+        flex: 1,
+        borderWidth: 0.5,
+        minWidth: 150,
         position: 'relative',
-        overflow: 'hidden',
     },
     accentBar: {
         position: 'absolute',
         left: 0,
         top: 0,
         bottom: 0,
-        width: 6,
+        width: 4,
     },
     metricHeader: {
         flexDirection: 'row',
-        alignItems: 'center',
         justifyContent: 'space-between',
+        alignItems: 'center',
     },
 });

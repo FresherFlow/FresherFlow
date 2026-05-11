@@ -1,10 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Switch, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Switch } from 'react-native';
 import { useTheme } from '@/theme/ThemeProvider';
+import { alpha } from '@/theme';
+import { mScale, SPACING, RADIUS } from '@/theme/dimensions';
 import { ChevronRight as ChevronRightIcon } from 'lucide-react-native';
-
-const { width } = Dimensions.get('window');
-const isTablet = width >= 768;
 
 interface SettingsCardProps {
     children: React.ReactNode;
@@ -24,8 +23,8 @@ export const SettingsCard: React.FC<SettingsCardProps> = ({ children, title }) =
                     styles.card,
                     {
                         backgroundColor: colors.surface,
-                        borderWidth: 1,
-                        borderColor: colors.border,
+                        borderWidth: 0.5,
+                        borderColor: alpha(colors.border, 0.4),
                     },
                 ]}
             >
@@ -66,12 +65,12 @@ export const SettingItem: React.FC<SettingItemProps> = ({
             style={[
                 styles.settingItem,
                 !isLast && {
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderBottomColor: colors.border,
+                    borderBottomWidth: 0.5,
+                    borderBottomColor: alpha(colors.border, 0.2),
                 },
             ]}
         >
-            <View style={[styles.settingIconContainer, { backgroundColor: 'rgba(255, 255, 255, 0.08)' }]}>
+            <View style={[styles.settingIconContainer, { backgroundColor: alpha(colors.text, 0.05) }]}>
                 {customIcon}
             </View>
             <View style={styles.settingContent}>
@@ -87,7 +86,7 @@ export const SettingItem: React.FC<SettingItemProps> = ({
                     ) : null}
                 </View>
                 {badge !== undefined ? (
-                    <View style={[styles.badge, { backgroundColor: colors.primary + '20' }]}>
+                    <View style={[styles.badge, { backgroundColor: alpha(colors.primary, 0.15) }]}>
                         <Text style={[styles.badgeText, { color: colors.primary }]}>{String(badge)}</Text>
                     </View>
                 ) : null}
@@ -116,7 +115,7 @@ export const CustomSwitch: React.FC<{ value: boolean; onValueChange: (value: boo
 
 export const ChevronRight = () => {
     const { colors } = useTheme();
-    return <ChevronRightIcon size={20} color={colors.textMuted} />;
+    return <ChevronRightIcon size={mScale(18)} color={colors.textMuted} />;
 };
 
 export const SettingsHint: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -126,35 +125,35 @@ export const SettingsHint: React.FC<{ children: React.ReactNode }> = ({ children
 
 const styles = StyleSheet.create({
     cardContainer: {
-        marginBottom: isTablet ? 32 : 24,
-        paddingHorizontal: 20, // Increased to match Nuvio padding
+        marginBottom: SPACING.lg,
+        paddingHorizontal: SPACING.md,
     },
     cardTitle: {
-        fontSize: 13,
+        fontSize: mScale(11),
         fontWeight: '900',
-        marginBottom: 12,
+        marginBottom: SPACING.sm,
         marginLeft: 4,
         letterSpacing: 1.2,
         textTransform: 'uppercase',
     },
     card: {
-        borderRadius: 20, // More rounded following Nuvio
+        borderRadius: RADIUS.lg,
         overflow: 'hidden',
     },
     settingItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: 16,
-        paddingHorizontal: 16,
-        minHeight: 72,
+        paddingVertical: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        minHeight: mScale(64),
     },
     settingIconContainer: {
-        width: 42,
-        height: 42,
-        borderRadius: 12,
+        width: mScale(38),
+        height: mScale(38),
+        borderRadius: RADIUS.md,
         justifyContent: 'center',
         alignItems: 'center',
-        marginRight: 16,
+        marginRight: SPACING.md,
     },
     settingContent: {
         flex: 1,
@@ -166,34 +165,34 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     settingTitle: {
-        fontSize: 16,
-        fontWeight: '700', // Bolder title
-        marginBottom: 2,
+        fontSize: mScale(15),
+        fontWeight: '700',
+        marginBottom: 1,
     },
     settingDescription: {
-        fontSize: 13,
-        marginTop: 2,
-        lineHeight: 18,
+        fontSize: mScale(12),
+        marginTop: 1,
+        lineHeight: mScale(17),
     },
     settingControl: {
-        marginLeft: 12,
+        marginLeft: SPACING.sm,
     },
     badge: {
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 999,
-        marginLeft: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: RADIUS.full,
+        marginLeft: SPACING.xs,
     },
     badgeText: {
-        fontSize: 12,
+        fontSize: mScale(10),
         fontWeight: '800',
     },
     hintText: {
-        fontSize: 13,
-        lineHeight: 19,
-        marginTop: -12,
-        marginBottom: 24,
-        paddingHorizontal: 24,
+        fontSize: mScale(12),
+        lineHeight: mScale(18),
+        marginTop: -SPACING.md,
+        marginBottom: SPACING.lg,
+        paddingHorizontal: SPACING.lg,
     },
 });
 
