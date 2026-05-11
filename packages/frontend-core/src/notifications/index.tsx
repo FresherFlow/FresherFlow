@@ -75,7 +75,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode, userId?
   useEffect(() => {
     if (userId && expoPushToken) {
       void profileApi.registerPushToken(expoPushToken, 'expo')
-        .catch((err: any) => console.warn('Failed to register push token with backend', err));
+        .catch((err: unknown) => console.warn('Failed to register push token with backend', err));
     }
   }, [userId, expoPushToken]);
 

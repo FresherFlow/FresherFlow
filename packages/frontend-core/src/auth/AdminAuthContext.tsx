@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useState, useRef } from 'react';
 import { storage, secureStorage } from '../lib/storage';
-import { adminAuthApi, HttpError } from '@fresherflow/api-client';
+import { adminAuthApi, HttpError, AuthenticationResponseJSON, RegistrationResponseJSON } from '@fresherflow/api-client';
 import type { Admin } from '@fresherflow/types';
 import { Platform } from 'react-native';
 
@@ -48,7 +48,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       } else {
         await storage.removeItem(ADMIN_CACHE_KEY);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (error instanceof HttpError && error.status === 401) {
         setAdmin(null);
         await storage.removeItem(ADMIN_CACHE_KEY);
@@ -97,9 +97,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const verifyTotp = useCallback(async (email: string, code: string) => {
     const data = await adminAuthApi.verifyLoginTotp(email, code);
     if (data.verified) {
-      const result = data as any;
-      if (result.accessToken) {
-        await secureStorage.setItemAsync(TOKEN_KEY, result.accessToken);
+      if (data.accessToken) {
+        await secureStorage.setItemAsync(TOKEN_KEY, data.accessToken);
       }
       await refreshMe();
     } else {
@@ -112,11 +111,10 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const verifyPasskey = useCallback(async (email: string, assertion: unknown) => {
-    const data = await adminAuthApi.verifyLogin(email, assertion as any);
+    const data = await adminAuthApi.verifyLogin(email, assertion as AuthenticationResponseJSON);
     if (data.verified) {
-      const result = data as any;
-      if (result.accessToken) {
-        await secureStorage.setItemAsync(TOKEN_KEY, result.accessToken);
+      if (data.accessToken) {
+        await secureStorage.setItemAsync(TOKEN_KEY, data.accessToken);
       }
       await refreshMe();
     } else {
@@ -132,8 +130,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     if (!admin?.email) throw new Error('Admin profile is required to register a passkey');
     const options = await adminAuthApi.getRegistrationOptions(admin.email);
     const { Passkey } = await import('react-native-passkey');
-    const attestation = await Passkey.create(options as any);
-    const result = await adminAuthApi.verifyRegistration(admin.email, attestation as any);
+    const attestation = await Passkey.create(options as never);
+    const result = await adminAuthApi.verifyRegistration(admin.email, attestation as RegistrationResponseJSON);
     if (!result.verified) throw new Error('Passkey registration failed');
   }, [admin?.email]);
 

@@ -21,6 +21,7 @@ export type UserAuthContextType = {
   refreshMe: () => Promise<void>;
   refreshUser?: () => Promise<void>;
   refreshProfile?: () => Promise<void>;
+  authTokens?: { accessToken?: string; refreshToken?: string } | null;
 };
 
 export const UserAuthContext = createContext<UserAuthContextType | null>(null);
@@ -102,20 +103,26 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       code,
       source || (Platform.OS === 'web' ? 'web' : 'expo_app'),
       ref
-    ) as { user?: User; profile?: Profile | null };
+    ) as { user?: User; profile?: Profile | null; accessToken?: string; refreshToken?: string };
     if (data.user) {
       setUser(data.user);
       setProfile(data.profile || data.user.profile || null);
       await storage.setItem(USER_CACHE_KEY, JSON.stringify({ user: data.user, profile: data.profile || null, savedAt: Date.now() }));
+      if (data.accessToken) {
+        await secureStorage.setItemAsync(TOKEN_KEY, data.accessToken);
+      }
     }
   }, []);
 
   const loginWithGoogle = useCallback(async (token: string, source?: string, ref?: string) => {
-    const data = await authApi.googleLogin(token, source || 'web', ref) as { user?: User; profile?: Profile | null };
+    const data = await authApi.googleLogin(token, source || 'web', ref) as { user?: User; profile?: Profile | null; accessToken?: string; refreshToken?: string };
     if (data.user) {
       setUser(data.user);
       setProfile(data.profile || data.user.profile || null);
       await storage.setItem(USER_CACHE_KEY, JSON.stringify({ user: data.user, profile: data.profile || null, savedAt: Date.now() }));
+      if (data.accessToken) {
+        await secureStorage.setItemAsync(TOKEN_KEY, data.accessToken);
+      }
     }
   }, []);
 
