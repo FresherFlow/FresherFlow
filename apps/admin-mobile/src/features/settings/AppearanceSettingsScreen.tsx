@@ -1,34 +1,25 @@
 import React from 'react';
-import { ScrollView, StatusBar, StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AlignLeft, EyeOff, LayoutGrid, Palette } from 'lucide-react-native';
-
 import { useTheme } from '../../theme/ThemeProvider';
-import ScreenHeader from '../system/components/ScreenHeader';
+import { Screen, ScrollScreen, PremiumHeader } from '../system/layout/Layout';
 import { ChevronRight, CustomSwitch, SettingsCard, SettingsHint, SettingItem } from './components/SettingsComponents';
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-});
-
 const AppearanceSettingsScreen = () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const navigation = useNavigation<any>();
-    const { colors, currentTheme, settings, updateSetting } = useTheme();
-    const insets = useSafeAreaInsets();
+    const navigation = useNavigation<{ navigate: (screen: string) => void }>();
+    const { colors, settings, updateSetting, currentTheme } = useTheme();
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <StatusBar barStyle={currentTheme.id === 'slate_light' ? 'dark-content' : 'light-content'} />
-            <ScreenHeader title="Appearance" showBackButton onBackPress={() => navigation.goBack()} compact />
-
-            <ScrollView
-                contentContainerStyle={{ paddingBottom: insets.bottom + 24, paddingTop: 12 }}
-                showsVerticalScrollIndicator={false}
+        <Screen>
+            <ScrollScreen
+                style={{ backgroundColor: colors.background }}
+                contentContainerStyle={{ paddingBottom: 100 }}
             >
+                <PremiumHeader 
+                    title="Appearance" 
+                    subtitle="Interface customization" 
+                />
+
                 <SettingsCard title="Theme">
                     <SettingItem
                         title="Theme Selection"
@@ -78,11 +69,13 @@ const AppearanceSettingsScreen = () => {
                         isLast
                     />
                 </SettingsCard>
-            </ScrollView>
-        </View>
+            </ScrollScreen>
+        </Screen>
     );
 };
 
 export default AppearanceSettingsScreen;
+
+
 
 

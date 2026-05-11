@@ -19,7 +19,7 @@ export const useSettings = () => {
 
     const fetchStatus = useCallback(async () => {
         try {
-            await refreshMe({ silent: true });
+            await refreshMe();
         } catch {
             // Keep the existing settings UI visible even if the refresh fails.
         } finally {
@@ -61,8 +61,8 @@ export const useSettings = () => {
             } else {
                 setOtaStatus('You are already on the latest version.');
             }
-        } catch (error: any) {
-            const message = error.message || 'Update check failed.';
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : 'Update check failed.';
             setOtaStatus(message);
             toast.error('OTA check failed', message);
         } finally {

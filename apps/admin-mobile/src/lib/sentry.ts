@@ -8,7 +8,8 @@
 const SENTRY_DSN = process.env.EXPO_PUBLIC_SENTRY_DSN ?? '';
 const IS_PROD = process.env.NODE_ENV === 'production';
 
-let sentryModule: Record<string, any> | null | undefined;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let sentryModule: any;
 
 function getSentry() {
     if (sentryModule !== undefined) return sentryModule;

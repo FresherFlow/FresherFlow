@@ -1,14 +1,16 @@
 import React, { useEffect } from 'react';
-import { RefreshControl, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { Shield, Sparkles, Info, MessageSquare, Server, RefreshCw } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { NavigationProp } from '@react-navigation/native';
+import { Shield, Palette, Info, MessageSquare, Server, RefreshCw } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
+import { mScale, SPACING } from '../../theme/dimensions';
 import { useSettings } from './hooks/useSettings';
 import { useTotpManager } from '../security/hooks/useTotpManager';
 import { useOtaManager } from '../system/hooks';
 import { ProfileCard } from './components/ProfileCard';
 import { SettingsCard, SettingItem, ChevronRight } from './components/SettingsComponents';
+import { Screen, ScrollScreen, PremiumHeader } from '../system/layout/Layout';
 
 type SettingsRouteName =
     | 'AppearanceSettings'
@@ -19,9 +21,8 @@ type SettingsRouteName =
     | 'SystemOverview';
 
 const SettingsScreen = () => {
-    const navigation = useNavigation<any>();
-    const insets = useSafeAreaInsets();
-    const { colors, currentTheme, spacing } = useTheme();
+    const navigation = useNavigation<NavigationProp<Record<string, unknown>>>();
+    const { colors, currentTheme } = useTheme();
     const {
         admin,
         loading,
@@ -38,7 +39,7 @@ const SettingsScreen = () => {
     }, [fetchStatus]);
 
     useEffect(() => {
-        initTotp(Boolean(admin?.totpEnabled), admin?.totpEnabledAt ?? null);
+        initTotp(Boolean(admin?.totpEnabled), admin?.totpEnabledAt ? new Date(admin.totpEnabledAt).toISOString() : null);
     }, [admin?.totpEnabled, admin?.totpEnabledAt, initTotp]);
 
     const handleRefresh = async () => {
@@ -50,19 +51,14 @@ const SettingsScreen = () => {
         navigation.navigate(routeName);
     };
 
-    const isLightTheme = currentTheme.mode === 'light';
     const totpSummary = totpState.isEnabled ? 'Enabled' : 'Not enabled';
     const updateSummary = otaState.statusText || `Version ${otaState.appVersion}`;
 
     return (
-        <View style={[styles.container, { backgroundColor: colors.background }]}>
-            <StatusBar barStyle={isLightTheme ? 'dark-content' : 'light-content'} />
-
-            <ScrollView
-                contentContainerStyle={{
-                    paddingTop: spacing.sm,
-                    paddingBottom: insets.bottom + spacing.xl,
-                }}
+        <Screen>
+            <ScrollScreen
+                style={{ backgroundColor: colors.background }}
+                contentContainerStyle={{ paddingBottom: 100 }}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing || loading}
@@ -72,8 +68,9 @@ const SettingsScreen = () => {
                         tintColor={colors.primary}
                     />
                 }
-                showsVerticalScrollIndicator={false}
             >
+                <PremiumHeader title="Settings" subtitle="Admin configuration" />
+
                 <ProfileCard admin={admin} colors={colors} onLogout={handleLogout} />
 
                 <SettingsCard title="Account">
@@ -87,7 +84,7 @@ const SettingsScreen = () => {
                     <SettingItem
                         title="Appearance"
                         description={currentTheme.name}
-                        customIcon={<Sparkles size={18} color={colors.accent} />}
+                        customIcon={<Palette size={18} color={colors.accent} />}
                         renderControl={() => <ChevronRight />}
                         onPress={() => navigateTo('AppearanceSettings')}
                         isLast
@@ -128,27 +125,26 @@ const SettingsScreen = () => {
 
                 <View style={styles.footer}>
                     <Text style={[styles.footerText, { color: colors.textMuted }]}>
-                        Admin mobile settings are now organized as a thin overview screen that routes into focused flows.
+                        Admin mobile settings are organized as focused flows for operational efficiency.
                     </Text>
                 </View>
-            </ScrollView>
-        </View>
+            </ScrollScreen>
+        </Screen>
     );
 };
 
 export { SettingsScreen };
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
     footer: {
-        paddingHorizontal: 16,
-        paddingTop: 8,
+        paddingHorizontal: SPACING.lg,
+        paddingTop: SPACING.sm,
     },
     footerText: {
-        fontSize: 12,
-        lineHeight: 18,
+        fontSize: mScale(11),
+        lineHeight: mScale(16),
+        textAlign: 'center',
+        opacity: 0.6,
     },
 });
 

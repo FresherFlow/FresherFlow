@@ -4,8 +4,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeProvider';
 import { ChevronLeft } from 'lucide-react-native';
+import type { NavigationProp } from '@react-navigation/native';
+import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
 
-export const GlassNavHeader = ({ options, back, navigation }: any) => {
+export const GlassNavHeader = ({ options, back, navigation }: { options: NativeStackHeaderProps['options']; back?: { title?: string }; navigation: NavigationProp<Record<string, unknown>> }) => {
     const { colors } = useTheme();
     const insets = useSafeAreaInsets();
 
@@ -52,11 +54,11 @@ export const GlassNavHeader = ({ options, back, navigation }: any) => {
                     )}
 
                     <Text style={[styles.title, { color: colors.text }]} numberOfLines={1}>
-                        {title}
+                        {typeof title === 'string' ? title : ''}
                     </Text>
 
                     {options.headerRight ? (
-                        <View style={styles.rightAction}>{options.headerRight()}</View>
+                        <View style={styles.rightAction}>{options.headerRight({ canGoBack: !!back })}</View>
                     ) : (
                         <View style={styles.placeholder} />
                     )}

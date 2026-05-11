@@ -1,11 +1,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { Info, Monitor, MessageSquare, ChevronRight, ExternalLink, RefreshCw, Server, Send } from 'lucide-react-native';
-import { ThemeColors } from '../../../theme';
-import { OtaState } from '../../../hooks/useOtaManager';
+import { ThemeColors } from '@/theme';
+import { OtaState } from '../../system/hooks';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { SettingsStackParamList } from '../../../navigation/SettingsNavigator';
+import { SettingsStackParamList } from '@/navigation/SettingsNavigator';
 
 type BuildInfoSectionProps = {
     colors: ThemeColors;

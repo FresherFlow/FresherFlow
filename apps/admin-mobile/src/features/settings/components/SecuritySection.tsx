@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, TextInput, ActivityIndicator, Image, StyleSheet } from 'react-native';
 import { ShieldCheck, Smartphone, QrCode } from 'lucide-react-native';
-import { ThemeColors } from '../../theme';
-import { TotpState } from '../../hooks/useTotpManager';
+import { ThemeColors } from '../../../theme';
+import { TotpState } from '../../security/hooks/useTotpManager';
 
 type SecuritySectionProps = {
     colors: ThemeColors;
