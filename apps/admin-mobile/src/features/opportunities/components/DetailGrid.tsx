@@ -2,7 +2,7 @@ import React from 'react';
 import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { ExternalLink } from 'lucide-react-native';
 
-import { theme } from '@/theme';
+import { theme, alpha } from '@/theme';
 
 import { type Opportunity } from '@/lib/api';
 
@@ -76,7 +76,7 @@ export const DetailGrid = ({ opp }: DetailGridProps) => {
             {opp.expiresAt ? (
                 <DetailRow label="Expires" value={new Date(String(opp.expiresAt)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />
             ) : null}
-            <DetailRow label="Created" value={new Date(opp.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />
+            <DetailRow label="Created" value={opp.postedAt ? new Date(opp.postedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'} />
 
             <View
                 style={[
@@ -115,10 +115,10 @@ export const DetailGrid = ({ opp }: DetailGridProps) => {
                 </View>
             </View>
 
-            {opp.lastVerified ? (
+            {opp.lastVerifiedAt ? (
                 <DetailRow
                     label="Last Verified"
-                    value={new Date(opp.lastVerified).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    value={new Date(opp.lastVerifiedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 />
             ) : null}
 
@@ -138,8 +138,8 @@ export const DetailGrid = ({ opp }: DetailGridProps) => {
                     {Array.isArray(opp.walkInDetails.requiredDocuments) && opp.walkInDetails.requiredDocuments.length > 0 ? (
                         <DetailRow label="Docs" value={opp.walkInDetails.requiredDocuments.join(', ')} />
                     ) : null}
-                    {opp.walkInDetails.venueLink ? (
-                        <TouchableOpacity style={styles.linkRow} onPress={() => Linking.openURL(String(opp.walkInDetails.venueLink))}>
+                    {opp.walkInDetails?.venueLink ? (
+                        <TouchableOpacity style={styles.linkRow} onPress={() => opp.walkInDetails?.venueLink && Linking.openURL(String(opp.walkInDetails.venueLink))}>
                             <ExternalLink size={14} color={theme.colors.primary} />
                             <Text style={styles.linkText}>Maps Link</Text>
                         </TouchableOpacity>
@@ -177,31 +177,32 @@ const SocialPill = ({ label, value, color }: { label: string; value: number; col
 );
 
 const styles = StyleSheet.create({
-    detailsGrid: { padding: 16, gap: 10 },
+    detailsGrid: { paddingHorizontal: 20, paddingVertical: 16, gap: 12 },
     detailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
+        alignItems: 'center',
         backgroundColor: theme.colors.surface,
-        borderRadius: 10,
-        padding: 12,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
+        borderRadius: 14,
+        paddingHorizontal: 16,
+        paddingVertical: 16,
+        borderWidth: 0.5,
+        borderColor: alpha(theme.colors.border, 0.4),
     },
-    fieldLabel: { fontSize: 12, fontWeight: '700', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+    fieldLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.8 },
     fieldValue: { fontSize: 14, fontWeight: '600', color: theme.colors.text, flex: 1, textAlign: 'right' },
-    descCard: { backgroundColor: theme.colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: theme.colors.border, gap: 8 },
-    descText: { fontSize: 14, color: theme.colors.text, lineHeight: 20 },
-    walkInCard: { backgroundColor: theme.colors.surface + '80', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: theme.colors.border, gap: 8 },
-    socialCard: { backgroundColor: theme.colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: theme.colors.border, gap: 10 },
-    socialRow: { flexDirection: 'row', gap: 8 },
-    socialPill: { flex: 1, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 8, alignItems: 'center' },
-    socialValue: { fontSize: 18, fontWeight: '800' },
-    socialLabel: { fontSize: 11, fontWeight: '700', marginTop: 2 },
-    sectionHeader: { fontSize: 13, fontWeight: '800', color: theme.colors.primary, textTransform: 'uppercase', letterSpacing: 0.5 },
-    linkRow: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: theme.colors.surface, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: theme.colors.border },
+    descCard: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 18, borderWidth: 0.5, borderColor: alpha(theme.colors.border, 0.4), gap: 10 },
+    descText: { fontSize: 14, color: theme.colors.text, lineHeight: 22, opacity: 0.9 },
+    walkInCard: { backgroundColor: alpha(theme.colors.surface, 0.5), borderRadius: 16, padding: 16, borderWidth: 0.5, borderColor: alpha(theme.colors.border, 0.4), gap: 12 },
+    socialCard: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, borderWidth: 0.5, borderColor: alpha(theme.colors.border, 0.4), gap: 12 },
+    socialRow: { flexDirection: 'row', gap: 10 },
+    socialPill: { flex: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 10, alignItems: 'center' },
+    socialValue: { fontSize: 20, fontWeight: '800' },
+    socialLabel: { fontSize: 10, fontWeight: '700', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
+    sectionHeader: { fontSize: 11, fontWeight: '800', color: theme.colors.primary, textTransform: 'uppercase', letterSpacing: 1.2, opacity: 0.9 },
+    linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.colors.surface, borderRadius: 14, padding: 16, borderWidth: 0.5, borderColor: alpha(theme.colors.border, 0.4) },
     linkText: { fontSize: 14, fontWeight: '600', color: theme.colors.primary, flex: 1 },
-    failureText: { fontSize: 10, color: theme.colors.error, fontWeight: '700' },
+    failureText: { fontSize: 10, color: theme.colors.error, fontWeight: '700', marginTop: 2 },
 });
 
 

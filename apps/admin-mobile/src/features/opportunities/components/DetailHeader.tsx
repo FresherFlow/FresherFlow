@@ -1,8 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { CheckCircle2, Clock, Edit3, ExternalLink, MessageSquare, RotateCcw, Trash2 } from 'lucide-react-native';
-import { CompanyLogo } from '@/components/CompanyLogo';
-import { theme } from '@/theme';
+import { CompanyLogo } from '@repo/ui';
+import { theme, alpha } from '@/theme';
 
 import { type Opportunity } from '@/lib/api';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,7 +23,9 @@ export const DetailHeader = ({ opp, navigation, statusColor, onPublish, onExpire
         <View style={styles.headerCard}>
             <View style={styles.headerTop}>
                 <CompanyLogo
-                    website={opp.website ?? null}
+                    website={opp.companyWebsite ?? null}
+                    logoUrl={opp.companyLogoUrl}
+                    applyLink={opp.applyLink}
                     name={String(opp.company)}
                     size={48}
                 />
@@ -31,7 +33,7 @@ export const DetailHeader = ({ opp, navigation, statusColor, onPublish, onExpire
                     <Text style={styles.title}>{opp.title}</Text>
                     <Text style={styles.company}>{String(opp.company)}</Text>
                 </View>
-                <View style={[styles.statusBadge, { backgroundColor: statusColor + '20' }]}>
+                <View style={[styles.statusBadge, { backgroundColor: alpha(statusColor, 0.15) }]}>
                     <Text style={[styles.statusText, { color: statusColor }]}>{opp.status}</Text>
                 </View>
             </View>
@@ -58,7 +60,7 @@ export const DetailHeader = ({ opp, navigation, statusColor, onPublish, onExpire
                         opportunityId: opp.id,
                         title: opp.title,
                         company: opp.company,
-                        website: opp.website ?? opp.companyWebsite ?? null,
+                        website: opp.companyWebsite ?? null,
                     })}
                 />
                 {onDelete ? (
@@ -78,22 +80,29 @@ const ActionBtn = ({ icon, label, onPress }: { icon: React.ReactNode; label: str
 
 const styles = StyleSheet.create({
     headerCard: {
-        backgroundColor: theme.colors.surface, padding: 16,
-        borderBottomWidth: 1, borderBottomColor: theme.colors.border,
+        backgroundColor: theme.colors.surface, 
+        padding: 20,
+        borderBottomWidth: 0.5, 
+        borderBottomColor: alpha(theme.colors.border, 0.5),
     },
-    headerTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 12 },
-    title: { fontSize: 18, fontWeight: '800', color: theme.colors.text, marginBottom: 3 },
-    company: { fontSize: 14, color: theme.colors.textMuted },
-    statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-    statusText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5 },
-    headerActions: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+    headerTop: { flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 16 },
+    title: { fontSize: 20, fontWeight: '800', color: theme.colors.text, marginBottom: 2, letterSpacing: -0.3 },
+    company: { fontSize: 14, fontWeight: '500', color: theme.colors.textMuted },
+    statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+    statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 1, textTransform: 'uppercase' },
+    headerActions: { flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 4 },
     headerActionBtn: {
-        flexDirection: 'row', alignItems: 'center', gap: 5,
-        backgroundColor: theme.colors.background, borderRadius: 8,
-        paddingHorizontal: 10, paddingVertical: 7,
-        borderWidth: 1, borderColor: theme.colors.border,
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        gap: 6,
+        backgroundColor: alpha(theme.colors.text, 0.03), 
+        borderRadius: 12,
+        paddingHorizontal: 12, 
+        paddingVertical: 10,
+        borderWidth: 0.5, 
+        borderColor: alpha(theme.colors.border, 0.1),
     },
-    headerActionText: { fontSize: 12, fontWeight: '600', color: theme.colors.text },
+    headerActionText: { fontSize: 13, fontWeight: '600', color: theme.colors.text },
 });
 
 

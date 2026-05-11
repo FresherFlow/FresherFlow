@@ -15,20 +15,12 @@ import {
 import { DASHBOARD_WINDOW_OPTIONS, useDashboard } from './hooks/useDashboard';
 import { alpha } from '../../theme';
 import { useTheme } from '../../theme/ThemeProvider';
+import { mScale, SPACING } from '../../theme/dimensions';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { AdminTabParamList } from '../../navigation/types';
-import { 
-    AppButton 
-} from '@repo/ui';
-import { 
-    SurfaceCard, 
-    MetricCard 
-} from '../system/components/SpecializedCards';
-import { 
-    Screen, 
-    ScrollScreen, 
-    Section,
-} from '../system/layout/Layout';
+import { AppButton } from '@repo/ui';
+import { SurfaceCard, MetricCard, HeroCard } from '../system/components/SpecializedCards';
+import { Screen, ScrollScreen, Section, PremiumHeader } from '../system/layout/Layout';
 import { SegmentedControl } from '../system/components/Controls';
 import { MetricGrid, DetailRow } from '../analytics/components/Metrics';
 import { EmptyState } from '../feedback/components/Feedback';
@@ -51,7 +43,7 @@ const actionTone = (action: string) => {
 export const DashboardScreen = () => {
     const navigation = useNavigation<BottomTabNavigationProp<AdminTabParamList>>();
 
-    const { colors, spacing, sizes, typography } = useTheme();
+    const { colors, typography } = useTheme();
     const {
         metrics,
         recentActivity,
@@ -76,9 +68,18 @@ export const DashboardScreen = () => {
     return (
         <Screen>
             <ScrollScreen
-                contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: spacing.xxl }}
+                contentContainerStyle={{ paddingTop: 0, paddingBottom: 100 }}
                 style={{ backgroundColor: colors.background }}
             >
+                <PremiumHeader
+                    title="Console"
+                    subtitle="Platform overview"
+                    rightSlot={
+                        <TouchableOpacity onPress={onRefresh} style={styles.refreshBtn}>
+                            <RefreshCw size={18} color={colors.primary} />
+                        </TouchableOpacity>
+                    }
+                />
 
                 <View style={styles.topBar}>
                     <View style={{ flex: 1 }}>
@@ -88,30 +89,19 @@ export const DashboardScreen = () => {
                             onChange={(value) => void fetchDashboard(value)}
                         />
                     </View>
-                </View>
-
-                <View style={styles.actionRow}>
                     <AppButton
-                        label="Post New Opportunity"
+                        label="Post"
                         onPress={() => navigation.navigate('Opportunities', { screen: 'PostOpportunity', params: {} })}
-                        icon={<Plus size={10} color={colors.background} />}
-                        style={{ flex: 1 }}
-                    />
-                    <AppButton
-                        label="Refresh"
-                        onPress={onRefresh}
-                        variant="secondary"
-                        icon={<RefreshCw size={16} color={colors.text} />}
-                        style={{ flex: 1 }}
+                        icon={<Plus size={14} color={colors.background} />}
                     />
                 </View>
 
                 {(loading && !metrics) ? (
-                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl }} />
+                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: SPACING.xl }} />
                 ) : (
                     <>
                         {error ? (
-                            <SurfaceCard style={{ marginTop: spacing.lg, borderColor: alpha(colors.error, 0.3) }}>
+                            <SurfaceCard style={{ marginTop: SPACING.lg, borderColor: alpha(colors.error, 0.3) }}>
                                 <Text style={{ color: colors.error, fontWeight: '700' }}>{error}</Text>
                             </SurfaceCard>
                         ) : null}
@@ -120,24 +110,31 @@ export const DashboardScreen = () => {
                             title="Opportunity health"
                             action={
                                 <TouchableOpacity onPress={() => navigation.navigate('Opportunities')}>
-                                    <Text style={[typography.footnoteStrong, { color: colors.primary }]}>See all</Text>
+                                    <Text style={[typography.footnoteStrong, { fontSize: mScale(12), color: colors.primary }]}>See all</Text>
                                 </TouchableOpacity>
                             }
                         >
-                            <MetricGrid>
-                                <MetricCard label="Published" value={listings?.published ?? 0} icon={<Briefcase size={sizes.icon.md} color={colors.primary} />} />
-                                <MetricCard label="Live" value={listings?.live ?? 0} icon={<Eye size={sizes.icon.md} color={colors.accent} />} accent={colors.accent} />
-                                <MetricCard label="Drafts" value={listings?.drafts ?? 0} icon={<Briefcase size={sizes.icon.md} color={colors.warning} />} accent={colors.warning} />
-                                <MetricCard label="New in 24h" value={listings?.new24h ?? 0} icon={<TrendingUp size={sizes.icon.md} color={colors.success} />} accent={colors.success} />
-                            </MetricGrid>
+                            <HeroCard 
+                                title="Active signals" 
+                                subtitle="Real-time pulse of your platform"
+                            >
+                                <View style={{ marginTop: SPACING.lg }}>
+                                    <MetricGrid>
+                                        <MetricCard label="Published" value={listings?.published ?? 0} icon={<Briefcase size={16} color={colors.primary} />} />
+                                        <MetricCard label="Live" value={listings?.live ?? 0} icon={<Eye size={16} color={colors.accent} />} accent={colors.accent} />
+                                        <MetricCard label="Drafts" value={listings?.drafts ?? 0} icon={<Briefcase size={16} color={colors.warning} />} accent={colors.warning} />
+                                        <MetricCard label="New in 24h" value={listings?.new24h ?? 0} icon={<TrendingUp size={16} color={colors.success} />} accent={colors.success} />
+                                    </MetricGrid>
+                                </View>
+                            </HeroCard>
                         </Section>
 
                         <Section title="Users and conversion">
                             <MetricGrid>
-                                <MetricCard label="New users" value={traffic?.newUsers30d ?? 0} icon={<Users size={sizes.icon.md} color={colors.primary} />} />
-                                <MetricCard label="DAU" value={traffic?.dau ?? 0} icon={<TrendingUp size={sizes.icon.md} color={colors.success} />} accent={colors.success} />
-                                <MetricCard label="WAU / active window" value={traffic?.wau ?? 0} icon={<Users size={sizes.icon.md} color={colors.accent} />} accent={colors.accent} />
-                                <MetricCard label="Apply clicks" value={funnel?.applyClick ?? 0} icon={<MousePointerClick size={sizes.icon.md} color={colors.warning} />} accent={colors.warning} />
+                                <MetricCard label="New users" value={traffic?.newUsers30d ?? 0} icon={<Users size={16} color={colors.primary} />} />
+                                <MetricCard label="DAU" value={traffic?.dau ?? 0} icon={<TrendingUp size={16} color={colors.success} />} accent={colors.success} />
+                                <MetricCard label="WAU / active window" value={traffic?.wau ?? 0} icon={<Users size={16} color={colors.accent} />} accent={colors.accent} />
+                                <MetricCard label="Apply clicks" value={funnel?.applyClick ?? 0} icon={<MousePointerClick size={16} color={colors.warning} />} accent={colors.warning} />
                             </MetricGrid>
                         </Section>
 
@@ -153,23 +150,23 @@ export const DashboardScreen = () => {
 
                         <Section title="Recent listings">
                             {metrics?.recentListings?.length ? (
-                                <SurfaceCard>
+                                <SurfaceCard style={{ padding: 0 }}>
                                     {metrics.recentListings.map((item: { id: string; company: string; title: string; type: string; postedAt: string }, index: number) => (
                                         <TouchableOpacity
                                             key={item.id}
                                             style={[
                                                 styles.listingRow,
-                                                index < (metrics.recentListings?.length ?? 0) - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                                                index < (metrics.recentListings?.length ?? 0) - 1 && { borderBottomWidth: 0.5, borderBottomColor: alpha(colors.border, 0.2) },
                                             ]}
                                             onPress={() => navigation.navigate('Opportunities', { screen: 'OpportunityDetail', params: { opportunityId: item.id } })}
                                         >
                                             <View style={{ flex: 1 }}>
-                                                <Text style={[typography.subheadlineStrong, { color: colors.text }]} numberOfLines={1}>{item.company}</Text>
-                                                <Text style={[typography.footnote, { color: colors.textMuted }]} numberOfLines={1}>{item.title}</Text>
+                                                <Text style={[typography.subheadlineStrong, { fontSize: mScale(15), color: colors.text }]} numberOfLines={1}>{item.company}</Text>
+                                                <Text style={[typography.footnote, { fontSize: mScale(13), color: colors.textMuted }]} numberOfLines={1}>{item.title}</Text>
                                             </View>
                                             <View style={styles.listingMeta}>
-                                                <Text style={[typography.footnoteStrong, { color: colors.text }]}>{item.type}</Text>
-                                                <Text style={[typography.caption2, { color: colors.textMuted }]}>{timeSince(item.postedAt)}</Text>
+                                                <Text style={[typography.footnoteStrong, { fontSize: mScale(12), color: colors.text }]}>{item.type}</Text>
+                                                <Text style={[typography.caption2, { fontSize: mScale(11), color: colors.textMuted }]}>{timeSince(item.postedAt)}</Text>
                                             </View>
                                         </TouchableOpacity>
                                     ))}
@@ -181,21 +178,21 @@ export const DashboardScreen = () => {
 
                         <Section title="Recent admin activity">
                             {recentActivity.length ? (
-                                <SurfaceCard>
+                                <SurfaceCard style={{ padding: 0 }}>
                                     {recentActivity.map((item: { id: string; action: string; entity: string; createdAt: string }, index: number) => (
                                         <View
                                             key={item.id}
                                             style={[
                                                 styles.activityRow,
-                                                index < recentActivity.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+                                                index < recentActivity.length - 1 && { borderBottomWidth: 0.5, borderBottomColor: alpha(colors.border, 0.2) },
                                             ]}
                                         >
                                             <View style={[styles.activityDot, { backgroundColor: actionTone(item.action) === 'positive' ? colors.success : actionTone(item.action) === 'negative' ? colors.error : colors.primary }]} />
                                             <View style={{ flex: 1 }}>
-                                                <Text style={[typography.footnoteStrong, { color: colors.text }]}>{item.action.replace(/_/g, ' ')}</Text>
-                                                <Text style={[typography.caption, { color: colors.textMuted }]} numberOfLines={1}>{item.entity}</Text>
+                                                <Text style={[typography.footnoteStrong, { fontSize: mScale(14), color: colors.text }]}>{item.action.replace(/_/g, ' ')}</Text>
+                                                <Text style={[typography.caption, { fontSize: mScale(12), color: colors.textMuted }]} numberOfLines={1}>{item.entity}</Text>
                                             </View>
-                                            <Text style={[typography.caption2, { color: colors.textMuted }]}>{timeSince(item.createdAt)}</Text>
+                                            <Text style={[typography.caption2, { fontSize: mScale(11), color: colors.textMuted }]}>{timeSince(item.createdAt)}</Text>
                                         </View>
                                     ))}
                                 </SurfaceCard>
@@ -210,13 +207,13 @@ export const DashboardScreen = () => {
                                     label="Open analytics"
                                     onPress={() => navigation.navigate('Analytics')}
                                     variant="ghost"
-                                    icon={<ArrowRight size={sizes.icon.md} color={colors.primary} />}
+                                    icon={<ArrowRight size={16} color={colors.primary} />}
                                 />
                                 <AppButton
                                     label="Review system health"
                                     onPress={() => navigation.navigate('Ops')}
                                     variant="secondary"
-                                    icon={<AlertTriangle size={sizes.icon.md} color={colors.text} />}
+                                    icon={<AlertTriangle size={16} color={colors.text} />}
                                 />
                             </View>
                         </Section>
@@ -232,40 +229,40 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         alignItems: 'center',
-        marginTop: 18,
+        paddingHorizontal: SPACING.md,
+        marginBottom: SPACING.sm,
     },
-    actionRow: {
-        flexDirection: 'row',
-        gap: 12,
+    refreshBtn: {
+        width: mScale(44),
+        height: mScale(44),
         alignItems: 'center',
-        marginTop: 12,
-        marginBottom: 8,
+        justifyContent: 'center',
     },
     listingRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
+        gap: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.md,
     },
     listingMeta: {
         alignItems: 'flex-end',
-        gap: 2,
+        gap: 4,
     },
     activityRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 12,
-        paddingHorizontal: 16,
-        paddingVertical: 14,
+        gap: SPACING.md,
+        paddingHorizontal: SPACING.md,
+        paddingVertical: SPACING.md,
     },
     activityDot: {
-        width: 10,
-        height: 10,
+        width: 8,
+        height: 8,
         borderRadius: 999,
     },
     actionStack: {
-        gap: 12,
+        gap: SPACING.md,
     },
 });
 

@@ -1,6 +1,6 @@
 import React, { useCallback } from 'react';
 import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, type NavigationProp } from '@react-navigation/native';
 import { AlertsControlCard } from './components/AlertsControlCard';
 import { ChannelStatusCard } from './components/ChannelStatusCard';
 import { ConfigHealthCard } from './components/ConfigHealthCard';
@@ -10,13 +10,13 @@ import { OtaUpdateCard } from './components/OtaUpdateCard';
 import { useSystem } from './hooks/useSystem';
 import { useTheme } from '../../theme/ThemeProvider';
 import { 
-    PageIntro, 
     Screen, 
-    Section 
+    Section,
+    PremiumHeader,
 } from './layout/Layout';
 
 export const SystemScreen = () => {
-    const navigation = useNavigation<any>();
+    const navigation = useNavigation<{ navigate: (screen: string, params?: Record<string, unknown>) => void; getParent: () => NavigationProp<Record<string, unknown>> | undefined }>();
     const { colors, spacing } = useTheme();
     const {
         health,
@@ -61,7 +61,7 @@ export const SystemScreen = () => {
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
                 showsVerticalScrollIndicator={false}
             >
-                <PageIntro eyebrow="System" title="Ops" />
+                <PremiumHeader title="Ops" subtitle="System health" />
 
                 {(loading && !feedbackAlerts) ? (
                     <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl }} />
