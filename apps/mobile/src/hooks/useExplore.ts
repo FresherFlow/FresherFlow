@@ -52,9 +52,22 @@ export function useExplore() {
                 response = await (opportunitiesApi.list as (p: typeof params) => Promise<unknown>)(params);
             }
 
-            const data = (response as { success?: boolean; data?: Opportunity[] });
-            if (data.success && Array.isArray(data.data)) {
-                setResults(data.data);
+            const res = response as Record<string, unknown>;
+
+            if (searchQuery.trim().length > 0) {
+                // Search response returns { hits: [] }
+                if (response && Array.isArray(res.hits)) {
+                    setResults(res.hits);
+                } else if (Array.isArray(response)) {
+                    setResults(response);
+                }
+            } else {
+                // List response returns { opportunities: [] }
+                if (response && Array.isArray(res.opportunities)) {
+                    setResults(res.opportunities);
+                } else if (Array.isArray(response)) {
+                    setResults(response);
+                }
             }
         } catch (error) {
             console.error('Explore fetch failed:', error);
