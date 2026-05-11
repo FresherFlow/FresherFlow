@@ -1,0 +1,47 @@
+
+
+export const theme = {
+    colors: {
+        primary: '#FFFFFF',
+        secondary: '#FF6B6B',
+        background: '#020404',
+        surface: 'rgba(255, 255, 255, 0.05)',
+        surfaceMuted: 'rgba(255, 255, 255, 0.03)',
+        accent: '#FFFFFF',
+        text: '#FFFFFF',
+        textMuted: 'rgba(255, 255, 255, 0.7)',
+        border: 'rgba(255, 255, 255, 0.12)',
+        muted: 'rgba(255, 255, 255, 0.38)',
+        error: '#CF6679',
+        success: '#03DAC6',
+        warning: '#FFB74D',
+        info: '#FFFFFF',
+        overlay: 'rgba(2, 4, 4, 0.7)',
+        transparent: 'transparent',
+        elevation1: 'rgba(255, 255, 255, 0.03)',
+        elevation2: 'rgba(255, 255, 255, 0.03)',
+        elevation3: 'rgba(255, 255, 255, 0.11)',
+        elevation4: 'rgba(255, 255, 255, 0.12)',
+    },
+    spacing: {
+        xxs: 4,
+        xs: 8,
+        sm: 12,
+        md: 16,
+        lg: 24,
+        xl: 32,
+        xxl: 40,
+    },
+    roundness: {
+        sm: 8,
+        md: 12,
+        lg: 16,
+        xl: 20,
+        full: 9999,
+    },
+    elevation: {
+        sm: 2,
+        md: 6,
+        lg: 12,
+    },
+};
