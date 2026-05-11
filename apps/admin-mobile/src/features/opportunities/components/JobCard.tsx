@@ -3,9 +3,9 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { CheckCircle2, Clock, Edit3, RotateCcw, Trash2 } from 'lucide-react-native';
 
 import { type Opportunity } from '@/lib/api';
-import { useSettings } from '@/hooks/useSettings';
+
 import { useTheme } from '@/theme/ThemeProvider';
-import { CompanyLogo } from '@/components/CompanyLogo';
+import { CompanyLogo } from '@repo/ui';
 
 interface JobCardProps {
     item: Opportunity;
@@ -25,9 +25,8 @@ export const JobCard = ({
     handleRestore,
     handleDelete,
 }: JobCardProps) => {
-    const { settings } = useSettings();
     const { colors } = useTheme();
-    const dense = !!settings.denseLists;
+    const dense = false;
     const statusPalette: Record<string, { bg: string; text: string }> = {
         PUBLISHED: { bg: colors.success + '16', text: colors.success },
         DRAFT: { bg: colors.warning + '18', text: colors.warning },
@@ -46,7 +45,13 @@ export const JobCard = ({
             ]}
         >
             <View style={[styles.jobHeader, dense && styles.jobHeaderDense]}>
-                <CompanyLogo website={(item as { website?: string | null }).website ?? null} name={String(item.company)} size={38} />
+                <CompanyLogo 
+                    website={(item as { website?: string | null }).website ?? null} 
+                    logoUrl={item.companyLogoUrl}
+                    applyLink={item.applyLink}
+                    name={String(item.company)} 
+                    size={38} 
+                />
                 <TouchableOpacity
                     style={styles.titleWrap}
                     onPress={() => navigation.navigate('OpportunityDetail', { opportunityId: item.id })}

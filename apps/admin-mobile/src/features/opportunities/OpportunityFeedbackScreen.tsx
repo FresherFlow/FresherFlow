@@ -10,9 +10,11 @@ import {
     View,
 } from 'react-native';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import { OpportunitiesStackParamList } from '@/navigation/OpportunitiesNavigator';
 import { ChevronDown, ChevronUp, Mail, MessageSquare, Star } from 'lucide-react-native';
 import { adminFeedbackApi } from '@fresherflow/api-client';
-import { CompanyLogo } from '../../components/CompanyLogo';
+import { CompanyLogo } from '@repo/ui';
 import { theme } from '../../theme';
 
 type FeedbackItem = {
@@ -38,8 +40,8 @@ const StarRow = ({ rating }: { rating: number }) => (
 );
 
 export const OpportunityFeedbackScreen = () => {
-    const route = useRoute<any>();
-    const { opportunityId, title, company, website } = route.params ?? {};
+    const route = useRoute<RouteProp<OpportunitiesStackParamList, 'OpportunityFeedback'>>();
+    const { opportunityId, title, company, website } = route.params;
 
     const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
     const [loading, setLoading] = useState(true);

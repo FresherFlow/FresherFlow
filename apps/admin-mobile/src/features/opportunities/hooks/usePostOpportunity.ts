@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
-import { adminOpportunitiesApi } from '@fresherflow/api-client';
+import { adminOpportunitiesApi, type Opportunity } from '@fresherflow/api-client';
+import type { NavigationProp } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 import { ADMIN_OPPORTUNITIES_CACHE_KEY } from '../../../lib/constants';
@@ -59,7 +60,7 @@ function isValidDateInput(value: string): boolean {
   return !Number.isNaN(parsed.getTime());
 }
 
-export const usePostOpportunity = (opportunityId: string | undefined, navigation: any) => {
+export const usePostOpportunity = (opportunityId: string | undefined, navigation: NavigationProp<Record<string, unknown>>) => {
   const isEditing = !!opportunityId;
   const [form, setForm] = useState<PostOpportunityFormState>(INITIAL);
   const [loading, setLoading] = useState(isEditing);
@@ -79,7 +80,7 @@ export const usePostOpportunity = (opportunityId: string | undefined, navigation
     setIsDirty(true);
   }, []);
 
-  const fillForm = useCallback((o: any) => {
+  const fillForm = useCallback((o: Partial<Opportunity> & Record<string, unknown>) => {
     setForm({
       type: o.type || 'JOB',
       status: o.status || 'DRAFT',
@@ -130,7 +131,7 @@ export const usePostOpportunity = (opportunityId: string | undefined, navigation
   const fetchOpportunity = useCallback(async () => {
     try {
       const res = await adminOpportunitiesApi.get(opportunityId!);
-      fillForm(res.opportunity);
+      fillForm(res.opportunity as Partial<Opportunity> & Record<string, unknown>);
     } catch {
       toast.error('Failed to load opportunity');
       navigation.goBack();
@@ -144,12 +145,12 @@ export const usePostOpportunity = (opportunityId: string | undefined, navigation
   }, [opportunityId, fetchOpportunity, isEditing]);
 
   useEffect(() => {
-    const unsub = navigation.addListener('beforeRemove', (e: any) => {
+    const unsub = navigation.addListener('beforeRemove', (e: { preventDefault: () => void; data: { action: unknown } }) => {
       if (!isDirty || saving) return;
       e.preventDefault();
       Alert.alert('Discard changes?', 'You have unsaved changes.', [
         { text: 'Keep Editing', style: 'cancel' },
-        { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action) },
+        { text: 'Discard', style: 'destructive', onPress: () => navigation.dispatch(e.data.action as Readonly<{ type: string; payload?: object; source?: string; target?: string; }>) },
       ]);
     });
     return unsub;
@@ -187,7 +188,7 @@ export const usePostOpportunity = (opportunityId: string | undefined, navigation
       const allowedCourses = f.allowedCourses.split(',').map(s => s.trim()).filter(Boolean);
       const allowedSpecializations = f.allowedSpecializations.split(',').map(s => s.trim()).filter(Boolean);
  
-      const payload: Record<string, any> = {
+      const payload: Record<string, unknown> = {
         title: f.title.trim(), company: f.company.trim(),
         type: f.type, status: f.status, workMode: f.workMode,
         locations: locations.length ? locations : ['Remote'],
@@ -242,8 +243,8 @@ export const usePostOpportunity = (opportunityId: string | undefined, navigation
       setIsDirty(false);
       await AsyncStorage.removeItem(ADMIN_OPPORTUNITIES_CACHE_KEY);
       navigation.goBack();
-    } catch (e: any) {
-      toast.error('Save failed', e.message || 'Failed to save');
+    } catch (e: unknown) {
+      toast.error('Save failed', e instanceof Error ? e.message : 'Failed to save');
     } finally {
       setSaving(false);
     }

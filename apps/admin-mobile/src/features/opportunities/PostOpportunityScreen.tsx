@@ -9,6 +9,9 @@ import {
     StyleSheet, Text, View, TextInput, ScrollView,
     TouchableOpacity, ActivityIndicator,
 } from 'react-native';
+import type { RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { OpportunitiesStackParamList } from '@/navigation/OpportunitiesNavigator';
 import { theme } from '../../theme';
 import { usePostOpportunity } from './hooks/usePostOpportunity';
 import { ParseModal } from './components/ParseModal';
@@ -23,8 +26,8 @@ const DEGREES           = ['DIPLOMA', 'DEGREE', 'PG'];
 const QUICK_LOCATIONS   = ['Remote', 'Bengaluru', 'Mumbai', 'Hyderabad', 'Chennai', 'Delhi', 'Pune', 'Kolkata', 'Pan India'];
 
 // ── Screen ────────────────────────────────────────────────────────────────────
-export const PostOpportunityScreen = ({ route, navigation }: any) => {
-    const opportunityId = route.params?.opportunityId as string | undefined;
+export const PostOpportunityScreen = ({ route, navigation }: { route: RouteProp<OpportunitiesStackParamList, 'PostOpportunity'>; navigation: NativeStackNavigationProp<OpportunitiesStackParamList> }) => {
+    const opportunityId = route.params?.opportunityId;
     const isEditing = !!opportunityId;
 
     const { form, set, toggle, fillForm, loading, saving, handleSave } =

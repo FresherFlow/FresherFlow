@@ -1,9 +1,12 @@
 import React, { useCallback } from 'react';
 import {
-    StyleSheet, Text, View, ScrollView, TouchableOpacity,
+    StyleSheet, Text, View, 
     ActivityIndicator, RefreshControl, Alert
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { OpportunitiesStackParamList } from '@/navigation/OpportunitiesNavigator';
 import { OpportunityTimeline } from './components/OpportunityTimeline';
 import { theme } from '../../theme';
 import { adminOpportunitiesApi } from '@fresherflow/api-client';
@@ -12,18 +15,19 @@ import { toast } from '../../lib/toast';
 // Hooks
 import { useOpportunityDetail } from './hooks/useOpportunityDetail';
 
-// Components
+import { Screen, ScrollScreen } from '../system/layout/Layout';
+import { SegmentedControl } from '../system/components/Controls';
 import { DetailHeader } from './components/DetailHeader';
 import { DetailGrid } from './components/DetailGrid';
 
 const STATUS_COLOR: Record<string, string> = {
-    PUBLISHED: theme.colors.success,
-    DRAFT: theme.colors.accent,
-    ARCHIVED: theme.colors.textMuted,
-    EXPIRED: theme.colors.error,
+    PUBLISHED: '#10b981',
+    DRAFT: '#6366f1',
+    ARCHIVED: '#94a3b8',
+    EXPIRED: '#ef4444',
 };
 
-export const OpportunityDetailScreen = ({ route, navigation }: any) => {
+export const OpportunityDetailScreen = ({ route, navigation }: { route: RouteProp<OpportunitiesStackParamList, 'OpportunityDetail'>; navigation: NativeStackNavigationProp<OpportunitiesStackParamList> }) => {
     const { opportunityId } = route.params as { opportunityId: string };
     
     const {
@@ -124,7 +128,7 @@ export const OpportunityDetailScreen = ({ route, navigation }: any) => {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
+        <Screen>
             <DetailHeader
                 opp={opp}
                 navigation={navigation}
@@ -135,42 +139,40 @@ export const OpportunityDetailScreen = ({ route, navigation }: any) => {
                 onDelete={deleteOpportunity}
             />
 
-            {/* Tabs */}
-            <View style={styles.tabRow}>
-                {(['details', 'timeline'] as const).map(t => (
-                    <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
-                        <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>
-                            {t === 'details' ? 'Details' : `Timeline (${events.length})`}
-                        </Text>
-                    </TouchableOpacity>
-                ))}
+            <View style={styles.tabContainer}>
+                <SegmentedControl
+                    options={[
+                        { label: 'Details', value: 'details' },
+                        { label: `Timeline (${events.length})`, value: 'timeline' },
+                    ]}
+                    selectedValue={tab}
+                    onChange={(value) => setTab(value as 'details' | 'timeline')}
+                />
             </View>
 
-            <ScrollView
+            <ScrollScreen
                 refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
                 contentContainerStyle={styles.scrollContent}
+                style={{ backgroundColor: theme.colors.background }}
             >
                 {tab === 'details' ? (
                     <DetailGrid opp={opp} />
                 ) : (
-                    <OpportunityTimeline opportunityId={opportunityId} events={events} onEventChange={fetchAll} />
+                    <OpportunityTimeline opportunityId={opportunityId} events={events as never[]} onEventChange={fetchAll} />
                 )}
-            </ScrollView>
-        </View>
+            </ScrollScreen>
+        </Screen>
     );
 };
 
 const styles = StyleSheet.create({
     loader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
-    tabRow: {
-        flexDirection: 'row', backgroundColor: theme.colors.surface,
-        borderBottomWidth: 1, borderBottomColor: theme.colors.border,
+    tabContainer: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        backgroundColor: theme.colors.background,
     },
-    tab: { flex: 1, paddingVertical: 12, alignItems: 'center', borderBottomWidth: 2, borderBottomColor: 'transparent' },
-    tabActive: { borderBottomColor: theme.colors.primary },
-    tabText: { fontSize: 13, fontWeight: '600', color: theme.colors.textMuted },
-    tabTextActive: { color: theme.colors.primary },
-    scrollContent: { paddingBottom: 40 },
+    scrollContent: { paddingBottom: 40, paddingHorizontal: 0 },
 });
 
 

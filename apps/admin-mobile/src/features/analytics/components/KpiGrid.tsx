@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, Text } from 'react-native';
-import { useSettings } from '../../hooks/useSettings';
-import { theme } from '../../theme';
+
+import { theme } from '../../../theme';
 
 interface KpiCardProps {
     label: string;
@@ -11,8 +11,7 @@ interface KpiCardProps {
 }
 
 export const KpiCard = ({ label, value, suffix, accent }: KpiCardProps) => {
-    const { settings } = useSettings();
-    const compact = !!settings.compactMetrics;
+    const compact = false;
     return (
         <View style={[styles.kpiCard, compact && styles.kpiCardCompact, { borderTopColor: accent }]}>
             <Text style={[styles.kpiValue, compact && styles.kpiValueCompact]}>{value.toLocaleString()}{suffix ?? ''}</Text>
@@ -22,8 +21,7 @@ export const KpiCard = ({ label, value, suffix, accent }: KpiCardProps) => {
 };
 
 export const KpiGrid = ({ children }: { children: React.ReactNode }) => {
-    const { settings } = useSettings();
-    const compact = !!settings.compactMetrics;
+    const compact = false;
     return (
         <View style={[styles.kpiGrid, compact && styles.kpiGridCompact]}>
             {children}

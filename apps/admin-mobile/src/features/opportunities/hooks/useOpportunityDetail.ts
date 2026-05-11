@@ -3,7 +3,7 @@ import { adminOpportunitiesApi, type Opportunity } from '@fresherflow/api-client
 
 export const useOpportunityDetail = (id: string) => {
   const [opp, setOpp] = useState<Opportunity | null>(null);
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<Record<string, unknown>[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -18,8 +18,8 @@ export const useOpportunityDetail = (id: string) => {
       ]);
       setOpp(oppRes.opportunity);
       setEvents(eventsRes.events);
-    } catch (e: any) {
-      setError(e.message || 'Failed to fetch data');
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to fetch data');
     } finally {
       setLoading(false);
       setRefreshing(false);

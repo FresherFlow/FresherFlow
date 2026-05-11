@@ -24,9 +24,9 @@ import {
     EmptyState 
 } from '../feedback/components/Feedback';
 import { 
-    PageIntro, 
     ScrollScreen, 
-    Section 
+    Section,
+    PremiumHeader,
 } from '../system/layout/Layout';
 import { SegmentedControl } from '../system/components/Controls';
 
@@ -87,7 +87,7 @@ export const AnalyticsScreen = () => {
             style={{ backgroundColor: colors.background }}
             contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: spacing.xxl }}
         >
-            <PageIntro eyebrow="Analytics" title="Metrics" />
+            <PremiumHeader title="Analytics" subtitle="Platform metrics" />
 
             <View style={styles.topBar}>
                 <View style={{ flex: 1 }}>
