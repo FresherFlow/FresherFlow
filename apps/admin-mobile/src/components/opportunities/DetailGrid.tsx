@@ -1,10 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { ExternalLink } from 'lucide-react-native';
-import { theme } from '../../theme';
+import { theme } from '@/theme';
+import type { Opportunity } from '@/lib/api';
 
 interface DetailGridProps {
-    opp: any;
+    opp: Opportunity;
 }
 
 export const DetailGrid = ({ opp }: DetailGridProps) => {
@@ -41,7 +42,7 @@ export const DetailGrid = ({ opp }: DetailGridProps) => {
             
             {opp.expiresAt &&
                 <DetailRow label="Expires" value={new Date(String(opp.expiresAt)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />}
-            <DetailRow label="Created" value={new Date(opp.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />
+            <DetailRow label="Created" value={opp.postedAt ? new Date(opp.postedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'} />
             
             <View style={[styles.detailRow, { borderLeftWidth: 4, borderLeftColor: opp.linkHealth === 'HEALTHY' ? theme.colors.success : opp.linkHealth === 'BROKEN' ? theme.colors.error : theme.colors.warning }]}>
                 <Text style={styles.fieldLabel}>Link Health</Text>
@@ -57,10 +58,10 @@ export const DetailGrid = ({ opp }: DetailGridProps) => {
                 </View>
             </View>
 
-            {opp.lastVerified && (
-                <DetailRow 
-                    label="Last Verified" 
-                    value={new Date(opp.lastVerified).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} 
+            {opp.lastVerifiedAt && (
+                <DetailRow
+                    label="Last Verified"
+                    value={new Date(opp.lastVerifiedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                 />
             )}
 

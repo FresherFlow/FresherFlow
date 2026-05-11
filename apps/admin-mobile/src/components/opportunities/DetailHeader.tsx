@@ -1,12 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Edit3, ExternalLink, MessageSquare } from 'lucide-react-native';
-import { CompanyLogo } from '../CompanyLogo';
+import { CompanyLogo } from '@repo/ui';
 import { theme } from '../../theme';
+import type { Opportunity } from '@fresherflow/api-client';
+import type { NavigationProp } from '@react-navigation/native';
 
 interface DetailHeaderProps {
-    opp: any;
-    navigation: any;
+    opp: Opportunity;
+    navigation: NavigationProp<Record<string, unknown>>;
     statusColor: string;
 }
 
@@ -15,7 +17,7 @@ export const DetailHeader = ({ opp, navigation, statusColor }: DetailHeaderProps
         <View style={styles.headerCard}>
             <View style={styles.headerTop}>
                 <CompanyLogo
-                    website={opp.website ?? null}
+                    website={opp.companyWebsite ?? null}
                     name={String(opp.company)}
                     size={48}
                 />

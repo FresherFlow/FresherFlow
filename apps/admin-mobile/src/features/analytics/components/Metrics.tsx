@@ -5,6 +5,7 @@ import {
     View,
 } from 'react-native';
 import { useUITheme } from '../../../theme';
+import { mScale, SPACING } from '../../../theme/dimensions';
 
 export const MetricGrid = ({ children }: { children: React.ReactNode }) => (
     <View style={styles.metricGrid}>{children}</View>
@@ -30,8 +31,8 @@ export const DetailRow = ({
 };
 
 const styles = StyleSheet.create({
-    metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 14 },
-    detailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 14, paddingVertical: 14 },
-    detailLabel: { fontSize: 15, fontWeight: '600' },
-    detailValue: { fontSize: 15, fontWeight: '800' },
+    metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
+    detailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.md, paddingVertical: SPACING.md },
+    detailLabel: { fontSize: mScale(14), fontWeight: '500' },
+    detailValue: { fontSize: mScale(15), fontWeight: '700' },
 });

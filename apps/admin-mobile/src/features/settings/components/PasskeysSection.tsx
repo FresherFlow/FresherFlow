@@ -2,9 +2,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { Trash2, Plus, Key } from 'lucide-react-native';
 import { Passkey } from 'react-native-passkey';
-import { ThemeColors } from '../../theme';
+import { ThemeColors } from '@/theme';
 import { useAdminAuth as useAuth } from '@repo/frontend-core';
-import type { PasskeySummary } from '../../lib/api';
+import type { PasskeySummary } from '@/lib/api';
 
 type PasskeysSectionProps = {
     colors: ThemeColors;
@@ -28,7 +28,6 @@ export const PasskeysSection = React.memo(({ colors: c }: PasskeysSectionProps) 
     }, [getPasskeys]);
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         void loadPasskeys();
     }, [loadPasskeys]);
 

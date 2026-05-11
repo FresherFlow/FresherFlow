@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Edit3, CheckCircle2, Trash2, RotateCcw, Clock } from 'lucide-react-native';
-import { CompanyLogo } from '../CompanyLogo';
-import { theme } from '../../theme';
-import { type Opportunity } from '../../lib/api';
+import { CompanyLogo } from '@repo/ui';
+import { theme } from '@/theme';
+import { type Opportunity } from '@/lib/api';
+import type { NavigationProp } from '@react-navigation/native';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
     PUBLISHED: { bg: theme.colors.success + '20', text: theme.colors.success },
@@ -14,7 +15,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
 
 interface JobCardProps {
     item: Opportunity;
-    navigation: any;
+    navigation: NavigationProp<Record<string, unknown>>;
     handlePublish: (id: string) => void;
     handleExpire: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
@@ -35,7 +36,7 @@ export const JobCard = ({
     return (
         <View style={styles.jobCard}>
             <View style={styles.jobHeader}>
-                <CompanyLogo website={(item as any).website ?? null} name={String(item.company)} size={38} />
+                <CompanyLogo website={(item as { website?: string | null }).website ?? null} name={String(item.company)} size={38} />
                 <TouchableOpacity style={{ flex: 1, paddingRight: 8, marginLeft: 4 }} onPress={() => navigation.navigate('OpportunityDetail', { opportunityId: item.id })}>
                     <Text style={styles.jobTitle} numberOfLines={1}>{item.title}</Text>
                     <Text style={styles.jobCompany}>{String(item.company)}</Text>
