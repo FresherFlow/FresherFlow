@@ -33,7 +33,7 @@ export const useTelegram = () => {
             if (pg === 1) setLoading(true);
             else setLoadingMore(true);
 
-            const params: { limit: number; page: number; window: string; status?: string } = { limit: PAGE_SIZE, page: pg, window };
+            const params: { limit: number; page: number; window: TelegramWindow; status?: string } = { limit: PAGE_SIZE, page: pg, window };
             if (status !== 'ALL') params.status = status;
 
             const data = await telegramsApi.broadcasts(params);

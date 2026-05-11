@@ -25,7 +25,7 @@ export const useSocial = () => {
         const { pg = 1, status = statusFilter } = opts;
         try {
             if (pg === 1) setLoading(true); else setLoadingMore(true);
-            const params: any = {
+            const params: Record<string, unknown> = {
                 page: pg,
             };
             if (status !== 'ALL') params.status = status;
@@ -43,8 +43,8 @@ export const useSocial = () => {
             
             if (pg === 1) setPosts(rows); else setPosts((prev) => [...prev, ...rows]);
             setPage(pg);
-        } catch (e: any) {
-            toast.error('Social posts failed', e.message || 'Failed to load');
+        } catch (e: unknown) {
+            toast.error('Social posts failed', e instanceof Error ? e.message : 'Failed to load');
         } finally {
             setLoading(false);
             setLoadingMore(false);
@@ -78,8 +78,8 @@ export const useSocial = () => {
                         await socialPostsApi.retry(id);
                         toast.success('Retried', 'Social post retry queued.');
                         void fetchPosts({ pg: 1, force: true });
-                    } catch (e: any) {
-                        toast.error('Retry failed', e.message || 'Failed');
+                    } catch (e: unknown) {
+                        toast.error('Retry failed', e instanceof Error ? e.message : 'Failed');
                     } finally {
                         setRetryingId(null);
                     }

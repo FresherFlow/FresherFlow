@@ -92,7 +92,7 @@ export const useTotpManager = () => {
     const [state, dispatch] = useReducer(totpReducer, {
         ...initialState,
         isEnabled: Boolean(admin?.totpEnabled),
-        configuredAt: admin?.totpEnabledAt ?? null,
+        configuredAt: admin?.totpEnabledAt ? new Date(admin.totpEnabledAt).toISOString() : null,
     });
 
     const init = useCallback((isEnabled: boolean, configuredAt: string | null) => {
@@ -105,10 +105,10 @@ export const useTotpManager = () => {
             const data = await totpGenerate();
             dispatch({
                 type: 'GENERATE_SUCCESS',
-                payload: { secret: data.secret, qrUrl: data.qrCode ?? data.otpauthUrl ?? '' }
+                payload: { secret: data.secret, qrUrl: data.qrCode ?? (data as { otpauthUrl?: string }).otpauthUrl ?? '' }
             });
-        } catch (e: any) {
-            const errorMsg = e.message || 'Failed to generate TOTP';
+        } catch (e: unknown) {
+            const errorMsg = e instanceof Error ? e.message : 'Failed to generate TOTP';
             toast.error('TOTP setup failed', errorMsg);
             dispatch({ type: 'GENERATE_FAIL', payload: { error: errorMsg } });
         }
@@ -123,8 +123,8 @@ export const useTotpManager = () => {
         try {
             await totpVerifySetup(code.trim());
             dispatch({ type: 'VERIFY_SUCCESS', payload: { configuredAt: new Date().toISOString() } });
-        } catch (e: any) {
-            dispatch({ type: 'VERIFY_FAIL', payload: { error: e.message || 'Invalid code, try again.' } });
+        } catch (e: unknown) {
+            dispatch({ type: 'VERIFY_FAIL', payload: { error: e instanceof Error ? e.message : 'Invalid code, try again.' } });
         }
     }, [totpVerifySetup]);
 
@@ -137,8 +137,8 @@ export const useTotpManager = () => {
                         await totpDisable();
                         dispatch({ type: 'DISABLE_SUCCESS' });
                         toast.success('TOTP disabled', 'Two-factor authentication removed.');
-                    } catch (e: any) {
-                        toast.error('Failed', e.message || 'Failed');
+                    } catch (e: unknown) {
+                        toast.error('Failed', e instanceof Error ? e.message : 'Failed');
                     }
                 }
             }

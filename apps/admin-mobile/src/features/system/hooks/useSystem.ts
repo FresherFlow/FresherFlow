@@ -43,7 +43,7 @@ export const useSystem = () => {
             ]);
             setHealth(h);
             setLinkStats(l as { healthy: number; broken: number; retrying: number });
-            setDispatchLogs((logsResponse as { logs: any[] }).logs ?? []);
+            setDispatchLogs((logsResponse as { logs: { id: string; channel: string; status: string; sentAt: string | null; errorMessage?: string | null }[] }).logs ?? []);
             setFeedbackAlerts(feedback);
             setTelegramSummary(telegram?.summary ?? null);
             setSocialSummary(social?.summary ?? null);
