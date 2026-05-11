@@ -16,10 +16,19 @@
     "dompurify": "^3.3.3",
     "lucide-react": "^0.563.0",
     "lucide-react-native": "*",
-    "tailwind-merge": "^3.4.0"
+    "tailwind-merge": "^3.4.0",
+    "@fresherflow/utils": "*"
+  },
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
     "@types/react-native": "^0.72.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.7.3",
+    "eslint": "^9.10.0",
+    "typescript-eslint": "^8.5.0",
+    "eslint-config-prettier": "^9.1.0"
   }
 }

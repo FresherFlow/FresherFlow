@@ -35,7 +35,12 @@ export const AppButton: React.FC<AppButtonProps> = ({
     const { colors } = useUITheme();
     const scale = React.useMemo(() => new Animated.Value(1), []);
 
-    const palette = {
+    const palette: {
+        backgroundColor: string;
+        borderColor: string;
+        textColor: string;
+        shadow: Record<string, unknown>;
+    } = {
         primary: {
             backgroundColor: colors.primary,
             borderColor: colors.primary,
@@ -66,7 +71,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
             textColor: colors.error,
             shadow: {}
         },
-    }[variant] as any;
+    }[variant];
 
     const handlePressIn = () => {
         Animated.spring(scale, {

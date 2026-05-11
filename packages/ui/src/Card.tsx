@@ -1,7 +1,6 @@
 import React from 'react';
 import {
     StyleProp,
-    StyleSheet,
     View,
     ViewStyle,
 } from 'react-native';
@@ -34,5 +33,4 @@ export const Card = ({
     );
 };
 
-const styles = StyleSheet.create({
-});
+
