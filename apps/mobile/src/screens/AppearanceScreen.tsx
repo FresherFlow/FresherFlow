@@ -8,7 +8,7 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
-import { Check, Palette, Moon, Sun, Smartphone, ChevronLeft } from 'lucide-react-native';
+import { Check, Palette, Moon, Sun, Smartphone } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
@@ -17,7 +17,7 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Appearance'>;
 
@@ -39,14 +39,9 @@ const AppearanceScreen = ({ navigation }: Props) => {
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
       
       <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
-        <PremiumHeader 
+        <SecondaryHeader 
             title="Appearance" 
-            subtitle="Visual Experience Settings" 
-            leftSlot={
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color={currentTheme.colors.text} />
-                </TouchableOpacity>
-            }
+            onBack={() => navigation.goBack()}
         />
       </View>
 

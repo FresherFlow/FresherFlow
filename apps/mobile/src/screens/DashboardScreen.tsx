@@ -12,9 +12,6 @@ import {
 } from 'react-native';
 import { 
     LayoutDashboard, 
-    Clock, 
-    CheckCircle2, 
-    XCircle,
     Search
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -23,14 +20,15 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
+import { PremiumHeader } from '@/system/components/PremiumPrimitives';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
 };
+
+type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
+
 
 import { useUI } from '@/contexts/UIContext';
 
@@ -61,12 +59,6 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         }
     }, [hideTabBar, showTabBar]);
 
-    const stats = [
-        { label: 'ACTIVE', value: '12', icon: Clock, color: currentTheme.colors.primary },
-        { label: 'ACCEPTED', value: '2', icon: CheckCircle2, color: currentTheme.colors.success },
-        { label: 'CLOSED', value: '5', icon: XCircle, color: currentTheme.colors.error },
-    ];
-
     const renderHeader = () => (
         <View style={{ backgroundColor: currentTheme.colors.background }}>
             <View style={styles.headerArea}>
@@ -74,18 +66,6 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     title="Dashboard" 
                     subtitle="Your Career Pulse" 
                 />
-                
-                <View style={styles.statsGrid}>
-                    {stats.map((stat, i) => (
-                        <SurfaceCard key={i} style={styles.statCard}>
-                            <View style={[styles.statIcon, { backgroundColor: alpha(stat.color, 0.1) }]}>
-                                <stat.icon size={16} color={stat.color} />
-                            </View>
-                            <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{stat.value}</Text>
-                            <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>{stat.label}</Text>
-                        </SurfaceCard>
-                    ))}
-                </View>
     
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Recent Activity</Text>

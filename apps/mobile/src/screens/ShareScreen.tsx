@@ -10,20 +10,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
-  Alert,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { CheckCircle2, Clock, Sparkles } from 'lucide-react-native';
+import { CheckCircle2, Clock, Link as LinkIcon, AlertCircle, Info } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useShare, ShareResult } from '@/hooks/useShare';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { NavigationProp } from '@react-navigation/native';
+import { useNotifications, useUserAuth as useAuth } from '@repo/frontend-core';
+import { profileApi } from '@fresherflow/api-client';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
-import { mScale, RADIUS } from '@/system/constants/dimensions';
+import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { mScale } from '@/system/constants/dimensions';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -32,9 +33,11 @@ const alpha = (color: string, opacity: number) => {
 
 const ShareScreen: React.FC = () => {
   const { currentTheme } = useTheme();
+  const { showToast } = useNotifications();
   const route = useRoute();
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const params = route.params as { url?: string } | undefined;
+  const { user } = useAuth();
   const [hasCheckedClipboard, setHasCheckedClipboard] = useState(false);
   const [shareResult, setShareResult] = useState<ShareResult | null>(null);
   
@@ -49,33 +52,37 @@ const ShareScreen: React.FC = () => {
     handleConfirm,
   } = useShare(navigation);
 
+  const [recentContributions, setRecentContributions] = useState<Awaited<ReturnType<typeof profileApi.getContributions>>['contributions']>([]);
+
+  const fetchRecentContributions = useCallback(async () => {
+    if (!user) return; // Guard against guest calls
+    try {
+      const response = await profileApi.getContributions(1);
+      setRecentContributions(response.contributions.slice(0, 5));
+    } catch (err: unknown) {
+      // Silently ignore 401s for guests/bootstrap
+      if ((err as { status?: number }).status !== 401) {
+        console.error('Failed to fetch contributions', err);
+      }
+    }
+  }, [user]);
+
   const checkClipboard = useCallback(async () => {
     if (hasCheckedClipboard || url || preview) return;
     
     const content = await Clipboard.getStringAsync();
     if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
         setHasCheckedClipboard(true);
-        Alert.alert(
-            'Link Detected',
-            'Would you like to share the opportunity from your clipboard?',
-            [
-                { text: 'No', style: 'cancel' },
-                { 
-                    text: 'Yes, Analyze', 
-                    onPress: () => {
-                        setUrl(content);
-                        void handleParse(content);
-                    }
-                }
-            ]
-        );
+        // Nuvio-style toast notification instead of intrusive alert
+        showToast("Link detected in clipboard!");
     }
-  }, [hasCheckedClipboard, url, preview, handleParse, setUrl]);
+  }, [hasCheckedClipboard, url, preview, showToast]);
 
   useFocusEffect(
     useCallback(() => {
         void checkClipboard();
-    }, [checkClipboard])
+        void fetchRecentContributions();
+    }, [checkClipboard, fetchRecentContributions])
   );
 
   useEffect(() => {
@@ -83,12 +90,13 @@ const ShareScreen: React.FC = () => {
       setUrl(params.url);
       void handleParse(params.url);
     }
-  }, [params?.url]);
+  }, [params?.url, setUrl, handleParse]);
 
   const onConfirm = async () => {
       const result = await handleConfirm();
       if (result) {
           setShareResult(result);
+          void fetchRecentContributions();
       }
   };
 
@@ -99,7 +107,7 @@ const ShareScreen: React.FC = () => {
   };
 
   if (shareResult) {
-      let IconComponent = Sparkles;
+      let IconComponent = CheckCircle2;
       let title = 'Signal Submitted!';
       let body = "Your link is queued for review. It'll appear in the feed once verified.";
       let iconColor = currentTheme.colors.primary;
@@ -146,7 +154,7 @@ const ShareScreen: React.FC = () => {
                             styles.secondaryAction, 
                             { 
                                 backgroundColor: shareResult.existing ? 'transparent' : currentTheme.colors.primary,
-                                borderColor: currentTheme.colors.border,
+                                borderColor: alpha(currentTheme.colors.border, 0.1),
                                 borderWidth: shareResult.existing ? 1 : 0,
                             }
                         ]}
@@ -156,7 +164,7 @@ const ShareScreen: React.FC = () => {
                             styles.secondaryActionText, 
                             { color: shareResult.existing ? currentTheme.colors.text : currentTheme.colors.background }
                         ]}>
-                            SHARE ANOTHER
+                            CONTRIBUTE ANOTHER
                         </Text>
                     </TouchableOpacity>
                   </View>
@@ -174,8 +182,8 @@ const ShareScreen: React.FC = () => {
       >
         <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
             <PremiumHeader 
-                title="Share" 
-                subtitle="New Opportunity" 
+                title="Contribute" 
+                subtitle="Share an Opportunity" 
             />
         </View>
 
@@ -185,86 +193,140 @@ const ShareScreen: React.FC = () => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.container}>
-              <View style={styles.centerGroup}>
-                  {/* Portal Input */}
-                  <View style={styles.section}>
-                      <TextInput 
-                          style={[styles.cleanInput, { color: currentTheme.colors.text, borderBottomColor: alpha(currentTheme.colors.text, 0.1) }]}
-                          placeholder="Paste career portal link..."
-                          placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.5)}
-                          value={url}
-                          onChangeText={setUrl}
-                          autoCapitalize="none"
-                          autoCorrect={false}
-                          returnKeyType="go"
-                          onSubmitEditing={() => void handleParse()}
-                      />
-                      <Text style={[styles.inputHint, { color: currentTheme.colors.textMuted }]}>
-                          LinkedIn, Greenhouse, Lever, Workday, or official portals.
-                      </Text>
-                  </View>
-
-                  {error && (
-                      <View style={styles.errorContainer}>
-                          <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{error}</Text>
-                      </View>
-                  )}
-
-                  {/* Action Button */}
-                  <View style={styles.buttonContainer}>
-                      {!preview ? (
-                          <TouchableOpacity 
-                              activeOpacity={0.9}
-                              style={[styles.actionBtn, (!url || loading) && styles.disabledBtn, { backgroundColor: currentTheme.colors.text }]}
-                              onPress={() => void handleParse()}
-                              disabled={!url || loading}
-                          >
-                              {loading ? (
-                                  <ActivityIndicator color={currentTheme.colors.background} />
-                              ) : (
-                                  <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Analyze Link</Text>
-                              )}
-                          </TouchableOpacity>
-                      ) : (
-                          <TouchableOpacity 
-                              activeOpacity={0.9}
-                              style={[styles.actionBtn, loading && styles.disabledBtn, { backgroundColor: currentTheme.colors.success }]}
-                              onPress={onConfirm}
-                              disabled={loading}
-                          >
-                              {loading ? (
-                                  <ActivityIndicator color={currentTheme.colors.background} />
-                              ) : (
-                                  <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Confirm & Share</Text>
-                              )}
-                          </TouchableOpacity>
-                      )}
-                  </View>
+              <View style={styles.heroSection}>
+                <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>
+                    Help others{'\n'}find their path.
+                </Text>
+                <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
+                    Paste a link to a job portal or career page to share it with the community.
+                </Text>
               </View>
 
-              {/* Preview Result */}
+              <SurfaceCard style={[styles.inputCard, { borderColor: error ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1) }]}>
+                  <View style={styles.inputHeader}>
+                    <LinkIcon size={16} color={currentTheme.colors.primary} />
+                    <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>OPPORTUNITY URL</Text>
+                  </View>
+                  <TextInput 
+                      style={[styles.cleanInput, { color: currentTheme.colors.text }]}
+                      placeholder="e.g. greenhouse.io/google/job/..."
+                      placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
+                      value={url}
+                      onChangeText={setUrl}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      multiline
+                      numberOfLines={3}
+                      returnKeyType="done"
+                      onSubmitEditing={() => void handleParse()}
+                  />
+              </SurfaceCard>
+
+              {error && (
+                  <View style={[styles.errorBox, { backgroundColor: alpha(currentTheme.colors.error, 0.05) }]}>
+                      <AlertCircle size={14} color={currentTheme.colors.error} />
+                      <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{error}</Text>
+                  </View>
+              )}
+
+              <View style={styles.buttonContainer}>
+                  {!preview ? (
+                      <TouchableOpacity 
+                          activeOpacity={0.9}
+                          style={[styles.actionBtn, (!url || loading) && styles.disabledBtn, { backgroundColor: currentTheme.colors.text }]}
+                          onPress={() => void handleParse()}
+                          disabled={!url || loading}
+                      >
+                          {loading ? (
+                              <ActivityIndicator color={currentTheme.colors.background} />
+                          ) : (
+                              <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Analyze Signal</Text>
+                          )}
+                      </TouchableOpacity>
+                  ) : (
+                      <TouchableOpacity 
+                          activeOpacity={0.9}
+                          style={[styles.actionBtn, loading && styles.disabledBtn, { backgroundColor: currentTheme.colors.primary }]}
+                          onPress={onConfirm}
+                          disabled={loading}
+                      >
+                          {loading ? (
+                              <ActivityIndicator color={currentTheme.colors.background} />
+                          ) : (
+                              <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Confirm & Post</Text>
+                          )}
+                      </TouchableOpacity>
+                  )}
+              </View>
+
               {preview && (
                   <View style={styles.previewSection}>
-                      <Text style={[styles.previewLabel, { color: currentTheme.colors.textMuted }]}>Extracted Details</Text>
-                      <View style={[styles.previewCard, { backgroundColor: alpha(currentTheme.colors.text, 0.02), borderColor: alpha(currentTheme.colors.text, 0.05) }]}>
-                          <Text style={[styles.previewTitle, { color: currentTheme.colors.text }]}>{preview.title || 'Detecting...'}</Text>
-                          <Text style={[styles.previewCompany, { color: currentTheme.colors.textMuted }]}>{preview.company || 'Unknown'}</Text>
+                      <View style={styles.previewHeader}>
+                          <LinkIcon size={14} color={currentTheme.colors.primary} />
+                          <Text style={[styles.previewLabel, { color: currentTheme.colors.textMuted }]}>EXTRACTED SIGNAL</Text>
+                      </View>
+                      <SurfaceCard style={styles.previewCard}>
+                          <Text style={[styles.previewTitle, { color: currentTheme.colors.text }]}>{preview.title || 'Analyzing...'}</Text>
+                          <Text style={[styles.previewCompany, { color: currentTheme.colors.textMuted }]}>{preview.company || 'Identifying Company'}</Text>
                           
                           <View style={styles.metaRow}>
                               <View style={[styles.metaBadge, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
-                                  <Text style={[styles.metaText, { color: currentTheme.colors.text }]}>{preview.locations?.[0] || 'Remote'}</Text>
+                                  <Text style={[styles.metaText, { color: currentTheme.colors.text }]}>{preview.locations?.[0] || 'Global'}</Text>
                               </View>
                               <View style={[styles.metaBadge, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
-                                  <Text style={[styles.metaText, { color: currentTheme.colors.text }]}>{preview.type || 'Job'}</Text>
+                                  <Text style={[styles.metaText, { color: currentTheme.colors.text }]}>{preview.type || 'Role'}</Text>
                               </View>
                           </View>
+                      </SurfaceCard>
+                  </View>
+              )}
+
+              <View style={[styles.impactCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
+                  <Info size={16} color={currentTheme.colors.primary} />
+                  <Text style={[styles.impactText, { color: currentTheme.colors.primary }]}>
+                      Your signals help 2,000+ students find opportunities every day. Keep it up!
+                  </Text>
+              </View>
+
+              {recentContributions.length > 0 && (
+                  <View style={styles.recentSection}>
+                      <View style={styles.recentHeader}>
+                          <Clock size={14} color={currentTheme.colors.textMuted} />
+                          <Text style={[styles.recentLabel, { color: currentTheme.colors.textMuted }]}>YOUR RECENT CONTRIBUTIONS</Text>
                       </View>
+                      
+                      {recentContributions.map((item, idx) => (
+                          <SurfaceCard key={item.id} style={[styles.contributionItem, idx === 0 && { borderTopWidth: 0 }]}>
+                              <View style={styles.contributionContent}>
+                                  <Text 
+                                    style={[styles.contributionLink, { color: currentTheme.colors.text }]}
+                                    numberOfLines={3}
+                                  >
+                                      {item.sourceLink}
+                                  </Text>
+                                  <View style={styles.contributionMeta}>
+                                      <Text style={[styles.contributionDate, { color: currentTheme.colors.textMuted }]}>
+                                          {new Date(item.createdAt).toLocaleDateString()}
+                                      </Text>
+                                      <View style={[
+                                          styles.statusBadge, 
+                                          { backgroundColor: item.mappedOpportunityId ? alpha(currentTheme.colors.success, 0.1) : alpha(currentTheme.colors.warning, 0.1) }
+                                      ]}>
+                                          <Text style={[
+                                              styles.statusText, 
+                                              { color: item.mappedOpportunityId ? currentTheme.colors.success : currentTheme.colors.warning }
+                                          ]}>
+                                              {item.mappedOpportunityId ? 'PUBLISHED' : 'UNDER REVIEW'}
+                                          </Text>
+                                      </View>
+                                  </View>
+                              </View>
+                          </SurfaceCard>
+                      ))}
                   </View>
               )}
           </View>
         </ScrollView>
-
-
       </KeyboardAvoidingView>
     </Screen>
   );
@@ -277,52 +339,80 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingBottom: 40,
-        paddingTop: 12,
     },
     container: {
         flex: 1,
         paddingHorizontal: 20,
     },
-    centerGroup: {
-        flex: 1,
-        justifyContent: 'center',
+    heroSection: {
+        marginTop: 20,
+        marginBottom: 32,
     },
-    section: {
-        marginBottom: 20,
+    heroTitle: {
+        fontSize: 32,
+        fontWeight: '900',
+        letterSpacing: -1.5,
+        lineHeight: 36,
+    },
+    heroSub: {
+        fontSize: 15,
+        marginTop: 12,
+        lineHeight: 22,
+    },
+    inputCard: {
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    inputHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
+    inputLabel: {
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 1,
     },
     cleanInput: {
-        height: 64,
-        fontSize: 20,
+        fontSize: 16,
         fontWeight: '600',
-        borderBottomWidth: 1,
-        paddingHorizontal: 4,
+        lineHeight: 22,
+        minHeight: 60,
+        textAlignVertical: 'top',
     },
-    inputHint: {
-        fontSize: 12,
-        fontWeight: '500',
+    errorBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
         marginTop: 12,
-        marginLeft: 4,
-    },
-    errorContainer: {
-        marginBottom: 20,
-        paddingHorizontal: 4,
+        padding: 12,
+        borderRadius: 12,
     },
     errorText: {
         fontSize: 13,
         fontWeight: '600',
+        flex: 1,
     },
     buttonContainer: {
-        marginTop: 12,
+        marginTop: 24,
     },
     actionBtn: {
         height: 60,
-        borderRadius: 12,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.1,
+        shadowRadius: 8,
+        elevation: 4,
     },
     actionText: {
-        fontSize: 16,
-        fontWeight: '700',
+        fontSize: 15,
+        fontWeight: '800',
+        letterSpacing: 0.5,
     },
     disabledBtn: {
         opacity: 0.3,
@@ -330,20 +420,23 @@ const styles = StyleSheet.create({
     previewSection: {
         marginTop: 40,
     },
+    previewHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 12,
+    },
     previewLabel: {
-        fontSize: 12,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-        marginBottom: 16,
-        textTransform: 'uppercase',
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 1,
     },
     previewCard: {
-        borderRadius: 20,
         padding: 24,
-        borderWidth: 1,
+        borderRadius: 24,
     },
     previewTitle: {
-        fontSize: 24,
+        fontSize: 22,
         fontWeight: '800',
         letterSpacing: -0.5,
     },
@@ -363,9 +456,23 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     metaText: {
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: '700',
         textTransform: 'uppercase',
+    },
+    impactCard: {
+        marginTop: 40,
+        padding: 20,
+        borderRadius: 20,
+        flexDirection: 'row',
+        gap: 12,
+        alignItems: 'center',
+    },
+    impactText: {
+        flex: 1,
+        fontSize: 13,
+        fontWeight: '600',
+        lineHeight: 18,
     },
     successContainer: {
         flex: 1,
@@ -374,24 +481,24 @@ const styles = StyleSheet.create({
         paddingHorizontal: 40,
     },
     successIconWrapper: {
-        width: mScale(120),
-        height: mScale(120),
-        borderRadius: 60,
+        width: mScale(100),
+        height: mScale(100),
+        borderRadius: 50,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 32,
     },
     successTitle: {
-        fontSize: mScale(24),
+        fontSize: 28,
         fontWeight: '900',
         letterSpacing: -1,
         textAlign: 'center',
         marginBottom: 12,
     },
     successSub: {
-        fontSize: mScale(14),
+        fontSize: 15,
         textAlign: 'center',
-        lineHeight: mScale(22),
+        lineHeight: 22,
         marginBottom: 48,
     },
     successActions: {
@@ -400,35 +507,71 @@ const styles = StyleSheet.create({
     },
     primaryAction: {
         height: 56,
-        borderRadius: RADIUS.lg,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
     },
     primaryActionText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '800',
     },
     secondaryAction: {
         height: 56,
-        borderRadius: RADIUS.lg,
+        borderRadius: 18,
         alignItems: 'center',
         justifyContent: 'center',
     },
     secondaryActionText: {
-        fontSize: 16,
+        fontSize: 15,
         fontWeight: '800',
     },
-    backBtn: {
-        // Keeping old name temporarily for safety if used elsewhere, 
-        // but it's replaced in success screen
-        height: 56,
-        borderRadius: RADIUS.lg,
+    recentSection: {
+        marginTop: 48,
+    },
+    recentHeader: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        gap: 8,
+        marginBottom: 16,
     },
-    backBtnText: {
-        fontSize: 16,
-        fontWeight: '800',
+    recentLabel: {
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    contributionItem: {
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+    },
+    contributionContent: {
+        gap: 12,
+    },
+    contributionLink: {
+        fontSize: 13,
+        fontWeight: '600',
+        lineHeight: 18,
+    },
+    contributionMeta: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    contributionDate: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    statusBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    statusText: {
+        fontSize: 9,
+        fontWeight: '900',
+        letterSpacing: 0.5,
     },
 });
 

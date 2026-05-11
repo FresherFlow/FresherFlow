@@ -1,9 +1,9 @@
 import { useState, useCallback } from 'react';
-import { opportunitiesApi } from '@fresherflow/api-client';
+import { opportunitiesApi, profileApi } from '@fresherflow/api-client';
 import { ParsedJob } from '@fresherflow/types';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
-import { Alert } from 'react-native';
 import { useUserAuth as useAuth } from '@repo/frontend-core';
+import { readFeedCache } from '@/utils/offlineCache';
 import { NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
@@ -31,6 +31,22 @@ export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
 
         try {
             const normalized = normalizeOpportunityUrl(urlToUse);
+            
+            // 1. Local Duplicate Check (Cached Jobs)
+            const cache = await readFeedCache();
+            if (cache && cache.items.length > 0) {
+                const isDuplicate = cache.items.some(job => 
+                    (job.sourceLink === normalized || job.applyLink === normalized) ||
+                    (job.company.toLowerCase() === urlToUse.toLowerCase()) // Fallback for fuzzy matching if needed
+                );
+                
+                if (isDuplicate) {
+                    setError('This opportunity is already in your feed.');
+                    setLoading(false);
+                    return;
+                }
+            }
+
             const response = await opportunitiesApi.ingest(normalized);
             if (response.success && response.data) {
                 setPreview(response.data);
@@ -46,13 +62,7 @@ export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
     }, [url]);
 
     const handleConfirm = useCallback(async (): Promise<ShareResult | undefined> => {
-        if (!preview) return undefined;
-        
-        if (!user) {
-            Alert.alert('Sign in required', 'Please sign in to share opportunities.', [
-                { text: 'Cancel', style: 'cancel' },
-                { text: 'Sign in', onPress: () => navigation?.navigate('Login') },
-            ]);
+        if (!preview) {
             return undefined;
         }
         
@@ -60,26 +70,31 @@ export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
         setError(null);
 
         try {
-            const response = await opportunitiesApi.submit(preview);
-            if (response.success) {
-                return {
-                    success: true,
-                    id: response.id,
-                    existing: response.existing,
-                    pending: response.pending
-                };
-            } else {
-                setError(response.message || 'Could not submit opportunity.');
-                return undefined;
-            }
+            const normalized = normalizeOpportunityUrl(url);
+            const response = await profileApi.submitContribution(normalized);
+            
+            return {
+                success: true,
+                id: response.contribution?.id || '',
+                existing: false,
+                pending: true
+            };
         } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'An error occurred while submitting.';
-            setError(message);
+            const error = err as { status?: number; message?: string };
+            if (error.status === 401) {
+                setError('Your session has expired. Please sign in again.');
+            } else if (error.status === 409) {
+                setError(error.message || 'This link has already been shared.');
+            } else if (error.status === 400) {
+                setError('Invalid URL format. Please check the link and try again.');
+            } else {
+                setError('Something went wrong on our end. Please try again later.');
+            }
             return undefined;
         } finally {
             setLoading(false);
         }
-    }, [preview, user, navigation]);
+    }, [preview, user, url, navigation]);
 
     return {
         url,
