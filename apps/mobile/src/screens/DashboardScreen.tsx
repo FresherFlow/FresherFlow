@@ -12,7 +12,10 @@ import {
 } from 'react-native';
 import { 
     LayoutDashboard, 
-    Search
+    Search,
+    Bookmark,
+    Send,
+    Trophy
 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -33,13 +36,13 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 import { useUI } from '@/contexts/UIContext';
 
 import { useDashboard } from '@/hooks/useDashboard';
-import { OpportunityCard } from '@/system/components/OpportunityCard';
+import { JobCard } from '@/system/components/OpportunityCard';
 import { useSaved } from '@repo/frontend-core';
 
 const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { currentTheme } = useTheme();
     const { hideTabBar, showTabBar } = useUI();
-    const { recentActivity, loading, refresh } = useDashboard();
+    const { recentActivity, highlights, loading, refresh } = useDashboard();
     const { isSaved, toggleSave } = useSaved();
 
     // Track scroll position for hide/show tab bar
@@ -67,6 +70,32 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     subtitle="Your Career Pulse" 
                 />
     
+                <View style={styles.statsGrid}>
+                    <View style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderRadius: 24 }]}>
+                        <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                            <Bookmark size={16} color={currentTheme.colors.primary} />
+                        </View>
+                        <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{recentActivity.length}</Text>
+                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>SAVED</Text>
+                    </View>
+                    <View style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderRadius: 24 }]}>
+                        <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
+                            <Send size={16} color={currentTheme.colors.success} />
+                        </View>
+                        <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>
+                            {highlights?.urgent?.walkins?.length || 0}
+                        </Text>
+                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>APPLIED</Text>
+                    </View>
+                    <View style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.warning, 0.05), borderRadius: 24 }]}>
+                        <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
+                            <Trophy size={16} color={currentTheme.colors.warning} />
+                        </View>
+                        <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>0</Text>
+                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>OFFERS</Text>
+                    </View>
+                </View>
+
                 <View style={styles.sectionHeader}>
                     <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Recent Activity</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('Explore')}>
@@ -109,14 +138,12 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 scrollEventThrottle={16}
                 stickyHeaderIndices={[0]}
                 renderItem={({ item }) => (
-                    <View style={styles.applicationWrapper}>
-                        <OpportunityCard 
-                            opportunity={item} 
-                            onPress={() => navigation.navigate('JobDetail', { opportunityId: item.id })} 
-                            onSave={() => toggleSave(item)}
-                            isSaved={isSaved(item.id)}
-                        />
-                    </View>
+                    <JobCard 
+                        opportunity={item} 
+                        onPress={() => navigation.navigate('JobDetail', { opportunityId: item.id })} 
+                        onSave={() => toggleSave(item)}
+                        isSaved={isSaved(item.id)}
+                    />
                 )}
                 ListHeaderComponent={renderHeader}
                 ListEmptyComponent={renderEmpty}

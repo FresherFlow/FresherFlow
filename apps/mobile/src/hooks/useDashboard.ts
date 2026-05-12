@@ -2,8 +2,18 @@ import { useState, useCallback, useEffect } from 'react';
 import { dashboardApi, savedApi } from '@fresherflow/api-client';
 import { Opportunity } from '@fresherflow/types';
 
+interface Highlights {
+    urgent?: {
+        walkins?: Opportunity[];
+        deadlines?: Opportunity[];
+    };
+    new?: Opportunity[];
+    hot?: Opportunity[];
+    [key: string]: unknown;
+}
+
 export function useDashboard() {
-    const [highlights, setHighlights] = useState<unknown>(null);
+    const [highlights, setHighlights] = useState<Highlights | null>(null);
     const [recentActivity, setRecentActivity] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -15,7 +25,7 @@ export function useDashboard() {
                 savedApi.list()
             ]);
             
-            setHighlights(highlightsData);
+            setHighlights(highlightsData as Highlights);
             setRecentActivity((savedData as { opportunities?: Opportunity[] }).opportunities || []);
         } catch (error) {
             console.error('Failed to fetch dashboard data', error);
