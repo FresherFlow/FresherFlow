@@ -1,7 +1,5 @@
 import React, { memo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Alert, Share } from 'react-native';
-import * as Clipboard from 'expo-clipboard';
-import * as Haptics from 'expo-haptics';
+import { StyleSheet, Text, TouchableOpacity, View, Animated } from 'react-native';
 import { CircleDollarSign, MapPin, Users, Clock, ShieldCheck, Bookmark, ChevronRight, MessageSquare } from 'lucide-react-native';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
@@ -46,6 +44,25 @@ export const OpportunityCard = memo(({
   matchScore,
 }: Props) => {
   const { currentTheme } = useTheme();
+  const scale = React.useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.spring(scale, {
+        toValue: 0.96,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 100
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        friction: 8,
+        tension: 100
+    }).start();
+  };
   const config = getTypeConfig(opportunity.type, currentTheme);
 
   const [actionSheetVisible, setActionSheetVisible] = useState(false);
@@ -72,11 +89,14 @@ export const OpportunityCard = memo(({
   })();
 
   return (
-    <SurfaceCard 
-        onPress={onPress}
-        onLongPress={handleLongPress}
-        style={styles.container}
-    >
+    <Animated.View style={{ transform: [{ scale }] }}>
+        <SurfaceCard 
+            onPress={onPress}
+            onLongPress={handleLongPress}
+            onPressIn={handlePressIn}
+            onPressOut={handlePressOut}
+            style={styles.container}
+        >
       <View style={styles.header}>
         <View style={styles.titleArea}>
             <View style={styles.badgeRow}>
@@ -191,13 +211,21 @@ export const OpportunityCard = memo(({
           onSave={onSave}
           isSaved={isSaved}
       />
-    </SurfaceCard>
+        </SurfaceCard>
+    </Animated.View>
   );
+});
+
+export const JobCard: React.FC<Props> = memo((props) => {
+    return (
+        <View style={{ paddingHorizontal: SPACING.lg, marginBottom: SPACING.md }}>
+            <OpportunityCard {...props} />
+        </View>
+    );
 });
 
 const styles = StyleSheet.create({
     container: {
-        marginBottom: SPACING.md,
         padding: SPACING.md,
     },
     header: {

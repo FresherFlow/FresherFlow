@@ -15,7 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Compass, Filter } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { OpportunityCard } from '@/system/components/OpportunityCard';
+import { JobCard } from '@/system/components/OpportunityCard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useSaved } from '@repo/frontend-core';
@@ -26,9 +26,15 @@ import { PremiumHeader } from '@/system/components/PremiumPrimitives';
 import { PremiumSearchBar } from '@/system/components/PremiumSearchBar';
 import { FilterSheet } from '@/system/components/FilterSheet';
 import { FilterChip } from '@/system/components/FilterChip';
+import { SPACING } from '@/system/constants/dimensions';
 import { useExplore } from '@/hooks/useExplore';
+import { Opportunity } from '@fresherflow/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExploreMain'>;
+
+type ExploreItem = 
+  | { type: 'stats'; key: string; count: number }
+  | { type: 'opportunity'; data: Opportunity; key: string };
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -110,27 +116,40 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         <Screen safe={false}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
-            <FlatList
-                data={results}
-                keyExtractor={(item) => item.id}
+            <FlatList<ExploreItem>
+                data={resultsCount > 0 
+                    ? [{ type: 'stats', key: 'results_stats', count: resultsCount }, ...results.map(r => ({ type: 'opportunity', data: r, key: r.id } as ExploreItem))] 
+                    : results.map(r => ({ type: 'opportunity', data: r, key: r.id } as ExploreItem))
+                }
+                keyExtractor={(item) => item.key}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
                 stickyHeaderIndices={[0]}
-                renderItem={({ item }) => (
-                    <View style={styles.cardWrapper}>
-                        <OpportunityCard 
-                            opportunity={item} 
-                            onPress={() => navigation.navigate('JobDetail', { opportunityId: item.id })} 
-                            onSave={() => toggleSave(item)}
-                            isSaved={isSaved(item.id)}
+                renderItem={({ item }) => {
+                    if (item.type === 'stats') {
+                        return (
+                            <View style={styles.resultsHeader}>
+                                <Text style={[styles.resultsText, { color: currentTheme.colors.textMuted }]}>
+                                    {getResultsText()}
+                                </Text>
+                            </View>
+                        );
+                    }
+                    return (
+                        <JobCard 
+                            opportunity={item.data} 
+                            onPress={() => navigation.navigate('JobDetail', { opportunityId: item.data.id })} 
+                            onSave={() => toggleSave(item.data)}
+                            isSaved={isSaved(item.data.id)}
                         />
-                    </View>
-                )}
+                    );
+                }}
                 ListHeaderComponent={
-                    <View style={{ backgroundColor: currentTheme.colors.background }}>
+                    <View style={{ backgroundColor: currentTheme.colors.background, paddingTop: 8 }}>
                         <PremiumHeader 
                             title="Discovery" 
                             subtitle="Explore Opportunities" 
+                            style={{ paddingBottom: 0 }}
                             rightSlot={
                                 <TouchableOpacity 
                                     onPress={() => setSheetVisible(true)}
@@ -172,13 +191,6 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 )}
                             </ScrollView>
                         )}
-                        {!loading && resultsCount > 0 && (
-                            <View style={styles.resultsHeader}>
-                                <Text style={[styles.resultsText, { color: currentTheme.colors.textMuted }]}>
-                                    {getResultsText()}
-                                </Text>
-                            </View>
-                        )}
                     </View>
                 }
                 ListEmptyComponent={renderEmpty}
@@ -208,9 +220,9 @@ const styles = StyleSheet.create({
         // paddingBottom removed - now dynamic
     },
     searchContainer: {
-        paddingHorizontal: 20,
-        marginTop: 4,
-        marginBottom: 16,
+        paddingHorizontal: SPACING.lg,
+        marginTop: SPACING.sm,
+        marginBottom: SPACING.md,
     },
     filterBtn: {
         width: 44,
@@ -234,12 +246,12 @@ const styles = StyleSheet.create({
         marginBottom: 4,
     },
     chipContent: {
-        paddingHorizontal: 28,
+        paddingHorizontal: SPACING.lg,
     },
     resultsHeader: {
-        paddingHorizontal: 28,
-        marginTop: 12,
-        marginBottom: 16,
+        paddingHorizontal: SPACING.lg,
+        marginTop: SPACING.md,
+        marginBottom: SPACING.sm,
     },
     resultsText: {
         fontSize: 10,
@@ -247,8 +259,8 @@ const styles = StyleSheet.create({
         letterSpacing: 1.5,
     },
     cardWrapper: {
-        paddingHorizontal: 20,
-        marginBottom: 16,
+        paddingHorizontal: SPACING.lg,
+        marginBottom: SPACING.md,
     },
     emptyContainer: {
         flex: 1,

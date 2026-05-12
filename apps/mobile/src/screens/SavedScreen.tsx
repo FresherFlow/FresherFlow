@@ -14,7 +14,7 @@ import {
 import { Bookmark, Compass } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
-import { OpportunityCard } from '@/system/components/OpportunityCard';
+import { JobCard } from '@/system/components/OpportunityCard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { mScale, SPACING, RADIUS } from '@/system/constants/dimensions';
@@ -96,13 +96,11 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
                 renderItem={({ item }) => (
-                    <View style={styles.cardWrapper}>
-                        <OpportunityCard 
-                            opportunity={item} 
-                            onPress={() => navigation.navigate('JobDetail', { opportunityId: item.id })} 
-                            isSaved={true}
-                        />
-                    </View>
+                    <JobCard 
+                        opportunity={item} 
+                        onPress={() => navigation.navigate('JobDetail', { opportunityId: item.id })} 
+                        isSaved={true}
+                    />
                 )}
                 ListHeaderComponent={
                     !loading && savedJobs.length > 0 ? (
@@ -132,9 +130,9 @@ const styles = StyleSheet.create({
         paddingTop: 12,
     },
     resultsHeader: {
-        paddingHorizontal: 28,
-        marginTop: 12,
-        marginBottom: 16,
+        paddingHorizontal: SPACING.lg,
+        marginTop: SPACING.md,
+        marginBottom: SPACING.sm,
     },
     resultsText: {
         fontSize: mScale(10),

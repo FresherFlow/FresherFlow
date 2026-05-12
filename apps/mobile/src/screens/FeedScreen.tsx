@@ -28,7 +28,7 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 // Premium System
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader } from '@/system/components/PremiumPrimitives';
-import { OpportunityCard } from '@/system/components/OpportunityCard';
+import { JobCard } from '@/system/components/OpportunityCard';
 import { mScale, SPACING, RADIUS, SCREEN_WIDTH } from '@/system/constants/dimensions';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FeedList'>;
@@ -47,6 +47,7 @@ type FeedItem =
 import { useUI } from '@/contexts/UIContext';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
+import { useToast } from '@/contexts/ToastContext';
 
 interface FeedTabContentProps {
     feedType: string | null;
@@ -103,17 +104,15 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
         );
       case 'opportunity':
         return (
-            <View style={{ paddingHorizontal: SPACING.lg }}>
-                <OpportunityCard
-                    opportunity={item.data}
-                    onPress={() => {
-                        void saveDetailCache(item.data);
-                        navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
-                    }}
-                    onSave={() => toggleSave(item.data)}
-                    isSaved={isSaved(item.data.id)}
-                />
-            </View>
+            <JobCard
+                opportunity={item.data}
+                onPress={() => {
+                    void saveDetailCache(item.data);
+                    navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
+                }}
+                onSave={() => toggleSave(item.data)}
+                isSaved={isSaved(item.data.id)}
+            />
         );
       case 'skeleton':
         return <View style={[styles.skeleton, { backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />;
@@ -176,6 +175,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
 
 const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const { currentTheme } = useTheme();
+  const { showSuccess } = useToast();
   const { isSaved, toggleSave } = useSaved();
   const { hideTabBar, showTabBar } = useUI();
   const [activeTab, setActiveTab] = useState(0);
@@ -216,6 +216,12 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
   // Track scroll position for hide/show tab bar
   const scrollOffset = useRef(0);
+
+  const handleToggleSave = useCallback((opportunity: Opportunity) => {
+    const wasSaved = isSaved(opportunity.id);
+    toggleSave(opportunity);
+    showSuccess(wasSaved ? 'Opportunity removed from saves' : 'Opportunity saved successfully!');
+  }, [isSaved, toggleSave, showSuccess]);
 
   const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
@@ -269,20 +275,6 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
       <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
         <PremiumHeader 
             title="Discover" 
-            rightSlot={
-                <TouchableOpacity 
-                    style={styles.themeBtn}
-                    onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    }}
-                >
-                    <View style={styles.moreIconRow}>
-                        <View style={[styles.moreDot, { backgroundColor: currentTheme.colors.primary }]} />
-                        <View style={[styles.moreDot, { backgroundColor: currentTheme.colors.primary }]} />
-                        <View style={[styles.moreDot, { backgroundColor: currentTheme.colors.primary }]} />
-                    </View>
-                </TouchableOpacity>
-            }
         />
         
         <View style={styles.feedSelector}>
@@ -348,7 +340,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 navigation={navigation}
                 currentTheme={currentTheme}
                 isSaved={isSaved}
-                toggleSave={toggleSave}
+                toggleSave={handleToggleSave}
                 handleScroll={handleScroll}
             />
         )}
@@ -392,16 +384,6 @@ const styles = StyleSheet.create({
         height: mScale(44),
         alignItems: 'center',
         justifyContent: 'center',
-    },
-    moreIconRow: {
-        flexDirection: 'column',
-        gap: 3,
-        alignItems: 'center',
-    },
-    moreDot: {
-        width: 4,
-        height: 4,
-        borderRadius: 2,
     },
     statsRow: {
         flexDirection: 'row',

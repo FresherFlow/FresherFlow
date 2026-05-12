@@ -19,7 +19,6 @@ import {
     Flag, 
     X,
 } from 'lucide-react-native';
-import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { Opportunity } from '@fresherflow/types';
@@ -145,22 +144,22 @@ export const OpportunityActionSheet: React.FC<Props> = ({
             onRequestClose={closeSheet}
         >
             <View style={styles.overlay}>
-                <Pressable style={StyleSheet.absoluteFill} onPress={closeSheet}>
+                <Pressable 
+                    style={StyleSheet.absoluteFill} 
+                    onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        closeSheet();
+                    }}
+                >
                     <Animated.View 
                         style={[
                             styles.backdrop, 
                             { 
-                                opacity: backdropOpacity 
+                                opacity: backdropOpacity,
+                                backgroundColor: 'black'
                             }
                         ]} 
-                    >
-                        <BlurView 
-                            intensity={80} 
-                            style={StyleSheet.absoluteFill} 
-                            tint={currentTheme.mode === 'dark' ? 'dark' : 'light'} 
-                        />
-                        <View style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: 0.6 }]} />
-                    </Animated.View>
+                    />
                 </Pressable>
 
                 <Animated.View 
@@ -193,14 +192,32 @@ export const OpportunityActionSheet: React.FC<Props> = ({
                             </Text>
                         </View>
                         <TouchableOpacity 
-                            onPress={onClose}
+                            onPress={closeSheet}
                             style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
                         >
                             <X size={20} color={currentTheme.colors.text} />
                         </TouchableOpacity>
                     </View>
 
-                    <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.3) }]} />
+                    {opportunity.applyLink && (
+                        <TouchableOpacity 
+                            activeOpacity={0.7}
+                            onPress={handleCopy}
+                            style={[styles.linkPreview, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
+                        >
+                            <View style={styles.linkIconBox}>
+                                <Copy size={16} color={currentTheme.colors.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.linkLabel, { color: currentTheme.colors.textMuted }]}>APPLY LINK</Text>
+                                <Text style={[styles.linkText, { color: currentTheme.colors.primary }]} numberOfLines={3}>
+                                    {opportunity.applyLink}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
+
+                    <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
                     <View style={styles.actions}>
                         <ActionRow 
@@ -244,7 +261,7 @@ const ActionRow = ({
     color,
     isSaved 
 }: { 
-    icon: any; 
+    icon: React.ElementType; 
     label: string; 
     onPress: () => void;
     destructive?: boolean;
@@ -289,10 +306,9 @@ const styles = StyleSheet.create({
         ...StyleSheet.absoluteFillObject,
     },
     sheet: {
-        borderTopLeftRadius: RADIUS.xxl,
-        borderTopRightRadius: RADIUS.xxl,
+        borderTopLeftRadius: RADIUS.xl,
+        borderTopRightRadius: RADIUS.xl,
         paddingHorizontal: SPACING.lg,
-        // Ensure background is fully solid
         elevation: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -4 },
@@ -304,23 +320,16 @@ const styles = StyleSheet.create({
         height: 4,
         borderRadius: 2,
         alignSelf: 'center',
-        marginTop: SPACING.sm,
-        marginBottom: SPACING.md,
+        marginVertical: 12,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: SPACING.md,
-        paddingTop: SPACING.lg,
-        paddingBottom: SPACING.lg,
-        paddingHorizontal: SPACING.md,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(128,128,128,0.1)',
+        paddingVertical: 16,
+        gap: 16,
     },
     headerText: {
         flex: 1,
-        marginLeft: SPACING.md,
-        marginRight: SPACING.sm,
     },
     title: {
         fontSize: mScale(18),
@@ -339,19 +348,47 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
     },
+    linkPreview: {
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        flexDirection: 'row',
+        gap: 12,
+        marginBottom: 16,
+    },
+    linkIconBox: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        backgroundColor: 'rgba(0,0,0,0.05)',
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    linkLabel: {
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 1,
+        marginBottom: 4,
+    },
+    linkText: {
+        fontSize: 13,
+        fontWeight: '500',
+        lineHeight: 18,
+    },
     divider: {
         height: 1,
-        width: '100%',
-        marginBottom: SPACING.md,
+        marginBottom: 8,
     },
     actions: {
-        gap: SPACING.xs,
+        gap: 4,
     },
     actionRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        paddingVertical: SPACING.md,
-        gap: SPACING.md,
+        paddingVertical: 14,
+        paddingHorizontal: 8,
+        borderRadius: 12,
+        gap: 16,
     },
     iconWrapper: {
         width: 44,
@@ -361,7 +398,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     actionLabel: {
-        fontSize: mScale(16),
+        fontSize: 15,
         fontWeight: '600',
     },
 });
