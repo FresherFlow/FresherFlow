@@ -9,7 +9,7 @@ import {
   Animated,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
-import { Sparkles, X } from 'lucide-react-native';
+import { Zap, X } from 'lucide-react-native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -76,7 +76,7 @@ const MagicShareBanner = memo(() => {
     <Animated.View style={[styles.container, { transform: [{ translateY: slideAnim }] }]}>
       <View style={styles.card}>
         <View style={styles.iconWrapper}>
-          <Sparkles size={20} color={currentTheme.colors.primary} />
+          <Zap size={20} color={currentTheme.colors.primary} />
         </View>
         
         <View style={styles.content}>

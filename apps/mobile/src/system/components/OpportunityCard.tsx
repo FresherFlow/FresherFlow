@@ -9,7 +9,7 @@ import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import { OpportunityActionSheet } from './OpportunityActionSheet';
 
 interface Props {
-  opportunity: Opportunity & { matchReason?: string; matchScore?: number };
+  opportunity: Opportunity & { matchReason?: string; matchScore?: number; isEligible?: boolean };
   onPress: () => void;
   onSave?: (opportunity: Opportunity) => void;
   isSaved?: boolean;
@@ -88,6 +88,8 @@ export const OpportunityCard = memo(({
       return null;
   })();
 
+  const effectiveMatchScore = matchScore ?? opportunity.matchScore;
+
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
         <SurfaceCard 
@@ -109,6 +111,19 @@ export const OpportunityCard = memo(({
                         <Text style={[styles.verifiedText, { color: currentTheme.colors.success }]}>VERIFIED</Text>
                     </View>
                 )}
+                {(effectiveMatchScore !== undefined || opportunity.isEligible !== undefined) && (
+                    <View style={[
+                        styles.verifiedBadge, 
+                        { backgroundColor: alpha((opportunity.isEligible === false) ? currentTheme.colors.error : currentTheme.colors.primary, 0.05) }
+                    ]}>
+                        <Text style={[
+                            styles.verifiedText, 
+                            { color: (opportunity.isEligible === false) ? currentTheme.colors.error : currentTheme.colors.primary }
+                        ]}>
+                            {(opportunity.isEligible === false) ? 'INELIGIBLE' : `${effectiveMatchScore}% MATCH`}
+                        </Text>
+                    </View>
+                )}
             </View>
             <View style={styles.companyRow}>
                 <CompanyLogo 
@@ -125,12 +140,6 @@ export const OpportunityCard = memo(({
             </View>
         </View>
 
-        {matchScore ? (
-            <View style={[styles.matchIndicator, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]}>
-                <Text style={[styles.matchScore, { color: currentTheme.colors.primary }]}>{matchScore}%</Text>
-                <Text style={[styles.matchLabel, { color: currentTheme.colors.textMuted }]}>FIT</Text>
-            </View>
-        ) : (
             <TouchableOpacity 
                 style={[
                     styles.bookmarkBtn, 
@@ -145,7 +154,6 @@ export const OpportunityCard = memo(({
                     fill={isSaved ? currentTheme.colors.primary : 'transparent'} 
                 />
             </TouchableOpacity>
-        )}
       </View>
 
       <View style={styles.metaRow}>

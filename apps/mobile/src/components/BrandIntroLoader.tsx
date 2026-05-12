@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Dimensions, Animated, Image } from 'react-native';
-import { Sparkles, Zap, Users } from 'lucide-react-native';
+import { Briefcase, Zap, Users } from 'lucide-react-native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import LogoImage from '@/assets/logo.png';
 import LogoWhiteImage from '@/assets/logo-white.png';
@@ -14,7 +14,7 @@ const alpha = (color: string, opacity: number) => {
 
 const MESSAGES = [
   { text: 'Shared by Scouts. Verified by Us.', icon: Zap },
-  { text: 'Collaborative Opportunity Discovery.', icon: Sparkles },
+  { text: 'Collaborative Opportunity Discovery.', icon: Briefcase },
   { text: 'Join the contributor network.', icon: Users },
 ];
 

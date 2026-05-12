@@ -16,6 +16,8 @@ import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import * as Haptics from 'expo-haptics';
 import { ExploreFilters } from '@/hooks/useExplore';
 
+import { OpportunityType, WorkMode } from '@fresherflow/types';
+
 const { height } = Dimensions.get('window');
 
 interface FilterSheetProps {
@@ -66,6 +68,7 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filt
             type: null,
             workMode: null,
             batchYear: null,
+            tag: null,
             sort: 'latest',
         };
         setTempFilters(reset);
@@ -120,15 +123,15 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filt
 
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                         <FilterSection title="OPPORTUNITY TYPE">
-                            <Option label="Jobs" active={tempFilters.type === 'JOB'} onPress={() => toggleType('JOB')} />
-                            <Option label="Internships" active={tempFilters.type === 'INTERNSHIP'} onPress={() => toggleType('INTERNSHIP')} />
-                            <Option label="Walk-ins" active={tempFilters.type === 'WALKIN'} onPress={() => toggleType('WALKIN')} />
+                            <Option label="Jobs" active={tempFilters.type === OpportunityType.JOB} onPress={() => toggleType(OpportunityType.JOB)} />
+                            <Option label="Internships" active={tempFilters.type === OpportunityType.INTERNSHIP} onPress={() => toggleType(OpportunityType.INTERNSHIP)} />
+                            <Option label="Walk-ins" active={tempFilters.type === OpportunityType.WALKIN} onPress={() => toggleType(OpportunityType.WALKIN)} />
                         </FilterSection>
 
                         <FilterSection title="WORK MODE">
-                            <Option label="Remote" active={tempFilters.workMode === 'REMOTE'} onPress={() => toggleWorkMode('REMOTE')} />
-                            <Option label="Hybrid" active={tempFilters.workMode === 'HYBRID'} onPress={() => toggleWorkMode('HYBRID')} />
-                            <Option label="On-site" active={tempFilters.workMode === 'ONSITE'} onPress={() => toggleWorkMode('ONSITE')} />
+                            <Option label="Remote" active={tempFilters.workMode === WorkMode.REMOTE} onPress={() => toggleWorkMode(WorkMode.REMOTE)} />
+                            <Option label="Hybrid" active={tempFilters.workMode === WorkMode.HYBRID} onPress={() => toggleWorkMode(WorkMode.HYBRID)} />
+                            <Option label="On-site" active={tempFilters.workMode === WorkMode.ONSITE} onPress={() => toggleWorkMode(WorkMode.ONSITE)} />
                         </FilterSection>
 
                         <FilterSection title="GRADUATION BATCH">
