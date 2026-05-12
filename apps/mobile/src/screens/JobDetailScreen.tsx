@@ -1,4 +1,4 @@
-import React, { useMemo, memo } from 'react';
+import React, { useMemo, memo, useCallback, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -32,14 +32,18 @@ import {
   Cpu,
   Briefcase,
   Trophy,
+  Flag,
 } from 'lucide-react-native';
+import { feedbackApi } from '@fresherflow/api-client';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/contexts/ThemeContext';
+import { useFollows } from '@/hooks/useFollows';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useOpportunityDetail } from '@/hooks/useOpportunityDetail';
 import { renderFormattedDescription } from '@/utils/DescriptionParser';
+import { markJobAsSeen } from '@/utils/seenJobs';
 
 import { useNotifications } from '@repo/frontend-core';
 import * as Haptics from 'expo-haptics';
@@ -52,6 +56,8 @@ import { PremiumHeader, SurfaceCard, GlassCard } from '@/system/components/Premi
 import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING } from '../system/constants/dimensions';
 import { CommentSection } from '@/system/components/CommentSection';
+import { ReportModal } from '@/system/components/ReportModal';
+import { FeedbackReason } from '@fresherflow/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -63,7 +69,7 @@ const alpha = (color: string, opacity: number) => {
 const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
   const { currentTheme } = useTheme();
   
-  // Replaced with robust DescriptionParser utility
+  const { isFollowing, follow, unfollow } = useFollows();
   const insets = useSafeAreaInsets();
 
   const opportunityId = useMemo(
@@ -88,6 +94,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
   const { showToast } = useNotifications();
 
+  const [showReportPopup, setShowReportPopup] = useState(false);
   const scrollY = React.useRef(new Animated.Value(0)).current;
   const fabAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -148,8 +155,28 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
   const fadeAnim6 = React.useRef(new Animated.Value(0)).current;
   const fadeAnim7 = React.useRef(new Animated.Value(0)).current;
 
+  const handleReport = useCallback(() => {
+    if (!opportunityId) return;
+    setShowReportPopup(true);
+  }, [opportunityId]);
+
+  const submitReport = async (reason: FeedbackReason) => {
+    if (!opportunityId) return;
+    try {
+        await feedbackApi.submit(opportunityId, reason);
+        showToast('Thank you! Your report has been received.', 'success');
+        setShowReportPopup(false);
+    } catch {
+        showToast('Failed to submit report. Please try again.', 'error');
+    }
+  };
+
+  const lastAnimatedId = React.useRef<string | null>(null);
+
   React.useEffect(() => {
-    if (!loading && opportunity) {
+    if (!loading && opportunity && opportunityId && lastAnimatedId.current !== opportunityId) {
+      void markJobAsSeen(opportunityId);
+      lastAnimatedId.current = opportunityId;
       Animated.stagger(100, [
         Animated.spring(fadeAnim1, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
         Animated.spring(fadeAnim2, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
@@ -160,7 +187,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         Animated.spring(fadeAnim7, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
       ]).start();
     }
-  }, [loading, opportunity]);
+  }, [loading, opportunityId]);
 
 
 
@@ -203,7 +230,10 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             showBack
             onBack={() => navigation.goBack()}
             rightSlot={
-                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                <View style={{ flexDirection: 'row', gap: mScale(4), alignItems: 'center' }}>
+                    <TouchableOpacity onPress={handleReport} style={styles.iconBtn}>
+                        <Flag size={mScale(20)} color={currentTheme.colors.textMuted} />
+                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => toggleSave(opportunity)} style={styles.iconBtn}>
                         <Bookmark 
                             size={mScale(20)} 
@@ -225,6 +255,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             <ChevronLeft size={24} color={currentTheme.colors.text} />
          </TouchableOpacity>
          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity onPress={handleReport} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+                <Flag size={20} color={currentTheme.colors.textMuted} />
+            </TouchableOpacity>
             <TouchableOpacity onPress={() => toggleSave(opportunity)} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
                 <Bookmark 
                     size={20} 
@@ -258,29 +291,82 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     colors={[alpha(currentTheme.colors.primary, 0.15), 'transparent']}
                     style={styles.heroGradient}
                 />
-                <Text style={[styles.title, { color: currentTheme.colors.text }]}>{opportunity.title}</Text>
-                
-                <View style={styles.companyArea}>
-                    <CompanyLogo 
-                        name={opportunity.company} 
-                        website={opportunity.companyWebsite}
-                        applyLink={opportunity.applyLink}
-                        logoUrl={opportunity.companyLogoUrl} 
-                        size={56} 
-                    />
-                    <View style={{ flex: 1, gap: 4 }}>
-                        <Text style={[styles.companyName, { color: currentTheme.colors.textMuted }]}>{opportunity.company}</Text>
-                        <View style={styles.badgeRow}>
-                            <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                                <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{opportunity.type.toUpperCase()}</Text>
-                            </View>
-                            {opportunity.verificationFailures === 0 && (
-                                <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.success, 0.05) }]}>
-                                    <ShieldCheck size={12} color={currentTheme.colors.success} />
-                                </View>
-                            )}
+                <View style={styles.titleRow}>
+                    <Text style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}>{opportunity.title}</Text>
+                    {opportunity.matchScore !== undefined && (
+                        <View style={[
+                            styles.matchIndicator, 
+                            { borderColor: alpha(opportunity.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary, 0.3) }
+                        ]}>
+                            <Text style={[
+                                styles.matchScore, 
+                                { color: opportunity.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary }
+                            ]}>
+                                {opportunity.matchScore}%
+                            </Text>
+                            <Text style={[
+                                styles.matchLabel, 
+                                { color: currentTheme.colors.textMuted }
+                            ]}>
+                                {opportunity.isEligible === false ? 'MATCH' : 'FIT'}
+                            </Text>
                         </View>
-                    </View>
+                    )}
+                </View>
+                {opportunity.matchReason && (
+                    <Text style={[
+                        styles.matchReasonText, 
+                        { color: opportunity.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary }
+                    ]}>
+                        {opportunity.matchReason.toUpperCase()}
+                    </Text>
+                )}
+                
+                <View style={styles.companyAreaContainer}>
+                    <TouchableOpacity 
+                        style={styles.companyArea}
+                        onPress={() => navigation.push('CompanyDetail', { 
+                            companyName: opportunity.company,
+                            companyLogoUrl: opportunity.companyLogoUrl ?? undefined,
+                            website: opportunity.companyWebsite ?? undefined
+                        })}
+                    >
+                        <CompanyLogo 
+                            name={opportunity.company} 
+                            website={opportunity.companyWebsite}
+                            applyLink={opportunity.applyLink}
+                            logoUrl={opportunity.companyLogoUrl} 
+                            size={56} 
+                        />
+                        <View style={{ flex: 1, gap: 4 }}>
+                            <Text style={[styles.companyName, { color: currentTheme.colors.text }]}>{opportunity.company}</Text>
+                            <View style={styles.badgeRow}>
+                                <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{opportunity.type.toUpperCase()}</Text>
+                                </View>
+                                {opportunity.verificationFailures === 0 && (
+                                    <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.success, 0.05) }]}>
+                                        <ShieldCheck size={12} color={currentTheme.colors.success} />
+                                    </View>
+                                )}
+                            </View>
+                        </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        onPress={() => isFollowing('COMPANY', opportunity.company) ? unfollow('COMPANY', opportunity.company) : follow('COMPANY', opportunity.company)}
+                        style={[
+                            styles.followButton, 
+                            { 
+                                backgroundColor: isFollowing('COMPANY', opportunity.company) ? 'transparent' : alpha(currentTheme.colors.primary, 0.1),
+                                borderColor: currentTheme.colors.primary,
+                                borderWidth: isFollowing('COMPANY', opportunity.company) ? 1 : 0
+                            }
+                        ]}
+                    >
+                        <Text style={[styles.followButtonText, { color: currentTheme.colors.primary }]}>
+                            {isFollowing('COMPANY', opportunity.company) ? 'FOLLOWING' : 'FOLLOW'}
+                        </Text>
+                    </TouchableOpacity>
                 </View>
             </Animated.View>
 
@@ -491,18 +577,15 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </Animated.View>
             )}
 
-            <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-                <Section title="Job Description">
-                    <SurfaceCard style={styles.descCard}>
-                        {opportunity.description 
-                            ? renderFormattedDescription(opportunity.description, { theme: currentTheme })
-                            : <Text style={[styles.description, { color: currentTheme.colors.textMuted }]}>
-                                Details pending verification. Please use the "Apply" link to view official details.
-                              </Text>
-                        }
-                    </SurfaceCard>
-                </Section>
-            </Animated.View>
+            {opportunity.description && (
+                <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <Section title="Job Description">
+                        <SurfaceCard style={styles.descCard}>
+                            {renderFormattedDescription(opportunity.description, { theme: currentTheme })}
+                        </SurfaceCard>
+                    </Section>
+                </Animated.View>
+            )}
 
             <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
                 <Section title="Hiring Proof">
@@ -650,6 +733,12 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
               </View>
           </TouchableOpacity>
       </Animated.View>
+
+      <ReportModal 
+        visible={showReportPopup}
+        onClose={() => setShowReportPopup(false)}
+        onSelectReason={submitReport}
+      />
     </Screen>
   );
 });
@@ -719,17 +808,63 @@ const styles = StyleSheet.create({
         paddingVertical: 5,
         borderRadius: 8,
     },
+    titleRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        justifyContent: 'space-between',
+        gap: 16,
+    },
     title: {
         fontSize: 34,
         fontWeight: '900',
         letterSpacing: -1.5,
         lineHeight: 40,
     },
+    matchIndicator: {
+        width: mScale(52),
+        height: mScale(52),
+        borderRadius: 26,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 4,
+    },
+    matchScore: {
+        fontSize: mScale(16),
+        fontWeight: '900',
+    },
+    matchLabel: {
+        fontSize: mScale(9),
+        fontWeight: '800',
+        marginTop: -2,
+    },
+    matchReasonText: {
+        fontSize: mScale(12),
+        fontWeight: '700',
+        marginTop: 8,
+        letterSpacing: 0.3,
+    },
     companyArea: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 16,
-        gap: 12,
+        gap: 16,
+        flex: 1,
+    },
+    companyAreaContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginTop: 20,
+    },
+    followButton: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 10,
+    },
+    followButtonText: {
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 0.5,
     },
     companyName: {
         fontSize: mScale(18),

@@ -6,11 +6,11 @@ import {
     TextInput,
     TouchableOpacity,
     ActivityIndicator,
-    Alert,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Send, Trash2, MessageSquare, ShieldCheck } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useUserAuth as useAuth } from '@repo/frontend-core';
+import { useNotifications } from '@repo/frontend-core';
 import { useComments } from '@/hooks/useComments';
 import { Section } from '@/system/layout/Layout';
 import { SurfaceCard } from '@/system/components/PremiumPrimitives';
@@ -27,7 +27,6 @@ const alpha = (color: string, opacity: number) => {
 
 export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId }) => {
     const { currentTheme } = useTheme();
-    const { user } = useAuth();
     const { 
         comments, 
         loading, 
@@ -36,36 +35,33 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
         deleteComment 
     } = useComments(opportunityId);
     
+    const { showToast } = useNotifications();
     const [inputText, setInputText] = useState('');
 
     const handleSubmit = async () => {
-        if (!inputText.trim()) return;
-        if (!user) {
-            Alert.alert('Sign in required', 'Please sign in to leave a comment.');
-            return;
-        }
+        if (!inputText.trim() || posting) return;
 
         try {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             await postComment(inputText.trim());
             setInputText('');
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            showToast('Comment posted successfully!', 'success');
         } catch (err: unknown) {
-            Alert.alert('Error', (err as Error).message || 'Failed to post comment.');
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            const error = err as { status?: number; message?: string };
+            if (error.status === 401) {
+                showToast('Sign in required for synced comments. Saving locally.', 'info');
+            } else {
+                showToast(error.message || 'Failed to post comment.', 'error');
+            }
         }
     };
 
     const handleDelete = (commentId: string) => {
-        Alert.alert(
-            'Delete Comment',
-            'Are you sure you want to delete this comment?',
-            [
-                { text: 'Cancel', style: 'cancel' },
-                { 
-                    text: 'Delete', 
-                    style: 'destructive',
-                    onPress: () => deleteComment(commentId).catch((err: unknown) => Alert.alert('Error', (err as Error).message))
-                }
-            ]
-        );
+        deleteComment(commentId)
+            .then(() => showToast('Comment deleted', 'success'))
+            .catch(() => showToast('Failed to delete comment', 'error'));
     };
 
     return (
@@ -75,28 +71,28 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
                 <SurfaceCard style={styles.inputContainer}>
                     <TextInput
                         style={[styles.input, { color: currentTheme.colors.text }]}
-                        placeholder={user ? "Add a helpful comment..." : "Sign in to join discussion"}
+                        placeholder="Add a helpful comment..."
                         placeholderTextColor={currentTheme.colors.textMuted}
                         value={inputText}
                         onChangeText={setInputText}
                         multiline
                         maxLength={500}
-                        editable={!!user && !posting}
+                        editable={!posting}
                     />
                     <TouchableOpacity 
                         style={[
                             styles.sendBtn, 
                             { 
-                                backgroundColor: inputText.trim() && user ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05) 
+                                backgroundColor: inputText.trim() ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05) 
                             }
                         ]}
                         onPress={handleSubmit}
-                        disabled={!inputText.trim() || !user || posting}
+                        disabled={!inputText.trim() || posting}
                     >
                         {posting ? (
                             <ActivityIndicator size="small" color={currentTheme.colors.background} />
                         ) : (
-                            <Send size={18} color={inputText.trim() && user ? currentTheme.colors.background : currentTheme.colors.textMuted} />
+                            <Send size={18} color={inputText.trim() ? currentTheme.colors.background : currentTheme.colors.textMuted} />
                         )}
                     </TouchableOpacity>
                 </SurfaceCard>
@@ -123,11 +119,9 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
                                         <Text style={[styles.timeText, { color: currentTheme.colors.textMuted }]}>
                                             {new Date(comment.createdAt).toLocaleDateString()}
                                         </Text>
-                                        {user?.id === comment.user.id && (
-                                            <TouchableOpacity onPress={() => handleDelete(comment.id)} style={styles.deleteBtn}>
-                                                <Trash2 size={14} color={currentTheme.colors.error} />
-                                            </TouchableOpacity>
-                                        )}
+                                        <TouchableOpacity onPress={() => handleDelete(comment.id)} style={styles.deleteBtn}>
+                                            <Trash2 size={14} color={currentTheme.colors.error} />
+                                        </TouchableOpacity>
                                     </View>
                                 </View>
                                 <Text style={[styles.commentText, { color: alpha(currentTheme.colors.text, 0.8) }]}>
