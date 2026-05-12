@@ -6,6 +6,7 @@ import {
     FlatList,
     RefreshControl,
     TouchableOpacity,
+    Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
@@ -107,11 +108,13 @@ const MyContributionsScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
         <Screen safe={false}>
-            <PremiumHeader 
-                title="My Contributions" 
-                showBack 
-                onBack={() => navigation.goBack()} 
-            />
+            <View style={{ paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
+                <PremiumHeader 
+                    title="My Contributions" 
+                    showBack 
+                    onBack={() => navigation.goBack()} 
+                />
+            </View>
             
             <FlatList
                 data={contributions}

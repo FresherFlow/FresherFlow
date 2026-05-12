@@ -187,7 +187,7 @@ const ReferralsScreen: React.FC = () => {
                                 </View>
                                 <View style={[styles.refStatus, { backgroundColor: ref.activated ? alpha(currentTheme.colors.success, 0.1) : alpha(currentTheme.colors.warning, 0.1) }]}>
                                     <Text style={[styles.refStatusText, { color: ref.activated ? currentTheme.colors.success : currentTheme.colors.warning }]}>
-                                        {ref.activated ? 'ACTIVE' : 'PENDING'}
+                                        {ref.activated ? 'ACTIVE' : `${ref.completionPct}%`}
                                     </Text>
                                 </View>
                             </View>

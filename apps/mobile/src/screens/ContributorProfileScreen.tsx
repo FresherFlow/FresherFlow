@@ -7,6 +7,7 @@ import {
     ActivityIndicator,
     RefreshControl,
     TouchableOpacity,
+    Platform,
 } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
@@ -14,7 +15,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useContributor } from '@/hooks/useContributor';
 import { Screen, Section } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
-import { OpportunityCard } from '@/system/components/OpportunityCard';
+import { JobCard } from '@/system/components/OpportunityCard';
 import { SPACING, mScale } from '@/system/constants/dimensions';
 import { ShieldCheck, Award, UserPlus, UserCheck } from 'lucide-react-native';
 import { useFollows } from '@/hooks/useFollows';
@@ -128,22 +129,22 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
 
     return (
         <Screen safe={false}>
-            <PremiumHeader 
-                title="Contributor Profile" 
-                showBack 
-                onBack={() => navigation.goBack()} 
-            />
+            <View style={{ paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
+                <PremiumHeader 
+                    title="Contributor Profile" 
+                    showBack 
+                    onBack={() => navigation.goBack()} 
+                />
+            </View>
             
             <FlatList
                 data={opportunities}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <View style={styles.cardWrapper}>
-                        <OpportunityCard 
-                            opportunity={item} 
-                            onPress={() => navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id })}
-                        />
-                    </View>
+                    <JobCard 
+                        opportunity={item} 
+                        onPress={() => navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id })}
+                    />
                 )}
                 ListHeaderComponent={renderHeader}
                 contentContainerStyle={styles.listContent}
