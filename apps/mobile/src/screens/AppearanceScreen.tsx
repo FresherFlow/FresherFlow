@@ -8,7 +8,7 @@ import {
   StatusBar,
   Platform,
 } from 'react-native';
-import { Check, Palette, Moon, Sun, Smartphone } from 'lucide-react-native';
+import { Check, Palette, Moon, Sun, Smartphone, Zap } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
@@ -17,7 +17,7 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { SecondaryHeader } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, PremiumToggle } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Appearance'>;
 
@@ -27,12 +27,18 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const AppearanceScreen = ({ navigation }: Props) => {
-  const { currentTheme, themeMode, setThemeMode } = useTheme();
+  const { currentTheme, themeMode, setThemeMode, isAmoled, toggleAmoled } = useTheme();
 
   const handleModeSelect = useCallback((mode: 'light' | 'dark' | 'system') => {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setThemeMode(mode);
   }, [setThemeMode]);
+
+  const onToggleAmoled = useCallback((value: boolean) => {
+    toggleAmoled(value);
+  }, [toggleAmoled]);
+
+  const isDarkMode = currentTheme.mode === 'dark';
 
   return (
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
@@ -50,7 +56,7 @@ const AppearanceScreen = ({ navigation }: Props) => {
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>Display Mode</Text>
           <View style={styles.modeGrid}>
             <ModeCard 
-              label="Dark" 
+              label={isAmoled && themeMode === 'dark' ? "AMOLED" : "Dark"} 
               active={themeMode === 'dark'} 
               icon={Moon} 
               onPress={() => handleModeSelect('dark')} 
@@ -73,6 +79,19 @@ const AppearanceScreen = ({ navigation }: Props) => {
           </View>
         </View>
 
+        {isDarkMode && (
+            <View style={styles.section}>
+                <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>OLED Optimization</Text>
+                <PremiumToggle 
+                    title="AMOLED Black"
+                    description="Pure black background for OLED screens"
+                    value={isAmoled}
+                    onValueChange={onToggleAmoled}
+                    icon={Zap}
+                />
+            </View>
+        )}
+
         <View style={[styles.infoBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.3) }]}>
           <View style={[styles.infoIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
             <Palette size={20} color={currentTheme.colors.primary} />
@@ -80,7 +99,9 @@ const AppearanceScreen = ({ navigation }: Props) => {
           <View style={styles.infoTextContainer}>
             <Text style={[styles.infoTitle, { color: currentTheme.colors.text }]}>Adaptive Interface</Text>
             <Text style={[styles.infoSubtitle, { color: currentTheme.colors.textMuted }]}>
-              System mode automatically matches your device's global display settings.
+              {themeMode === 'system' 
+                ? "System mode automatically matches your device's global display settings."
+                : `Currently using a custom ${themeMode} interface override.`}
             </Text>
           </View>
         </View>
@@ -112,7 +133,7 @@ const ModeCard = ({ label, active, icon: Icon, onPress, currentTheme }: ModeCard
       <View style={[styles.iconBox, { backgroundColor: active ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05) }]}>
         <Icon size={24} color={active ? currentTheme.colors.background : currentTheme.colors.text} />
       </View>
-      <Text style={[styles.modeLabel, { color: active ? currentTheme.colors.text : currentTheme.colors.textMuted }]}>{label}</Text>
+      <Text style={[styles.modeLabel, { color: active ? currentTheme.colors.text : currentTheme.colors.textMuted }]} numberOfLines={1}>{label}</Text>
       {active && (
           <View style={[styles.checkBadge, { backgroundColor: currentTheme.colors.primary }]}>
               <Check size={10} color={currentTheme.colors.background} />
@@ -130,23 +151,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: -10,
-  },
   section: {
     marginTop: 20,
     marginBottom: 40,
   },
   sectionTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    marginBottom: 20,
+    fontSize: 11,
+    fontWeight: '900',
+    marginBottom: 16,
     textTransform: 'uppercase',
-    letterSpacing: 1.5,
+    letterSpacing: 2,
     marginLeft: 4,
   },
   modeGrid: {
@@ -171,13 +185,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   modeLabel: {
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: -0.2,
   },
   checkBadge: {
     position: 'absolute',
-    top: 12,
-    right: 12,
+    top: 10,
+    right: 10,
     width: 20,
     height: 20,
     borderRadius: 10,
@@ -216,3 +231,5 @@ const styles = StyleSheet.create({
 });
 
 export default memo(AppearanceScreen);
+
+

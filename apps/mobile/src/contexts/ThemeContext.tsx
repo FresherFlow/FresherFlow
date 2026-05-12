@@ -4,31 +4,30 @@ import { View, useColorScheme } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { theme as staticTheme } from '../theme';
 
-// ─── Dark Mode Base colors ───────────────────────────────────────────
-const darkBaseColors = {
-  primary: '#FFFFFF', // Changed from Blue to White
+// ─── Nuvio Base Colors ───────────────────────────────────────────
+const getNuvioDarkColors = (isAmoled: boolean) => ({
+  primary: '#FFFFFF',
   secondary: '#FF6B6B',
-  background: '#020404', // True black for OLED
-  darkBackground: '#020404',
-  surface: '#121212',
-  surfaceMuted: '#0A0A0A',
-  accent: '#FFFFFF', // Changed from Teal to White
+  background: isAmoled ? '#000000' : '#0D0D0D', 
+  darkBackground: isAmoled ? '#000000' : '#0D0D0D',
+  surface: isAmoled ? '#050505' : '#1A1A1A',
+  surfaceMuted: isAmoled ? '#0A0A0A' : '#121212',
+  accent: '#FFFFFF',
   text: '#FFFFFF',
   textMuted: 'rgba(255, 255, 255, 0.6)',
-  border: 'rgba(255, 255, 255, 0.12)',
+  border: isAmoled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.12)',
   muted: 'rgba(255, 255, 255, 0.3)',
   error: '#FF5252',
   success: '#4ADE80',
   warning: '#FBBF24',
-  info: '#FFFFFF', // Changed from Blue to White
-  overlay: 'rgba(13, 15, 20, 0.8)',
-  inverseText: '#0F172A', // Dark text for light backgrounds
+  info: '#FFFFFF',
+  overlay: isAmoled ? 'rgba(0, 0, 0, 0.9)' : 'rgba(13, 15, 20, 0.8)',
+  inverseText: '#0F172A',
   glassBackground: 'rgba(255, 255, 255, 0.03)',
   glassBorder: 'rgba(255, 255, 255, 0.08)',
   glassMuted: 'rgba(255, 255, 255, 0.05)',
-};
+});
 
-// ─── Light Mode Base colors ──────────────────────────────────────────
 const lightBaseColors = {
   primary: '#1A1D23',
   secondary: '#FF6B6B',
@@ -46,13 +45,12 @@ const lightBaseColors = {
   warning: '#F59E0B',
   info: '#3B82F6',
   overlay: 'rgba(15, 23, 42, 0.4)',
-  inverseText: '#FFFFFF', // Light text for dark backgrounds
+  inverseText: '#FFFFFF',
   glassBackground: 'rgba(255, 255, 255, 0.4)',
   glassBorder: 'rgba(0, 0, 0, 0.05)',
   glassMuted: 'rgba(0, 0, 0, 0.05)',
 };
 
-// ─── Default tokens ───────────────────
 const DEFAULT_TOKENS = {
   spacing: {
     xxs: 4,
@@ -77,7 +75,7 @@ const DEFAULT_TOKENS = {
   },
 };
 
-export type ThemeColors = typeof darkBaseColors;
+export type ThemeColors = ReturnType<typeof getNuvioDarkColors>;
 
 export interface AppTheme {
   id: string;
@@ -91,83 +89,92 @@ export interface AppTheme {
   accent2: string;
 }
 
-export const DEFAULT_THEMES: AppTheme[] = [
-  {
-    id: 'dark',
-    name: 'Dark Mode',
-    mode: 'dark',
-    colors: darkBaseColors,
-    spacing: DEFAULT_TOKENS.spacing,
-    roundness: DEFAULT_TOKENS.roundness,
-    elevation: DEFAULT_TOKENS.elevation,
-    accent1: '#E0E4E8',
-    accent2: '#FF6B6B',
-  },
-  {
-    id: 'light',
-    name: 'Light Mode',
-    mode: 'light',
-    colors: lightBaseColors,
-    spacing: DEFAULT_TOKENS.spacing,
-    roundness: DEFAULT_TOKENS.roundness,
-    elevation: DEFAULT_TOKENS.elevation,
-    accent1: '#1A1D23',
-    accent2: '#FF6B6B',
-  },
-];
-
 interface ThemeContextProps {
   themeMode: 'light' | 'dark' | 'system';
+  isAmoled: boolean;
   currentTheme: AppTheme;
   setThemeMode: (mode: 'light' | 'dark' | 'system') => void;
+  toggleAmoled: (enabled: boolean) => void;
 }
 
-const STORAGE_KEY = '@fresherflow:theme_preference';
+const THEME_STORAGE_KEY = '@fresherflow:theme_preference';
+const AMOLED_STORAGE_KEY = '@fresherflow:amoled_preference';
 
 const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();
   const [themeMode, setThemeModeState] = useState<'light' | 'dark' | 'system'>('system');
+  const [isAmoled, setIsAmoledState] = useState(false);
 
-  // Calculate actual theme based on mode and system preference
+  // Calculate actual theme based on mode, system preference, and amoled state
   const activeTheme = useMemo(() => {
     const mode = themeMode === 'system' ? (systemColorScheme || 'dark') : themeMode;
-    return DEFAULT_THEMES.find(t => t.id === mode) || DEFAULT_THEMES[0];
-  }, [themeMode, systemColorScheme]);
+    
+    const colors = mode === 'dark' ? getNuvioDarkColors(isAmoled) : (lightBaseColors as unknown as ThemeColors);
+    
+    return {
+        id: mode,
+        name: mode === 'dark' ? (isAmoled ? 'AMOLED Dark' : 'Dark Mode') : 'Light Mode',
+        mode: mode as 'light' | 'dark',
+        colors,
+        spacing: DEFAULT_TOKENS.spacing,
+        roundness: DEFAULT_TOKENS.roundness,
+        elevation: DEFAULT_TOKENS.elevation,
+        accent1: mode === 'dark' ? '#FFFFFF' : '#1A1D23',
+        accent2: '#FF6B6B',
+    };
+  }, [themeMode, systemColorScheme, isAmoled]);
 
   const [currentTheme, setCurrentThemeState] = useState<AppTheme>(activeTheme);
 
   // Load saved preference
   useEffect(() => {
-    AsyncStorage.getItem(STORAGE_KEY).then((saved) => {
-      if (saved && (saved === 'light' || saved === 'dark' || saved === 'system')) {
-        setThemeModeState(saved as 'light' | 'dark' | 'system');
-      }
-    }).catch(() => {});
+    const loadPreferences = async () => {
+        try {
+            const [savedMode, savedAmoled] = await Promise.all([
+                AsyncStorage.getItem(THEME_STORAGE_KEY),
+                AsyncStorage.getItem(AMOLED_STORAGE_KEY)
+            ]);
+
+            if (savedMode && (savedMode === 'light' || savedMode === 'dark' || savedMode === 'system')) {
+                setThemeModeState(savedMode as 'light' | 'dark' | 'system');
+            }
+
+            if (savedAmoled !== null) {
+                setIsAmoledState(savedAmoled === 'true');
+            }
+        } catch (error) {
+            console.error('Failed to load theme preferences:', error);
+        }
+    };
+    loadPreferences();
   }, []);
 
-  // Sync with activeTheme changes (including system theme changes)
+  // Sync with activeTheme changes
   useEffect(() => {
-    if (activeTheme.id !== currentTheme.id) {
+    if (JSON.stringify(activeTheme.colors) !== JSON.stringify(currentTheme.colors) || activeTheme.id !== currentTheme.id) {
        Object.assign(staticTheme.colors, activeTheme.colors);
        setCurrentThemeState(activeTheme);
     }
-  }, [activeTheme, currentTheme.id]);
+  }, [activeTheme, currentTheme]);
 
   const setThemeMode = (mode: 'light' | 'dark' | 'system') => {
     if (mode === themeMode) return;
-    
-    // Instant switch
     setThemeModeState(mode);
-    AsyncStorage.setItem(STORAGE_KEY, mode).catch(() => {});
-    
-    // Optional haptic feedback
+    AsyncStorage.setItem(THEME_STORAGE_KEY, mode).catch(() => {});
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
+  const toggleAmoled = (enabled: boolean) => {
+    if (enabled === isAmoled) return;
+    setIsAmoledState(enabled);
+    AsyncStorage.setItem(AMOLED_STORAGE_KEY, enabled.toString()).catch(() => {});
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
   return (
-    <ThemeContext.Provider value={{ themeMode, currentTheme, setThemeMode }}>
+    <ThemeContext.Provider value={{ themeMode, isAmoled, currentTheme, setThemeMode, toggleAmoled }}>
       <View style={{ flex: 1, backgroundColor: currentTheme.colors.background }}>
           {children}
       </View>

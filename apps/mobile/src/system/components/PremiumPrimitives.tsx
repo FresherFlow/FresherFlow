@@ -1,6 +1,6 @@
-import React from 'react';
-import { StyleSheet, View, Text, ViewStyle, TouchableOpacity, StyleProp } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
+import React, { useRef, useEffect } from 'react';
+import { StyleSheet, View, Text, ViewStyle, TouchableOpacity, StyleProp, TextStyle, Animated } from 'react-native';
+import { ChevronLeft } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,16 +18,20 @@ interface SurfaceProps {
     accent?: boolean;
     onPress?: () => void;
     onLongPress?: () => void;
+    onPressIn?: () => void;
+    onPressOut?: () => void;
 }
 
-export const SurfaceCard: React.FC<SurfaceProps> = ({ children, style, accent, onPress, onLongPress }) => {
+export const SurfaceCard: React.FC<SurfaceProps> = ({ children, style, accent, onPress, onLongPress, onPressIn, onPressOut }) => {
     const { currentTheme } = useTheme();
-    const Container = (onPress || onLongPress) ? TouchableOpacity : View;
+    const Container = (onPress || onLongPress || onPressIn || onPressOut) ? TouchableOpacity : View;
 
     return (
         <Container 
             onPress={onPress}
             onLongPress={onLongPress}
+            onPressIn={onPressIn}
+            onPressOut={onPressOut}
             delayLongPress={300}
             activeOpacity={0.9}
             style={[
@@ -77,7 +81,11 @@ export const PremiumHeader: React.FC<{
     leftSlot?: React.ReactNode;
     showBack?: boolean;
     onBack?: () => void;
-}> = ({ title, subtitle, rightSlot, leftSlot, showBack, onBack }) => {
+    titleStyle?: StyleProp<ViewStyle | TextStyle>;
+    compact?: boolean;
+    numberOfLines?: number;
+    style?: StyleProp<ViewStyle>;
+}> = ({ title, rightSlot, leftSlot, showBack, onBack, titleStyle, compact, numberOfLines, style }) => {
     const { currentTheme } = useTheme();
     const navigation = useNavigation();
     
@@ -90,23 +98,27 @@ export const PremiumHeader: React.FC<{
     };
     
     return (
-        <View style={styles.header}>
-            <View style={styles.headerContent}>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-end', gap: SPACING.sm }}>
+        <View style={[styles.header, compact && { paddingTop: 0, paddingBottom: 0 }, style]}>
+            <View style={[styles.headerContent, compact && { alignItems: 'center', marginBottom: 0 }]}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: compact ? 'center' : 'flex-end', gap: SPACING.sm }}>
                     {showBack && (
-                        <TouchableOpacity onPress={handleBack} style={{ marginBottom: 4, marginRight: 8 }}>
-                            <ArrowLeft size={mScale(24)} color={currentTheme.colors.primary} />
+                        <TouchableOpacity onPress={handleBack} style={{ marginBottom: compact ? 0 : 4, marginRight: 8 }}>
+                            <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
                         </TouchableOpacity>
                     )}
-                    {leftSlot && <View style={{ marginBottom: 4 }}>{leftSlot}</View>}
+                    {leftSlot && <View style={{ marginBottom: compact ? 0 : 4 }}>{leftSlot}</View>}
                     <View style={{ flex: 1 }}>
-                        <Text style={[styles.headerTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{title}</Text>
-                        {subtitle && (
-                            <Text style={[styles.headerSubtitle, { color: currentTheme.colors.textMuted }]}>{subtitle}</Text>
-                        )}
+                        <Text 
+                            style={[styles.headerTitle, { color: currentTheme.colors.text }, titleStyle]} 
+                            numberOfLines={numberOfLines || (compact ? 2 : 1)}
+                            adjustsFontSizeToFit={compact}
+                            minimumFontScale={0.9}
+                        >
+                            {title}
+                        </Text>
                     </View>
                 </View>
-                {rightSlot && <View>{rightSlot}</View>}
+                {rightSlot && <View style={compact ? { alignItems: 'center' } : {}}>{rightSlot}</View>}
             </View>
         </View>
     );
@@ -124,13 +136,84 @@ export const SecondaryHeader: React.FC<{
             <View style={styles.headerContent}>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
                     <TouchableOpacity onPress={onBack} style={styles.backBtn}>
-                        <ArrowLeft size={mScale(24)} color={currentTheme.colors.primary} />
+                        <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
                     </TouchableOpacity>
                     <Text style={[styles.secondaryTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{title}</Text>
                 </View>
                 {rightSlot && <View>{rightSlot}</View>}
             </View>
         </View>
+    );
+};
+
+export const PremiumToggle: React.FC<{
+    value: boolean;
+    onValueChange: (value: boolean) => void;
+    title: string;
+    description?: string;
+    icon?: React.ElementType;
+    disabled?: boolean;
+}> = ({ value, onValueChange, title, description, icon: Icon, disabled }) => {
+    const { currentTheme } = useTheme();
+    const animValue = useRef(new Animated.Value(value ? 1 : 0)).current;
+
+    useEffect(() => {
+        Animated.spring(animValue, {
+            toValue: value ? 1 : 0,
+            useNativeDriver: true,
+            bounciness: 4,
+            speed: 12,
+        }).start();
+    }, [value, animValue]);
+
+    const translateX = animValue.interpolate({
+        inputRange: [0, 1],
+        outputRange: [0, 22],
+    });
+    
+    return (
+        <TouchableOpacity 
+            activeOpacity={0.9}
+            disabled={disabled}
+            onPress={() => onValueChange(!value)}
+            style={[
+                styles.toggleRow, 
+                { 
+                    backgroundColor: currentTheme.colors.surface,
+                    borderColor: alpha(currentTheme.colors.border, 0.08),
+                    opacity: disabled ? 0.5 : 1
+                }
+            ]}
+        >
+            <View style={styles.toggleLeft}>
+                {Icon && (
+                    <View style={[styles.toggleIconWrapper, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                        <Icon size={18} color={currentTheme.colors.primary} strokeWidth={2.5} />
+                    </View>
+                )}
+                <View style={{ flex: 1 }}>
+                    <Text style={[styles.toggleTitle, { color: currentTheme.colors.text }]}>{title}</Text>
+                    {description && (
+                        <Text style={[styles.toggleSubtitle, { color: currentTheme.colors.textMuted }]}>{description}</Text>
+                    )}
+                </View>
+            </View>
+            
+            <View style={[
+                styles.switchTrack, 
+                { 
+                    backgroundColor: value ? currentTheme.colors.primary : alpha(currentTheme.colors.border, 0.15)
+                }
+            ]}>
+                <Animated.View style={[
+                    styles.switchThumb, 
+                    { 
+                        backgroundColor: value ? currentTheme.colors.background : '#FFFFFF',
+                        transform: [{ translateX }],
+                    }
+                ]} />
+            </View>
+        </TouchableOpacity>
     );
 };
 
@@ -168,12 +251,13 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-end',
-        marginBottom: SPACING.sm,
+        paddingBottom: 4,
     },
     headerTitle: {
-        fontSize: mScale(32),
+        fontSize: mScale(38),
         fontWeight: '900',
-        letterSpacing: -1,
+        letterSpacing: -1.2,
+        lineHeight: mScale(44),
     },
     headerSubtitle: {
         fontSize: mScale(12),
@@ -184,14 +268,65 @@ const styles = StyleSheet.create({
         opacity: 0.8,
     },
     secondaryTitle: {
-        fontSize: mScale(20),
-        fontWeight: '800',
-        letterSpacing: -0.5,
+        fontSize: mScale(38),
+        fontWeight: '900',
+        letterSpacing: -1.2,
+        lineHeight: mScale(44),
     },
     backBtn: {
         width: mScale(32),
         height: mScale(32),
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    toggleRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: SPACING.md,
+        borderRadius: RADIUS.lg,
+        borderWidth: 1,
+    },
+    toggleLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.md,
+        flex: 1,
+    },
+    toggleIconWrapper: {
+        width: mScale(40),
+        height: mScale(40),
+        borderRadius: RADIUS.md,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    toggleTitle: {
+        fontSize: mScale(16),
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+    toggleSubtitle: {
+        fontSize: mScale(12),
+        fontWeight: '500',
+        marginTop: 2,
+        opacity: 0.8,
+    },
+    switchTrack: {
+        width: 48,
+        height: 24,
+        borderRadius: 14,
+        paddingHorizontal: 4,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    switchThumb: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 1,
     }
 });
