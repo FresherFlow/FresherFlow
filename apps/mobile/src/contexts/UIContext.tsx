@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useRef, ReactNode } from 'react';
-import { Animated } from 'react-native';
+import { Animated, Platform, Keyboard } from 'react-native';
 
 interface UIContextProps {
   tabBarTranslateY: Animated.Value;
+  isKeyboardVisible: boolean;
   hideTabBar: () => void;
   showTabBar: () => void;
 }
@@ -11,6 +12,21 @@ const UIContext = createContext<UIContextProps | undefined>(undefined);
 
 export function UIProvider({ children }: { children: ReactNode }) {
   const tabBarTranslateY = useRef(new Animated.Value(0)).current;
+
+  const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
+
+  React.useEffect(() => {
+    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const showSub = Keyboard.addListener(showEvt, () => setIsKeyboardVisible(true));
+    const hideSub = Keyboard.addListener(hideEvt, () => setIsKeyboardVisible(false));
+
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const hideTabBar = () => {
     Animated.timing(tabBarTranslateY, {
@@ -29,7 +45,7 @@ export function UIProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <UIContext.Provider value={{ tabBarTranslateY, hideTabBar, showTabBar }}>
+    <UIContext.Provider value={{ tabBarTranslateY, isKeyboardVisible, hideTabBar, showTabBar }}>
       {children}
     </UIContext.Provider>
   );

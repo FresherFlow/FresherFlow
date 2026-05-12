@@ -6,21 +6,21 @@ import { theme as staticTheme } from '../theme';
 
 // ─── Nuvio Base Colors ───────────────────────────────────────────
 const getNuvioDarkColors = (isAmoled: boolean) => ({
-  primary: '#FFFFFF',
+  primary: '#F5F7F8',
   secondary: '#FF6B6B',
   background: isAmoled ? '#000000' : '#0D0D0D', 
   darkBackground: isAmoled ? '#000000' : '#0D0D0D',
   surface: isAmoled ? '#050505' : '#1A1A1A',
   surfaceMuted: isAmoled ? '#0A0A0A' : '#121212',
-  accent: '#FFFFFF',
-  text: '#FFFFFF',
-  textMuted: 'rgba(255, 255, 255, 0.6)',
-  border: isAmoled ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.12)',
-  muted: 'rgba(255, 255, 255, 0.3)',
+  accent: '#F5F7F8',
+  text: '#F5F7F8',
+  textMuted: 'rgba(245, 247, 248, 0.6)',
+  border: isAmoled ? 'rgba(245, 247, 248, 0.08)' : 'rgba(245, 247, 248, 0.12)',
+  muted: 'rgba(245, 247, 248, 0.3)',
   error: '#FF5252',
   success: '#4ADE80',
   warning: '#FBBF24',
-  info: '#FFFFFF',
+  info: '#D2E8F7',
   overlay: isAmoled ? 'rgba(0, 0, 0, 0.9)' : 'rgba(13, 15, 20, 0.8)',
   inverseText: '#0F172A',
   glassBackground: 'rgba(255, 255, 255, 0.03)',
@@ -121,7 +121,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         spacing: DEFAULT_TOKENS.spacing,
         roundness: DEFAULT_TOKENS.roundness,
         elevation: DEFAULT_TOKENS.elevation,
-        accent1: mode === 'dark' ? '#FFFFFF' : '#1A1D23',
+        accent1: mode === 'dark' ? '#F5F7F8' : '#1A1D23',
         accent2: '#FF6B6B',
     };
   }, [themeMode, systemColorScheme, isAmoled]);
