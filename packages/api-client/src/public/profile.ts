@@ -1,4 +1,4 @@
-import { AuthResponse, Profile, Admin, ActionType } from '@fresherflow/types';
+import { Profile, RawOpportunity } from '@fresherflow/types';
 import { apiClient } from './apiClient';
 
 export const profileApi = {
@@ -50,5 +50,39 @@ export const profileApi = {
         apiClient('/api/profile/push-token', {
             method: 'POST',
             body: JSON.stringify({ token, platform })
+        }),
+
+    getContributions: (page = 1) => 
+        apiClient<{
+            contributions: Array<{
+                id: string;
+                sourceLink: string;
+                mappedOpportunityId?: string | null;
+                createdAt: string;
+                mappedOpportunity?: {
+                    id: string;
+                    title: string;
+                    company: string;
+                    status: string;
+                    publishedAt: string;
+                    expiredAt: string;
+                    clicksCount: number;
+                    savesCount: number;
+                } | null;
+            }>;
+            stats: {
+                totalContributed: number;
+                totalPublished: number;
+                approvalRate: number;
+            };
+            page: number;
+            total: number;
+            hasMore: boolean;
+        }>(`/api/profile/contributions?page=${page}`),
+
+    submitContribution: (data: { url?: string; referral?: { contact: string; description: string; company: string; companyUrl?: string } }) => 
+        apiClient<{ success: boolean; message: string; contribution: RawOpportunity }>('/api/profile/contributions', {
+            method: 'POST',
+            body: JSON.stringify(data)
         })
 };
