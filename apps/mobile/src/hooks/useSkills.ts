@@ -1,20 +1,30 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { profileApi } from '@fresherflow/api-client';
-import { useUserAuth as useAuth } from '@repo/frontend-core';
+
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
+import { Availability } from '@fresherflow/types';
+
 type Props = NativeStackScreenProps<RootStackParamList, 'EditSkills'>;
 
+import { useProfile } from './useProfile';
+
 export const useSkills = (navigation: Props['navigation']) => {
-    const { profile, refreshMe } = useAuth();
+    const { profile, updateReadiness, loadingCache } = useProfile();
     const [saving, setSaving] = useState(false);
 
     const [skills, setSkills] = useState<string[]>(profile?.skills || []);
     const [skillInput, setSkillInput] = useState('');
-    const [availability, setAvailability] = useState(profile?.availability || 'IMMEDIATE');
+    const [availability, setAvailability] = useState<Availability>(profile?.availability as Availability || 'IMMEDIATE');
     const [showSuggestions, setShowSuggestions] = useState(false);
+
+    // Sync form fields when AsyncStorage profile loads
+    useEffect(() => {
+        if (!profile) return;
+        if (profile.skills) setSkills(profile.skills);
+        if (profile.availability) setAvailability(profile.availability);
+    }, [profile?.skills?.length, profile?.availability]);
 
     const addSkill = useCallback((skill: string) => {
         const trimmed = skill.trim();
@@ -37,20 +47,20 @@ export const useSkills = (navigation: Props['navigation']) => {
 
         setSaving(true);
         try {
-            await profileApi.updateReadiness({
+            await updateReadiness({
                 availability,
                 skills,
             });
-            await refreshMe();
-            navigation.goBack();
+            // Screen will switch to view mode via its own useEffect
         } catch (error: unknown) {
             Alert.alert('Error', (error as Error).message || 'Failed to update skills');
         } finally {
             setSaving(false);
         }
-    }, [skills, availability, refreshMe, navigation]);
+    }, [skills, availability, updateReadiness, navigation]);
 
     return {
+        profile,
         saving,
         skills,
         skillInput,
@@ -62,5 +72,6 @@ export const useSkills = (navigation: Props['navigation']) => {
         addSkill,
         removeSkill,
         handleSave,
+        loadingCache,
     };
 };

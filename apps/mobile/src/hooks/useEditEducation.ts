@@ -1,15 +1,16 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { profileApi } from '@fresherflow/api-client';
-import { useUserAuth as useAuth } from '@repo/frontend-core';
+
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditEducation'>;
 
+import { useProfile } from './useProfile';
+
 export const useEditEducation = (navigation: Props['navigation']) => {
-    const { profile, refreshMe } = useAuth();
+    const { profile, updateEducation, loadingCache } = useProfile();
     const [saving, setSaving] = useState(false);
 
     // Form State
@@ -25,6 +26,21 @@ export const useEditEducation = (navigation: Props['navigation']) => {
     const [pgSpecialization, setPgSpecialization] = useState(profile?.pgSpecialization || '');
     const [pgYear, setPgYear] = useState(profile?.pgYear?.toString() || '');
 
+    // Sync form fields when AsyncStorage profile loads (may arrive after mount)
+    useEffect(() => {
+        if (!profile) return;
+        setEducationLevel(profile.educationLevel || 'DEGREE');
+        setTenthYear(profile.tenthYear?.toString() || '');
+        setTwelfthYear(profile.twelfthYear?.toString() || '');
+        setGradCourse(profile.gradCourse || '');
+        setGradSpecialization(profile.gradSpecialization || '');
+        setGradYear(profile.gradYear?.toString() || '');
+        setHasPG(!!profile.pgCourse);
+        setPgCourse(profile.pgCourse || '');
+        setPgSpecialization(profile.pgSpecialization || '');
+        setPgYear(profile.pgYear?.toString() || '');
+    }, [profile]);
+
     const handleSave = useCallback(async () => {
         if (!tenthYear || !twelfthYear || !educationLevel || !gradCourse || !gradSpecialization || !gradYear) {
             Alert.alert('Incomplete', 'Please fill all required fields');
@@ -33,7 +49,7 @@ export const useEditEducation = (navigation: Props['navigation']) => {
 
         setSaving(true);
         try {
-            await profileApi.updateEducation({
+            await updateEducation({
                 educationLevel,
                 tenthYear: parseInt(tenthYear),
                 twelfthYear: parseInt(twelfthYear),
@@ -46,8 +62,7 @@ export const useEditEducation = (navigation: Props['navigation']) => {
                     pgYear: pgYear ? parseInt(pgYear) : undefined,
                 }),
             });
-            await refreshMe();
-            navigation.goBack();
+            // Don't navigate back — screen will switch to view mode via useEffect
         } catch (error: unknown) {
             Alert.alert('Error', (error as Error).message || 'Failed to update education');
         } finally {
@@ -56,10 +71,11 @@ export const useEditEducation = (navigation: Props['navigation']) => {
     }, [
         tenthYear, twelfthYear, educationLevel, gradCourse, 
         gradSpecialization, gradYear, hasPG, pgCourse, 
-        pgSpecialization, pgYear, refreshMe, navigation
+        pgSpecialization, pgYear, updateEducation, navigation
     ]);
 
     return {
+        profile,
         saving,
         educationLevel, setEducationLevel,
         tenthYear, setTenthYear,
@@ -72,5 +88,6 @@ export const useEditEducation = (navigation: Props['navigation']) => {
         pgSpecialization, setPgSpecialization,
         pgYear, setPgYear,
         handleSave,
+        loadingCache,
     };
 };

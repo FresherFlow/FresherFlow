@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useCallback } from 'react';
 import {
     StyleSheet,
     Text,
@@ -9,17 +9,18 @@ import {
     ActivityIndicator,
     StatusBar,
     Platform,
+    KeyboardAvoidingView,
 } from 'react-native';
-import { ChevronLeft, Check, Plus, X, Target, MapPin, Briefcase, Globe } from 'lucide-react-native';
+import { Plus, X, Target, MapPin, Briefcase, Globe, Pencil } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { OPPORTUNITY_TYPES, WORK_MODES, INDIAN_CITIES } from '@/utils/constants';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { usePreferences } from '@/hooks/usePreferences';
 
-// Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditPreferences'>;
 
@@ -32,6 +33,7 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { currentTheme } = useTheme();
 
     const {
+        profile,
         saving,
         interestedIn, setInterestedIn,
         workModes, setWorkModes,
@@ -41,304 +43,311 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         toggleItem,
         addCity,
         handleSave,
+        loadingCache,
     } = usePreferences(navigation);
+
+    const hasData = (profile?.interestedIn?.length ?? 0) > 0;
+    const [isEditing, setIsEditing] = useState(false);
+    const [modeInitialized, setModeInitialized] = useState(false);
+
+    // Handle initial mode setting once cache is loaded
+    React.useEffect(() => {
+        if (!loadingCache && !modeInitialized) {
+            setIsEditing(!hasData);
+            setModeInitialized(true);
+        }
+    }, [loadingCache, hasData, modeInitialized]);
 
     const citySuggestions = INDIAN_CITIES.filter(
         c => c.toLowerCase().includes(cityInput.toLowerCase()) && !preferredCities.includes(c)
     ).slice(0, 5);
 
+    const onToggle = (list: string[], setter: (val: string[]) => void, item: string) => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        toggleItem(list, setter, item);
+    };
+
+    const onSave = useCallback(async () => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        await handleSave();
+        setIsEditing(false);
+    }, [handleSave]);
+
     return (
-        <Screen safe={false}>
+        <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-            
-            <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
-                <PremiumHeader 
-                    title="Interests" 
-                    subtitle="Target Career Assets" 
-                    leftSlot={
-                        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                            <ChevronLeft size={24} color={currentTheme.colors.text} />
-                        </TouchableOpacity>
-                    }
-                    rightSlot={
-                        <TouchableOpacity onPress={handleSave} disabled={saving} style={styles.saveBtn}>
-                            {saving ? (
-                                <ActivityIndicator size="small" color={currentTheme.colors.primary} />
-                            ) : (
-                                <Check size={24} color={currentTheme.colors.primary} />
-                            )}
-                        </TouchableOpacity>
-                    }
-                />
-            </View>
-
-            <ScrollView 
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.scrollContent}
-            >
-                <View style={styles.content}>
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeader}>
-                            <Target size={16} color={currentTheme.colors.primary} />
-                            <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Opportunity Type</Text>
-                        </View>
-                        <View style={styles.grid}>
-                            {OPPORTUNITY_TYPES.map(type => {
-                                const active = interestedIn.includes(type);
-                                return (
-                                    <TouchableOpacity
-                                        key={type}
-                                        activeOpacity={0.7}
-                                        style={[
-                                            styles.gridItem,
-                                            { backgroundColor: currentTheme.colors.surface, borderColor: alpha(currentTheme.colors.border, 0.5) },
-                                            active && { backgroundColor: alpha(currentTheme.colors.primary, 0.1), borderColor: currentTheme.colors.primary }
-                                        ]}
-                                        onPress={() => toggleItem(interestedIn, setInterestedIn, type)}
-                                    >
-                                        <Text style={[
-                                            styles.gridItemText,
-                                            { color: currentTheme.colors.textMuted },
-                                            active && { color: currentTheme.colors.primary }
-                                        ]}>
-                                            {type}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    </View>
-
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeader}>
-                            <Briefcase size={16} color={currentTheme.colors.primary} />
-                            <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Work Mode</Text>
-                        </View>
-                        <View style={styles.grid}>
-                            {WORK_MODES.map(mode => {
-                                const active = workModes.includes(mode);
-                                return (
-                                    <TouchableOpacity
-                                        key={mode}
-                                        activeOpacity={0.7}
-                                        style={[
-                                            styles.gridItem,
-                                            { backgroundColor: currentTheme.colors.surface, borderColor: alpha(currentTheme.colors.border, 0.5) },
-                                            active && { backgroundColor: alpha(currentTheme.colors.primary, 0.1), borderColor: currentTheme.colors.primary }
-                                        ]}
-                                        onPress={() => toggleItem(workModes, setWorkModes, mode)}
-                                    >
-                                        <Text style={[
-                                            styles.gridItemText,
-                                            { color: currentTheme.colors.textMuted },
-                                            active && { color: currentTheme.colors.primary }
-                                        ]}>
-                                            {mode}
-                                        </Text>
-                                    </TouchableOpacity>
-                                );
-                            })}
-                        </View>
-                    </View>
-
-                    <View style={styles.section}>
-                        <View style={styles.sectionHeader}>
-                            <Globe size={16} color={currentTheme.colors.primary} />
-                            <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Target Locations</Text>
-                        </View>
-                        <SurfaceCard style={styles.card}>
-                            <View style={styles.cityInputWrapper}>
-                                <TextInput
-                                    style={[styles.input, { color: currentTheme.colors.text, borderColor: alpha(currentTheme.colors.border, 0.5) }]}
-                                    placeholder="Add city (e.g. Bangalore)"
-                                    placeholderTextColor={currentTheme.colors.textMuted}
-                                    value={cityInput}
-                                    onChangeText={(text) => {
-                                        setCityInput(text);
-                                        setShowCitySuggestions(true);
-                                    }}
-                                    onSubmitEditing={() => addCity(cityInput)}
-                                />
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+                <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+                    <SecondaryHeader
+                        title="Interests"
+                        onBack={() => navigation.goBack()}
+                        rightSlot={
+                            isEditing ? (
                                 <TouchableOpacity
-                                    activeOpacity={0.8}
-                                    style={[styles.addBtn, { backgroundColor: currentTheme.colors.primary }]}
-                                    onPress={() => addCity(cityInput)}
+                                    activeOpacity={0.7}
+                                    onPress={onSave}
+                                    disabled={saving}
+                                    style={[styles.saveBtn, { backgroundColor: currentTheme.colors.primary }]}
                                 >
-                                    <Plus size={20} color={currentTheme.colors.background} />
+                                    {saving
+                                        ? <ActivityIndicator size="small" color={currentTheme.colors.background} />
+                                        : <Text style={[styles.saveBtnText, { color: currentTheme.colors.background }]}>Save</Text>
+                                    }
                                 </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsEditing(true); }}
+                                    style={[styles.editBtn, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]}
+                                >
+                                    <Pencil size={14} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.editBtnText, { color: currentTheme.colors.primary }]}>Edit</Text>
+                                </TouchableOpacity>
+                            )
+                        }
+                    />
+                </View>
+
+                {loadingCache || !modeInitialized ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+                    </View>
+                ) : !isEditing && hasData ? (
+                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60, paddingHorizontal: 20 }}>
+                        <View style={{ marginTop: 20 }}>
+                            {/* Opportunity Types */}
+                            <View style={styles.viewSection}>
+                                <View style={styles.sectionHeader}>
+                                    <Target size={16} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>LOOKING FOR</Text>
+                                </View>
+                                <SurfaceCard style={styles.viewCard}>
+                                    <View style={styles.chipRow}>
+                                        {(profile?.interestedIn || []).map(type => (
+                                            <View key={type} style={[styles.viewChip, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                                                <Text style={[styles.viewChipText, { color: currentTheme.colors.primary }]}>{type}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </SurfaceCard>
                             </View>
 
-                            {showCitySuggestions && cityInput.length > 0 && citySuggestions.length > 0 && (
-                                <View style={[styles.suggestionsContainer, { backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }]}>
-                                    {citySuggestions.map((c) => (
-                                        <TouchableOpacity
-                                            key={c}
-                                            style={[styles.suggestionItem, { borderBottomColor: alpha(currentTheme.colors.border, 0.5) }]}
-                                            onPress={() => addCity(c)}
-                                        >
-                                            <Text style={[styles.suggestionText, { color: currentTheme.colors.text }]}>{c}</Text>
-                                            <Plus size={14} color={currentTheme.colors.primary} />
-                                        </TouchableOpacity>
-                                    ))}
+                            {/* Work Mode */}
+                            <View style={styles.viewSection}>
+                                <View style={styles.sectionHeader}>
+                                    <Briefcase size={16} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>WORK MODE</Text>
+                                </View>
+                                <SurfaceCard style={styles.viewCard}>
+                                    <View style={styles.chipRow}>
+                                        {(profile?.workModes || []).map(mode => (
+                                            <View key={mode} style={[styles.viewChip, { backgroundColor: alpha(currentTheme.colors.text, 0.06) }]}>
+                                                <Text style={[styles.viewChipText, { color: currentTheme.colors.text }]}>{mode}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </SurfaceCard>
+                            </View>
+
+                            {/* Locations */}
+                            <View style={styles.viewSection}>
+                                <View style={styles.sectionHeader}>
+                                    <MapPin size={16} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>TARGET CITIES</Text>
+                                </View>
+                                <SurfaceCard style={styles.viewCard}>
+                                    {(profile?.preferredCities || []).length === 0 ? (
+                                        <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>Any location</Text>
+                                    ) : (
+                                        <View style={styles.chipRow}>
+                                            {(profile?.preferredCities || []).map(city => (
+                                                <View key={city} style={[styles.viewChip, { backgroundColor: alpha(currentTheme.colors.text, 0.06) }]}>
+                                                    <MapPin size={10} color={currentTheme.colors.textMuted} />
+                                                    <Text style={[styles.viewChipText, { color: currentTheme.colors.text }]}>{city}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    )}
+                                </SurfaceCard>
+                            </View>
+
+                            <TouchableOpacity
+                                style={[styles.editBlock, { borderColor: alpha(currentTheme.colors.primary, 0.2), backgroundColor: alpha(currentTheme.colors.primary, 0.04) }]}
+                                onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setIsEditing(true); }}
+                                activeOpacity={0.7}
+                            >
+                                <Pencil size={14} color={currentTheme.colors.primary} />
+                                <Text style={[styles.editBlockText, { color: currentTheme.colors.primary }]}>Edit Preferences</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </ScrollView>
+                ) : (
+                    // FORM MODE
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.scrollContent}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <View style={styles.content}>
+                            {!hasData && (
+                                <View style={styles.heroSection}>
+                                    <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Aim with{'\n'}precision.</Text>
+                                    <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
+                                        Tell us where you want to go. We'll filter the signals to match your intent.
+                                    </Text>
                                 </View>
                             )}
 
-                            <View style={styles.cityTagContainer}>
-                                {preferredCities.length === 0 ? (
-                                    <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>Any location preferred</Text>
-                                ) : (
-                                    preferredCities.map(city => (
-                                        <View key={city} style={[styles.cityTag, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                                            <MapPin size={12} color={currentTheme.colors.primary} style={{ marginRight: 6 }} />
-                                            <Text style={[styles.cityTagText, { color: currentTheme.colors.primary }]}>{city}</Text>
-                                            <TouchableOpacity onPress={() => setPreferredCities(preferredCities.filter(c => c !== city))}>
-                                                <X size={14} color={currentTheme.colors.primary} style={{ marginLeft: 6 }} />
+                            {/* Opportunity Type */}
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <Target size={16} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>OPPORTUNITY TYPE</Text>
+                                </View>
+                                <View style={styles.grid}>
+                                    {OPPORTUNITY_TYPES.map(type => {
+                                        const active = interestedIn.includes(type);
+                                        return (
+                                            <TouchableOpacity
+                                                key={type}
+                                                activeOpacity={0.8}
+                                                style={[styles.gridItem, { backgroundColor: active ? currentTheme.colors.text : alpha(currentTheme.colors.text, 0.03), borderColor: active ? currentTheme.colors.text : alpha(currentTheme.colors.border, 0.1) }]}
+                                                onPress={() => onToggle(interestedIn, setInterestedIn, type)}
+                                            >
+                                                <Text style={[styles.gridItemText, { color: active ? currentTheme.colors.background : currentTheme.colors.text }]}>{type}</Text>
                                             </TouchableOpacity>
-                                        </View>
-                                    ))
-                                )}
+                                        );
+                                    })}
+                                </View>
                             </View>
-                        </SurfaceCard>
-                    </View>
-                </View>
-            </ScrollView>
+
+                            {/* Work Mode */}
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <Briefcase size={16} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>WORK MODE</Text>
+                                </View>
+                                <View style={styles.grid}>
+                                    {WORK_MODES.map(mode => {
+                                        const active = workModes.includes(mode);
+                                        return (
+                                            <TouchableOpacity
+                                                key={mode}
+                                                activeOpacity={0.8}
+                                                style={[styles.gridItem, { backgroundColor: active ? currentTheme.colors.text : alpha(currentTheme.colors.text, 0.03), borderColor: active ? currentTheme.colors.text : alpha(currentTheme.colors.border, 0.1) }]}
+                                                onPress={() => onToggle(workModes, setWorkModes, mode)}
+                                            >
+                                                <Text style={[styles.gridItemText, { color: active ? currentTheme.colors.background : currentTheme.colors.text }]}>{mode}</Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
+                            </View>
+
+                            {/* Locations */}
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <Globe size={16} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>TARGET LOCATIONS</Text>
+                                </View>
+                                <SurfaceCard style={styles.card}>
+                                    <View style={[styles.inputContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
+                                        <TextInput
+                                            style={[styles.input, { color: currentTheme.colors.text }]}
+                                            placeholder="Add a city..."
+                                            placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
+                                            value={cityInput}
+                                            onChangeText={(text) => { setCityInput(text); setShowCitySuggestions(true); }}
+                                            onSubmitEditing={() => addCity(cityInput)}
+                                        />
+                                        {cityInput.length > 0 && (
+                                            <TouchableOpacity onPress={() => addCity(cityInput)} style={[styles.addInlineBtn, { backgroundColor: currentTheme.colors.primary }]}>
+                                                <Plus size={16} color={currentTheme.colors.background} />
+                                            </TouchableOpacity>
+                                        )}
+                                    </View>
+
+                                    {showCitySuggestions && cityInput.length > 0 && citySuggestions.length > 0 && (
+                                        <View style={styles.suggestionsContainer}>
+                                            {citySuggestions.map((c) => (
+                                                <TouchableOpacity
+                                                    key={c}
+                                                    style={[styles.suggestionItem, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}
+                                                    onPress={() => addCity(c)}
+                                                >
+                                                    <Text style={[styles.suggestionText, { color: currentTheme.colors.primary }]}>{c}</Text>
+                                                    <Plus size={12} color={currentTheme.colors.primary} />
+                                                </TouchableOpacity>
+                                            ))}
+                                        </View>
+                                    )}
+
+                                    <View style={styles.tagContainer}>
+                                        {preferredCities.length === 0 ? (
+                                            <View style={styles.emptyState}>
+                                                <MapPin size={24} color={alpha(currentTheme.colors.textMuted, 0.2)} />
+                                                <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>Any location preferred</Text>
+                                            </View>
+                                        ) : (
+                                            preferredCities.map(city => (
+                                                <TouchableOpacity
+                                                    key={city}
+                                                    activeOpacity={0.7}
+                                                    onPress={() => setPreferredCities(preferredCities.filter(c => c !== city))}
+                                                    style={[styles.tag, { backgroundColor: currentTheme.colors.text }]}
+                                                >
+                                                    <Text style={[styles.tagText, { color: currentTheme.colors.background }]}>{city}</Text>
+                                                    <X size={12} color={currentTheme.colors.background} />
+                                                </TouchableOpacity>
+                                            ))
+                                        )}
+                                    </View>
+                                </SurfaceCard>
+                            </View>
+                        </View>
+                    </ScrollView>
+                )}
+            </KeyboardAvoidingView>
         </Screen>
     );
 });
 
 const styles = StyleSheet.create({
-    stickyHeader: {
-        zIndex: 10,
-    },
-    backBtn: {
-        width: 36,
-        height: 36,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    saveBtn: {
-        padding: 8,
-    },
-    scrollContent: {
-        paddingBottom: 60,
-        paddingTop: 12,
-    },
-    content: {
-        paddingHorizontal: 20,
-    },
-    section: {
-        marginBottom: 32,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 12,
-        marginLeft: 8,
-    },
-    sectionLabel: {
-        fontSize: 11,
-        fontWeight: '800',
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
-    },
-    grid: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-    },
-    gridItem: {
-        flex: 1,
-        minWidth: '45%',
-        height: 52,
-        borderRadius: 16,
-        borderWidth: 1.5,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 12,
-    },
-    gridItemText: {
-        fontSize: 13,
-        fontWeight: '800',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    card: {
-        padding: 0,
-        borderRadius: 24,
-        overflow: 'hidden',
-    },
-    cityInputWrapper: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-    },
-    input: {
-        flex: 1,
-        backgroundColor: 'rgba(255, 255, 255, 0.03)',
-        borderWidth: 1,
-        borderRadius: 14,
-        paddingHorizontal: 16,
-        height: 50,
-        fontSize: 15,
-        fontWeight: '600',
-        borderTopRightRadius: 0,
-        borderBottomRightRadius: 0,
-    },
-    addBtn: {
-        width: 50,
-        height: 50,
-        borderTopRightRadius: 14,
-        borderBottomRightRadius: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    suggestionsContainer: {
-        marginHorizontal: 12,
-        marginBottom: 12,
-        borderRadius: 16,
-        borderWidth: 1,
-    },
-    suggestionItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
-        paddingVertical: 12,
-    },
-    suggestionText: {
-        fontSize: 14,
-        fontWeight: '600',
-    },
-    cityTagContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        padding: 16,
-        paddingTop: 4,
-    },
-    cityTag: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderRadius: 10,
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        marginRight: 8,
-        marginBottom: 8,
-    },
-    cityTagText: {
-        fontSize: 12,
-        fontWeight: '800',
-        textTransform: 'uppercase',
-        letterSpacing: 0.5,
-    },
-    emptyText: {
-        fontSize: 14,
-        fontWeight: '500',
-        fontStyle: 'italic',
-        width: '100%',
-        textAlign: 'center',
-        marginVertical: 8,
-    },
+    stickyHeader: { zIndex: 10 },
+    saveBtn: { height: 32, paddingHorizontal: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    saveBtnText: { fontSize: 13, fontWeight: '800' },
+    editBtn: { height: 32, paddingHorizontal: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, borderWidth: 1 },
+    editBtnText: { fontSize: 13, fontWeight: '700' },
+    scrollContent: { paddingBottom: 60 },
+    content: { paddingHorizontal: 20 },
+    heroSection: { marginTop: 20, marginBottom: 32 },
+    heroTitle: { fontSize: 32, fontWeight: '900', letterSpacing: -1.5, lineHeight: 36 },
+    heroSub: { fontSize: 15, marginTop: 12, lineHeight: 22 },
+    section: { marginBottom: 32 },
+    viewSection: { marginBottom: 24 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    sectionLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+    grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    gridItem: { flex: 1, minWidth: '45%', height: 56, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
+    gridItemText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
+    card: { padding: 16, borderRadius: 28 },
+    viewCard: { padding: 20, borderRadius: 24 },
+    chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    viewChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12 },
+    viewChipText: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+    inputContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 56, borderRadius: 18, borderWidth: 1 },
+    input: { flex: 1, fontSize: 16, fontWeight: '600' },
+    addInlineBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    suggestionsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
+    suggestionItem: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
+    suggestionText: { fontSize: 12, fontWeight: '700' },
+    tagContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 24, minHeight: 50 },
+    tag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14 },
+    tagText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
+    emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 20, gap: 12 },
+    emptyText: { fontSize: 14, fontWeight: '600', fontStyle: 'italic' },
+    editBlock: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 20, borderWidth: 1, marginTop: 8 },
+    editBlockText: { fontSize: 14, fontWeight: '700' },
 });
 
 export default memo(EditPreferencesScreen);

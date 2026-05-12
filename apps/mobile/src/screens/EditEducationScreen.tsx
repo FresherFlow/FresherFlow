@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState } from 'react';
 import {
     StyleSheet,
     Text,
@@ -13,7 +13,7 @@ import {
     Modal,
     FlatList,
 } from 'react-native';
-import { Check, GraduationCap, School } from 'lucide-react-native';
+import { Check, GraduationCap, School, Pencil } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
@@ -30,7 +30,6 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useEditEducation } from '@/hooks/useEditEducation';
 
-
 type Props = NativeStackScreenProps<RootStackParamList, 'EditEducation'>;
 
 const alpha = (color: string, opacity: number) => {
@@ -40,11 +39,10 @@ const alpha = (color: string, opacity: number) => {
 
 const DropdownSelector = ({ label, value, options, onSelect, currentTheme }: { label: string, value: string, options: string[], onSelect: (val: string) => void, currentTheme: AppTheme }) => {
     const [visible, setVisible] = React.useState(false);
-
     return (
         <View style={{ marginBottom: 16, marginTop: 8 }}>
             <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>{label}</Text>
-            <TouchableOpacity 
+            <TouchableOpacity
                 style={[styles.input, { justifyContent: 'center', backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
                 onPress={() => setVisible(true)}
             >
@@ -52,16 +50,15 @@ const DropdownSelector = ({ label, value, options, onSelect, currentTheme }: { l
                     {value || `Select ${label}`}
                 </Text>
             </TouchableOpacity>
-
             <Modal visible={visible} transparent animationType="slide">
                 <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}>
                     <View style={{ backgroundColor: currentTheme.colors.background, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, maxHeight: '60%' }}>
                         <Text style={{ fontSize: 18, fontWeight: '800', color: currentTheme.colors.text, marginBottom: 16 }}>Select {label}</Text>
-                        <FlatList 
+                        <FlatList
                             data={options}
                             keyExtractor={(i: string) => i}
-                            renderItem={({item}) => (
-                                <TouchableOpacity 
+                            renderItem={({ item }) => (
+                                <TouchableOpacity
                                     style={{ paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: alpha(currentTheme.colors.border, 0.1) }}
                                     onPress={() => { onSelect(item); setVisible(false); }}
                                 >
@@ -79,10 +76,83 @@ const DropdownSelector = ({ label, value, options, onSelect, currentTheme }: { l
     );
 };
 
+// --- View Mode: shows saved data as a readable card ---
+const EducationView = ({ profile, onEdit, currentTheme }: { profile: NonNullable<ReturnType<typeof useEditEducation>['profile']>, onEdit: () => void, currentTheme: AppTheme }) => {
+    const highestCourse = profile.pgCourse || profile.gradCourse;
+    const highestSpec = profile.pgCourse ? profile.pgSpecialization : profile.gradSpecialization;
+    const highestYear = profile.pgCourse ? profile.pgYear : profile.gradYear;
+
+    return (
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+            <View style={{ paddingHorizontal: 20 }}>
+                {/* Schooling */}
+                <View style={styles.viewSection}>
+                    <View style={styles.sectionHeader}>
+                        <School size={16} color={currentTheme.colors.primary} />
+                        <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>SCHOOLING</Text>
+                    </View>
+                    <SurfaceCard style={styles.viewCard}>
+                        <View style={{ flexDirection: 'row', gap: 40 }}>
+                            <View>
+                                <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted }]}>10TH</Text>
+                                <Text style={[styles.viewFieldValue, { color: currentTheme.colors.text }]}>
+                                    {profile.tenthYear ? String(profile.tenthYear) : <Text style={{ fontStyle: 'italic', opacity: 0.4 }}>Not set</Text>}
+                                </Text>
+                            </View>
+                            <View>
+                                <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted }]}>12TH / DIPLOMA</Text>
+                                <Text style={[styles.viewFieldValue, { color: currentTheme.colors.text }]}>
+                                    {profile.twelfthYear ? String(profile.twelfthYear) : <Text style={{ fontStyle: 'italic', opacity: 0.4 }}>Not set</Text>}
+                                </Text>
+                            </View>
+                        </View>
+                    </SurfaceCard>
+                </View>
+
+                {/* Higher Education */}
+                <View style={styles.viewSection}>
+                    <View style={styles.sectionHeader}>
+                        <GraduationCap size={16} color={currentTheme.colors.primary} />
+                        <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>HIGHER EDUCATION</Text>
+                    </View>
+                    <SurfaceCard style={styles.viewCard}>
+                        <View style={{ marginBottom: profile.pgCourse ? 20 : 0 }}>
+                            <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted }]}>HIGHEST QUALIFICATION</Text>
+                            <Text style={[styles.viewFieldValue, { color: currentTheme.colors.text }]}>{highestCourse}</Text>
+                            <Text style={[styles.viewFieldSub, { color: currentTheme.colors.textMuted }]}>
+                                {highestSpec}  ·  Class of {highestYear}
+                            </Text>
+                        </View>
+                        {profile.pgCourse && (
+                            <View style={{ paddingTop: 20, borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.08) }}>
+                                <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted }]}>UNDERGRAD</Text>
+                                <Text style={[styles.viewFieldValue, { color: currentTheme.colors.text }]}>{profile.gradCourse}</Text>
+                                <Text style={[styles.viewFieldSub, { color: currentTheme.colors.textMuted }]}>
+                                    {profile.gradSpecialization}  ·  Class of {profile.gradYear}
+                                </Text>
+                            </View>
+                        )}
+                    </SurfaceCard>
+                </View>
+
+                {/* Edit CTA */}
+                <TouchableOpacity
+                    style={[styles.editBlock, { borderColor: alpha(currentTheme.colors.primary, 0.2), backgroundColor: alpha(currentTheme.colors.primary, 0.04) }]}
+                    onPress={onEdit}
+                    activeOpacity={0.7}
+                >
+                    <Pencil size={14} color={currentTheme.colors.primary} />
+                    <Text style={[styles.editBlockText, { color: currentTheme.colors.primary }]}>Edit Academics</Text>
+                </TouchableOpacity>
+            </View>
+        </ScrollView>
+    );
+};
+
 const EditEducationScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { currentTheme } = useTheme();
-
     const {
+        profile,
         saving,
         educationLevel, setEducationLevel,
         tenthYear, setTenthYear,
@@ -92,10 +162,33 @@ const EditEducationScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         gradYear, setGradYear,
         hasPG, setHasPG,
         pgCourse, setPgCourse,
-        pgSpecialization, setPgSpecialization,
+        setPgSpecialization,
         pgYear, setPgYear,
         handleSave,
+        loadingCache,
     } = useEditEducation(navigation);
+
+    // Determine if we already have saved data
+    const hasData = !!(profile?.gradCourse);
+    const [isEditing, setIsEditing] = useState(false);
+
+    // Track if we've initialized the mode based on data
+    const [modeInitialized, setModeInitialized] = useState(false);
+
+    // Handle initial mode setting once cache is loaded
+    React.useEffect(() => {
+        if (!loadingCache && !modeInitialized) {
+            setIsEditing(!hasData);
+            setModeInitialized(true);
+        }
+    }, [loadingCache, hasData, modeInitialized]);
+
+    // When local profile loads async from AsyncStorage (after initial check), flip to view mode if not editing
+    React.useEffect(() => {
+        if (profile?.gradCourse && !isEditing) {
+            // Already handled by initial sync or explicit edit
+        }
+    }, [profile?.gradCourse, isEditing]);
 
     const courses = educationLevel === 'DIPLOMA'
         ? DIPLOMA_DEGREES
@@ -106,382 +199,245 @@ const EditEducationScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const onSave = useCallback(() => {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         handleSave();
+        setIsEditing(false);
     }, [handleSave]);
+
+    const onEdit = useCallback(() => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        setIsEditing(true);
+    }, []);
 
     return (
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-            
-            <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                style={{ flex: 1 }}
-            >
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                 <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
-                    <SecondaryHeader 
-                        title="Academics" 
+                    <SecondaryHeader
+                        title="Academics"
                         onBack={() => navigation.goBack()}
                         rightSlot={
-                            <TouchableOpacity 
-                                activeOpacity={0.7}
-                                onPress={onSave} 
-                                disabled={saving} 
-                                style={[styles.saveBtn, { backgroundColor: currentTheme.colors.primary }]}
-                            >
-                                {saving ? (
-                                    <ActivityIndicator size="small" color={currentTheme.colors.background} />
-                                ) : (
-                                    <Text style={[styles.saveBtnText, { color: currentTheme.colors.background }]}>Save</Text>
-                                )}
-                            </TouchableOpacity>
+                            isEditing ? (
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={onSave}
+                                    disabled={saving}
+                                    style={[styles.saveBtn, { backgroundColor: currentTheme.colors.primary }]}
+                                >
+                                    {saving
+                                        ? <ActivityIndicator size="small" color={currentTheme.colors.background} />
+                                        : <Text style={[styles.saveBtnText, { color: currentTheme.colors.background }]}>Save</Text>
+                                    }
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={onEdit}
+                                    style={[styles.editBtn, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]}
+                                >
+                                    <Pencil size={14} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.editBtnText, { color: currentTheme.colors.primary }]}>Edit</Text>
+                                </TouchableOpacity>
+                            )
                         }
                     />
                 </View>
 
-                <ScrollView 
-                    showsVerticalScrollIndicator={false} 
-                    contentContainerStyle={styles.scrollContent}
-                    keyboardShouldPersistTaps="handled"
-                >
-                    <View style={styles.content}>
-                        <View style={styles.heroSection}>
-                            <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Share your{'\n'}records.</Text>
-                            <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
-                                Academic history helps us verify your signals and unlock exclusive early-career opportunities.
-                            </Text>
-                        </View>
-
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeader}>
-                                <School size={16} color={currentTheme.colors.primary} />
-                                <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>SCHOOLING</Text>
-                            </View>
-                            <SurfaceCard style={styles.card}>
-                                <View style={styles.row}>
-                                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                                        <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>10TH PASSING YEAR</Text>
-                                        <TextInput
-                                            style={[styles.input, { color: currentTheme.colors.text, backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
-                                            placeholder="2018"
-                                            placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
-                                            keyboardType="number-pad"
-                                            maxLength={4}
-                                            value={tenthYear}
-                                            onChangeText={setTenthYear}
-                                        />
-                                    </View>
-                                    <View style={{ width: 16 }} />
-                                    <View style={[styles.inputGroup, { flex: 1 }]}>
-                                        <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>12TH PASSING YEAR</Text>
-                                        <TextInput
-                                            style={[styles.input, { color: currentTheme.colors.text, backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
-                                            placeholder="2020"
-                                            placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
-                                            keyboardType="number-pad"
-                                            maxLength={4}
-                                            value={twelfthYear}
-                                            onChangeText={setTwelfthYear}
-                                        />
-                                    </View>
+                {loadingCache || !modeInitialized ? (
+                    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+                    </View>
+                ) : !isEditing && hasData ? (
+                    <EducationView profile={profile} onEdit={onEdit} currentTheme={currentTheme} />
+                ) : (
+                    // Form Mode
+                    <ScrollView
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={styles.scrollContent}
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <View style={styles.content}>
+                            {!hasData && (
+                                <View style={styles.heroSection}>
+                                    <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Share your{'\n'}records.</Text>
+                                    <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
+                                        Academic history helps match you to the right opportunities.
+                                    </Text>
                                 </View>
-                            </SurfaceCard>
-                        </View>
+                            )}
 
-                        <View style={styles.section}>
-                            <View style={styles.sectionHeader}>
-                                <GraduationCap size={16} color={currentTheme.colors.primary} />
-                                <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>HIGHER EDUCATION</Text>
-                            </View>
-                            <SurfaceCard style={styles.card}>
-                                <DropdownSelector 
-                                    label="CURRENT LEVEL" 
-                                    value={educationLevel === 'DEGREE' ? 'UG' : educationLevel} 
-                                    options={EDUCATION_LEVELS.map(l => l === 'DEGREE' ? 'UG' : l)} 
-                                    onSelect={(val: string) => {
-                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                        const actualLevel = val === 'UG' ? 'DEGREE' : val;
-                                        setEducationLevel(actualLevel);
-                                        setGradCourse('');
-                                        setGradSpecialization('');
-                                    }} 
-                                    currentTheme={currentTheme} 
-                                />
-
-                                <DropdownSelector 
-                                    label="COURSE" 
-                                    value={gradCourse} 
-                                    options={courses} 
-                                    onSelect={(val: string) => {
-                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                        setGradCourse(val);
-                                        setGradSpecialization('');
-                                    }} 
-                                    currentTheme={currentTheme} 
-                                />
-
-                                <DropdownSelector 
-                                    label="SPECIALIZATION" 
-                                    value={gradSpecialization} 
-                                    options={getSpecializations(gradCourse)} 
-                                    onSelect={(val: string) => {
-                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                        setGradSpecialization(val);
-                                    }} 
-                                    currentTheme={currentTheme} 
-                                />
-
-                                <View style={[styles.inputGroup, { marginTop: 24 }]}>
-                                    <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>GRADUATION YEAR</Text>
-                                    <TextInput
-                                        style={[styles.input, { color: currentTheme.colors.text, backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
-                                        placeholder="2024"
-                                        placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
-                                        keyboardType="number-pad"
-                                        maxLength={4}
-                                        value={gradYear}
-                                        onChangeText={setGradYear}
-                                    />
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <School size={16} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>SCHOOLING</Text>
                                 </View>
-                            </SurfaceCard>
-                        </View>
-
-                        <View style={styles.section}>
-                            <TouchableOpacity
-                                activeOpacity={0.8}
-                                style={[
-                                    styles.pgToggle, 
-                                    { 
-                                        borderColor: alpha(currentTheme.colors.border, 0.1),
-                                        backgroundColor: hasPG ? alpha(currentTheme.colors.primary, 0.05) : alpha(currentTheme.colors.text, 0.03) 
-                                    }
-                                ]}
-                                onPress={() => {
-                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    setHasPG(!hasPG);
-                                }}
-                            >
-                                <View style={[
-                                    styles.checkbox, 
-                                    { borderColor: hasPG ? currentTheme.colors.primary : alpha(currentTheme.colors.border, 0.2) }, 
-                                    hasPG && { backgroundColor: currentTheme.colors.primary }
-                                ]}>
-                                    {hasPG && <Check size={12} color={currentTheme.colors.background} strokeWidth={4} />}
-                                </View>
-                                <Text style={[styles.pgToggleText, { color: currentTheme.colors.text }]}>Include Postgraduate Details</Text>
-                            </TouchableOpacity>
-
-                            {hasPG && (
                                 <SurfaceCard style={styles.card}>
-                                    <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>PG COURSE</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={{ paddingRight: 20 }}>
-                                        {PG_DEGREES.map((course: string) => (
-                                            <TouchableOpacity
-                                                key={course}
-                                                activeOpacity={0.8}
-                                                style={[
-                                                    styles.chip,
-                                                    { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) },
-                                                    pgCourse === course && { backgroundColor: currentTheme.colors.text, borderColor: currentTheme.colors.text }
-                                                ]}
-                                                onPress={() => {
-                                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                    setPgCourse(course);
-                                                    setPgSpecialization('');
-                                                }}
-                                            >
-                                                <Text style={[
-                                                    styles.chipText,
-                                                    { color: currentTheme.colors.text },
-                                                    pgCourse === course && { color: currentTheme.colors.background }
-                                                ]}>
-                                                    {course}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </ScrollView>
+                                    <View style={styles.row}>
+                                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                                            <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>10TH PASSING YEAR</Text>
+                                            <TextInput
+                                                style={[styles.input, { color: currentTheme.colors.text, backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
+                                                placeholder="2018"
+                                                placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
+                                                keyboardType="number-pad"
+                                                maxLength={4}
+                                                value={tenthYear}
+                                                onChangeText={setTenthYear}
+                                            />
+                                        </View>
+                                        <View style={{ width: 16 }} />
+                                        <View style={[styles.inputGroup, { flex: 1 }]}>
+                                            <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>12TH PASSING YEAR</Text>
+                                            <TextInput
+                                                style={[styles.input, { color: currentTheme.colors.text, backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
+                                                placeholder="2020"
+                                                placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
+                                                keyboardType="number-pad"
+                                                maxLength={4}
+                                                value={twelfthYear}
+                                                onChangeText={setTwelfthYear}
+                                            />
+                                        </View>
+                                    </View>
+                                </SurfaceCard>
+                            </View>
 
-                                    <Text style={[styles.label, { marginTop: 24, color: currentTheme.colors.textMuted }]}>PG SPECIALIZATION</Text>
-                                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={{ paddingRight: 20 }}>
-                                        {getSpecializations(pgCourse).map((spec: string) => (
-                                            <TouchableOpacity
-                                                key={spec}
-                                                activeOpacity={0.8}
-                                                style={[
-                                                    styles.chip,
-                                                    { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) },
-                                                    pgSpecialization === spec && { backgroundColor: currentTheme.colors.text, borderColor: currentTheme.colors.text }
-                                                ]}
-                                                onPress={() => {
-                                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                    setPgSpecialization(spec);
-                                                }}
-                                            >
-                                                <Text style={[
-                                                    styles.chipText,
-                                                    { color: currentTheme.colors.text },
-                                                    pgSpecialization === spec && { color: currentTheme.colors.background }
-                                                ]}>
-                                                    {spec}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                    </ScrollView>
-
-                                    <View style={[styles.inputGroup, { marginTop: 24 }]}>
-                                        <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>PG YEAR</Text>
+                            <View style={styles.section}>
+                                <View style={styles.sectionHeader}>
+                                    <GraduationCap size={16} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>HIGHER EDUCATION</Text>
+                                </View>
+                                <SurfaceCard style={styles.card}>
+                                    <DropdownSelector
+                                        label="CURRENT LEVEL"
+                                        value={educationLevel === 'DEGREE' ? 'UG' : educationLevel}
+                                        options={EDUCATION_LEVELS.map(l => l === 'DEGREE' ? 'UG' : l)}
+                                        onSelect={(val: string) => {
+                                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            const actualLevel = val === 'UG' ? 'DEGREE' : val;
+                                            setEducationLevel(actualLevel);
+                                            setGradCourse('');
+                                            setGradSpecialization('');
+                                        }}
+                                        currentTheme={currentTheme}
+                                    />
+                                    <DropdownSelector
+                                        label="COURSE"
+                                        value={gradCourse}
+                                        options={courses}
+                                        onSelect={(val: string) => {
+                                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            setGradCourse(val);
+                                            setGradSpecialization('');
+                                        }}
+                                        currentTheme={currentTheme}
+                                    />
+                                    <DropdownSelector
+                                        label="SPECIALIZATION"
+                                        value={gradSpecialization}
+                                        options={getSpecializations(gradCourse)}
+                                        onSelect={(val: string) => {
+                                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            setGradSpecialization(val);
+                                        }}
+                                        currentTheme={currentTheme}
+                                    />
+                                    <View style={[styles.inputGroup, { marginTop: 8 }]}>
+                                        <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>GRADUATION YEAR</Text>
                                         <TextInput
                                             style={[styles.input, { color: currentTheme.colors.text, backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
-                                            placeholder="2026"
+                                            placeholder="Year"
                                             placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
                                             keyboardType="number-pad"
                                             maxLength={4}
-                                            value={pgYear}
-                                            onChangeText={setPgYear}
+                                            value={gradYear}
+                                            onChangeText={setGradYear}
                                         />
                                     </View>
                                 </SurfaceCard>
-                            )}
+                            </View>
+
+                            <View style={styles.section}>
+                                <TouchableOpacity
+                                    activeOpacity={0.8}
+                                    style={[styles.pgToggle, { borderColor: alpha(currentTheme.colors.border, 0.1), backgroundColor: hasPG ? alpha(currentTheme.colors.primary, 0.05) : alpha(currentTheme.colors.text, 0.03) }]}
+                                    onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setHasPG(!hasPG); }}
+                                >
+                                    <View style={[styles.checkbox, { borderColor: hasPG ? currentTheme.colors.primary : alpha(currentTheme.colors.border, 0.2) }, hasPG && { backgroundColor: currentTheme.colors.primary }]}>
+                                        {hasPG && <Check size={12} color={currentTheme.colors.background} strokeWidth={4} />}
+                                    </View>
+                                    <Text style={[styles.pgToggleText, { color: currentTheme.colors.text }]}>Include Postgraduate Details</Text>
+                                </TouchableOpacity>
+
+                                {hasPG && (
+                                    <SurfaceCard style={styles.card}>
+                                        <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>PG COURSE</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll} contentContainerStyle={{ paddingRight: 20 }}>
+                                            {PG_DEGREES.map((course: string) => (
+                                                <TouchableOpacity
+                                                    key={course}
+                                                    activeOpacity={0.8}
+                                                    style={[styles.chip, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }, pgCourse === course && { backgroundColor: currentTheme.colors.text, borderColor: currentTheme.colors.text }]}
+                                                    onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setPgCourse(course); setPgSpecialization(''); }}
+                                                >
+                                                    <Text style={[styles.chipText, { color: currentTheme.colors.text }, pgCourse === course && { color: currentTheme.colors.background }]}>{course}</Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                        </ScrollView>
+                                        <View style={[styles.inputGroup, { marginTop: 24 }]}>
+                                            <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>PG YEAR</Text>
+                                            <TextInput
+                                                style={[styles.input, { color: currentTheme.colors.text, backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
+                                                placeholder="2026"
+                                                placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
+                                                keyboardType="number-pad"
+                                                maxLength={4}
+                                                value={pgYear}
+                                                onChangeText={setPgYear}
+                                            />
+                                        </View>
+                                    </SurfaceCard>
+                                )}
+                            </View>
                         </View>
-                    </View>
-                </ScrollView>
+                    </ScrollView>
+                )}
             </KeyboardAvoidingView>
         </Screen>
     );
 });
 
 const styles = StyleSheet.create({
-    stickyHeader: {
-        zIndex: 10,
-    },
-    backBtn: {
-        width: 40,
-        height: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: -8,
-    },
-    saveBtn: {
-        height: 32,
-        paddingHorizontal: 16,
-        borderRadius: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    saveBtnText: {
-        fontSize: 13,
-        fontWeight: '800',
-    },
-    scrollContent: {
-        paddingBottom: 60,
-    },
-    content: {
-        paddingHorizontal: 20,
-    },
-    heroSection: {
-        marginTop: 20,
-        marginBottom: 32,
-    },
-    heroTitle: {
-        fontSize: 32,
-        fontWeight: '900',
-        letterSpacing: -1.5,
-        lineHeight: 36,
-    },
-    heroSub: {
-        fontSize: 15,
-        marginTop: 12,
-        lineHeight: 22,
-    },
-    section: {
-        marginBottom: 40,
-    },
-    sectionHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 16,
-    },
-    sectionLabel: {
-        fontSize: 10,
-        fontWeight: '900',
-        letterSpacing: 1.5,
-    },
-    card: {
-        padding: 24,
-        borderRadius: 28,
-    },
-    row: {
-        flexDirection: 'row',
-    },
-    inputGroup: {
-        marginBottom: 0,
-    },
-    label: {
-        fontSize: 10,
-        fontWeight: '900',
-        letterSpacing: 1,
-        marginBottom: 10,
-        marginLeft: 4,
-    },
-    input: {
-        borderWidth: 1,
-        borderRadius: 16,
-        paddingHorizontal: 16,
-        height: 56,
-        fontSize: 15,
-        fontWeight: '600',
-    },
-    levelRow: {
-        flexDirection: 'row',
-        gap: 8,
-    },
-    levelBtn: {
-        flex: 1,
-        height: 48,
-        borderWidth: 1,
-        borderRadius: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    levelBtnText: {
-        fontSize: 11,
-        fontWeight: '900',
-        letterSpacing: 0.5,
-    },
-    chipScroll: {
-        marginHorizontal: -4,
-    },
-    chip: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
-        borderWidth: 1,
-        borderRadius: 14,
-        marginRight: 8,
-    },
-    chipText: {
-        fontSize: 13,
-        fontWeight: '700',
-    },
-    pgToggle: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 20,
-        borderRadius: 24,
-        borderWidth: 1,
-        marginBottom: 16,
-    },
-    checkbox: {
-        width: 22,
-        height: 22,
-        borderRadius: 8,
-        borderWidth: 2.5,
-        marginRight: 14,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    pgToggleText: {
-        fontSize: 15,
-        fontWeight: '800',
-    },
+    stickyHeader: { zIndex: 10 },
+    saveBtn: { height: 32, paddingHorizontal: 16, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+    saveBtnText: { fontSize: 13, fontWeight: '800' },
+    editBtn: { height: 32, paddingHorizontal: 14, borderRadius: 16, alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 6, borderWidth: 1 },
+    editBtnText: { fontSize: 13, fontWeight: '700' },
+    scrollContent: { paddingBottom: 60 },
+    content: { paddingHorizontal: 20 },
+    heroSection: { marginTop: 20, marginBottom: 32 },
+    heroTitle: { fontSize: 32, fontWeight: '900', letterSpacing: -1.5, lineHeight: 36 },
+    heroSub: { fontSize: 15, marginTop: 12, lineHeight: 22 },
+    section: { marginBottom: 32 },
+    viewSection: { marginBottom: 28 },
+    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+    sectionLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+    card: { padding: 24, borderRadius: 28 },
+    viewCard: { padding: 20, borderRadius: 24 },
+    row: { flexDirection: 'row' },
+    inputGroup: { marginBottom: 0 },
+    label: { fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 10, marginLeft: 4 },
+    input: { borderWidth: 1, borderRadius: 16, paddingHorizontal: 16, height: 56, fontSize: 15, fontWeight: '600' },
+    viewFieldLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 6 },
+    viewFieldValue: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
+    viewFieldSub: { fontSize: 13, fontWeight: '500', marginTop: 4 },
+    pgToggle: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 24, borderWidth: 1, marginBottom: 16 },
+    checkbox: { width: 22, height: 22, borderRadius: 8, borderWidth: 2.5, marginRight: 14, justifyContent: 'center', alignItems: 'center' },
+    pgToggleText: { fontSize: 15, fontWeight: '800' },
+    chipScroll: { marginHorizontal: -4 },
+    chip: { paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderRadius: 14, marginRight: 8 },
+    chipText: { fontSize: 13, fontWeight: '700' },
+    editBlock: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 20, borderWidth: 1, marginTop: 8 },
+    editBlockText: { fontSize: 14, fontWeight: '700' },
 });
 
 export default memo(EditEducationScreen);

@@ -1,14 +1,15 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-import { profileApi } from '@fresherflow/api-client';
-import { useUserAuth as useAuth } from '@repo/frontend-core';
+
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditPreferences'>;
 
+import { useProfile } from './useProfile';
+
 export const usePreferences = (navigation: Props['navigation']) => {
-    const { profile, refreshMe } = useAuth();
+    const { profile, updatePreferences, loadingCache } = useProfile();
     const [saving, setSaving] = useState(false);
 
     const [interestedIn, setInterestedIn] = useState<string[]>(profile?.interestedIn || []);
@@ -16,6 +17,14 @@ export const usePreferences = (navigation: Props['navigation']) => {
     const [preferredCities, setPreferredCities] = useState<string[]>(profile?.preferredCities || []);
     const [cityInput, setCityInput] = useState('');
     const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+
+    // Sync form fields when AsyncStorage profile loads
+    useEffect(() => {
+        if (!profile) return;
+        if (profile.interestedIn) setInterestedIn(profile.interestedIn);
+        if (profile.workModes) setWorkModes(profile.workModes);
+        if (profile.preferredCities) setPreferredCities(profile.preferredCities);
+    }, [profile?.interestedIn?.length, profile?.workModes?.length, profile?.preferredCities?.length]);
 
     const toggleItem = useCallback((list: string[], setList: (l: string[]) => void, item: string) => {
         if (list.includes(item)) {
@@ -46,21 +55,21 @@ export const usePreferences = (navigation: Props['navigation']) => {
 
         setSaving(true);
         try {
-            await profileApi.updatePreferences({
+            await updatePreferences({
                 interestedIn,
                 workModes,
                 preferredCities,
             });
-            await refreshMe();
-            navigation.goBack();
+            // Mode switch handled by screen
         } catch (error: unknown) {
             Alert.alert('Error', (error as Error).message || 'Failed to update preferences');
         } finally {
             setSaving(false);
         }
-    }, [interestedIn, workModes, preferredCities, refreshMe, navigation]);
+    }, [interestedIn, workModes, preferredCities, updatePreferences, navigation]);
 
     return {
+        profile,
         saving,
         interestedIn, setInterestedIn,
         workModes, setWorkModes,
@@ -70,5 +79,6 @@ export const usePreferences = (navigation: Props['navigation']) => {
         toggleItem,
         addCity,
         handleSave,
+        loadingCache,
     };
 };

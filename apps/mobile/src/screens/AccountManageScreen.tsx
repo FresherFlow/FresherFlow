@@ -7,17 +7,12 @@ import {
     TouchableOpacity,
     StatusBar,
     Platform,
-    Alert,
 } from 'react-native';
 import { 
     Mail, 
-    Lock, 
-    Bell, 
-    Trash2, 
     ChevronRight,
-    Shield,
-    Smartphone
 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { useUserAuth as useAuth } from '@repo/frontend-core';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -25,7 +20,7 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AccountManage'>;
 
@@ -34,29 +29,20 @@ const alpha = (color: string, opacity: number) => {
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
 };
 
-const AccountManageScreen: React.FC<Props> = memo(() => {
+const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { currentTheme } = useTheme();
     const { user } = useAuth();
 
-    const handleDeleteAccount = () => {
-        Alert.alert(
-            "Delete Account",
-            "This action is permanent and will delete all your professional data. Proceed?",
-            [
-                { text: "Cancel", style: "cancel" },
-                { text: "Delete Permanently", style: "destructive", onPress: () => console.log("Account deletion requested") }
-            ]
-        );
-    };
+
 
     return (
-        <Screen safe={false}>
+        <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
             <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
-                <PremiumHeader 
-                    title="Account" 
-                    subtitle="Security & Preferences" 
+                <SecondaryHeader 
+                    title="Security" 
+                    onBack={() => navigation.goBack()}
                 />
             </View>
 
@@ -64,7 +50,14 @@ const AccountManageScreen: React.FC<Props> = memo(() => {
                 showsVerticalScrollIndicator={false} 
                 contentContainerStyle={styles.scrollContent}
             >
-                <View style={styles.container}>
+                <View style={styles.content}>
+                    <View style={styles.heroSection}>
+                        <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Safe &{'\n'}Secure.</Text>
+                        <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
+                            Your professional data is encrypted and private. Manage your credentials and privacy settings here.
+                        </Text>
+                    </View>
+
                     <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>CREDENTIALS</Text>
                     <SurfaceCard style={styles.groupCard}>
                         <SettingRow 
@@ -72,55 +65,9 @@ const AccountManageScreen: React.FC<Props> = memo(() => {
                             label="Email Address" 
                             value={user?.email || 'N/A'}
                             currentTheme={currentTheme}
-                        />
-                        <SettingRow 
-                            icon={Lock} 
-                            label="Change Security Code" 
-                            currentTheme={currentTheme}
                             isLast
                         />
                     </SurfaceCard>
-
-                    <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>COMMUNICATION</Text>
-                    <SurfaceCard style={styles.groupCard}>
-                        <SettingRow 
-                            icon={Bell} 
-                            label="Push Notifications" 
-                            value="Enabled"
-                            currentTheme={currentTheme}
-                        />
-                        <SettingRow 
-                            icon={Smartphone} 
-                            label="Marketing SMS" 
-                            value="Disabled"
-                            currentTheme={currentTheme}
-                            isLast
-                        />
-                    </SurfaceCard>
-
-                    <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>PRIVACY & DATA</Text>
-                    <SurfaceCard style={styles.groupCard}>
-                        <SettingRow 
-                            icon={Shield} 
-                            label="Profile Visibility" 
-                            value="Public"
-                            currentTheme={currentTheme}
-                        />
-                        <SettingRow 
-                            icon={Trash2} 
-                            label="Request Data Deletion" 
-                            currentTheme={currentTheme}
-                            isLast
-                            destructive
-                            onPress={handleDeleteAccount}
-                        />
-                    </SurfaceCard>
-
-                    <View style={styles.infoArea}>
-                        <Text style={[styles.infoText, { color: currentTheme.colors.textMuted }]}>
-                            Identity linked to {user?.email || 'this device'}.
-                        </Text>
-                    </View>
                 </View>
             </ScrollView>
         </Screen>
@@ -139,13 +86,16 @@ interface SettingRowProps {
 
 const SettingRow = ({ icon: Icon, label, value, isLast, currentTheme, destructive, onPress }: SettingRowProps) => (
     <TouchableOpacity 
-        style={[styles.row, !isLast && { borderBottomWidth: 1, borderBottomColor: alpha(currentTheme.colors.border, 0.3) }]}
-        onPress={onPress}
+        style={[styles.row, !isLast && { borderBottomWidth: 1, borderBottomColor: alpha(currentTheme.colors.border, 0.1) }]}
+        onPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onPress?.();
+        }}
         activeOpacity={0.7}
     >
         <View style={styles.rowLeft}>
-            <View style={[styles.iconBox, { backgroundColor: alpha(destructive ? currentTheme.colors.error : currentTheme.colors.primary, 0.05) }]}>
-                <Icon size={18} color={destructive ? currentTheme.colors.error : currentTheme.colors.primary} />
+            <View style={[styles.iconBox, { backgroundColor: alpha(destructive ? currentTheme.colors.error : currentTheme.colors.text, 0.05) }]}>
+                <Icon size={18} color={destructive ? currentTheme.colors.error : currentTheme.colors.text} />
             </View>
             <View>
                 <Text style={[styles.rowLabel, { color: destructive ? currentTheme.colors.error : currentTheme.colors.text }]}>{label}</Text>
@@ -160,24 +110,45 @@ const styles = StyleSheet.create({
     stickyHeader: {
         zIndex: 10,
     },
-    scrollContent: {
-        paddingBottom: 100,
-        paddingTop: 12,
+    backBtn: {
+        width: 40,
+        height: 40,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: -8,
     },
-    container: {
+    scrollContent: {
+        paddingBottom: 60,
+    },
+    content: {
         paddingHorizontal: 20,
     },
+    heroSection: {
+        marginTop: 20,
+        marginBottom: 32,
+    },
+    heroTitle: {
+        fontSize: 32,
+        fontWeight: '900',
+        letterSpacing: -1.5,
+        lineHeight: 36,
+    },
+    heroSub: {
+        fontSize: 15,
+        marginTop: 12,
+        lineHeight: 22,
+    },
     groupLabel: {
-        fontSize: 11,
-        fontWeight: '800',
+        fontSize: 10,
+        fontWeight: '900',
         letterSpacing: 1.5,
         marginLeft: 12,
         marginBottom: 12,
-        marginTop: 24,
+        marginTop: 32,
     },
     groupCard: {
         padding: 0,
-        borderRadius: 24,
+        borderRadius: 28,
     },
     row: {
         flexDirection: 'row',
@@ -191,29 +162,32 @@ const styles = StyleSheet.create({
         gap: 16,
     },
     iconBox: {
-        width: 40,
-        height: 40,
-        borderRadius: 12,
+        width: 44,
+        height: 44,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
     },
     rowLabel: {
         fontSize: 15,
-        fontWeight: '700',
+        fontWeight: '800',
     },
     rowValue: {
         fontSize: 12,
-        fontWeight: '500',
+        fontWeight: '600',
         marginTop: 2,
     },
-    infoArea: {
-        marginTop: 40,
+    footerInfo: {
+        marginTop: 48,
         alignItems: 'center',
+        gap: 12,
+        paddingBottom: 40,
     },
-    infoText: {
+    footerText: {
         fontSize: 12,
-        fontWeight: '500',
+        fontWeight: '600',
+        textAlign: 'center',
     }
 });
 
-export default AccountManageScreen;
+export default memo(AccountManageScreen);

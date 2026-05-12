@@ -1,4 +1,4 @@
-import React, { memo, useRef, useCallback } from 'react';
+import React, { memo, useRef, useCallback, useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -17,11 +17,13 @@ import {
   Briefcase,
   Award,
   Palette,
-
   Zap,
   Settings,
   Bell,
   CheckCircle2,
+  Share2,
+  LogOut,
+  HelpCircle
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -29,7 +31,6 @@ import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useFollows } from '@/hooks/useFollows';
 import { useNotifications } from '@/hooks/useNotifications';
-import { calculateProfileCompletion } from '@/utils/profileCompletion';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
@@ -38,6 +39,8 @@ import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { RADIUS } from '@/system/constants/dimensions';
 import { useUI } from '@/contexts/UIContext';
+import { calculateProfileCompletion } from '@/utils/profileCompletion';
+import { PremiumPopup } from '@/system/components/PremiumPopup';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
 
@@ -49,15 +52,13 @@ const alpha = (color: string, opacity: number) => {
 const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
-  const { user, profile, completionPercentage } = useProfile();
+  const { user, profile, handleLogout: onLogout } = useProfile();
   const { unreadCount } = useNotifications();
   const { follows, unfollow } = useFollows();
   const { hideTabBar, showTabBar } = useUI();
-  
-  const completion = calculateProfileCompletion(profile);
-  const displayPercentage = Math.max(completionPercentage, completion.percentage);
 
-  const isGuest = false; // Temporarily disabled auth requirement
+  const isGuest = !user;
+  const [showLogoutPopup, setShowLogoutPopup] = useState(false);
 
   // Track scroll position for hide/show tab bar
   const scrollOffset = useRef(0);
@@ -79,6 +80,16 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const onNavigate = (screen: keyof RootStackParamList) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.navigate(isGuest ? ('Login' as never) : (screen as never));
+  };
+
+  const onSupportPress = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    navigation.navigate('Feedback');
+  };
+
+  const onLogoutPress = () => {
+    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    setShowLogoutPopup(true);
   };
 
   return (
@@ -127,25 +138,23 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                   </View>
               </View>
 
-              {/* Completion Section */}
-              {!isGuest && (
-                  <SurfaceCard style={[styles.completionSection, { backgroundColor: alpha(currentTheme.colors.primary, 0.03), borderColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                      <View style={styles.completionHeader}>
-                          <Text style={[styles.completionLabel, { color: currentTheme.colors.text }]}>Identity Readiness</Text>
-                          <Text style={[styles.completionValue, { color: currentTheme.colors.primary }]}>{displayPercentage}%</Text>
-                      </View>
-                      <View style={[styles.progressTrack, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                          <View style={[styles.progressFill, { width: `${displayPercentage}%`, backgroundColor: currentTheme.colors.primary }]} />
-                      </View>
-                      <Text style={[styles.completionSub, { color: currentTheme.colors.textMuted }]}>
-                          {displayPercentage < 100 
-                            ? `Complete ${completion.missingFields[0]} to unlock better job matches.`
-                            : 'Your profile is optimized for high-signal opportunities.'}
-                      </Text>
-                  </SurfaceCard>
+              {/* Completion Card */}
+              {profile && user && (
+                <View style={[styles.completionSection, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
+                    <View style={styles.completionHeader}>
+                        <Text style={[styles.completionLabel, { color: currentTheme.colors.primary }]}>PROFILE COMPLETION</Text>
+                        <Text style={[styles.completionValue, { color: currentTheme.colors.primary }]}>{calculateProfileCompletion(profile).percentage}%</Text>
+                    </View>
+                    <View style={[styles.progressTrack, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                        <View style={[styles.progressFill, { width: `${calculateProfileCompletion(profile).percentage}%`, backgroundColor: currentTheme.colors.primary }]} />
+                    </View>
+                    <Text style={[styles.completionSub, { color: currentTheme.colors.textMuted }]}>
+                        {calculateProfileCompletion(profile).percentage === 100 
+                            ? 'Your professional identity is fully optimized for top recruiters.'
+                            : `Complete ${calculateProfileCompletion(profile).missingFields[0]} to improve your match score.`}
+                    </Text>
+                </View>
               )}
-
-
 
               {isGuest && (
                   <TouchableOpacity 
@@ -177,6 +186,18 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         icon={Briefcase} 
                         label="Work Preferences" 
                         onPress={() => onNavigate('EditPreferences')} 
+                        currentTheme={currentTheme} 
+                      />
+                      <MenuRow 
+                        icon={Briefcase} 
+                        label="Application Tracker" 
+                        onPress={() => onNavigate('ApplicationTracker')} 
+                        currentTheme={currentTheme} 
+                      />
+                      <MenuRow 
+                        icon={Share2} 
+                        label="My Contributions" 
+                        onPress={() => onNavigate('MyContributions')} 
                         currentTheme={currentTheme} 
                         isLast
                       />
@@ -220,7 +241,6 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
                   <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>COMMUNITY & SYSTEM</Text>
                   <SurfaceCard style={styles.groupCard}>
-
                       <MenuRow 
                         icon={Palette} 
                         label="Interface Appearance" 
@@ -232,23 +252,37 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         label="Security & Account" 
                         onPress={() => onNavigate('AccountManage')} 
                         currentTheme={currentTheme} 
+                      />
+                      <MenuRow 
+                        icon={HelpCircle} 
+                        label="Support & Feedback" 
+                        onPress={onSupportPress} 
+                        currentTheme={currentTheme} 
+                      />
+                      <MenuRow 
+                        icon={LogOut} 
+                        label="Sign Out" 
+                        onPress={onLogoutPress} 
+                        currentTheme={currentTheme} 
+                        destructive
                         isLast
                       />
                   </SurfaceCard>
 
-
-              </View>
-
-              <View style={styles.footer}>
-                  <Text style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
-                      FRESHERFLOW • HIGH-FIDELITY SIGNALS
-                  </Text>
-                  <Text style={[styles.versionText, { color: alpha(currentTheme.colors.textMuted, 0.4) }]}>
-                      v1.5.0 • BUILD 2024
-                  </Text>
-              </View>
+               </View>
           </View>
       </ScrollView>
+
+      <PremiumPopup 
+        visible={showLogoutPopup}
+        title="Sign Out"
+        description="Are you sure you want to end your session? You will need to sign in again to access your preferences."
+        onDismiss={() => setShowLogoutPopup(false)}
+        actions={[
+            { text: 'Cancel', style: 'cancel', onPress: () => {} },
+            { text: 'Sign Out', style: 'destructive', onPress: onLogout }
+        ]}
+      />
     </Screen>
   );
 });
