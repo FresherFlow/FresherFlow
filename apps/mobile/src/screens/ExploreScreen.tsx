@@ -13,7 +13,7 @@ import {
     NativeScrollEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Compass, Filter } from 'lucide-react-native';
+import { Compass, Filter, Building2 } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -28,13 +28,16 @@ import { FilterSheet } from '@/system/components/FilterSheet';
 import { FilterChip } from '@/system/components/FilterChip';
 import { SPACING } from '@/system/constants/dimensions';
 import { useExplore } from '@/hooks/useExplore';
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, OpportunityType } from '@fresherflow/types';
+import { CORE_CATEGORIES, CONTROLLED_TAGS, CATEGORY_LABELS } from '@fresherflow/constants';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExploreMain'>;
 
 type ExploreItem = 
   | { type: 'stats'; key: string; count: number }
-  | { type: 'opportunity'; data: Opportunity; key: string };
+  | { type: 'opportunity'; data: Opportunity; key: string }
+  | { type: 'discovery'; key: string }
+  | { type: 'empty'; key: string };
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -117,15 +120,97 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
             <FlatList<ExploreItem>
-                data={resultsCount > 0 
-                    ? [{ type: 'stats', key: 'results_stats', count: resultsCount }, ...results.map(r => ({ type: 'opportunity', data: r, key: r.id } as ExploreItem))] 
-                    : results.map(r => ({ type: 'opportunity', data: r, key: r.id } as ExploreItem))
-                }
+                data={(() => {
+                    const showDiscovery = !searchQuery && activeFilterCount === 0;
+                    const items: ExploreItem[] = [];
+                    
+                    if (showDiscovery) {
+                        items.push({ type: 'discovery', key: 'discovery' });
+                    }
+                    
+                    if (resultsCount > 0) {
+                        items.push({ type: 'stats', key: 'results_stats', count: resultsCount });
+                        results.forEach(r => {
+                            items.push({ type: 'opportunity', data: r, key: r.id });
+                        });
+                    } else if (!loading) {
+                        items.push({ type: 'empty', key: 'empty_state' });
+                    }
+                    
+                    return items;
+                })()}
                 keyExtractor={(item) => item.key}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
                 stickyHeaderIndices={[0]}
                 renderItem={({ item }) => {
+                    if (item.type === 'discovery') {
+                        return (
+                            <>
+                                <View style={styles.discoverySection}>
+                                    <View style={styles.sectionHeader}>
+                                        <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Browse Categories</Text>
+                                    </View>
+                                    <ScrollView 
+                                        horizontal 
+                                        showsHorizontalScrollIndicator={false}
+                                        contentContainerStyle={styles.categoryScroll}
+                                    >
+                                        {CORE_CATEGORIES.map((cat: OpportunityType) => (
+                                            <TouchableOpacity 
+                                                key={cat}
+                                                onPress={() => setFilters({ type: cat })}
+                                                style={[styles.categoryCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}
+                                            >
+                                                <Text style={[styles.categoryLabel, { color: currentTheme.colors.primary }]}>
+                                                    {CATEGORY_LABELS[cat] || cat}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
+                                </View>
+
+                                <View style={styles.discoverySection}>
+                                     <View style={styles.sectionHeader}>
+                                         <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Top Companies</Text>
+                                     </View>
+                                     <ScrollView 
+                                         horizontal 
+                                         showsHorizontalScrollIndicator={false}
+                                         contentContainerStyle={styles.categoryScroll}
+                                     >
+                                         <TouchableOpacity 
+                                             onPress={() => navigation.navigate('CompanyDirectory')}
+                                             style={[styles.categoryCard, { backgroundColor: alpha(currentTheme.colors.success, 0.05), flexDirection: 'row', alignItems: 'center', gap: 8 }]}
+                                         >
+                                             <Building2 size={16} color={currentTheme.colors.success} />
+                                             <Text style={[styles.categoryLabel, { color: currentTheme.colors.success }]}>
+                                                 Browse Directory
+                                             </Text>
+                                         </TouchableOpacity>
+                                     </ScrollView>
+                                 </View>
+
+                                 <View style={styles.discoverySection}>
+                                     <View style={styles.sectionHeader}>
+                                         <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Trending Tags</Text>
+                                     </View>
+                                    <View style={styles.tagGrid}>
+                                        {[...CONTROLLED_TAGS.BATCHES, ...CONTROLLED_TAGS.ROLES].slice(0, 6).map(tag => (
+                                            <TouchableOpacity 
+                                                key={tag}
+                                                onPress={() => setFilters({ tag })}
+                                                style={[styles.tagChip, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
+                                            >
+                                                <Text style={[styles.tagText, { color: currentTheme.colors.text }]}>{tag}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                </View>
+                            </>
+                        );
+                    }
+
                     if (item.type === 'stats') {
                         return (
                             <View style={styles.resultsHeader}>
@@ -135,6 +220,11 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             </View>
                         );
                     }
+
+                    if (item.type === 'empty') {
+                        return renderEmpty();
+                    }
+
                     return (
                         <JobCard 
                             opportunity={item.data} 
@@ -173,7 +263,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             />
                         </View>
                         
-                        {activeFilterCount > 0 && (
+                        {(activeFilterCount > 0 || searchQuery) && (
                             <ScrollView 
                                 horizontal 
                                 showsHorizontalScrollIndicator={false} 
@@ -181,7 +271,10 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 contentContainerStyle={styles.chipContent}
                             >
                                 {filters.type && (
-                                    <FilterChip label={filters.type} onRemove={() => setFilters({ type: null })} />
+                                    <FilterChip label={CATEGORY_LABELS[filters.type] || filters.type} onRemove={() => setFilters({ type: null })} />
+                                )}
+                                {filters.tag && (
+                                    <FilterChip label={filters.tag} onRemove={() => setFilters({ tag: null })} />
                                 )}
                                 {filters.workMode && (
                                     <FilterChip label={filters.workMode} onRemove={() => setFilters({ workMode: null })} />
@@ -193,7 +286,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         )}
                     </View>
                 }
-                ListEmptyComponent={renderEmpty}
+                ListEmptyComponent={null}
                 contentContainerStyle={[styles.scrollContent, { paddingTop: paddingTopOs + 20, paddingBottom: insets.bottom + 80 }]}
                 showsVerticalScrollIndicator={false}
                 onRefresh={onRefresh}
@@ -230,6 +323,47 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    discoverySection: {
+        marginTop: 24,
+    },
+    sectionHeader: {
+        paddingHorizontal: SPACING.lg,
+        marginBottom: 12,
+    },
+    sectionTitle: {
+        fontSize: 16,
+        fontWeight: '900',
+        letterSpacing: -0.5,
+    },
+    categoryScroll: {
+        paddingHorizontal: SPACING.lg,
+        gap: 12,
+    },
+    categoryCard: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 16,
+        marginRight: 4,
+    },
+    categoryLabel: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    tagGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        paddingHorizontal: SPACING.lg,
+        gap: 8,
+    },
+    tagChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 12,
+    },
+    tagText: {
+        fontSize: 13,
+        fontWeight: '700',
     },
     badge: {
         position: 'absolute',

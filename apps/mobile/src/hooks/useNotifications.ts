@@ -4,9 +4,12 @@ import { alertsApi } from '@fresherflow/api-client';
 import { useUserAuth as useAuth } from '@repo/frontend-core';
 import { AlertDelivery } from '@fresherflow/types';
 
+import { getUnseenCount } from '@/utils/localNotifications';
+
 export interface NotificationState {
     alerts: AlertDelivery[];
     unreadCount: number;
+    unseenFeedCount: number;
     loading: boolean;
     refreshing: boolean;
 }
@@ -15,6 +18,7 @@ export function useNotifications() {
     const [state, setState] = useState<NotificationState>({
         alerts: [],
         unreadCount: 0,
+        unseenFeedCount: 0,
         loading: true,
         refreshing: false,
     });
@@ -51,10 +55,17 @@ export function useNotifications() {
     }, [user]);
 
     const fetchUnreadCount = useCallback(async () => {
-        if (!user) return;
         try {
-            const data = await alertsApi.getUnreadCount();
-            setState(prev => ({ ...prev, unreadCount: data.count }));
+            const [unreadData, unseenFeed] = await Promise.all([
+                user ? alertsApi.getUnreadCount() : Promise.resolve({ count: 0 }),
+                getUnseenCount()
+            ]);
+            
+            setState(prev => ({ 
+                ...prev, 
+                unreadCount: unreadData.count,
+                unseenFeedCount: unseenFeed
+            }));
         } catch (error) {
             console.error('[useNotifications] fetchUnreadCount failed:', error);
         }

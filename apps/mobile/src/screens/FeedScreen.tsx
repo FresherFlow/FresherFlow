@@ -12,6 +12,7 @@ import {
   Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useFocusEffect } from '@react-navigation/native';
 import { 
     TrendingUp,
   Compass,
@@ -21,6 +22,7 @@ import { useSaved } from '@repo/frontend-core';
 
 import { useFeed } from '@/hooks/useFeed';
 import { saveDetailCache } from '@/utils/offlineCache';
+import { clearUnseenCount } from '@/utils/localNotifications';
 import { Opportunity } from '@fresherflow/types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
@@ -181,7 +183,13 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const [activeTab, setActiveTab] = useState(0);
   const pagerRef = useRef<FlatList>(null);
   const tabListRef = useRef<ScrollView>(null);
-  
+
+  useFocusEffect(
+    useCallback(() => {
+        void clearUnseenCount();
+    }, [])
+  );
+
   // Tab indicator animations
   const [tabLayouts, setTabLayouts] = useState<{[key: number]: {x: number, width: number}}>({});
   const indicatorX = useRef(new Animated.Value(0)).current;
@@ -195,24 +203,33 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     { id: 'internships', label: 'Internships' },
   ];
 
+  const hasInitialLayout = useRef(false);
+
   // Update indicator position when active tab or layouts change
   useEffect(() => {
     if (tabLayouts[activeTab]) {
       const { x, width } = tabLayouts[activeTab];
-      Animated.spring(indicatorX, {
-        toValue: x,
-        useNativeDriver: false,
-        tension: 140,
-        friction: 12,
-      }).start();
-      Animated.spring(indicatorWidth, {
-        toValue: width,
-        useNativeDriver: false,
-        tension: 140,
-        friction: 12,
-      }).start();
+      
+      if (!hasInitialLayout.current) {
+        indicatorX.setValue(x);
+        indicatorWidth.setValue(width);
+        hasInitialLayout.current = true;
+      } else {
+        Animated.spring(indicatorX, {
+          toValue: x,
+          useNativeDriver: false,
+          tension: 140,
+          friction: 12,
+        }).start();
+        Animated.spring(indicatorWidth, {
+          toValue: width,
+          useNativeDriver: false,
+          tension: 140,
+          friction: 12,
+        }).start();
+      }
     }
-  }, [activeTab, tabLayouts]);
+  }, [activeTab, tabLayouts, indicatorX, indicatorWidth]);
 
   // Track scroll position for hide/show tab bar
   const scrollOffset = useRef(0);
@@ -287,9 +304,10 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             >
                 {feeds.map((feed, index) => {
                     const isActive = activeTab === index;
+                    const tabKey = `tab-${feed.id || 'all'}-${index}`;
                     return (
                         <TouchableOpacity 
-                            key={feed.id || 'all'}
+                            key={tabKey}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             onLayout={(e) => {
                                 const { x, width } = e.nativeEvent.layout;
@@ -329,7 +347,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         horizontal
         pagingEnabled
         data={feeds}
-        keyExtractor={(f) => f.id || 'all'}
+        keyExtractor={(f, index) => `pager-${f.id || 'all'}-${index}`}
         showsHorizontalScrollIndicator={false}
         onScroll={onPagerScroll}
         scrollEventThrottle={16}

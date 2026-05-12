@@ -1,4 +1,5 @@
 import React, { memo, useRef, useCallback } from 'react';
+import * as Haptics from 'expo-haptics';
 import {
     StyleSheet,
     Text,
@@ -9,6 +10,7 @@ import {
     Platform,
     NativeSyntheticEvent,
     NativeScrollEvent,
+    ScrollView,
 } from 'react-native';
 import { 
     LayoutDashboard, 
@@ -42,8 +44,9 @@ import { useSaved } from '@repo/frontend-core';
 const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { currentTheme } = useTheme();
     const { hideTabBar, showTabBar } = useUI();
-    const { recentActivity, highlights, loading, refresh } = useDashboard();
+    const { highlights, recentActivity, latestJobs, appliedJobs, loading, refresh } = useDashboard();
     const { isSaved, toggleSave } = useSaved();
+    const [activeTab, setActiveTab] = React.useState<'featured' | 'latest' | 'expiring' | 'applied'>('featured');
 
     // Track scroll position for hide/show tab bar
     const scrollOffset = useRef(0);
@@ -62,6 +65,15 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         }
     }, [hideTabBar, showTabBar]);
 
+    const filteredItems = React.useMemo(() => {
+        switch (activeTab) {
+            case 'latest': return latestJobs;
+            case 'applied': return appliedJobs;
+            case 'expiring': return highlights?.urgent?.deadlines || [];
+            default: return recentActivity.length > 0 ? recentActivity : latestJobs.slice(0, 5);
+        }
+    }, [activeTab, latestJobs, appliedJobs, highlights, recentActivity]);
+
     const renderHeader = () => (
         <View style={{ backgroundColor: currentTheme.colors.background }}>
             <View style={styles.headerArea}>
@@ -71,22 +83,28 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 />
     
                 <View style={styles.statsGrid}>
-                    <View style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderRadius: 24 }]}>
+                    <TouchableOpacity 
+                        onPress={() => setActiveTab('featured')}
+                        style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderRadius: 24, borderWidth: activeTab === 'featured' ? 1 : 0, borderColor: currentTheme.colors.primary }]}
+                    >
                         <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
                             <Bookmark size={16} color={currentTheme.colors.primary} />
                         </View>
                         <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{recentActivity.length}</Text>
                         <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>SAVED</Text>
-                    </View>
-                    <View style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderRadius: 24 }]}>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        onPress={() => setActiveTab('applied')}
+                        style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderRadius: 24, borderWidth: activeTab === 'applied' ? 1 : 0, borderColor: currentTheme.colors.success }]}
+                    >
                         <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
                             <Send size={16} color={currentTheme.colors.success} />
                         </View>
                         <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>
-                            {highlights?.urgent?.walkins?.length || 0}
+                            {appliedJobs.length}
                         </Text>
                         <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>APPLIED</Text>
-                    </View>
+                    </TouchableOpacity>
                     <View style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.warning, 0.05), borderRadius: 24 }]}>
                         <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
                             <Trophy size={16} color={currentTheme.colors.warning} />
@@ -96,11 +114,70 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     </View>
                 </View>
 
+                {/* Dashboard Tabs (Parity with Web) */}
+                <View style={styles.tabContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabScroll}>
+                        {[
+                            { id: 'featured', label: 'Featured' },
+                            { id: 'latest', label: 'Latest' },
+                            { id: 'expiring', label: 'Expiring' },
+                            { id: 'applied', label: 'Applied' }
+                        ].map((tab) => {
+                            const isActive = activeTab === tab.id;
+                            return (
+                                <TouchableOpacity 
+                                    key={tab.id}
+                                    onPress={() => {
+                                        setActiveTab(tab.id as 'featured' | 'latest' | 'expiring' | 'applied');
+                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    }}
+                                    style={[styles.tab, isActive && { backgroundColor: currentTheme.colors.text }]}
+                                >
+                                    <Text style={[styles.tabText, { color: isActive ? currentTheme.colors.background : currentTheme.colors.textMuted }]}>
+                                        {tab.label}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
+                </View>
+
+                {/* Deadline Radar Section - Only show if not on expiring tab */}
+                {activeTab !== 'expiring' && highlights?.urgent?.deadlines && highlights.urgent.deadlines.length > 0 && (
+                    <View style={styles.discoverySection}>
+                        <View style={styles.sectionHeaderNoPad}>
+                            <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Deadline Radar</Text>
+                            <TouchableOpacity onPress={() => setActiveTab('expiring')}>
+                                <Text style={[styles.seeAll, { color: currentTheme.colors.primary }]}>See All</Text>
+                            </TouchableOpacity>
+                        </View>
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.deadlineScroll}
+                        >
+                            {highlights.urgent.deadlines.slice(0, 5).map((opp) => (
+                                <TouchableOpacity 
+                                    key={opp.id}
+                                    activeOpacity={0.8}
+                                    style={[styles.deadlineCard, { backgroundColor: alpha(currentTheme.colors.error, 0.05), borderColor: alpha(currentTheme.colors.error, 0.1) }]}
+                                    onPress={() => navigation.navigate('JobDetail', { opportunityId: opp.id })}
+                                >
+                                    <View style={styles.deadlineBadge}>
+                                        <Text style={[styles.deadlineBadgeText, { color: currentTheme.colors.error }]}>URGENT</Text>
+                                    </View>
+                                    <Text style={[styles.deadlineTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{opp.title}</Text>
+                                    <Text style={[styles.deadlineCompany, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>{opp.company}</Text>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </View>
+                )}
+
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>Recent Activity</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('Explore')}>
-                        <Text style={[styles.seeAll, { color: currentTheme.colors.primary }]}>Explore More</Text>
-                    </TouchableOpacity>
+                    <Text style={[styles.sectionTitle, { color: currentTheme.colors.text }]}>
+                        {activeTab === 'featured' ? 'Recently Activity' : activeTab === 'latest' ? 'Latest Openings' : activeTab === 'applied' ? 'Applied Jobs' : 'Closing Soon'}
+                    </Text>
                 </View>
             </View>
         </View>
@@ -113,7 +190,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             </View>
             <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No Activity Yet</Text>
             <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
-                Save or apply to verified opportunities to track your progress here.
+                {activeTab === 'applied' ? "You haven't applied to any jobs yet." : "No jobs found in this category."}
             </Text>
             <TouchableOpacity 
                 style={[styles.actionBtn, { backgroundColor: currentTheme.colors.primary }]}
@@ -132,7 +209,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
             <FlatList
-                data={recentActivity}
+                data={filteredItems}
                 keyExtractor={(item) => item.id}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
@@ -165,7 +242,27 @@ const styles = StyleSheet.create({
         paddingTop: 12,
     },
     headerArea: {
-        marginBottom: 24,
+        marginBottom: 8,
+    },
+    tabContainer: {
+        marginTop: 24,
+        marginBottom: 8,
+    },
+    tabScroll: {
+        paddingHorizontal: 20,
+        gap: 8,
+    },
+    tab: {
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderRadius: 20,
+        backgroundColor: 'rgba(0,0,0,0.03)',
+    },
+    tabText: {
+        fontSize: 13,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
     },
     statsGrid: {
         flexDirection: 'row',
@@ -257,6 +354,48 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '900',
         letterSpacing: 1,
+    },
+    discoverySection: {
+        marginTop: 32,
+    },
+    sectionHeaderNoPad: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 24,
+        marginBottom: 16,
+    },
+    deadlineScroll: {
+        paddingHorizontal: 20,
+        gap: 12,
+    },
+    deadlineCard: {
+        width: 180,
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    deadlineBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 2,
+        borderRadius: 6,
+        backgroundColor: 'rgba(255,255,255,0.1)',
+        alignSelf: 'flex-start',
+        marginBottom: 8,
+    },
+    deadlineBadgeText: {
+        fontSize: 8,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    deadlineTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        marginBottom: 4,
+    },
+    deadlineCompany: {
+        fontSize: 11,
+        fontWeight: '600',
     }
 });
 

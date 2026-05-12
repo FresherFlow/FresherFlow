@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { dashboardApi, savedApi } from '@fresherflow/api-client';
+import { dashboardApi, savedApi, opportunitiesApi, actionsApi } from '@fresherflow/api-client';
 import { Opportunity } from '@fresherflow/types';
 
 interface Highlights {
@@ -15,18 +15,26 @@ interface Highlights {
 export function useDashboard() {
     const [highlights, setHighlights] = useState<Highlights | null>(null);
     const [recentActivity, setRecentActivity] = useState<Opportunity[]>([]);
+    const [latestJobs, setLatestJobs] = useState<Opportunity[]>([]);
+    const [appliedJobs, setAppliedJobs] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(false);
 
     const fetchDashboardData = useCallback(async () => {
         setLoading(true);
         try {
-            const [highlightsData, savedData] = await Promise.all([
+            const [highlightsData, savedData, latestData, actionsData] = await Promise.all([
                 dashboardApi.getHighlights(),
-                savedApi.list()
+                savedApi.list(),
+                opportunitiesApi.list({ sort: 'freshness_v2' }),
+                actionsApi.list()
             ]);
             
             setHighlights(highlightsData as Highlights);
             setRecentActivity((savedData as { opportunities?: Opportunity[] }).opportunities || []);
+            setLatestJobs((latestData as { opportunities?: Opportunity[] }).opportunities || []);
+            
+            const actions = (actionsData as { actions?: { opportunity?: Opportunity }[] }).actions || [];
+            setAppliedJobs(actions.map(a => a.opportunity).filter((o): o is Opportunity => !!o));
         } catch (error) {
             console.error('Failed to fetch dashboard data', error);
         } finally {
@@ -41,6 +49,8 @@ export function useDashboard() {
     return {
         highlights,
         recentActivity,
+        latestJobs,
+        appliedJobs,
         loading,
         refresh: fetchDashboardData
     };

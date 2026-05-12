@@ -1,5 +1,5 @@
 import React, { memo, useMemo, useCallback, useRef } from 'react';
-import { StyleSheet, View, Text, FlatList, TouchableOpacity, Animated, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, FlatList, TouchableOpacity, Animated, ActivityIndicator, Platform } from 'react-native';
 import { useNotifications } from '@/hooks/useNotifications';
 import { AlertDelivery, AlertKind } from '@fresherflow/types';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -179,15 +179,24 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
         <Screen safe={false}>
-            <PremiumHeader 
-                title="Signals" 
-                subtitle="Your Alerts"
-                rightSlot={unreadCount > 0 && (
-                    <TouchableOpacity onPress={markAllRead}>
-                        <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Mark all read</Text>
-                    </TouchableOpacity>
-                )}
-            />
+            <View style={{ paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
+                <PremiumHeader 
+                    title="Signals" 
+                    subtitle="Your Alerts"
+                    rightSlot={
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                            <TouchableOpacity onPress={() => navigation.navigate('AlertSettings')}>
+                                <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Settings</Text>
+                            </TouchableOpacity>
+                            {unreadCount > 0 && (
+                                <TouchableOpacity onPress={markAllRead}>
+                                    <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Clear</Text>
+                                </TouchableOpacity>
+                            )}
+                        </View>
+                    }
+                />
+            </View>
 
             {loading && !refreshing ? (
                 <View style={styles.loader}>

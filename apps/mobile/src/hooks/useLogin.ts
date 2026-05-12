@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useUserAuth as useAuth, useNotifications } from '@repo/frontend-core';
 import { sendOtpSchema, verifyOtpSchema } from '@fresherflow/schemas';
@@ -16,6 +16,7 @@ export const useLogin = (route: Props['route']) => {
     const [otp, setOtp] = useState('');
     const [otpSent, setOtpSent] = useState(!!route.params?.prefilledEmail);
     const [loading, setLoading] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
 
     const handleSendOtp = useCallback(async () => {
         const validation = sendOtpSchema.safeParse({ email: email.trim() });
@@ -28,13 +29,28 @@ export const useLogin = (route: Props['route']) => {
         try {
             await sendOtp(email.trim());
             setOtpSent(true);
-            Alert.alert('Code sent', 'Check your email for the verification code.');
+            setResendTimer(60);
         } catch (error: unknown) {
             Alert.alert('Failed', (error as Error).message || 'Could not send code');
         } finally {
             setLoading(false);
         }
     }, [email, sendOtp]);
+
+    const handleResend = useCallback(async () => {
+        if (resendTimer > 0 || loading) return;
+        void handleSendOtp();
+    }, [resendTimer, loading, handleSendOtp]);
+
+    useEffect(() => {
+        let interval: NodeJS.Timeout;
+        if (resendTimer > 0) {
+            interval = setInterval(() => {
+                setResendTimer((prev) => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [resendTimer]);
 
     const handleVerifyOtp = useCallback(async () => {
         const validation = verifyOtpSchema.safeParse({ email: email.trim(), code: otp.trim() });
@@ -76,5 +92,7 @@ export const useLogin = (route: Props['route']) => {
         loading,
         handleSendOtp,
         handleVerifyOtp,
+        handleResend,
+        resendTimer,
     };
 };

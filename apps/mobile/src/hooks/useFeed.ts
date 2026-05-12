@@ -1,15 +1,67 @@
 import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
 import { Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { Opportunity, OpportunityType, OpportunityListResponse } from '@fresherflow/types';
+import { Opportunity, OpportunityType, OpportunityListResponse, Profile } from '@fresherflow/types';
 import { opportunitiesApi, getInferredBaseUrl } from '@fresherflow/api-client';
 import { useUserAuth as useAuth, useNotifications } from '@repo/frontend-core';
-import { saveFeedCache, readFeedCache } from '@/utils/offlineCache';
+import { saveFeedCache, readFeedCache, getLastSyncTimestamp, saveLastSyncTimestamp } from '@/utils/offlineCache';
+import { diffAndNotify } from '@/utils/localNotifications';
+import { getLocalProfile } from '@/utils/localProfile';
+import { calculateMatchScore } from '@/utils/matchScoring';
+
+// Global tracker to prevent multiple tabs from syncing at the same time
+let globalLastSyncTimestamp = 0;
 
 export const useFeed = (initialFeedType: string | null = null) => {
-    const { user, profile } = useAuth();
+    const { user, profile: authProfile } = useAuth();
     useNotifications();
     const [jobs, setJobs] = useState<Opportunity[]>([]);
+    const [localProfile, setLocalProfile] = useState<Profile | null>(null);
+
+    // Smart Sync Logic: Update only statuses/expiries without full re-fetch
+    const performSync = useCallback(async (force = false) => {
+        // Throttle: Don't sync more than once every 60 seconds across all hook instances
+        const now = Date.now();
+        if (!force && now - globalLastSyncTimestamp < 60000) return;
+        globalLastSyncTimestamp = now;
+
+        try {
+            const since = await getLastSyncTimestamp();
+            const response = await opportunitiesApi.sync(since || undefined);
+            
+            if (response.updates && response.updates.length > 0) {
+                console.log(`[useFeed] Syncing ${response.updates.length} updates...`);
+                setJobs(prev => {
+                    const updateMap = new Map(response.updates.map(u => [u.id, u]));
+                    
+                    // Update existing jobs, filter out deleted ones
+                    const updatedJobs = prev.map(job => {
+                        const update = updateMap.get(job.id);
+                        if (update) {
+                            return { ...job, ...update };
+                        }
+                        return job;
+                    }).filter(job => !job.deletedAt && job.status !== 'ARCHIVED');
+
+                    void saveFeedCache(updatedJobs);
+                    return updatedJobs;
+                });
+            }
+            
+            await saveLastSyncTimestamp(response.timestamp);
+        } catch (e) {
+            console.warn('[useFeed] Smart sync failed', e);
+        }
+    }, []);
+
+    // Sync local profile for scoring
+    useEffect(() => {
+        const syncProfile = async () => {
+            const p = await getLocalProfile();
+            setLocalProfile(p || authProfile);
+        };
+        void syncProfile();
+    }, [authProfile]);
     const [loading, setLoading] = useState(false);
     const [refreshing, setRefreshing] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -56,6 +108,7 @@ export const useFeed = (initialFeedType: string | null = null) => {
             if (reset) {
                 setJobs(opportunities);
                 await saveFeedCache(opportunities);
+                await diffAndNotify(opportunities);
                 setHasMore(opportunities.length > 0 && (responseTotal === 0 || opportunities.length < responseTotal));
                 setTotalResults(responseTotal || opportunities.length);
             } else {
@@ -104,10 +157,13 @@ export const useFeed = (initialFeedType: string | null = null) => {
                 setOfflineMode(false);
                 initialLoadDone.current = true;
                 
-                // Only fetch fresh data in background if cache is older than 1 hour
-                const isCacheStale = (Date.now() - cached.timestamp) > 60 * 60 * 1000;
+                // Only fetch fresh data in background if cache is older than 5 minutes
+                const isCacheStale = (Date.now() - cached.timestamp) > 5 * 60 * 1000;
                 if (isCacheStale) {
                     void fetchJobs(true, true);
+                } else {
+                    // Even if cache is fresh, do a lightweight status sync
+                    void performSync();
                 }
             } else {
                 void fetchJobs(true, false);
@@ -115,13 +171,13 @@ export const useFeed = (initialFeedType: string | null = null) => {
             }
         };
         void loadInitialCache();
-    }, []);
+    }, [performSync]);
 
     useFocusEffect(
         useCallback(() => {
-            // Don't refetch on every focus to save bandwidth and preserve cache state
-            // If the user wants fresh data, they can pull-to-refresh
-        }, [])
+            // Run a lightweight sync when the screen comes into focus
+            void performSync();
+        }, [performSync])
     );
 
     const filteredOpportunities = useMemo(() => {
@@ -138,6 +194,13 @@ export const useFeed = (initialFeedType: string | null = null) => {
             result = result.filter(j => j.allowedPassoutYears?.includes(2026));
         } else if (feedType === 'internships') {
             result = result.filter(j => j.type === 'INTERNSHIP');
+        } else if (feedType === 'trending') {
+            // Simple Trending wiring: Use trendingScore if available, else calculate simple engagement score
+            result = [...result].sort((a, b) => {
+                const scoreA = a.trendingScore || ((a.sharesCount || 0) * 5 + (a.savesCount || 0) * 3 + (a.clicksCount || 0));
+                const scoreB = b.trendingScore || ((b.sharesCount || 0) * 5 + (b.savesCount || 0) * 3 + (b.clicksCount || 0));
+                return scoreB - scoreA;
+            });
         }
 
         if (searchQuery.trim()) {
@@ -148,13 +211,33 @@ export const useFeed = (initialFeedType: string | null = null) => {
                     job.company.toLowerCase().includes(lowerQuery),
             );
         }
-        return result;
-    }, [jobs, searchQuery, activeFilter, feedType]);
+
+        // Sink Expired to Bottom (Task 11, Item 7)
+        const now = new Date();
+        const active = result.filter(j => !j.expiresAt || new Date(j.expiresAt) > now);
+        const expired = result.filter(j => j.expiresAt && new Date(j.expiresAt) <= now);
+        
+        const combined = [...active, ...expired];
+
+        // Add Local Match Scoring
+        return combined.map(job => {
+            if (!localProfile) return job;
+            
+            const match = calculateMatchScore(localProfile, job);
+            return {
+                ...job,
+                matchScore: match.score,
+                matchReason: match.reason,
+                isEligible: match.isEligible
+            };
+        });
+    }, [jobs, searchQuery, activeFilter, feedType, localProfile]);
 
     const onRefresh = useCallback(() => {
         setRefreshing(true);
         void fetchJobs(true, true);
-    }, [fetchJobs]);
+        void performSync(true);
+    }, [fetchJobs, performSync]);
 
     const clearFilters = useCallback(() => {
         setSearchQuery('');
@@ -168,7 +251,7 @@ export const useFeed = (initialFeedType: string | null = null) => {
 
     return {
         user,
-        profile,
+        profile: localProfile,
         opportunities: jobs,
         loading,
         refreshing,

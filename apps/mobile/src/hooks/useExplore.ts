@@ -4,10 +4,13 @@ import { Opportunity } from '@fresherflow/types';
 // @ts-expect-error lodash/debounce typing
 import debounce from 'lodash/debounce';
 
+import { OpportunityType, WorkMode } from '@fresherflow/types';
+
 export interface ExploreFilters {
-    type: 'JOB' | 'INTERNSHIP' | 'WALKIN' | null;
-    workMode: 'REMOTE' | 'HYBRID' | 'ONSITE' | null;
+    type: OpportunityType | null;
+    workMode: WorkMode | null;
     batchYear: number | null;
+    tag: string | null;
     sort: 'latest' | 'trending' | 'closing_soon';
 }
 
@@ -20,6 +23,7 @@ export function useExplore() {
         type: null,
         workMode: null,
         batchYear: null,
+        tag: null,
         sort: 'latest',
     });
 
@@ -110,6 +114,7 @@ export function useExplore() {
             type: null,
             workMode: null,
             batchYear: null,
+            tag: null,
             sort: 'latest',
         });
         setSearchQuery('');

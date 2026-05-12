@@ -10,8 +10,9 @@ import {
     Platform,
     StatusBar,
     ScrollView,
+    Alert,
 } from 'react-native';
-// No icons used
+import { Chrome } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLogin } from '@/hooks/useLogin';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -37,6 +38,8 @@ const LoginScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
         loading,
         handleSendOtp,
         handleVerifyOtp,
+        handleResend,
+        resendTimer,
     } = useLogin(route);
 
     return (
@@ -95,6 +98,8 @@ const LoginScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
                                         keyboardType="number-pad"
                                         maxLength={6}
                                         autoFocus
+                                        textContentType="oneTimeCode"
+                                        autoComplete="one-time-code"
                                     />
                                 </View>
                             )}
@@ -109,20 +114,54 @@ const LoginScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
                                     <ActivityIndicator color={currentTheme.colors.background} />
                                 ) : (
                                     <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>
-                                        {otpSent ? "Verify" : "Continue"}
+                                        {otpSent ? "VERIFY CODE" : "CONTINUE WITH EMAIL"}
                                     </Text>
                                 )}
                             </TouchableOpacity>
 
-                            {otpSent && (
-                                <TouchableOpacity 
-                                    onPress={() => setOtpSent(false)}
-                                    style={styles.resendBtn}
+                            {!otpSent && (
+                                <View style={styles.dividerContainer}>
+                                    <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.text, 0.1) }]} />
+                                    <Text style={[styles.dividerText, { color: currentTheme.colors.textMuted }]}>OR</Text>
+                                    <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.text, 0.1) }]} />
+                                </View>
+                            )}
+
+                            {!otpSent && (
+                                <TouchableOpacity
+                                    style={[styles.socialBtn, { borderColor: alpha(currentTheme.colors.text, 0.1) }]}
+                                    onPress={() => Alert.alert("Coming Soon", "Native Google Sign-In is being optimized for reliability.")}
+                                    activeOpacity={0.8}
                                 >
-                                    <Text style={[styles.resendText, { color: currentTheme.colors.textMuted }]}>
-                                        Change email
+                                    <Chrome size={20} color={currentTheme.colors.text} />
+                                    <Text style={[styles.socialText, { color: currentTheme.colors.text }]}>
+                                        Continue with Google
                                     </Text>
                                 </TouchableOpacity>
+                            )}
+
+                            {otpSent && (
+                                <View style={styles.resendContainer}>
+                                    {resendTimer > 0 ? (
+                                        <Text style={[styles.timerText, { color: currentTheme.colors.textMuted }]}>
+                                            Resend code in {resendTimer}s
+                                        </Text>
+                                    ) : (
+                                        <TouchableOpacity onPress={handleResend}>
+                                            <Text style={[styles.resendLink, { color: currentTheme.colors.primary }]}>
+                                                Resend verification code
+                                            </Text>
+                                        </TouchableOpacity>
+                                    )}
+                                    <TouchableOpacity 
+                                        onPress={() => setOtpSent(false)}
+                                        style={styles.changeEmailBtn}
+                                    >
+                                        <Text style={[styles.changeEmailText, { color: currentTheme.colors.textMuted }]}>
+                                            Change email
+                                        </Text>
+                                    </TouchableOpacity>
+                                </View>
                             )}
                         </View>
 
@@ -191,16 +230,56 @@ const styles = StyleSheet.create({
         marginTop: 12,
     },
     actionText: {
-        fontSize: 16,
-        fontWeight: '700',
-        letterSpacing: 0.5,
-    },
-    resendBtn: {
-        alignItems: 'center',
-        paddingVertical: 12,
-    },
-    resendText: {
         fontSize: 14,
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    dividerContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        paddingVertical: 8,
+    },
+    divider: {
+        flex: 1,
+        height: 1,
+    },
+    dividerText: {
+        fontSize: 12,
+        fontWeight: '800',
+        opacity: 0.5,
+    },
+    socialBtn: {
+        height: 60,
+        borderRadius: 16,
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+    },
+    socialText: {
+        fontSize: 15,
+        fontWeight: '700',
+    },
+    resendContainer: {
+        alignItems: 'center',
+        gap: 16,
+    },
+    timerText: {
+        fontSize: 13,
+        fontWeight: '600',
+        opacity: 0.6,
+    },
+    resendLink: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    changeEmailBtn: {
+        paddingVertical: 4,
+    },
+    changeEmailText: {
+        fontSize: 13,
         fontWeight: '600',
         textDecorationLine: 'underline',
     },
