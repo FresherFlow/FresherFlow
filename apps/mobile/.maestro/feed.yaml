@@ -1,0 +1,9 @@
+appId: com.fresherflow.app
+---
+- launchApp
+- assertVisible: "Offers"
+- tapOn: "Jobs"
+- assertVisible: "Latest Opportunities"
+- scroll
+- tapOn: "View Details"
+- assertVisible: "Apply Now"
