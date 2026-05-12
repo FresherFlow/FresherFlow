@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Alert, Linking, Share } from 'react-native';
-import { Opportunity, OpportunityType } from '@fresherflow/types';
-import { opportunitiesApi, opportunityClicksApi } from '@fresherflow/api-client';
+import { Opportunity, OpportunityType, ActionType } from '@fresherflow/types';
+import { opportunitiesApi, opportunityClicksApi, actionsApi } from '@fresherflow/api-client';
 import { useUserAuth as useAuth, useNotifications, useSaved } from '@repo/frontend-core';
-import { readDetailCache, saveDetailCache } from '@/utils/offlineCache';
+import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache } from '@/utils/offlineCache';
+import { getLocalProfile } from '@/utils/localProfile';
+import { calculateMatchScore } from '@/utils/matchScoring';
 import { MOBILE_SITE_URL } from '@/config/runtime';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
@@ -17,15 +19,17 @@ const getPublicOpportunityPath = (opportunity: Opportunity) => {
     return `/jobs/${slugOrId}`;
 };
 
+export type ExtendedOpportunity = Opportunity & { matchScore?: number; matchReason?: string; isEligible?: boolean };
+
 export const useOpportunityDetail = (
     opportunityId: string | null, 
-    initialOpportunity: Opportunity | null, 
+    initialOpportunity: ExtendedOpportunity | null, 
     navigation: Props['navigation']
 ) => {
     const { isSaved, toggleSave } = useSaved();
     const { user } = useAuth();
     const { showToast } = useNotifications();
-    const [opportunity, setOpportunity] = useState<Opportunity | null>(initialOpportunity);
+    const [opportunity, setOpportunity] = useState<ExtendedOpportunity | null>(initialOpportunity);
     const [loading, setLoading] = useState(!opportunity);
     const [error, setError] = useState<string | null>(null);
     const [eligibilityReason, setEligibilityReason] = useState<string | null>(null);
@@ -41,15 +45,64 @@ export const useOpportunityDetail = (
             }
             if (!opportunity) setLoading(true);
 
+            // Cache-First: If we have a version in cache, use it immediately 
+            // even if it's stale (>1 hour), especially if current opportunity is partial
+            const cached = await readDetailCache(opportunityId);
+            const CACHE_TTL = 60 * 60 * 1000; // 1 hour
+            
+            const isCurrentPartial = !opportunity?.description;
+            const isCachedBetter = cached && !!cached.description && isCurrentPartial;
+
+            if (cached) {
+                const isFresh = cached._cachedAt && (Date.now() - cached._cachedAt < CACHE_TTL);
+                const isComplete = !!cached.description;
+
+                if (isCachedBetter || (isFresh && isComplete)) {
+                    if (!cancelled) {
+                        setOpportunity(cached as ExtendedOpportunity);
+                        setLoading(false);
+                        setError(null);
+                    }
+                    
+                    // If it's fresh enough AND complete, we can skip the API call
+                    if (isFresh && isComplete) {
+                        return; 
+                    }
+                }
+            }
+
             try {
                 const data = await opportunitiesApi.getById(opportunityId) as { opportunity: Opportunity; isEligible?: boolean; eligibilityReason?: string };
                 if (cancelled) return;
-                setOpportunity(data.opportunity);
-                setEligibilityReason(data.isEligible === false ? data.eligibilityReason ?? null : null);
+                
+                const profile = await getLocalProfile();
+                const match = calculateMatchScore(profile, data.opportunity);
+                
+                // Robust Check: If API returns partial data (e.g. unauthenticated) but we have a better cached version, use cache
+                const hasFullData = !!data.opportunity.description;
+                const cachedHasFullData = !!cached?.description;
+
+                const fullOpportunity = {
+                    ...(hasFullData ? data.opportunity : (cachedHasFullData ? cached : data.opportunity)),
+                    matchScore: match.score,
+                    matchReason: match.reason,
+                    isEligible: match.isEligible
+                };
+
+                setOpportunity(fullOpportunity as ExtendedOpportunity);
+                setEligibilityReason(!match.isEligible ? match.reason : null);
                 setError(null);
-                await saveDetailCache(data.opportunity);
+                
+                // Only save to cache if it's actually useful data
+                if (hasFullData || !cachedHasFullData) {
+                    await saveDetailCache(fullOpportunity as Opportunity);
+                }
+
+                // Track VIEW action
+                if (user) {
+                    void actionsApi.track(opportunityId, ActionType.VIEWED);
+                }
             } catch (remoteError: unknown) {
-                const cached = await readDetailCache(opportunityId);
                 if (cancelled) return;
                 if (cached) {
                     setOpportunity(cached);
@@ -67,12 +120,26 @@ export const useOpportunityDetail = (
 
         const loadSimilar = async () => {
             if (!opportunityId) return;
+            
+            // Check cache first
+            const cached = await readSimilarCache(opportunityId);
+            const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
+            
+            if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+                if (!cancelled) setSimilarOpportunities(cached.opportunities);
+                return; // Skip API hit if cache is fresh
+            }
+
             try {
                 const data = await opportunitiesApi.getSimilar(opportunityId) as { opportunities: Opportunity[] };
                 if (cancelled) return;
-                setSimilarOpportunities(data.opportunities || []);
+                const results = data.opportunities || [];
+                setSimilarOpportunities(results);
+                await saveSimilarCache(opportunityId, results);
             } catch (err) {
                 console.warn('Failed to load similar opportunities', err);
+                // Fallback to stale cache if API fails
+                if (cached && !cancelled) setSimilarOpportunities(cached.opportunities);
             }
         };
 
@@ -85,14 +152,18 @@ export const useOpportunityDetail = (
         if (!opportunity) return;
         try {
             const shareUrl = `${MOBILE_SITE_URL}${getPublicOpportunityPath(opportunity)}`;
-            await Share.share({
+            const result = await Share.share({
                 message: `Check out this opportunity: ${opportunity.title} at ${opportunity.company}\n\nView details: ${shareUrl}${opportunity.applyLink ? `\nApply here: ${opportunity.applyLink}` : ''}`,
                 url: shareUrl,
             });
+
+            if (result.action === Share.sharedAction && user) {
+                void actionsApi.track(opportunity.id, ActionType.SHARED);
+            }
         } catch (shareError) {
             console.error('Error sharing opportunity', shareError);
         }
-    }, [opportunity]);
+    }, [opportunity, user]);
 
     const handleApply = useCallback(async () => {
         if (!opportunity?.applyLink) {

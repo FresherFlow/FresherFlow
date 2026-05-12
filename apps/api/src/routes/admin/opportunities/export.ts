@@ -17,7 +17,8 @@ router.get('/export', async (req: Request, res: Response, next: NextFunction) =>
         const now = new Date();
 
         const normalizedType = typeof type === 'string' ? normalizeTypeParam(type) : undefined;
-        if (normalizedType) where.type = normalizedType;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        if (normalizedType) where.type = normalizedType as any;
 
         const statusFilter = typeof status === 'string' ? parseAdminStatusFilter(status) : undefined;
         if (statusFilter === 'EXPIRED') {
@@ -26,7 +27,8 @@ router.get('/export', async (req: Request, res: Response, next: NextFunction) =>
         } else if (statusFilter === 'DELETED') {
             where.deletedAt = { not: null };
         } else if (statusFilter) {
-            where.status = statusFilter as typeof where.status;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            where.status = statusFilter as any;
             where.deletedAt = null;
         } else {
             where.deletedAt = null;
