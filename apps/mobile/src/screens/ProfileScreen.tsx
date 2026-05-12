@@ -29,6 +29,7 @@ import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useFollows } from '@/hooks/useFollows';
 import { useNotifications } from '@/hooks/useNotifications';
+import { calculateProfileCompletion } from '@/utils/profileCompletion';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
@@ -48,10 +49,13 @@ const alpha = (color: string, opacity: number) => {
 const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
-  const { user } = useProfile();
+  const { user, profile, completionPercentage } = useProfile();
   const { unreadCount } = useNotifications();
   const { follows, unfollow } = useFollows();
   const { hideTabBar, showTabBar } = useUI();
+  
+  const completion = calculateProfileCompletion(profile);
+  const displayPercentage = Math.max(completionPercentage, completion.percentage);
 
   const isGuest = false; // Temporarily disabled auth requirement
 
@@ -122,6 +126,24 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                       <Text style={[styles.email, { color: currentTheme.colors.textMuted }]}>{user?.email || 'Join FresherFlow to start'}</Text>
                   </View>
               </View>
+
+              {/* Completion Section */}
+              {!isGuest && (
+                  <SurfaceCard style={[styles.completionSection, { backgroundColor: alpha(currentTheme.colors.primary, 0.03), borderColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                      <View style={styles.completionHeader}>
+                          <Text style={[styles.completionLabel, { color: currentTheme.colors.text }]}>Identity Readiness</Text>
+                          <Text style={[styles.completionValue, { color: currentTheme.colors.primary }]}>{displayPercentage}%</Text>
+                      </View>
+                      <View style={[styles.progressTrack, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                          <View style={[styles.progressFill, { width: `${displayPercentage}%`, backgroundColor: currentTheme.colors.primary }]} />
+                      </View>
+                      <Text style={[styles.completionSub, { color: currentTheme.colors.textMuted }]}>
+                          {displayPercentage < 100 
+                            ? `Complete ${completion.missingFields[0]} to unlock better job matches.`
+                            : 'Your profile is optimized for high-signal opportunities.'}
+                      </Text>
+                  </SurfaceCard>
+              )}
 
 
 
