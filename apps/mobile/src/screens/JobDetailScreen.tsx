@@ -8,7 +8,13 @@ import {
   View,
   Platform,
   StatusBar,
+  Animated,
+  Easing,
+  Dimensions,
+  Linking,
 } from 'react-native';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import {
   CircleDollarSign,
   ExternalLink,
@@ -21,15 +27,24 @@ import {
   Bell,
   ChevronLeft,
   MessageSquare,
+  GraduationCap,
+  Calendar,
+  Cpu,
+  Briefcase,
+  Trophy,
 } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useOpportunityDetail } from '@/hooks/useOpportunityDetail';
-import { useFollows } from '@/hooks/useFollows';
+import { renderFormattedDescription } from '@/utils/DescriptionParser';
+
 import { useNotifications } from '@repo/frontend-core';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+
 
 // Premium System
 import { Screen, Section } from '@/system/layout/Layout';
@@ -47,6 +62,9 @@ const alpha = (color: string, opacity: number) => {
 
 const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
   const { currentTheme } = useTheme();
+  
+  // Replaced with robust DescriptionParser utility
+  const insets = useSafeAreaInsets();
 
   const opportunityId = useMemo(
     () => route.params?.opportunityId ?? route.params?.opportunity?.id ?? route.params?.job?.id ?? null,
@@ -66,21 +84,85 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     route.params?.opportunity ?? route.params?.job ?? null,
     navigation
   );
-  const { isFollowing, follow, unfollow } = useFollows();
-  const followingCompany = isFollowing('COMPANY', opportunity?.company || '');
+
 
   const { showToast } = useNotifications();
 
-  const toggleFollowCompany = async () => {
-    if (!opportunity) return;
-    if (followingCompany) {
-      await unfollow('COMPANY', opportunity.company);
-    } else {
-      await follow('COMPANY', opportunity.company);
-      showToast(`Now following ${opportunity.company}`);
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  const scrollY = React.useRef(new Animated.Value(0)).current;
+  const fabAnim = React.useRef(new Animated.Value(1)).current;
+
+  const shrinkFab = () => {
+    Animated.timing(fabAnim, {
+        toValue: 0,
+        duration: 150,
+        useNativeDriver: false,
+        easing: Easing.out(Easing.quad)
+    }).start();
   };
+
+  const expandFab = () => {
+    Animated.timing(fabAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+        easing: Easing.out(Easing.quad)
+    }).start();
+  };
+
+  const headerOpacity = scrollY.interpolate({
+    inputRange: [0, 60, 100],
+    outputRange: [0, 0, 1],
+    extrapolate: 'clamp',
+  });
+
+  const headerTranslateY = scrollY.interpolate({
+    inputRange: [0, 100],
+    outputRange: [-10, 0],
+    extrapolate: 'clamp',
+  });
+
+  const heroTranslateY = scrollY.interpolate({
+    inputRange: [-100, 0, 200],
+    outputRange: [50, 0, -50],
+    extrapolate: 'clamp',
+  });
+
+  const heroScale = scrollY.interpolate({
+    inputRange: [-100, 0],
+    outputRange: [1.1, 1],
+    extrapolate: 'clamp',
+  });
+
+  const heroOpacity = scrollY.interpolate({
+    inputRange: [0, 200],
+    outputRange: [1, 0],
+    extrapolate: 'clamp',
+  });
+
+  // Entry animations
+  const fadeAnim1 = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim2 = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim3 = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim4 = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim5 = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim6 = React.useRef(new Animated.Value(0)).current;
+  const fadeAnim7 = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    if (!loading && opportunity) {
+      Animated.stagger(100, [
+        Animated.spring(fadeAnim1, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
+        Animated.spring(fadeAnim2, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
+        Animated.spring(fadeAnim3, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
+        Animated.spring(fadeAnim4, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
+        Animated.spring(fadeAnim5, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
+        Animated.spring(fadeAnim6, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
+        Animated.spring(fadeAnim7, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
+      ]).start();
+    }
+  }, [loading, opportunity]);
+
+
 
   if (loading) {
     return (
@@ -102,29 +184,80 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     <Screen safe={false}>
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
       
-      <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+      {/* Floating Header */}
+      <Animated.View style={[
+        styles.stickyHeader, 
+        { 
+          opacity: headerOpacity, 
+          height: insets.top + 80,
+          transform: [{ translateY: headerTranslateY }], 
+          paddingTop: insets.top, 
+          backgroundColor: currentTheme.colors.background,
+          justifyContent: 'center',
+        }
+      ]}>
         <PremiumHeader 
-            title="Details"
-            leftSlot={
-                <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-                    <ChevronLeft size={24} color={currentTheme.colors.text} />
-                </TouchableOpacity>
-            }
+            title={opportunity.title}
+            compact
+            titleStyle={{ fontSize: mScale(24), fontWeight: '900', lineHeight: 28 }}
+            showBack
+            onBack={() => navigation.goBack()}
             rightSlot={
-                <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
-                    <Share2 size={mScale(20)} color={currentTheme.colors.text} />
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <TouchableOpacity onPress={() => toggleSave(opportunity)} style={styles.iconBtn}>
+                        <Bookmark 
+                            size={mScale(20)} 
+                            color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text} 
+                            fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'} 
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
+                        <Share2 size={mScale(20)} color={currentTheme.colors.text} />
+                    </TouchableOpacity>
+                </View>
             }
         />
+      </Animated.View>
+
+      {/* Static Overlays (Buttons always visible) */}
+      <View style={[styles.staticControls, { top: insets.top + 10 }]}>
+         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+            <ChevronLeft size={24} color={currentTheme.colors.text} />
+         </TouchableOpacity>
+         <View style={{ flexDirection: 'row', gap: 10 }}>
+            <TouchableOpacity onPress={() => toggleSave(opportunity)} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+                <Bookmark 
+                    size={20} 
+                    color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text} 
+                    fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'} 
+                />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleShare} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+                <Share2 size={20} color={currentTheme.colors.text} />
+            </TouchableOpacity>
+         </View>
       </View>
 
-      <ScrollView 
+      <Animated.ScrollView 
+        onScroll={Animated.event(
+            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+            { useNativeDriver: true }
+        )}
+        onScrollBeginDrag={shrinkFab}
+        onMomentumScrollBegin={shrinkFab}
+        onMomentumScrollEnd={expandFab}
+        onScrollEndDrag={expandFab}
+        scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.container}>
             {/* Hero Section */}
-            <View style={styles.hero}>
+            <Animated.View style={[styles.hero, { opacity: heroOpacity, transform: [{ translateY: heroTranslateY }, { scale: heroScale }] }]}>
+                <LinearGradient
+                    colors={[alpha(currentTheme.colors.primary, 0.15), 'transparent']}
+                    style={styles.heroGradient}
+                />
                 <Text style={[styles.title, { color: currentTheme.colors.text }]}>{opportunity.title}</Text>
                 
                 <View style={styles.companyArea}>
@@ -148,29 +281,12 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             )}
                         </View>
                     </View>
-                    <TouchableOpacity 
-                        activeOpacity={0.7}
-                        onPress={toggleFollowCompany}
-                        style={[
-                            styles.followBtn, 
-                            { 
-                                backgroundColor: followingCompany ? alpha(currentTheme.colors.primary, 0.1) : currentTheme.colors.primary,
-                                borderColor: followingCompany ? currentTheme.colors.primary : 'transparent'
-                            }
-                        ]}
-                    >
-                        <Text style={[
-                            styles.followText, 
-                            { color: followingCompany ? currentTheme.colors.primary : currentTheme.colors.background }
-                        ]}>
-                            {followingCompany ? 'FOLLOWING' : 'FOLLOW'}
-                        </Text>
-                    </TouchableOpacity>
                 </View>
-            </View>
+            </Animated.View>
 
             {/* Momentum Bar */}
-            <SurfaceCard style={[styles.momentumBar, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
+            <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: fadeAnim1.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                <SurfaceCard style={[styles.momentumBar, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
                 <View style={styles.momentumItem}>
                     <History size={16} color={currentTheme.colors.primary} />
                     <Text style={[styles.momentumText, { color: currentTheme.colors.text }]}>
@@ -191,35 +307,205 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         <Text style={{ color: currentTheme.colors.textMuted }}>FEEDBACK</Text> {opportunity.commentsCount || 0}
                     </Text>
                 </View>
-            </SurfaceCard>
-
-            {/* Quick Info Grid */}
-            <View style={styles.grid}>
-                <SurfaceCard style={styles.gridItem}>
-                    <MapPin size={18} color={currentTheme.colors.primary} />
-                    <Text style={[styles.gridLabel, { color: currentTheme.colors.textMuted }]}>LOCATION</Text>
-                    <Text style={[styles.gridValue, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                        {opportunity.locations?.join(', ') || 'Remote'}
-                    </Text>
                 </SurfaceCard>
-                <SurfaceCard style={styles.gridItem}>
-                    <CircleDollarSign size={18} color={currentTheme.colors.primary} />
-                    <Text style={[styles.gridLabel, { color: currentTheme.colors.textMuted }]}>SALARY</Text>
-                    <Text style={[styles.gridValue, { color: currentTheme.colors.text }]}>
-                        {opportunity.salaryRange || 'NDA'}
-                    </Text>
-                </SurfaceCard>
-            </View>
+            </Animated.View>
 
-            <Section title="Job Description">
-                <SurfaceCard style={styles.descCard}>
-                    <Text style={[styles.description, { color: currentTheme.colors.textMuted }]}>
-                        {opportunity.description || 'Details pending verification. Please use the "Apply" link to view official details.'}
-                    </Text>
-                </SurfaceCard>
-            </Section>
+            {/* Quick Info Signal Card */}
+            <Animated.View style={{ opacity: fadeAnim2, transform: [{ translateY: fadeAnim2.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                <SurfaceCard style={styles.signalCard}>
+                    <View style={styles.signalRow}>
+                        <View style={styles.signalItemHalf}>
+                            <ShieldCheck size={20} color={currentTheme.colors.primary} />
+                            <View style={styles.signalContent}>
+                                <Text style={[styles.signalLabel, { color: currentTheme.colors.textMuted }]}>WORK MODE</Text>
+                                <Text style={[styles.signalValue, { color: currentTheme.colors.text }]}>
+                                    {opportunity.workMode || 'Hybrid'}
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={[styles.signalDividerVertical, { backgroundColor: currentTheme.colors.border }]} />
+                        <View style={styles.signalItemHalf}>
+                            <CircleDollarSign size={20} color={currentTheme.colors.primary} />
+                            <View style={styles.signalContent}>
+                                <Text style={[styles.signalLabel, { color: currentTheme.colors.textMuted }]}>SALARY</Text>
+                                <Text style={[styles.signalValue, { color: currentTheme.colors.text }]}>
+                                    {opportunity.salaryRange || 'NDA'}
+                                </Text>
+                            </View>
+                        </View>
+                    </View>
 
-            <Section title="Hiring Proof">
+                    <View style={[styles.signalDivider, { backgroundColor: currentTheme.colors.border }]} />
+
+                    <View style={styles.signalItem}>
+                        <Briefcase size={20} color={currentTheme.colors.primary} />
+                        <View style={styles.signalContent}>
+                            <Text style={[styles.signalLabel, { color: currentTheme.colors.textMuted }]}>ROLE</Text>
+                            <Text style={[styles.signalValue, { color: currentTheme.colors.text }]}>
+                                {opportunity.jobFunction || opportunity.type}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={[styles.signalDivider, { backgroundColor: currentTheme.colors.border }]} />
+
+                    <View style={styles.signalItem}>
+                        <MapPin size={20} color={currentTheme.colors.primary} />
+                        <View style={styles.signalContent}>
+                            <Text style={[styles.signalLabel, { color: currentTheme.colors.textMuted }]}>LOCATION</Text>
+                            <Text style={[styles.signalValue, { color: currentTheme.colors.text }]}>
+                                {opportunity.locations?.join(', ') || 'Remote'}
+                            </Text>
+                        </View>
+                    </View>
+                </SurfaceCard>
+            </Animated.View>
+
+            {/* Incentives / Perks (Conditional) */}
+            {opportunity.incentives && (
+                <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <View style={[styles.perksBox, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderColor: alpha(currentTheme.colors.success, 0.1) }]}>
+                        <Trophy size={16} color={currentTheme.colors.success} />
+                        <Text style={[styles.perksText, { color: currentTheme.colors.success }]}>
+                            PERKS: {opportunity.incentives}
+                        </Text>
+                    </View>
+                </Animated.View>
+            )}
+
+            {/* Requirements & Skills */}
+            <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                <Section title="Candidate Requirements">
+                    <SurfaceCard style={styles.requirementCard}>
+                        <View style={styles.reqRow}>
+                            <View style={[styles.reqIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                                <Calendar size={18} color={currentTheme.colors.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>ALLOWED BATCHES</Text>
+                                <Text style={[styles.reqValue, { color: currentTheme.colors.text }]}>
+                                    {opportunity.allowedPassoutYears?.length > 0 
+                                        ? opportunity.allowedPassoutYears.join(', ') 
+                                        : 'Open to all years'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={[styles.reqRow, { marginTop: 16 }]}>
+                            <View style={[styles.reqIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                                <GraduationCap size={18} color={currentTheme.colors.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>ELIGIBILITY</Text>
+                                <Text style={[styles.reqValue, { color: currentTheme.colors.text }]}>
+                                    {[...(opportunity.allowedDegrees || []), ...(opportunity.allowedCourses || [])].join(', ') || 'Open Eligibility'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        {opportunity.requiredSkills && opportunity.requiredSkills.length > 0 && (
+                            <View style={[styles.skillSection, { borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.1) }]}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                                    <Cpu size={14} color={currentTheme.colors.textMuted} />
+                                    <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted, marginBottom: 0 }]}>KEY SKILLS</Text>
+                                </View>
+                                <View style={styles.tagCloud}>
+                                    {opportunity.requiredSkills.map((skill, idx) => (
+                                        <View key={idx} style={[styles.skillTag, { backgroundColor: alpha(currentTheme.colors.text, 0.04), borderColor: alpha(currentTheme.colors.border, 0.3) }]}>
+                                            <Text style={[styles.skillTagText, { color: currentTheme.colors.text }]}>{skill.toUpperCase()}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            </View>
+                        )}
+                    </SurfaceCard>
+                </Section>
+            </Animated.View>
+
+            {/* Walk-in Details (Conditional) */}
+            {opportunity.type === 'WALKIN' && opportunity.walkInDetails && (
+                <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <Section title="Walk-in Venue">
+                        <SurfaceCard style={[styles.walkInCard, { borderColor: currentTheme.colors.warning }]}>
+                            <View style={styles.walkInHeader}>
+                                <View style={[styles.walkInIcon, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
+                                    <MapPin size={20} color={currentTheme.colors.warning} />
+                                </View>
+                                <View>
+                                    <Text style={[styles.walkInTitle, { color: currentTheme.colors.text }]}>In-Person Interview</Text>
+                                    <Text style={[styles.walkInSub, { color: currentTheme.colors.textMuted }]}>{opportunity.walkInDetails.reportingTime}</Text>
+                                </View>
+                            </View>
+                            <Text style={[styles.venueText, { color: currentTheme.colors.text }]}>{opportunity.walkInDetails.venueAddress}</Text>
+                            {opportunity.walkInDetails.dates && (
+                                <View style={styles.venueDates}>
+                                    {opportunity.walkInDetails.dates.map((date, i) => (
+                                        <View key={i} style={[styles.dateChip, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
+                                            <Text style={[styles.dateText, { color: currentTheme.colors.text }]}>{date}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
+                        </SurfaceCard>
+                    </Section>
+                </Animated.View>
+            )}
+
+            {/* Government Job Details (Conditional) */}
+            {opportunity.governmentJobDetails && (
+                <Animated.View style={{ opacity: fadeAnim5, transform: [{ translateY: fadeAnim5.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <Section title="Government Notice">
+                        <SurfaceCard style={[styles.govtCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.02) }]}>
+                            <View style={styles.govtHeader}>
+                                <Trophy size={20} color={currentTheme.colors.primary} />
+                                <Text style={[styles.govtTitle, { color: currentTheme.colors.text }]}>Official Vacancy</Text>
+                            </View>
+                            
+                            <View style={styles.govtInfoRow}>
+                                <View style={styles.govtInfoItem}>
+                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>VACANCIES</Text>
+                                    <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{opportunity.governmentJobDetails.vacancyCount || 'As per norms'}</Text>
+                                </View>
+                                <View style={styles.govtInfoItem}>
+                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>LAST DATE</Text>
+                                    <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{opportunity.governmentJobDetails.applicationEndDate || 'Check portal'}</Text>
+                                </View>
+                            </View>
+
+                            <View style={[styles.govtFeeBox, { backgroundColor: alpha(currentTheme.colors.text, 0.04) }]}>
+                                <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 4 }]}>APPLICATION FEE</Text>
+                                <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{opportunity.governmentJobDetails.applicationFee || 'Nil / Varied'}</Text>
+                            </View>
+
+                            {opportunity.governmentJobDetails.officialNotificationUrl && (
+                                <TouchableOpacity 
+                                    style={[styles.govtLink, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]}
+                                    onPress={() => Linking.openURL(opportunity.governmentJobDetails!.officialNotificationUrl!)}
+                                >
+                                    <Text style={[styles.govtLinkText, { color: currentTheme.colors.primary }]}>READ OFFICIAL NOTIFICATION</Text>
+                                    <ExternalLink size={14} color={currentTheme.colors.primary} />
+                                </TouchableOpacity>
+                            )}
+                        </SurfaceCard>
+                    </Section>
+                </Animated.View>
+            )}
+
+            <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                <Section title="Job Description">
+                    <SurfaceCard style={styles.descCard}>
+                        {opportunity.description 
+                            ? renderFormattedDescription(opportunity.description, { theme: currentTheme })
+                            : <Text style={[styles.description, { color: currentTheme.colors.textMuted }]}>
+                                Details pending verification. Please use the "Apply" link to view official details.
+                              </Text>
+                        }
+                    </SurfaceCard>
+                </Section>
+            </Animated.View>
+
+            <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                <Section title="Hiring Proof">
                 <GlassCard style={styles.trustCard}>
                     <View style={styles.trustRow}>
                         <ShieldCheck size={18} color={currentTheme.colors.success} />
@@ -259,98 +545,127 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     )}
                 </GlassCard>
             </Section>
+            </Animated.View>
             {similarOpportunities.length > 0 && (
-                <Section title="Discover More Like This">
-                    <ScrollView 
-                        horizontal 
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={styles.similarList}
-                    >
-                        {similarOpportunities.map((item) => (
-                            <TouchableOpacity 
-                                key={item.id} 
-                                style={[styles.similarCard, { backgroundColor: alpha(currentTheme.colors.text, 0.02), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
-                                onPress={() => {
-                                    navigation.push('JobDetail', { opportunity: item, opportunityId: item.id });
-                                }}
-                            >
-                                <CompanyLogo 
-                                    name={item.company} 
-                                    website={item.companyWebsite}
-                                    applyLink={item.applyLink}
-                                    logoUrl={item.companyLogoUrl} 
-                                    size={32} 
-                                />
-                                <View style={styles.similarText}>
-                                    <Text style={[styles.similarTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{item.title}</Text>
-                                    <Text style={[styles.similarCompany, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>{item.company}</Text>
-                                </View>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                </Section>
+                <Animated.View style={{ opacity: fadeAnim5, transform: [{ translateY: fadeAnim5.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <Section title="Discover More Like This">
+                        <ScrollView 
+                            horizontal 
+                            showsHorizontalScrollIndicator={false}
+                            contentContainerStyle={styles.similarList}
+                        >
+                            {similarOpportunities.map((item) => (
+                                <TouchableOpacity 
+                                    key={item.id} 
+                                    style={[styles.similarCard, { backgroundColor: alpha(currentTheme.colors.text, 0.02), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
+                                    onPress={() => {
+                                        navigation.push('JobDetail', { opportunity: item, opportunityId: item.id });
+                                    }}
+                                >
+                                    <CompanyLogo 
+                                        name={item.company} 
+                                        website={item.companyWebsite}
+                                        applyLink={item.applyLink}
+                                        logoUrl={item.companyLogoUrl} 
+                                        size={32} 
+                                    />
+                                    <View style={styles.similarText}>
+                                        <Text style={[styles.similarTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{item.title}</Text>
+                                        <Text style={[styles.similarCompany, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>{item.company}</Text>
+                                    </View>
+                                </TouchableOpacity>
+                            ))}
+                        </ScrollView>
+                    </Section>
+                </Animated.View>
             )}
 
             <CommentSection opportunityId={opportunity.id} />
 
-            <Section title="Stay Updated">
-                <SurfaceCard style={styles.notifyCard}>
-                    <View style={styles.notifyContent}>
-                        <View style={styles.notifyText}>
-                            <Text style={[styles.notifyTitle, { color: currentTheme.colors.text }]}>Alert me for similar roles</Text>
-                            <Text style={[styles.notifyDesc, { color: currentTheme.colors.textMuted }]}>Get instant pings when roles at {opportunity.company} or similar match your profile.</Text>
+            <Animated.View style={{ opacity: fadeAnim6, transform: [{ translateY: fadeAnim6.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                <Section title="Stay Updated">
+                    <SurfaceCard style={styles.notifyCard}>
+                        <View style={styles.notifyContent}>
+                            <View style={styles.notifyText}>
+                                <Text style={[styles.notifyTitle, { color: currentTheme.colors.text }]}>Alert me for similar roles</Text>
+                                <Text style={[styles.notifyDesc, { color: currentTheme.colors.textMuted }]}>Get instant pings when roles at {opportunity.company} or similar match your profile.</Text>
+                            </View>
+                            <TouchableOpacity 
+                                style={[styles.notifyBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                                onPress={() => {
+                                    showToast('Alerts enabled for similar roles!');
+                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                }}
+                            >
+                                <Bell size={18} color={currentTheme.colors.primary} />
+                            </TouchableOpacity>
                         </View>
-                        <TouchableOpacity 
-                            style={[styles.notifyBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
-                            onPress={() => {
-                                showToast('Alerts enabled for similar roles!');
-                                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                            }}
-                        >
-                            <Bell size={18} color={currentTheme.colors.primary} />
-                        </TouchableOpacity>
-                    </View>
-                </SurfaceCard>
-            </Section>
+                    </SurfaceCard>
+                </Section>
+            </Animated.View>
         </View>
-      </ScrollView>
+      </Animated.ScrollView>
 
-      {/* Floating Action Footer */}
-      <View style={styles.footer}>
-          <View style={styles.footerContent}>
-              <TouchableOpacity 
-                style={[
-                    styles.saveBtn, 
-                    { 
-                        borderColor: alpha(currentTheme.colors.border, 0.2),
-                        backgroundColor: currentTheme.mode === 'dark' ? 'rgba(0, 0, 0, 0.8)' : alpha(currentTheme.colors.background, 0.95)
-                    }
-                ]}
-                onPress={() => toggleSave(opportunity)}
-              >
-                  <Bookmark size={24} color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text} fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'} />
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.applyBtn, { backgroundColor: currentTheme.colors.primary }]}
-                onPress={handleApply}
-              >
-                  <Text style={[styles.applyText, { color: currentTheme.colors.background }]}>APPLY NOW</Text>
+      {/* Floating Action FAB */}
+      <Animated.View 
+        style={[
+            styles.fabContainer, 
+            { 
+                bottom: insets.bottom + 20,
+                width: fabAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [56, SCREEN_WIDTH * 0.5]
+                })
+            }
+        ]}
+      >
+          <TouchableOpacity 
+            activeOpacity={0.9}
+            style={[styles.applyFab, { backgroundColor: currentTheme.colors.primary }]}
+            onPress={handleApply}
+          >
+              <View style={{ 
+                  flexDirection: 'row', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  width: '100%',
+              }}>
+                  <Animated.View style={{ 
+                      overflow: 'hidden',
+                      width: fabAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 100] // Scaled for half-width
+                      }),
+                      opacity: fabAnim,
+                      marginRight: fabAnim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0, 8]
+                      })
+                  }}>
+                      <Text style={[styles.applyFabText, { color: currentTheme.colors.background }]} numberOfLines={1}>
+                          APPLY NOW
+                      </Text>
+                  </Animated.View>
                   <ExternalLink size={20} color={currentTheme.colors.background} />
-              </TouchableOpacity>
-          </View>
-      </View>
+              </View>
+          </TouchableOpacity>
+      </Animated.View>
     </Screen>
   );
 });
 
 const styles = StyleSheet.create({
     center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    stickyHeader: {
-        zIndex: 10,
+    controlBtn: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     scrollContent: {
         paddingBottom: 150,
-        paddingTop: 12,
+        paddingTop: Platform.OS === 'ios' ? 100 : 80,
     },
     iconBtn: {
         width: 36,
@@ -371,6 +686,15 @@ const styles = StyleSheet.create({
     hero: {
         marginBottom: 32,
         marginTop: 12,
+        paddingTop: 20,
+    },
+    heroGradient: {
+        position: 'absolute',
+        top: -100,
+        left: -20,
+        right: -20,
+        height: 400,
+        zIndex: -1,
     },
     badgeRow: {
         flexDirection: 'row',
@@ -411,17 +735,6 @@ const styles = StyleSheet.create({
         fontSize: mScale(18),
         fontWeight: '600',
     },
-    followBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 12,
-        borderWidth: 1,
-    },
-    followText: {
-        fontSize: 10,
-        fontWeight: '900',
-        letterSpacing: 0.5,
-    },
     momentumBar: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -446,26 +759,51 @@ const styles = StyleSheet.create({
         height: 16,
         opacity: 0.1,
     },
-    grid: {
+    signalCard: {
+        borderRadius: 28,
+        padding: 4,
+        marginBottom: 24,
+    },
+    signalItem: {
         flexDirection: 'row',
-        gap: SPACING.md,
-        marginBottom: SPACING.xl,
+        alignItems: 'center',
+        padding: 16,
+        gap: 16,
     },
-    gridItem: {
+    signalItemHalf: {
         flex: 1,
-        padding: SPACING.md,
-        alignItems: 'flex-start',
-        gap: SPACING.sm,
-        borderWidth: 0.5,
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        gap: 12,
     },
-    gridLabel: {
-        fontSize: mScale(10),
+    signalRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    signalContent: {
+        flex: 1,
+    },
+    signalLabel: {
+        fontSize: mScale(9),
         fontWeight: '800',
         letterSpacing: 1.5,
+        marginBottom: 2,
     },
-    gridValue: {
-        fontSize: mScale(14),
+    signalValue: {
+        fontSize: mScale(13),
         fontWeight: '700',
+        lineHeight: 18,
+    },
+    signalDivider: {
+        height: 1,
+        width: '100%',
+        opacity: 0.05,
+    },
+    signalDividerVertical: {
+        width: 1,
+        height: '60%',
+        opacity: 0.1,
     },
     descCard: {
         padding: 20,
@@ -491,43 +829,30 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginTop: 2,
     },
-    footer: {
+    fabContainer: {
         position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 120,
-        paddingHorizontal: 20,
-        paddingBottom: 20,
-        justifyContent: 'flex-end',
-        backgroundColor: 'transparent',
+        right: 20,
+        alignItems: 'flex-end',
+        zIndex: 1000,
     },
-    footerContent: {
-        flexDirection: 'row',
-        gap: 16,
-        alignItems: 'center',
-    },
-    saveBtn: {
-        width: 56,
-        height: 56,
-        borderRadius: 18,
-        borderWidth: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    applyBtn: {
-        flex: 1,
-        height: 56,
-        borderRadius: 18,
+    applyFab: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        height: 56,
+        paddingHorizontal: 16,
+        borderRadius: 28,
         gap: 12,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
     },
-    applyText: {
-        fontSize: 15,
+    applyFabText: {
+        fontSize: 14,
         fontWeight: '900',
-        letterSpacing: 1,
+        letterSpacing: 1.2,
     },
     similarList: {
         gap: 12,
@@ -582,7 +907,184 @@ const styles = StyleSheet.create({
         borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-    }
+    },
+    requirementCard: {
+        padding: 24,
+        borderRadius: 28,
+    },
+    reqRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+    },
+    reqIcon: {
+        width: 40,
+        height: 40,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    reqLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1.2,
+        marginBottom: 2,
+    },
+    reqValue: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    skillSection: {
+        marginTop: 20,
+        paddingTop: 20,
+    },
+    tagCloud: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    skillTag: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 10,
+        borderWidth: 1,
+    },
+    skillTagText: {
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    walkInCard: {
+        padding: 24,
+        borderRadius: 28,
+        borderWidth: 1.5,
+    },
+    walkInHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 16,
+        marginBottom: 16,
+    },
+    walkInIcon: {
+        width: 44,
+        height: 44,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    walkInTitle: {
+        fontSize: 16,
+        fontWeight: '800',
+    },
+    walkInSub: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginTop: 2,
+    },
+    venueText: {
+        fontSize: 14,
+        lineHeight: 20,
+        fontWeight: '500',
+    },
+    venueDates: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 16,
+    },
+    dateChip: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    dateText: {
+        fontSize: 11,
+        fontWeight: '700',
+    },
+
+    govtCard: {
+        padding: 24,
+        borderRadius: 28,
+    },
+    govtHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 20,
+    },
+    govtTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    govtInfoRow: {
+        flexDirection: 'row',
+        gap: 24,
+        marginBottom: 20,
+    },
+    govtInfoItem: {
+        flex: 1,
+    },
+    govtLabel: {
+        fontSize: 10,
+        fontWeight: '800',
+        letterSpacing: 1,
+        marginBottom: 4,
+    },
+    govtValue: {
+        fontSize: 14,
+        fontWeight: '700',
+    },
+    govtFeeBox: {
+        padding: 16,
+        borderRadius: 16,
+        marginBottom: 20,
+    },
+    govtLink: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 10,
+        paddingVertical: 14,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+    },
+    govtLinkText: {
+        fontSize: 12,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+    },
+    perksBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        marginBottom: 24,
+    },
+    perksText: {
+        fontSize: 12,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+        flex: 1,
+    },
+    staticControls: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        zIndex: 200, 
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    stickyHeader: {
+        zIndex: 300,
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+    },
 });
 
 export default JobDetailScreen;
