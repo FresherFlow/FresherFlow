@@ -24,7 +24,7 @@ function normalizePrefixList(value: string | undefined, fallback: string[]): str
 
 export const MOBILE_SITE_URL = normalizeUrl(
     process.env.EXPO_PUBLIC_SITE_URL,
-    'http://localhost:3000'
+    'https://fresherflow.in'
 );
 
 export const MOBILE_LINKING_PREFIXES = normalizePrefixList(

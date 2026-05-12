@@ -3,7 +3,7 @@ import { Platform, Animated, View, StyleSheet, TouchableOpacity, Text } from 're
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, Compass, PlusCircle, Bookmark, User } from 'lucide-react-native';
-import { BlurView } from 'expo-blur';
+
 
 import FeedScreen from '@/screens/FeedScreen';
 import ExploreScreen from '@/screens/ExploreScreen';
@@ -23,6 +23,11 @@ import ReferralsScreen from '@/screens/ReferralsScreen';
 import AccountManageScreen from '@/screens/AccountManageScreen';
 import NotificationsScreen from '@/screens/NotificationsScreen';
 import ContributorProfileScreen from '@/screens/ContributorProfileScreen';
+import CompanyScreen from '@/screens/CompanyScreen';
+import AlertSettingsScreen from '@/screens/AlertSettingsScreen';
+import ApplicationTrackerScreen from '@/screens/ApplicationTrackerScreen';
+import FeedbackScreen from '@/screens/FeedbackScreen';
+import CompanyDirectoryScreen from '@/screens/CompanyDirectoryScreen';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUserAuth as useAuth } from '@repo/frontend-core';
@@ -58,6 +63,11 @@ export type RootStackParamList = {
   Notifications: undefined;
   MyContributions: undefined;
   ContributorProfile: { userId: string };
+  CompanyDetail: { companyName: string; companyLogoUrl?: string; website?: string };
+  AlertSettings: undefined;
+  ApplicationTracker: undefined;
+  Feedback: undefined;
+  CompanyDirectory: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootStackParamList>();
@@ -122,7 +132,7 @@ const SavedStack = () => (
 );
 
 const ProfileStack = () => (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="ProfileMain" component={ProfileScreen} />
         <Stack.Screen name="Referrals" component={ReferralsScreen} />
     </Stack.Navigator>
@@ -132,8 +142,8 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { currentTheme } = useTheme();
-  const { tabBarTranslateY } = useUI();
-  const { unreadCount } = useNotifications();
+  const { tabBarTranslateY, isKeyboardVisible } = useUI();
+  const { unreadCount, unseenFeedCount } = useNotifications();
 
   const isDark = currentTheme.mode === 'dark';
 
@@ -142,21 +152,13 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
       styles.tabBarContainer,
       {
         transform: [{ translateY: tabBarTranslateY }],
-        backgroundColor: isDark ? '#0A0C10' : 'transparent',
+        opacity: isKeyboardVisible ? 0 : 1,
+        display: isKeyboardVisible ? 'none' : 'flex',
+        backgroundColor: currentTheme.colors.background,
         borderTopWidth: 1,
-        borderTopColor: isDark ? '#1A1D23' : alpha(currentTheme.colors.border, 0.2),
+        borderTopColor: isDark ? alpha(currentTheme.colors.text, 0.1) : alpha(currentTheme.colors.border, 0.2),
       }
     ]}>
-      {!isDark && (
-        <BlurView 
-            intensity={80} 
-            tint="light" 
-            style={[
-            StyleSheet.absoluteFill, 
-            { backgroundColor: alpha(currentTheme.colors.surface, 0.85) }
-            ]} 
-        />
-      )}
       <View style={styles.tabBarInner}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
@@ -200,6 +202,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
               ]}>
                 {label}
               </Text>
+              {route.name === 'Feed' && unseenFeedCount > 0 && (
+                <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, right: '30%' }]}>
+                  <Text style={styles.badgeText}>{unseenFeedCount}</Text>
+                </View>
+              )}
               {route.name === 'Profile' && unreadCount > 0 && (
                 <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary }]}>
                   <Text style={styles.badgeText}>{unreadCount}</Text>
@@ -281,9 +288,12 @@ export const AppNavigator = () => {
   if (isLoading) return null;
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
       <Stack.Screen name="Main" component={TabNavigator} />
-      <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+      <Stack.Screen 
+        name="JobDetail" 
+        component={JobDetailScreen} 
+      />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
       <Stack.Screen name="Referrals" component={ReferralsScreen} />
@@ -294,6 +304,11 @@ export const AppNavigator = () => {
       <Stack.Screen name="EditPreferences" component={EditPreferencesScreen} />
       <Stack.Screen name="MyContributions" component={MyContributionsScreen} />
       <Stack.Screen name="ContributorProfile" component={ContributorProfileScreen} />
+      <Stack.Screen name="CompanyDetail" component={CompanyScreen} />
+      <Stack.Screen name="AlertSettings" component={AlertSettingsScreen} />
+      <Stack.Screen name="ApplicationTracker" component={ApplicationTrackerScreen} />
+      <Stack.Screen name="Feedback" component={FeedbackScreen} />
+      <Stack.Screen name="CompanyDirectory" component={CompanyDirectoryScreen} />
       {!user ? (
         <>
           <Stack.Screen

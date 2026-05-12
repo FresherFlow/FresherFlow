@@ -7,7 +7,7 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
     "scheme": "fresherflow",
-    "newArchEnabled": false,
+    "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -23,7 +23,16 @@
         "backgroundColor": "#000000"
       },
       "package": "in.fresherflow.app",
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "statusBar": {
+        "barStyle": "light-content",
+        "backgroundColor": "#00000000",
+        "translucent": true
+      },
+      "navigationBar": {
+        "barStyle": "light-content",
+        "backgroundColor": "#000000"
+      }
     },
     "plugins": [
       "expo-secure-store",

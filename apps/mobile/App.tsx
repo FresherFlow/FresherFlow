@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DarkTheme, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View } from 'react-native';
@@ -15,6 +15,7 @@ import {
 import { linking } from './src/config/linking';
 import { configureClient } from '@fresherflow/api-client';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
+import { ToastProvider } from './src/contexts/ToastContext';
 import { UIProvider } from './src/contexts/UIContext';
 import { UIThemeContext, theme } from '@repo/ui';
 import { API_URL } from './src/config/api';
@@ -35,10 +36,12 @@ const AppContent = () => {
   const [isLoaded, setIsLoaded] = useState(false);
   const { currentTheme } = useTheme();
 
+  const isDark = currentTheme.mode === 'dark';
+  const baseTheme = isDark ? DarkTheme : DefaultTheme;
   const navTheme = {
-    ...DarkTheme,
+    ...baseTheme,
     colors: {
-      ...DarkTheme.colors,
+      ...baseTheme.colors,
       background: currentTheme.colors.background,
       card: currentTheme.colors.surface,
       text: currentTheme.colors.text,
@@ -49,12 +52,16 @@ const AppContent = () => {
 
   return (
     <View style={{ flex: 1, backgroundColor: currentTheme.colors.background }}>
+      <StatusBar 
+        style={isDark ? "light" : "dark"} 
+        backgroundColor="transparent" 
+        translucent={true}
+      />
       {!isLoaded ? (
         <BrandIntroLoader onComplete={() => setIsLoaded(true)} />
       ) : (
         <NavigationContainer linking={linking} theme={navTheme}>
           <AppNavigator />
-          <StatusBar style="light" backgroundColor={currentTheme.colors.background} />
         </NavigationContainer>
       )}
     </View>
@@ -68,11 +75,13 @@ export default function App() {
         <NotificationSubscriber>
           <SavedProvider>
             <ThemeProvider>
-              <UIProvider>
-                <UIThemeContext.Provider value={theme}>
-                  <AppContent />
-                </UIThemeContext.Provider>
-              </UIProvider>
+              <ToastProvider>
+                <UIProvider>
+                  <UIThemeContext.Provider value={theme}>
+                    <AppContent />
+                  </UIThemeContext.Provider>
+                </UIProvider>
+              </ToastProvider>
             </ThemeProvider>
           </SavedProvider>
         </NotificationSubscriber>
