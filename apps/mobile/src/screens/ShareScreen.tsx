@@ -43,8 +43,8 @@ const ShareScreen: React.FC = () => {
   const { user } = useAuth();
   const [hasCheckedClipboard, setHasCheckedClipboard] = useState(false);
   const [shareResult, setShareResult] = useState<ShareResult | null>(null);
-  const { contributionStats, fetchStats } = useProfile();
-  
+  const { shareStats, fetchStats } = useProfile();
+
   const {
     url,
     setUrl,
@@ -53,11 +53,12 @@ const ShareScreen: React.FC = () => {
     preview,
     setPreview,
     handleParse,
-    handleConfirm,
+    handleShare,
     handleReferral,
   } = useShare(navigation);
 
   const [mode, setMode] = useState<'SHARE' | 'REFER'>('SHARE');
+  const [clipboardLink, setClipboardLink] = useState<string | null>(null);
   const [referralData, setReferralData] = useState({
     company: '',
     contact: '',
@@ -65,40 +66,46 @@ const ShareScreen: React.FC = () => {
     companyUrl: ''
   });
 
-  const [recentContributions, setRecentContributions] = useState<Awaited<ReturnType<typeof profileApi.getContributions>>['contributions']>([]);
+  const [recentShares, setRecentShares] = useState<Awaited<ReturnType<typeof profileApi.getShares>>['shares']>([]);
 
-  const fetchRecentContributions = useCallback(async () => {
+  const fetchRecentShares = useCallback(async () => {
     if (!user) return; // Guard against guest calls
     try {
-      const response = await profileApi.getContributions(1);
-      setRecentContributions(response.contributions.slice(0, 5));
+      const response = await profileApi.getShares(1);
+      setRecentShares(response.shares.slice(0, 5));
     } catch (err: unknown) {
       // Silently ignore 401s for guests/bootstrap
       if ((err as { status?: number }).status !== 401) {
-        console.error('Failed to fetch contributions', err);
+        console.error('Failed to fetch shares', err);
       }
     }
   }, [user]);
 
   const checkClipboard = useCallback(async () => {
     if (hasCheckedClipboard || url || preview) return;
-    
+
     const content = await Clipboard.getStringAsync();
     if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
         setHasCheckedClipboard(true);
-        setUrl(content);
-        void handleParse(content);
-        // Nuvio-style toast notification
-        showToast("Link pasted from clipboard!");
+        setClipboardLink(content);
     }
-  }, [hasCheckedClipboard, url, preview, setUrl, handleParse, showToast]);
+  }, [hasCheckedClipboard, url, preview]);
 
   useFocusEffect(
     useCallback(() => {
         void checkClipboard();
-        void fetchRecentContributions();
-    }, [checkClipboard, fetchRecentContributions])
+        void fetchRecentShares();
+    }, [checkClipboard, fetchRecentShares])
   );
+
+  useEffect(() => {
+    if (url && url.length > 15 && !preview && !shareResult && !loading) {
+        const timer = setTimeout(() => {
+            void handleParse();
+        }, 800);
+        return () => clearTimeout(timer);
+    }
+  }, [url, preview, shareResult, loading, handleParse]);
 
   useEffect(() => {
     if (params?.url) {
@@ -110,7 +117,7 @@ const ShareScreen: React.FC = () => {
   const onConfirm = async () => {
       let result;
       if (mode === 'SHARE') {
-        result = await handleConfirm();
+        result = await handleShare();
       } else {
         if (!referralData.company || !referralData.contact || !referralData.description) {
             showToast('Please fill in all required fields', 'error');
@@ -121,7 +128,7 @@ const ShareScreen: React.FC = () => {
 
       if (result) {
           setShareResult(result);
-          void fetchRecentContributions();
+          void fetchRecentShares();
           void fetchStats();
       }
   };
@@ -152,8 +159,8 @@ const ShareScreen: React.FC = () => {
             })
         ]).start();
         void Haptics.notificationAsync(
-            shareResult.existing 
-                ? Haptics.NotificationFeedbackType.Warning 
+            shareResult.existing
+                ? Haptics.NotificationFeedbackType.Warning
                 : Haptics.NotificationFeedbackType.Success
         );
     } else {
@@ -172,35 +179,35 @@ const ShareScreen: React.FC = () => {
       if (shareResult.existing) {
           IconComponent = CheckCircle2;
           title = 'Already on FresherFlow!';
-          body = "This opportunity exists. Your signal was counted and helps rank it higher.";
-          badge = 'SIGNAL BOOSTED';
+          body = "This opportunity exists. Your share was counted and helps rank it higher.";
+          badge = 'ALREADY SHARED';
           iconColor = currentTheme.colors.success;
       } else if (mode === 'REFER') {
           IconComponent = Sparkles;
-          title = 'Referral Shared!';
+          title = 'Referral Offer Shared!';
           body = "Our team will review your referral offer and list it soon. Thank you!";
-          badge = 'COMMUNITY HELP';
+          badge = 'REFERRAL OFFER';
           iconColor = currentTheme.colors.primary;
       } else if (shareResult.pending) {
           IconComponent = Clock;
-          title = 'Being Reviewed';
-          body = "This link is already in our review queue. Your contribution was added.";
-          badge = 'VOTE RECORDED';
+          title = 'Under Review';
+          body = "This link is already in our review queue. Your share was added.";
+          badge = 'SHARE COUNTED';
           iconColor = currentTheme.colors.warning;
       } else {
           IconComponent = Sparkles;
-          title = 'Signal Submitted!';
+          title = 'Opportunity Shared!';
           body = "Your link is queued for review. It'll appear in the feed once verified.";
-          badge = 'FIRST TO SIGNAL';
+          badge = 'FIRST SHARE';
           iconColor = currentTheme.colors.primary;
       }
 
       return (
           <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
-              <Animated.View 
+              <Animated.View
                 style={[
-                    styles.successContainer, 
-                    { 
+                    styles.successContainer,
+                    {
                         opacity: fadeAnim,
                         transform: [{ translateY: slideAnim }]
                     }
@@ -215,38 +222,49 @@ const ShareScreen: React.FC = () => {
                   <View style={[styles.successIconWrapper, { backgroundColor: alpha(iconColor, 0.05) }]}>
                     <IconComponent size={mScale(80)} color={iconColor} strokeWidth={2.5} />
                   </View>
-                  
+
                   <Text style={[styles.successTitle, { color: currentTheme.colors.text }]}>{title}</Text>
+                  <View style={styles.statsRow}>
+                      <View style={styles.statBox}>
+                          <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{shareStats.totalShared}</Text>
+                          <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>OPPORTUNITIES SHARED</Text>
+                      </View>
+                      <View style={[styles.statDivider, { backgroundColor: currentTheme.colors.border }]} />
+                      <View style={styles.statBox}>
+                          <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{shareStats.totalPublished}</Text>
+                          <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>LIVE ON PLATFORM</Text>
+                      </View>
+                  </View>
                   <Text style={[styles.successSub, { color: currentTheme.colors.textMuted }]}>
                       {body}
                   </Text>
-                  
+
                   {shareResult.pending && (
                       <View style={[styles.infoRow, { backgroundColor: alpha(currentTheme.colors.warning, 0.05) }]}>
                           <Clock size={14} color={currentTheme.colors.warning} />
                           <Text style={[styles.infoRowText, { color: currentTheme.colors.warning }]}>
-                              Total {contributionStats.totalContributed} signals provided by you so far.
+                              Total {shareStats.totalShared} opportunities shared by you so far.
                           </Text>
                       </View>
                   )}
-                  
+
                   <View style={styles.successActions}>
                     {!shareResult.existing && !shareResult.pending && (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             activeOpacity={0.8}
                             style={[styles.primaryAction, { backgroundColor: currentTheme.colors.primary }]}
                             onPress={() => {
                                 // Logic for native share would go here
-                                showToast("Opening share menu...");
+                                showToast("Opening share options...");
                             }}
                         >
                             <Sparkles size={18} color={currentTheme.colors.background} style={{ marginRight: 8 }} />
-                            <Text style={[styles.primaryActionText, { color: currentTheme.colors.background }]}>SHARE SIGNAL</Text>
+                            <Text style={[styles.primaryActionText, { color: currentTheme.colors.background }]}>Share with Friends</Text>
                         </TouchableOpacity>
                     )}
 
                     {shareResult.existing && shareResult.id && (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             activeOpacity={0.8}
                             style={[styles.primaryAction, { backgroundColor: currentTheme.colors.text }]}
                             onPress={() => {
@@ -257,12 +275,12 @@ const ShareScreen: React.FC = () => {
                             <Text style={[styles.primaryActionText, { color: currentTheme.colors.background }]}>VIEW OPPORTUNITY</Text>
                         </TouchableOpacity>
                     )}
-                    
-                    <TouchableOpacity 
+
+                    <TouchableOpacity
                         activeOpacity={0.8}
                         style={[
-                            styles.secondaryAction, 
-                            { 
+                            styles.secondaryAction,
+                            {
                                 backgroundColor: alpha(currentTheme.colors.text, 0.05),
                                 borderColor: alpha(currentTheme.colors.border, 0.1),
                                 borderWidth: 0,
@@ -271,7 +289,7 @@ const ShareScreen: React.FC = () => {
                         onPress={resetShare}
                     >
                         <Text style={[
-                            styles.secondaryActionText, 
+                            styles.secondaryActionText,
                             { color: currentTheme.colors.text }
                         ]}>
                             SHARE ANOTHER
@@ -279,18 +297,18 @@ const ShareScreen: React.FC = () => {
                     </TouchableOpacity>
 
                     {shareResult.pending && (
-                         <TouchableOpacity 
+                         <TouchableOpacity
                             style={[styles.primaryAction, { backgroundColor: currentTheme.colors.text, marginTop: 12 }]}
                             onPress={() => {
                                 resetShare();
-                                navigation.navigate('MyContributions');
+                                navigation.navigate('MyShares');
                             }}
                         >
-                            <Text style={[styles.primaryActionText, { color: currentTheme.colors.background }]}>MY CONTRIBUTIONS</Text>
+                            <Text style={[styles.primaryActionText, { color: currentTheme.colors.background }]}>MY SHARES</Text>
                         </TouchableOpacity>
                     )}
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.doneBtn}
                         onPress={() => navigation.goBack()}
                     >
@@ -310,39 +328,39 @@ const ShareScreen: React.FC = () => {
         style={{ flex: 1 }}
       >
         <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
-            <PremiumHeader 
-                title="Contribute" 
-                subtitle="Share an Opportunity" 
+            <PremiumHeader
+                title="Share Opportunity"
+                subtitle="Share an Opportunity"
             />
         </View>
 
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.container}>
               <View style={styles.heroSection}>
                 <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>
-                    Help others{'\n'}find their path.
+                    Help others{'\n'}discover opportunities.
                 </Text>
                 <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
-                    Paste a link to a job portal or career page to share it with the community.
+                    Paste a job or internship link to share it with others.
                 </Text>
               </View>
 
               <View style={styles.tabContainer}>
-                  <TouchableOpacity 
-                    onPress={() => setMode('SHARE')} 
+                  <TouchableOpacity
+                    onPress={() => setMode('SHARE')}
                     style={[styles.tab, mode === 'SHARE' && { borderBottomColor: currentTheme.colors.primary, borderBottomWidth: 2 }]}
                   >
-                      <Text style={[styles.tabText, { color: mode === 'SHARE' ? currentTheme.colors.text : currentTheme.colors.textMuted }]}>SHARE JOB</Text>
+                      <Text style={[styles.tabText, { color: mode === 'SHARE' ? currentTheme.colors.text : currentTheme.colors.textMuted }]}>Share Link</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity 
-                    onPress={() => setMode('REFER')} 
+                  <TouchableOpacity
+                    onPress={() => setMode('REFER')}
                     style={[styles.tab, mode === 'REFER' && { borderBottomColor: currentTheme.colors.primary, borderBottomWidth: 2 }]}
                   >
-                      <Text style={[styles.tabText, { color: mode === 'REFER' ? currentTheme.colors.text : currentTheme.colors.textMuted }]}>I CAN REFER</Text>
+                      <Text style={[styles.tabText, { color: mode === 'REFER' ? currentTheme.colors.text : currentTheme.colors.textMuted }]}>Offer Referral</Text>
                   </TouchableOpacity>
               </View>
 
@@ -351,14 +369,19 @@ const ShareScreen: React.FC = () => {
                   <SurfaceCard style={[styles.inputCard, { borderColor: error ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1) }]}>
                       <View style={styles.inputHeader}>
                         <LinkIcon size={16} color={currentTheme.colors.primary} />
-                        <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>OPPORTUNITY URL</Text>
+                        <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>Job or Internship Link</Text>
                       </View>
-                      <TextInput 
+                      <TextInput
                           style={[styles.cleanInput, { color: currentTheme.colors.text }]}
-                          placeholder="e.g. greenhouse.io/google/job/..."
+                          placeholder="Paste LinkedIn, Greenhouse, Workday, careers page..."
                           placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
                           value={url}
-                          onChangeText={setUrl}
+                          onChangeText={(t) => {
+                              setUrl(t);
+                              if (shareResult) setShareResult(null);
+                              if (preview) setPreview(null);
+                              if (clipboardLink) setClipboardLink(null);
+                          }}
                           autoCapitalize="none"
                           autoCorrect={false}
                           multiline
@@ -367,6 +390,125 @@ const ShareScreen: React.FC = () => {
                           onSubmitEditing={() => void handleParse()}
                       />
                   </SurfaceCard>
+
+                  {/* Clipboard Promo */}
+                  {clipboardLink && !url && !preview && (
+                    <View style={[styles.clipboardPromo, { marginTop: 12, backgroundColor: alpha(currentTheme.colors.primary, 0.03) }]}>
+                        <View style={styles.promoHeader}>
+                            <LinkIcon size={14} color={currentTheme.colors.primary} />
+                            <Text style={[styles.promoTitle, { color: currentTheme.colors.text }]}>Link detected in clipboard</Text>
+                        </View>
+                        <Text style={[styles.promoUrl, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                            {clipboardLink}
+                        </Text>
+                        <View style={styles.promoActions}>
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                style={[styles.promoUseBtn, { backgroundColor: currentTheme.colors.primary }]}
+                                onPress={() => {
+                                    setUrl(clipboardLink);
+                                    void handleParse(clipboardLink);
+                                    setClipboardLink(null);
+                                    showToast("Link used from clipboard");
+                                }}
+                            >
+                                <Text style={[styles.promoUseText, { color: currentTheme.colors.background }]}>USE LINK</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                                onPress={() => setClipboardLink(null)}
+                                style={[styles.promoDismissBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
+                            >
+                                <Text style={[styles.promoDismissText, { color: currentTheme.colors.textMuted }]}>DISMISS</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                  )}
+
+                  {/* Loading State */}
+                  {loading && !preview && url && (
+                      <View style={{ padding: 20, alignItems: 'center' }}>
+                          <ActivityIndicator color={currentTheme.colors.primary} />
+                          <Text style={{ fontSize: 12, color: currentTheme.colors.textMuted, marginTop: 8 }}>Detecting opportunity details...</Text>
+                      </View>
+                  )}
+
+                  {/* Duplicate Banner */}
+                  {preview && preview.isDuplicate && (
+                    <View style={[styles.duplicateBanner, { marginTop: 12, backgroundColor: alpha(currentTheme.colors.warning, 0.05), borderColor: alpha(currentTheme.colors.warning, 0.1) }]}>
+                        <View style={styles.duplicateRow}>
+                            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                                <AlertCircle size={18} color={currentTheme.colors.warning} />
+                                <View>
+                                    <Text style={[styles.duplicateTitle, { color: currentTheme.colors.warning }]}>Already in Feed</Text>
+                                    <Text style={[styles.duplicateSub, { color: currentTheme.colors.textMuted }]}>Existing opportunity</Text>
+                                </View>
+                            </View>
+
+                            <TouchableOpacity
+                                activeOpacity={0.8}
+                                style={[styles.smallViewBtn, { backgroundColor: currentTheme.colors.text }]}
+                                onPress={() => {
+                                    if (preview.existingId) {
+                                        navigation.navigate('JobDetail', { opportunityId: preview.existingId });
+                                    }
+                                }}
+                            >
+                                <Text style={[styles.smallViewBtnText, { color: currentTheme.colors.background }]}>VIEW JOB</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                  )}
+
+                  {/* Preview Section */}
+                  {preview && !preview.isDuplicate && (
+                    <View style={[styles.previewSection, { marginTop: 12 }]}>
+                        <View style={styles.previewHeader}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                <LinkIcon size={14} color={currentTheme.colors.primary} />
+                                <Text style={[styles.previewLabel, { color: currentTheme.colors.textMuted }]}>PREVIEW</Text>
+                            </View>
+                        </View>
+                        <SurfaceCard style={styles.previewCard}>
+                            <Text style={[styles.previewTitle, { color: currentTheme.colors.text }]}>{preview.title || 'Fetching details...'}</Text>
+                            <Text style={[styles.previewCompany, { color: currentTheme.colors.textMuted }]}>{preview.company || 'Detecting company'}</Text>
+
+                            <View style={styles.metaRow}>
+                                <View style={[styles.metaBadge, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
+                                    <Text style={[styles.metaText, { color: currentTheme.colors.text }]}>{preview.locations?.[0] || 'Global'}</Text>
+                                </View>
+                                <View style={[styles.metaBadge, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
+                                    <Text style={[styles.metaText, { color: currentTheme.colors.text }]}>{preview.type || 'Role'}</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.sourceInfo}>
+                                <Text style={[styles.sourceText, { color: currentTheme.colors.textMuted }]}>
+                                    Source: {url.includes('linkedin.com') ? 'LinkedIn' : url.includes('greenhouse.io') ? 'Greenhouse' : 'Direct'}
+                                </Text>
+                                <View style={[styles.confidenceBadge, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
+                                    <Text style={[styles.confidenceText, { color: currentTheme.colors.success }]}>
+                                        {url.includes('linkedin.com') || url.includes('greenhouse.io') ? 'Verified Source' : 'Needs Review'}
+                                    </Text>
+                                </View>
+                            </View>
+                        </SurfaceCard>
+
+                        <TouchableOpacity
+                            activeOpacity={0.9}
+                            style={[styles.actionBtn, loading && styles.disabledBtn, { backgroundColor: currentTheme.colors.primary, marginTop: 20 }]}
+                            onPress={onConfirm}
+                            disabled={loading}
+                        >
+                            {loading ? (
+                                <ActivityIndicator color={currentTheme.colors.background} />
+                            ) : (
+                                <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>
+                                    Share Opportunity
+                                </Text>
+                            )}
+                        </TouchableOpacity>
+                    </View>
+                  )}
                 </>
               ) : (
                 <View style={styles.referralForm}>
@@ -375,7 +517,7 @@ const ShareScreen: React.FC = () => {
                             <Sparkles size={16} color={currentTheme.colors.primary} />
                             <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>WHICH COMPANY?</Text>
                         </View>
-                        <TextInput 
+                        <TextInput
                             style={[styles.cleanInput, { color: currentTheme.colors.text, minHeight: 40 }]}
                             placeholder="e.g. Google, Microsoft..."
                             placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
@@ -389,7 +531,7 @@ const ShareScreen: React.FC = () => {
                             <LinkIcon size={16} color={currentTheme.colors.primary} />
                             <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>CONTACT LINK OR EMAIL</Text>
                         </View>
-                        <TextInput 
+                        <TextInput
                             style={[styles.cleanInput, { color: currentTheme.colors.text, minHeight: 40 }]}
                             placeholder="Your LinkedIn profile or professional email"
                             placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
@@ -403,9 +545,9 @@ const ShareScreen: React.FC = () => {
                             <Info size={16} color={currentTheme.colors.primary} />
                             <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>DETAILS / NOTES</Text>
                         </View>
-                        <TextInput 
+                        <TextInput
                             style={[styles.cleanInput, { color: currentTheme.colors.text }]}
-                            placeholder="How can you help? (e.g. Can refer for SDE roles, 2024 batch)"
+                            placeholder="What roles can you refer for?"
                             placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
                             value={referralData.description}
                             onChangeText={(t) => setReferralData(prev => ({ ...prev, description: t }))}
@@ -419,7 +561,7 @@ const ShareScreen: React.FC = () => {
                             <LinkIcon size={16} color={currentTheme.colors.textMuted} />
                             <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>OFFICIAL CAREERS URL (OPTIONAL)</Text>
                         </View>
-                        <TextInput 
+                        <TextInput
                             style={[styles.cleanInput, { color: currentTheme.colors.text, minHeight: 40 }]}
                             placeholder="Link to company career portal"
                             placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
@@ -427,6 +569,19 @@ const ShareScreen: React.FC = () => {
                             onChangeText={(t) => setReferralData(prev => ({ ...prev, companyUrl: t }))}
                         />
                     </SurfaceCard>
+
+                    <TouchableOpacity
+                        activeOpacity={0.9}
+                        style={[styles.actionBtn, loading && styles.disabledBtn, { backgroundColor: currentTheme.colors.primary, marginTop: 24 }]}
+                        onPress={onConfirm}
+                        disabled={loading}
+                    >
+                        {loading ? (
+                            <ActivityIndicator color={currentTheme.colors.background} />
+                        ) : (
+                            <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Publish Referral</Text>
+                        )}
+                    </TouchableOpacity>
                 </View>
               )}
 
@@ -437,106 +592,40 @@ const ShareScreen: React.FC = () => {
                   </View>
               )}
 
-              <View style={styles.buttonContainer}>
-                  {mode === 'SHARE' ? (
-                      !preview ? (
-                          <TouchableOpacity 
-                              activeOpacity={0.9}
-                              style={[styles.actionBtn, (!url || loading) && styles.disabledBtn, { backgroundColor: currentTheme.colors.text }]}
-                              onPress={() => void handleParse()}
-                              disabled={!url || loading}
-                          >
-                              {loading ? (
-                                  <ActivityIndicator color={currentTheme.colors.background} />
-                              ) : (
-                                  <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Analyze Signal</Text>
-                              )}
-                          </TouchableOpacity>
-                      ) : (
-                          <TouchableOpacity 
-                              activeOpacity={0.9}
-                              style={[styles.actionBtn, loading && styles.disabledBtn, { backgroundColor: currentTheme.colors.primary }]}
-                              onPress={onConfirm}
-                              disabled={loading}
-                          >
-                              {loading ? (
-                                  <ActivityIndicator color={currentTheme.colors.background} />
-                              ) : (
-                                  <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Confirm & Post</Text>
-                              )}
-                          </TouchableOpacity>
-                      )
-                  ) : (
-                    <TouchableOpacity 
-                        activeOpacity={0.9}
-                        style={[styles.actionBtn, loading && styles.disabledBtn, { backgroundColor: currentTheme.colors.primary }]}
-                        onPress={onConfirm}
-                        disabled={loading}
-                    >
-                        {loading ? (
-                            <ActivityIndicator color={currentTheme.colors.background} />
-                        ) : (
-                            <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Share Referral Offer</Text>
-                        )}
-                    </TouchableOpacity>
-                  )}
-              </View>
-
-              {preview && (
-                  <View style={styles.previewSection}>
-                      <View style={styles.previewHeader}>
-                          <LinkIcon size={14} color={currentTheme.colors.primary} />
-                          <Text style={[styles.previewLabel, { color: currentTheme.colors.textMuted }]}>EXTRACTED SIGNAL</Text>
-                      </View>
-                      <SurfaceCard style={styles.previewCard}>
-                          <Text style={[styles.previewTitle, { color: currentTheme.colors.text }]}>{preview.title || 'Analyzing...'}</Text>
-                          <Text style={[styles.previewCompany, { color: currentTheme.colors.textMuted }]}>{preview.company || 'Identifying Company'}</Text>
-                          
-                          <View style={styles.metaRow}>
-                              <View style={[styles.metaBadge, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
-                                  <Text style={[styles.metaText, { color: currentTheme.colors.text }]}>{preview.locations?.[0] || 'Global'}</Text>
-                              </View>
-                              <View style={[styles.metaBadge, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
-                                  <Text style={[styles.metaText, { color: currentTheme.colors.text }]}>{preview.type || 'Role'}</Text>
-                              </View>
-                          </View>
-                      </SurfaceCard>
-                  </View>
-              )}
 
               <View style={[styles.impactCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
                   <Info size={16} color={currentTheme.colors.primary} />
                   <Text style={[styles.impactText, { color: currentTheme.colors.primary }]}>
-                      Your signals help 2,000+ students find opportunities every day. Keep it up!
+                      Your shares help 2,000+ students find opportunities every day. Keep it up!
                   </Text>
               </View>
 
-              {recentContributions.length > 0 && (
+              {recentShares.length > 0 && (
                   <View style={styles.recentSection}>
-                      <View style={styles.recentHeader}>
+                  <View style={styles.recentHeader}>
                           <Clock size={14} color={currentTheme.colors.textMuted} />
-                          <Text style={[styles.recentLabel, { color: currentTheme.colors.textMuted }]}>YOUR RECENT CONTRIBUTIONS</Text>
+                          <Text style={[styles.recentLabel, { color: currentTheme.colors.textMuted }]}>YOUR RECENT SHARES</Text>
                       </View>
-                      
-                      {recentContributions.map((item, idx) => (
-                          <SurfaceCard key={item.id} style={[styles.contributionItem, idx === 0 && { borderTopWidth: 0 }]}>
-                              <View style={styles.contributionContent}>
-                                  <Text 
-                                    style={[styles.contributionLink, { color: currentTheme.colors.text }]}
+
+                      {recentShares.map((item, idx) => (
+                          <SurfaceCard key={item.id} style={[styles.shareItem, idx === 0 && { borderTopWidth: 0 }]}>
+                              <View style={styles.shareContent}>
+                                  <Text
+                                    style={[styles.shareLink, { color: currentTheme.colors.text }]}
                                     numberOfLines={3}
                                   >
                                       {item.sourceLink}
                                   </Text>
-                                  <View style={styles.contributionMeta}>
-                                      <Text style={[styles.contributionDate, { color: currentTheme.colors.textMuted }]}>
+                                  <View style={styles.shareMeta}>
+                                      <Text style={[styles.shareDate, { color: currentTheme.colors.textMuted }]}>
                                           {new Date(item.createdAt).toLocaleDateString()}
                                       </Text>
                                       <View style={[
-                                          styles.statusBadge, 
+                                          styles.statusBadge,
                                           { backgroundColor: item.mappedOpportunityId ? alpha(currentTheme.colors.success, 0.1) : alpha(currentTheme.colors.warning, 0.1) }
                                       ]}>
                                           <Text style={[
-                                              styles.statusText, 
+                                              styles.statusText,
                                               { color: item.mappedOpportunityId ? currentTheme.colors.success : currentTheme.colors.warning }
                                           ]}>
                                               {item.mappedOpportunityId ? 'PUBLISHED' : 'UNDER REVIEW'}
@@ -659,7 +748,7 @@ const styles = StyleSheet.create({
         opacity: 0.3,
     },
     previewSection: {
-        marginTop: 40,
+        marginBottom: 20,
     },
     previewHeader: {
         flexDirection: 'row',
@@ -708,6 +797,42 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         gap: 12,
         alignItems: 'center',
+    },
+    duplicateBanner: {
+        padding: 12,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    duplicateRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+    },
+    duplicateHeader: {
+        flexDirection: 'row',
+        gap: 12,
+    },
+    duplicateTitle: {
+        fontSize: 15,
+        fontWeight: '800',
+        marginBottom: 2,
+    },
+    duplicateSub: {
+        fontSize: 13,
+        lineHeight: 18,
+    },
+    smallViewBtn: {
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        paddingHorizontal: 20,
+        alignSelf: 'flex-start',
+    },
+    smallViewBtnText: {
+        fontSize: 12,
+        fontWeight: '900',
+        letterSpacing: 0.5,
     },
     impactText: {
         flex: 1,
@@ -794,6 +919,125 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '800',
     },
+    statsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginVertical: 24,
+        gap: 20,
+    },
+    statBox: {
+        alignItems: 'center',
+        minWidth: 100,
+    },
+    statValue: {
+        fontSize: 24,
+        fontWeight: '900',
+        marginBottom: 4,
+    },
+    statLabel: {
+        fontSize: 9,
+        fontWeight: '800',
+        letterSpacing: 1,
+    },
+    statDivider: {
+        width: 1,
+        height: 32,
+        opacity: 0.1,
+    },
+    clipboardPromo: {
+        width: '100%',
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.05)',
+        alignItems: 'flex-start',
+    },
+    promoHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 8,
+    },
+    promoTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+    },
+    promoUrl: {
+        fontSize: 12,
+        fontWeight: '600',
+        textAlign: 'left',
+        lineHeight: 18,
+        marginBottom: 12,
+    },
+    promoActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    promoUseBtn: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 10,
+    },
+    promoUseText: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    promoDismissBtn: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 10,
+    },
+    promoDismissText: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    duplicateBadge: {
+        paddingHorizontal: 10,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    duplicateBadgeText: {
+        fontSize: 10,
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    duplicateInfo: {
+        marginTop: 16,
+        padding: 10,
+        borderRadius: 10,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
+    duplicateText: {
+        fontSize: 12,
+        fontWeight: '700',
+        flex: 1,
+    },
+    sourceInfo: {
+        marginTop: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        borderTopWidth: 1,
+        borderTopColor: 'rgba(0,0,0,0.05)',
+        paddingTop: 16,
+    },
+    sourceText: {
+        fontSize: 11,
+        fontWeight: '600',
+    },
+    confidenceBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    confidenceText: {
+        fontSize: 10,
+        fontWeight: '800',
+    },
     secondaryAction: {
         height: 56,
         borderRadius: 18,
@@ -818,27 +1062,27 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         letterSpacing: 1,
     },
-    contributionItem: {
-        padding: 16,
-        borderRadius: 16,
-        marginBottom: 12,
-        borderWidth: 1,
+    shareItem: {
+        flexDirection: 'row',
+        paddingVertical: 16,
+        borderTopWidth: 1,
         borderColor: 'rgba(0,0,0,0.05)',
     },
-    contributionContent: {
-        gap: 12,
+    shareContent: {
+        flex: 1,
+        gap: 8,
     },
-    contributionLink: {
+    shareLink: {
         fontSize: 13,
         fontWeight: '600',
         lineHeight: 18,
     },
-    contributionMeta: {
+    shareMeta: {
         flexDirection: 'row',
-        justifyContent: 'space-between',
         alignItems: 'center',
+        gap: 12,
     },
-    contributionDate: {
+    shareDate: {
         fontSize: 11,
         fontWeight: '600',
     },

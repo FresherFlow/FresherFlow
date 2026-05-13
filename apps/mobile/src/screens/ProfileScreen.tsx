@@ -79,7 +79,7 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
   const onNavigate = (screen: keyof RootStackParamList) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    navigation.navigate(isGuest ? ('Login' as never) : (screen as never));
+    navigation.navigate(isGuest ? ('Auth' as never) : (screen as never));
   };
 
   const onSupportPress = () => {
@@ -95,13 +95,13 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   return (
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-      
+
       <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
-          <PremiumHeader 
-              title="Identity" 
-              subtitle="Manage your professional presence" 
+          <PremiumHeader
+              title="Identity"
+              subtitle="Manage your professional presence"
               rightSlot={
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     activeOpacity={0.7}
                     style={styles.notificationBtn}
                     onPress={() => navigation.navigate('Notifications')}
@@ -115,8 +115,8 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
           />
       </View>
 
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
+      <ScrollView
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -133,7 +133,7 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                       )}
                   </View>
                   <View style={styles.identityText}>
-                      <Text style={[styles.name, { color: currentTheme.colors.text }]}>{user?.fullName || 'Anonymous User'}</Text>
+                      <Text style={[styles.name, { color: currentTheme.colors.text }]}>{user?.fullName || 'Guest Explorer'}</Text>
                       <Text style={[styles.email, { color: currentTheme.colors.textMuted }]}>{user?.email || 'Join FresherFlow to start'}</Text>
                   </View>
               </View>
@@ -149,7 +149,7 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         <View style={[styles.progressFill, { width: `${calculateProfileCompletion(profile).percentage}%`, backgroundColor: currentTheme.colors.primary }]} />
                     </View>
                     <Text style={[styles.completionSub, { color: currentTheme.colors.textMuted }]}>
-                        {calculateProfileCompletion(profile).percentage === 100 
+                        {calculateProfileCompletion(profile).percentage === 100
                             ? 'Your professional identity is fully optimized for top recruiters.'
                             : `Complete ${calculateProfileCompletion(profile).missingFields[0]} to improve your match score.`}
                     </Text>
@@ -157,12 +157,12 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
               )}
 
               {isGuest && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     activeOpacity={0.8}
                     style={[styles.authButton, { backgroundColor: currentTheme.colors.primary }]}
-                    onPress={() => navigation.navigate('Login')}
+                    onPress={() => navigation.navigate('Auth')}
                   >
-                      <Text style={[styles.authButtonText, { color: currentTheme.colors.background }]}>SIGN IN TO IDENTITY</Text>
+                      <Text style={[styles.authButtonText, { color: currentTheme.colors.background }]}>JOIN FRESHERFLOW</Text>
                   </TouchableOpacity>
               )}
 
@@ -170,35 +170,35 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
               <View style={styles.menuSections}>
                   <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>CAREER ASSETS</Text>
                   <SurfaceCard style={styles.groupCard}>
-                      <MenuRow 
-                        icon={Award} 
-                        label="Education & Academics" 
-                        onPress={() => onNavigate('EditEducation')} 
-                        currentTheme={currentTheme} 
+                      <MenuRow
+                        icon={Award}
+                        label="Education & Academics"
+                        onPress={() => onNavigate('EditEducation')}
+                        currentTheme={currentTheme}
                       />
-                      <MenuRow 
-                        icon={Zap} 
-                        label="Skills & Capability" 
-                        onPress={() => onNavigate('EditSkills')} 
-                        currentTheme={currentTheme} 
+                      <MenuRow
+                        icon={Zap}
+                        label="Skills & Capability"
+                        onPress={() => onNavigate('EditSkills')}
+                        currentTheme={currentTheme}
                       />
-                      <MenuRow 
-                        icon={Briefcase} 
-                        label="Work Preferences" 
-                        onPress={() => onNavigate('EditPreferences')} 
-                        currentTheme={currentTheme} 
+                      <MenuRow
+                        icon={Briefcase}
+                        label="Work Preferences"
+                        onPress={() => onNavigate('EditPreferences')}
+                        currentTheme={currentTheme}
                       />
-                      <MenuRow 
-                        icon={Briefcase} 
-                        label="Application Tracker" 
-                        onPress={() => onNavigate('ApplicationTracker')} 
-                        currentTheme={currentTheme} 
+                      <MenuRow
+                        icon={Briefcase}
+                        label="Application Tracker"
+                        onPress={() => onNavigate('ApplicationTracker')}
+                        currentTheme={currentTheme}
                       />
-                      <MenuRow 
-                        icon={Share2} 
-                        label="My Contributions" 
-                        onPress={() => onNavigate('MyContributions')} 
-                        currentTheme={currentTheme} 
+                      <MenuRow
+                        icon={Share2}
+                        label="My Shares"
+                        onPress={() => onNavigate('MyShares')}
+                        currentTheme={currentTheme}
                         isLast
                       />
                       </SurfaceCard>
@@ -209,14 +209,14 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <>
                         <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>FOLLOWING</Text>
                         <SurfaceCard style={styles.groupCard}>
-                            <ScrollView 
-                                horizontal 
+                            <ScrollView
+                                horizontal
                                 showsHorizontalScrollIndicator={false}
                                 contentContainerStyle={styles.followsList}
                             >
                                 {follows.companies.map(company => (
-                                    <TouchableOpacity 
-                                        key={company} 
+                                    <TouchableOpacity
+                                        key={company}
                                         activeOpacity={0.8}
                                         style={[styles.followChip, { backgroundColor: alpha(currentTheme.colors.text, 0.05), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
                                         onPress={() => unfollow('COMPANY', company)}
@@ -225,8 +225,8 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                     </TouchableOpacity>
                                 ))}
                                 {follows.tags.map(tag => (
-                                    <TouchableOpacity 
-                                        key={tag} 
+                                    <TouchableOpacity
+                                        key={tag}
                                         activeOpacity={0.8}
                                         style={[styles.followChip, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderColor: alpha(currentTheme.colors.primary, 0.1) }]}
                                         onPress={() => unfollow('TAG', tag)}
@@ -241,29 +241,29 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
                   <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>COMMUNITY & SYSTEM</Text>
                   <SurfaceCard style={styles.groupCard}>
-                      <MenuRow 
-                        icon={Palette} 
-                        label="Interface Appearance" 
-                        onPress={() => navigation.navigate('Appearance')} 
-                        currentTheme={currentTheme} 
+                      <MenuRow
+                        icon={Palette}
+                        label="Interface Appearance"
+                        onPress={() => navigation.navigate('Appearance')}
+                        currentTheme={currentTheme}
                       />
-                      <MenuRow 
-                        icon={Settings} 
-                        label="Security & Account" 
-                        onPress={() => onNavigate('AccountManage')} 
-                        currentTheme={currentTheme} 
+                      <MenuRow
+                        icon={Settings}
+                        label="Security & Account"
+                        onPress={() => onNavigate('AccountManage')}
+                        currentTheme={currentTheme}
                       />
-                      <MenuRow 
-                        icon={HelpCircle} 
-                        label="Support & Feedback" 
-                        onPress={onSupportPress} 
-                        currentTheme={currentTheme} 
+                      <MenuRow
+                        icon={HelpCircle}
+                        label="Support & Feedback"
+                        onPress={onSupportPress}
+                        currentTheme={currentTheme}
                       />
-                      <MenuRow 
-                        icon={LogOut} 
-                        label="Sign Out" 
-                        onPress={onLogoutPress} 
-                        currentTheme={currentTheme} 
+                      <MenuRow
+                        icon={LogOut}
+                        label="Sign Out"
+                        onPress={onLogoutPress}
+                        currentTheme={currentTheme}
                         destructive
                         isLast
                       />
@@ -273,7 +273,7 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
           </View>
       </ScrollView>
 
-      <PremiumPopup 
+      <PremiumPopup
         visible={showLogoutPopup}
         title="Sign Out"
         description="Are you sure you want to end your session? You will need to sign in again to access your preferences."
@@ -297,7 +297,7 @@ interface MenuRowProps {
 }
 
 const MenuRow = ({ icon: Icon, label, onPress, isLast, currentTheme, destructive }: MenuRowProps) => (
-    <TouchableOpacity 
+    <TouchableOpacity
         style={[styles.menuRow, !isLast && { borderBottomWidth: 1, borderBottomColor: alpha(currentTheme.colors.border, 0.05) }]}
         onPress={onPress}
         activeOpacity={0.7}

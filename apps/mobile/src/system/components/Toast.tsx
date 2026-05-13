@@ -6,6 +6,7 @@ import {
   Animated,
   TouchableOpacity,
   Platform,
+  PanResponder,
 } from 'react-native';
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -33,6 +34,36 @@ export const Toast: React.FC<ToastProps> = ({
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   const scale = useRef(new Animated.Value(0.9)).current;
+  const panY = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dy) > 5;
+      },
+      onPanResponderMove: (_, gestureState) => {
+        // Only allow upward swiping for dismissal
+        if (gestureState.dy < 0) {
+          panY.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // If swiped up significantly, dismiss
+        if (gestureState.dy < -40 || gestureState.vy < -0.5) {
+          dismiss();
+        } else {
+          // Snap back
+          Animated.spring(panY, {
+            toValue: 0,
+            useNativeDriver: true,
+            tension: 80,
+            friction: 10
+          }).start();
+        }
+      }
+    })
+  ).current;
 
   useEffect(() => {
     // Animate in
@@ -66,18 +97,18 @@ export const Toast: React.FC<ToastProps> = ({
   const dismiss = () => {
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: -100,
-        duration: 300,
+        toValue: -120,
+        duration: 250,
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 250,
+        duration: 200,
         useNativeDriver: true,
       }),
       Animated.timing(scale, {
         toValue: 0.9,
-        duration: 250,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -95,12 +126,15 @@ export const Toast: React.FC<ToastProps> = ({
     }
   };
 
+  const combinedTranslateY = Animated.add(translateY, panY);
+
   return (
     <Animated.View
+      {...panResponder.panHandlers}
       style={[
         styles.container,
         {
-          transform: [{ translateY }, { scale }],
+          transform: [{ translateY: combinedTranslateY }, { scale }],
           opacity,
           backgroundColor: currentTheme.colors.surface,
           borderColor: currentTheme.colors.border,
@@ -115,7 +149,7 @@ export const Toast: React.FC<ToastProps> = ({
         <View style={styles.iconWrapper}>
           {getIcon()}
         </View>
-        <Text 
+        <Text
             style={[styles.message, { color: currentTheme.colors.text }]}
             numberOfLines={2}
         >

@@ -66,12 +66,12 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                             {user.trustLevel === 'CONTRIBUTOR' ? 'Trusted Scout' : 'Community Member'}
                         </Text>
                     </View>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         activeOpacity={0.7}
                         onPress={toggleFollow}
                         style={[
-                            styles.followBtn, 
-                            { 
+                            styles.followBtn,
+                            {
                                 backgroundColor: followingContributor ? alpha(currentTheme.colors.primary, 0.1) : currentTheme.colors.primary,
                                 borderColor: followingContributor ? currentTheme.colors.primary : 'transparent'
                             }
@@ -83,7 +83,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                             <UserPlus size={18} color={currentTheme.colors.background} />
                         )}
                         <Text style={[
-                            styles.followText, 
+                            styles.followText,
                             { color: followingContributor ? currentTheme.colors.primary : currentTheme.colors.background }
                         ]}>
                             {followingContributor ? 'FOLLOWING' : 'FOLLOW'}
@@ -110,7 +110,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                     </View>
                 </SurfaceCard>
 
-                <Section title="Their Contributions">
+                <Section title="Their Shares">
                     <Text style={[styles.sectionDesc, { color: currentTheme.colors.textMuted }]}>
                         Opportunities verified and published from {user.fullName}'s reports.
                     </Text>
@@ -130,19 +130,19 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
     return (
         <Screen safe={false}>
             <View style={{ paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
-                <PremiumHeader 
-                    title="Contributor Profile" 
-                    showBack 
-                    onBack={() => navigation.goBack()} 
+                <PremiumHeader
+                    title="Member Profile"
+                    showBack
+                    onBack={() => navigation.goBack()}
                 />
             </View>
-            
+
             <FlatList
                 data={opportunities}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
-                    <JobCard 
-                        opportunity={item} 
+                    <JobCard
+                        opportunity={item}
                         onPress={() => navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id })}
                     />
                 )}
@@ -158,7 +158,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                     !loading ? (
                         <View style={styles.emptyContainer}>
                             <Award size={48} color={alpha(currentTheme.colors.textMuted, 0.2)} />
-                            <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No live contributions</Text>
+                            <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No live shares</Text>
                             <Text style={[styles.emptyDesc, { color: currentTheme.colors.textMuted }]}>
                                 All shared links are currently under review or have expired.
                             </Text>

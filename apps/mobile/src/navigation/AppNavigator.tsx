@@ -11,13 +11,12 @@ import ShareScreen from '@/screens/ShareScreen';
 import JobDetailScreen from '@/screens/JobDetailScreen';
 import SavedScreen from '@/screens/SavedScreen';
 import ProfileScreen from '@/screens/ProfileScreen';
-import MyContributionsScreen from '@/screens/MyContributionsScreen';
-import RegisterScreen from '@/screens/RegisterScreen';
+import MySharesScreen from '@/screens/MySharesScreen';
+import AuthScreen from '@/screens/AuthScreen';
 import AppearanceScreen from '@/screens/AppearanceScreen';
 import EditEducationScreen from '@/screens/EditEducationScreen';
 import EditSkillsScreen from '@/screens/EditSkillsScreen';
 import EditPreferencesScreen from '@/screens/EditPreferencesScreen';
-import LoginScreen from '@/screens/LoginScreen';
 import DashboardScreen from '@/screens/DashboardScreen';
 import ReferralsScreen from '@/screens/ReferralsScreen';
 import AccountManageScreen from '@/screens/AccountManageScreen';
@@ -27,7 +26,6 @@ import CompanyScreen from '@/screens/CompanyScreen';
 import AlertSettingsScreen from '@/screens/AlertSettingsScreen';
 import ApplicationTrackerScreen from '@/screens/ApplicationTrackerScreen';
 import FeedbackScreen from '@/screens/FeedbackScreen';
-import CompanyDirectoryScreen from '@/screens/CompanyDirectoryScreen';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUserAuth as useAuth } from '@repo/frontend-core';
@@ -50,8 +48,7 @@ export type RootStackParamList = {
   SavedList: undefined;
   ProfileMain: undefined;
   JobDetail: { opportunity?: Opportunity; job?: Opportunity; opportunityId?: string };
-  Login: { prefilledEmail?: string; prefilledName?: string } | undefined;
-  Register: undefined;
+  Auth: { prefilledEmail?: string } | undefined;
   Main: undefined;
   EditEducation: undefined;
   EditSkills: undefined;
@@ -61,13 +58,12 @@ export type RootStackParamList = {
   Referrals: undefined;
   AccountManage: undefined;
   Notifications: undefined;
-  MyContributions: undefined;
+  MyShares: undefined;
   ContributorProfile: { userId: string };
-  CompanyDetail: { companyName: string; companyLogoUrl?: string; website?: string };
+  CompanyDetail: { companyName: string; companyLogoUrl?: string; website?: string; currentJob?: Opportunity };
   AlertSettings: undefined;
   ApplicationTracker: undefined;
   Feedback: undefined;
-  CompanyDirectory: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootStackParamList>();
@@ -162,9 +158,9 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
       <View style={styles.tabBarInner}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
-          const label = 
-            typeof options.tabBarLabel === 'string' 
-              ? options.tabBarLabel 
+          const label =
+            typeof options.tabBarLabel === 'string'
+              ? options.tabBarLabel
               : typeof options.title === 'string'
                 ? options.title
                 : route.name;
@@ -243,14 +239,14 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: Platform.OS === 'ios' ? 88 : 72,
+        height: Platform.OS === 'ios' ? 72 : 58,
         elevation: 0,
         overflow: 'hidden',
     },
     tabBarInner: {
         flex: 1,
         flexDirection: 'row',
-        paddingBottom: Platform.OS === 'ios' ? 24 : 0,
+        paddingBottom: Platform.OS === 'ios' ? 12 : 0,
     },
     tabItem: {
         flex: 1,
@@ -290,9 +286,9 @@ export const AppNavigator = () => {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
       <Stack.Screen name="Main" component={TabNavigator} />
-      <Stack.Screen 
-        name="JobDetail" 
-        component={JobDetailScreen} 
+      <Stack.Screen
+        name="JobDetail"
+        component={JobDetailScreen}
       />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
@@ -302,26 +298,18 @@ export const AppNavigator = () => {
       <Stack.Screen name="EditEducation" component={EditEducationScreen} />
       <Stack.Screen name="EditSkills" component={EditSkillsScreen} />
       <Stack.Screen name="EditPreferences" component={EditPreferencesScreen} />
-      <Stack.Screen name="MyContributions" component={MyContributionsScreen} />
+      <Stack.Screen name="MyShares" component={MySharesScreen} />
       <Stack.Screen name="ContributorProfile" component={ContributorProfileScreen} />
       <Stack.Screen name="CompanyDetail" component={CompanyScreen} />
       <Stack.Screen name="AlertSettings" component={AlertSettingsScreen} />
       <Stack.Screen name="ApplicationTracker" component={ApplicationTrackerScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
-      <Stack.Screen name="CompanyDirectory" component={CompanyDirectoryScreen} />
       {!user ? (
-        <>
-          <Stack.Screen
-            name="Login"
-            component={LoginScreen}
-            options={{ presentation: 'modal' }}
-          />
-          <Stack.Screen
-            name="Register"
-            component={RegisterScreen}
-            options={{ presentation: 'modal' }}
-          />
-        </>
+        <Stack.Screen
+          name="Auth"
+          component={AuthScreen}
+          options={{ presentation: 'modal' }}
+        />
       ) : null}
     </Stack.Navigator>
   );

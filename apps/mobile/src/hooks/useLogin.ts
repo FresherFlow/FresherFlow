@@ -1,16 +1,15 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useUserAuth as useAuth, useNotifications } from '@repo/frontend-core';
-import { sendOtpSchema, verifyOtpSchema } from '@fresherflow/schemas';
-import { profileApi } from '@fresherflow/api-client';
+import * as Schemas from '@fresherflow/schemas';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Login'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
-export const useLogin = (route: Props['route']) => {
-    const { sendOtp, verifyOtp, refreshMe } = useAuth();
+export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: string } }) => {
+    const { sendOtp, verifyOtp } = useAuth();
     const { requestPushPermission } = useNotifications();
     const [email, setEmail] = useState(route.params?.prefilledEmail || '');
     const [otp, setOtp] = useState('');
@@ -19,8 +18,19 @@ export const useLogin = (route: Props['route']) => {
     const [resendTimer, setResendTimer] = useState(0);
 
     const handleSendOtp = useCallback(async () => {
-        const validation = sendOtpSchema.safeParse({ email: email.trim() });
+        const trimmedEmail = email.trim();
+
+        let validation;
+        try {
+            validation = Schemas.sendOtpSchema.safeParse({ email: trimmedEmail });
+        } catch (e) {
+            console.error('[Auth] CRITICAL: Schema validation crashed:', e);
+            Alert.alert('System Error', 'Validation engine crashed. Please check console logs.');
+            return;
+        }
+
         if (!validation.success) {
+            console.warn('[Auth] Validation failed:', JSON.stringify(validation.error.format(), null, 2));
             Alert.alert('Invalid Email', validation.error.issues[0]?.message || 'Invalid email');
             return;
         }
@@ -31,7 +41,9 @@ export const useLogin = (route: Props['route']) => {
             setOtpSent(true);
             setResendTimer(60);
         } catch (error: unknown) {
-            Alert.alert('Failed', (error as Error).message || 'Could not send code');
+            console.error('[Auth] Failed to send OTP:', error);
+            const msg = error instanceof Error ? error.message : 'Could not send code';
+            Alert.alert('Verification Failed', `${msg}\n\nPlease check your internet connection and if the API is reachable.`);
         } finally {
             setLoading(false);
         }
@@ -53,7 +65,7 @@ export const useLogin = (route: Props['route']) => {
     }, [resendTimer]);
 
     const handleVerifyOtp = useCallback(async () => {
-        const validation = verifyOtpSchema.safeParse({ email: email.trim(), code: otp.trim() });
+        const validation = Schemas.verifyOtpSchema.safeParse({ email: email.trim(), code: otp.trim() });
         if (!validation.success) {
             Alert.alert('Invalid Input', validation.error.issues[0]?.message || 'Invalid code');
             return;
@@ -63,27 +75,19 @@ export const useLogin = (route: Props['route']) => {
         try {
             await verifyOtp(email.trim(), otp.trim());
 
-            // If we have a prefilled name, this was a registration; update the name
-            if (route.params?.prefilledName) {
-                try {
-                    await profileApi.updateProfile({ fullName: route.params.prefilledName });
-                    await refreshMe();
-                } catch (e) {
-                    console.error('Failed to update name after registration', e);
-                }
-            }
-            
             try {
                 await requestPushPermission();
             } catch (e) {
                 console.warn('Failed to register push after login', e);
             }
         } catch (error: unknown) {
+            console.error('[Auth] Verification failed:', error);
+            setOtp(''); // Clear OTP on failure to stop the loop
             Alert.alert('Login failed', (error as Error).message || 'Could not verify code');
         } finally {
             setLoading(false);
         }
-    }, [email, otp, route?.params?.prefilledName, verifyOtp, refreshMe, requestPushPermission]);
+    }, [email, otp, verifyOtp, requestPushPermission]);
 
     return {
         email, setEmail,

@@ -34,7 +34,7 @@ import {
   Trophy,
   Flag,
 } from 'lucide-react-native';
-import { feedbackApi } from '@fresherflow/api-client';
+
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -46,6 +46,7 @@ import { renderFormattedDescription } from '@/utils/DescriptionParser';
 import { markJobAsSeen } from '@/utils/seenJobs';
 
 import { useNotifications } from '@repo/frontend-core';
+import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -53,11 +54,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 // Premium System
 import { Screen, Section } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard, GlassCard } from '@/system/components/PremiumPrimitives';
+import { ReportActionSheet } from '@/system/components/ReportActionSheet';
+import { MatchScoreGauge } from '@/system/components/MatchScoreGauge';
 import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING } from '../system/constants/dimensions';
 import { CommentSection } from '@/system/components/CommentSection';
-import { ReportModal } from '@/system/components/ReportModal';
-import { FeedbackReason } from '@fresherflow/types';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -68,7 +69,7 @@ const alpha = (color: string, opacity: number) => {
 
 const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
   const { currentTheme } = useTheme();
-  
+
   const { isFollowing, follow, unfollow } = useFollows();
   const insets = useSafeAreaInsets();
 
@@ -92,9 +93,10 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
   );
 
 
+  const { showSuccess } = useToast();
   const { showToast } = useNotifications();
 
-  const [showReportPopup, setShowReportPopup] = useState(false);
+  const [reportSheetVisible, setReportSheetVisible] = useState(false);
   const scrollY = React.useRef(new Animated.Value(0)).current;
   const fabAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -156,20 +158,10 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
   const fadeAnim7 = React.useRef(new Animated.Value(0)).current;
 
   const handleReport = useCallback(() => {
-    if (!opportunityId) return;
-    setShowReportPopup(true);
-  }, [opportunityId]);
+    setReportSheetVisible(true);
+  }, []);
 
-  const submitReport = async (reason: FeedbackReason) => {
-    if (!opportunityId) return;
-    try {
-        await feedbackApi.submit(opportunityId, reason);
-        showToast('Thank you! Your report has been received.', 'success');
-        setShowReportPopup(false);
-    } catch {
-        showToast('Failed to submit report. Please try again.', 'error');
-    }
-  };
+
 
   const lastAnimatedId = React.useRef<string | null>(null);
 
@@ -191,6 +183,14 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
 
 
+    const handleToggleSave = useCallback(() => {
+        if (!opportunity) return;
+        const wasSaved = isSaved(opportunity.id);
+        toggleSave(opportunity);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        showSuccess(wasSaved ? 'Opportunity removed from saves' : 'Opportunity saved successfully!');
+    }, [opportunity, isSaved, toggleSave, showSuccess]);
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
@@ -207,23 +207,23 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     );
   }
 
-  return (
+    return (
     <Screen safe={false}>
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-      
+
       {/* Floating Header */}
       <Animated.View style={[
-        styles.stickyHeader, 
-        { 
-          opacity: headerOpacity, 
+        styles.stickyHeader,
+        {
+          opacity: headerOpacity,
           height: insets.top + 80,
-          transform: [{ translateY: headerTranslateY }], 
-          paddingTop: insets.top, 
+          transform: [{ translateY: headerTranslateY }],
+          paddingTop: insets.top,
           backgroundColor: currentTheme.colors.background,
           justifyContent: 'center',
         }
       ]}>
-        <PremiumHeader 
+        <PremiumHeader
             title={opportunity.title}
             compact
             titleStyle={{ fontSize: mScale(24), fontWeight: '900', lineHeight: 28 }}
@@ -232,13 +232,13 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             rightSlot={
                 <View style={{ flexDirection: 'row', gap: mScale(4), alignItems: 'center' }}>
                     <TouchableOpacity onPress={handleReport} style={styles.iconBtn}>
-                        <Flag size={mScale(20)} color={currentTheme.colors.textMuted} />
+                        <Flag size={mScale(20)} color={currentTheme.colors.text} />
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={() => toggleSave(opportunity)} style={styles.iconBtn}>
-                        <Bookmark 
-                            size={mScale(20)} 
-                            color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text} 
-                            fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'} 
+                    <TouchableOpacity onPress={handleToggleSave} style={styles.iconBtn}>
+                        <Bookmark
+                            size={mScale(20)}
+                            color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text}
+                            fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'}
                         />
                     </TouchableOpacity>
                     <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
@@ -256,13 +256,13 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
          </TouchableOpacity>
          <View style={{ flexDirection: 'row', gap: 10 }}>
             <TouchableOpacity onPress={handleReport} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
-                <Flag size={20} color={currentTheme.colors.textMuted} />
+                <Flag size={20} color={currentTheme.colors.text} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => toggleSave(opportunity)} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
-                <Bookmark 
-                    size={20} 
-                    color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text} 
-                    fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'} 
+            <TouchableOpacity onPress={handleToggleSave} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+                <Bookmark
+                    size={20}
+                    color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text}
+                    fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'}
                 />
             </TouchableOpacity>
             <TouchableOpacity onPress={handleShare} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
@@ -271,7 +271,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
          </View>
       </View>
 
-      <Animated.ScrollView 
+      <Animated.ScrollView
         onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
             { useNativeDriver: true }
@@ -294,20 +294,13 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 <View style={styles.titleRow}>
                     <Text style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}>{opportunity.title}</Text>
                     {opportunity.matchScore !== undefined && (
-                        <View style={[
-                            styles.matchIndicator, 
-                            { borderColor: alpha(opportunity.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary, 0.3) }
-                        ]}>
-                            <Text style={[
-                                styles.matchScore, 
-                                { color: opportunity.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary }
-                            ]}>
-                                {opportunity.matchScore}%
-                            </Text>
-                            <Text style={[
-                                styles.matchLabel, 
-                                { color: currentTheme.colors.textMuted }
-                            ]}>
+                        <View style={{ alignItems: 'center' }}>
+                            <MatchScoreGauge
+                                score={opportunity.matchScore}
+                                isEligible={opportunity.isEligible !== false}
+                                size={mScale(56)}
+                            />
+                            <Text style={[styles.matchLabel, { color: currentTheme.colors.textMuted, marginTop: 4 }]}>
                                 {opportunity.isEligible === false ? 'MATCH' : 'FIT'}
                             </Text>
                         </View>
@@ -315,28 +308,29 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </View>
                 {opportunity.matchReason && (
                     <Text style={[
-                        styles.matchReasonText, 
+                        styles.matchReasonText,
                         { color: opportunity.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary }
                     ]}>
                         {opportunity.matchReason.toUpperCase()}
                     </Text>
                 )}
-                
+
                 <View style={styles.companyAreaContainer}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.companyArea}
-                        onPress={() => navigation.push('CompanyDetail', { 
+                        onPress={() => navigation.push('CompanyDetail', {
                             companyName: opportunity.company,
                             companyLogoUrl: opportunity.companyLogoUrl ?? undefined,
-                            website: opportunity.companyWebsite ?? undefined
+                            website: opportunity.companyWebsite ?? undefined,
+                            currentJob: opportunity
                         })}
                     >
-                        <CompanyLogo 
-                            name={opportunity.company} 
+                        <CompanyLogo
+                            name={opportunity.company}
                             website={opportunity.companyWebsite}
                             applyLink={opportunity.applyLink}
-                            logoUrl={opportunity.companyLogoUrl} 
-                            size={56} 
+                            logoUrl={opportunity.companyLogoUrl}
+                            size={56}
                         />
                         <View style={{ flex: 1, gap: 4 }}>
                             <Text style={[styles.companyName, { color: currentTheme.colors.text }]}>{opportunity.company}</Text>
@@ -352,11 +346,11 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             </View>
                         </View>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => isFollowing('COMPANY', opportunity.company) ? unfollow('COMPANY', opportunity.company) : follow('COMPANY', opportunity.company)}
                         style={[
-                            styles.followButton, 
-                            { 
+                            styles.followButton,
+                            {
                                 backgroundColor: isFollowing('COMPANY', opportunity.company) ? 'transparent' : alpha(currentTheme.colors.primary, 0.1),
                                 borderColor: currentTheme.colors.primary,
                                 borderWidth: isFollowing('COMPANY', opportunity.company) ? 1 : 0
@@ -396,50 +390,50 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </SurfaceCard>
             </Animated.View>
 
-            {/* Quick Info Signal Card */}
+            {/* Quick Info Detail Card */}
             <Animated.View style={{ opacity: fadeAnim2, transform: [{ translateY: fadeAnim2.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-                <SurfaceCard style={styles.signalCard}>
-                    <View style={styles.signalRow}>
-                        <View style={styles.signalItemHalf}>
+                <SurfaceCard style={styles.detailCard}>
+                    <View style={styles.detailRow}>
+                        <View style={styles.detailItemHalf}>
                             <ShieldCheck size={20} color={currentTheme.colors.primary} />
-                            <View style={styles.signalContent}>
-                                <Text style={[styles.signalLabel, { color: currentTheme.colors.textMuted }]}>WORK MODE</Text>
-                                <Text style={[styles.signalValue, { color: currentTheme.colors.text }]}>
+                            <View style={styles.detailContent}>
+                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>WORK MODE</Text>
+                                <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
                                     {opportunity.workMode || 'Hybrid'}
                                 </Text>
                             </View>
                         </View>
-                        <View style={[styles.signalDividerVertical, { backgroundColor: currentTheme.colors.border }]} />
-                        <View style={styles.signalItemHalf}>
+                        <View style={[styles.detailDividerVertical, { backgroundColor: currentTheme.colors.border }]} />
+                        <View style={styles.detailItemHalf}>
                             <CircleDollarSign size={20} color={currentTheme.colors.primary} />
-                            <View style={styles.signalContent}>
-                                <Text style={[styles.signalLabel, { color: currentTheme.colors.textMuted }]}>SALARY</Text>
-                                <Text style={[styles.signalValue, { color: currentTheme.colors.text }]}>
+                            <View style={styles.detailContent}>
+                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>SALARY</Text>
+                                <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
                                     {opportunity.salaryRange || 'NDA'}
                                 </Text>
                             </View>
                         </View>
                     </View>
 
-                    <View style={[styles.signalDivider, { backgroundColor: currentTheme.colors.border }]} />
+                    <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
 
-                    <View style={styles.signalItem}>
+                    <View style={styles.detailItem}>
                         <Briefcase size={20} color={currentTheme.colors.primary} />
-                        <View style={styles.signalContent}>
-                            <Text style={[styles.signalLabel, { color: currentTheme.colors.textMuted }]}>ROLE</Text>
-                            <Text style={[styles.signalValue, { color: currentTheme.colors.text }]}>
+                        <View style={styles.detailContent}>
+                            <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>ROLE</Text>
+                            <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
                                 {opportunity.jobFunction || opportunity.type}
                             </Text>
                         </View>
                     </View>
 
-                    <View style={[styles.signalDivider, { backgroundColor: currentTheme.colors.border }]} />
+                    <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
 
-                    <View style={styles.signalItem}>
+                    <View style={styles.detailItem}>
                         <MapPin size={20} color={currentTheme.colors.primary} />
-                        <View style={styles.signalContent}>
-                            <Text style={[styles.signalLabel, { color: currentTheme.colors.textMuted }]}>LOCATION</Text>
-                            <Text style={[styles.signalValue, { color: currentTheme.colors.text }]}>
+                        <View style={styles.detailContent}>
+                            <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>LOCATION</Text>
+                            <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
                                 {opportunity.locations?.join(', ') || 'Remote'}
                             </Text>
                         </View>
@@ -470,8 +464,8 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>ALLOWED BATCHES</Text>
                                 <Text style={[styles.reqValue, { color: currentTheme.colors.text }]}>
-                                    {opportunity.allowedPassoutYears?.length > 0 
-                                        ? opportunity.allowedPassoutYears.join(', ') 
+                                    {opportunity.allowedPassoutYears?.length > 0
+                                        ? opportunity.allowedPassoutYears.join(', ')
                                         : 'Open to all years'}
                                 </Text>
                             </View>
@@ -546,7 +540,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                 <Trophy size={20} color={currentTheme.colors.primary} />
                                 <Text style={[styles.govtTitle, { color: currentTheme.colors.text }]}>Official Vacancy</Text>
                             </View>
-                            
+
                             <View style={styles.govtInfoRow}>
                                 <View style={styles.govtInfoItem}>
                                     <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>VACANCIES</Text>
@@ -564,7 +558,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             </View>
 
                             {opportunity.governmentJobDetails.officialNotificationUrl && (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     style={[styles.govtLink, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]}
                                     onPress={() => Linking.openURL(opportunity.governmentJobDetails!.officialNotificationUrl!)}
                                 >
@@ -611,7 +605,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                 <Text style={[styles.trustTitle, { color: currentTheme.colors.text }]}>Contributor</Text>
                                 <Text style={[styles.trustDesc, { color: currentTheme.colors.textMuted }]}>
                                     First shared by{' '}
-                                    <Text 
+                                    <Text
                                         style={{ color: currentTheme.colors.primary, fontWeight: '700' }}
                                         onPress={() => {
                                             const creatorId = opportunity.rawIngestions?.[0]?.creator?.id;
@@ -632,25 +626,25 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             {similarOpportunities.length > 0 && (
                 <Animated.View style={{ opacity: fadeAnim5, transform: [{ translateY: fadeAnim5.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
                     <Section title="Discover More Like This">
-                        <ScrollView 
-                            horizontal 
+                        <ScrollView
+                            horizontal
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.similarList}
                         >
                             {similarOpportunities.map((item) => (
-                                <TouchableOpacity 
-                                    key={item.id} 
+                                <TouchableOpacity
+                                    key={item.id}
                                     style={[styles.similarCard, { backgroundColor: alpha(currentTheme.colors.text, 0.02), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
                                     onPress={() => {
                                         navigation.push('JobDetail', { opportunity: item, opportunityId: item.id });
                                     }}
                                 >
-                                    <CompanyLogo 
-                                        name={item.company} 
+                                    <CompanyLogo
+                                        name={item.company}
                                         website={item.companyWebsite}
                                         applyLink={item.applyLink}
-                                        logoUrl={item.companyLogoUrl} 
-                                        size={32} 
+                                        logoUrl={item.companyLogoUrl}
+                                        size={32}
                                     />
                                     <View style={styles.similarText}>
                                         <Text style={[styles.similarTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{item.title}</Text>
@@ -673,7 +667,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                 <Text style={[styles.notifyTitle, { color: currentTheme.colors.text }]}>Alert me for similar roles</Text>
                                 <Text style={[styles.notifyDesc, { color: currentTheme.colors.textMuted }]}>Get instant pings when roles at {opportunity.company} or similar match your profile.</Text>
                             </View>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={[styles.notifyBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
                                 onPress={() => {
                                     showToast('Alerts enabled for similar roles!');
@@ -690,10 +684,10 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
       </Animated.ScrollView>
 
       {/* Floating Action FAB */}
-      <Animated.View 
+      <Animated.View
         style={[
-            styles.fabContainer, 
-            { 
+            styles.fabContainer,
+            {
                 bottom: insets.bottom + 20,
                 width: fabAnim.interpolate({
                     inputRange: [0, 1],
@@ -702,18 +696,18 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             }
         ]}
       >
-          <TouchableOpacity 
+          <TouchableOpacity
             activeOpacity={0.9}
             style={[styles.applyFab, { backgroundColor: currentTheme.colors.primary }]}
             onPress={handleApply}
           >
-              <View style={{ 
-                  flexDirection: 'row', 
-                  alignItems: 'center', 
+              <View style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
                   justifyContent: 'center',
                   width: '100%',
               }}>
-                  <Animated.View style={{ 
+                  <Animated.View style={{
                       overflow: 'hidden',
                       width: fabAnim.interpolate({
                           inputRange: [0, 1],
@@ -734,10 +728,13 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
           </TouchableOpacity>
       </Animated.View>
 
-      <ReportModal 
-        visible={showReportPopup}
-        onClose={() => setShowReportPopup(false)}
-        onSelectReason={submitReport}
+      <ReportActionSheet
+          visible={reportSheetVisible}
+          onClose={() => setReportSheetVisible(false)}
+          onReport={() => {
+              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              showSuccess('Opportunity reported successfully. Thank you for your feedback!');
+          }}
       />
     </Screen>
   );
@@ -746,9 +743,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 const styles = StyleSheet.create({
     center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
     controlBtn: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -757,8 +754,9 @@ const styles = StyleSheet.create({
         paddingTop: Platform.OS === 'ios' ? 100 : 80,
     },
     iconBtn: {
-        width: 36,
-        height: 36,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
     },
@@ -766,8 +764,9 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     backBtn: {
-        width: 40,
-        height: 40,
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
         marginLeft: -10,
@@ -894,48 +893,48 @@ const styles = StyleSheet.create({
         height: 16,
         opacity: 0.1,
     },
-    signalCard: {
+    detailCard: {
         borderRadius: 28,
         padding: 4,
         marginBottom: 24,
     },
-    signalItem: {
+    detailItem: {
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
         gap: 16,
     },
-    signalItemHalf: {
+    detailItemHalf: {
         flex: 1,
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
         gap: 12,
     },
-    signalRow: {
+    detailRow: {
         flexDirection: 'row',
         alignItems: 'center',
     },
-    signalContent: {
+    detailContent: {
         flex: 1,
     },
-    signalLabel: {
+    detailLabel: {
         fontSize: mScale(9),
         fontWeight: '800',
         letterSpacing: 1.5,
         marginBottom: 2,
     },
-    signalValue: {
+    detailValue: {
         fontSize: mScale(13),
         fontWeight: '700',
         lineHeight: 18,
     },
-    signalDivider: {
+    detailDivider: {
         height: 1,
         width: '100%',
         opacity: 0.05,
     },
-    signalDividerVertical: {
+    detailDividerVertical: {
         width: 1,
         height: '60%',
         opacity: 0.1,
@@ -1208,7 +1207,7 @@ const styles = StyleSheet.create({
         position: 'absolute',
         left: 20,
         right: 20,
-        zIndex: 200, 
+        zIndex: 200,
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',

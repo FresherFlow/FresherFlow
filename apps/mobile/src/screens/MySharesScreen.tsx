@@ -11,28 +11,29 @@ import {
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useMyContributions } from '@/hooks/useMyContributions';
+import { useMyShares } from '@/hooks/useMyShares';
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { saveDetailCache } from '@/utils/offlineCache';
 import { SPACING, mScale } from '@/system/constants/dimensions';
 import { History, CheckCircle2, Clock, XCircle, ChevronRight, Zap } from 'lucide-react-native';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'MyContributions'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'MyShares'>;
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
 };
 
-const MyContributionsScreen: React.FC<Props> = ({ navigation }) => {
+const MySharesScreen: React.FC<Props> = ({ navigation }) => {
     const { currentTheme } = useTheme();
-    const { contributions, stats, loading, loadMore, refresh } = useMyContributions();
+    const { shares, stats, loading, loadMore, refresh } = useMyShares();
 
     const renderHeader = () => (
         <View style={styles.headerStats}>
             <View style={styles.statsGrid}>
                 <View style={styles.statItem}>
-                    <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{stats.totalContributed}</Text>
+                    <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{stats.totalShared}</Text>
                     <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>SHARED</Text>
                 </View>
                 <View style={[styles.statDivider, { backgroundColor: currentTheme.colors.border }]} />
@@ -49,10 +50,10 @@ const MyContributionsScreen: React.FC<Props> = ({ navigation }) => {
         </View>
     );
 
-    const renderItem = ({ item }: { item: import('@/hooks/useMyContributions').Contribution }) => {
+    const renderItem = ({ item }: { item: import('@/hooks/useMyShares').Share }) => {
         const opp = item.mappedOpportunity;
         const status = opp?.status || 'PENDING';
-        
+
         const getStatusConfig = () => {
             switch(status) {
                 case 'PUBLISHED': return { icon: CheckCircle2, color: currentTheme.colors.success, label: 'Live' };
@@ -65,9 +66,16 @@ const MyContributionsScreen: React.FC<Props> = ({ navigation }) => {
         const config = getStatusConfig();
 
         return (
-            <TouchableOpacity 
+            <TouchableOpacity
                 disabled={status !== 'PUBLISHED'}
-                onPress={() => opp && navigation.navigate('JobDetail', { opportunityId: opp.id })}
+                onPress={() => {
+                    if (opp) {
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        void saveDetailCache(opp as any);
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        navigation.navigate('JobDetail', { opportunity: opp as any, opportunityId: opp.id });
+                    }
+                }}
             >
                 <SurfaceCard style={styles.card}>
                     <View style={styles.cardMain}>
@@ -87,7 +95,7 @@ const MyContributionsScreen: React.FC<Props> = ({ navigation }) => {
                             <config.icon size={12} color={config.color} />
                             <Text style={[styles.statusText, { color: config.color }]}>{config.label}</Text>
                         </View>
-                        
+
                         {status === 'PUBLISHED' && (
                             <View style={styles.impactRow}>
                                 <Zap size={12} color={currentTheme.colors.primary} />
@@ -96,7 +104,7 @@ const MyContributionsScreen: React.FC<Props> = ({ navigation }) => {
                                 </Text>
                             </View>
                         )}
-                        
+
                         <Text style={[styles.dateText, { color: currentTheme.colors.textMuted }]}>
                             {new Date(item.createdAt).toLocaleDateString()}
                         </Text>
@@ -109,15 +117,15 @@ const MyContributionsScreen: React.FC<Props> = ({ navigation }) => {
     return (
         <Screen safe={false}>
             <View style={{ paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
-                <PremiumHeader 
-                    title="My Contributions" 
-                    showBack 
-                    onBack={() => navigation.goBack()} 
+                <PremiumHeader
+                    title="My Shares"
+                    showBack
+                    onBack={() => navigation.goBack()}
                 />
             </View>
-            
+
             <FlatList
-                data={contributions}
+                data={shares}
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 ListHeaderComponent={renderHeader}
@@ -126,13 +134,13 @@ const MyContributionsScreen: React.FC<Props> = ({ navigation }) => {
                 onEndReached={loadMore}
                 onEndReachedThreshold={0.5}
                 refreshControl={
-                    <RefreshControl refreshing={loading && contributions.length === 0} onRefresh={refresh} tintColor={currentTheme.colors.primary} />
+                    <RefreshControl refreshing={loading && shares.length === 0} onRefresh={refresh} tintColor={currentTheme.colors.primary} />
                 }
                 ListEmptyComponent={
                     !loading ? (
                         <View style={styles.emptyContainer}>
                             <Zap size={48} color={alpha(currentTheme.colors.textMuted, 0.2)} />
-                            <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No contributions yet</Text>
+                            <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No shares yet</Text>
                             <Text style={[styles.emptyDesc, { color: currentTheme.colors.textMuted }]}>
                                 Help the community by sharing verified job links you find.
                             </Text>
@@ -245,4 +253,4 @@ const styles = StyleSheet.create({
     }
 });
 
-export default MyContributionsScreen;
+export default MySharesScreen;

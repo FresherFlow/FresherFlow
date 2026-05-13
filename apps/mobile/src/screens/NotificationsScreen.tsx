@@ -1,6 +1,7 @@
 import React, { memo, useMemo, useCallback, useRef } from 'react';
 import { StyleSheet, View, Text, FlatList, TouchableOpacity, Animated, ActivityIndicator, Platform } from 'react-native';
 import { useNotifications } from '@/hooks/useNotifications';
+import { saveDetailCache } from '@/utils/offlineCache';
 import { AlertDelivery, AlertKind } from '@fresherflow/types';
 import { useTheme } from '@/contexts/ThemeContext';
 import { PremiumHeader } from '@/system/components/PremiumPrimitives';
@@ -40,18 +41,18 @@ const getAlertIcon = (kind: AlertKind, color: string) => {
     }
 };
 
-const AlertRow = memo(({ 
-    alert, 
-    onPress, 
-    onDelete 
-}: { 
-    alert: AlertDelivery; 
+const AlertRow = memo(({
+    alert,
+    onPress,
+    onDelete
+}: {
+    alert: AlertDelivery;
     onPress: (alert: AlertDelivery) => void;
     onDelete: (id: string) => void;
 }) => {
     const { currentTheme } = useTheme();
     const swipeAnim = useRef(new Animated.Value(0)).current;
-    
+
     const isUnread = !alert.readAt;
 
     const handleDelete = () => {
@@ -67,12 +68,12 @@ const AlertRow = memo(({
             styles.alertRowContainer,
             { transform: [{ translateX: swipeAnim }] }
         ]}>
-            <TouchableOpacity 
+            <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => onPress(alert)}
                 style={[
                     styles.alertRow,
-                    { 
+                    {
                         backgroundColor: currentTheme.colors.surface,
                         borderColor: alpha(currentTheme.colors.border, 0.3)
                     }
@@ -80,26 +81,26 @@ const AlertRow = memo(({
             >
                 <View style={styles.alertContent}>
                     <View style={[
-                        styles.iconContainer, 
+                        styles.iconContainer,
                         { backgroundColor: alpha(isUnread ? currentTheme.colors.primary : currentTheme.colors.textMuted, 0.1) }
                     ]}>
                         {getAlertIcon(alert.kind, isUnread ? currentTheme.colors.primary : currentTheme.colors.textMuted)}
                     </View>
-                    
+
                     <View style={styles.textContainer}>
                         <View style={styles.rowTop}>
-                            <Text 
+                            <Text
                                 style={[styles.alertTitle, { color: currentTheme.colors.text }]}
                                 numberOfLines={1}
                             >
-                                {alert.opportunity?.title || 'New Signal'}
+                                {alert.opportunity?.title || 'New Share'}
                             </Text>
                             <Text style={[styles.timestamp, { color: currentTheme.colors.textMuted }]}>
                                 {getRelativeTime(alert.sentAt)}
                             </Text>
                         </View>
-                        
-                        <Text 
+
+                        <Text
                             style={[styles.alertSub, { color: currentTheme.colors.textMuted }]}
                             numberOfLines={1}
                         >
@@ -112,7 +113,7 @@ const AlertRow = memo(({
                     )}
                 </View>
 
-                <TouchableOpacity 
+                <TouchableOpacity
                     onPress={handleDelete}
                     style={styles.deleteBtn}
                 >
@@ -129,9 +130,12 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
 
     const handleAlertPress = useCallback((alert: AlertDelivery) => {
         if (!alert.readAt) markRead(alert.id);
-        
+
         if (alert.opportunity?.id) {
-            navigation.navigate('JobDetail', { opportunityId: alert.opportunity.id });
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            void saveDetailCache(alert.opportunity as any);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            navigation.navigate('JobDetail', { opportunity: alert.opportunity as any, opportunityId: alert.opportunity.id });
         }
     }, [navigation, markRead]);
 
@@ -163,11 +167,11 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
             <View style={[styles.emptyIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
                 <BellOff size={48} color={currentTheme.colors.primary} />
             </View>
-            <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No Signals Yet</Text>
+            <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No Shares Yet</Text>
             <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
                 Complete your profile and keep an eye out for tailored job alerts.
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
                 style={[styles.exploreBtn, { backgroundColor: currentTheme.colors.primary }]}
                 onPress={() => navigation.navigate('Explore')}
             >
@@ -180,8 +184,8 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
     return (
         <Screen safe={false}>
             <View style={{ paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
-                <PremiumHeader 
-                    title="Signals" 
+                <PremiumHeader
+                    title="Shares"
                     subtitle="Your Alerts"
                     rightSlot={
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
@@ -212,9 +216,9 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                                 {item.title.toUpperCase()}
                             </Text>
                             {item.data.map(alert => (
-                                <AlertRow 
-                                    key={alert.id} 
-                                    alert={alert} 
+                                <AlertRow
+                                    key={alert.id}
+                                    alert={alert}
                                     onPress={handleAlertPress}
                                     onDelete={deleteAlert}
                                 />

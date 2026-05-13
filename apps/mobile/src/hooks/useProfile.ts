@@ -7,7 +7,7 @@ import { saveLocalProfile, getLocalProfile } from '@/utils/localProfile';
 export const useProfile = () => {
     const { user, profile: authProfile, logout, refreshMe } = useAuth();
     const { savedJobs } = useSaved();
-    
+
     const [fullProfile, setFullProfile] = useState<Profile | null>(null);
     const [loadingCache, setLoadingCache] = useState(true);
 
@@ -26,17 +26,17 @@ export const useProfile = () => {
     const [completionPercentage, setCompletionPercentage] = useState(0);
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [appliedCount, setAppliedCount] = useState(0);
-    const [contributionStats, setContributionStats] = useState({ totalContributed: 0, totalPublished: 0, approvalRate: 0 });
+    const [shareStats, setShareStats] = useState({ totalShared: 0, totalPublished: 0, approvalRate: 0 });
 
     const fetchStats = useCallback(async () => {
         if (!user) return;
         try {
             const data = await actionsApi.summary() as { summary: { applied?: number } };
             setAppliedCount(data.summary.applied || 0);
-            
+
             if (user) {
-                const contrib = await profileApi.getContributions(1);
-                setContributionStats(contrib.stats);
+                const res = await profileApi.getShares(1);
+                setShareStats(res.stats);
             }
         } catch (e) {
             console.warn('Failed to fetch user stats', e);
@@ -51,7 +51,7 @@ export const useProfile = () => {
                 profileApi.get(),
                 profileApi.getCompletion()
             ]) as [{ profile: Profile }, { completionPercentage: number }];
-            
+
             setFullProfile(profileRes.profile);
             setCompletionPercentage(completionRes.completionPercentage);
             await saveLocalProfile(profileRes.profile);
@@ -136,7 +136,7 @@ export const useProfile = () => {
         loadingCache,
         savedJobs,
         appliedCount,
-        contributionStats,
+        shareStats,
         handleLogout,
         fetchStats,
         fetchProfile,

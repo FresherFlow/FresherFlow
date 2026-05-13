@@ -1,22 +1,22 @@
 import React, { useEffect, useRef } from 'react';
-import { 
-    StyleSheet, 
-    View, 
-    Text, 
-    Modal, 
-    TouchableOpacity, 
-    Animated, 
-    Dimensions, 
+import {
+    StyleSheet,
+    View,
+    Text,
+    Modal,
+    TouchableOpacity,
+    Animated,
+    Dimensions,
     Pressable,
     Share,
     PanResponder
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { 
-    Bookmark, 
-    Share2, 
-    Copy, 
-    Flag, 
+import {
+    Bookmark,
+    Share2,
+    Copy,
+    Flag,
     X,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -41,17 +41,47 @@ const alpha = (color: string, opacity: number) => {
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
 };
 
-export const OpportunityActionSheet: React.FC<Props> = ({ 
-    visible, 
-    opportunity, 
+export const OpportunityActionSheet: React.FC<Props> = ({
+    visible,
+    opportunity,
     onClose,
     onSave,
     isSaved
 }) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
+    const [shouldRender, setShouldRender] = React.useState(visible);
     const animValue = useRef(new Animated.Value(0)).current;
     const panY = useRef(new Animated.Value(0)).current;
+    const lastOpportunity = useRef(opportunity);
+
+    if (opportunity) {
+        lastOpportunity.current = opportunity;
+    }
+
+    const activeOpportunity = opportunity || lastOpportunity.current;
+
+    useEffect(() => {
+        if (visible) {
+            setShouldRender(true);
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            panY.setValue(0);
+            Animated.spring(animValue, {
+                toValue: 1,
+                useNativeDriver: true,
+                tension: 65,
+                friction: 11
+            }).start();
+        } else if (shouldRender) {
+            Animated.timing(animValue, {
+                toValue: 0,
+                duration: 200,
+                useNativeDriver: true
+            }).start(() => {
+                setShouldRender(false);
+            });
+        }
+    }, [visible]);
 
     const panResponder = useRef(
         PanResponder.create({
@@ -88,38 +118,26 @@ export const OpportunityActionSheet: React.FC<Props> = ({
         });
     };
 
-    useEffect(() => {
-        if (visible) {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            panY.setValue(0);
-            Animated.spring(animValue, {
-                toValue: 1,
-                useNativeDriver: true,
-                tension: 65,
-                friction: 11
-            }).start();
-        }
-    }, [visible]);
-
-    if (!opportunity) return null;
+    if (!shouldRender && !visible) return null;
+    if (!activeOpportunity) return null;
 
     const handleShare = async () => {
         await Share.share({
-            message: `Check out this ${opportunity.title} at ${opportunity.company} on FresherFlow! \n\nLink: ${opportunity.applyLink || 'https://fresherflow.in'}`
+            message: `Check out this ${activeOpportunity.title} at ${activeOpportunity.company} on FresherFlow! \n\nLink: ${activeOpportunity.applyLink || 'https://fresherflow.in'}`
         });
         closeSheet();
     };
 
     const handleCopy = async () => {
-        if (opportunity.applyLink) {
-            await Clipboard.setStringAsync(opportunity.applyLink);
+        if (activeOpportunity.applyLink) {
+            await Clipboard.setStringAsync(activeOpportunity.applyLink);
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         }
         closeSheet();
     };
 
     const handleSave = () => {
-        onSave?.(opportunity);
+        onSave?.(activeOpportunity);
         closeSheet();
     };
 
@@ -139,33 +157,33 @@ export const OpportunityActionSheet: React.FC<Props> = ({
     return (
         <Modal
             transparent
-            visible={visible}
+            visible={shouldRender || visible}
             animationType="none"
             onRequestClose={closeSheet}
         >
             <View style={styles.overlay}>
-                <Pressable 
-                    style={StyleSheet.absoluteFill} 
+                <Pressable
+                    style={StyleSheet.absoluteFill}
                     onPress={() => {
                         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         closeSheet();
                     }}
                 >
-                    <Animated.View 
+                    <Animated.View
                         style={[
-                            styles.backdrop, 
-                            { 
+                            styles.backdrop,
+                            {
                                 opacity: backdropOpacity,
                                 backgroundColor: 'black'
                             }
-                        ]} 
+                        ]}
                     />
                 </Pressable>
 
-                <Animated.View 
+                <Animated.View
                     style={[
-                        styles.sheet, 
-                        { 
+                        styles.sheet,
+                        {
                             backgroundColor: currentTheme.colors.surface,
                             transform: [{ translateY }],
                             paddingBottom: Math.max(insets.bottom, SPACING.lg)
@@ -176,22 +194,22 @@ export const OpportunityActionSheet: React.FC<Props> = ({
                     <View style={[styles.handle, { backgroundColor: alpha(currentTheme.colors.text, 0.2) }]} />
 
                     <View style={styles.header}>
-                        <CompanyLogo 
-                            name={opportunity.company} 
-                            website={opportunity.companyWebsite}
-                            applyLink={opportunity.applyLink}
-                            logoUrl={opportunity.companyLogoUrl} 
-                            size={mScale(52)} 
+                        <CompanyLogo
+                            name={activeOpportunity.company}
+                            website={activeOpportunity.companyWebsite}
+                            applyLink={activeOpportunity.applyLink}
+                            logoUrl={activeOpportunity.companyLogoUrl}
+                            size={mScale(52)}
                         />
                         <View style={styles.headerText}>
                             <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                                {opportunity.title}
+                                {activeOpportunity.title}
                             </Text>
                             <Text style={[styles.company, { color: currentTheme.colors.textMuted }]}>
-                                {opportunity.company}
+                                {activeOpportunity.company}
                             </Text>
                         </View>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             onPress={closeSheet}
                             style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
                         >
@@ -199,8 +217,8 @@ export const OpportunityActionSheet: React.FC<Props> = ({
                         </TouchableOpacity>
                     </View>
 
-                    {opportunity.applyLink && (
-                        <TouchableOpacity 
+                    {activeOpportunity.applyLink && (
+                        <TouchableOpacity
                             activeOpacity={0.7}
                             onPress={handleCopy}
                             style={[styles.linkPreview, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
@@ -211,7 +229,7 @@ export const OpportunityActionSheet: React.FC<Props> = ({
                             <View style={{ flex: 1 }}>
                                 <Text style={[styles.linkLabel, { color: currentTheme.colors.textMuted }]}>APPLY LINK</Text>
                                 <Text style={[styles.linkText, { color: currentTheme.colors.primary }]} numberOfLines={3}>
-                                    {opportunity.applyLink}
+                                    {activeOpportunity.applyLink}
                                 </Text>
                             </View>
                         </TouchableOpacity>
@@ -220,26 +238,26 @@ export const OpportunityActionSheet: React.FC<Props> = ({
                     <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
                     <View style={styles.actions}>
-                        <ActionRow 
-                            icon={Bookmark} 
-                            label={isSaved ? "Remove from Saved" : "Save Opportunity"} 
+                        <ActionRow
+                            icon={Bookmark}
+                            label={isSaved ? "Remove from Saved" : "Save Opportunity"}
                             onPress={handleSave}
                             color={isSaved ? currentTheme.colors.primary : currentTheme.colors.text}
                             isSaved={isSaved}
                         />
-                        <ActionRow 
-                            icon={Share2} 
-                            label="Share Opportunity" 
+                        <ActionRow
+                            icon={Share2}
+                            label="Share Opportunity"
                             onPress={handleShare}
                         />
-                        <ActionRow 
-                            icon={Copy} 
-                            label="Copy Apply Link" 
+                        <ActionRow
+                            icon={Copy}
+                            label="Copy Apply Link"
                             onPress={handleCopy}
                         />
-                        <ActionRow 
-                            icon={Flag} 
-                            label="Report Inaccurate Info" 
+                        <ActionRow
+                            icon={Flag}
+                            label="Report Inaccurate Info"
                             onPress={() => {
                                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                 onClose();
@@ -253,16 +271,16 @@ export const OpportunityActionSheet: React.FC<Props> = ({
     );
 };
 
-const ActionRow = ({ 
-    icon: Icon, 
-    label, 
-    onPress, 
-    destructive, 
+const ActionRow = ({
+    icon: Icon,
+    label,
+    onPress,
+    destructive,
     color,
-    isSaved 
-}: { 
-    icon: React.ElementType; 
-    label: string; 
+    isSaved
+}: {
+    icon: React.ElementType;
+    label: string;
     onPress: () => void;
     destructive?: boolean;
     color?: string;
@@ -272,23 +290,23 @@ const ActionRow = ({
     const finalColor = color || (destructive ? currentTheme.colors.error : currentTheme.colors.text);
 
     return (
-        <TouchableOpacity 
-            style={styles.actionRow} 
+        <TouchableOpacity
+            style={styles.actionRow}
             onPress={onPress}
             activeOpacity={0.7}
         >
             <View style={[
-                styles.iconWrapper, 
+                styles.iconWrapper,
                 { backgroundColor: alpha(finalColor, 0.08) }
             ]}>
-                <Icon 
-                    size={22} 
-                    color={finalColor} 
-                    fill={isSaved ? finalColor : 'transparent'} 
+                <Icon
+                    size={22}
+                    color={finalColor}
+                    fill={isSaved ? finalColor : 'transparent'}
                 />
             </View>
             <Text style={[
-                styles.actionLabel, 
+                styles.actionLabel,
                 { color: finalColor }
             ]}>
                 {label}

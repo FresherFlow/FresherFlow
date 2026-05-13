@@ -10,10 +10,12 @@ import {
   ActivityIndicator,
   Platform,
   Animated,
+  BackHandler,
+  ToastAndroid,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
-import { 
+import {
     TrendingUp,
   Compass,
 } from 'lucide-react-native';
@@ -40,7 +42,7 @@ const alpha = (color: string, opacity: number) => {
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
 };
 
-type FeedItem = 
+type FeedItem =
   | { type: 'stats'; count: number; key: string }
   | { type: 'opportunity'; data: Opportunity; index: number; key: string }
   | { type: 'skeleton'; key: string }
@@ -72,7 +74,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     totalResults,
     setSearchQuery,
   } = useFeed(tabFeedType);
-  
+
   const listData = useMemo(() => {
     const data: FeedItem[] = [];
     data.push({ type: 'stats', count: totalResults, key: 'stats' });
@@ -128,15 +130,15 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                     <Text style={{ fontSize: mScale(12), fontWeight: '700', color: currentTheme.colors.textMuted, marginBottom: SPACING.sm, letterSpacing: 0.5 }}>TRENDING TAGS</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, justifyContent: 'center' }}>
                         {['Software Engineer', 'React', 'Remote', '2026 Batch', 'AI/ML'].map(tag => (
-                            <TouchableOpacity 
-                                key={tag} 
-                                style={{ 
-                                    paddingHorizontal: SPACING.md, 
-                                    paddingVertical: 10, 
-                                    borderRadius: RADIUS.lg, 
-                                    backgroundColor: alpha(currentTheme.colors.text, 0.05), 
-                                    borderWidth: 0.5, 
-                                    borderColor: alpha(currentTheme.colors.border, 0.3) 
+                            <TouchableOpacity
+                                key={tag}
+                                style={{
+                                    paddingHorizontal: SPACING.md,
+                                    paddingVertical: 10,
+                                    borderRadius: RADIUS.lg,
+                                    backgroundColor: alpha(currentTheme.colors.text, 0.05),
+                                    borderWidth: 0.5,
+                                    borderColor: alpha(currentTheme.colors.border, 0.3)
                                 }}
                                 onPress={() => setSearchQuery(tag)}
                             >
@@ -159,7 +161,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
             renderItem={renderItem}
             keyExtractor={(item) => item.key}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + mScale(80) }]}
+            contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + mScale(60) }]}
             onEndReached={loadMore}
             onScroll={handleScroll}
             scrollEventThrottle={16}
@@ -183,10 +185,31 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const [activeTab, setActiveTab] = useState(0);
   const pagerRef = useRef<FlatList>(null);
   const tabListRef = useRef<ScrollView>(null);
+  const isManualScrolling = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
         void clearUnseenCount();
+
+        // Handle back button to exit app on feed
+        let backPressCount = 0;
+        const onBackPress = () => {
+            if (backPressCount === 0) {
+                backPressCount++;
+                if (Platform.OS === 'android') {
+                    ToastAndroid.show('Press back again to exit', ToastAndroid.SHORT);
+                }
+                setTimeout(() => {
+                    backPressCount = 0;
+                }, 2000);
+                return true; // Handled
+            }
+            BackHandler.exitApp();
+            return true;
+        };
+
+        const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+        return () => subscription.remove();
     }, [])
   );
 
@@ -205,11 +228,12 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
   const hasInitialLayout = useRef(false);
 
-  // Update indicator position when active tab or layouts change
+  // Update indicator position and ensure tab bar is visible when switching tabs
   useEffect(() => {
+    showTabBar();
     if (tabLayouts[activeTab]) {
       const { x, width } = tabLayouts[activeTab];
-      
+
       if (!hasInitialLayout.current) {
         indicatorX.setValue(x);
         indicatorWidth.setValue(width);
@@ -255,6 +279,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   }, [hideTabBar, showTabBar]);
 
     const onPagerScroll = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {
+        if (isManualScrolling.current) return;
         const offset = event.nativeEvent.contentOffset.x;
         const index = Math.round(offset / SCREEN_WIDTH);
         if (index !== activeTab && index >= 0 && index < feeds.length) {
@@ -267,6 +292,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     }, [activeTab, tabLayouts, feeds.length]);
 
     const onMomentumScrollEnd = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
+        isManualScrolling.current = false;
         const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
         if (index !== activeTab) {
             setActiveTab(index);
@@ -278,22 +304,29 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     };
 
   const handleTabPress = (index: number) => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setActiveTab(index);
-    pagerRef.current?.scrollToOffset({ offset: index * SCREEN_WIDTH, animated: true });
+    if (index === activeTab) return;
+    isManualScrolling.current = true;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Update indicator immediately for better perceived performance
     if (tabLayouts[index]) {
         const centerOffset = tabLayouts[index].x - (SCREEN_WIDTH / 2) + (tabLayouts[index].width / 2);
         tabListRef.current?.scrollTo({ x: Math.max(0, centerOffset), animated: true });
     }
+
+    pagerRef.current?.scrollToOffset({ offset: index * SCREEN_WIDTH, animated: true });
+
+    // We update activeTab here, but ensure onPagerScroll doesn't conflict
+    setActiveTab(index);
   };
 
   return (
     <Screen safe={false}>
       <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
-        <PremiumHeader 
-            title="Discover" 
+        <PremiumHeader
+            title="Discover"
         />
-        
+
         <View style={styles.feedSelector}>
             <ScrollView
                 ref={tabListRef}
@@ -306,7 +339,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     const isActive = activeTab === index;
                     const tabKey = `tab-${feed.id || 'all'}-${index}`;
                     return (
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             key={tabKey}
                             hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                             onLayout={(e) => {
@@ -317,8 +350,8 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             onPress={() => handleTabPress(index)}
                         >
                             <Text style={[
-                                styles.feedTabText, 
-                                { 
+                                styles.feedTabText,
+                                {
                                     color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted,
                                     opacity: isActive ? 1 : 0.6
                                 }
@@ -328,15 +361,15 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         </TouchableOpacity>
                     );
                 })}
-                <Animated.View 
+                <Animated.View
                     style={[
-                        styles.tabIndicator, 
-                        { 
-                            left: indicatorX, 
+                        styles.tabIndicator,
+                        {
+                            left: indicatorX,
                             width: indicatorWidth,
                             backgroundColor: currentTheme.colors.primary,
                         }
-                    ]} 
+                    ]}
                 />
             </ScrollView>
         </View>
@@ -350,10 +383,19 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         keyExtractor={(f, index) => `pager-${f.id || 'all'}-${index}`}
         showsHorizontalScrollIndicator={false}
         onScroll={onPagerScroll}
-        scrollEventThrottle={16}
+        scrollEventThrottle={32}
         onMomentumScrollEnd={onMomentumScrollEnd}
+        getItemLayout={(_, index) => ({
+            length: SCREEN_WIDTH,
+            offset: SCREEN_WIDTH * index,
+            index,
+        })}
+        removeClippedSubviews={Platform.OS === 'android'}
+        initialNumToRender={2}
+        maxToRenderPerBatch={2}
+        windowSize={3}
         renderItem={({ item }) => (
-            <FeedTabContent 
+            <FeedTabContent
                 feedType={item.id}
                 navigation={navigation}
                 currentTheme={currentTheme}

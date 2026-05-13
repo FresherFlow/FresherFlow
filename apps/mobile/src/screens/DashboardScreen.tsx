@@ -12,8 +12,8 @@ import {
     NativeScrollEvent,
     ScrollView,
 } from 'react-native';
-import { 
-    LayoutDashboard, 
+import {
+    LayoutDashboard,
     Search,
     Bookmark,
     Send,
@@ -39,6 +39,7 @@ import { useUI } from '@/contexts/UIContext';
 
 import { useDashboard } from '@/hooks/useDashboard';
 import { JobCard } from '@/system/components/OpportunityCard';
+import { saveDetailCache } from '@/utils/offlineCache';
 import { useSaved } from '@repo/frontend-core';
 
 const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
@@ -77,13 +78,13 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const renderHeader = () => (
         <View style={{ backgroundColor: currentTheme.colors.background }}>
             <View style={styles.headerArea}>
-                <PremiumHeader 
-                    title="Dashboard" 
-                    subtitle="Your Career Pulse" 
+                <PremiumHeader
+                    title="Dashboard"
+                    subtitle="Your Career Pulse"
                 />
-    
+
                 <View style={styles.statsGrid}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setActiveTab('featured')}
                         style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderRadius: 24, borderWidth: activeTab === 'featured' ? 1 : 0, borderColor: currentTheme.colors.primary }]}
                     >
@@ -93,7 +94,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{recentActivity.length}</Text>
                         <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>SAVED</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         onPress={() => setActiveTab('applied')}
                         style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderRadius: 24, borderWidth: activeTab === 'applied' ? 1 : 0, borderColor: currentTheme.colors.success }]}
                     >
@@ -125,7 +126,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         ].map((tab) => {
                             const isActive = activeTab === tab.id;
                             return (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     key={tab.id}
                                     onPress={() => {
                                         setActiveTab(tab.id as 'featured' | 'latest' | 'expiring' | 'applied');
@@ -151,17 +152,20 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 <Text style={[styles.seeAll, { color: currentTheme.colors.primary }]}>See All</Text>
                             </TouchableOpacity>
                         </View>
-                        <ScrollView 
-                            horizontal 
+                        <ScrollView
+                            horizontal
                             showsHorizontalScrollIndicator={false}
                             contentContainerStyle={styles.deadlineScroll}
                         >
                             {highlights.urgent.deadlines.slice(0, 5).map((opp) => (
-                                <TouchableOpacity 
+                                <TouchableOpacity
                                     key={opp.id}
                                     activeOpacity={0.8}
                                     style={[styles.deadlineCard, { backgroundColor: alpha(currentTheme.colors.error, 0.05), borderColor: alpha(currentTheme.colors.error, 0.1) }]}
-                                    onPress={() => navigation.navigate('JobDetail', { opportunityId: opp.id })}
+                                    onPress={() => {
+                                        void saveDetailCache(opp);
+                                        navigation.navigate('JobDetail', { opportunity: opp, opportunityId: opp.id });
+                                    }}
                                 >
                                     <View style={styles.deadlineBadge}>
                                         <Text style={[styles.deadlineBadgeText, { color: currentTheme.colors.error }]}>URGENT</Text>
@@ -192,7 +196,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
                 {activeTab === 'applied' ? "You haven't applied to any jobs yet." : "No jobs found in this category."}
             </Text>
-            <TouchableOpacity 
+            <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: currentTheme.colors.primary }]}
                 onPress={() => navigation.navigate('Explore')}
             >
@@ -207,7 +211,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     return (
         <Screen safe={false}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-            
+
             <FlatList
                 data={filteredItems}
                 keyExtractor={(item) => item.id}
@@ -215,9 +219,12 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 scrollEventThrottle={16}
                 stickyHeaderIndices={[0]}
                 renderItem={({ item }) => (
-                    <JobCard 
-                        opportunity={item} 
-                        onPress={() => navigation.navigate('JobDetail', { opportunityId: item.id })} 
+                    <JobCard
+                        opportunity={item}
+                        onPress={() => {
+                            void saveDetailCache(item);
+                            navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
+                        }}
                         onSave={() => toggleSave(item)}
                         isSaved={isSaved(item.id)}
                     />

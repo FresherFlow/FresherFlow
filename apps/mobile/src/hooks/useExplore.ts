@@ -3,6 +3,7 @@ import { opportunitiesApi } from '@fresherflow/api-client';
 import { Opportunity } from '@fresherflow/types';
 // @ts-expect-error lodash/debounce typing
 import debounce from 'lodash/debounce';
+import { readFeedCache } from '@/utils/offlineCache';
 
 import { OpportunityType, WorkMode } from '@fresherflow/types';
 
@@ -27,6 +28,17 @@ export function useExplore() {
         sort: 'latest',
     });
 
+    // Cache loading
+    useEffect(() => {
+        const loadCache = async () => {
+            const cached = await readFeedCache();
+            if (cached && cached.items.length > 0) {
+                setResults(cached.items.slice(0, 20));
+            }
+        };
+        void loadCache();
+    }, []);
+
     const lastParams = useRef<string>('');
 
     const fetchResults = useCallback(async (isRefresh = false) => {
@@ -39,11 +51,11 @@ export function useExplore() {
             };
 
             if (filters.type) params.type = filters.type;
-            
+
             // Map workMode and batchYear to feedType if needed by API
             if (filters.workMode === 'REMOTE') params.feedType = 'remote';
             if (filters.batchYear) params.feedType = String(filters.batchYear);
-            
+
             // Sort
             if (filters.sort === 'trending') params.sort = 'trending';
             if (filters.sort === 'closing_soon') params.closingSoon = true;

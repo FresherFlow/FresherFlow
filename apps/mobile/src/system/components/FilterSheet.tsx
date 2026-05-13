@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import { 
-    StyleSheet, 
-    View, 
-    Text, 
-    Modal, 
-    TouchableOpacity, 
-    ScrollView, 
-    Pressable,
+import {
+    StyleSheet,
+    View,
+    Text,
+    TouchableOpacity,
+    ScrollView,
     Dimensions,
     Platform
 } from 'react-native';
@@ -31,6 +29,8 @@ const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
 };
+
+import { PremiumActionSheet } from './PremiumActionSheet';
 
 export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filters: initialFilters, onApply }) => {
     const { currentTheme } = useTheme();
@@ -86,12 +86,12 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filt
     );
 
     const Option = ({ label, active, onPress }: { label: string, active: boolean, onPress: () => void }) => (
-        <TouchableOpacity 
+        <TouchableOpacity
             activeOpacity={0.7}
             onPress={onPress}
             style={[
-                styles.option, 
-                { 
+                styles.option,
+                {
                     backgroundColor: active ? alpha(currentTheme.colors.primary, 0.1) : currentTheme.colors.surfaceMuted,
                     borderColor: active ? currentTheme.colors.primary : alpha(currentTheme.colors.border, 0.1)
                 }
@@ -105,22 +105,16 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filt
     );
 
     return (
-        <Modal
-            visible={visible}
-            animationType="slide"
-            transparent={true}
-            onRequestClose={onClose}
-        >
-            <View style={styles.overlay}>
-                <Pressable style={styles.backdrop} onPress={onClose} />
-                <View style={[styles.sheet, { backgroundColor: currentTheme.colors.surface }]}>
-                    <View style={styles.header}>
-                        <Text style={[styles.title, { color: currentTheme.colors.text }]}>Discovery Filters</Text>
-                        <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
-                            <X size={20} color={currentTheme.colors.text} />
-                        </TouchableOpacity>
-                    </View>
+        <PremiumActionSheet visible={visible} onClose={onClose}>
+            <View style={{ height: height * 0.75 }}>
+                <View style={styles.header}>
+                    <Text style={[styles.title, { color: currentTheme.colors.text }]}>Discovery Filters</Text>
+                    <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
+                        <X size={20} color={currentTheme.colors.text} />
+                    </TouchableOpacity>
+                </View>
 
+                <View style={{ flex: 1 }}>
                     <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
                         <FilterSection title="OPPORTUNITY TYPE">
                             <Option label="Jobs" active={tempFilters.type === OpportunityType.JOB} onPress={() => toggleType(OpportunityType.JOB)} />
@@ -136,11 +130,11 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filt
 
                         <FilterSection title="GRADUATION BATCH">
                             {[2024, 2025, 2026, 2027].map(year => (
-                                <Option 
-                                    key={year} 
-                                    label={`${year} Batch`} 
-                                    active={tempFilters.batchYear === year} 
-                                    onPress={() => toggleBatchYear(year)} 
+                                <Option
+                                    key={year}
+                                    label={`${year} Batch`}
+                                    active={tempFilters.batchYear === year}
+                                    onPress={() => toggleBatchYear(year)}
                                 />
                             ))}
                         </FilterSection>
@@ -151,24 +145,24 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filt
                             <Option label="Closing Soon" active={tempFilters.sort === 'closing_soon'} onPress={() => setSort('closing_soon')} />
                         </FilterSection>
                     </ScrollView>
+                </View>
 
-                    <View style={[styles.footer, { borderTopColor: alpha(currentTheme.colors.border, 0.2) }]}>
-                        <TouchableOpacity 
-                            onPress={handleReset}
-                            style={[styles.resetBtn, { borderColor: currentTheme.colors.border }]}
-                        >
-                            <Text style={[styles.resetText, { color: currentTheme.colors.textMuted }]}>Reset</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            onPress={handleApply}
-                            style={[styles.applyBtn, { backgroundColor: currentTheme.colors.text }]}
-                        >
-                            <Text style={[styles.applyText, { color: currentTheme.colors.background }]}>Apply Filters</Text>
-                        </TouchableOpacity>
-                    </View>
+                <View style={[styles.footer, { borderTopColor: alpha(currentTheme.colors.border, 0.2) }]}>
+                    <TouchableOpacity
+                        onPress={handleReset}
+                        style={[styles.resetBtn, { borderColor: currentTheme.colors.border }]}
+                    >
+                        <Text style={[styles.resetText, { color: currentTheme.colors.textMuted }]}>Reset</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={handleApply}
+                        style={[styles.applyBtn, { backgroundColor: currentTheme.colors.text }]}
+                    >
+                        <Text style={[styles.applyText, { color: currentTheme.colors.background }]}>Apply Filters</Text>
+                    </TouchableOpacity>
                 </View>
             </View>
-        </Modal>
+        </PremiumActionSheet>
     );
 };
 

@@ -3,7 +3,7 @@ import { Alert, Linking, Share } from 'react-native';
 import { Opportunity, OpportunityType, ActionType } from '@fresherflow/types';
 import { opportunitiesApi, opportunityClicksApi, actionsApi } from '@fresherflow/api-client';
 import { useUserAuth as useAuth, useNotifications, useSaved } from '@repo/frontend-core';
-import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache } from '@/utils/offlineCache';
+import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache } from '@/utils/offlineCache';
 import { getLocalProfile } from '@/utils/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
 import { MOBILE_SITE_URL } from '@/config/runtime';
@@ -22,8 +22,8 @@ const getPublicOpportunityPath = (opportunity: Opportunity) => {
 export type ExtendedOpportunity = Opportunity & { matchScore?: number; matchReason?: string; isEligible?: boolean };
 
 export const useOpportunityDetail = (
-    opportunityId: string | null, 
-    initialOpportunity: ExtendedOpportunity | null, 
+    opportunityId: string | null,
+    initialOpportunity: ExtendedOpportunity | null,
     navigation: Props['navigation']
 ) => {
     const { isSaved, toggleSave } = useSaved();
@@ -45,11 +45,11 @@ export const useOpportunityDetail = (
             }
             if (!opportunity) setLoading(true);
 
-            // Cache-First: If we have a version in cache, use it immediately 
+            // Cache-First: If we have a version in cache, use it immediately
             // even if it's stale (>1 hour), especially if current opportunity is partial
             const cached = await readDetailCache(opportunityId);
             const CACHE_TTL = 60 * 60 * 1000; // 1 hour
-            
+
             const isCurrentPartial = !opportunity?.description;
             const isCachedBetter = cached && !!cached.description && isCurrentPartial;
 
@@ -63,10 +63,10 @@ export const useOpportunityDetail = (
                         setLoading(false);
                         setError(null);
                     }
-                    
+
                     // If it's fresh enough AND complete, we can skip the API call
                     if (isFresh && isComplete) {
-                        return; 
+                        return;
                     }
                 }
             }
@@ -74,10 +74,10 @@ export const useOpportunityDetail = (
             try {
                 const data = await opportunitiesApi.getById(opportunityId) as { opportunity: Opportunity; isEligible?: boolean; eligibilityReason?: string };
                 if (cancelled) return;
-                
+
                 const profile = await getLocalProfile();
                 const match = calculateMatchScore(profile, data.opportunity);
-                
+
                 // Robust Check: If API returns partial data (e.g. unauthenticated) but we have a better cached version, use cache
                 const hasFullData = !!data.opportunity.description;
                 const cachedHasFullData = !!cached?.description;
@@ -92,7 +92,7 @@ export const useOpportunityDetail = (
                 setOpportunity(fullOpportunity as ExtendedOpportunity);
                 setEligibilityReason(!match.isEligible ? match.reason : null);
                 setError(null);
-                
+
                 // Only save to cache if it's actually useful data
                 if (hasFullData || !cachedHasFullData) {
                     await saveDetailCache(fullOpportunity as Opportunity);
@@ -120,25 +120,72 @@ export const useOpportunityDetail = (
 
         const loadSimilar = async () => {
             if (!opportunityId) return;
-            
-            // Check cache first
+
+            // Check specific similarity cache first
             const cached = await readSimilarCache(opportunityId);
             const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 hours
-            
+
             if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
                 if (!cancelled) setSimilarOpportunities(cached.opportunities);
-                return; // Skip API hit if cache is fresh
+                return;
             }
 
             try {
+                // Client-side similarity logic: Use the broad feed cache as a pool
+                const feedCache = await readFeedCache();
+                const currentOpp = opportunity || initialOpportunity;
+
+                if (feedCache && feedCache.items.length > 0 && currentOpp) {
+                    const pool = feedCache.items;
+                    const similar = pool
+                        .filter((opp: Opportunity) => opp.id !== opportunityId)
+                        .map((opp: Opportunity) => {
+                            let score = 0;
+                            // Match by company (high weight)
+                            if (opp.company === currentOpp.company) score += 100;
+
+                            // Match by type (Job vs Internship)
+                            if (opp.type === currentOpp.type) score += 30;
+
+                            // Match by Role/Function
+                            if (opp.jobFunction && currentOpp.jobFunction && opp.jobFunction === currentOpp.jobFunction) score += 50;
+
+                            // Match by skills overlap
+                            const oppSkills = opp.requiredSkills || [];
+                            const currentSkills = currentOpp.requiredSkills || [];
+                            const commonSkills = oppSkills.filter((s: string) => currentSkills.includes(s));
+                            score += commonSkills.length * 15;
+
+                            // Match by location overlap
+                            const oppLocs = opp.locations || [];
+                            const currentLocs = currentOpp.locations || [];
+                            const commonLocs = oppLocs.filter((l: string) => currentLocs.includes(l));
+                            score += commonLocs.length * 20;
+
+                            return { opp, score };
+                        })
+                        .filter((item: { score: number }) => item.score > 20) // Minimum threshold for relevance
+                        .sort((a: { score: number }, b: { score: number }) => b.score - a.score)
+                        .map((item: { opp: Opportunity }) => item.opp)
+                        .slice(0, 8);
+
+                    if (similar.length >= 3) {
+                        if (!cancelled) {
+                            setSimilarOpportunities(similar);
+                            void saveSimilarCache(opportunityId, similar);
+                            return;
+                        }
+                    }
+                }
+
+                // Fallback to API only if local results are insufficient
                 const data = await opportunitiesApi.getSimilar(opportunityId) as { opportunities: Opportunity[] };
                 if (cancelled) return;
                 const results = data.opportunities || [];
                 setSimilarOpportunities(results);
-                await saveSimilarCache(opportunityId, results);
+                void saveSimilarCache(opportunityId, results);
             } catch (err) {
-                console.warn('Failed to load similar opportunities', err);
-                // Fallback to stale cache if API fails
+                console.warn('Local/API similarity failed', err);
                 if (cached && !cancelled) setSimilarOpportunities(cached.opportunities);
             }
         };

@@ -3,6 +3,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { alertsApi } from '@fresherflow/api-client';
 import { useUserAuth as useAuth } from '@repo/frontend-core';
 import { AlertDelivery } from '@fresherflow/types';
+import { saveAlertsCache, readAlertsCache } from '@/utils/offlineCache';
 
 import { getUnseenCount } from '@/utils/localNotifications';
 
@@ -22,9 +23,9 @@ export function useNotifications() {
         loading: true,
         refreshing: false,
     });
-    
+
     const { user } = useAuth();
-    
+
     const pollInterval = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const fetchAlerts = useCallback(async (isRefresh = false) => {
@@ -41,13 +42,17 @@ export function useNotifications() {
 
         try {
             const data = await alertsApi.getFeed('all', 50);
+            const alerts = data.deliveries || [];
+            const unreadCount = data.unreadCount || 0;
+
             setState(prev => ({
                 ...prev,
-                alerts: data.deliveries || [],
-                unreadCount: data.unreadCount || 0,
+                alerts,
+                unreadCount,
                 loading: false,
                 refreshing: false,
             }));
+            void saveAlertsCache(alerts, unreadCount);
         } catch (error) {
             console.error('[useNotifications] fetchAlerts failed:', error);
             setState(prev => ({ ...prev, loading: false, refreshing: false }));
@@ -60,9 +65,9 @@ export function useNotifications() {
                 user ? alertsApi.getUnreadCount() : Promise.resolve({ count: 0 }),
                 getUnseenCount()
             ]);
-            
-            setState(prev => ({ 
-                ...prev, 
+
+            setState(prev => ({
+                ...prev,
                 unreadCount: unreadData.count,
                 unseenFeedCount: unseenFeed
             }));
@@ -129,11 +134,21 @@ export function useNotifications() {
 
     // Initial fetch
     useEffect(() => {
-        if (user) {
-            void fetchAlerts();
-        } else {
-            setState(prev => ({ ...prev, alerts: [], unreadCount: 0, loading: false }));
-        }
+        const loadCache = async () => {
+            const cached = await readAlertsCache();
+            if (cached && cached.items.length > 0) {
+                setState(prev => ({
+                    ...prev,
+                    alerts: cached.items as AlertDelivery[],
+                    unreadCount: cached.unreadCount,
+                    loading: false
+                }));
+            }
+            if (user) void fetchAlerts();
+            else setState(prev => ({ ...prev, alerts: [], unreadCount: 0, loading: false }));
+        };
+
+        loadCache();
         return () => stopPolling();
     }, [user, fetchAlerts, stopPolling]);
 

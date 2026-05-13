@@ -1,5 +1,7 @@
 import { Platform } from 'react-native';
 
+import Constants from 'expo-constants';
+
 const PROD_API_URL = 'https://api.fresherflow.in';
 const DEV_LOCAL_URL = 'http://localhost:5000';
 
@@ -9,7 +11,20 @@ function resolveApiUrl(): string {
 
     // Override via env var (e.g. for CI or custom setups)
     const envUrl = process.env.EXPO_PUBLIC_API_URL;
-    const baseUrl = (envUrl || DEV_LOCAL_URL).replace(/\/+$/, '');
+    let baseUrl = (envUrl || DEV_LOCAL_URL).replace(/\/+$/, '');
+
+    // Physical Device Fallback: In development, if using localhost,
+    // try to resolve the machine's local IP via expo-constants.
+    if (['localhost', '127.0.0.1'].includes(new URL(baseUrl).hostname)) {
+        const debuggerHost = Constants.expoConfig?.hostUri;
+        if (debuggerHost) {
+            const ip = debuggerHost.split(':')[0];
+            if (ip) {
+                baseUrl = `http://${ip}:5000`;
+                console.log(`[mobile] Resolved physical device API to machine IP: ${baseUrl}`);
+            }
+        }
+    }
 
     try {
         const parsed = new URL(baseUrl);

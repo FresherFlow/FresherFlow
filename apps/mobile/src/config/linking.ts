@@ -42,8 +42,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
           },
         },
       },
-      Login: 'login',
-      Register: 'register',
+      Auth: 'join',
     },
   },
   getStateFromPath(path, options) {
@@ -61,6 +60,3 @@ export const linking: LinkingOptions<RootStackParamList> = {
     return getStateFromPath(rewrittenPath, options);
   },
 };
-
-
-

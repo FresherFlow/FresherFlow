@@ -6,23 +6,28 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     StatusBar,
-    Platform,
+    Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, Share2, Globe, Building2 } from 'lucide-react-native';
+import { Share2, Globe, Building2, Home } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
+import { saveDetailCache } from '@/utils/offlineCache';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useSaved } from '@repo/frontend-core';
 import { CompanyLogo } from '@repo/ui';
 import { FlashList } from '@shopify/flash-list';
 import { Opportunity } from '@fresherflow/types';
+import { CommonActions } from '@react-navigation/native';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
 import { SPACING, mScale } from '@/system/constants/dimensions';
 import { useCompany } from '@/hooks/useCompany';
+import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { useToast } from '@/contexts/ToastContext';
+import * as Haptics from 'expo-haptics';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyDetail'>;
 
@@ -32,28 +37,53 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
-    const { companyName, companyLogoUrl, website } = route.params;
+    const { companyName, companyLogoUrl, website, currentJob } = route.params;
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const { isSaved, toggleSave } = useSaved();
-    const { jobs, loading, refreshing, onRefresh } = useCompany(companyName);
+    const { jobs, loading, refreshing, onRefresh } = useCompany(companyName, currentJob);
+    const { showSuccess } = useToast();
+    const fabAnim = React.useRef(new Animated.Value(0)).current;
+
+    React.useEffect(() => {
+        Animated.sequence([
+            Animated.delay(600),
+            Animated.spring(fabAnim, {
+                toValue: 1,
+                tension: 40,
+                friction: 7,
+                useNativeDriver: false,
+            })
+        ]).start();
+    }, []);
+
+    const handleToggleSave = (opportunity: Opportunity) => {
+        const wasSaved = isSaved(opportunity.id);
+        toggleSave(opportunity);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        showSuccess(wasSaved ? 'Opportunity removed from saves' : 'Opportunity saved successfully!');
+    };
 
     return (
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-            
-            <View style={[styles.header, { paddingTop: Platform.OS === 'ios' ? insets.top : 20 }]}>
-                <TouchableOpacity 
-                    onPress={() => navigation.goBack()}
-                    style={[styles.backBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
-                >
-                    <ChevronLeft size={24} color={currentTheme.colors.text} />
-                </TouchableOpacity>
-                <View style={styles.headerActions}>
-                    <TouchableOpacity style={[styles.actionBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
-                        <Share2 size={20} color={currentTheme.colors.text} />
-                    </TouchableOpacity>
-                </View>
+
+            <View style={{ paddingTop: insets.top, backgroundColor: currentTheme.colors.background }}>
+                <PremiumHeader
+                    title={companyName}
+                    compact
+                    showBack
+                    onBack={() => navigation.goBack()}
+                    titleStyle={{ fontSize: mScale(20), fontWeight: '900' }}
+                    rightSlot={
+                        <TouchableOpacity
+                            onPress={() => {}} // Handle generic share if needed
+                            style={[styles.actionBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
+                        >
+                            <Share2 size={20} color={currentTheme.colors.text} />
+                        </TouchableOpacity>
+                    }
+                />
             </View>
 
             <FlashList<Opportunity>
@@ -67,18 +97,18 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                 ListHeaderComponent={
                     <View style={styles.companyHero}>
                         <View style={[styles.logoContainer, { backgroundColor: currentTheme.colors.surface }]}>
-                            <CompanyLogo 
+                            <CompanyLogo
                                 name={companyName}
                                 logoUrl={companyLogoUrl}
                                 website={website}
                                 size={mScale(80)}
                             />
                         </View>
-                        
+
                         <Text style={[styles.companyTitle, { color: currentTheme.colors.text }]}>
                             {companyName}
                         </Text>
-                        
+
                         <View style={styles.badgeRow}>
                             <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
                                 <Text style={[styles.badgeText, { color: currentTheme.colors.success }]}>VERIFIED FEED</Text>
@@ -96,7 +126,7 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                         </Text>
 
                         <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
-                        
+
                         <View style={styles.feedHeader}>
                             <Building2 size={16} color={currentTheme.colors.textMuted} />
                             <Text style={[styles.feedTitle, { color: currentTheme.colors.textMuted }]}>
@@ -106,10 +136,13 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                     </View>
                 }
                 renderItem={({ item }) => (
-                    <JobCard 
+                    <JobCard
                         opportunity={item}
-                        onPress={() => navigation.navigate('JobDetail', { opportunityId: item.id })}
-                        onSave={() => toggleSave(item)}
+                        onPress={() => {
+                            void saveDetailCache(item);
+                            navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
+                        }}
+                        onSave={() => handleToggleSave(item)}
                         isSaved={isSaved(item.id)}
                     />
                 )}
@@ -126,8 +159,56 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                         </View>
                     )
                 }
-                contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
+                contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
             />
+
+            {/* Back to Home FAB */}
+            <Animated.View
+                style={[
+                    styles.fabContainer,
+                    {
+                        bottom: insets.bottom + 20,
+                        width: fabAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [56, 180]
+                        })
+                    }
+                ]}
+            >
+                <TouchableOpacity
+                    activeOpacity={0.9}
+                    style={[styles.homeFab, { backgroundColor: currentTheme.colors.primary }]}
+                    onPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                        navigation.dispatch(
+                            CommonActions.reset({
+                                index: 0,
+                                routes: [{ name: 'Main' }],
+                            })
+                        );
+                    }}
+                >
+                    <View style={styles.fabInner}>
+                        <Animated.View style={{
+                            overflow: 'hidden',
+                            width: fabAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 110]
+                            }),
+                            opacity: fabAnim,
+                            marginRight: fabAnim.interpolate({
+                                inputRange: [0, 1],
+                                outputRange: [0, 8]
+                            })
+                        }}>
+                            <Text style={[styles.homeFabText, { color: currentTheme.colors.background }]} numberOfLines={1}>
+                                BACK TO FEED
+                            </Text>
+                        </Animated.View>
+                        <Home size={20} color={currentTheme.colors.background} />
+                    </View>
+                </TouchableOpacity>
+            </Animated.View>
         </Screen>
     );
 });
@@ -234,7 +315,38 @@ const styles = StyleSheet.create({
     },
     loadingState: {
         paddingTop: 40,
-    }
+    },
+    fabContainer: {
+        position: 'absolute',
+        bottom: 20,
+        right: 20,
+        alignItems: 'flex-end',
+        zIndex: 100,
+    },
+    homeFab: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: 56,
+        borderRadius: 28,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.3,
+        shadowRadius: 12,
+        elevation: 8,
+    },
+    fabInner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '100%',
+        paddingHorizontal: 16,
+    },
+    homeFabText: {
+        fontSize: 14,
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
 });
 
 export default CompanyScreen;

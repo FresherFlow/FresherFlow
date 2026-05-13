@@ -15,6 +15,7 @@ import { Bookmark, Compass } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { JobCard } from '@/system/components/OpportunityCard';
+import { saveDetailCache } from '@/utils/offlineCache';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { mScale, SPACING, RADIUS } from '@/system/constants/dimensions';
@@ -67,7 +68,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
                         Opportunities you save will appear here for quick access later.
                     </Text>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[styles.exploreBtn, { backgroundColor: currentTheme.colors.primary }]}
                         onPress={() => navigation.navigate('Explore')}
                     >
@@ -82,11 +83,11 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     return (
         <Screen safe={false}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-            
+
             <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
-                <PremiumHeader 
-                    title="Library" 
-                    subtitle="Saved Opportunities" 
+                <PremiumHeader
+                    title="Library"
+                    subtitle="Saved Opportunities"
                 />
             </View>
 
@@ -96,9 +97,12 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
                 renderItem={({ item }) => (
-                    <JobCard 
-                        opportunity={item} 
-                        onPress={() => navigation.navigate('JobDetail', { opportunityId: item.id })} 
+                    <JobCard
+                        opportunity={item}
+                        onPress={() => {
+                            void saveDetailCache(item);
+                            navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
+                        }}
                         isSaved={true}
                     />
                 )}

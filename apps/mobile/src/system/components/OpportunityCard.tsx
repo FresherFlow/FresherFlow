@@ -35,12 +35,12 @@ const getTypeConfig = (type: OpportunityType, theme: AppTheme) => {
   }
 };
 
-export const OpportunityCard = memo(({ 
-  opportunity, 
-  onPress, 
+export const OpportunityCard = memo(({
+  opportunity,
+  onPress,
   onSave,
   isSaved,
-  heatBadge, 
+  heatBadge,
   matchScore,
 }: Props) => {
   const { currentTheme } = useTheme();
@@ -92,7 +92,7 @@ export const OpportunityCard = memo(({
 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
-        <SurfaceCard 
+        <SurfaceCard
             onPress={onPress}
             onLongPress={handleLongPress}
             onPressIn={handlePressIn}
@@ -113,12 +113,12 @@ export const OpportunityCard = memo(({
                 )}
                 {(effectiveMatchScore !== undefined || opportunity.isEligible !== undefined) && (
                     <View style={[
-                        styles.verifiedBadge, 
-                        { backgroundColor: alpha((opportunity.isEligible === false) ? currentTheme.colors.error : currentTheme.colors.primary, 0.05) }
+                        styles.verifiedBadge,
+                        { backgroundColor: alpha((opportunity.isEligible === false) ? currentTheme.colors.error : '#10B981', 0.05) }
                     ]}>
                         <Text style={[
-                            styles.verifiedText, 
-                            { color: (opportunity.isEligible === false) ? currentTheme.colors.error : currentTheme.colors.primary }
+                            styles.verifiedText,
+                            { color: (opportunity.isEligible === false) ? currentTheme.colors.error : '#10B981' }
                         ]}>
                             {(opportunity.isEligible === false) ? 'INELIGIBLE' : `${effectiveMatchScore}% MATCH`}
                         </Text>
@@ -126,12 +126,12 @@ export const OpportunityCard = memo(({
                 )}
             </View>
             <View style={styles.companyRow}>
-                <CompanyLogo 
-                    name={opportunity.company} 
+                <CompanyLogo
+                    name={opportunity.company}
                     website={opportunity.companyWebsite}
                     applyLink={opportunity.applyLink}
-                    logoUrl={opportunity.companyLogoUrl} 
-                    size={mScale(40)} 
+                    logoUrl={opportunity.companyLogoUrl}
+                    size={mScale(40)}
                 />
                 <View style={styles.titleWrapper}>
                     <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={2}>{opportunity.title}</Text>
@@ -140,18 +140,17 @@ export const OpportunityCard = memo(({
             </View>
         </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity
                 style={[
-                    styles.bookmarkBtn, 
-                    { backgroundColor: alpha(currentTheme.colors.text, 0.03) },
-                    isSaved && { backgroundColor: alpha(currentTheme.colors.primary, 0.1), borderColor: alpha(currentTheme.colors.primary, 0.2) }
-                ]} 
+                    styles.bookmarkBtn,
+                    { backgroundColor: 'transparent' }
+                ]}
                 onPress={() => onSave?.(opportunity)}
             >
-                <Bookmark 
-                    size={mScale(20)} 
-                    color={isSaved ? currentTheme.colors.primary : currentTheme.colors.textMuted} 
-                    fill={isSaved ? currentTheme.colors.primary : 'transparent'} 
+                <Bookmark
+                    size={mScale(20)}
+                    color={isSaved ? currentTheme.colors.primary : currentTheme.colors.textMuted}
+                    fill={isSaved ? currentTheme.colors.primary : 'transparent'}
                 />
             </TouchableOpacity>
       </View>
@@ -206,13 +205,13 @@ export const OpportunityCard = memo(({
                   </Text>
               )}
           </View>
-          
+
           <View style={styles.actionArea}>
               <Text style={[styles.actionText, { color: currentTheme.colors.primary }]}>View Details</Text>
               <ChevronRight size={mScale(14)} color={currentTheme.colors.primary} />
           </View>
       </View>
-      <OpportunityActionSheet 
+      <OpportunityActionSheet
           visible={actionSheetVisible}
           opportunity={opportunity}
           onClose={() => setActionSheetVisible(false)}
@@ -311,8 +310,8 @@ const styles = StyleSheet.create({
         marginTop: -2,
     },
     bookmarkBtn: {
-        width: mScale(40),
-        height: mScale(40),
+        width: mScale(48),
+        height: mScale(48),
         borderRadius: RADIUS.xl,
         alignItems: 'center',
         justifyContent: 'center',

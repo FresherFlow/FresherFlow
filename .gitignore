@@ -44,7 +44,7 @@ logs/
 
 # Prisma
 # Migrations SHOULD be committed for production sync
-# apps/api/prisma/migrations/ 
+# apps/api/prisma/migrations/
 
 # Testing
 coverage/
@@ -63,5 +63,5 @@ docs/
 .artifacts
 **/.expo/
 
-apps/mobile
 tmp/
+apps/ingestion

@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { dashboardApi, savedApi, opportunitiesApi, actionsApi } from '@fresherflow/api-client';
 import { Opportunity } from '@fresherflow/types';
+import { readFeedCache } from '@/utils/offlineCache';
 
 interface Highlights {
     urgent?: {
@@ -28,11 +29,11 @@ export function useDashboard() {
                 opportunitiesApi.list({ sort: 'freshness_v2' }),
                 actionsApi.list()
             ]);
-            
+
             setHighlights(highlightsData as Highlights);
             setRecentActivity((savedData as { opportunities?: Opportunity[] }).opportunities || []);
             setLatestJobs((latestData as { opportunities?: Opportunity[] }).opportunities || []);
-            
+
             const actions = (actionsData as { actions?: { opportunity?: Opportunity }[] }).actions || [];
             setAppliedJobs(actions.map(a => a.opportunity).filter((o): o is Opportunity => !!o));
         } catch (error) {
@@ -43,6 +44,13 @@ export function useDashboard() {
     }, []);
 
     useEffect(() => {
+        const loadCache = async () => {
+            const cached = await readFeedCache();
+            if (cached && cached.items.length > 0) {
+                setLatestJobs(cached.items.slice(0, 10));
+            }
+        };
+        void loadCache();
         void fetchDashboardData();
     }, [fetchDashboardData]);
 

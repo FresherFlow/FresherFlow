@@ -1,40 +1,40 @@
 import { useState, useCallback, useEffect } from 'react';
-import { opportunitiesApi } from '@fresherflow/api-client';
 import { Opportunity } from '@fresherflow/types';
+import { findJobsByCompanyLocally } from '@/utils/offlineCache';
 
-export function useCompany(companyName: string) {
-    const [jobs, setJobs] = useState<Opportunity[]>([]);
-    const [loading, setLoading] = useState(true);
+export function useCompany(companyName: string, initialJob?: Opportunity) {
+    const [jobs, setJobs] = useState<Opportunity[]>(initialJob ? [initialJob] : []);
+    const [loading, setLoading] = useState(!initialJob);
     const [refreshing, setRefreshing] = useState(false);
 
-    const fetchJobs = useCallback(async (isRefresh = false) => {
-        if (isRefresh) setRefreshing(true);
-        else setLoading(true);
-
+    const loadData = useCallback(async () => {
+        setLoading(true);
         try {
-            const response = await opportunitiesApi.list({ 
-                company: companyName
-            }) as { opportunities: Opportunity[] };
-            
-            if (response && Array.isArray(response.opportunities)) {
-                setJobs(response.opportunities);
+            const localJobs = await findJobsByCompanyLocally(companyName);
+
+            // Merge initialJob if not already in local results
+            let finalJobs = [...localJobs];
+            if (initialJob && !finalJobs.find(j => j.id === initialJob.id)) {
+                finalJobs = [initialJob, ...finalJobs];
             }
+
+            setJobs(finalJobs);
         } catch (error) {
-            console.error('Failed to fetch company jobs:', error);
+            console.error('Local company job lookup failed:', error);
         } finally {
             setLoading(false);
             setRefreshing(false);
         }
-    }, [companyName]);
+    }, [companyName, initialJob]);
 
     useEffect(() => {
-        void fetchJobs();
-    }, [fetchJobs]);
+        void loadData();
+    }, [loadData]);
 
     return {
         jobs,
         loading,
         refreshing,
-        onRefresh: () => void fetchJobs(true),
+        onRefresh: () => void loadData(),
     };
 }

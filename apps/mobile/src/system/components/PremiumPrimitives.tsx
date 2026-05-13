@@ -27,7 +27,7 @@ export const SurfaceCard: React.FC<SurfaceProps> = ({ children, style, accent, o
     const Container = (onPress || onLongPress || onPressIn || onPressOut) ? TouchableOpacity : View;
 
     return (
-        <Container 
+        <Container
             onPress={onPress}
             onLongPress={onLongPress}
             onPressIn={onPressIn}
@@ -35,11 +35,11 @@ export const SurfaceCard: React.FC<SurfaceProps> = ({ children, style, accent, o
             delayLongPress={300}
             activeOpacity={0.9}
             style={[
-                styles.surface, 
-                { 
-                    backgroundColor: currentTheme.colors.surface, 
-                    borderColor: alpha(currentTheme.colors.border, 0.5) 
-                }, 
+                styles.surface,
+                {
+                    backgroundColor: currentTheme.colors.surface,
+                    borderColor: alpha(currentTheme.colors.border, 0.5)
+                },
                 style
             ]}
         >
@@ -61,7 +61,7 @@ export const GlassCard: React.FC<SurfaceProps> = ({ children, style, onPress }) 
     const Container = onPress ? TouchableOpacity : View;
 
     return (
-        <Container 
+        <Container
             onPress={onPress}
             activeOpacity={0.9}
             style={[styles.glassContainer, style]}
@@ -74,9 +74,9 @@ export const GlassCard: React.FC<SurfaceProps> = ({ children, style, onPress }) 
     );
 };
 
-export const PremiumHeader: React.FC<{ 
-    title: string; 
-    subtitle?: string; 
+export const PremiumHeader: React.FC<{
+    title: string;
+    subtitle?: string;
     rightSlot?: React.ReactNode;
     leftSlot?: React.ReactNode;
     showBack?: boolean;
@@ -88,7 +88,7 @@ export const PremiumHeader: React.FC<{
 }> = ({ title, rightSlot, leftSlot, showBack, onBack, titleStyle, compact, numberOfLines, style }) => {
     const { currentTheme } = useTheme();
     const navigation = useNavigation();
-    
+
     const handleBack = () => {
         if (onBack) {
             onBack();
@@ -96,20 +96,20 @@ export const PremiumHeader: React.FC<{
             navigation.goBack();
         }
     };
-    
+
     return (
         <View style={[styles.header, compact && { paddingTop: 0, paddingBottom: 0 }, style]}>
             <View style={[styles.headerContent, compact && { alignItems: 'center', marginBottom: 0 }]}>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: compact ? 'center' : 'flex-end', gap: SPACING.sm }}>
                     {showBack && (
-                        <TouchableOpacity onPress={handleBack} style={{ marginBottom: compact ? 0 : 4, marginRight: 8 }}>
+                        <TouchableOpacity onPress={handleBack} style={styles.backBtnHeader}>
                             <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
                         </TouchableOpacity>
                     )}
                     {leftSlot && <View style={{ marginBottom: compact ? 0 : 4 }}>{leftSlot}</View>}
                     <View style={{ flex: 1 }}>
-                        <Text 
-                            style={[styles.headerTitle, { color: currentTheme.colors.text }, titleStyle]} 
+                        <Text
+                            style={[styles.headerTitle, { color: currentTheme.colors.text }, titleStyle]}
                             numberOfLines={numberOfLines || (compact ? 2 : 1)}
                             adjustsFontSizeToFit={compact}
                             minimumFontScale={0.9}
@@ -124,13 +124,13 @@ export const PremiumHeader: React.FC<{
     );
 };
 
-export const SecondaryHeader: React.FC<{ 
-    title: string; 
+export const SecondaryHeader: React.FC<{
+    title: string;
     onBack: () => void;
     rightSlot?: React.ReactNode;
 }> = ({ title, onBack, rightSlot }) => {
     const { currentTheme } = useTheme();
-    
+
     return (
         <View style={styles.header}>
             <View style={styles.headerContent}>
@@ -170,15 +170,15 @@ export const PremiumToggle: React.FC<{
         inputRange: [0, 1],
         outputRange: [0, 22],
     });
-    
+
     return (
-        <TouchableOpacity 
+        <TouchableOpacity
             activeOpacity={0.9}
             disabled={disabled}
             onPress={() => onValueChange(!value)}
             style={[
-                styles.toggleRow, 
-                { 
+                styles.toggleRow,
+                {
                     backgroundColor: currentTheme.colors.surface,
                     borderColor: alpha(currentTheme.colors.border, 0.08),
                     opacity: disabled ? 0.5 : 1
@@ -198,16 +198,16 @@ export const PremiumToggle: React.FC<{
                     )}
                 </View>
             </View>
-            
+
             <View style={[
-                styles.switchTrack, 
-                { 
+                styles.switchTrack,
+                {
                     backgroundColor: value ? currentTheme.colors.primary : alpha(currentTheme.colors.border, 0.15)
                 }
             ]}>
                 <Animated.View style={[
-                    styles.switchThumb, 
-                    { 
+                    styles.switchThumb,
+                    {
                         backgroundColor: value ? currentTheme.colors.background : '#FFFFFF',
                         transform: [{ translateX }],
                     }
@@ -274,10 +274,20 @@ const styles = StyleSheet.create({
         lineHeight: mScale(44),
     },
     backBtn: {
-        width: mScale(32),
-        height: mScale(32),
+        width: 48,
+        height: 48,
+        borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
+    },
+    backBtnHeader: {
+        width: 48,
+        height: 48,
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginLeft: -12,
+        marginRight: 4,
     },
     toggleRow: {
         flexDirection: 'row',
