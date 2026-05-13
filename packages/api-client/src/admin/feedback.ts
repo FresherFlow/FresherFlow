@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { AppFeedback, ListingFeedback } from '@fresherflow/types';
+import { ListingFeedback } from '@fresherflow/types';
 
 export type ListingFeedbackSummary = {
     opportunity: {

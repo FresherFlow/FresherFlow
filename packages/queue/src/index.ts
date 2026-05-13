@@ -1,6 +1,7 @@
 import { Queue, ConnectionOptions, Job } from 'bullmq';
 import type { RedisOptions } from 'ioredis';
 import { redis } from '@fresherflow/redis';
+import { env } from '@fresherflow/config';
 import { processEmailJob } from './processors/email.processor';
 import { processCronJob } from './processors/cron.processor';
 import { processPushJob } from './processors/push.processor';
@@ -42,7 +43,7 @@ type MinimalQueue = {
 
 function createNoopQueue(queueName: string): MinimalQueue {
     return {
-        async add(_name: string, _data: unknown, _opts?: unknown) {
+        async add() {
             return { id: `test-${queueName}` };
         },
         async close() {
@@ -58,9 +59,9 @@ export function getQueue(queueName: QueueName): Queue {
         return queueCache[queueName] as Queue;
     }
 
-    const instance = process.env.NODE_ENV === 'test'
+    const instance = (env.NODE_ENV === 'test' || env.REDIS_ENABLED === false)
         ? createNoopQueue(queueName)
-        : new Queue(queueName, { 
+        : new Queue(queueName, {
             connection,
             defaultJobOptions: {
                 removeOnComplete: true,
@@ -128,6 +129,7 @@ export const WORKER_DEFINITIONS = [
         handler: async (job: Job) => {
             if (job.name === 'cron-task') return processCronJob(job);
             if (job.name === 'ingestion-payload') return processIngestionJob(job);
+            if (job.name === 'process-user-share') return processIngestionJob(job);
             throw new Error(`[internal] Unknown job name: ${job.name}`);
         },
     },

@@ -36,6 +36,12 @@ export class EmailService {
      * Send an OTP code to a user's email
      */
     static async sendOtp(email: string, code: string): Promise<void> {
+        if (process.env.NODE_ENV !== 'production') {
+            console.log('\n' + '='.repeat(40));
+            console.log(`🔑 DEV OTP for ${email}: ${code}`);
+            console.log('='.repeat(40) + '\n');
+        }
+
         const html = `
             <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
                 <h2 style="color: #333; text-align: center;">FresherFlow Verification</h2>

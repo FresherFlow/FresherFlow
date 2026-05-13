@@ -50,7 +50,7 @@ export class ApiClient {
 
     async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
         const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-        const method = (options.method || 'GET').toUpperCase();
+
 
         const headers: Record<string, string> = {
             Accept: 'application/json',
@@ -86,12 +86,12 @@ export class ApiClient {
             }
 
             const text = await response.text();
-            let payload: any = null;
+            let payload: unknown = null;
             try { if (text) payload = JSON.parse(text); } catch { payload = text; }
 
             if (!response.ok) {
-                const message = payload && typeof payload === 'object' && payload.message 
-                    ? payload.message 
+                const message = payload && typeof payload === 'object' && (payload as Record<string, unknown>).message
+                    ? (payload as Record<string, unknown>).message as string
                     : `Request failed (${response.status})`;
                 const error = new HttpError(message, response.status, payload);
                 if (this.onErrorCallback) this.onErrorCallback(error, endpoint);
@@ -99,9 +99,9 @@ export class ApiClient {
             }
 
             return payload as T;
-        } catch (error: any) {
+        } catch (error: unknown) {
             clearTimeout(timeoutId);
-            if (this.onErrorCallback) this.onErrorCallback(error, endpoint);
+            if (this.onErrorCallback && (error instanceof Error)) this.onErrorCallback(error, endpoint);
             throw error;
         }
     }
@@ -109,8 +109,8 @@ export class ApiClient {
 
 let globalClient: ApiClient | null = null;
 
-export function configureClient(baseUrl?: string, storage?: any, options?: {
-    onError?: (error: any, endpoint: string) => void;
+export function configureClient(baseUrl?: string, storage?: SecureStorage, options?: {
+    onError?: (error: HttpError | Error, endpoint: string) => void;
     onResponse?: (response: Response, endpoint: string) => void;
 }) {
     const finalBaseUrl = baseUrl || getInferredBaseUrl();
@@ -120,7 +120,7 @@ export function configureClient(baseUrl?: string, storage?: any, options?: {
 /**
  * Shared API Caller wrapper used by all module endpoints declarations.
  */
-export async function apiClient<T = unknown>(endpoint: string, options: any = {}): Promise<T> {
+export async function apiClient<T = unknown>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     if (!globalClient) {
         throw new Error('ApiClient not configured. Call configureClient(...) before using endpoints.');
     }

@@ -1,4 +1,3 @@
-import { AuthResponse, Profile, Admin, ActionType } from '@fresherflow/types';
 import { apiClient } from './apiClient';
 // Optional types fallback placeholder
 export const alertsApi = {
@@ -7,7 +6,7 @@ export const alertsApi = {
         const query = new URLSearchParams();
         query.set('kind', kind);
         query.set('limit', String(limit));
-        return apiClient(`/api/alerts/feed?${query.toString()}`);
+        return apiClient<import('@fresherflow/types').AlertFeedResponse>(`/api/alerts/feed?${query.toString()}`);
     },
     updatePreferences: (data: {
         enabled?: boolean;

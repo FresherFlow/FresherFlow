@@ -18,6 +18,8 @@ import { EmailService } from '../infrastructure/services/email.service';
 import { recordAuthSuccess } from '../infrastructure/services/growthFunnel.service';
 import { createRateLimiter } from '../middleware/rateLimit';
 import { getCookieDomain } from '../utils/runtimeConfig';
+import { calculateCompletion } from '@fresherflow/domain';
+import { Profile } from '@fresherflow/types';
 
 // Rate Limiters
 const otpSendLimiter = createRateLimiter({
@@ -116,6 +118,22 @@ async function setAuthCookies(user: User, res: Response) {
     res.cookie('refreshToken', refreshToken, { ...COOKIE_OPTIONS, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
     res.cookie('ff_logged_in', 'true', { ...COOKIE_OPTIONS, httpOnly: false, maxAge: REFRESH_TOKEN_MAX_AGE_MS });
     return { accessToken, refreshToken };
+}
+
+async function hydrateProfileCompletion(userId: string, profile: Profile | null) {
+    if (!profile) return null;
+
+    const calculatedCompletion = calculateCompletion(profile);
+    if (profile.completionPercentage === calculatedCompletion) {
+        return profile;
+    }
+
+    const updatedProfile = await prisma.profile.update({
+        where: { userId },
+        data: { completionPercentage: calculatedCompletion },
+    });
+
+    return updatedProfile as unknown as Profile;
 }
 
 // POST /api/auth/otp/send
@@ -261,9 +279,14 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
 
         if (!user) return next(new AppError('User not found', 404));
 
+        const profile = await hydrateProfileCompletion(
+            user.id as string,
+            (user.profile as unknown as Profile) || null
+        );
+
         res.json({
             user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: user.profile || null
+            profile
         });
     } catch (error) {
         next(error);

@@ -1,5 +1,5 @@
 import prisma, { Prisma } from '../database/prisma';
-import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind } from '@fresherflow/database';
+import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, UserFollow } from '@fresherflow/database';
 import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
 import { filterAndRankOpportunitiesForUser } from '../../domain/eligibility';
 import { logger } from '@fresherflow/logger';
@@ -72,7 +72,7 @@ async function resolveNewJobKind(): Promise<AlertKind> {
             WHERE t.typname = 'AlertKind'
         `;
 
-        const supportedKinds = new Set(labels.map((row) => row.enumlabel));
+        const supportedKinds = new Set(labels.map((row: { enumlabel: string; }) => row.enumlabel));
         cachedNewJobKind = supportedKinds.has('NEW_JOB') ? AlertKind.NEW_JOB : AlertKind.HIGHLIGHT;
     } catch {
         cachedNewJobKind = AlertKind.NEW_JOB;
@@ -130,6 +130,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
             fullName: true,
             profile: true,
             alertPreference: true,
+            follows: true,
         },
     });
 
@@ -154,7 +155,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         },
     });
     const sentTodayByUser = new Map<string, number>(
-        sentTodayRows.map((row) => [row.userId, row._count._all])
+        sentTodayRows.map((row: { userId: string; _count: { _all: number; }; }) => [row.userId, row._count._all])
     );
 
     for (const user of users) {
@@ -208,56 +209,71 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         let relevanceScore: number | null = null;
         let relevanceReason = 'Profile match';
 
-        // Strict mode: no profile => no job alerts.
-        if (!user.profile) {
-            skippedNotEligible += 1;
-            await logDispatch({
-                correlationId,
-                userId: user.id,
-                opportunityId: opportunity.id,
-                kind: alertKind,
-                status: AlertDispatchStatus.SKIPPED,
-                reason: AlertDispatchReason.NOT_ELIGIBLE,
-                metadata: { stage: 'missing_profile' },
-                attemptedAt: userAttemptedAt,
-            });
-            continue;
-        }
+        const followedCompanies = (user.follows as UserFollow[] || []).filter((f: UserFollow) => f.type === 'COMPANY').map((f: UserFollow) => f.value);
+        const followedTags = (user.follows as UserFollow[] || []).filter((f: UserFollow) => f.type === 'TAG').map((f: UserFollow) => f.value);
+        const followedContributors = (user.follows as UserFollow[] || []).filter((f: UserFollow) => f.type === 'CONTRIBUTOR').map((f: UserFollow) => f.value);
 
-        const ranked = filterAndRankOpportunitiesForUser(
-            [opportunity as unknown as Opportunity],
-            user.profile as unknown as Profile,
-            user.id
-        );
-        if (ranked.length === 0) {
-            skippedNotEligible += 1;
-            await logDispatch({
-                correlationId,
-                userId: user.id,
-                opportunityId: opportunity.id,
-                kind: alertKind,
-                status: AlertDispatchStatus.SKIPPED,
-                reason: AlertDispatchReason.NOT_ELIGIBLE,
-                metadata: { stage: 'eligibility_filter', source: 'profile' },
-                attemptedAt: userAttemptedAt,
-            });
-            continue;
-        }
+        const followsCompany = followedCompanies.includes(opportunity.company);
+        const followsTag = opportunity.tags?.some(tag => followedTags.includes(tag));
+        const followsContributor = followedContributors.includes(opportunity.postedByUserId);
 
-        relevanceScore = ranked[0].score;
-        if (relevanceScore < preference.minRelevanceScore) {
-            skippedNotEligible += 1;
-            await logDispatch({
-                correlationId,
-                userId: user.id,
-                opportunityId: opportunity.id,
-                kind: alertKind,
-                status: AlertDispatchStatus.SKIPPED,
-                reason: AlertDispatchReason.NOT_ELIGIBLE,
-                metadata: { stage: 'min_relevance', relevanceScore, minRelevanceScore: preference.minRelevanceScore },
-                attemptedAt: userAttemptedAt,
-            });
-            continue;
+        const isFollowed = followsCompany || followsTag || followsContributor;
+
+        if (isFollowed) {
+            relevanceScore = 100;
+            relevanceReason = followsCompany ? 'Following Company' : followsTag ? 'Following Tag' : 'Following Contributor';
+        } else {
+            // Strict mode: no profile => no job alerts.
+            if (!user.profile) {
+                skippedNotEligible += 1;
+                await logDispatch({
+                    correlationId,
+                    userId: user.id,
+                    opportunityId: opportunity.id,
+                    kind: alertKind,
+                    status: AlertDispatchStatus.SKIPPED,
+                    reason: AlertDispatchReason.NOT_ELIGIBLE,
+                    metadata: { stage: 'missing_profile' },
+                    attemptedAt: userAttemptedAt,
+                });
+                continue;
+            }
+
+            const ranked = filterAndRankOpportunitiesForUser(
+                [opportunity as unknown as Opportunity],
+                user.profile as unknown as Profile,
+                user.id
+            );
+            if (ranked.length === 0) {
+                skippedNotEligible += 1;
+                await logDispatch({
+                    correlationId,
+                    userId: user.id,
+                    opportunityId: opportunity.id,
+                    kind: alertKind,
+                    status: AlertDispatchStatus.SKIPPED,
+                    reason: AlertDispatchReason.NOT_ELIGIBLE,
+                    metadata: { stage: 'eligibility_filter', source: 'profile' },
+                    attemptedAt: userAttemptedAt,
+                });
+                continue;
+            }
+
+            relevanceScore = ranked[0].score;
+            if (relevanceScore < preference.minRelevanceScore) {
+                skippedNotEligible += 1;
+                await logDispatch({
+                    correlationId,
+                    userId: user.id,
+                    opportunityId: opportunity.id,
+                    kind: alertKind,
+                    status: AlertDispatchStatus.SKIPPED,
+                    reason: AlertDispatchReason.NOT_ELIGIBLE,
+                    metadata: { stage: 'min_relevance', relevanceScore, minRelevanceScore: preference.minRelevanceScore },
+                    attemptedAt: userAttemptedAt,
+                });
+                continue;
+            }
         }
         relevanceReason = 'Profile match';
 

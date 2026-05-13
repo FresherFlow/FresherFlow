@@ -1,6 +1,52 @@
 import { z } from 'zod';
 import { OpportunityType, OpportunityStatus, WorkMode, EducationLevel, Availability, ActionType, FeedbackReason, SalaryPeriod, AppFeedbackType } from '@fresherflow/types';
 
+const governmentApplicationFeeSchema = z.object({
+    general: z.number().nonnegative().optional(),
+    obc: z.number().nonnegative().optional(),
+    ews: z.number().nonnegative().optional(),
+    sc: z.number().nonnegative().optional(),
+    st: z.number().nonnegative().optional(),
+    pwd: z.number().nonnegative().optional(),
+    female: z.number().nonnegative().optional(),
+    other: z.record(z.number().nonnegative()).optional(),
+});
+
+const governmentVacancySchema = z.object({
+    postName: z.string().min(1),
+    total: z.number().int().nonnegative().optional(),
+    categoryBreakup: z.record(z.number().int().nonnegative()).optional(),
+    qualification: z.string().optional(),
+    age: z.string().optional(),
+});
+
+const governmentExamDatesSchema = z.object({
+    prelims: z.string().optional(),
+    mains: z.string().optional(),
+    skillTest: z.string().optional(),
+    interview: z.string().optional(),
+    medical: z.string().optional(),
+    documentVerification: z.string().optional(),
+    other: z.string().optional(),
+});
+
+const governmentEligibilitySchema = z.object({
+    education: z.array(z.string()).optional().default([]),
+    age: z.object({
+        min: z.number().int().nonnegative().optional(),
+        max: z.number().int().nonnegative().optional(),
+        notes: z.string().optional(),
+    }).optional(),
+    experience: z.array(z.string()).optional().default([]),
+    additional: z.array(z.string()).optional().default([]),
+});
+
+const governmentRequiredDocumentSchema = z.object({
+    name: z.string().min(1),
+    mandatory: z.boolean().optional(),
+    notes: z.string().optional(),
+});
+
 // Auth Schemas
 export const registerSchema = z.object({
     email: z.string().email('Invalid email format'),
@@ -91,10 +137,42 @@ export const opportunitySchema = z.object({
     experienceMin: z.number().int().optional(),
     experienceMax: z.number().int().optional(),
     employmentType: z.string().optional(), // New
+    tags: z.array(z.string()).optional().default([]),
     sourceLink: z.string().url().optional().or(z.string().length(0)),
     applyLink: z.string().url().optional().or(z.string().length(0)),
 
     expiresAt: z.string().optional(),
+    governmentJobDetails: z.object({
+        department: z.string().optional(),
+        organization: z.string().optional(),
+        recruitingBody: z.string().optional(),
+        officialWebsiteUrl: z.string().url().optional().or(z.string().length(0)),
+        officialNotificationUrl: z.string().url().optional().or(z.string().length(0)),
+        advertisementNumber: z.string().optional(),
+        postName: z.string().optional(),
+        applicationMode: z.string().optional(),
+        applicationModes: z.array(z.string()).optional().default([]),
+        vacancyCount: z.number().int().nonnegative().optional(),
+        vacancies: z.array(governmentVacancySchema).optional().default([]),
+        applicationFee: z.string().optional(),
+        applicationFeeDetails: governmentApplicationFeeSchema.optional(),
+        ageMin: z.number().int().nonnegative().optional(),
+        ageMax: z.number().int().nonnegative().optional(),
+        ageRelaxation: z.string().optional(),
+        eligibilityDetails: governmentEligibilitySchema.optional(),
+        reservationNotes: z.string().optional(),
+        importantInstructions: z.string().optional(),
+        applicationStartDate: z.string().optional(),
+        applicationEndDate: z.string().optional(),
+        examDate: z.string().optional(),
+        examDates: governmentExamDatesSchema.optional(),
+        admitCardDate: z.string().optional(),
+        resultDate: z.string().optional(),
+        selectionStages: z.array(z.string()).optional().default([]),
+        requiredDocuments: z.array(z.string()).optional().default([]),
+        requiredDocumentDetails: z.array(governmentRequiredDocumentSchema).optional().default([]),
+        seoTags: z.array(z.string()).optional().default([]),
+    }).nullable().optional(),
 
     // Walk-in specific (Simplified)
     walkInDetails: z.object({
@@ -120,7 +198,8 @@ export const userActionSchema = z.object({
 });
 
 export const feedbackSchema = z.object({
-    reason: z.nativeEnum(FeedbackReason)
+    reason: z.nativeEnum(FeedbackReason),
+    description: z.string().max(1000).optional()
 });
 
 export const appFeedbackSchema = z.object({
@@ -150,3 +229,14 @@ export const pushSubscriptionSchema = z.object({
     }),
 });
 
+export const contributionSchema = z.object({
+    url: z.string().url('Valid URL is required').optional(),
+    referral: z.object({
+        contact: z.string().min(1, 'Contact info is required'),
+        description: z.string().min(10, 'Description must be at least 10 characters'),
+        company: z.string().min(1, 'Company name is required'),
+        companyUrl: z.string().url().optional().or(z.string().length(0)),
+    }).optional()
+}).refine(data => data.url || data.referral, {
+    message: "Either a URL or a referral must be provided"
+});

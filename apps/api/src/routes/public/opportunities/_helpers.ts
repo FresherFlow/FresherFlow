@@ -3,15 +3,17 @@ import { OpportunityType } from '@fresherflow/types';
 import { verifyAccessToken } from '@fresherflow/auth';
 import { createRateLimiter } from '../../../middleware/rateLimit';
 
+export type PublicSiteMode = 'private' | 'govt';
+
 function parsePositiveIntEnv(value: string | undefined, fallback: number): number {
     const parsed = Number(value);
     return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
 
-export const GUEST_FEED_LIMIT = parsePositiveIntEnv(process.env.GUEST_FEED_LIMIT, 12);
+export const GUEST_FEED_LIMIT = parsePositiveIntEnv(process.env.GUEST_FEED_LIMIT, 200);
 export const MAX_FEED_LIMIT = parsePositiveIntEnv(
     process.env.PUBLIC_FEED_MAX_LIMIT,
-    process.env.NODE_ENV === 'production' ? 50 : 100
+    process.env.NODE_ENV === 'production' ? 200 : 100
 );
 export const MAX_FEED_PAGE = parsePositiveIntEnv(
     process.env.PUBLIC_FEED_MAX_PAGE,
@@ -19,12 +21,14 @@ export const MAX_FEED_PAGE = parsePositiveIntEnv(
 );
 export const GUEST_FEED_CACHE_TTL_SECONDS = parsePositiveIntEnv(
     process.env.PUBLIC_FEED_CACHE_TTL_SECONDS,
-    process.env.NODE_ENV === 'production' ? 1800 : 300
+    process.env.NODE_ENV === 'production' ? 21600 : 300
 );
 export const GUEST_DETAIL_CACHE_TTL_SECONDS = parsePositiveIntEnv(
     process.env.PUBLIC_DETAIL_CACHE_TTL_SECONDS,
-    process.env.NODE_ENV === 'production' ? 3600 : 300
+    process.env.NODE_ENV === 'production' ? 21600 : 300
 );
+export const GUEST_FEED_CACHE_CONTROL = 'public, max-age=300, s-maxage=21600, stale-while-revalidate=86400';
+export const GUEST_DETAIL_CACHE_CONTROL = 'public, max-age=300, s-maxage=21600, stale-while-revalidate=86400';
 export const MAX_DETAIL_ID_LENGTH = 200;
 export const MAX_SALARY_FILTER = 100000000;
 export const ALLOWED_SORT_KEYS = new Set(['', 'freshness_v2']);
@@ -86,6 +90,7 @@ export function buildGuestOpportunitySelect() {
         type: true,
         title: true,
         company: true,
+        companyWebsite: true,
         locations: true,
         workMode: true,
         salaryMin: true,
@@ -94,9 +99,14 @@ export function buildGuestOpportunitySelect() {
         salaryPeriod: true,
         employmentType: true,
         tags: true,
+        applyLink: true,
         expiresAt: true,
         postedAt: true,
         linkHealth: true,
+        sharesCount: true,
+        savesCount: true,
+        clicksCount: true,
+        trendingScore: true,
         events: {
             orderBy: { eventDate: 'asc' as const },
             select: {
@@ -219,6 +229,20 @@ export function buildPublicOpportunitySelect(userId?: string) {
                 },
             }
             : {}),
+        rawIngestions: {
+            where: { createdByUserId: { not: null } },
+            orderBy: { createdAt: 'asc' },
+            take: 1,
+            select: {
+                createdBy: {
+                    select: {
+                        id: true,
+                        fullName: true,
+                        trustLevel: true,
+                    }
+                }
+            }
+        }
     } as const;
 }
 
@@ -280,4 +304,9 @@ export function parseOpportunityType(raw?: string): OpportunityType | undefined 
     if (normalized === OpportunityType.INTERNSHIP) return OpportunityType.INTERNSHIP;
     if (normalized === OpportunityType.WALKIN) return OpportunityType.WALKIN;
     return undefined;
+}
+
+export function parseSiteMode(raw?: unknown): PublicSiteMode {
+    const value = Array.isArray(raw) ? raw[0] : raw;
+    return String(value || '').toLowerCase() === 'govt' ? 'govt' : 'private';
 }

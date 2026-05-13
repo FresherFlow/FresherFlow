@@ -26,16 +26,16 @@ export async function invalidatePublicOpportunityCache(options?: {
 
     try {
         if (purgeFeed) {
-            await deleteByPattern('opportunities|v2|*');
+            await deleteByPattern('opportunities|v4|*');
         }
 
         if (idsOrSlugs.length > 0) {
-            const detailKeys = idsOrSlugs.map((value) => `opportunity_detail|v1|id:${value}`);
-            await redis.del(...detailKeys);
+            for (const value of idsOrSlugs) {
+                await deleteByPattern(`opportunity_detail|v3|*|id:${value}`);
+            }
         }
         logger.debug('Invalidated public opportunity cache', { idsOrSlugs, purgeFeed });
     } catch (error: unknown) {
         logger.error('[Redis] Failed to invalidate public opportunity cache', { error: error instanceof Error ? error.message : String(error) });
     }
 }
-

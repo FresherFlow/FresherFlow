@@ -1,24 +1,15 @@
 import prisma from '../database/prisma';
 import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
-import { 
+import {
     filterAndRankOpportunitiesForUser,
-    getTimezoneParts, buildOpportunityUrl, getClosingSoonHours, formatExpiresText 
+    getTimezoneParts, buildOpportunityUrl, getClosingSoonHours, formatExpiresText
 } from '@fresherflow/domain';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 import { getAdminDeliveryControls } from './adminDeliveryControl.service';
 
 
-interface AlertPreference {
-    enabled: boolean;
-    emailEnabled: boolean;
-    dailyDigest: boolean;
-    closingSoon: boolean;
-    minRelevanceScore: number;
-    preferredHour: number;
-    timezone: string;
-    lastDigestSentAt: Date | null;
-}
+// AlertPreference is fetched from DB
 
 interface OpportunityEvent {
     id: string;
@@ -245,7 +236,66 @@ async function sendEventRemindersForUser(
     return false;
 }
 
+async function sendTrendingAlertsForUser(
+    frontendUrl: string,
+    user: { id: string; email: string; fullName: string | null; profile: Profile | null },
+    preference: { enabled: boolean; emailEnabled: boolean; minRelevanceScore: number },
+    now: Date,
+    trendingOpportunities: Opportunity[],
+    controls: { userAlertsEnabled: boolean; userEmailNotificationsEnabled: boolean }
+): Promise<boolean> {
+    if (!controls.userAlertsEnabled) return false;
+    if (!preference.enabled) return false;
+    if (!user.profile) return false;
+
+    const ranked = filterAndRankOpportunitiesForUser(
+        trendingOpportunities,
+        user.profile as Profile,
+        user.id
+    )
+        .filter((item) => item.score >= (preference.minRelevanceScore || 40))
+        .sort((a, b) => b.opportunity.trendingScore - a.opportunity.trendingScore);
+
+    if (ranked.length === 0) return false;
+
+    // Pick the top trending one that matches the user
+    const item = ranked[0];
+    const dedupeKey = `${user.id}:TRENDING:${item.opportunity.id}`;
+    const alreadySent = await prisma.alertDelivery.findUnique({ where: { dedupeKey } });
+    if (alreadySent) return false;
+
+    const shouldSendEmail = controls.userEmailNotificationsEnabled && preference.emailEnabled;
+
+    if (shouldSendEmail) {
+        // Fallback to digest style if specific trending email isn't ready
+        await EmailService.sendNewJobAlert(user.email, user.fullName, {
+            title: `🔥 Trending: ${item.opportunity.title}`,
+            company: item.opportunity.company,
+            location: item.opportunity.locations?.[0] || 'Remote',
+            applyUrl: buildOpportunityUrl(frontendUrl, item.opportunity.slug),
+        });
+    }
+
+    await prisma.alertDelivery.create({
+        data: {
+            userId: user.id,
+            opportunityId: item.opportunity.id,
+            kind: 'HIGHLIGHT',
+            channel: 'APP',
+            dedupeKey,
+            metadata: JSON.stringify({
+                trendingScore: item.opportunity.trendingScore,
+                relevanceScore: item.score,
+                type: 'TRENDING_ALERT'
+            }),
+        },
+    });
+
+    return true;
+}
+
 export async function runAlertsCycle() {
+
     const now = new Date();
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const maxUsers = Number(process.env.ALERTS_MAX_USERS || (process.env.NODE_ENV === 'production' ? 250 : 1000));
@@ -259,7 +309,7 @@ export async function runAlertsCycle() {
     }
 
     // OPTIMIZATION: Fetch active data ONCE per cycle instead of per user (saves thousands of DB calls)
-    const [activeOpportunities, activeEvents] = await Promise.all([
+    const [activeOpportunities, activeEvents, trendingOpportunities] = await Promise.all([
         prisma.opportunity.findMany({
             where: {
                 status: OpportunityStatus.PUBLISHED,
@@ -289,7 +339,16 @@ export async function runAlertsCycle() {
             },
             orderBy: { eventDate: 'asc' },
             take: maxEvents
-        })
+        }),
+        prisma.opportunity.findMany({
+            where: {
+                status: OpportunityStatus.PUBLISHED,
+                deletedAt: null,
+                trendingScore: { gt: 1.0 }
+            },
+            orderBy: { trendingScore: 'desc' },
+            take: 10
+        }) as unknown as Promise<Opportunity[]>
     ]);
 
     const users = await prisma.user.findMany({
@@ -315,9 +374,19 @@ export async function runAlertsCycle() {
     let digestSent = 0;
     let closingSoonSent = 0;
     let eventRemindersSent = 0;
+    let trendingSent = 0;
 
     for (const user of users) {
-        const preference: AlertPreference = (user.alertPreference as unknown as AlertPreference) ?? {
+        const preference = (user.alertPreference as {
+            enabled: boolean;
+            emailEnabled: boolean;
+            dailyDigest: boolean;
+            closingSoon: boolean;
+            minRelevanceScore: number;
+            preferredHour: number;
+            timezone: string;
+            lastDigestSentAt: Date | null;
+        }) ?? {
             enabled: true,
             emailEnabled: true,
             dailyDigest: true,
@@ -328,21 +397,19 @@ export async function runAlertsCycle() {
             lastDigestSentAt: null,
         };
 
-        if (!preference.enabled) {
-            continue;
-        }
-
-        if (!user.profile) {
+        if (!preference.enabled || !user.profile) {
             continue;
         }
 
         const sentDigest = await sendDailyDigestForUser(frontendUrl, user as unknown as { id: string; email: string; fullName: string | null; profile: Profile | null }, preference, now, activeOpportunities as Opportunity[], deliveryControls);
         const sentClosingSoon = await sendClosingSoonForUser(frontendUrl, user as unknown as { id: string; email: string; fullName: string | null; profile: Profile | null }, preference, now, activeOpportunities as Opportunity[], deliveryControls);
         const sentEventReminder = await sendEventRemindersForUser(frontendUrl, user as unknown as { id: string; profile: Profile | null }, preference, now, activeEvents as unknown as OpportunityEvent[], deliveryControls);
-        
+        const sentTrending = await sendTrendingAlertsForUser(frontendUrl, user as unknown as { id: string; email: string; fullName: string | null; profile: Profile | null }, preference, now, trendingOpportunities, deliveryControls);
+
         if (sentDigest) digestSent += 1;
         if (sentClosingSoon) closingSoonSent += 1;
         if (sentEventReminder) eventRemindersSent += 1;
+        if (sentTrending) trendingSent += 1;
     }
 
     logger.info('Alerts cycle completed', {
@@ -350,7 +417,8 @@ export async function runAlertsCycle() {
         digestSent,
         closingSoonSent,
         eventRemindersSent,
+        trendingSent
     });
 
-    return { usersChecked: users.length, digestSent, closingSoonSent, eventRemindersSent };
+    return { usersChecked: users.length, digestSent, closingSoonSent, eventRemindersSent, trendingSent };
 }

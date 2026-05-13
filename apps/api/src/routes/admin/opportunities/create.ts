@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../../infrastructure/database/prisma';
+import prisma, { OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '../../../infrastructure/database/prisma';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { Prisma } from '@fresherflow/database';
 import { adminRateLimit } from '../../../middleware/adminRateLimit';
@@ -10,7 +10,7 @@ import { generateSlug, generateCompanyLogoUrl, normalizeSkills } from '@fresherf
 import { normalizeOpportunityLinks } from '../../../utils/opportunityLinks';
 import {
     normalizeEducationRequirements, buildWalkInCreate,
-    deriveOpportunityExpiryDate,
+    deriveOpportunityExpiryDate, buildGovernmentJobDetailsCreate, buildGovernmentJobDetailsUpsert, buildGovernmentTags,
 } from './_helpers';
 import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
 import { Opportunity } from '@fresherflow/types';
@@ -47,6 +47,7 @@ router.post(
             const walkInCreate = type === OpportunityType.WALKIN && data.walkInDetails
                 ? buildWalkInCreate(data)
                 : undefined;
+            const governmentJobCreate = buildGovernmentJobDetailsCreate(data);
 
             const tempId = crypto.randomUUID();
             const slug = generateSlug(data.title, data.company, tempId);
@@ -54,7 +55,7 @@ router.post(
 
             const opportunity = await prisma.opportunity.create({
                 data: {
-                    id: tempId, slug, type,
+                    id: tempId, slug, type: type as unknown as DbOpportunityType,
                     title: data.title, company: data.company,
                     companyWebsite: data.companyWebsite,
                     companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
@@ -72,13 +73,15 @@ router.post(
                     incentives: data.incentives, jobFunction: data.jobFunction,
                     selectionProcess: data.selectionProcess, notesHighlights: data.notesHighlights,
                     experienceMin: data.experienceMin, experienceMax: data.experienceMax,
+                    tags: buildGovernmentTags(data),
                     sourceLink, applyLink,
                     expiresAt: deriveOpportunityExpiryDate(data, type),
                     postedByUserId: req.adminId as string,
-                    status: OpportunityStatus.PUBLISHED,
+                    status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
                     ...(walkInCreate && { walkInDetails: walkInCreate }),
+                    ...(governmentJobCreate && { governmentJobDetails: governmentJobCreate }),
                 },
-                include: { walkInDetails: true },
+                include: { walkInDetails: true, governmentJobDetails: true },
             });
 
             await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
@@ -138,6 +141,7 @@ router.post(
             const walkInCreate = type === OpportunityType.WALKIN && data.walkInDetails
                 ? buildWalkInCreate(data)
                 : undefined;
+            const governmentJobCreate = buildGovernmentJobDetailsCreate(data);
 
             const tempId = crypto.randomUUID();
             const slug = generateSlug(data.title, data.company, tempId);
@@ -145,7 +149,7 @@ router.post(
 
             const opportunity = await prisma.opportunity.create({
                 data: {
-                    id: tempId, slug, type,
+                    id: tempId, slug, type: type as unknown as DbOpportunityType,
                     title: data.title, company: data.company,
                     companyWebsite: data.companyWebsite,
                     companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
@@ -163,13 +167,15 @@ router.post(
                     incentives: data.incentives, jobFunction: data.jobFunction,
                     selectionProcess: data.selectionProcess, notesHighlights: data.notesHighlights,
                     experienceMin: data.experienceMin, experienceMax: data.experienceMax,
+                    tags: buildGovernmentTags(data),
                     sourceLink, applyLink,
                     expiresAt: deriveOpportunityExpiryDate(data, type),
                     postedByUserId: req.adminId as string,
-                    status: OpportunityStatus.DRAFT,
+                    status: OpportunityStatus.DRAFT as unknown as DbOpportunityStatus,
                     ...(walkInCreate && { walkInDetails: walkInCreate }),
+                    ...(governmentJobCreate && { governmentJobDetails: governmentJobCreate }),
                 },
-                include: { walkInDetails: true },
+                include: { walkInDetails: true, governmentJobDetails: true },
             });
 
             // Drafts only notify admin privately, no broadcast/alerts/social
@@ -201,10 +207,13 @@ router.put(
             });
             if (!existing) return res.status(404).json({ message: 'Opportunity not found' });
 
-             const type = data.type as OpportunityType;
+            const type = data.type as OpportunityType;
             const walkInUpdate = type === OpportunityType.WALKIN && data.walkInDetails
                 ? { upsert: (() => { const b = buildWalkInCreate(data); return b ? { create: b.create, update: b.create } : undefined; })() }
                 : {};
+            const governmentJobUpdate = data.governmentJobDetails === null
+                ? { delete: true }
+                : buildGovernmentJobDetailsUpsert(data);
 
             const education = normalizeEducationRequirements(data);
             const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
@@ -213,7 +222,7 @@ router.put(
             }
 
             const updateData: Prisma.OpportunityUpdateInput = {
-                ...education, type, status: data.status,
+                ...education, type: type as unknown as DbOpportunityType, status: data.status as unknown as DbOpportunityStatus,
                 title: data.title, company: data.company,
                 companyWebsite: data.companyWebsite,
                 companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
@@ -227,11 +236,13 @@ router.put(
                 notesHighlights: data.notesHighlights,
                 experienceMin: data.experienceMin, experienceMax: data.experienceMax,
                 salaryRange: data.salaryRange, stipend: data.stipend,
+                tags: buildGovernmentTags(data),
                 employmentType: data.employmentType, sourceLink, applyLink,
                 expiresAt: deriveOpportunityExpiryDate(data, type),
                 lastVerified: new Date(),
                 ...(data.status === OpportunityStatus.PUBLISHED ? { expiredAt: null, deletedAt: null } : {}),
                 ...(type === OpportunityType.WALKIN && { walkInDetails: walkInUpdate }),
+                ...(governmentJobUpdate && { governmentJobDetails: governmentJobUpdate }),
             };
 
             if (data.title !== existing.title || data.company !== existing.company) {
@@ -241,7 +252,7 @@ router.put(
             const opportunity = await prisma.opportunity.update({
                 where: { id: existing.id as string },
                 data: updateData,
-                include: { walkInDetails: true },
+                include: { walkInDetails: true, governmentJobDetails: true },
             });
 
             let responseMessage = 'Opportunity updated successfully';
@@ -250,9 +261,9 @@ router.put(
                 responseMessage = 'Opportunity published successfully. Social posting queued.';
             } else if (opportunity.status === OpportunityStatus.PUBLISHED) {
                 // Already published, just update cache and notify update
-                await handleOpportunityPublished(opportunity as unknown as Opportunity, { 
-                    isNew: false, 
-                    oldSlug: existing.slug !== opportunity.slug ? (existing.slug as string) : undefined 
+                await handleOpportunityPublished(opportunity as unknown as Opportunity, {
+                    isNew: false,
+                    oldSlug: existing.slug !== opportunity.slug ? (existing.slug as string) : undefined
                 });
             }
 

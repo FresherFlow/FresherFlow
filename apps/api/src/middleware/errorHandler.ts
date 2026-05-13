@@ -56,7 +56,16 @@ export function errorHandler(
     }
 
     if (process.env.NODE_ENV !== 'production') {
-        logger.error(chalk.red('[DEV] Full error:'), err);
+        const trimmedMsg = errorMsg.trim();
+        const isCommonAuthError = statusCode === 401 && (
+            trimmedMsg.includes('No token provided') ||
+            trimmedMsg.includes('Authorization header missing') ||
+            trimmedMsg.includes('Authentication required')
+        );
+
+        if (!isCommonAuthError) {
+            logger.error(chalk.red('[DEV] Full error:'), err);
+        }
     } else if (process.env.DEBUG) {
         logger.error('Full error details', {
             error: err.message,

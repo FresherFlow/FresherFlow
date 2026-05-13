@@ -3,7 +3,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { OpportunityEventType } from '@fresherflow/database';
 import { OpportunityStatus, Profile, Opportunity } from '@fresherflow/types';
 import { requireAuth } from '../middleware/auth';
-import { profileGate } from '../middleware/profileGate';
+
 import { filterAndRankOpportunitiesForUser } from '@fresherflow/domain';
 
 const router = Router();
@@ -13,7 +13,7 @@ const router = Router();
  * GET /api/dashboard/highlights
  * Return urgent and personalized updates for the user dashboard
  */
-router.get('/highlights', requireAuth, profileGate, async (req: Request, res: Response, next: NextFunction) => {
+router.get('/highlights', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId!;
 

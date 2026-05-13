@@ -9,6 +9,7 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
+        "noEmit": false,
         "paths": {
             "@/*": ["./src/*"]
         }

@@ -4,11 +4,11 @@ import { Opportunity, Profile } from '@fresherflow/types';
 import { redis } from '@fresherflow/redis';
 import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
-import { checkEligibility } from '@fresherflow/domain';
+import { checkEligibility, calculateOpportunityMatch } from '@fresherflow/domain';
 import {
     isLikelyBotTraffic, publicDetailLimiter, publicDetailBotLimiter,
     tryResolveUserIdFromCookie, buildPublicOpportunitySelect, isSupportedDetailId,
-    GUEST_DETAIL_CACHE_TTL_SECONDS
+    GUEST_DETAIL_CACHE_TTL_SECONDS, parseSiteMode, GUEST_DETAIL_CACHE_CONTROL
 } from './_helpers';
 
 const router: Router = Router();
@@ -40,17 +40,17 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
 
         const id = normalizeId(rawId);
         if (!isSupportedDetailId(id)) throw new AppError('Opportunity id is invalid', 400);
+        const effectiveSiteMode = parseSiteMode(req.query.siteMode as string | undefined);
 
         const userId = tryResolveUserIdFromCookie(req);
         const isGuest = !userId;
         const redis_client = env.NODE_ENV === 'development' ? null : redis;
-        const guestDetailCacheKey = isGuest ? `opportunity_detail|v2|id:${id}` : null;
+        const guestDetailCacheKey = isGuest ? `opportunity_detail|v5|mode:${effectiveSiteMode}|id:${id}` : null;
 
         if (isGuest && guestDetailCacheKey && redis_client) {
             const cached = await redis_client.get(guestDetailCacheKey).catch(() => null);
             if (cached) {
-                res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
-                res.setHeader('Vary', 'Cookie, Authorization');
+                res.setHeader('Cache-Control', GUEST_DETAIL_CACHE_CONTROL);
                 res.setHeader('X-Detail-Cache', 'HIT');
                 return res.json(JSON.parse(cached));
             }
@@ -79,12 +79,17 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
 
         if (!opportunity) throw new AppError('Opportunity not found', 404);
 
+        const isGovernmentOpportunity = Boolean(opportunity.governmentJobDetails);
+        if ((effectiveSiteMode === 'govt' && !isGovernmentOpportunity) || (effectiveSiteMode === 'private' && isGovernmentOpportunity)) {
+            throw new AppError('Opportunity not found', 404);
+        }
+
         if (userId) res.setHeader('Cache-Control', 'private, no-store');
         else {
-            res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
+            res.setHeader('Cache-Control', GUEST_DETAIL_CACHE_CONTROL);
             res.setHeader('X-Detail-Cache', 'MISS');
         }
-        res.setHeader('Vary', 'Cookie, Authorization');
+        if (userId) res.setHeader('Vary', 'Cookie, Authorization');
 
         const { savedBy, ...opportunitySafe } = opportunity as typeof opportunity & { savedBy?: Array<{ id: string }> };
         const opportunityWithSaved = {
@@ -94,6 +99,8 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
 
         let isEligible = true;
         let eligibilityReason: string | undefined;
+        let matchScore = 0;
+        let matchReason: string = 'Complete profile to see fit';
 
         if (userId) {
             const profile = await prisma.profile.findUnique({ where: { userId } });
@@ -101,13 +108,19 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
                 const result = checkEligibility(opportunity as unknown as Opportunity, profile as unknown as Profile, userId);
                 isEligible = result.eligible;
                 eligibilityReason = result.reason;
+
+                const matchResult = calculateOpportunityMatch(profile as unknown as Profile, opportunity as unknown as Opportunity);
+                matchScore = matchResult.score;
+                matchReason = matchResult.reason;
             }
         }
 
         const responsePayload = {
             opportunity: opportunityWithSaved,
             isEligible,
-            eligibilityReason
+            eligibilityReason,
+            matchScore,
+            matchReason
         };
 
         if (isGuest && guestDetailCacheKey && redis_client) {

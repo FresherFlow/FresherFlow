@@ -49,6 +49,7 @@ const envSchema = z.object({
     ENABLE_EMAIL_SENDING: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
     ENABLE_WORKER_QUEUE_HEALTH: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
     ENABLE_WORKER_DEEP_HEALTH: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
+    REDIS_ENABLED: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
 }).superRefine((value, ctx) => {
     if (value.NODE_ENV !== 'test' && !value.DATABASE_URL) {
         ctx.addIssue({

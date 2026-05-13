@@ -454,7 +454,7 @@ router.get('/growth-funnel/sanity', requireAdmin, async (req: Request, res: Resp
             })
         ]);
 
-        const growthCounts = growthGrouped.reduce<Record<string, number>>((acc, row) => {
+        const growthCounts = (growthGrouped as Array<{ event: string; _count: { _all: number } }>).reduce<Record<string, number>>((acc, row) => {
             acc[row.event] = row._count._all;
             return acc;
         }, {});

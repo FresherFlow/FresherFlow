@@ -142,6 +142,27 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
             funnel[stat.event] = stat._count;
         });
 
+        // 10. Moderation Metrics (Last 30 days)
+        const [totalShares30d, approvedShares30d, rejectedShares30d] = await Promise.all([
+            prisma.rawOpportunity.count({
+                where: { sourceId: 'USER_SHARE', createdAt: { gte: windowStart } }
+            }),
+            prisma.opportunity.count({
+                where: {
+                    publishedAt: { gte: windowStart },
+                    postedByUserId: { not: { in: ['SYSTEM_DEFAULT', 'SYSTEM_ADMIN'] } }
+                }
+            }),
+            prisma.adminAudit.count({
+                where: { action: { in: ['REJECT', 'SPAM'] }, createdAt: { gte: windowStart } }
+            })
+        ]);
+
+        const approvalRate = totalShares30d > 0
+            ? Math.round((approvedShares30d / totalShares30d) * 100)
+            : 0;
+
+
         // 9. Apply click quality metrics (exclude internal/test traffic)
         const clickWhere = {
             createdAt: { gte: windowStart },
@@ -301,7 +322,14 @@ router.get('/overview', requireAdmin, async (req: Request, res: Response, next: 
                 topClickedOpportunities
             },
             channelAttribution: sourceBuckets,
+            moderation: {
+                totalShares30d,
+                approvedShares30d,
+                rejectedShares30d,
+                approvalRate
+            },
             urgent: {
+
                 closingSoon48h: closingSoonCount,
                 brokenLinks: healthDistribution.broken
             }
@@ -356,4 +384,3 @@ router.get('/recent-activity', requireAdmin, async (req: Request, res: Response,
 });
 
 export default router;
-

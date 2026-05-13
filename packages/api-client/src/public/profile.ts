@@ -52,9 +52,9 @@ export const profileApi = {
             body: JSON.stringify({ token, platform })
         }),
 
-    getContributions: (page = 1) => 
+    getShares: (page = 1) =>
         apiClient<{
-            contributions: Array<{
+            shares: Array<{
                 id: string;
                 sourceLink: string;
                 mappedOpportunityId?: string | null;
@@ -71,18 +71,22 @@ export const profileApi = {
                 } | null;
             }>;
             stats: {
-                totalContributed: number;
+                totalShared: number;
                 totalPublished: number;
                 approvalRate: number;
             };
             page: number;
             total: number;
             hasMore: boolean;
-        }>(`/api/profile/contributions?page=${page}`),
+        }>(`/api/profile/shares?page=${page}`),
 
-    submitContribution: (data: { url?: string; referral?: { contact: string; description: string; company: string; companyUrl?: string } }) => 
-        apiClient<{ success: boolean; message: string; contribution: RawOpportunity }>('/api/profile/contributions', {
+    submitShare: (data: { url?: string; referral?: { contact: string; description: string; company: string; companyUrl?: string } }) =>
+        apiClient<{ success: boolean; message: string; share: RawOpportunity }>('/api/profile/shares', {
             method: 'POST',
             body: JSON.stringify(data)
-        })
+        }),
+
+    // Backward-compatible aliases
+    getContributions: (page = 1) => profileApi.getShares(page) as any,
+    submitContribution: (data: any) => profileApi.submitShare(data) as any,
 };

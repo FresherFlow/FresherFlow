@@ -27,7 +27,28 @@ export default tseslint.config(
     },
   },
   {
-    files: ['*.js', '*.mjs'],
-    ...tseslint.configs.disableTypeChecked,
+    files: ['**/*.js', '**/*.mjs'],
+    languageOptions: {
+      globals: {
+        // Explicitly define node globals for ESLint 9 Flat Config
+        console: 'readonly',
+        process: 'readonly',
+        Buffer: 'readonly',
+        __dirname: 'readonly',
+        __filename: 'readonly',
+        require: 'readonly',
+        module: 'readonly',
+        exports: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        setInterval: 'readonly',
+        clearInterval: 'readonly',
+      }
+    },
+    rules: {
+      'no-undef': 'error',
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': 'off'
+    }
   }
 );

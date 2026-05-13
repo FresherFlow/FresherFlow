@@ -288,7 +288,11 @@ router.get('/:id/digest-items', requireAuth, async (req: Request, res: Response,
         });
         const profile = userWithProfile?.profile || null;
 
-        const eligibleOpportunities = opportunities.filter((item) => {
+        type DigestOpportunity = (typeof opportunities)[number] & {
+            savedBy: Array<{ id: string }>;
+        };
+
+        const eligibleOpportunities = opportunities.filter((item): item is DigestOpportunity => {
             if (!profile) return false;
             return checkEligibility(item as unknown as Opportunity, profile as unknown as Profile, userId).eligible;
         });
@@ -299,7 +303,7 @@ router.get('/:id/digest-items', requireAuth, async (req: Request, res: Response,
             .filter((item): item is NonNullable<typeof item> => Boolean(item))
             .map((item) => ({
                 ...item,
-                isSaved: item.savedBy.length > 0,
+                isSaved: (item as DigestOpportunity).savedBy.length > 0,
                 savedBy: undefined
             }));
 

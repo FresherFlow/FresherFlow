@@ -4,7 +4,7 @@
  */
 import { OpportunityType, WorkMode } from '@fresherflow/types';
 import nlp from 'compromise';
-import * as natural from 'natural';
+import natural from 'natural';
 import { City } from 'country-state-city';
 import {
     COMMON_SKILLS, COMMON_CITIES, KNOWN_COMPANIES, TITLE_KEYWORDS,
@@ -124,7 +124,13 @@ export function extractSkills(text: string, locations: string[] = []): string[] 
 
     // Fallback: TF-IDF nouns
     if (skills.length < 5) {
-        const tfidf = new natural.TfIdf();
+        // Handle ESM/CJS interop for natural.TfIdf
+        // @ts-expect-error - natural type definitions are inconsistent between ESM and CJS
+        const TfIdfConstructor = natural.TfIdf || natural.default?.TfIdf;
+        if (!TfIdfConstructor) {
+            throw new Error('natural.TfIdf is not a constructor (check import/interop)');
+        }
+        const tfidf = new TfIdfConstructor();
         tfidf.addDocument(text);
         const doc = nlp(text);
         const terms = doc.nouns().out('array') as string[];

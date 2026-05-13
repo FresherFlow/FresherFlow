@@ -30,14 +30,20 @@ const CONCURRENCY: Record<string, number> = {
     internal: 2,
 };
 
-const workers = WORKER_DEFINITIONS.map(({ name, handler }) => ({
-    name,
-    worker: new Worker(
+const workers = env.REDIS_ENABLED !== false
+    ? WORKER_DEFINITIONS.map(({ name, handler }) => ({
         name,
-        async (job) => { await handler(job); },
-        { connection, concurrency: CONCURRENCY[name] ?? 2 },
-    ),
-}));
+        worker: new Worker(
+            name,
+            async (job) => { await handler(job); },
+            { connection, concurrency: CONCURRENCY[name] ?? 2 },
+        ),
+    }))
+    : [];
+
+if (env.REDIS_ENABLED === false) {
+    logger.warn('Redis is disabled. Workers will not be started.');
+}
 
 // Health reporting will use getQueue(name) lazily to minimize Redis connections
 

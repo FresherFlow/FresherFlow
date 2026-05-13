@@ -14,7 +14,7 @@ const router: Router = express.Router();
 router.post('/:id/feedback', requireAuth, validate(feedbackSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { id: opportunityId } = req.params as { id: string };
-        const { reason } = req.body;
+        const { reason, description } = req.body;
 
         // Verify opportunity exists
         const opportunity = await prisma.opportunity.findUnique({
@@ -30,26 +30,52 @@ router.post('/:id/feedback', requireAuth, validate(feedbackSchema), async (req: 
             data: {
                 userId: req.userId!,
                 opportunityId,
-                reason
+                reason,
+                description: description || null
             }
         });
 
-        const reporter = await prisma.user.findUnique({
-            where: { id: req.userId! },
-            select: { email: true }
+        // 3-Report Archive Logic (Item 186 in plan)
+        const reportCount = await prisma.listingFeedback.count({
+            where: { opportunityId }
         });
 
-        TelegramService.notifyListingFeedback({
-            opportunityId,
-            title: opportunity.title as string,
-            company: opportunity.company as string,
-            reason,
-            userEmail: reporter?.email
-        }).catch(() => { });
+        if (reportCount >= 3) {
+            await prisma.opportunity.update({
+                where: { id: opportunityId },
+                data: {
+                    status: 'ARCHIVED',
+                    deletedAt: new Date(),
+                    deletionReason: `Automatically archived due to ${reportCount} community reports.`
+                }
+            });
+
+            // Notify Admin of auto-archiving
+            TelegramService.notifyListingFeedback({
+                opportunityId,
+                title: `[AUTO-ARCHIVED] ${opportunity.title}`,
+                company: opportunity.company as string,
+                reason: `Community Threshold Reached (${reportCount} reports)`,
+                userEmail: 'SYSTEM'
+            }).catch(() => { });
+        } else {
+            const reporter = await prisma.user.findUnique({
+                where: { id: req.userId! },
+                select: { email: true }
+            });
+
+            TelegramService.notifyListingFeedback({
+                opportunityId,
+                title: opportunity.title as string,
+                company: opportunity.company as string,
+                reason,
+                userEmail: reporter?.email
+            }).catch(() => { });
+        }
 
         res.status(201).json({
             feedback,
-            message: 'Feedback submitted successfully'
+            message: reportCount >= 3 ? 'Opportunity archived due to community reports.' : 'Feedback submitted successfully'
         });
     } catch (error: unknown) {
         // Handle unique constraint violation

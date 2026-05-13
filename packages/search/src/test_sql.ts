@@ -1,43 +1,44 @@
-import { PrismaClient, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { join, sqltag as sql, type Sql } from '@prisma/client/runtime/library';
 
 const prisma = new PrismaClient();
 
 async function test() {
     const query = 'byterid';
     const sanitizedQuery = query.trim();
-    
-    const statuses = ['PUBLISHED', 'DRAFT', 'ARCHIVED'];
-    const baseConditions: Prisma.Sql[] = [];
-    baseConditions.push(Prisma.sql`"deletedAt" IS NULL`);
-    baseConditions.push(Prisma.sql`"expiredAt" IS NULL`);
-    baseConditions.push(Prisma.sql`status::text = ANY(${statuses})`);
 
-    const webQuery = Prisma.sql`websearch_to_tsquery('english', ${sanitizedQuery})`;
-    const webQuerySimple = Prisma.sql`websearch_to_tsquery('simple', ${sanitizedQuery})`;
-    
+    const statuses = ['PUBLISHED', 'DRAFT', 'ARCHIVED'];
+    const baseConditions: Sql[] = [];
+    baseConditions.push(sql`"deletedAt" IS NULL`);
+    baseConditions.push(sql`"expiredAt" IS NULL`);
+    baseConditions.push(sql`status::text = ANY(${statuses})`);
+
+    const webQuery = sql`websearch_to_tsquery('english', ${sanitizedQuery})`;
+    const webQuerySimple = sql`websearch_to_tsquery('simple', ${sanitizedQuery})`;
+
     const cleanWords = sanitizedQuery.split(/\s+/)
         .map(w => w.replace(/[*:&|!'( )]/g, ''))
         .filter(w => w.length > 0);
-        
-    const prefixTerm = cleanWords.length > 0 
+
+    const prefixTerm = cleanWords.length > 0
         ? cleanWords.map(w => `${w}:*`).join(' & ')
         : null;
-    
-    const prefixQuery = prefixTerm 
-        ? Prisma.sql`to_tsquery('simple', ${prefixTerm})`
+
+    const prefixQuery = prefixTerm
+        ? sql`to_tsquery('simple', ${prefixTerm})`
         : null;
 
-    let fullTsQuery: Prisma.Sql;
+    let fullTsQuery: Sql;
     if (prefixQuery) {
-        fullTsQuery = Prisma.sql`(${webQuery} || ${webQuerySimple} || ${prefixQuery})`;
+        fullTsQuery = sql`(${webQuery} || ${webQuerySimple} || ${prefixQuery})`;
     } else {
-        fullTsQuery = Prisma.sql`(${webQuery} || ${webQuerySimple})`;
+        fullTsQuery = sql`(${webQuery} || ${webQuerySimple})`;
     }
 
     const allPageConditions = [...baseConditions];
-    allPageConditions.push(Prisma.sql`search_vector @@ ${fullTsQuery}`);
+    allPageConditions.push(sql`search_vector @@ ${fullTsQuery}`);
 
-    const whereClause = Prisma.sql`WHERE ${Prisma.join(allPageConditions, ' AND ')}`;
+    const whereClause = sql`WHERE ${join(allPageConditions, ' AND ')}`;
 
     console.log('Testing query:', query);
 

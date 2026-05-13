@@ -1,9 +1,9 @@
 /**
  * Inferred Base URL for the FresherFlow API across different environments.
- * 
+ *
  * NEXT_PUBLIC_API_URL: for Web (Next.js)
  * EXPO_PUBLIC_API_URL: for Mobile (Expo)
- * 
+ *
  * Also handles Android emulator localhost fallback.
  */
 export function getInferredBaseUrl(): string {
@@ -11,7 +11,7 @@ export function getInferredBaseUrl(): string {
 }
 
 export function getInferredAdminBaseUrl(): string {
-    const isSeparate = 
+    const isSeparate =
         (typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_USE_SEPARATE_ADMIN_API === 'true') ||
         (typeof process !== 'undefined' && process.env?.USE_SEPARATE_ADMIN_API === 'true');
 
@@ -28,11 +28,12 @@ function getUrl(keys: string[], localFallback: string): string {
         }
     }
 
-    if (typeof window !== 'undefined' && (window as any)._FF_API_URL) {
-        return normalizeUrl((window as any)._FF_API_URL);
+    const ffWindow = window as unknown as { _FF_API_URL?: string };
+    if (typeof window !== 'undefined' && ffWindow._FF_API_URL) {
+        return normalizeUrl(ffWindow._FF_API_URL);
     }
 
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && window.location) {
         const hostname = window.location.hostname;
         if (hostname === 'localhost' || hostname === '127.0.0.1') {
             return localFallback;
@@ -45,11 +46,11 @@ function getUrl(keys: string[], localFallback: string): string {
 
 function normalizeUrl(url: string): string {
     let normalized = url.replace(/\/+$/, '');
-    
+
     // Patch Android emulator localhost
     if (typeof navigator !== 'undefined' && /android/i.test(navigator.userAgent)) {
         normalized = normalized.replace('localhost', '10.0.2.2').replace('127.0.0.1', '10.0.2.2');
     }
-    
+
     return normalized;
 }

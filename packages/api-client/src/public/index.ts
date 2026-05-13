@@ -14,6 +14,8 @@ import { actionsApi } from './actions';
 import { alertsApi } from './alerts';
 import { feedbackApi } from './feedback';
 import { appFeedbackApi } from './appFeedback';
+import { commentsApi } from './comments';
+import { contributorsApi } from './contributors';
 
 export const publicApi = {
     auth: authApi,
@@ -32,6 +34,8 @@ export const publicApi = {
     alerts: alertsApi,
     feedback: feedbackApi,
     appFeedback: appFeedbackApi,
+    comments: commentsApi,
+    contributors: contributorsApi,
 
     // Aliases
     getOpportunities: opportunitiesApi.list,
@@ -55,3 +59,5 @@ export * from './actions';
 export * from './alerts';
 export * from './feedback';
 export * from './appFeedback';
+export * from './comments';
+export * from './contributors';

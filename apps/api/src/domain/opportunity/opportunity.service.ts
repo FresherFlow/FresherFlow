@@ -1,5 +1,4 @@
-import prisma, { Prisma } from '../../lib/prisma';
-
+import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, Availability as DbAvailability } from '../../lib/prisma';
 import { OpportunityStatus, OpportunityType, EducationLevel, WorkMode, Availability, Opportunity } from '@fresherflow/types';
 import { EligibilityService } from '../eligibility/eligibility.service';
 import { generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
@@ -7,7 +6,7 @@ import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '@fresherf
 
 /**
  * Opportunity Service - Business Logic Layer
- * 
+ *
  * Responsibilities:
  * - CRUD operations with business rules
  * - Eligibility filtering
@@ -40,8 +39,8 @@ export class OpportunityService {
                 id: tempId,
                 slug,
                 postedByUserId: adminId,
-                status: OpportunityStatus.PUBLISHED,
-                type: data.type || OpportunityType.JOB,
+                status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
+                type: (data.type || OpportunityType.JOB) as unknown as DbOpportunityType,
                 title: data.title || '',
                 company: data.company || '',
                 description: data.description || '',
@@ -78,7 +77,7 @@ export class OpportunityService {
         const published = await prisma.opportunity.update({
             where: { id },
             data: {
-                status: OpportunityStatus.PUBLISHED,
+                status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
                 lastVerified: new Date(),
             },
         });
@@ -149,7 +148,7 @@ export class OpportunityService {
         const deleted = await prisma.opportunity.update({
             where: { id },
             data: {
-                status: OpportunityStatus.ARCHIVED,
+                status: OpportunityStatus.ARCHIVED as unknown as DbOpportunityStatus,
                 deletedAt: new Date(),
                 deletionReason: reason,
             },
@@ -216,11 +215,11 @@ export class OpportunityService {
 
         // Build dynamic filters based on profile preferences
         const andConditions: Prisma.OpportunityWhereInput[] = [
-            { status: OpportunityStatus.PUBLISHED },
+            { status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus },
             { deletedAt: null },
             {
                 OR: [
-                    { expiresAt: null }, 
+                    { expiresAt: null },
                     { expiresAt: { gt: new Date() } },
                 ],
             }
@@ -229,7 +228,7 @@ export class OpportunityService {
         // Hard Gate: Engineering/Degree Match
         andConditions.push({
             OR: [
-                { allowedDegrees: { has: (profile.educationLevel as unknown) as EducationLevel } },
+                { allowedDegrees: { has: (profile.educationLevel as unknown) as DbEducationLevel } },
                 { allowedDegrees: { isEmpty: true } }
             ]
         });
@@ -245,7 +244,7 @@ export class OpportunityService {
         // Preference Filter: Opportunity Type
         if (profile.interestedIn && (profile.interestedIn as unknown[]).length > 0) {
             andConditions.push({
-                type: { in: (profile.interestedIn as unknown) as OpportunityType[] }
+                type: { in: (profile.interestedIn as unknown) as DbOpportunityType[] }
             });
         }
 
@@ -253,7 +252,7 @@ export class OpportunityService {
         if (profile.workModes && (profile.workModes as unknown[]).length > 0) {
             andConditions.push({
                 OR: [
-                    { workMode: { in: (profile.workModes as unknown) as WorkMode[] } },
+                    { workMode: { in: (profile.workModes as unknown) as DbWorkMode[] } },
                     { workMode: null }
                 ]
             });
@@ -392,4 +391,3 @@ export class OpportunityService {
         return await this.getOpportunityById(slugOrId);
     }
 }
-

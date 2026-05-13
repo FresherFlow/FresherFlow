@@ -12,6 +12,7 @@
         "@fresherflow/config": "*",
         "@fresherflow/database": "*",
         "@fresherflow/logger": "*",
+        "@fresherflow/parser": "*",
         "@fresherflow/redis": "*",
         "@fresherflow/schemas": "*",
         "@fresherflow/search": "*",

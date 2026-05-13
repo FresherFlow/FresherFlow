@@ -273,15 +273,15 @@ router.post('/push-token', requireAuth, async (req: Request, res: Response, next
     }
 });
 
-// GET /api/profile/contributions
-router.get('/contributions', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+// GET /api/profile/shares
+router.get('/shares', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId as string;
         const page = parseInt(req.query.page as string) || 1;
         const limit = 20;
         const skip = (page - 1) * limit;
 
-        const contributions = await prisma.rawOpportunity.findMany({
+        const shares = await prisma.rawOpportunity.findMany({
             where: { createdByUserId: userId },
             include: {
                 mappedOpportunity: {
@@ -303,34 +303,32 @@ router.get('/contributions', requireAuth, async (req: Request, res: Response, ne
         });
 
         const total = await prisma.rawOpportunity.count({ where: { createdByUserId: userId } });
-        
-        // Fetch stats for the header
-        const totalContributed = total;
+        const totalShared = total;
         const totalPublished = await prisma.opportunity.count({
-            where: { 
+            where: {
                 rawIngestions: { some: { createdByUserId: userId } },
                 status: 'PUBLISHED'
             }
         });
 
         res.json({
-            contributions,
+            shares,
             stats: {
-                totalContributed,
+                totalShared,
                 totalPublished,
-                approvalRate: totalContributed > 0 ? Math.round((totalPublished / totalContributed) * 100) : 0
+                approvalRate: totalShared > 0 ? Math.round((totalPublished / totalShared) * 100) : 0
             },
             page,
             total,
-            hasMore: skip + contributions.length < total
+            hasMore: skip + shares.length < total
         });
     } catch (error) {
         next(error);
     }
 });
 
-// POST /api/profile/contributions
-router.post('/contributions', optionalAuth, validate(contributionSchema), async (req: Request, res: Response, next: NextFunction) => {
+// POST /api/profile/shares
+router.post('/shares', optionalAuth, validate(contributionSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { url: rawUrl, referral } = req.body;
         const userId = req.userId;
@@ -338,7 +336,7 @@ router.post('/contributions', optionalAuth, validate(contributionSchema), async 
         const url = rawUrl ? normalizeOpportunityUrl(rawUrl) : null;
 
         if (url) {
-            // Robust duplicate check: search for the normalized URL OR 
+            // Robust duplicate check: search for the normalized URL OR
             // if it's a major platform, search for the unique ID part
             const searchConditions: Prisma.OpportunityWhereInput[] = [
                 { sourceLink: url },
@@ -361,7 +359,7 @@ router.post('/contributions', optionalAuth, validate(contributionSchema), async 
 
             // Check for existing opportunity
             const existingOp = await prisma.opportunity.findFirst({
-                where: { 
+                where: {
                     OR: searchConditions,
                     deletedAt: null
                 }
@@ -373,7 +371,7 @@ router.post('/contributions', optionalAuth, validate(contributionSchema), async 
 
             // Check for existing raw contribution
             const existingRaw = await prisma.rawOpportunity.findFirst({
-                where: { 
+                where: {
                     OR: searchConditions as Prisma.RawOpportunityWhereInput[]
                 }
             });
@@ -410,18 +408,18 @@ router.post('/contributions', optionalAuth, validate(contributionSchema), async 
             throw new AppError('Could not resolve ingestion source', 500);
         }
 
-        const contribution = await prisma.rawOpportunity.create({
+        const share = await prisma.rawOpportunity.create({
             data: {
                 sourceId: ingestionSource.id as string,
                 sourceLink: url,
                 status: 'FETCHED',
                 reasonFlags: referral ? ['USER_REFERRAL'] : ['USER_CONTRIBUTED'],
                 createdByUserId: userId,
-                rawPayload: { 
-                    url: url, 
+                rawPayload: {
+                    url: url,
                     originalUrl: rawUrl,
                     referral: referral, // New field
-                    submittedAt: new Date().toISOString() 
+                    submittedAt: new Date().toISOString()
                 }
             }
         });
@@ -434,16 +432,20 @@ router.post('/contributions', optionalAuth, validate(contributionSchema), async 
             void TelegramService.notifyJobSubmission(`REFERRAL: ${referral.company}`, userId ? `user:${userId}` : 'anonymous');
         }
 
-        res.status(201).json({ 
-            success: true, 
-            message: 'Contribution received! Our team will review and publish it soon.',
-            contribution
+        res.status(201).json({
+            success: true,
+            message: 'Share received! Our team will review and publish it soon.',
+            share
         });
     } catch (error) {
         next(error);
     }
 });
 
+// Backward-compatible aliases
+router.get('/contributions', requireAuth, (req, res, next) => {
+    // Redirect or just call the same handler
+    return (router as any).handle(req, res, next);
+});
+
 export default router;
-
-

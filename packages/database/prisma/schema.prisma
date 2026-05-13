@@ -40,6 +40,7 @@ enum ActionType {
   INTERVIEWED
   SELECTED
   VIEWED  // Auto-tracked on job detail view
+  SHARED
   // Legacy values kept for compatibility with existing rows
   PLANNING
   ATTENDED
@@ -51,6 +52,8 @@ enum FeedbackReason {
   LINK_BROKEN // Apply link not working
   DUPLICATE // Duplicate posting detected
   INACCURATE // Wrong information in listing
+  SPAM // Malicious or irrelevant content
+  OTHER // Any other issue
 }
 
 enum AppFeedbackType {
@@ -169,6 +172,14 @@ enum SocialPostStatus {
   DRY_RUN
 }
 
+enum UserTrustLevel {
+  NEW
+  VERIFIED
+  CONTRIBUTOR
+  MODERATOR
+  BANNED
+}
+
 // ============================================================================
 // USER MODELS
 // ============================================================================
@@ -184,6 +195,8 @@ model User {
   referralCode String?  @unique
   referredByUserId String?
   referredAt   DateTime?
+  trustScore   Float    @default(0.0)
+  trustLevel   UserTrustLevel @default(NEW)
   createdAt    DateTime @default(now())
 
   // Relations
@@ -204,17 +217,22 @@ model User {
   referralVisits     ReferralVisit[]      @relation("ReferralVisitReferrer")
   referralVisitsAsVisitor ReferralVisit[] @relation("ReferralVisitVisitor")
   earnedReferralBadges ReferralBadgeGrant[]
-  
+
   // Admin Relations (only for role=ADMIN)
   postedOpportunities Opportunity[]
+  rawContributions   RawOpportunity[]     @relation("UserRawContributions")
   auditLogs           AdminAudit[]
   authenticators     Authenticator[]
+  comments           OpportunityComment[]
+  follows            UserFollow[]
+
   webAuthnChallenges WebAuthnChallenge[]
   updatedAdminDeliveryControls AdminDeliveryControl[]
 
   // Security - TOTP
   totpSecret         String?
   isTwoFactorEnabled Boolean  @default(false)
+
 
   @@index([referredByUserId])
 }
@@ -281,7 +299,7 @@ model Profile {
 
   // Education Details (40% weight total)
   educationLevel EducationLevel?
-  
+
   // 10th Details
   tenthYear        Int?
 
@@ -373,11 +391,13 @@ model Opportunity {
   notesHighlights  String? @db.Text // Optional: bond, training, special conditions
   stipend        String? // New: "10k/month"
   employmentType String? // New: "full-time"
+  tags           String[] @default([])
   sourceLink     String? // Original listing/source page; may equal applyLink when only one URL exists
   applyLink      String?
 
   // Walk-in Specific (nullable for non-walk-ins)
   walkInDetails WalkInDetails?
+  governmentJobDetails GovernmentJobDetails?
 
   // Expiry Management
   expiresAt DateTime?
@@ -392,12 +412,22 @@ model Opportunity {
   postedByUserId String
   user           User    @relation(fields: [postedByUserId], references: [id])
   postedAt        DateTime @default(now())
-  
+  publishedAt     DateTime?
+  updatedAt       DateTime @default(now()) @updatedAt
+
+
   // Health Tracking (Verification Bot)
   linkHealth           LinkHealth @default(HEALTHY)
   verificationFailures Int        @default(0)
   lastVerifiedAt       DateTime   @default(now())
   lastVerified         DateTime   @default(now())
+
+  // Engagement Counters (Denormalized for performance)
+  sharesCount          Int        @default(0)
+  savesCount           Int        @default(0)
+  clicksCount          Int        @default(0)
+  commentsCount        Int        @default(0)
+  trendingScore        Float      @default(0.0)
 
   // Relations
   actions  UserAction[]
@@ -410,6 +440,7 @@ model Opportunity {
   rawIngestions RawOpportunity[]
   events OpportunityEvent[]
   socialPosts SocialPost[]
+  comments    OpportunityComment[]
 
   // Performance Search optimization
   search_vector  Unsupported("tsvector")? @default(dbgenerated("''::tsvector"))
@@ -417,6 +448,8 @@ model Opportunity {
   // DB-level filtering indexes
   @@index([status, deletedAt, type, postedAt(desc)])
   @@index([status, postedAt(desc)])
+  @@index([trendingScore(desc)])
+  @@index([sharesCount(desc)])
   @@index([search_vector], type: Gin)
   @@index([allowedPassoutYears], type: Gin)
   @@index([allowedDegrees], type: Gin)
@@ -424,6 +457,7 @@ model Opportunity {
   @@index([allowedSpecializations], type: Gin)
   @@index([locations], type: Gin)
   @@index([requiredSkills], type: Gin)
+  @@index([tags], type: Gin)
   @@index([salaryMin, salaryMax])
   @@index([company])
   @@index([title]) // Maps to 'role' in queries
@@ -434,6 +468,7 @@ model Opportunity {
   @@index([linkHealth]) // Focus for verification bot
   @@index([lastVerifiedAt]) // Sort by oldest verification
 }
+
 
 model WalkInDetails {
   id            String @id @default(uuid())
@@ -450,6 +485,48 @@ model WalkInDetails {
   contactPhone      String?
 
   opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+}
+
+model GovernmentJobDetails {
+  id                     String   @id @default(uuid())
+  opportunityId          String   @unique
+  department             String?
+  organization           String?
+  recruitingBody         String?
+  officialWebsiteUrl     String?
+  officialNotificationUrl String?
+  advertisementNumber    String?
+  postName               String?
+  applicationMode        String?
+  applicationModes       String[] @default([])
+  vacancyCount           Int?
+  vacancies              Json?
+  applicationFee         String?  @db.Text
+  applicationFeeDetails  Json?
+  ageMin                 Int?
+  ageMax                 Int?
+  ageRelaxation          String?  @db.Text
+  eligibilityDetails     Json?
+  reservationNotes       String?  @db.Text
+  importantInstructions  String?  @db.Text
+  applicationStartDate   String?
+  applicationEndDate     String?
+  examDate               String?
+  examDates              Json?
+  admitCardDate          String?
+  resultDate             String?
+  selectionStages        String[] @default([])
+  requiredDocuments      String[] @default([])
+  requiredDocumentDetails Json?
+  seoTags                String[] @default([])
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([department])
+  @@index([organization])
+  @@index([seoTags], type: Gin)
 }
 
 model SavedOpportunity {
@@ -488,6 +565,7 @@ model ListingFeedback {
   userId        String
   opportunityId String
   reason        FeedbackReason // Enum
+  description   String?        @db.Text
   createdAt     DateTime       @default(now())
 
   user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -727,6 +805,7 @@ model SocialPost {
   dedupeKey       String           @unique
   errorMessage    String?          @db.Text
   payload         Json?
+  scheduledFor    DateTime?
   publishedAt     DateTime?
   retryCount      Int              @default(0)
   createdAt       DateTime         @default(now())
@@ -734,9 +813,29 @@ model SocialPost {
 
   opportunity     Opportunity      @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
 
-  @@index([opportunityId, platform])
-  @@index([status, platform])
+  @@index([opportunityId, platform, status])
+  @@index([scheduledFor, status])
   @@index([createdAt])
+}
+
+model UserFollow {
+  id          String    @id @default(cuid())
+  userId      String
+  type        FollowType
+  value       String      // tag name, company name, or contributor userId
+  createdAt   DateTime  @default(now())
+
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, value])
+  @@index([userId])
+  @@index([type, value])
+}
+
+enum FollowType {
+  TAG
+  COMPANY
+  CONTRIBUTOR
 }
 
 model IngestionSource {
@@ -796,6 +895,7 @@ model RawOpportunity {
   fresherScore        Int?
   reasonFlags         String[]             @default([])
   mappedOpportunityId String?
+  createdByUserId     String?
   errorMessage        String?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
@@ -803,10 +903,41 @@ model RawOpportunity {
   source            IngestionSource @relation(fields: [sourceId], references: [id], onDelete: Cascade)
   ingestionRun      IngestionRun?   @relation(fields: [ingestionRunId], references: [id], onDelete: SetNull)
   mappedOpportunity Opportunity?    @relation(fields: [mappedOpportunityId], references: [id], onDelete: SetNull)
+  createdBy         User?           @relation("UserRawContributions", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([sourceId, createdAt])
   @@index([status, createdAt])
   @@index([sourceLink])
   @@index([applyLink])
   @@index([sourceExternalId])
+  @@index([createdByUserId])
+}
+
+model DomainReputation {
+  id             String   @id @default(uuid())
+  domain         String   @unique
+  trustScore     Float    @default(0.5) // 0.0 to 1.0
+  isOfficial     Boolean  @default(false)
+  notes          String?
+  lastActivityAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([domain])
+  @@index([trustScore])
+}
+
+model OpportunityComment {
+  id            String      @id @default(cuid())
+  opportunityId String
+  userId        String
+  text          String      @db.VarChar(500)
+  createdAt     DateTime    @default(now())
+  deletedAt     DateTime?
+
+  opportunity   Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([opportunityId, createdAt])
+  @@index([userId])
 }

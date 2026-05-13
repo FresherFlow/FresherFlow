@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import { Prisma } from '@fresherflow/database';
+import { Prisma, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType, Profile, Opportunity } from '@fresherflow/types';
 import { env } from '@fresherflow/config';
 import { logger } from '@fresherflow/logger';
@@ -11,7 +11,8 @@ import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
     GUEST_FEED_LIMIT, MAX_FEED_LIMIT, MAX_FEED_PAGE, GUEST_FEED_CACHE_TTL_SECONDS,
     normalizeSafeQueryString, parseStrictPositiveInt, ALLOWED_SORT_KEYS, MAX_SALARY_FILTER,
-    buildGuestOpportunitySelect, buildPublicOpportunitySelect, getFreshnessScore
+    buildGuestOpportunitySelect, buildPublicOpportunitySelect, getFreshnessScore, parseSiteMode,
+    GUEST_FEED_CACHE_CONTROL
 } from './_helpers';
 
 const router: Router = Router();
@@ -41,9 +42,13 @@ function parseOpportunityType(raw?: string): OpportunityType | undefined {
 
 router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { type, city, relevanceDebug, minSalary, maxSalary, page = '1', limit = '50', sort } = req.query;
+        const { type, city, tag, relevanceDebug, minSalary, maxSalary, company, closingSoon, page = '1', limit = '50', sort, siteMode, feedType } = req.query;
         const typeValue = normalizeSafeQueryString(type, 24);
         const cityValue = normalizeSafeQueryString(city, 80);
+        const tagValue = normalizeSafeQueryString(tag, 80);
+        const companyValue = normalizeSafeQueryString(company, 100);
+        const closingSoonValue = closingSoon === 'true';
+        const effectiveSiteMode = parseSiteMode(siteMode as string);
         const filterType = parseOpportunityType(typeValue || undefined);
         const minSal = minSalary !== undefined ? parseStrictPositiveInt(minSalary) : undefined;
         const maxSal = maxSalary !== undefined ? parseStrictPositiveInt(maxSalary) : undefined;
@@ -59,8 +64,8 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         if (p < 1 || p > MAX_FEED_PAGE) throw new AppError(`Page must be between 1 and ${MAX_FEED_PAGE}`, 400);
         if (l < 1 || l > MAX_FEED_LIMIT) throw new AppError(`Limit must be between 1 and ${MAX_FEED_LIMIT}`, 400);
 
-        const sortKey = normalizeSafeQueryString(sort, 24).toLowerCase();
-        if (!ALLOWED_SORT_KEYS.has(sortKey)) throw new AppError(`Unsupported sort '${sortKey}'`, 400);
+        const sortKey = normalizeSafeQueryString(sort, 24).toLowerCase() || (feedType === 'trending' ? 'trending' : 'default');
+        if (!ALLOWED_SORT_KEYS.has(sortKey) && sortKey !== 'trending' && sortKey !== 'default') throw new AppError(`Unsupported sort '${sortKey}'`, 400);
 
         if (minSal != null && (minSal < 0 || minSal > MAX_SALARY_FILTER)) throw new AppError('Invalid minSalary filter', 400);
         if (maxSal != null && (maxSal < 0 || maxSal > MAX_SALARY_FILTER)) throw new AppError('Invalid maxSalary filter', 400);
@@ -78,40 +83,60 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
         const isGuest = !userId;
         const redis_client = env.NODE_ENV === 'development' ? null : redis;
 
+        const oneMonthAgo = new Date();
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+
         const andConditions: Prisma.OpportunityWhereInput[] = [
-            { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }
+            { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+            { postedAt: { gte: oneMonthAgo } } // Lightweight 30-day expiry
         ];
         if (minSal != null) andConditions.push({ OR: [{ salaryMin: { gte: minSal } }, { salaryMax: { gte: minSal } }] });
         if (maxSal != null) andConditions.push({ salaryMin: { lte: maxSal } });
 
+        // Feed Type Specific Logic (Item 94-99 in plan)
+        if (feedType === 'remote') {
+            andConditions.push({ workMode: 'REMOTE' });
+        } else if (feedType === '2026') {
+            andConditions.push({ allowedPassoutYears: { has: 2026 } });
+        } else if (feedType === 'internships') {
+            andConditions.push({ type: 'INTERNSHIP' });
+        } else if (feedType === 'walkins') {
+            andConditions.push({ type: 'WALKIN' });
+        }
+
         const whereClause: Prisma.OpportunityWhereInput = {
-            status: OpportunityStatus.PUBLISHED,
+            status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
             deletedAt: null,
             AND: andConditions,
-            ...(filterType ? { type: filterType } : {}),
+            ...(effectiveSiteMode === 'govt'
+                ? { governmentJobDetails: { isNot: null } }
+                : { governmentJobDetails: { is: null } }),
+            ...(filterType ? { type: filterType as unknown as DbOpportunityType } : {}),
             ...(cityValue ? { locations: { has: cityValue } } : {}),
+            ...(tagValue ? { tags: { has: tagValue } } : {}),
+            ...(companyValue ? { company: { equals: companyValue, mode: 'insensitive' } } : {}),
+            ...(closingSoonValue ? { expiresAt: { lte: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000) } } : {}),
         };
 
+        const effectiveGuestPage = 1;
+        const effectiveGuestLimit = Math.min(l, GUEST_FEED_LIMIT);
         const guestCacheKey = isGuest
-            ? ['opportunities', 'v3', `type:${filterType || 'all'}`, `city:${cityValue || 'all'}`, `min:${minSal ?? 'na'}`, `max:${maxSal ?? 'na'}`, `sort:${sortKey || 'default'}`, `page:${p}`, `limit:${Math.min(l, GUEST_FEED_LIMIT)}`].join('|')
+            ? ['opportunities', 'v5', `mode:${effectiveSiteMode}`, `feed:${feedType || 'all'}`, `type:${filterType || 'all'}`, `city:${cityValue || 'all'}`, `tag:${tagValue || 'all'}`, `min:${minSal ?? 'na'}`, `max:${maxSal ?? 'na'}`, `sort:${sortKey || 'default'}`, `page:${effectiveGuestPage}`, `limit:${effectiveGuestLimit}`].join('|')
             : null;
 
         if (isGuest && guestCacheKey && redis_client) {
             const cached = await redis_client.get(guestCacheKey).catch(() => null);
             if (cached) {
-                res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
-                res.setHeader('Vary', 'Cookie, Authorization');
+                res.setHeader('Cache-Control', GUEST_FEED_CACHE_CONTROL);
                 res.setHeader('X-Feed-Cache', 'HIT');
                 return res.json(JSON.parse(cached));
             }
         }
 
-        const effectiveLimit = isGuest ? Math.min(l, GUEST_FEED_LIMIT) : l;
+        const effectiveLimit = isGuest ? effectiveGuestLimit : l;
         const effectiveSkip = isGuest ? 0 : (p - 1) * effectiveLimit;
         const shouldIncludeExactTotal = !isGuest && p === 1;
 
-        // Fetch a larger pool so profile-based filtering doesn't silently reduce results.
-        // After filtering we slice down to effectiveLimit.
         const fetchMultiplier = profile && !isAdmin ? 3 : 1;
         const fetchLimit = Math.min(effectiveLimit * fetchMultiplier, MAX_FEED_LIMIT * fetchMultiplier);
 
@@ -120,7 +145,7 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
             prisma.opportunity.findMany({
                 where: whereClause,
                 select: isGuest ? buildGuestOpportunitySelect() : buildPublicOpportunitySelect(userId),
-                orderBy: { postedAt: 'desc' },
+                orderBy: sortKey === 'trending' ? { trendingScore: 'desc' } : { postedAt: 'desc' },
                 distinct: ['id'],
                 take: fetchLimit,
                 skip: effectiveSkip
@@ -132,9 +157,13 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
             return { ...rest, isSaved: Boolean(savedBy && (savedBy as unknown[]).length > 0) } as unknown as Opportunity;
         });
 
-        if (isGuest) res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=300, stale-while-revalidate=600');
-        else res.setHeader('Cache-Control', 'private, no-store');
-        res.setHeader('Vary', 'Cookie, Authorization');
+        if (isGuest) {
+            res.setHeader('Cache-Control', GUEST_FEED_CACHE_CONTROL);
+            res.setHeader('X-Feed-Cache', 'MISS');
+        } else {
+            res.setHeader('Cache-Control', 'private, no-store');
+            res.setHeader('Vary', 'Cookie, Authorization');
+        }
 
         let finalResults = mappedResults;
         if (!isAdmin && profile) {
@@ -143,7 +172,6 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
                 profile as unknown as Profile,
                 userId || undefined
             );
-            // Attach matchScore to each opportunity and slice to the requested limit
             finalResults = ranked.slice(0, effectiveLimit).map((item) => ({
                 ...item.opportunity,
                 matchScore: item.score,
@@ -167,16 +195,20 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
             }
         }
 
+        // Apply specialized sorting after filtering
         if (sortKey === 'freshness_v2') {
             const daySeed = Number(`${new Date().toISOString().slice(0, 10).replace(/-/g, '')}${userId || '0'}`.slice(-6));
             sorted = [...sorted].sort((a, b) => getFreshnessScore(b as unknown as Opportunity, daySeed) - getFreshnessScore(a as unknown as Opportunity, daySeed));
+        } else if (sortKey === 'trending') {
+            // Already sorted by trendingScore in DB if possible, but refined here if filtered
+            sorted = [...sorted].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
         }
 
         const responsePayload = {
             opportunities: sorted,
             count: sorted.length,
             total: isGuest ? sorted.length : totalAvailable,
-            page: isGuest ? 1 : p,
+            page: isGuest ? effectiveGuestPage : p,
             limit: effectiveLimit,
             guestTeaser: isGuest,
             requiresAuthForFullFeed: isGuest,

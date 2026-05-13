@@ -3,6 +3,7 @@ import express, { Router, Request, Response, NextFunction } from 'express';
 
 import { requireAuth } from '../middleware/auth';
 import { AppError } from '../middleware/errorHandler';
+import { updateOpportunityEngagement } from '../application/opportunity/engagement';
 
 const router: Router = express.Router();
 
@@ -54,6 +55,9 @@ router.post('/:id', requireAuth, async (req: Request, res: Response, next: NextF
                     }
                 }
             });
+
+            await updateOpportunityEngagement(opportunityId, 'unsave');
+
             res.json({ saved: false, message: 'Removed from bookmarks' });
         } else {
             // 4. Save (Create)
@@ -63,8 +67,12 @@ router.post('/:id', requireAuth, async (req: Request, res: Response, next: NextF
                     opportunityId
                 }
             });
+
+            await updateOpportunityEngagement(opportunityId, 'save');
+
             res.json({ saved: true, message: 'Saved to bookmarks' });
         }
+
     } catch (error) {
         next(error);
     }

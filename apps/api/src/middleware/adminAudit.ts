@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { logger } from '@fresherflow/logger';
 import prisma from '../infrastructure/database/prisma';
 
-type AdminAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'EXPIRE' | 'BULK_ACTION' | 'EXPORT';
+type AdminAction = 'CREATE' | 'UPDATE' | 'DELETE' | 'EXPIRE' | 'BULK_ACTION' | 'EXPORT' | 'REJECT' | 'SPAM';
 
 /**
  * Automatic Admin Audit Middleware

@@ -4,6 +4,13 @@ import type {
     PublicKeyCredentialRequestOptionsJSON,
     RegistrationResponseJSON,
 } from '@simplewebauthn/browser';
+
+export type {
+    AuthenticationResponseJSON,
+    PublicKeyCredentialCreationOptionsJSON,
+    PublicKeyCredentialRequestOptionsJSON,
+    RegistrationResponseJSON,
+};
 import type { Admin } from '@fresherflow/types';
 import { apiClient } from './apiClient';
 
@@ -27,13 +34,13 @@ export const adminAuthApi = {
         }),
 
     verifyLogin: (email: string, body: AuthenticationResponseJSON) =>
-        apiClient<{ verified: boolean }>('/api/admin/auth/login/verify', {
+        apiClient<{ verified: boolean; accessToken?: string }>('/api/admin/auth/login/verify', {
             method: 'POST',
             body: JSON.stringify({ email, body }),
         }),
 
     verifyLoginTotp: (email: string, code: string) =>
-        apiClient<{ verified: boolean }>('/api/admin/auth/login/totp', {
+        apiClient<{ verified: boolean; accessToken?: string }>('/api/admin/auth/login/totp', {
             method: 'POST',
             body: JSON.stringify({ email, code }),
         }),

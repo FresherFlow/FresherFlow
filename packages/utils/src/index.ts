@@ -3,3 +3,6 @@ export * from './profileCompletion';
 export * from './skillNormalization';
 export * from './slugify';
 export * from './companyLogo';
+export * from './urlNormalization';
+export * from './fingerprint';
+export * from './domains';

@@ -1,3 +1,5 @@
+import { normalizeOpportunityUrl } from '@fresherflow/utils';
+
 export type NormalizedOpportunityLinks = {
     sourceLink?: string;
     applyLink?: string;
@@ -5,8 +7,8 @@ export type NormalizedOpportunityLinks = {
 
 function normalizeUrl(value: unknown): string | undefined {
     if (typeof value !== 'string') return undefined;
-    const trimmed = value.trim();
-    return trimmed.length > 0 ? trimmed : undefined;
+    const normalized = normalizeOpportunityUrl(value);
+    return normalized || undefined;
 }
 
 export function normalizeOpportunityLinks(

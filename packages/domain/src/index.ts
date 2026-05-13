@@ -1,5 +1,17 @@
 // @fresherflow/domain - Central Domain Logic
 
+export {
+    calculateTrendingScore,
+    sortOpportunitiesByTrending,
+} from './opportunity/ranking.js';
+
+export {
+    determineTrustLevel,
+    calculateNewTrustScore,
+    calculateDomainAdjustment,
+    REPUTATION_WEIGHTS,
+} from './profile/reputation.js';
+
 // Eligibility & Matching
 export * from './eligibility/match.js';
 export * from './eligibility/rules.js';
@@ -19,6 +31,7 @@ export * from './opportunity/display.js';
 export * from './opportunity/routing.js';
 export * from './opportunity/events.js';
 
+
 // Analytics
 export * from './analytics/events.js';
 export * from './analytics/funnel.js';
@@ -35,7 +48,11 @@ export * from './referral/routing.js';
 // Ingestion Dedupe
 export * from './ingestion/dedupe.js';
 
+// Moderation
+
+
 export type { DomainEvent, OpportunityCreatedEvent, OpportunityPublishedEvent } from './opportunity/events.js';
+
 export type { ListingState, TimelineEventView, EligibilitySnapshot, SharePlatform } from './opportunity/display.js';
 
 export {
@@ -66,6 +83,7 @@ export {
 
 export {
     normalizeSalaryInput,
+    generateOpportunitySlug,
 } from './opportunity/normalization.js';
 
 export {

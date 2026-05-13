@@ -81,7 +81,7 @@ export const adminSystemApi = {
         apiClient<{ message: string }>('/api/admin/system/metrics/refresh', { method: 'POST' }),
 
     alertDispatchLogs: (limit: number = 20) =>
-        apiClient<{ logs: any[] }>(`/api/admin/system/alerts/dispatch-logs?limit=${limit}`),
+        apiClient<{ logs: unknown[] }>(`/api/admin/system/alerts/dispatch-logs?limit=${limit}`),
 
     verifyLinksStats: () =>
         apiClient<VerifyLinksStats>('/api/admin/system/verify-links/stats'),

@@ -5,6 +5,8 @@ import { adminRateLimit } from '../../../middleware/adminRateLimit';
 import { withAdminAudit, validateReason } from '../../../middleware/adminAudit';
 import { AppError } from '../../../middleware/errorHandler';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
+import { publishOpportunity } from '../../../application/opportunity/publish';
+import { rejectOpportunity } from '../../../application/opportunity/moderation';
 
 const router = Router();
 
@@ -104,6 +106,99 @@ router.delete(
             });
 
             res.json({ opportunity, message: 'Opportunity removed successfully (soft delete)' });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+        } catch (error) {
+            next(error);
+        }
+    },
+);
+
+/**
+ * POST /api/admin/opportunities/:id/publish
+ */
+router.post(
+    '/:id/publish',
+    adminRateLimit,
+    withAdminAudit('UPDATE'),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const idParam = req.params.id as string;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const adminId = (req as any).user?.id || 'SYSTEM_ADMIN';
+
+            if (!idParam) throw new AppError('Opportunity ID is required', 400);
+
+            const existing = await prisma.opportunity.findFirst({
+                where: { OR: [{ id: idParam }, { slug: idParam }] },
+            });
+            if (!existing) throw new AppError('Opportunity not found', 404);
+
+            const opportunity = await publishOpportunity(existing.id as string, adminId);
+
+            res.json({ opportunity, message: 'Opportunity published successfully' });
+        } catch (error) {
+            next(error);
+        }
+    },
+);
+
+/**
+ * POST /api/admin/opportunities/:id/reject
+ */
+router.post(
+    '/:id/reject',
+    adminRateLimit,
+    validateReason,
+    withAdminAudit('REJECT'),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const idParam = req.params.id as string;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const adminId = (req as any).user?.id || 'SYSTEM_ADMIN';
+            const { reason } = req.body;
+
+            if (!idParam) throw new AppError('Opportunity ID is required', 400);
+
+            const existing = await prisma.opportunity.findFirst({
+                where: { OR: [{ id: idParam }, { slug: idParam }] },
+            });
+            if (!existing) throw new AppError('Opportunity not found', 404);
+
+            const opportunity = await rejectOpportunity(existing.id as string, adminId, reason, false);
+
+            res.json({ opportunity, message: 'Opportunity rejected and archived' });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+        } catch (error) {
+            next(error);
+        }
+    },
+);
+
+/**
+ * POST /api/admin/opportunities/:id/spam
+ */
+router.post(
+    '/:id/spam',
+    adminRateLimit,
+    validateReason,
+    withAdminAudit('SPAM'),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const idParam = req.params.id as string;
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const adminId = (req as any).user?.id || 'SYSTEM_ADMIN';
+            const { reason } = req.body;
+
+            if (!idParam) throw new AppError('Opportunity ID is required', 400);
+
+            const existing = await prisma.opportunity.findFirst({
+                where: { OR: [{ id: idParam }, { slug: idParam }] },
+            });
+            if (!existing) throw new AppError('Opportunity not found', 404);
+
+            const opportunity = await rejectOpportunity(existing.id as string, adminId, reason, true);
+
+            res.json({ opportunity, message: 'Opportunity flagged as spam and archived' });
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
         } catch (error) {
             next(error);

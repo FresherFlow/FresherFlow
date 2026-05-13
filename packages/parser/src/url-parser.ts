@@ -55,27 +55,33 @@ export class UrlParser {
      * Entry point to fetch and parse a raw URL from the web.
      */
     static async parseUrl(url: string): Promise<UrlParseResult> {
-        const sourceType = this.detectSourceType(new URL(url).hostname);
+        let hostname = '';
+        try {
+            hostname = new URL(url).hostname;
+        } catch {
+            // sourceType will fallback to GENERIC if URL is invalid
+        }
+        const sourceType = this.detectSourceType(hostname);
         let html = '';
         try {
-            const resp = await axios.get(url, { 
+            const resp = await axios.get(url, {
                 timeout: 10000,
-                headers: { 
+                headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                } 
+                }
             });
             html = resp.data;
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : 'Unknown fetch error';
-            return { 
-                parsed: {}, 
-                meta: { 
-                    sourceType, 
-                    confidence: 0, 
-                    missing: ['content'], 
-                    warnings: [`fetch_failed: ${message}`], 
-                    finalUrl: url 
-                } 
+            return {
+                parsed: {},
+                meta: {
+                    sourceType,
+                    confidence: 0,
+                    missing: ['content'],
+                    warnings: [`fetch_failed: ${message}`],
+                    finalUrl: url
+                }
             };
         }
 
@@ -143,7 +149,7 @@ export class UrlParser {
                 for (const node of nodes) {
                     const type = String(node?.['@type'] || '').toLowerCase();
                     if (!type.includes('jobposting')) continue;
-                    
+
                     const locationNodes = Array.isArray(node.jobLocation) ? node.jobLocation : node.jobLocation ? [node.jobLocation] : [];
                     const locations = locationNodes
                         .map((loc) => loc?.address?.addressLocality || loc?.address?.addressRegion || loc?.address?.addressCountry || loc?.name)
@@ -200,7 +206,7 @@ export class UrlParser {
      */
     static parseWorkdayResponse(data: unknown, jobCode: string): Partial<ParsedJob> | null {
         const postings = ((data as { jobPostings?: WorkdayPosting[] })?.jobPostings || []) as WorkdayPosting[];
-        
+
         const picked = postings.find((item) =>
             (jobCode && (item.bulletFields || []).some((field) => String(field).includes(jobCode)))
             || (jobCode && String(item.externalPath || '').includes(jobCode))

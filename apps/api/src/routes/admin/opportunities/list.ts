@@ -1,5 +1,5 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../../infrastructure/database/prisma';
+import prisma, { OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '../../../infrastructure/database/prisma';
 import { Prisma } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { searchOpportunities } from '../../../application/opportunity';
@@ -21,7 +21,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         const now = new Date();
 
         const normalizedType = typeof type === 'string' ? normalizeTypeParam(type) : undefined;
-        if (normalizedType) where.type = normalizedType;
+        if (normalizedType) where.type = normalizedType as unknown as DbOpportunityType;
 
         const statusFilter = typeof status === 'string' ? parseAdminStatusFilter(status) : undefined;
         if (statusFilter === 'EXPIRED') {
@@ -30,10 +30,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         } else if (statusFilter === 'DELETED') {
             where.deletedAt = { not: null };
         } else if (statusFilter === OpportunityStatus.ARCHIVED) {
-            where.status = OpportunityStatus.ARCHIVED;
+            where.status = OpportunityStatus.ARCHIVED as unknown as DbOpportunityStatus;
             where.deletedAt = null;
         } else if (statusFilter === 'LIVE') {
-            where.status = OpportunityStatus.PUBLISHED;
+            where.status = OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus;
             where.deletedAt = null;
             where.expiredAt = null;
             andFilters.push({ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] });
@@ -54,7 +54,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
 
         const shouldForceLiveOnly = activeOnly === 'true' && (!statusFilter || statusFilter === OpportunityStatus.PUBLISHED);
         if (shouldForceLiveOnly) {
-            where.status = OpportunityStatus.PUBLISHED;
+            where.status = OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus;
             where.deletedAt = null;
             where.expiredAt = null;
             andFilters.push({ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] });
@@ -119,6 +119,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
             ...(skip !== undefined ? { skip } : {}),
             include: {
                 ...(shouldIncludeWalkInDetails ? { walkInDetails: true } : {}),
+                governmentJobDetails: true,
                 ...(shouldIncludeCounts ? { _count: { select: { actions: true, feedback: true } } } : {}),
                 socialPosts: true,
             },
@@ -143,7 +144,7 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
     try {
         const now = new Date();
         const liveWhere: Prisma.OpportunityWhereInput = {
-            status: OpportunityStatus.PUBLISHED,
+            status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
             deletedAt: null,
             expiredAt: null,
             OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
@@ -152,10 +153,10 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
             await prisma.$transaction([
                 prisma.opportunity.count({ where: { deletedAt: null } }),
                 prisma.opportunity.count({ where: liveWhere }),
-                prisma.opportunity.count({ where: { deletedAt: null, type: OpportunityType.WALKIN } }),
-                prisma.opportunity.count({ where: { ...liveWhere, type: OpportunityType.WALKIN } }),
-                prisma.opportunity.count({ where: { status: OpportunityStatus.DRAFT, deletedAt: null } }),
-                prisma.opportunity.count({ where: { status: OpportunityStatus.ARCHIVED, deletedAt: null } }),
+                prisma.opportunity.count({ where: { deletedAt: null, type: OpportunityType.WALKIN as unknown as DbOpportunityType } }),
+                prisma.opportunity.count({ where: { ...liveWhere, type: OpportunityType.WALKIN as unknown as DbOpportunityType } }),
+                prisma.opportunity.count({ where: { status: OpportunityStatus.DRAFT as unknown as DbOpportunityStatus, deletedAt: null } }),
+                prisma.opportunity.count({ where: { status: OpportunityStatus.ARCHIVED as unknown as DbOpportunityStatus, deletedAt: null } }),
                 prisma.opportunity.count({ where: { deletedAt: { not: null } } }),
                 prisma.opportunity.count({ where: buildExpiredWhere(now) }),
             ]);
@@ -176,6 +177,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
             where: { OR: [{ id }, { slug: id }] },
             include: {
                 walkInDetails: true,
+                governmentJobDetails: true,
                 events: { orderBy: { eventDate: 'asc' } },
                 socialPosts: { orderBy: { createdAt: 'desc' } },
                 _count: { select: { actions: true, feedback: true } },

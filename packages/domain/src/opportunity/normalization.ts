@@ -2,6 +2,7 @@
 // Merged logic from Web and Parser for ultimate consistency.
 
 import type { Opportunity, ParsedJob } from '@fresherflow/types';
+import { generateSlug } from '@fresherflow/utils';
 
 // ── Shared Constants ─────────────────────────────────────────────────────────
 
@@ -97,10 +98,10 @@ export function normalizeSalary(text: string): NormalizedSalary {
         const isK = monthlyMatch[0].toLowerCase().includes('k');
         const val = parseInt(raw) * (isK ? 1000 : 1);
         const kVal = val / 1000;
-        return { 
-            min: val, 
-            period: 'MONTHLY', 
-            range: `${Number.isInteger(kVal) ? kVal.toFixed(0) : kVal.toFixed(1)}k/month` 
+        return {
+            min: val,
+            period: 'MONTHLY',
+            range: `${Number.isInteger(kVal) ? kVal.toFixed(0) : kVal.toFixed(1)}k/month`
         };
     }
 
@@ -198,7 +199,7 @@ export const normalizeExpiry = (text: string): string | undefined => {
             }
             continue;
         }
-        
+
         // Month name parsing
         const cleaned = raw.trim().replace(/(\d+)(st|nd|rd|th)/gi, '$1');
         const dMatch = cleaned.match(/(\d{1,2})\s+([a-zA-Z]{3,9})(?:\s+(\d{4}))?/);
@@ -235,4 +236,31 @@ export function normalizeOpportunity(raw: ParsedJob): Partial<Opportunity> {
         allowedPassoutYears: raw.allowedPassoutYears || [],
         salaryRange: raw.salaryRange,
     };
+}
+
+/**
+ * Generates a content-based fingerprint for duplicate detection (Phase 2).
+ * Normalizes title, company, and location to create a deterministic key.
+ */
+export function generateContentFingerprint(data: {
+    title: string;
+    company: string;
+    locations?: string[];
+    workMode?: string;
+}): string {
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+    const title = normalize(data.title);
+    const company = normalize(data.company);
+    const loc = normalizeLocations(data.locations).shortLabel.toLowerCase();
+    const mode = (data.workMode || '').toLowerCase();
+
+    return `${company}|${title}|${loc}|${mode}`;
+}
+
+/**
+ * Generates a URL-friendly slug for an opportunity.
+ */
+export function generateOpportunitySlug(company: string, title: string): string {
+    return generateSlug(title, company);
 }

@@ -2,10 +2,18 @@
   "name": "@fresherflow/api-client",
   "version": "1.0.0",
   "main": "src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
+  },
   "dependencies": {
     "@fresherflow/types": "*"
   },
   "devDependencies": {
-    "typescript": "^5.0.0"
+    "typescript": "^5.7.3",
+    "eslint": "^9.10.0",
+    "typescript-eslint": "^8.5.0",
+    "eslint-config-prettier": "^9.1.0"
   }
 }

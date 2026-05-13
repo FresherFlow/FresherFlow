@@ -164,7 +164,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
             select: { badge: true, createdAt: true },
         });
 
-        const earnedBadges = badges.map((b) => ({
+        const earnedBadges = badges.map((b: { badge: string; createdAt: Date; }) => ({
             badge: b.badge,
             ...BADGE_META[b.badge],
             earnedAt: b.createdAt,
@@ -209,4 +209,3 @@ function generateCode(len = 6): string {
 
 export default router;
 export { generateCode };
-

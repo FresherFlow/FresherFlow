@@ -48,6 +48,8 @@ import sitemapRoutes from './routes/public/sitemap';
 import opportunityClickRoutes from './routes/public/opportunityClicks';
 import cronRoutes from './routes/cron';
 import referralRoutes from './routes/referrals';
+import contributorsRoutes from './routes/public/contributors';
+import followsRoutes from './routes/follows';
 import joblinksRoutes from './routes/public/joblinks';
 
 const app: Application = express();
@@ -143,7 +145,7 @@ app.use(cors({
     origin: (origin, callback) => {
         // Allow requests with no origin (like mobile apps or curl)
         if (!origin) return callback(null, true);
-        
+
         if (isAllowedOrigin(origin)) {
             return callback(null, true);
         }
@@ -301,6 +303,8 @@ if (isUserMode) {
     app.use('/api/feedback', appFeedbackRoutes);
     app.use('/api/referrals', referralRoutes);
     app.use('/api/public/referrals', referralRoutes);
+    app.use('/api/public/contributors', contributorsRoutes);
+    app.use('/api/follows', followsRoutes);
 }
 
 if (isAdminMode) {
@@ -380,5 +384,3 @@ process.on('unhandledRejection', (reason, promise) => {
 });
 
 export default app;
- 
- 

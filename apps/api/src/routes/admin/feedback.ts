@@ -100,7 +100,7 @@ router.get('/', requireAdmin, async (req: Request, res: Response, next: NextFunc
         }, {} as Record<string, FeedbackGroup>);
 
         // Sort by negative count
-        const sorted = Object.values(feedbackByOpportunity).sort((a, b) =>
+        const sorted = (Object.values(feedbackByOpportunity) as FeedbackGroup[]).sort((a, b) =>
             b.negativeCount - a.negativeCount
         );
 
@@ -135,4 +135,3 @@ router.get('/opportunities/:id', requireAdmin, async (req: Request, res: Respons
 });
 
 export default router;
-

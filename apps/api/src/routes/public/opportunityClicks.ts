@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import express, { NextFunction, Request, Response } from 'express';
 
 import { optionalAuth } from '../../middleware/auth';
+import { updateOpportunityEngagement } from '../../application/opportunity/engagement';
 
 const router = express.Router();
 
@@ -98,6 +99,11 @@ router.post('/opportunities/:id/click', optionalAuth, async (req: Request, res: 
                 isInternal,
             }
         });
+
+        // Update Engagement Counters (Item 160 in plan)
+        if (!isInternal) {
+            await updateOpportunityEngagement(opportunity.id, 'click');
+        }
 
         return res.status(202).json({ ok: true });
     } catch (error) {

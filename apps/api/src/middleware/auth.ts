@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import express, { Response, NextFunction } from 'express';
 import { verifyAccessToken, verifyAdminToken } from '@fresherflow/auth';
 import { AppError } from './errorHandler';
 
@@ -13,7 +13,7 @@ declare global {
 }
 
 // Optional User Authentication Middleware
-export function optionalAuth(req: Request, res: Response, next: NextFunction) {
+export function optionalAuth(req: express.Request, res: Response, next: NextFunction) {
     const authHeader = req.headers.authorization;
     const bearerToken =
         authHeader && authHeader.toLowerCase().startsWith('bearer ')
@@ -34,7 +34,7 @@ export function optionalAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 // User Authentication Middleware
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export function requireAuth(req: express.Request, res: Response, next: NextFunction) {
     const authHeader = req.headers.authorization;
     const bearerToken =
         authHeader && authHeader.toLowerCase().startsWith('bearer ')
@@ -63,7 +63,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 // Admin Authentication Middleware
 // Accepts both cookie (web) and Authorization Bearer header (mobile app)
-export function requireAdmin(req: Request, res: Response, next: NextFunction) {
+export function requireAdmin(req: express.Request, res: Response, next: NextFunction) {
     const cookieToken = req.cookies?.adminAccessToken as string | undefined;
     const authHeader = req.headers ? req.headers.authorization : undefined;
     const bearerToken =

@@ -1,7 +1,7 @@
 import express, { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../infrastructure/database/prisma';
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
-import { Prisma } from '@fresherflow/database';
+import { OpportunityStatus } from '@fresherflow/types';
+import { Prisma } from '@prisma/client';
 
 const router: Router = express.Router();
 const DEFAULT_LIMIT = 1000;
@@ -46,9 +46,9 @@ router.get('/opportunities', async (req: Request, res: Response, next: NextFunct
         const output = items.map((item) => ({
             id: item.id,
             slug: item.slug,
-            type: item.type as OpportunityType,
+            type: item.type,
             postedAt: item.postedAt.toISOString(),
-            expiresAt: item.expiresAt ? item.expiresAt.toISOString() : null,
+            expiresAt: item.expiresAt ? (item.expiresAt as Date).toISOString() : null,
         }));
 
         res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800, stale-while-revalidate=3600');

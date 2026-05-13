@@ -12,7 +12,17 @@ const globalForPrisma = globalThis as unknown as {
     prisma: PrismaClientSingleton | undefined;
 };
 
-const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
+const prisma = (() => {
+    if (process.env.MAINTENANCE_MODE === 'true') {
+        console.log('[database] MAINTENANCE_MODE is active. Prisma client will not be initialized.');
+        return new Proxy({} as PrismaClientSingleton, {
+            get() {
+                throw new Error('Database access is disabled in MAINTENANCE_MODE');
+            }
+        });
+    }
+    return globalForPrisma.prisma ?? prismaClientSingleton();
+})();
 
 export { prisma };
 

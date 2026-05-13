@@ -6,7 +6,7 @@ import { filterAndRankOpportunitiesForUser } from '@fresherflow/domain';
 import { Opportunity, Profile } from '@fresherflow/types';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
-    normalizeSafeQueryString, parseStrictPositiveInt, parseOpportunityType
+    normalizeSafeQueryString, parseStrictPositiveInt, parseOpportunityType, parseSiteMode
 } from './_helpers';
 
 const router: Router = Router();
@@ -18,10 +18,11 @@ function adaptiveSearchLimiter(req: Request, res: Response, next: NextFunction) 
 
 router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { q, type, city, page = '1', limit = '20' } = req.query;
+        const { q, type, city, page = '1', limit = '20', siteMode } = req.query;
         const query = typeof q === 'string' ? q : '';
         const typeValue = normalizeSafeQueryString(type, 24);
         const cityValue = normalizeSafeQueryString(city, 80);
+        const effectiveSiteMode = parseSiteMode(siteMode);
         const p = parseStrictPositiveInt(page) ?? 1;
         const l = parseStrictPositiveInt(limit) ?? 20;
 
@@ -36,7 +37,8 @@ router.get('/search', adaptiveSearchLimiter, async (req: Request, res: Response,
             filterType,
             limit: l,
             offset,
-            locations
+            locations,
+            siteMode: effectiveSiteMode
         });
 
         let hits = searchResults.hits;
