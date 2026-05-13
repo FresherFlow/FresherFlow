@@ -27,7 +27,7 @@ export function ApplyLinkSection({
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Source URL</label>
+                        <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Source URL</label>
                         <input
                             type="url"
                             value={sourceLink}
@@ -37,7 +37,7 @@ export function ApplyLinkSection({
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Apply URL</label>
+                        <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Apply URL</label>
                         <input
                             type="url"
                             value={applyLink}

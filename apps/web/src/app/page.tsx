@@ -3,6 +3,8 @@ import Link from 'next/link';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
 import { API_URL } from '@/lib/runtimeConfig';
+import { getSiteMode } from '@/lib/siteModeServer';
+import { GovtLandingPage } from '@/features/landing/GovtLandingPage';
 
 export const metadata: Metadata = {
     title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
@@ -51,6 +53,12 @@ async function getLiveOpportunityCount(): Promise<number> {
 
 export default async function LandingPage() {
     const liveCount = await getLiveOpportunityCount();
+    const mode = await getSiteMode();
+
+    if (mode === 'govt') {
+        return <GovtLandingPage liveCount={liveCount} />;
+    }
+
     const countLabel = liveCount > 0 ? `${liveCount}+` : 'Daily';
     return (
         <>
@@ -64,7 +72,7 @@ export default async function LandingPage() {
                             <div className="space-y-6">
                                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card/70 backdrop-blur">
                                     <div className="w-2 h-2 rounded-full bg-success animate-pulse" />
-                                    <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Verified feed live</span>
+                                    <span className="text-[11px] font-semibold capitalize tracking-widest text-muted-foreground">Verified feed live</span>
                                 </div>
                                 <h1 className="text-4xl md:text-6xl font-bold tracking-tight leading-tight text-foreground">
                                     The verified career feed for fresh graduates.
@@ -74,11 +82,11 @@ export default async function LandingPage() {
                                     internships, and walk-ins. Every link is checked before it ships.
                                 </p>
                                 <div className="flex flex-wrap items-center gap-3">
-                                    <Link href="/opportunities" className="premium-button px-6 text-[12px] uppercase tracking-widest">
+                                    <Link href="/opportunities" className="premium-button px-6 text-[12px] capitalize tracking-widest">
                                         Open the live feed
                                         <ArrowRightIcon className="w-4 h-4 ml-2" />
                                     </Link>
-                                    <Link href="/login" className="premium-button-outline px-6 text-[12px] uppercase tracking-widest">
+                                    <Link href="/login" className="premium-button-outline px-6 text-[12px] capitalize tracking-widest">
                                         Sign in
                                     </Link>
                                 </div>
@@ -90,7 +98,7 @@ export default async function LandingPage() {
                                     ].map((stat) => (
                                         <div key={stat.label} className="rounded-xl border border-border bg-card/80 p-4">
                                             <div className="text-lg font-bold text-foreground">{stat.value}</div>
-                                            <div className="text-[10px] uppercase tracking-widest text-muted-foreground">{stat.label}</div>
+                                            <div className="text-[10px] capitalize tracking-widest text-muted-foreground">{stat.label}</div>
                                         </div>
                                     ))}
                                 </div>
@@ -98,8 +106,8 @@ export default async function LandingPage() {
 
                             <div className="rounded-3xl border border-border bg-card/80 backdrop-blur p-5 shadow-2xl">
                                 <div className="flex items-center justify-between">
-                                    <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Today</span>
-                                    <span className="text-[10px] font-semibold uppercase tracking-widest text-success">Verified</span>
+                                    <span className="text-xs font-semibold capitalize tracking-widest text-muted-foreground">Today</span>
+                                    <span className="text-[10px] font-semibold capitalize tracking-widest text-success">Verified</span>
                                 </div>
                                 <div className="mt-4 space-y-3">
                                     {[
@@ -113,15 +121,15 @@ export default async function LandingPage() {
                                                     <h3 className="text-sm font-semibold text-foreground">{item.role}</h3>
                                                     <p className="text-[11px] font-medium text-muted-foreground">{item.company}</p>
                                                 </div>
-                                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider bg-primary/10 text-primary">
+                                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full capitalize tracking-wider bg-primary/10 text-primary">
                                                     {item.type}
                                                 </span>
                                             </div>
                                             <div className="flex items-center justify-between pt-3">
-                                                <span className="text-[10px] font-bold uppercase tracking-wider text-success">
+                                                <span className="text-[10px] font-bold capitalize tracking-wider text-success">
                                                     {item.status}
                                                 </span>
-                                                <span className="text-[9px] text-muted-foreground uppercase">Direct apply</span>
+                                                <span className="text-[9px] text-muted-foreground capitalize">Direct apply</span>
                                             </div>
                                         </div>
                                     ))}
@@ -135,7 +143,7 @@ export default async function LandingPage() {
                     <section className="py-14 md:py-20 px-6">
                         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[0.45fr_1fr] gap-8 items-start">
                             <div className="space-y-3">
-                                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Trust ledger</p>
+                                <p className="text-xs font-semibold capitalize tracking-widest text-muted-foreground">Trust ledger</p>
                                 <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Signals that keep the feed clean.</h2>
                                 <p className="text-sm text-muted-foreground">
                                     Every listing earns its place. We track sources, link health, expiry dates, and recruiter credibility.
@@ -161,19 +169,19 @@ export default async function LandingPage() {
                     <section className="py-14 md:py-20 px-6">
                         <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="rounded-3xl border border-border bg-card/80 p-6 md:p-8 space-y-4">
-                                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">For candidates</p>
+                                <p className="text-xs font-semibold capitalize tracking-widest text-muted-foreground">For candidates</p>
                                 <h3 className="text-2xl font-bold">A single feed that actually respects your time.</h3>
                                 <p className="text-sm text-muted-foreground">
                                     No spam, no fake links, no repeated posts. Just verified opportunities you can act on fast.
                                 </p>
-                                <div className="flex flex-wrap gap-2 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
+                                <div className="flex flex-wrap gap-2 text-[10px] font-bold capitalize tracking-widest text-muted-foreground">
                                     <span className="px-2 py-1 rounded-full bg-muted/50 border border-border">Real links</span>
                                     <span className="px-2 py-1 rounded-full bg-muted/50 border border-border">Fast filters</span>
                                     <span className="px-2 py-1 rounded-full bg-muted/50 border border-border">Saved feed</span>
                                 </div>
                             </div>
                             <div className="rounded-3xl border border-border bg-card/80 p-6 md:p-8 space-y-4">
-                                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">For recruiters</p>
+                                <p className="text-xs font-semibold capitalize tracking-widest text-muted-foreground">For recruiters</p>
                                 <h3 className="text-2xl font-bold">Cleaner pipelines, better-prepared applicants.</h3>
                                 <p className="text-sm text-muted-foreground">
                                     Profiles are gated for completeness, so you see candidates with verified, usable data.
@@ -183,7 +191,7 @@ export default async function LandingPage() {
                                         <CheckBadgeIcon className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Profile gate</p>
+                                        <p className="text-xs font-semibold capitalize tracking-widest text-muted-foreground">Profile gate</p>
                                         <p className="text-sm font-semibold">Completion required before apply.</p>
                                     </div>
                                 </div>
@@ -232,7 +240,7 @@ export default async function LandingPage() {
                                     <Link key={item.title} href={item.href} className="group rounded-2xl border border-border bg-card/80 p-6 space-y-3 transition-all hover:-translate-y-1">
                                         <h3 className="text-lg font-semibold text-foreground">{item.title}</h3>
                                         <p className="text-sm text-muted-foreground">{item.desc}</p>
-                                        <span className="text-[10px] font-bold uppercase tracking-widest text-primary group-hover:text-accent">Explore</span>
+                                        <span className="text-[10px] font-bold capitalize tracking-widest text-primary group-hover:text-accent">Explore</span>
                                     </Link>
                                 ))}
                             </div>
@@ -247,7 +255,7 @@ export default async function LandingPage() {
                                 Open the verified feed and move fast on real opportunities.
                             </p>
                             <div className="flex justify-center">
-                                <Link href="/opportunities" className="premium-button px-8 text-[12px] uppercase tracking-widest">
+                                <Link href="/opportunities" className="premium-button px-8 text-[12px] capitalize tracking-widest">
                                     Open the feed
                                 </Link>
                             </div>
@@ -258,10 +266,3 @@ export default async function LandingPage() {
         </>
     );
 }
-
-
-
-
-
-
-

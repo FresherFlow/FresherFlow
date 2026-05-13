@@ -18,6 +18,7 @@ interface ParserSectionProps {
     jobTemplate: string;
     internshipTemplate: string;
     walkinTemplate: string;
+    governmentTemplate?: string;
 }
 
 export function ParserSection({
@@ -26,7 +27,7 @@ export function ParserSection({
     pastedJson, setPastedJson,
     applyJsonToForm, jsonReport,
     closeParser,
-    jobTemplate, internshipTemplate, walkinTemplate
+    jobTemplate, internshipTemplate, walkinTemplate, governmentTemplate
 }: ParserSectionProps) {
     return (
         <div className="bg-muted/30 border border-border rounded-lg p-4 md:p-5 shadow-sm animate-in slide-in-from-top-2 duration-300">
@@ -36,13 +37,13 @@ export function ParserSection({
                         <BoltIcon className="w-4 h-4 text-primary" />
                         Auto-fill
                     </h3>
-                    <button onClick={closeParser} className="text-muted-foreground hover:text-foreground text-xs font-bold uppercase">
+                    <button onClick={closeParser} className="text-muted-foreground hover:text-foreground text-xs font-bold capitalize">
                         Close
                     </button>
                 </div>
                 <div className="grid grid-cols-1 gap-3">
                     <div className="hidden space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Paste raw text</label>
+                        <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground">Paste raw text</label>
                         <textarea
                             value={pastedText}
                             onChange={(e) => setPastedText(e.target.value)}
@@ -64,7 +65,7 @@ export function ParserSection({
                         </button>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Paste JSON payload</label>
+                        <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground">Paste JSON payload</label>
                         <textarea
                             value={pastedJson}
                             onChange={(e) => setPastedJson(e.target.value)}
@@ -75,24 +76,33 @@ export function ParserSection({
                             <button
                                 type="button"
                                 onClick={() => setPastedJson(jobTemplate)}
-                                className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                                className="px-2.5 py-1 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                             >
                                 Insert Job
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setPastedJson(internshipTemplate)}
-                                className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                                className="px-2.5 py-1 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                             >
                                 Insert Internship
                             </button>
                             <button
                                 type="button"
                                 onClick={() => setPastedJson(walkinTemplate)}
-                                className="px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                                className="px-2.5 py-1 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
                             >
                                 Insert Walk-in
                             </button>
+                            {governmentTemplate && (
+                                <button
+                                    type="button"
+                                    onClick={() => setPastedJson(governmentTemplate)}
+                                    className="px-2.5 py-1 rounded-md text-[10px] font-bold capitalize tracking-widest bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15"
+                                >
+                                    Insert Govt Job
+                                </button>
+                            )}
                         </div>
                         <button
                             type="button"
@@ -105,10 +115,10 @@ export function ParserSection({
                         {jsonReport && (
                             <div className={`rounded-md border p-3 text-[10px] space-y-2 ${jsonReport.valid ? 'border-border bg-muted/40' : 'border-destructive/30 bg-destructive/5 text-destructive'}`}>
                                 {!jsonReport.valid ? (
-                                    <p className="font-bold uppercase tracking-wider">Invalid JSON format</p>
+                                    <p className="font-bold capitalize tracking-wider">Invalid JSON format</p>
                                 ) : (
                                     <>
-                                        <p className="font-bold uppercase tracking-wider text-muted-foreground">
+                                        <p className="font-bold capitalize tracking-wider text-muted-foreground">
                                             JSON report • {jsonReport.type}
                                         </p>
                                         <div className="text-muted-foreground">

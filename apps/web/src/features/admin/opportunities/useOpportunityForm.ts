@@ -29,7 +29,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
     const [pastedText, setPastedText] = useState('');
     const [pastedJson, setPastedJson] = useState('');
     const [showParser, setShowParser] = useState(false);
-    
+
     const [publishedListing, setPublishedListing] = useState<{
         title: string;
         company: string;
@@ -81,6 +81,36 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
     const [salaryPeriod, setSalaryPeriod] = useState<'YEARLY' | 'MONTHLY'>('YEARLY');
     const [experienceMin, setExperienceMin] = useState('');
     const [experienceMax, setExperienceMax] = useState('');
+    const [isGovernmentJob, setIsGovernmentJob] = useState(false);
+    const [governmentTags, setGovernmentTags] = useState('');
+    const [governmentDepartment, setGovernmentDepartment] = useState('');
+    const [governmentOrganization, setGovernmentOrganization] = useState('');
+    const [recruitingBody, setRecruitingBody] = useState('');
+    const [officialWebsiteUrl, setOfficialWebsiteUrl] = useState('');
+    const [officialNotificationUrl, setOfficialNotificationUrl] = useState('');
+    const [advertisementNumber, setAdvertisementNumber] = useState('');
+    const [postName, setPostName] = useState('');
+    const [applicationMode, setApplicationMode] = useState('');
+    const [applicationModes, setApplicationModes] = useState('');
+    const [vacancyCount, setVacancyCount] = useState('');
+    const [vacanciesJson, setVacanciesJson] = useState('');
+    const [applicationFee, setApplicationFee] = useState('');
+    const [applicationFeeJson, setApplicationFeeJson] = useState('');
+    const [ageMin, setAgeMin] = useState('');
+    const [ageMax, setAgeMax] = useState('');
+    const [ageRelaxation, setAgeRelaxation] = useState('');
+    const [eligibilityDetailsJson, setEligibilityDetailsJson] = useState('');
+    const [reservationNotes, setReservationNotes] = useState('');
+    const [importantInstructions, setImportantInstructions] = useState('');
+    const [applicationStartDate, setApplicationStartDate] = useState('');
+    const [applicationEndDate, setApplicationEndDate] = useState('');
+    const [examDate, setExamDate] = useState('');
+    const [examDatesJson, setExamDatesJson] = useState('');
+    const [admitCardDate, setAdmitCardDate] = useState('');
+    const [resultDate, setResultDate] = useState('');
+    const [selectionStages, setSelectionStages] = useState('');
+    const [governmentRequiredDocuments, setGovernmentRequiredDocuments] = useState('');
+    const [governmentRequiredDocumentsJson, setGovernmentRequiredDocumentsJson] = useState('');
 
     // Walk-in specific
     const [venueAddress, setVenueAddress] = useState('');
@@ -158,7 +188,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
                     .filter((opp) => opp.score >= 0.45)
                     .sort((a, b) => b.score - a.score)
                     .slice(0, 4);
-                
+
                 setDuplicateCandidates(scored as Array<DuplicateOpportunity & { score: number }>);
             } catch {
                 setDuplicateCandidates([]);
@@ -197,9 +227,44 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
             setSalaryPeriod(opp.salaryPeriod || 'YEARLY');
             setExperienceMin(opp.experienceMin?.toString() || '');
             setExperienceMax(opp.experienceMax?.toString() || '');
+            setGovernmentTags((opp.tags || []).join(', '));
             setSourceLink(opp.sourceLink || '');
             setApplyLink(opp.applyLink || '');
             setExpiresAt(opp.expiresAt ? toLocalISOString(opp.expiresAt) : '');
+
+            if (opp.governmentJobDetails) {
+                setIsGovernmentJob(true);
+                setGovernmentDepartment(opp.governmentJobDetails.department || '');
+                setGovernmentOrganization(opp.governmentJobDetails.organization || '');
+                setRecruitingBody(opp.governmentJobDetails.recruitingBody || '');
+                setOfficialWebsiteUrl(opp.governmentJobDetails.officialWebsiteUrl || '');
+                setOfficialNotificationUrl(opp.governmentJobDetails.officialNotificationUrl || '');
+                setAdvertisementNumber(opp.governmentJobDetails.advertisementNumber || '');
+                setPostName(opp.governmentJobDetails.postName || '');
+                setApplicationMode(opp.governmentJobDetails.applicationMode || '');
+                setApplicationModes((opp.governmentJobDetails.applicationModes || []).join(', '));
+                setVacancyCount(opp.governmentJobDetails.vacancyCount?.toString() || '');
+                setVacanciesJson(opp.governmentJobDetails.vacancies ? JSON.stringify(opp.governmentJobDetails.vacancies, null, 2) : '');
+                setApplicationFee(opp.governmentJobDetails.applicationFee || '');
+                setApplicationFeeJson(opp.governmentJobDetails.applicationFeeDetails ? JSON.stringify(opp.governmentJobDetails.applicationFeeDetails, null, 2) : '');
+                setAgeMin(opp.governmentJobDetails.ageMin?.toString() || '');
+                setAgeMax(opp.governmentJobDetails.ageMax?.toString() || '');
+                setAgeRelaxation(opp.governmentJobDetails.ageRelaxation || '');
+                setEligibilityDetailsJson(opp.governmentJobDetails.eligibilityDetails ? JSON.stringify(opp.governmentJobDetails.eligibilityDetails, null, 2) : '');
+                setReservationNotes(opp.governmentJobDetails.reservationNotes || '');
+                setImportantInstructions(opp.governmentJobDetails.importantInstructions || '');
+                setApplicationStartDate(opp.governmentJobDetails.applicationStartDate || '');
+                setApplicationEndDate(opp.governmentJobDetails.applicationEndDate || '');
+                setExamDate(opp.governmentJobDetails.examDate || '');
+                setExamDatesJson(opp.governmentJobDetails.examDates ? JSON.stringify(opp.governmentJobDetails.examDates, null, 2) : '');
+                setAdmitCardDate(opp.governmentJobDetails.admitCardDate || '');
+                setResultDate(opp.governmentJobDetails.resultDate || '');
+                setSelectionStages((opp.governmentJobDetails.selectionStages || []).join(', '));
+                setGovernmentRequiredDocuments((opp.governmentJobDetails.requiredDocuments || []).join(', '));
+                setGovernmentRequiredDocumentsJson(opp.governmentJobDetails.requiredDocumentDetails ? JSON.stringify(opp.governmentJobDetails.requiredDocumentDetails, null, 2) : '');
+            } else {
+                setIsGovernmentJob(false);
+            }
 
             if (opp.walkInDetails) {
                 setVenueAddress(opp.walkInDetails.venueAddress || '');
@@ -398,6 +463,8 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         setPassoutYears(normalizePassoutYears(data.allowedPassoutYears));
         const requiredSkillsValues = toStringArray(data.requiredSkills);
         if (requiredSkillsValues.length > 0) setRequiredSkills(requiredSkillsValues.join(', '));
+        const tagValues = toStringArray(data.tags);
+        if (tagValues.length > 0) setGovernmentTags(tagValues.join(', '));
         const locationsValues = toStringArray(data.locations);
         if (locationsValues.length > 0) setLocations(locationsValues.join(', '));
         if (data.workMode) {
@@ -437,6 +504,43 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         if (data.endDate) setEndDate(String(data.endDate));
         if (data.startTime) setStartTime(String(data.startTime));
         if (data.endTime) setEndTime(String(data.endTime));
+
+        if (data.governmentJobDetails) {
+            setIsGovernmentJob(true);
+            if (data.governmentJobDetails.department) setGovernmentDepartment(String(data.governmentJobDetails.department));
+            if (data.governmentJobDetails.organization) setGovernmentOrganization(String(data.governmentJobDetails.organization));
+            if (data.governmentJobDetails.recruitingBody) setRecruitingBody(String(data.governmentJobDetails.recruitingBody));
+            if (data.governmentJobDetails.officialWebsiteUrl) setOfficialWebsiteUrl(String(data.governmentJobDetails.officialWebsiteUrl));
+            if (data.governmentJobDetails.officialNotificationUrl) setOfficialNotificationUrl(String(data.governmentJobDetails.officialNotificationUrl));
+            if (data.governmentJobDetails.advertisementNumber) setAdvertisementNumber(String(data.governmentJobDetails.advertisementNumber));
+            if (data.governmentJobDetails.postName) setPostName(String(data.governmentJobDetails.postName));
+            if (data.governmentJobDetails.applicationMode) setApplicationMode(String(data.governmentJobDetails.applicationMode));
+            const applicationModeValues = toStringArray(data.governmentJobDetails.applicationModes);
+            if (applicationModeValues.length > 0) setApplicationModes(applicationModeValues.join(', '));
+            if (data.governmentJobDetails.vacancyCount !== undefined) setVacancyCount(String(data.governmentJobDetails.vacancyCount));
+            if (data.governmentJobDetails.vacancies) setVacanciesJson(JSON.stringify(data.governmentJobDetails.vacancies, null, 2));
+            if (data.governmentJobDetails.applicationFee) setApplicationFee(String(data.governmentJobDetails.applicationFee));
+            if (data.governmentJobDetails.applicationFeeDetails) setApplicationFeeJson(JSON.stringify(data.governmentJobDetails.applicationFeeDetails, null, 2));
+            if (data.governmentJobDetails.ageMin !== undefined) setAgeMin(String(data.governmentJobDetails.ageMin));
+            if (data.governmentJobDetails.ageMax !== undefined) setAgeMax(String(data.governmentJobDetails.ageMax));
+            if (data.governmentJobDetails.ageRelaxation) setAgeRelaxation(String(data.governmentJobDetails.ageRelaxation));
+            if (data.governmentJobDetails.eligibilityDetails) setEligibilityDetailsJson(JSON.stringify(data.governmentJobDetails.eligibilityDetails, null, 2));
+            if (data.governmentJobDetails.reservationNotes) setReservationNotes(String(data.governmentJobDetails.reservationNotes));
+            if (data.governmentJobDetails.importantInstructions) setImportantInstructions(String(data.governmentJobDetails.importantInstructions));
+            if (data.governmentJobDetails.applicationStartDate) setApplicationStartDate(String(data.governmentJobDetails.applicationStartDate));
+            if (data.governmentJobDetails.applicationEndDate) setApplicationEndDate(String(data.governmentJobDetails.applicationEndDate));
+            if (data.governmentJobDetails.examDate) setExamDate(String(data.governmentJobDetails.examDate));
+            if (data.governmentJobDetails.examDates) setExamDatesJson(JSON.stringify(data.governmentJobDetails.examDates, null, 2));
+            if (data.governmentJobDetails.admitCardDate) setAdmitCardDate(String(data.governmentJobDetails.admitCardDate));
+            if (data.governmentJobDetails.resultDate) setResultDate(String(data.governmentJobDetails.resultDate));
+            const stageValues = toStringArray(data.governmentJobDetails.selectionStages);
+            if (stageValues.length > 0) setSelectionStages(stageValues.join(', '));
+            const docValues = toStringArray(data.governmentJobDetails.requiredDocuments);
+            if (docValues.length > 0) setGovernmentRequiredDocuments(docValues.join(', '));
+            if (data.governmentJobDetails.requiredDocumentDetails) setGovernmentRequiredDocumentsJson(JSON.stringify(data.governmentJobDetails.requiredDocumentDetails, null, 2));
+            const seoTagValues = toStringArray(data.governmentJobDetails.seoTags);
+            if (seoTagValues.length > 0) setGovernmentTags(seoTagValues.join(', '));
+        }
 
         if (data.walkInDetails) {
             if (data.walkInDetails.dateRange) setWalkInDateRange(data.walkInDetails.dateRange);
@@ -483,6 +587,36 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         salaryPeriod, setSalaryPeriod,
         experienceMin, setExperienceMin,
         experienceMax, setExperienceMax,
+        isGovernmentJob, setIsGovernmentJob,
+        governmentTags, setGovernmentTags,
+        governmentDepartment, setGovernmentDepartment,
+        governmentOrganization, setGovernmentOrganization,
+        recruitingBody, setRecruitingBody,
+        officialWebsiteUrl, setOfficialWebsiteUrl,
+        officialNotificationUrl, setOfficialNotificationUrl,
+        advertisementNumber, setAdvertisementNumber,
+        postName, setPostName,
+        applicationMode, setApplicationMode,
+        applicationModes, setApplicationModes,
+        vacancyCount, setVacancyCount,
+        vacanciesJson, setVacanciesJson,
+        applicationFee, setApplicationFee,
+        applicationFeeJson, setApplicationFeeJson,
+        ageMin, setAgeMin,
+        ageMax, setAgeMax,
+        ageRelaxation, setAgeRelaxation,
+        eligibilityDetailsJson, setEligibilityDetailsJson,
+        reservationNotes, setReservationNotes,
+        importantInstructions, setImportantInstructions,
+        applicationStartDate, setApplicationStartDate,
+        applicationEndDate, setApplicationEndDate,
+        examDate, setExamDate,
+        examDatesJson, setExamDatesJson,
+        admitCardDate, setAdmitCardDate,
+        resultDate, setResultDate,
+        selectionStages, setSelectionStages,
+        governmentRequiredDocuments, setGovernmentRequiredDocuments,
+        governmentRequiredDocumentsJson, setGovernmentRequiredDocumentsJson,
         venueAddress, setVenueAddress,
         walkInDateRange, setWalkInDateRange,
         walkInTimeRange, setWalkInTimeRange,
@@ -494,7 +628,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         endDate, setEndDate,
         startTime, setStartTime,
         endTime, setEndTime,
-        
+
         // UI State
         isLoading, setIsLoading,
         isParsing, setIsParsing,
@@ -508,7 +642,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         timelineLoading, setTimelineLoading,
         timelineBusyId, setTimelineBusyId,
         socialPosts, setSocialPosts,
-        
+
         // Handlers
         handleAutoFill,
         applyJsonData,
@@ -525,8 +659,3 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         newEventSourceLink, setNewEventSourceLink
     };
 }
-
-
-
-
-

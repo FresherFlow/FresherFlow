@@ -1,8 +1,9 @@
-import React, { RefObject } from 'react';
+import React, { RefObject, useState } from 'react';
 import { CompactSection } from '@/features/profile/components/ProfileSection';
 import PlusIcon from '@heroicons/react/24/outline/PlusIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import { Profile } from '@fresherflow/types';
+import { cn } from '@repo/ui/utils/cn';
 
 interface SkillsSectionProps {
     profile?: Profile | null;
@@ -39,6 +40,8 @@ export const SkillsSection = ({
     onSave,
     saving
 }: SkillsSectionProps) => {
+    const [skillHighlight, setSkillHighlight] = useState(-1);
+
     return (
         <CompactSection
             title="Skills & Tools"
@@ -49,10 +52,10 @@ export const SkillsSection = ({
             viewContent={
                 <div className="flex flex-wrap gap-1.5">
                     {profile?.skills && profile.skills.length > 0 ? profile.skills.map(s => (
-                        <span key={s} className="bg-muted border border-border/80 px-2.5 py-1 rounded-md text-[13px] font-medium text-foreground">
+                        <span key={s} className="bg-muted border border-border/80 px-2.5 py-1 rounded-md text-[13px] font-medium text-foreground capitalize">
                             {s}
                         </span>
-                    )) : <span className="text-xs text-muted-foreground italic">No skills added</span>}
+                    )) : <span className="text-[13px] text-muted-foreground italic">No skills added</span>}
                 </div>
             }
         >
@@ -61,10 +64,22 @@ export const SkillsSection = ({
                     <div className="flex gap-2">
                         <input
                             value={skillInput}
-                            onChange={e => { setSkillInput(e.target.value); setSkillOpen(true); }}
-                            onFocus={() => setSkillOpen(true)}
+                            onChange={e => { setSkillInput(e.target.value); setSkillHighlight(-1); setSkillOpen(true); }}
+                            onFocus={() => { setSkillOpen(true); setSkillHighlight(-1); }}
                             onKeyDown={e => {
-                                if (e.key === 'Enter') { e.preventDefault(); addSkill(); }
+                                if (e.key === 'ArrowDown') { e.preventDefault(); setSkillHighlight(h => Math.min(h + 1, filteredSkillOptions.length - 1)); }
+                                else if (e.key === 'ArrowUp') { e.preventDefault(); setSkillHighlight(h => Math.max(h - 1, 0)); }
+                                else if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    if (skillHighlight >= 0 && filteredSkillOptions[skillHighlight]) {
+                                        addSkillValue(filteredSkillOptions[skillHighlight]);
+                                        setSkillInput('');
+                                        setSkillHighlight(-1);
+                                        setSkillOpen(false);
+                                    } else {
+                                        addSkill();
+                                    }
+                                }
                                 else if (e.key === 'Escape') setSkillOpen(false);
                             }}
                             className="premium-input text-sm h-11 md:h-10 flex-1"
@@ -76,10 +91,13 @@ export const SkillsSection = ({
                     </div>
                     {skillOpen && filteredSkillOptions.length > 0 && (
                         <div className="absolute z-50 w-full mt-1 bg-card border border-border rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                            {filteredSkillOptions.map(skill => (
+                            {filteredSkillOptions.map((skill, idx) => (
                                 <button key={skill}
-                                    onMouseDown={() => { addSkillValue(skill); setSkillInput(''); setSkillOpen(false); }}
-                                    className="w-full text-left px-3 py-2 hover:bg-muted transition-colors text-sm font-medium border-b border-border/40 last:border-0">
+                                    onMouseDown={() => { addSkillValue(skill); setSkillInput(''); setSkillHighlight(-1); setSkillOpen(false); }}
+                                    className={cn(
+                                        "w-full text-left px-3 py-2 transition-colors text-sm font-medium border-b border-border/40 last:border-0",
+                                        skillHighlight === idx ? "bg-primary/10 text-primary" : "hover:bg-muted text-foreground"
+                                    )}>
                                     {skill}
                                 </button>
                             ))}
@@ -88,7 +106,7 @@ export const SkillsSection = ({
                 </div>
                 <div className="flex flex-wrap gap-2">
                     {skills.map(s => (
-                        <span key={s} className="flex items-center gap-1.5 bg-foreground/5 px-2.5 py-1 rounded-md text-[13px] font-semibold border border-foreground/10">
+                        <span key={s} className="flex items-center gap-1.5 bg-foreground/5 px-2.5 py-1 rounded-md text-[13px] font-semibold border border-foreground/10 capitalize">
                             {s}
                             <button onClick={() => setSkills(prev => (Array.isArray(prev) ? prev.filter(x => x !== s) : []))} className="text-foreground/50 hover:text-destructive">
                                 <XMarkIcon className="w-3.5 h-3.5" />

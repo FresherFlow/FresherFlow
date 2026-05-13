@@ -57,12 +57,12 @@ export default function DeadlinesPage() {
             <ProfileGate>
                 <div className="w-full max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-8 space-y-4 md:space-y-6">
                     <div className="flex items-center justify-between gap-3">
-                        <Link href="/dashboard" className="flex items-center gap-2 text-xs md:text-sm font-bold uppercase tracking-widest text-muted-foreground hover:text-primary">
+                        <Link href="/dashboard" className="flex items-center gap-2 text-xs md:text-sm font-bold capitalize tracking-widest text-muted-foreground hover:text-primary">
                             <ArrowLeftIcon className="w-3.5 h-3.5" />
                             Back
                         </Link>
                         <h1 className="text-sm md:text-base font-bold tracking-tight">Deadline Radar</h1>
-                        <span className="text-xs md:text-sm font-bold uppercase tracking-widest text-foreground dark:text-amber-300">{sorted.length} active</span>
+                        <span className="text-xs md:text-sm font-bold capitalize tracking-widest text-foreground dark:text-amber-300">{sorted.length} active</span>
                     </div>
 
                     {isLoading ? (
@@ -74,7 +74,7 @@ export default function DeadlinesPage() {
                     ) : error ? (
                         <div className="rounded-xl border border-dashed border-border bg-card p-5 space-y-3">
                             <p className="text-sm text-muted-foreground">{error}</p>
-                            <Button variant="outline" onClick={() => router.refresh()} className="h-8 px-3 text-xs md:text-sm font-bold uppercase tracking-widest">
+                            <Button variant="outline" onClick={() => router.refresh()} className="h-8 px-3 text-xs md:text-sm font-bold capitalize tracking-widest">
                                 Retry
                             </Button>
                         </div>
@@ -101,9 +101,3 @@ export default function DeadlinesPage() {
         </AuthGate>
     );
 }
-
-
-
-
-
-

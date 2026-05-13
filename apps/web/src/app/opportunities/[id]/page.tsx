@@ -2,6 +2,7 @@ import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
 import { permanentRedirect } from 'next/navigation';
 import { Suspense } from 'react';
+import { getSiteMode } from '@/lib/siteModeServer';
 import OpportunityDetailClient from './OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
 import { getOpportunityPath } from '@fresherflow/domain';
@@ -24,8 +25,9 @@ export const revalidate = 3600;
 // Generate dynamic SEO metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id: slugOrId } = await params;
+    const siteMode = await getSiteMode();
     try {
-        const opportunity = await fetchOpportunityForPage(slugOrId);
+        const opportunity = await fetchOpportunityForPage(slugOrId, siteMode);
         if (!opportunity) throw new Error('Opportunity not found');
         return await generateOpportunityMetadata(opportunity);
     } catch {
@@ -38,10 +40,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function OpportunityDetailPage({ params }: Props) {
     const { id: slugOrId } = await params;
+    const siteMode = await getSiteMode();
     let opportunityData: ExtendedOpportunity | null = null;
 
     try {
-        opportunityData = await fetchOpportunityForPage(slugOrId);
+        opportunityData = await fetchOpportunityForPage(slugOrId, siteMode);
         if (!opportunityData) throw new Error('Opportunity not found');
 
         const expiry = getExpiryState(opportunityData);

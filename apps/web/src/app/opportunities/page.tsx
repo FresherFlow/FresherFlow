@@ -176,13 +176,13 @@ function OpportunitiesContent() {
                         </div>
                         <div className="flex items-center gap-2">
                             <div className={cn(
-                                "px-2.5 py-1 rounded-full border text-[10px] font-bold uppercase tracking-widest",
+                                "px-2.5 py-1 rounded-full border text-[10px] font-bold capitalize tracking-widest",
                                 isOnline ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-amber-500/10 text-foreground border-amber-500/20"
                             )}>
                                 {isOnline ? 'Network: Online' : 'Network: Offline'}
                             </div>
                             {usingCachedFeed && (
-                                <div className="px-2.5 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-foreground text-[10px] font-bold uppercase tracking-widest">
+                                <div className="px-2.5 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-foreground text-[10px] font-bold capitalize tracking-widest">
                                     Cached {formatSyncTime(cachedAt)}
                                 </div>
                             )}
@@ -215,7 +215,7 @@ function OpportunitiesContent() {
                             onClick={openMobileFilters}
                             aria-haspopup="dialog"
                             aria-expanded={isMobileFilterOpen}
-                            className="lg:hidden h-11 flex items-center shrink-0 gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold uppercase tracking-widest"
+                            className="lg:hidden h-11 flex items-center shrink-0 gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest"
                         >
                             <FunnelIcon className="w-4 h-4" />
                             {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
@@ -289,12 +289,12 @@ function OpportunitiesContent() {
                             {hasMore && (
                                 <button
                                     onClick={loadMore}
-                                    className="h-11 px-8 rounded-xl border border-border bg-card text-[10px] font-bold uppercase tracking-widest hover:bg-muted transition-all"
+                                    className="h-11 px-8 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest hover:bg-muted transition-all"
                                 >
                                     Load More Opportunities
                                 </button>
                             )}
-                            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em] flex items-center justify-center gap-3">
+                            <p className="text-[10px] font-bold text-muted-foreground/40 capitalize tracking-[0.2em] flex items-center justify-center gap-3">
                                 <span className="w-1 h-1 rounded-full bg-border" />
                                 {hasMore ? `Showing ${filteredOpps.length} of ${totalCount}` : `End of feed - ${totalCount} total listings`}
                                 <span className="w-1 h-1 rounded-full bg-border" />

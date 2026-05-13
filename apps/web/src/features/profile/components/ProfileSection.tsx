@@ -56,14 +56,8 @@ export function CompactSection({ title, children, onSave, saving, isEditing, onT
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="space-y-1.5 w-full">
-            <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider pl-0.5">{label}</label>
+            <label className="text-xs font-bold text-muted-foreground capitalize tracking-wider pl-0.5">{label}</label>
             {children}
         </div>
     );
 }
-
-
-
-
-
-

@@ -124,7 +124,7 @@ export default function ReferralPage() {
                         {/* Share card */}
                         <div className="rounded-2xl border border-border/60 bg-card p-5 shadow-sm space-y-4">
                             <div>
-                                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-1">Your invite link</p>
+                                <p className="text-xs font-bold text-muted-foreground capitalize tracking-widest mb-1">Your invite link</p>
                                 <div className="flex items-center gap-2 bg-muted rounded-xl px-3 py-2.5">
                                     <span className="flex-1 text-sm font-mono text-foreground truncate">{shortUrl}</span>
                                     <button onClick={handleCopy} className="shrink-0 p-1 rounded-lg hover:bg-background transition-colors" title="Copy">
@@ -162,7 +162,7 @@ export default function ReferralPage() {
 
                         {/* Badges */}
                         <section className="space-y-2">
-                            <h2 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">Badges</h2>
+                            <h2 className="text-[11px] font-bold text-muted-foreground capitalize tracking-widest px-1">Badges</h2>
                             <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm">
                                 {loading ? (
                                     <div className="p-4 grid grid-cols-2 sm:grid-cols-3 gap-3 animate-pulse">
@@ -180,7 +180,7 @@ export default function ReferralPage() {
 
                         {/* Referral list */}
                         <section className="space-y-2">
-                            <h2 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">
+                            <h2 className="text-[11px] font-bold text-muted-foreground capitalize tracking-widest px-1">
                                 Your referrals{data ? ` · ${data.referrals.length}` : ''}
                             </h2>
                             <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm">
@@ -269,9 +269,3 @@ function ReferralRow({ referral }: { referral: ReferralData['referrals'][0] }) {
         </div>
     );
 }
-
-
-
-
-
-

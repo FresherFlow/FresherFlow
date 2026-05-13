@@ -61,45 +61,58 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
     const [isInstalled, setIsInstalled] = useState(false);
     const [bannerDismissed, setBannerDismissed] = useState(false);
     const [visitCount, setVisitCount] = useState(0);
+
     const isInstallEligibleHost = useMemo(() => {
         if (typeof window === 'undefined') return false;
         const host = window.location.hostname.toLowerCase();
         return host === APP_WEB_HOST || host === ADMIN_WEB_HOST || host === 'localhost' || host === '127.0.0.1';
     }, []);
 
+    // 1. Initial detection and PWA mode tracking
     useEffect(() => {
         if (typeof window === 'undefined') return;
         const installed = detectInstalled();
-        window.setTimeout(() => {
+
+        // Use timeout to avoid sync state updates during mount
+        const timer = window.setTimeout(() => {
             setIsInstalled(installed);
             setBannerDismissed(readBoolean(BANNER_DISMISSED_KEY));
             setVisitCount(readNumber(VISIT_COUNT_KEY, 0));
         }, 0);
 
         if (installed && !readBoolean(STANDALONE_TRACKED_KEY)) {
-            void growthApi.trackEvent('OPENED_STANDALONE', 'pwa_install');
+            void growthApi.trackEvent('OPENED_STANDALONE', 'pwa_install').catch(() => {});
             setBoolean(STANDALONE_TRACKED_KEY, true);
         }
+
+        return () => window.clearTimeout(timer);
     }, []);
 
+    // 2. Increment visit count once per authenticated session
+    const hasIncrementedCount = useRef(false);
     useEffect(() => {
-        if (!user || typeof window === 'undefined') return;
+        if (!user?.id || typeof window === 'undefined' || hasIncrementedCount.current) return;
+        hasIncrementedCount.current = true;
+
         const nextCount = readNumber(VISIT_COUNT_KEY, 0) + 1;
         setNumber(VISIT_COUNT_KEY, nextCount);
-        window.setTimeout(() => {
+
+        const timer = window.setTimeout(() => {
             setVisitCount(nextCount);
         }, 0);
-    }, [user]);
 
+        return () => window.clearTimeout(timer);
+    }, [user?.id]);
+
+    // 3. PWA Event listeners
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        if (!isInstallEligibleHost) return;
+        if (typeof window === 'undefined' || !isInstallEligibleHost) return;
 
         const onBeforeInstallPrompt = (event: Event) => {
             event.preventDefault();
             deferredPromptRef.current = event as BeforeInstallPromptEvent;
             setHasPromptEvent(true);
-            void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', 'pwa_install');
+            void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', 'pwa_install').catch(() => {});
         };
 
         const onAppInstalled = () => {
@@ -123,21 +136,25 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
 
     const promptInstall = useCallback(async (source?: 'navbar' | 'banner') => {
         if (source) {
-            void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', source);
+            void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', source).catch(() => {});
         }
+
         if (typeof window !== 'undefined' && !isInstallEligibleHost) {
             window.location.href = `https://${APP_WEB_HOST}/dashboard?install=1`;
             return false;
         }
+
         if (!deferredPromptRef.current) return false;
+
         const promptEvent = deferredPromptRef.current;
         await promptEvent.prompt();
         const choice = await promptEvent.userChoice;
+
         deferredPromptRef.current = null;
         setHasPromptEvent(false);
 
         if (choice.outcome === 'accepted') {
-            await growthApi.trackEvent('INSTALL_ACCEPTED', 'pwa_install');
+            await growthApi.trackEvent('INSTALL_ACCEPTED', 'pwa_install').catch(() => {});
             setBannerDismissed(true);
             setBoolean(BANNER_DISMISSED_KEY, true);
             return true;
@@ -149,16 +166,16 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
     const canInstall = isInstallEligibleHost && hasPromptEvent && !isInstalled;
     const showBanner = Boolean(user) && canInstall && !bannerDismissed && visitCount >= 3;
 
-    const value = useMemo<InstallPromptContextValue>(() => ({
+    const contextValue = useMemo(() => ({
         canInstall,
         isInstalled,
         showBanner,
         dismissBanner,
         promptInstall,
-    }), [canInstall, dismissBanner, isInstalled, promptInstall, showBanner]);
+    }), [canInstall, isInstalled, showBanner, dismissBanner, promptInstall]);
 
     return (
-        <InstallPromptContext.Provider value={value}>
+        <InstallPromptContext.Provider value={contextValue}>
             {children}
         </InstallPromptContext.Provider>
     );

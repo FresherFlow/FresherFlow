@@ -34,7 +34,7 @@ export function WalkInDetailsSection({
         <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 md:p-5 space-y-5">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Drive dates *</label>
+                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Drive dates *</label>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <input
                             type="date"
@@ -53,7 +53,7 @@ export function WalkInDetailsSection({
                     </div>
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Reporting window *</label>
+                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Reporting window *</label>
                     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <input
                             type="time"
@@ -74,7 +74,7 @@ export function WalkInDetailsSection({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Venue address *</label>
+                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Venue address *</label>
                     <textarea
                         required
                         value={venueAddress}
@@ -85,7 +85,7 @@ export function WalkInDetailsSection({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Maps link</label>
+                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Maps link</label>
                     <input
                         type="url"
                         value={venueLink}
@@ -96,7 +96,7 @@ export function WalkInDetailsSection({
                 </div>
             </div>
             <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Required documents</label>
+                <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Required documents</label>
                 <input
                     value={requiredDocuments}
                     onChange={(e) => setRequiredDocuments(e.target.value)}
@@ -106,7 +106,7 @@ export function WalkInDetailsSection({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Contact person</label>
+                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Contact person</label>
                     <input
                         value={contactPerson}
                         onChange={(e) => setContactPerson(e.target.value)}
@@ -115,7 +115,7 @@ export function WalkInDetailsSection({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Contact phone</label>
+                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Contact phone</label>
                     <input
                         value={contactPhone}
                         onChange={(e) => setContactPhone(e.target.value)}

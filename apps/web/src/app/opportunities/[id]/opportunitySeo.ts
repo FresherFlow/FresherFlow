@@ -3,6 +3,7 @@ import { Metadata } from 'next';
 import { getOpportunityPath, parseOpportunityLocation } from '@fresherflow/domain';
 import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 import { API_URL, SITE_URL } from '@/lib/runtimeConfig';
+import { SiteMode } from '@/lib/siteMode';
 
 export interface ExtendedOpportunity extends Opportunity {
     updatedAt?: string | Date;
@@ -107,9 +108,10 @@ function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
     return null;
 }
 
-export async function fetchOpportunityForPage(slugOrId: string): Promise<ExtendedOpportunity | null> {
+export async function fetchOpportunityForPage(slugOrId: string, siteMode: SiteMode = 'private'): Promise<ExtendedOpportunity | null> {
     try {
-        const response = await fetch(`${API_BASE}/api/opportunities/${encodeURIComponent(slugOrId)}`, {
+        const query = new URLSearchParams({ siteMode });
+        const response = await fetch(`${API_BASE}/api/opportunities/${encodeURIComponent(slugOrId)}?${query.toString()}`, {
             method: 'GET',
             headers: {
                 'X-Requested-From': 'fresherflow-web',
@@ -161,7 +163,7 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
         ? ` Registration closes ${driveDates.regEnd ? driveDates.regEnd.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'soon'}.`
         : '';
     const rawDescription = baseDesc + applyInfo + driveInfo + freshInfo;
-    const description = rawDescription.length > 160 
+    const description = rawDescription.length > 160
         ? rawDescription.substring(0, 157).replace(/\s+\S*$/, '') + '...'
         : rawDescription;
 

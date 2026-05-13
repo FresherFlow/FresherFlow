@@ -105,7 +105,7 @@ export default function FeedbackPage() {
                                 >
                                     <div className="flex items-center gap-2">
                                         <Icon className="w-4 h-4" />
-                                        <span className="text-xs font-semibold uppercase tracking-widest">{option.label}</span>
+                                        <span className="text-xs font-semibold capitalize tracking-widest">{option.label}</span>
                                     </div>
                                     <p className="text-[10px] text-muted-foreground mt-1">{option.description}</p>
                                 </button>
@@ -114,7 +114,7 @@ export default function FeedbackPage() {
                     </div>
 
                     <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Overall rating</p>
+                        <p className="text-[10px] font-bold text-muted-foreground capitalize tracking-widest">Overall rating</p>
                         <div className="flex gap-2 flex-wrap">
                             {[1, 2, 3, 4, 5].map((value) => (
                                 <button
@@ -132,7 +132,7 @@ export default function FeedbackPage() {
                             <button
                                 type="button"
                                 onClick={() => setRating(null)}
-                                className="h-10 px-3 rounded-xl border border-border text-[10px] font-semibold uppercase tracking-widest text-muted-foreground hover:border-primary/50"
+                                className="h-10 px-3 rounded-xl border border-border text-[10px] font-semibold capitalize tracking-widest text-muted-foreground hover:border-primary/50"
                             >
                                 Skip
                             </button>
@@ -141,7 +141,7 @@ export default function FeedbackPage() {
 
                     <div className="bg-card border border-border rounded-2xl p-4 space-y-3">
                         <div>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Your note</p>
+                            <p className="text-[10px] font-bold text-muted-foreground capitalize tracking-widest">Your note</p>
                             <p className="text-[11px] text-muted-foreground">Be specific. It helps us ship faster.</p>
                         </div>
                         <textarea
@@ -157,7 +157,7 @@ export default function FeedbackPage() {
                     <button
                         type="submit"
                         disabled={submitting}
-                        className="w-full h-12 uppercase tracking-widest text-xs font-semibold rounded-xl bg-foreground text-background hover:opacity-90 transition-all disabled:opacity-50"
+                        className="w-full h-12 capitalize tracking-widest text-xs font-semibold rounded-xl bg-foreground text-background hover:opacity-90 transition-all disabled:opacity-50"
                     >
                         {submitting ? 'Sending...' : 'Submit feedback'}
                     </button>
@@ -166,9 +166,3 @@ export default function FeedbackPage() {
         </div>
     );
 }
-
-
-
-
-
-

@@ -39,7 +39,26 @@ const CATEGORY_CONFIG = {
         subtitle: 'Direct interview opportunities near you',
         icon: UserGroupIcon,
     },
-};
+    REMOTE: {
+        title: 'Remote Opportunities',
+        subtitle: 'Fresh roles you can pursue from anywhere',
+        icon: BriefcaseIcon,
+    },
+    GOVERNMENT: {
+        title: 'Government Jobs',
+        subtitle: 'Official notices and public-sector openings',
+        icon: ShieldCheckIcon,
+    },
+    HACKATHONS: {
+        title: 'Hackathons',
+        subtitle: 'Competitions, challenges, and builder programs',
+        icon: AcademicCapIcon,
+    },
+} satisfies Record<OpportunityType, {
+    title: string;
+    subtitle: string;
+    icon: typeof BriefcaseIcon;
+}>;
 
 interface CategoryPageProps {
     type: OpportunityType;
@@ -136,10 +155,10 @@ function CategoryPageContent({ type }: CategoryPageProps) {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-1 rounded-full border border-border uppercase tracking-wider">
+                    <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2 py-1 rounded-full border border-border capitalize tracking-wider">
                         {filteredOpps.length} results
                     </span>
-                    <Link href="/opportunities" className="text-[10px] font-semibold text-primary hover:underline uppercase tracking-widest">
+                    <Link href="/opportunities" className="text-[10px] font-semibold text-primary hover:underline capitalize tracking-widest">
                         View all
                     </Link>
                 </div>
@@ -164,7 +183,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
                 {/* Mobile filter button */}
                 <button
                     onClick={openMobileFilters}
-                    className="lg:hidden h-11 flex items-center shrink-0 gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold uppercase tracking-widest"
+                    className="lg:hidden h-11 flex items-center shrink-0 gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest"
                 >
                     <FunnelIcon className="w-4 h-4" />
                     {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
@@ -217,16 +236,16 @@ function CategoryPageContent({ type }: CategoryPageProps) {
                             <div className="flex items-center justify-center gap-6">
                                 <div className="text-center">
                                     <div className="text-3xl font-bold text-primary">{profileIncomplete.percentage}%</div>
-                                    <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.15em] mt-1">Current</div>
+                                    <div className="text-[10px] text-muted-foreground font-bold capitalize tracking-[0.15em] mt-1">Current</div>
                                 </div>
                                 <div className="w-px h-10 bg-border" />
                                 <div className="text-center">
                                     <div className="text-3xl font-bold text-foreground">100%</div>
-                                    <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.15em] mt-1">Goal</div>
+                                    <div className="text-[10px] text-muted-foreground font-bold capitalize tracking-[0.15em] mt-1">Goal</div>
                                 </div>
                             </div>
                         </div>
-                        <Button asChild className="h-12 px-8 text-sm font-bold uppercase tracking-widest">
+                        <Button asChild className="h-12 px-8 text-sm font-bold capitalize tracking-widest">
                             <Link href="/profile">
                                 Complete Profile
                                 <ChevronRightIcon className="w-4 h-4 ml-2" />
@@ -242,7 +261,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
                 <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card">
                     <h3 className="text-lg font-bold text-foreground tracking-tight">Feed unavailable</h3>
                     <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">{error}</p>
-                    <Button variant="outline" onClick={() => reload()} className="mt-6 h-10 px-6 text-xs font-bold uppercase tracking-widest">
+                    <Button variant="outline" onClick={() => reload()} className="mt-6 h-10 px-6 text-xs font-bold capitalize tracking-widest">
                         Retry
                     </Button>
                 </div>
@@ -255,7 +274,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
                     <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">
                         Try adjusting your filters or search keywords.
                     </p>
-                    <Button variant="outline" onClick={clearAll} className="mt-6 h-11 px-6 text-sm font-bold uppercase tracking-widest">
+                    <Button variant="outline" onClick={clearAll} className="mt-6 h-11 px-6 text-sm font-bold capitalize tracking-widest">
                         Clear filters
                     </Button>
                 </div>
@@ -283,7 +302,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
 
                     {!isLoading && !profileIncomplete && (
                         <div className={cn("mt-12 text-center pb-8 border-t border-border/50 pt-8")}>
-                            <p className="text-[10px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">
+                            <p className="text-[10px] font-bold text-muted-foreground/40 capitalize tracking-[0.2em]">
                                 Verified - {totalCount} listings active
                             </p>
                         </div>

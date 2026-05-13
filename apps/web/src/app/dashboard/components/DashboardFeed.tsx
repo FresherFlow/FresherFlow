@@ -54,7 +54,7 @@ export const DashboardFeed = ({
                             <Button
                                 variant="outline"
                                 onClick={() => setMobileVisibleCount((prev) => (typeof prev === 'number' ? prev + mobileStep : prev))}
-                                className="w-full h-10 text-[10px] font-bold uppercase tracking-widest"
+                                className="w-full h-10 text-[10px] font-bold capitalize tracking-widest"
                             >
                                 Load more
                             </Button>
@@ -72,7 +72,7 @@ export const DashboardFeed = ({
                 ) : opportunities.length === 0 ? (
                     <div className="p-12 text-center border border-dashed border-border rounded-xl">
                         <p className="text-sm font-medium text-muted-foreground">No results found in this section.</p>
-                        <Button asChild variant="outline" className="mt-4 h-8 text-[10px] font-bold uppercase tracking-widest">
+                        <Button asChild variant="outline" className="mt-4 h-8 text-[10px] font-bold capitalize tracking-widest">
                             <Link href="/opportunities">Browse all feed</Link>
                         </Button>
                     </div>
@@ -95,9 +95,3 @@ export const DashboardFeed = ({
         </>
     );
 };
-
-
-
-
-
-

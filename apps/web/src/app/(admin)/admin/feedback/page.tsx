@@ -125,7 +125,7 @@ export default function FeedbackPage() {
                             i === 2 && "col-span-2 md:col-span-1" // Make last one span 2 cols on mobile
                         )}>
                             <div className="space-y-0.5 md:space-y-1">
-                                <p className="text-[9px] md:text-xs font-medium text-muted-foreground tracking-wide uppercase">{stat.label}</p>
+                                <p className="text-[9px] md:text-xs font-medium text-muted-foreground tracking-wide capitalize">{stat.label}</p>
                                 <p className="text-sm md:text-2xl font-semibold text-foreground tracking-tight">{stat.value}</p>
                             </div>
                             <div className={cn(
@@ -198,7 +198,7 @@ export default function FeedbackPage() {
                                             )}>
                                                 {fb.reason.replace('_', ' ')}
                                             </span>
-                                            <div className="flex items-center gap-1 text-[9px] font-medium text-muted-foreground uppercase tracking-widest">
+                                            <div className="flex items-center gap-1 text-[9px] font-medium text-muted-foreground capitalize tracking-widest">
                                                 <ClockIcon className="w-2.5 h-2.5" />
                                                 {new Date(fb.createdAt).toLocaleDateString()}
                                             </div>
@@ -211,7 +211,7 @@ export default function FeedbackPage() {
                                                 <p className="text-[10px] md:text-xs font-medium text-foreground leading-none">
                                                     {fb.user?.fullName || 'Anonymous'}
                                                 </p>
-                                                <p className="text-[9px] text-muted-foreground uppercase tracking-wider mt-0.5">
+                                                <p className="text-[9px] text-muted-foreground capitalize tracking-wider mt-0.5">
                                                     Reporter
                                                 </p>
                                             </div>
@@ -255,7 +255,7 @@ export default function FeedbackPage() {
                         {appFeedback.map((item) => (
                             <div key={item.id} className="bg-card border border-border rounded-lg p-4 space-y-3 shadow-sm">
                                 <div className="flex items-center justify-between">
-                                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold uppercase tracking-widest bg-muted/60 text-foreground">
+                                    <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-semibold capitalize tracking-widest bg-muted/60 text-foreground">
                                         {item.type}
                                     </span>
                                     <div className="text-[10px] font-medium text-muted-foreground">
@@ -278,10 +278,3 @@ export default function FeedbackPage() {
         </div>
     );
 }
-
-
-
-
-
-
-

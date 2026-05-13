@@ -46,7 +46,7 @@ export const DashboardTabs = ({
                     <button
                         key={`dt-${s.key}`}
                         onClick={() => setActiveTab(s.key)}
-                        className={`relative pb-3 text-xs font-bold uppercase tracking-widest transition-all ${activeTab === s.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'} flex items-center gap-1.5`}
+                        className={`relative pb-3 text-sm font-semibold transition-all ${activeTab === s.key ? 'text-primary' : 'text-muted-foreground hover:text-foreground'} flex items-center gap-1.5`}
                     >
                         {s.title}
                         {s.key === 'latest' && latestBadgeCount > 0 && (

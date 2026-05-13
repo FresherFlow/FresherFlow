@@ -3,7 +3,7 @@ import Link from 'next/link';
 import UserIcon from '@heroicons/react/24/outline/UserIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import { Button } from '@/features/system/components/ui/Button';
-import { ReferralLinkButton } from '@/components/dashboard/DashboardBanners';
+
 
 interface DashboardHeaderProps {
     userName?: string;
@@ -20,14 +20,13 @@ export const DashboardHeader = ({ userName }: DashboardHeaderProps) => {
                     <p className="text-[11px] md:text-xs text-muted-foreground">Move fast on verified listings.</p>
                 </div>
                 <div className="hidden md:flex flex-wrap items-center gap-2">
-                    <ReferralLinkButton />
-                    <Button asChild className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest">
+                    <Button asChild variant="outline" className="h-8 px-3 text-[12px] font-semibold">
                         <Link href="/opportunities">
                             <MagnifyingGlassIcon className="w-4 h-4 mr-2" />
                             Open feed
                         </Link>
                     </Button>
-                    <Button asChild variant="outline" className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest">
+                    <Button asChild variant="outline" className="h-8 px-3 text-[12px] font-semibold">
                         <Link href="/profile">
                             <UserIcon className="w-4 h-4 mr-2" />
                             Update profile
@@ -38,9 +37,3 @@ export const DashboardHeader = ({ userName }: DashboardHeaderProps) => {
         </div>
     );
 };
-
-
-
-
-
-

@@ -19,7 +19,7 @@ export function DuplicateCheck({ checking, candidates }: DuplicateCheckProps) {
 
     return (
         <div className="rounded-lg border border-amber-300/50 bg-amber-50/70 dark:bg-amber-500/10 p-3 space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-amber-700 dark:text-amber-300">
+            <p className="text-[10px] font-bold capitalize tracking-widest text-amber-700 dark:text-amber-300">
                 Potential duplicate check
             </p>
             {checking ? (
@@ -42,11 +42,11 @@ export function DuplicateCheck({ checking, candidates }: DuplicateCheckProps) {
                                 </div>
                                 <div className="shrink-0 text-right">
                                     {typeof dup.score === 'number' ? (
-                                        <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                                        <p className="text-[10px] font-bold capitalize tracking-wider text-amber-700 dark:text-amber-300">
                                             {Math.round(dup.score * 100)}% match
                                         </p>
                                     ) : null}
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{dup.status}</p>
+                                    <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">{dup.status}</p>
                                 </div>
                             </Link>
                         ))}

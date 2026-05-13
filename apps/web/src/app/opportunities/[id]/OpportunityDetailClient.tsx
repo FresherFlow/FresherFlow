@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useRef } from 'react';
+import { useMemo, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { type Opportunity } from '@fresherflow/types';
 // removed unused toast imports
@@ -27,6 +27,11 @@ import { ExpiredWarning } from './components/ExpiredWarning';
 import { DescriptionSection } from './components/DescriptionSection';
 import { QuickActionsMobile } from './components/QuickActionsMobile';
 import { MobileGuestCTA } from './components/MobileGuestCTA';
+import { GovernmentDetailsCard } from './components/GovernmentDetailsCard';
+import { GovernmentOpportunityOverview } from './components/GovernmentOpportunityOverview';
+import { GovernmentStickyActionBar } from './components/GovernmentStickyActionBar';
+import { useSiteMode } from '@/contexts/SiteModeContext';
+import { filterOpportunitiesForSiteMode, matchesOpportunitySiteMode } from '@/lib/opportunityMode';
 
 // Hooks & Utils
 import { useOpportunityDetail } from './useOpportunityDetail';
@@ -37,7 +42,8 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, profile } = useAuth();
-    
+    const { mode, setMode } = useSiteMode();
+
     // Core Logic Hook
     const {
         opp,
@@ -56,12 +62,16 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
     const reportMenuRef = useRef<HTMLDivElement | null>(null);
     const ds = useOpportunityDerivedState(opp as Opportunity, profile, searchParams);
-    
-    const { 
-        showReports, 
-        setShowReports, 
-        handleReport 
+
+    const {
+        showReports,
+        setShowReports,
+        handleReport
     } = useOpportunityReport(opp as Opportunity, user);
+    const relatedForMode = useMemo(
+        () => filterOpportunitiesForSiteMode(relatedOpps, mode),
+        [relatedOpps, mode]
+    );
 
     const jumpToTimeline = () => {
         if (typeof document === 'undefined') return;
@@ -71,7 +81,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
     };
 
     if (isLoading) return <OpportunityDetailSkeleton />;
-    
+
     if (error) {
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center p-4 space-y-4">
@@ -93,12 +103,43 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
     if (!opp) return null;
 
+    if (!matchesOpportunitySiteMode(opp, mode)) {
+        const targetMode = opp.governmentJobDetails ? 'govt' : 'private';
+        const targetLabel = opp.governmentJobDetails ? 'Govt Mode' : 'Private Mode';
+
+        return (
+            <div className="min-h-[60vh] flex flex-col items-center justify-center p-4">
+                <div className="w-full max-w-xl rounded-3xl border border-border bg-card p-6 md:p-8 text-center space-y-4">
+                    <div className="text-[11px] font-bold uppercase tracking-[0.22em] text-primary">
+                        Mode Restricted Listing
+                    </div>
+                    <h2 className="text-2xl font-bold text-foreground">
+                        This listing is available in {targetLabel}
+                    </h2>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                        We keep government jobs and private opportunities separate. Switch the site mode to continue viewing this listing.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Button onClick={() => setMode(targetMode)} className="min-w-40">
+                            Switch to {targetLabel}
+                        </Button>
+                        <Button variant="outline" onClick={() => router.push('/dashboard')} className="min-w-40">
+                            Back to Dashboard
+                        </Button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    const isGovernmentJob = Boolean(opp.governmentJobDetails);
+
     return (
-        <div className="min-h-screen bg-background pb-16 selection:bg-primary/20">
+        <div className={`min-h-screen pb-16 selection:bg-primary/20 ${isGovernmentJob ? 'bg-[linear-gradient(180deg,#edf4fb_0%,#f7fafc_28%,#ffffff_100%)]' : 'bg-background'}`}>
             <main className="relative z-10 max-w-6xl mx-auto px-4 pt-2 pb-4 md:py-7 space-y-3 md:space-y-5">
-                
+
                 <div className="hidden md:block">
-                    <DetailActionHeader 
+                    <DetailActionHeader
                         user={user}
                         opp={opp}
                         router={router}
@@ -111,14 +152,11 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                     />
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-start">
-                    
-                    {/* Left Column */}
-                    <div className="lg:col-span-8 space-y-3 md:space-y-4">
-                        
+                {isGovernmentJob ? (
+                    <div className="max-w-4xl mx-auto space-y-4 md:space-y-5">
                         {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning />}
 
-                        <DetailHeroSection 
+                        <DetailHeroSection
                             opp={opp}
                             isCampusDrive={ds.isCampusDrive}
                             listingState={ds.listingState}
@@ -131,7 +169,60 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             isClosingSoon={ds.isClosingSoon}
                         />
 
-                        <DetailActionMobile 
+                        <EligibilitySnapshotCard
+                            alwaysVisible
+                            statusLabel={ds.eligibilitySnapshot.statusLabel}
+                            statusTone={ds.eligibilitySnapshot.statusTone}
+                            mustFix={ds.eligibilitySnapshot.mustFix}
+                            matchedSkills={ds.eligibilitySnapshot.matchedSkills}
+                            missingSkills={ds.eligibilitySnapshot.missingSkills}
+                        />
+
+                        <GovernmentOpportunityOverview opp={opp} />
+
+                        <DescriptionSection
+                            description={opp.description}
+                            title="Notification Summary"
+                        />
+
+                        <GovernmentDetailsCard
+                            details={opp.governmentJobDetails!}
+                            tags={opp.tags}
+                        />
+
+                        <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />
+
+                        <GovernmentStickyActionBar
+                            user={user}
+                            opp={opp}
+                            hasApplyLink={ds.hasApplyLink}
+                            handleApply={handleApply}
+                            handleToggleSave={handleToggleSave}
+                            loginFromDetailHref={ds.loginFromDetailHref}
+                        />
+                    </div>
+                ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-start">
+
+                    {/* Left Column */}
+                    <div className="lg:col-span-8 space-y-3 md:space-y-4">
+
+                        {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning />}
+
+                        <DetailHeroSection
+                            opp={opp}
+                            isCampusDrive={ds.isCampusDrive}
+                            listingState={ds.listingState}
+                            driveDateItems={ds.driveDateItems}
+                            driveMeta={ds.driveMeta}
+                            displaySalary={ds.displaySalary}
+                            locationInfo={ds.locationInfo}
+                            formatDeadline={ds.formatDeadline}
+                            isExpired={ds.isExpired}
+                            isClosingSoon={ds.isClosingSoon}
+                        />
+
+                        <DetailActionMobile
                             user={user}
                             opp={opp}
                             isCampusDrive={ds.isCampusDrive}
@@ -146,32 +237,47 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             router={router}
                         />
 
-                        <DescriptionSection description={opp.description} />
+                        <DescriptionSection
+                            description={opp.description}
+                            title={isGovernmentJob ? 'Notification Summary' : 'Description'}
+                        />
+
+                        {opp.governmentJobDetails && (
+                            <>
+                                <GovernmentOpportunityOverview opp={opp} />
+                                <GovernmentDetailsCard
+                                    details={opp.governmentJobDetails}
+                                    tags={opp.tags}
+                                />
+                            </>
+                        )}
 
                         {ds.isCampusDrive && (
-                            <DetailCampusDriveInfo 
+                            <DetailCampusDriveInfo
                                 driveMeta={ds.driveMeta}
                                 hasApplyLink={ds.hasApplyLink}
                                 handleApply={handleApply}
                             />
                         )}
 
-                        <DetailTimeline 
+                        <DetailTimeline
                             timelineEvents={ds.timelineEvents}
                             upcomingTimelineEvents={ds.upcomingTimelineEvents}
                         />
 
-                        <DetailRequirements 
-                            opp={opp}
-                            educationDetails={ds.educationDetails}
-                        />
+                        {!isGovernmentJob && (
+                            <DetailRequirements
+                                opp={opp}
+                                educationDetails={ds.educationDetails}
+                            />
+                        )}
 
                         {opp.type === 'WALKIN' && opp.walkInDetails && (
                             <WalkInDetailsCard walkInDetails={opp.walkInDetails} />
                         )}
 
                         {!user && (
-                            <QuickActionsMobile 
+                            <QuickActionsMobile
                                 onReportClick={() => {
                                     setShowReports(true);
                                     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -189,8 +295,8 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             matchedSkills={ds.eligibilitySnapshot.matchedSkills}
                             missingSkills={ds.eligibilitySnapshot.missingSkills}
                         />
-                        
-                        <DetailSidebarActions 
+
+                        <DetailSidebarActions
                             user={user}
                             opp={opp}
                             currentAction={ds.currentAction}
@@ -209,8 +315,9 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         />
                     </aside>
                 </div>
+                )}
 
-                <RelatedOpportunities relatedOpps={relatedOpps} isLoadingRelated={isLoadingRelated} />
+                {!isGovernmentJob && <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />}
             </main>
 
             {!user && <MobileGuestCTA loginFromDetailHref={ds.loginFromDetailHref} />}

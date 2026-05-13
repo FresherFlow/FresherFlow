@@ -11,11 +11,12 @@ import { analytics } from '@/lib/analytics';
 import { buildInviteUrl } from '@fresherflow/domain';
 import { referralApi } from '@/shared/api/client';
 import { SHARE_BASE_URL } from '@/lib/runtimeConfig';
+import { calculateProfileCompletion } from '@/lib/profileCompletion';
 
 // Profile completion banner
 export function ProfileCompletionBanner() {
     const { profile } = useAuth();
-    const pct = profile?.completionPercentage ?? 0;
+    const pct = calculateProfileCompletion(profile).percentage;
 
     if (!profile || pct >= 100) return null;
 
@@ -33,8 +34,8 @@ export function ProfileCompletionBanner() {
                 </div>
             </div>
             <Link
-                href="/profile"
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-primary hover:underline whitespace-nowrap"
+                href="/profile/complete"
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold capitalize tracking-widest text-primary hover:underline whitespace-nowrap"
             >
                 Complete profile
                 <ArrowRightIcon className="w-3 h-3" />
@@ -119,7 +120,7 @@ export function ReferralLinkButton() {
         <div className="inline-flex items-center gap-1.5">
             <button
                 onClick={handleShare}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold capitalize tracking-widest text-muted-foreground hover:text-primary transition-colors"
                 title="Share your invite link"
             >
                 {shared ? (
@@ -136,7 +137,7 @@ export function ReferralLinkButton() {
             </button>
             <button
                 onClick={handleCopy}
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors"
+                className="inline-flex items-center gap-1.5 text-[11px] font-bold capitalize tracking-widest text-muted-foreground hover:text-primary transition-colors"
                 title="Copy your invite link"
             >
                 {copied ? (
@@ -154,9 +155,3 @@ export function ReferralLinkButton() {
         </div>
     );
 }
-
-
-
-
-
-

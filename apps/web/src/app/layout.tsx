@@ -10,6 +10,9 @@ import PushNotificationProvider from "@/components/providers/PushNotificationPro
 import { ThemeScript } from "@/components/providers/ThemeScript";
 import OfflineNotification from "@/components/ui/OfflineNotification";
 import InstallAppBanner from "@/components/ui/InstallAppBanner";
+import { SiteModeProvider } from "@/contexts/SiteModeContext";
+import { getSiteMode } from "@/lib/siteModeServer";
+import { PageTransitionWrapper } from "@/components/providers/PageTransitionWrapper";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
@@ -74,11 +77,12 @@ export const metadata: Metadata = {
 import { AuthFormDataProvider } from "@/contexts/AuthFormDataContext";
 import { ErrorBoundary } from "@/components/providers/ErrorBoundary";
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialSiteMode = await getSiteMode();
   const gaId = process.env.NEXT_PUBLIC_GA_ID || '';
   const enableVercelAnalytics = process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
   const enableSpeedInsights = process.env.NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS === 'true';
@@ -126,19 +130,23 @@ export default function RootLayout({
       </head>
       <body className="antialiased bg-background text-foreground selection:bg-primary/20" suppressHydrationWarning>
         <ThemeProvider>
-          <AuthFormDataProvider>
-            <ConditionalAuthProvider>
-              <InstallPromptProvider>
-                <NavigationWrapper>
-                  <ErrorBoundary>
-                    {children}
-                  </ErrorBoundary>
-                </NavigationWrapper>
-                <InstallAppBanner />
-              </InstallPromptProvider>
-              <PushNotificationProvider />
-            </ConditionalAuthProvider>
-          </AuthFormDataProvider>
+          <SiteModeProvider initialMode={initialSiteMode}>
+            <PageTransitionWrapper>
+              <AuthFormDataProvider>
+                <ConditionalAuthProvider>
+                  <InstallPromptProvider>
+                    <NavigationWrapper>
+                      <ErrorBoundary>
+                        {children}
+                      </ErrorBoundary>
+                    </NavigationWrapper>
+                    <InstallAppBanner />
+                  </InstallPromptProvider>
+                  <PushNotificationProvider />
+                </ConditionalAuthProvider>
+              </AuthFormDataProvider>
+            </PageTransitionWrapper>
+          </SiteModeProvider>
         </ThemeProvider>
         <ServiceWorkerRegister />
         <SmartToaster />
@@ -150,5 +158,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-

@@ -11,10 +11,10 @@ import { ThemeToggle } from '@repo/ui/ThemeToggle';
 import { LogoImage } from './LogoImage';
 import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
-import { NAV_ROUTES } from './routeConfig';
+import { getNavRoutes } from './routeConfig';
 import { useTheme } from '@/contexts/ThemeContext';
-
-const desktopRoutes = NAV_ROUTES.filter(r => r.showInDesktop);
+import { useSiteMode } from '@/contexts/SiteModeContext';
+import { ModeSwitch } from '@/components/site/ModeSwitch';
 
 export function DesktopNav() {
     const context = useContext(AuthContext);
@@ -25,6 +25,8 @@ export function DesktopNav() {
     const pendingSyncCount = useOfflineActionQueue(user?.id);
     const [scrolled, setScrolled] = useState(false);
     const { theme, toggleTheme } = useTheme();
+    const { mode } = useSiteMode();
+    const desktopRoutes = getNavRoutes(mode).filter(r => r.showInDesktop);
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 8);
@@ -42,7 +44,14 @@ export function DesktopNav() {
             )}>
 
                 {/* Brand */}
-                <Link href={user ? '/dashboard' : '/'} className="flex items-center gap-2.5 shrink-0 group">
+                <Link
+                    href={user ? '/dashboard' : '/'}
+                    onClick={(event) => {
+                        const targetHref = user ? '/dashboard' : '/';
+                        if (pathname === targetHref) event.preventDefault();
+                    }}
+                    className="flex items-center gap-2.5 shrink-0 group"
+                >
                     <LogoImage width={28} height={28} className="w-7 h-7 object-contain" />
                     <span className="text-[17px] font-semibold tracking-[0.01em] text-foreground leading-none">
                         FresherFlow
@@ -58,6 +67,10 @@ export function DesktopNav() {
                                 <Link
                                     key={route.href}
                                     href={route.href}
+                                    onClick={(event) => {
+                                        if (isActive) event.preventDefault();
+                                    }}
+                                    aria-current={isActive ? 'page' : undefined}
                                     className={cn(
                                         'px-3.5 py-1.5 text-[15px] font-medium transition-colors duration-150 relative after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[2px] after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:origin-left',
                                         isActive
@@ -80,6 +93,7 @@ export function DesktopNav() {
                         </span>
                     )}
 
+                    {!isLoading && user && <ModeSwitch className="mr-1" />}
                     <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
 
                     {!isLoading && (

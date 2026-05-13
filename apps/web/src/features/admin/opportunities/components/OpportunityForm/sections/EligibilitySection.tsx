@@ -42,9 +42,9 @@ export function EligibilitySection({
             </h3>
 
             <div className="space-y-3">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">
                     Education level
-                    <span className="ml-2 text-[10px] font-normal lowercase opacity-70 italic">(optional)</span>
+                    <span className="ml-2 text-[10px] font-normal capitalize opacity-70 italic">(optional)</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
                     {commonDegrees.map((deg) => (
@@ -79,7 +79,7 @@ export function EligibilitySection({
             </div>
 
             <div className="space-y-2.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">
                     Courses
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -100,7 +100,7 @@ export function EligibilitySection({
             </div>
 
             <div className="space-y-2.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">
                     Specializations
                 </label>
                 <div className="flex flex-wrap gap-1.5">
@@ -122,7 +122,7 @@ export function EligibilitySection({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Min Exp (years)</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Min Exp (years)</label>
                     <input
                         type="number"
                         step="0.1"
@@ -134,7 +134,7 @@ export function EligibilitySection({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Max Exp (years)</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Max Exp (years)</label>
                     <input
                         type="number"
                         step="0.1"
@@ -149,7 +149,7 @@ export function EligibilitySection({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">
                         Passout years
                     </label>
                     <input
@@ -160,7 +160,7 @@ export function EligibilitySection({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Skills</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Skills</label>
                     <input
                         value={requiredSkills}
                         onChange={(e) => setRequiredSkills(e.target.value)}

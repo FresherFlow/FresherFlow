@@ -126,7 +126,7 @@ export function AdminProvider({ children }: { children: ReactNode }) {
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
-    }, [checkAdminSession]);
+    }, [checkAdminSession, router]);
 
     async function logout() {
         try {

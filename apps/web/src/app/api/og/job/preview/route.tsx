@@ -164,7 +164,7 @@ function renderCard(mode: Mode) {
                   style={{
                     fontSize: 14,
                     color: item.deadline ? '#fde68a' : '#bfdbfe',
-                    textTransform: 'uppercase',
+                    textTransform: 'capitalize',
                     fontWeight: 700,
                     letterSpacing: '.05em',
                   }}
@@ -207,9 +207,3 @@ export function GET(request: Request) {
   const mode = parseMode(searchParams.get('mode'));
   return renderCard(mode);
 }
-
-
-
-
-
-

@@ -43,7 +43,7 @@ export function JobInfoSection({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Title *</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Title *</label>
                     <input
                         required
                         value={title}
@@ -53,7 +53,7 @@ export function JobInfoSection({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company *</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Company *</label>
                     <input
                         required
                         value={company}
@@ -68,7 +68,7 @@ export function JobInfoSection({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Company website (logo)</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Company website (logo)</label>
                     <input
                         type="url"
                         value={companyWebsite}
@@ -81,7 +81,7 @@ export function JobInfoSection({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Function</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Function</label>
                     <input
                         value={jobFunction}
                         onChange={(e) => setJobFunction(e.target.value)}
@@ -90,7 +90,7 @@ export function JobInfoSection({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employment type</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Employment type</label>
                     <input
                         value={employmentType}
                         onChange={(e) => setEmploymentType(e.target.value)}
@@ -99,7 +99,7 @@ export function JobInfoSection({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Benefits</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Benefits</label>
                     <input
                         value={incentives}
                         onChange={(e) => setIncentives(e.target.value)}
@@ -111,7 +111,7 @@ export function JobInfoSection({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Selection process</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Selection process</label>
                     <textarea
                         value={selectionProcess}
                         onChange={(e) => setSelectionProcess(e.target.value)}
@@ -121,7 +121,7 @@ export function JobInfoSection({
                     />
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Notes / highlights</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Notes / highlights</label>
                     <textarea
                         value={notesHighlights}
                         onChange={(e) => setNotesHighlights(e.target.value)}
@@ -133,7 +133,7 @@ export function JobInfoSection({
             </div>
 
             <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</label>
+                <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Description</label>
                 <p className="text-[11px] text-muted-foreground">
                     Supports line breaks, bullet lines like <span className="font-mono">- Requirement</span>, and bold section headings like <span className="font-mono">**Responsibilities**</span>.
                 </p>

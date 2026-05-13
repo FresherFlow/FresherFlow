@@ -15,6 +15,7 @@ import type { User } from '@fresherflow/types';
 import { cn } from '@repo/ui/utils/cn';
 import { LogoImage } from './LogoImage';
 import { useTheme } from '@/contexts/ThemeContext';
+import { ModeSwitch } from '@/components/site/ModeSwitch';
 
 function TelegramIcon({ className }: { className?: string }) {
     return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"><path d="M12 0C5.371 0 0 5.372 0 12s5.371 12 12 12 12-5.372 12-12S18.629 0 12 0Zm5.861 8.233-1.97 9.294c-.149.657-.538.818-1.088.51l-3.009-2.219-1.451 1.396c-.16.16-.295.295-.603.295l.213-3.049 5.549-5.012c.24-.213-.053-.333-.373-.12L8.27 13.65l-2.957-.922c-.642-.203-.656-.642.135-.949l11.557-4.456c.536-.198 1.006.12.856.91Z" /></svg>;
@@ -120,7 +121,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                     <LogoImage width={32} height={32} className="w-8 h-8 rounded-lg shadow-sm" />
                     <div className="flex flex-col">
                         <span className="text-base font-bold tracking-tight leading-none text-foreground">FresherFlow</span>
-                        <span className="text-[10px] font-semibold text-muted-foreground tracking-widest uppercase mt-1">Platform</span>
+                        <span className="text-[12px] font-semibold text-muted-foreground mt-1">Platform</span>
                     </div>
                     <button onClick={onClose} className="ml-auto p-2 -mr-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted/50 transition-colors">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -141,7 +142,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                     </div>
 
                     <div className="pt-2">
-                        <p className="px-3 pb-3 text-[11px] font-bold text-muted-foreground tracking-widest uppercase opacity-70">Connect</p>
+                        <p className="px-3 pb-3 text-[12px] font-bold text-muted-foreground opacity-70">Connect</p>
                         <div className="flex flex-wrap gap-2.5 px-3">
                             {socialLinks.map((s) => (
                                 <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer"
@@ -155,20 +156,26 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                 </nav>
 
                 {/* Bottom User Section */}
-                <div className="p-4 border-t border-border/40 bg-card space-y-3 shrink-0">
-                    <div className="flex items-center justify-between px-1">
-                        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                            Theme <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+                <div className="p-4 border-t border-border/40 bg-card space-y-4 shrink-0">
+                    <div className="flex flex-col gap-3 px-1">
+                        <div className="flex items-center justify-between text-[13px] font-medium text-muted-foreground/80">
+                            <span>Mode</span>
+                            <ModeSwitch />
                         </div>
-                        <Link href="/logout" onClick={onClose}
-                            className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-muted-foreground hover:text-destructive transition-colors rounded-lg hover:bg-destructive/10 uppercase tracking-widest" aria-label="Sign Out">
-                            <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                            Exit
-                        </Link>
+                        <div className="flex items-center justify-between text-[13px] font-medium text-muted-foreground/80">
+                            <span>Theme</span>
+                            <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
+                        </div>
                     </div>
 
+                    <Link href="/logout" onClick={onClose}
+                        className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-muted-foreground hover:text-destructive transition-all rounded-xl hover:bg-destructive/5 border border-transparent hover:border-destructive/10 capitalize tracking-widest" aria-label="Sign Out">
+                        <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                        Sign out
+                    </Link>
+
                     <Link href="/profile" onClick={onClose} className="group flex items-center gap-3 p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 transition-all border border-transparent hover:border-border">
-                        <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 uppercase font-bold text-lg shadow-sm">
+                        <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 capitalize font-bold text-lg shadow-sm">
                             {user.fullName?.[0] || user.email?.[0] || 'U'}
                         </div>
                         <div className="min-w-0 flex-1">
@@ -181,9 +188,3 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
         </div>
     );
 }
-
-
-
-
-
-

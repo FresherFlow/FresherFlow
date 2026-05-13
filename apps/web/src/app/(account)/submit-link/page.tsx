@@ -75,7 +75,7 @@ export default function SubmitLinkPage() {
                     ) : (
                         <form onSubmit={handleSubmit} className="space-y-4">
                             <div>
-                                <label htmlFor="job-url" className="block text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">
+                                <label htmlFor="job-url" className="block text-xs font-bold text-muted-foreground capitalize tracking-widest mb-2">
                                     Job URL
                                 </label>
                                 <input
@@ -119,9 +119,3 @@ export default function SubmitLinkPage() {
         </div>
     );
 }
-
-
-
-
-
-

@@ -75,10 +75,9 @@ export default function LoadingScreen({
             {displayMessage && (
                 <div className="text-center animate-pulse space-y-2">
                     <p className="text-lg font-bold text-foreground tracking-tight">{displayMessage}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-[0.2em] font-bold">FresherFlow</p>
+                    <p className="text-[10px] text-muted-foreground capitalize tracking-[0.2em] font-bold">FresherFlow</p>
                 </div>
             )}
         </div>
     );
 }
-

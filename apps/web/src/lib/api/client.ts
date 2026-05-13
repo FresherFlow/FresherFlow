@@ -7,6 +7,7 @@ import type {
     AuthenticationResponseJSON
 } from '@simplewebauthn/browser';
 import { markDetailSyncedNow, markFeedSyncedNow } from '@/lib/offline/syncStatus';
+import { getSiteModeClient } from '@/lib/siteMode';
 
 // Thrown when a request is made with no network connectivity.
 // Callers can check `err instanceof OfflineError` to skip toast notifications.
@@ -213,12 +214,6 @@ function shouldAttemptSessionRefresh(endpoint: string): boolean {
     return !authEndpointsThatShouldNotRefresh.some((prefix) => endpoint.startsWith(prefix));
 }
 
-function setAdminSessionHint() {
-    if (typeof document === 'undefined') return;
-    const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `ff_admin_logged_in=true; path=/; max-age=${90 * 24 * 60 * 60}; SameSite=Lax${secure}`;
-}
-
 export function getApiBaseForEndpoint(endpoint: string): string {
     if (shouldUseRelativeApiBase()) {
         return '';
@@ -243,6 +238,25 @@ function shouldBypassBrowserCache(endpoint: string, method: string): boolean {
         '/api/feedback',
     ];
     return privatePrefixes.some((prefix) => endpoint.startsWith(prefix));
+}
+
+function isPublicSharedReadEndpoint(endpoint: string): boolean {
+    return endpoint.startsWith('/api/opportunities')
+        || endpoint.startsWith('/api/public/companies')
+        || endpoint.startsWith('/api/public/sitemap')
+        || endpoint === '/api/health'
+        || endpoint === '/api/stats';
+}
+
+function shouldIncludeCredentials(endpoint: string, method: string): boolean {
+    if (method !== 'GET' && method !== 'HEAD') return true;
+    if (!isPublicSharedReadEndpoint(endpoint)) return true;
+
+    return hasCookie('ff_logged_in')
+        || hasCookie('accessToken')
+        || hasCookie('refreshToken')
+        || Boolean(getUserAccessToken())
+        || Boolean(getUserRefreshToken());
 }
 
 // Singleton promise to handle concurrent refresh requests
@@ -291,11 +305,12 @@ export async function apiClient<T = unknown>(
 
     const bypassCache = shouldBypassBrowserCache(endpoint, method);
 
-    // Defaults: credentials include for cookies
+    const includeCredentials = shouldIncludeCredentials(endpoint, method);
+
     const fetchOptions: RequestInit = {
         ...options,
         headers,
-        credentials: 'include', // CRITICAL: This sends/receives cookies
+        credentials: includeCredentials ? 'include' : 'omit',
         // Public reads can use browser cache; private/auth data stays uncached.
         cache: options.cache ?? (bypassCache ? 'no-store' : 'default'),
     };
@@ -405,14 +420,14 @@ export async function apiClient<T = unknown>(
                 // wipe the user's session and send them back to login.
                 const isExplicitAuthFailure = error?.status === 401 || error?.status === 403;
                 const isNetworkError = error instanceof OfflineError || (error instanceof TypeError && error.message.includes('fetch'));
-                
+
                 if (isExplicitAuthFailure && !isNetworkError) {
                     if (typeof window !== 'undefined') {
                         window.dispatchEvent(new CustomEvent('fresherflow-unauthorized'));
                     }
                     throw new UnauthorizedError();
                 }
-                
+
                 // Otherwise, let the original request fail normally without clearing the session.
                 throw error;
             }
@@ -497,12 +512,12 @@ export async function apiClient<T = unknown>(
         const isUnauthorized = error instanceof UnauthorizedError || err.statusCode === 401 || err.message?.includes('No token provided');
         const isSafariLoadFailed = error instanceof TypeError && err.message === 'Load failed'; // Generic Safari error for network failures
         const isCommonNetworkError = error instanceof TypeError && (
-            err.message?.includes('Failed to fetch') || 
-            err.message?.includes('NetworkError') || 
+            err.message?.includes('Failed to fetch') ||
+            err.message?.includes('NetworkError') ||
             err.message?.includes('network error')
         );
 
-        // Only report to Sentry if it's a real server error (5xx), a timeout, 
+        // Only report to Sentry if it's a real server error (5xx), a timeout,
         // or an unexpected non-network failure.
         const shouldReport = !isOffline && !isUnauthorized && !isSafariLoadFailed && !isCommonNetworkError &&
             (err.statusCode != null && err.statusCode >= 500 || err.code === 'TIMEOUT' || (err.statusCode == null && !isOffline));
@@ -734,9 +749,14 @@ export const opportunityClicksApi = {
         }),
 };
 
+function appendSiteModeQuery(query: URLSearchParams) {
+    if (typeof window === 'undefined') return;
+    query.set('siteMode', getSiteModeClient());
+}
+
 // Opportunities API calls
 export const opportunitiesApi = {
-    list: (params?: { type?: string; city?: string; company?: string; closingSoon?: boolean; minSalary?: number; maxSalary?: number; page?: number; sort?: string }) => {
+    list: (params?: { type?: string; city?: string; company?: string; closingSoon?: boolean; minSalary?: number; maxSalary?: number; page?: number; limit?: number; sort?: string }) => {
         const query = new URLSearchParams();
         if (params?.type) query.append('type', params.type);
         if (params?.city) query.append('city', params.city);
@@ -745,7 +765,9 @@ export const opportunitiesApi = {
         if (params?.minSalary) query.append('minSalary', String(params.minSalary));
         if (params?.maxSalary) query.append('maxSalary', String(params.maxSalary));
         if (params?.page) query.append('page', String(params.page));
+        if (params?.limit) query.append('limit', String(params.limit));
         if (params?.sort) query.append('sort', params.sort);
+        appendSiteModeQuery(query);
 
         const queryString = query.toString();
         return apiClient(`/api/opportunities${queryString ? `?${queryString}` : ''}`);
@@ -757,10 +779,16 @@ export const opportunitiesApi = {
         if (params.city) query.append('city', params.city);
         if (params.page) query.append('page', String(params.page));
         if (params.limit) query.append('limit', String(params.limit));
+        appendSiteModeQuery(query);
         return apiClient(`/api/opportunities/search?${query.toString()}`);
     },
 
-    getById: (id: string) => apiClient(`/api/opportunities/${id}`)
+    getById: (id: string) => {
+        const query = new URLSearchParams();
+        appendSiteModeQuery(query);
+        const queryString = query.toString();
+        return apiClient(`/api/opportunities/${id}${queryString ? `?${queryString}` : ''}`);
+    }
 };
 
 // Companies API calls

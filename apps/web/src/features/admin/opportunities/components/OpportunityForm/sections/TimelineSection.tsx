@@ -94,7 +94,7 @@ export function TimelineSection({
                             type="button"
                             onClick={handleCreateTimelineEvent}
                             disabled={timelineBusyId === 'new'}
-                            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-xs font-bold uppercase tracking-wider text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-60"
+                            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-xs font-bold capitalize tracking-wider text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-60"
                         >
                             {timelineBusyId === 'new' ? 'Adding...' : 'Add event'}
                         </button>

@@ -61,6 +61,18 @@ export function OpportunityGrid({
 
     return (
         <div className="space-y-4 md:space-y-6">
+            <div className="flex items-center justify-between pb-2 border-b border-border/40">
+                <div className="flex items-center gap-2">
+                    <div className="p-1.5 rounded-full bg-primary/10 text-primary">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor" className="w-3.5 h-3.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307L21.75 6.75" />
+                        </svg>
+                    </div>
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        {opportunities.length} SIGNALS DISCOVERED
+                    </span>
+                </div>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-8" role="list" aria-label="Job listings">
                 {opportunities.map((opp) => (
                     <JobCard
@@ -81,9 +93,3 @@ export function OpportunityGrid({
         </div>
     );
 }
-
-
-
-
-
-

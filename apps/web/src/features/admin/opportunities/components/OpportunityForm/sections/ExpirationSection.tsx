@@ -7,7 +7,7 @@ interface ExpirationSectionProps {
 export function ExpirationSection({ expiresAt, setExpiresAt, onToggleAmPm }: ExpirationSectionProps) {
     return (
         <div className="space-y-1.5 relative group md:col-span-2">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider flex items-center gap-1.5">
                 Expiration Date
             </label>
             <input
@@ -22,14 +22,14 @@ export function ExpirationSection({ expiresAt, setExpiresAt, onToggleAmPm }: Exp
                 <button
                     type="button"
                     onClick={() => onToggleAmPm('AM')}
-                    className="px-2 py-1 rounded bg-muted hover:bg-muted-foreground/10 text-[10px] font-bold uppercase transition-colors"
+                    className="px-2 py-1 rounded bg-muted hover:bg-muted-foreground/10 text-[10px] font-bold capitalize transition-colors"
                 >
                     Force AM
                 </button>
                 <button
                     type="button"
                     onClick={() => onToggleAmPm('PM')}
-                    className="px-2 py-1 rounded bg-muted hover:bg-muted-foreground/10 text-[10px] font-bold uppercase transition-colors"
+                    className="px-2 py-1 rounded bg-muted hover:bg-muted-foreground/10 text-[10px] font-bold capitalize transition-colors"
                 >
                     Force PM
                 </button>

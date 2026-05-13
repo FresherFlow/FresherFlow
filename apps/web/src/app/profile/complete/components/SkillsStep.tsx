@@ -75,7 +75,7 @@ export const SkillsStep = ({
                 {skills.length > 0 && (
                     <div className="flex flex-wrap gap-2 mt-2">
                         {skills.map(s => (
-                            <span key={s} className="bg-success/5 text-success border border-success/20 px-3 py-1 rounded-lg text-[11px] font-bold uppercase tracking-wider flex items-center gap-1.5">
+                            <span key={s} className="bg-success/5 text-success border border-success/20 px-3 py-1 rounded-lg text-[11px] font-bold capitalize tracking-wider flex items-center gap-1.5">
                                 {s}
                                 <XMarkIcon onClick={() => removeSkill(s)} className="w-3 h-3 cursor-pointer opacity-50 hover:opacity-100" />
                             </span>
@@ -88,7 +88,7 @@ export const SkillsStep = ({
                 <Button onClick={onSubmit} disabled={isLoading} className="flex-1 h-11 font-bold flex items-center justify-center gap-2">
                     {isLoading ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : <><CheckCircleIcon className="w-4 h-4" /> Finish Setup</>}
                 </Button>
-                <Button variant="outline" onClick={onSkip} className="h-11 px-5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                <Button variant="outline" onClick={onSkip} className="h-11 px-5 text-xs font-bold capitalize tracking-wider text-muted-foreground">
                     Skip
                 </Button>
             </div>
@@ -99,14 +99,8 @@ export const SkillsStep = ({
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="space-y-1.5 w-full">
-            <label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{label}</label>
+            <label className="text-[11px] font-bold text-muted-foreground capitalize tracking-wider">{label}</label>
             {children}
         </div>
     );
 }
-
-
-
-
-
-

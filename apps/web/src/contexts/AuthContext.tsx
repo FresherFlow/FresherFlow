@@ -16,6 +16,7 @@ interface AuthContextType {
     logout: () => Promise<void>;
     refreshUser: () => Promise<void>;
     refreshProfile: () => Promise<void>;
+    forceRefreshProfile: () => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -116,8 +117,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [isLoggingOut]);
 
-    const loadUser = useCallback(async (options?: { silent?: boolean }) => {
+    const loadUser = useCallback(async (options?: { silent?: boolean; force?: boolean }) => {
         const silent = options?.silent === true;
+        const force = options?.force === true;
         if (!silent) setIsLoading(true);
         try {
             const cached = readCachedSession();
@@ -139,13 +141,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 }
             }
 
-            if (cached && isCachedSessionFresh(cached)) {
+            // Skip cache check if force=true (used after profile saves)
+            if (!force && cached && isCachedSessionFresh(cached)) {
                 setUser(cached.user);
                 setProfile(cached.profile);
                 lastSuccessfulLoadAtRef.current = cached.savedAt;
                 if (!silent) setIsLoading(false);
                 return;
             }
+            // Clear stale cache before force-fetching
+            if (force) clearCachedSession();
 
             const response = await authApi.me() as { user: User; profile: Profile };
             setUser(response.user);
@@ -234,17 +239,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastSuccessfulLoadAtRef.current = Date.now();
     }
 
-    async function refreshUser() {
+    const refreshUser = useCallback(async () => {
         await loadUser();
-    }
+    }, [loadUser]);
 
-    async function refreshProfile() {
+    const refreshProfile = useCallback(async () => {
         await loadUser();
-    }
+    }, [loadUser]);
+
+    const forceRefreshProfile = useCallback(async () => {
+        await loadUser({ force: true });
+    }, [loadUser]);
 
     return (
         <AuthContext.Provider
-            value={{ user, profile, isLoading, login, sendOtp, verifyOtp, loginWithGoogle, logout, refreshUser, refreshProfile }}
+            value={{ user, profile, isLoading, login, sendOtp, verifyOtp, loginWithGoogle, logout, refreshUser, refreshProfile, forceRefreshProfile }}
         >
             {children}
         </AuthContext.Provider>

@@ -4,6 +4,7 @@ type EligibilitySnapshotCardProps = {
     mustFix: string[];
     matchedSkills: string[];
     missingSkills: string[];
+    alwaysVisible?: boolean;
 };
 
 export function EligibilitySnapshotCard({
@@ -11,7 +12,8 @@ export function EligibilitySnapshotCard({
     statusTone,
     mustFix,
     matchedSkills,
-    missingSkills
+    missingSkills,
+    alwaysVisible = false,
 }: EligibilitySnapshotCardProps) {
     const statusClasses =
         statusTone === 'ok'
@@ -21,7 +23,7 @@ export function EligibilitySnapshotCard({
                 : 'bg-muted text-foreground border-border';
 
     return (
-        <div className="hidden lg:block bg-card p-5 rounded-xl border border-border shadow-sm space-y-4">
+        <div className={`${alwaysVisible ? 'block' : 'hidden lg:block'} bg-card p-5 rounded-xl border border-border shadow-sm space-y-4`}>
             <div className="flex items-center justify-between gap-3">
                 <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Eligibility Snapshot</h4>
                 <span className={`px-2.5 py-1 rounded-md border text-xs font-bold uppercase tracking-wide ${statusClasses}`}>

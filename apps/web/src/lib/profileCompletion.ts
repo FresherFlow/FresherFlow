@@ -16,19 +16,6 @@ export interface ProfileCompletionResult {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function calculateProfileCompletion(profile: any): ProfileCompletionResult {
-    if (typeof profile?.completionPercentage === 'number') {
-        return {
-            percentage: profile.completionPercentage,
-            isComplete: profile.completionPercentage === 100,
-            missingFields: [],
-            missingCategories: {
-                education: false,
-                preferences: false,
-                readiness: false,
-            },
-        };
-    }
-
     let completion = 0;
     const missingFields: string[] = [];
     const missingCategories = {
@@ -92,9 +79,15 @@ export function calculateProfileCompletion(profile: any): ProfileCompletionResul
         if (!profile?.skills?.length) missingFields.push('Professional Skills');
     }
 
+    const storedCompletion =
+        typeof profile?.completionPercentage === 'number' ? profile.completionPercentage : null;
+    const resolvedCompletion = storedCompletion === null || storedCompletion !== completion
+        ? completion
+        : storedCompletion;
+
     return {
-        percentage: completion,
-        isComplete: completion === 100,
+        percentage: resolvedCompletion,
+        isComplete: resolvedCompletion === 100,
         missingFields,
         missingCategories,
     };
@@ -107,10 +100,6 @@ export function isProfileComplete(profile: any): boolean {
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function getMissingFieldsMessage(profile: any): string {
-    if (typeof profile?.completionPercentage === 'number' && profile.completionPercentage < 100) {
-        return 'Complete your profile to see jobs.';
-    }
-
     const result = calculateProfileCompletion(profile);
 
     if (result.isComplete) {

@@ -5,7 +5,6 @@ import { Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { adminApi } from "@/shared/api/admin";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
 
 type DeliveryControls = {
     socialAutoPostingEnabled: boolean;

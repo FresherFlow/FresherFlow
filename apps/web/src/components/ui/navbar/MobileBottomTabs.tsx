@@ -5,15 +5,16 @@ import { usePathname } from 'next/navigation';
 import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
-import { NAV_ROUTES } from './routeConfig';
-
-const mobileTabs = NAV_ROUTES.filter(r => r.showInMobileTabs);
+import { getNavRoutes } from './routeConfig';
+import { useSiteMode } from '@/contexts/SiteModeContext';
 
 export function MobileBottomTabs() {
     const pathname = usePathname();
     const context = useContext(AuthContext);
     const user = context?.user;
     const [isVisible, setIsVisible] = useState(true);
+    const { mode } = useSiteMode();
+    const mobileTabs = getNavRoutes(mode).filter(r => r.showInMobileTabs);
 
     useEffect(() => {
         if (!user) return;
@@ -50,6 +51,10 @@ export function MobileBottomTabs() {
                         <Link
                             key={tab.href}
                             href={tab.href}
+                            onClick={(event) => {
+                                if (isActive) event.preventDefault();
+                            }}
+                            aria-current={isActive ? 'page' : undefined}
                             className={cn(
                                 'flex flex-col items-center justify-center flex-1 h-full gap-1',
                                 isActive ? 'text-primary' : 'text-muted-foreground'

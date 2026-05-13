@@ -155,7 +155,7 @@ export default function AdminDashboardHome() {
                                 type="button"
                                 onClick={() => setWindowValue(value)}
                                 className={cn(
-                                    'h-8 rounded-md border px-3 text-xs font-semibold uppercase tracking-wider',
+                                    'h-8 rounded-md border px-3 text-xs font-semibold capitalize tracking-wider',
                                     windowValue === value
                                         ? 'border-primary bg-primary text-primary-foreground'
                                         : 'border-border bg-card text-muted-foreground'
@@ -168,7 +168,7 @@ export default function AdminDashboardHome() {
                             type="button"
                             onClick={() => void loadDashboard(true)}
                             disabled={refreshing}
-                            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-semibold uppercase tracking-wider text-foreground"
+                            className="inline-flex h-8 items-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-semibold capitalize tracking-wider text-foreground"
                         >
                             <ArrowPathIcon className={cn('h-4 w-4', refreshing && 'animate-spin')} />
                             Refresh
@@ -226,19 +226,19 @@ export default function AdminDashboardHome() {
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Requests</p>
+                            <p className="text-[10px] capitalize tracking-wider text-muted-foreground">Requests</p>
                             <p className="text-lg font-semibold">{metrics.traffic.requests}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Error rate</p>
+                            <p className="text-[10px] capitalize tracking-wider text-muted-foreground">Error rate</p>
                             <p className="text-lg font-semibold">{metrics.traffic.errorRatePct}%</p>
                         </div>
                         <div>
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Avg latency</p>
+                            <p className="text-[10px] capitalize tracking-wider text-muted-foreground">Avg latency</p>
                             <p className="text-lg font-semibold">{metrics.traffic.avgLatencyMs} ms</p>
                         </div>
                         <div>
-                            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">P95 latency</p>
+                            <p className="text-[10px] capitalize tracking-wider text-muted-foreground">P95 latency</p>
                             <p className="text-lg font-semibold">{metrics.traffic.p95LatencyMs} ms</p>
                         </div>
                     </div>
@@ -286,10 +286,3 @@ export default function AdminDashboardHome() {
         </div>
     );
 }
-
-
-
-
-
-
-

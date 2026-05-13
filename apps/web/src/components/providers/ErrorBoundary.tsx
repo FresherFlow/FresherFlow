@@ -47,7 +47,7 @@ export class ErrorBoundary extends Component<Props, State> {
                     </div>
                     <Button
                         onClick={() => window.location.reload()}
-                        className="h-9 px-4 text-xs font-bold uppercase tracking-widest"
+                        className="h-9 px-4 text-xs font-bold capitalize tracking-widest"
                     >
                         Reload page
                     </Button>

@@ -12,12 +12,15 @@ import { OpportunityEventType } from '@fresherflow/types';
 import { OfflineError } from '@/shared/api/client';
 import { ProfileCompletionBanner } from '@/components/dashboard/DashboardBanners';
 import { Button } from '@/features/system/components/ui/Button';
+import { calculateProfileCompletion } from '@/lib/profileCompletion';
+import { useSiteMode } from '@/contexts/SiteModeContext';
+import { filterOpportunitiesForSiteMode } from '@/lib/opportunityMode';
 
 // Components
 import { DashboardHeader } from './components/DashboardHeader';
 import { DashboardTabs } from './components/DashboardTabs';
 import { DashboardFeed } from './components/DashboardFeed';
-import { DashboardPulse } from './components/DashboardPulse';
+
 
 // ── Dashboard feed cache ─────────────────────────────────────────────────────
 const DASH_CACHE_KEY = 'ff_dashboard_cache_v1';
@@ -97,12 +100,14 @@ type HighlightsData = {
 };
 
 const hasAppliedAction = (opp: Opportunity): boolean =>
-    (opp.actions as { actionType: string }[] | undefined)?.some((a) => 
+    (opp.actions as { actionType: string }[] | undefined)?.some((a) =>
         ['APPLIED', 'PLANNED', 'INTERVIEWED', 'SELECTED', 'PLANNING', 'ATTENDED'].includes(a.actionType)
     ) ?? false;
 
 export default function DashboardClient() {
     const { user, profile, isLoading: authLoading } = useAuth();
+    const { mode } = useSiteMode();
+    const profileCompletion = calculateProfileCompletion(profile).percentage;
     const [recentOpps, setRecentOpps] = useState<Opportunity[]>([]);
     const [isLoadingOpps, setIsLoadingOpps] = useState<boolean>(true);
     const [highlights, setHighlights] = useState<HighlightsData | null>(null);
@@ -114,7 +119,7 @@ export default function DashboardClient() {
             setRecentOpps(cache.opportunities);
             setIsLoadingOpps(false);
         }
-        
+
         const hlCache = readHighlightsCache();
         if (isCacheFresh(hlCache.savedAt)) {
             setHighlights(hlCache.data);
@@ -128,7 +133,6 @@ export default function DashboardClient() {
     const [dashboardVisitCounter, setDashboardVisitCounter] = useState(0);
     const [activeTab, setActiveTab] = useState<TabKey>('featured');
     const [mobileVisibleCount, setMobileVisibleCount] = useState(MOBILE_DASHBOARD_LIMIT);
-
     useEffect(() => {
         setMobileVisibleCount(MOBILE_DASHBOARD_LIMIT);
     }, [activeTab]);
@@ -172,6 +176,10 @@ export default function DashboardClient() {
             writeHighlightsCache(data);
         } catch (err: unknown) {
             if (err instanceof OfflineError) return;
+            if ((err as { code?: string }).code === 'PROFILE_INCOMPLETE') {
+                setHighlights(null);
+                return;
+            }
             setHighlightsError((err as Error)?.message || 'Unable to load highlights');
         } finally {
             setIsLoadingHighlights(false);
@@ -179,14 +187,18 @@ export default function DashboardClient() {
     }, []);
 
     useEffect(() => {
-        if (!authLoading && user && (profile?.completionPercentage ?? 0) >= 100 && !hasLoaded) {
+        if (!authLoading && user && !hasLoaded) {
             setHasLoaded(true);
-            void Promise.allSettled([
-                loadRecentOpportunities(),
-                loadHighlights(),
-            ]);
+            void loadRecentOpportunities();
+
+            if (profileCompletion >= 100) {
+                void loadHighlights();
+            } else {
+                setIsLoadingHighlights(false);
+            }
         }
-    }, [authLoading, user, profile, hasLoaded, loadRecentOpportunities, loadHighlights]);
+    }, [authLoading, user, hasLoaded, loadRecentOpportunities, loadHighlights, profileCompletion]);
+
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -231,10 +243,15 @@ export default function DashboardClient() {
         setIsLoadingOpps(true);
         setIsLoadingHighlights(true);
         void loadRecentOpportunities({ force: true });
-        void loadHighlights({ force: true });
+        if (profileCompletion >= 100) {
+            void loadHighlights({ force: true });
+        } else {
+            setHighlights(null);
+            setIsLoadingHighlights(false);
+        }
     };
 
-    const { activeItems, totalActive, jobsCount, internshipsCount, walkinsCount, latestBadgeCount } = useMemo(() => {
+    const { activeItems, latestBadgeCount } = useMemo(() => {
         const rotateByOffset = <T,>(items: T[], offset: number) => {
             if (items.length <= 1) return items;
             const norm = ((offset % items.length) + items.length) % items.length;
@@ -249,7 +266,17 @@ export default function DashboardClient() {
             });
         };
 
-        const active = recentOpps
+        const modeRecentOpps = filterOpportunitiesForSiteMode(recentOpps, mode);
+        const modeDriveFeatured = uniqueById(
+            filterOpportunitiesForSiteMode(
+                (highlights?.driveMilestones || []).map((milestone) => milestone.opportunity),
+                mode
+            )
+        ).filter((opp) => !opp.expiresAt || new Date(opp.expiresAt) > new Date());
+        const modeNewSinceLastVisit = filterOpportunitiesForSiteMode(highlights?.newSinceLastVisit || [], mode)
+            .filter(o => !o.expiresAt || new Date(o.expiresAt) > new Date());
+
+        const active = modeRecentOpps
             .filter(o => !o.expiresAt || new Date(o.expiresAt) > new Date())
             .map(opp => {
                 const match = calculateOpportunityMatch(profile, opp);
@@ -280,13 +307,11 @@ export default function DashboardClient() {
         const newIn24h = latestSorted
             .filter(o => (Date.now() - new Date(o.postedAt as string | Date).getTime()) <= HOURS_24_IN_MS)
             .slice(0, 10);
-        const driveFeatured = uniqueById(
-            (highlights?.driveMilestones || []).map((milestone) => milestone.opportunity)
-        ).filter((opp) => !opp.expiresAt || new Date(opp.expiresAt) > new Date());
-        const newSinceLastVisit = (highlights?.newSinceLastVisit || []).filter(o => !o.expiresAt || new Date(o.expiresAt) > new Date());
+        const driveFeatured = modeDriveFeatured;
+        const newSinceLastVisit = modeNewSinceLastVisit;
 
-        const archived = recentOpps.filter(o => o.status === 'ARCHIVED' || (!!o.expiresAt && new Date(o.expiresAt) <= new Date()));
-        const applied = recentOpps.filter(o =>
+        const archived = modeRecentOpps.filter(o => o.status === 'ARCHIVED' || (!!o.expiresAt && new Date(o.expiresAt) <= new Date()));
+        const applied = modeRecentOpps.filter(o =>
             (o.actions || []).some(action =>
                 ['APPLIED', 'PLANNED', 'INTERVIEWED', 'SELECTED', 'PLANNING', 'ATTENDED'].includes(action.actionType)
             )
@@ -306,15 +331,8 @@ export default function DashboardClient() {
         };
         const currentItems = tabMap[activeTab] || featured;
 
-        return {
-            activeItems: currentItems,
-            totalActive: active.length || 1,
-            jobsCount: active.filter(o => o.type === 'JOB').length,
-            internshipsCount: active.filter(o => o.type === 'INTERNSHIP').length,
-            walkinsCount: active.filter(o => o.type === 'WALKIN').length,
-            latestBadgeCount: latestCount,
-        };
-    }, [recentOpps, highlights, dashboardVisitCounter, profile, activeTab]);
+        return { activeItems: currentItems, latestBadgeCount: latestCount };
+    }, [recentOpps, highlights, dashboardVisitCounter, profile, activeTab, mode]);
 
     const tabs: { key: TabKey; title: string }[] = [
         { key: 'featured', title: 'Featured' },
@@ -341,14 +359,14 @@ export default function DashboardClient() {
                                 </div>
                             )}
 
-                            <DashboardTabs 
+                            <DashboardTabs
                                 tabs={tabs}
                                 activeTab={activeTab}
                                 setActiveTab={setActiveTab}
                                 latestBadgeCount={latestBadgeCount}
                             />
 
-                            <DashboardFeed 
+                            <DashboardFeed
                                 isLoading={isLoadingOpps}
                                 opportunities={activeItems}
                                 onToggleSave={toggleSave}
@@ -359,19 +377,12 @@ export default function DashboardClient() {
                                 mobileStep={MOBILE_DASHBOARD_STEP}
                             />
                         </div>
-
-                        <DashboardPulse 
-                            jobsCount={jobsCount}
-                            internshipsCount={internshipsCount}
-                            walkinsCount={walkinsCount}
-                            totalActive={totalActive}
-                        />
                     </div>
                 </div>
                 {showBackToTop && (
                     <button
                         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                        className="fixed bottom-24 md:bottom-8 right-4 z-40 h-10 px-3 rounded-full border border-border bg-card/95 shadow-sm text-xs md:text-sm font-bold uppercase tracking-wider text-foreground hover:border-primary/40 hover:text-primary transition-all"
+                        className="fixed bottom-24 md:bottom-8 right-4 z-40 h-10 px-3 rounded-full border border-border bg-card/95 shadow-sm text-xs md:text-sm font-bold capitalize tracking-wider text-foreground hover:border-primary/40 hover:text-primary transition-all"
                         aria-label="Back to top"
                     >
                         Top
@@ -381,9 +392,3 @@ export default function DashboardClient() {
         </AuthGate>
     );
 }
-
-
-
-
-
-

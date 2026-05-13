@@ -209,7 +209,7 @@ function LoginContent() {
                         {step !== 'email' && (
                             <button
                                 onClick={() => setStep('email')}
-                                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary uppercase tracking-wider mb-4 transition-colors"
+                                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary capitalize tracking-wider mb-4 transition-colors"
                             >
                                 <ChevronLeftIcon className="w-3 h-3" />
                                 Back to login
@@ -225,7 +225,7 @@ function LoginContent() {
 
                     {isInviteFlow && step === 'email' && (
                         <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3">
-                            <p className="text-[11px] font-bold uppercase tracking-widest text-primary">Friend invite</p>
+                            <p className="text-[11px] font-bold capitalize tracking-widest text-primary">Friend invite</p>
                             <p className="mt-1 text-sm text-foreground">Join from this invite to start with the verified opportunity feed.</p>
                         </div>
                     )}
@@ -254,7 +254,7 @@ function LoginContent() {
                                     <div className="absolute inset-0 flex items-center">
                                         <span className="w-full border-t border-border" />
                                     </div>
-                                    <div className="relative flex justify-center text-[10px] uppercase tracking-widest font-semibold">
+                                    <div className="relative flex justify-center text-[10px] capitalize tracking-widest font-semibold">
                                         <span className="bg-background px-4 text-muted-foreground/40">or</span>
                                     </div>
                                 </div>
@@ -300,11 +300,11 @@ function LoginContent() {
 
                     <div className="pt-8 border-t border-border/50">
                         <div className="flex flex-col items-center gap-4 text-center">
-                            <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground uppercase tracking-widest">
+                            <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground capitalize tracking-widest">
                                 <ShieldCheckIcon className="w-4 h-4 text-success/60" />
                                 <span>Verified Infrastructure</span>
                             </div>
-                            <div className="flex items-center gap-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+                            <div className="flex items-center gap-3 text-[10px] font-semibold capitalize tracking-widest text-muted-foreground">
                                 <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
                                 <span className="text-muted-foreground/40">|</span>
                                 <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>

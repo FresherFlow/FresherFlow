@@ -8,6 +8,7 @@ import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
+import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import toast from 'react-hot-toast';
@@ -164,6 +165,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
 
     const metaChips = (() => {
         const chips: string[] = [];
+        if (job.governmentJobDetails || (job.tags || []).some((tag) => /government/i.test(tag))) chips.push('Government');
         chips.push(isDrive ? 'Hiring Drive' : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Drive' : 'Full-time');
         if (isDrive) chips.push('Campus 2024-2026');
         if (isDrive) chips.push('0-2 Yrs');
@@ -336,12 +338,20 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                     <MapPinIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
                     <span className="truncate text-muted-foreground" title={locationInfo.fullLabel}>{locationInfo.shortLabel}</span>
                 </span>
-                {salaryLabel && (
-                    <span className="inline-flex items-center gap-1.5 min-w-0">
-                        <CurrencyRupeeIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                        <span className="truncate font-medium text-foreground/90">{salaryLabel}</span>
-                    </span>
-                )}
+                <div className="flex items-center gap-4">
+                    {job.shareCount && (
+                        <span className="inline-flex items-center gap-1.5 min-w-0">
+                            <UsersIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                            <span className="truncate text-muted-foreground">{job.shareCount} shares</span>
+                        </span>
+                    )}
+                    {salaryLabel && (
+                        <span className="inline-flex items-center gap-1.5 min-w-0">
+                            <CurrencyRupeeIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
+                            <span className="truncate font-medium text-foreground/90">{salaryLabel}</span>
+                        </span>
+                    )}
+                </div>
             </div>
 
             {/* Footer */}

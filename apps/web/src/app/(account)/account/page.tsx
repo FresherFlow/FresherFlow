@@ -3,15 +3,12 @@
 import { useAuth } from '@/features/auth';
 import Link from 'next/link';
 import {
-    BookmarkIcon,
-    Squares2X2Icon,
     ArrowRightOnRectangleIcon,
     UserCircleIcon,
     ShieldCheckIcon,
     ArrowLeftIcon,
     BellAlertIcon,
     ChatBubbleBottomCenterTextIcon,
-    ClipboardDocumentCheckIcon,
     ChevronRightIcon,
     EnvelopeIcon,
     UserGroupIcon,
@@ -81,14 +78,14 @@ export default function AccountPage() {
                                         <span className="truncate">{user.email}</span>
                                     </div>
                                 </div>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-success/10 text-success border border-success/20">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success border border-success/20">
                                     <ShieldCheckIcon className="w-3 h-3" /> Active session
                                 </span>
                             </div>
                         </div>
 
                         {/* Build tag — desktop only */}
-                        <p className="hidden md:block text-center text-[10px] font-bold text-muted-foreground/25 uppercase tracking-widest pt-1">FF-GENA-2026-X2</p>
+                        <p className="hidden md:block text-center text-[10px] font-bold text-muted-foreground/25 pt-1">FF-GENA-2026-X2</p>
                     </div>
 
                     {/* ── RIGHT: Menu Sections ── */}
@@ -96,23 +93,20 @@ export default function AccountPage() {
 
                         <MenuSection label="General">
                             <MenuRow href="/profile" icon={UserCircleIcon} title="Profile Settings" subtitle="Education, skills and career preferences" />
-                            <MenuRow href="/dashboard" icon={Squares2X2Icon} title="Dashboard" subtitle="Your activity overview and highlights" />
                         </MenuSection>
 
-                        <MenuSection label="Activity">
-                            <MenuRow href="/account/saved" icon={BookmarkIcon} title="Saved" subtitle="Bookmarked jobs and internships" />
-                            <MenuRow href="/account/tracker" icon={ClipboardDocumentCheckIcon} title="Application Tracker" subtitle="Applied, planned, interviewed, selected" />
+                        <MenuSection label="Community">
                             <MenuRow href="/referral" icon={UserGroupIcon} title="Invite Friends" subtitle="Share your link · earn badges as your network grows" />
                             <MenuRow href="/submit-link" icon={LinkIcon} title="Submit a Job Link" subtitle="Help the community by sharing job links" />
                         </MenuSection>
 
-                        <MenuSection label="App Settings">
+                        <MenuSection label="App settings">
                             <MenuRow href="/account/alerts" icon={BellAlertIcon} title="Alerts" subtitle="Daily digests and closing-soon notifications" />
                             <MenuRow href="/account/feedback" icon={ChatBubbleBottomCenterTextIcon} title="Feedback" subtitle="Share ideas or report bugs" />
                         </MenuSection>
 
                         {/* Build tag — mobile only */}
-                        <p className="md:hidden text-center text-[10px] font-bold text-muted-foreground/25 uppercase tracking-widest pt-2">FF-GENA-2026-X2</p>
+                        <p className="md:hidden text-center text-[10px] font-bold text-muted-foreground/25 pt-2">FF-GENA-2026-X2</p>
                     </div>
 
                 </div>
@@ -124,7 +118,7 @@ export default function AccountPage() {
 function MenuSection({ label, children }: { label: string; children: React.ReactNode }) {
     return (
         <div className="space-y-1.5">
-            <h3 className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest px-1">{label}</h3>
+            <h3 className="text-[11px] font-bold text-muted-foreground px-1">{label}</h3>
             <div className="bg-card border border-border/60 rounded-2xl overflow-hidden shadow-sm divide-y divide-border/40">
                 {children}
             </div>
@@ -149,9 +143,3 @@ function MenuRow({ href, icon: Icon, title, subtitle }: { href: string; icon: Re
         </Link>
     );
 }
-
-
-
-
-
-

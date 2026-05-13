@@ -84,7 +84,7 @@ export default function TopNav() {
                         {isAdminRoute && (
                             <Link
                                 href="/"
-                                className="hidden md:flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider"
+                                className="hidden md:flex items-center gap-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors capitalize tracking-wider"
                             >
                                 <span>View Website</span>
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

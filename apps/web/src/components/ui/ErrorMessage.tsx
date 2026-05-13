@@ -27,7 +27,7 @@ export function ErrorMessage({
                 {onRetry && (
                     <button
                         onClick={onRetry}
-                        className="ml-auto text-xs font-bold uppercase tracking-widest hover:underline"
+                        className="ml-auto text-xs font-bold capitalize tracking-widest hover:underline"
                     >
                         Retry
                     </button>
@@ -50,7 +50,7 @@ export function ErrorMessage({
                     <Button
                         onClick={onRetry}
                         variant="outline"
-                        className="h-9 px-6 text-[10px] font-bold uppercase tracking-widest gap-2"
+                        className="h-9 px-6 text-[10px] font-bold capitalize tracking-widest gap-2"
                     >
                         <ArrowPathIcon className="w-3.5 h-3.5" />
                         Try again
@@ -79,7 +79,7 @@ export function ErrorMessage({
             {onRetry && (
                 <Button
                     onClick={onRetry}
-                    className="h-11 px-8 rounded-xl text-xs font-bold uppercase tracking-widest group"
+                    className="h-11 px-8 rounded-xl text-xs font-bold capitalize tracking-widest group"
                 >
                     <ArrowPathIcon className="w-4 h-4 mr-2 group-active:rotate-180 transition-transform duration-500" />
                     Attempt Recovery

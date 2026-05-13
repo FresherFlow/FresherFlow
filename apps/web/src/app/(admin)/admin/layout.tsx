@@ -151,7 +151,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                         />
                         <div className="flex flex-col">
                             <span className="text-[17px] font-bold tracking-tight text-foreground leading-none">FresherFlow</span>
-                            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-[0.18em] mt-1.5 opacity-60">Admin Portal</span>
+                            <span className="text-[11px] font-bold text-muted-foreground capitalize tracking-[0.18em] mt-1.5 opacity-60">Admin Portal</span>
                         </div>
                     </Link>
                     <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
@@ -208,7 +208,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                                 'bg-yellow-400'
                             }`} />
                         </span>
-                        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        <span className="text-[11px] font-semibold text-muted-foreground capitalize tracking-wider">
                             {apiStatus === 'live' ? 'API Live' : apiStatus === 'down' ? 'API Down' : 'Checking...'}
                         </span>
                     </div>

@@ -15,7 +15,7 @@ export function SalarySection({
     return (
         <div className="space-y-4">
             <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Salary Configuration</label>
+                <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Salary Configuration</label>
                 <div className="flex gap-2">
                     {(['YEARLY', 'MONTHLY'] as const).map((p) => (
                         <button
@@ -35,7 +35,7 @@ export function SalarySection({
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">
                         Salary amount ({salaryPeriod === 'YEARLY' ? 'LPA' : 'Monthly'})
                     </label>
                     <input
@@ -52,7 +52,7 @@ export function SalarySection({
                     </p>
                 </div>
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Salary note (optional)</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Salary note (optional)</label>
                     <input
                         type="text"
                         value={salaryRange}

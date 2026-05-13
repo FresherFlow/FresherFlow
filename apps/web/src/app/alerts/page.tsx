@@ -113,6 +113,12 @@ function buildAlertOpportunityForMatch(item: NonNullable<AlertFeedItem['opportun
         verificationFailures: 0,
         lastVerifiedAt: new Date(),
         postedAt: new Date(),
+        sharesCount: 0,
+        savesCount: 0,
+        clicksCount: 0,
+        commentsCount: 0,
+        trendingScore: 0,
+        postedByUserId: '',
         adminId: '',
         expiresAt: item.expiresAt || undefined,
         applyLink: item.applyLink || undefined,
@@ -594,7 +600,7 @@ export default function AlertsCenterPage() {
                     <div className="rounded-xl border border-dashed border-border bg-card p-5 space-y-3">
                         <p className="text-sm font-medium text-foreground">Could not load alerts</p>
                         <p className="text-xs text-muted-foreground">{error}</p>
-                        <Button variant="outline" onClick={() => void loadFeed(kind)} className="h-8 px-3 text-[10px] font-bold uppercase tracking-widest">
+                        <Button variant="outline" onClick={() => void loadFeed(kind)} className="h-8 px-3 text-[10px] font-bold capitalize tracking-widest">
                             Retry
                         </Button>
                     </div>
@@ -652,7 +658,7 @@ export default function AlertsCenterPage() {
 
                                     <div className="flex items-center justify-between gap-2 mb-2.5">
                                         <span className={cn(
-                                            "text-xs md:text-sm font-semibold uppercase tracking-wide px-2 py-1 rounded-md border",
+                                            "text-xs md:text-sm font-semibold capitalize tracking-wide px-2 py-1 rounded-md border",
                                             kindColor,
                                             item.readAt && "opacity-60"
                                         )}>
@@ -660,11 +666,11 @@ export default function AlertsCenterPage() {
                                         </span>
                                         <div className="flex items-center gap-1.5">
                                             {item.collapsedCount && item.collapsedCount > 1 && (
-                                                <span className="text-xs font-bold uppercase tracking-wider text-primary bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5">
+                                                <span className="text-xs font-bold capitalize tracking-wider text-primary bg-primary/10 border border-primary/20 rounded px-1.5 py-0.5">
                                                     {item.collapsedCount} updates
                                                 </span>
                                             )}
-                                            <span className="text-xs md:text-sm font-bold text-muted-foreground inline-flex items-center gap-1.5 uppercase tracking-wider">
+                                            <span className="text-xs md:text-sm font-bold text-muted-foreground inline-flex items-center gap-1.5 capitalize tracking-wider">
                                                 <ClockIcon className="w-3 h-3" />
                                                 {new Date(item.sentAt).toLocaleString('en-IN', {
                                                     month: 'short',
@@ -698,7 +704,7 @@ export default function AlertsCenterPage() {
                                             {channelLabel && (
                                                 <>
                                                     <div className="w-1 h-1 rounded-full bg-border" />
-                                                    <p className="text-xs md:text-sm font-bold text-primary/80 uppercase tracking-widest">{channelLabel}</p>
+                                                    <p className="text-xs md:text-sm font-bold text-primary/80 capitalize tracking-widest">{channelLabel}</p>
                                                 </>
                                             )}
                                         </div>
@@ -817,9 +823,3 @@ function FilterChip({ label, active, onClick }: {
         </button>
     );
 }
-
-
-
-
-
-

@@ -2,7 +2,7 @@ import { useRouter } from 'next/navigation';
 import { adminApi } from '@/shared/api/admin';
 import toast from 'react-hot-toast';
 import { buildOpportunityPayload } from '../../opportunityPayload';
-import { buildAdminSharePack, buildPlatformCaption, type SharePlatform } from '@/features/admin/opportunities/formUtils';
+import { buildAdminSharePack, buildPlatformCaption, type OpportunityKind, type SharePlatform } from '@/features/admin/opportunities/formUtils';
 import { useOpportunityForm } from '@/features/admin/opportunities/useOpportunityForm';
 import { Opportunity } from '@fresherflow/types';
 
@@ -12,7 +12,7 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         const payload = buildOpportunityPayload({
             type: form.type,
             title: form.title,
@@ -34,6 +34,36 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
             incentives: form.incentives,
             selectionProcess: form.selectionProcess,
             notesHighlights: form.notesHighlights,
+            isGovernmentJob: form.isGovernmentJob,
+            governmentTags: form.governmentTags,
+            governmentDepartment: form.governmentDepartment,
+            governmentOrganization: form.governmentOrganization,
+            recruitingBody: form.recruitingBody,
+            officialWebsiteUrl: form.officialWebsiteUrl,
+            officialNotificationUrl: form.officialNotificationUrl,
+            advertisementNumber: form.advertisementNumber,
+            postName: form.postName,
+            applicationMode: form.applicationMode,
+            applicationModes: form.applicationModes,
+            vacancyCount: form.vacancyCount,
+            vacanciesJson: form.vacanciesJson,
+            applicationFee: form.applicationFee,
+            applicationFeeJson: form.applicationFeeJson,
+            ageMin: form.ageMin,
+            ageMax: form.ageMax,
+            ageRelaxation: form.ageRelaxation,
+            eligibilityDetailsJson: form.eligibilityDetailsJson,
+            reservationNotes: form.reservationNotes,
+            importantInstructions: form.importantInstructions,
+            applicationStartDate: form.applicationStartDate,
+            applicationEndDate: form.applicationEndDate,
+            examDate: form.examDate,
+            examDatesJson: form.examDatesJson,
+            admitCardDate: form.admitCardDate,
+            resultDate: form.resultDate,
+            selectionStages: form.selectionStages,
+            governmentRequiredDocuments: form.governmentRequiredDocuments,
+            governmentRequiredDocumentsJson: form.governmentRequiredDocumentsJson,
             experienceMin: form.experienceMin,
             experienceMax: form.experienceMax,
             sourceLink: form.sourceLink,
@@ -61,12 +91,12 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
                 : await adminApi.createOpportunity(payload) as { opportunity: Opportunity; message?: string };
 
             toast.success(data.message || (isEditMode ? 'Listing updated successfully.' : 'New listing published!'), { id: toastId });
-            
+
             const opp = data.opportunity;
             form.setPublishedListing({
                 title: opp.title,
                 company: opp.company,
-                type: opp.type,
+                type: opp.type as OpportunityKind,
                 slugOrId: opp.slug || opp.id,
                 locations: opp.locations,
                 allowedPassoutYears: opp.allowedPassoutYears,
@@ -112,8 +142,3 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
         handleCopyFullPack
     };
 }
-
-
-
-
-

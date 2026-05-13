@@ -20,7 +20,7 @@ export function ShareListingBanner({
                 </div>
                 <Link
                     href="/opportunities"
-                    className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold capitalize tracking-widest text-muted-foreground hover:text-foreground transition-colors"
                 >
                     Back to listings
                 </Link>
@@ -29,35 +29,35 @@ export function ShareListingBanner({
                 <button
                     type="button"
                     onClick={() => onCopyCaption('telegram')}
-                    className="inline-flex h-8 items-center justify-center rounded-md bg-primary px-3 text-[10px] font-bold uppercase tracking-widest text-primary-foreground hover:bg-primary/90 transition-colors"
+                    className="inline-flex h-8 items-center justify-center rounded-md bg-primary px-3 text-[10px] font-bold capitalize tracking-widest text-primary-foreground hover:bg-primary/90 transition-colors"
                 >
                     Copy Telegram
                 </button>
                 <button
                     type="button"
                     onClick={() => onCopyCaption('linkedin')}
-                    className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                    className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold capitalize tracking-widest text-muted-foreground hover:text-foreground transition-colors"
                 >
                     Copy LinkedIn
                 </button>
                 <button
                     type="button"
                     onClick={() => onCopyCaption('x')}
-                    className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                    className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold capitalize tracking-widest text-muted-foreground hover:text-foreground transition-colors"
                 >
                     Copy X
                 </button>
                 <button
                     type="button"
                     onClick={() => onCopyCaption('instagram')}
-                    className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                    className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold capitalize tracking-widest text-muted-foreground hover:text-foreground transition-colors"
                 >
                     Copy Instagram
                 </button>
                 <button
                     type="button"
                     onClick={onCopyFullPack}
-                    className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+                    className="inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-3 text-[10px] font-bold capitalize tracking-widest text-muted-foreground hover:text-foreground transition-colors"
                 >
                     Copy full pack
                 </button>

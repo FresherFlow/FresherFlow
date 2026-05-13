@@ -23,6 +23,36 @@ export type OpportunityFormValues = {
     jobFunction: string;
     selectionProcess: string;
     notesHighlights: string;
+    isGovernmentJob: boolean;
+    governmentTags: string;
+    governmentDepartment: string;
+    governmentOrganization: string;
+    recruitingBody: string;
+    officialWebsiteUrl: string;
+    officialNotificationUrl: string;
+    advertisementNumber: string;
+    postName: string;
+    applicationMode: string;
+    applicationModes: string;
+    vacancyCount: string;
+    vacanciesJson: string;
+    applicationFee: string;
+    applicationFeeJson: string;
+    ageMin: string;
+    ageMax: string;
+    ageRelaxation: string;
+    eligibilityDetailsJson: string;
+    reservationNotes: string;
+    importantInstructions: string;
+    applicationStartDate: string;
+    applicationEndDate: string;
+    examDate: string;
+    examDatesJson: string;
+    admitCardDate: string;
+    resultDate: string;
+    selectionStages: string;
+    governmentRequiredDocuments: string;
+    governmentRequiredDocumentsJson: string;
     experienceMin: string;
     experienceMax: string;
     sourceLink: string;
@@ -100,6 +130,12 @@ const toEndOfDayIso = (value: string) => {
     return date.toISOString();
 };
 
+const parseJsonInput = <T,>(value: string): T | undefined => {
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    return JSON.parse(trimmed) as T;
+};
+
 export const buildOpportunityPayload = (values: OpportunityFormValues): Record<string, unknown> => {
     const walkInEndDate = values.endDate || values.startDate;
     const derivedWalkInExpiry = values.type === 'WALKIN' ? toEndOfDayIso(walkInEndDate) : undefined;
@@ -125,6 +161,7 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         jobFunction: values.jobFunction || undefined,
         selectionProcess: values.selectionProcess || undefined,
         notesHighlights: values.notesHighlights || undefined,
+        tags: values.isGovernmentJob ? toCsvList(values.governmentTags) : [],
         experienceMin: toFloat(values.experienceMin),
         experienceMax: toFloat(values.experienceMax),
         sourceLink: normalizedSourceLink || undefined,
@@ -148,10 +185,41 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         };
     }
 
+    if (values.isGovernmentJob) {
+        payload.governmentJobDetails = {
+            department: values.governmentDepartment || undefined,
+            organization: values.governmentOrganization || undefined,
+            recruitingBody: values.recruitingBody || undefined,
+            officialWebsiteUrl: values.officialWebsiteUrl || undefined,
+            officialNotificationUrl: values.officialNotificationUrl || undefined,
+            advertisementNumber: values.advertisementNumber || undefined,
+            postName: values.postName || undefined,
+            applicationMode: values.applicationMode || undefined,
+            applicationModes: toCsvList(values.applicationModes),
+            vacancyCount: values.vacancyCount ? parseInt(values.vacancyCount, 10) : undefined,
+            vacancies: parseJsonInput(values.vacanciesJson),
+            applicationFee: values.applicationFee || undefined,
+            applicationFeeDetails: parseJsonInput(values.applicationFeeJson),
+            ageMin: values.ageMin ? parseInt(values.ageMin, 10) : undefined,
+            ageMax: values.ageMax ? parseInt(values.ageMax, 10) : undefined,
+            ageRelaxation: values.ageRelaxation || undefined,
+            eligibilityDetails: parseJsonInput(values.eligibilityDetailsJson),
+            reservationNotes: values.reservationNotes || undefined,
+            importantInstructions: values.importantInstructions || undefined,
+            applicationStartDate: values.applicationStartDate || undefined,
+            applicationEndDate: values.applicationEndDate || undefined,
+            examDate: values.examDate || undefined,
+            examDates: parseJsonInput(values.examDatesJson),
+            admitCardDate: values.admitCardDate || undefined,
+            resultDate: values.resultDate || undefined,
+            selectionStages: toCsvList(values.selectionStages),
+            requiredDocuments: toCsvList(values.governmentRequiredDocuments),
+            requiredDocumentDetails: parseJsonInput(values.governmentRequiredDocumentsJson),
+            seoTags: toCsvList(values.governmentTags),
+        };
+    } else {
+        payload.governmentJobDetails = null;
+    }
+
     return payload;
 };
-
-
-
-
-

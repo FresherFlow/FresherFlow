@@ -33,6 +33,16 @@ function FacebookBrandIcon({ className }: IconProps) {
 
 export function Footer({ className }: FooterProps) {
     const currentYear = new Date().getFullYear();
+    const footerLinks = [
+        { href: '/about', label: 'About Us' },
+        { href: '/blog', label: 'Blog' },
+        { href: '/contact', label: 'Contact Us' },
+        { href: '/submit-link', label: 'Post a Job' },
+        { href: '/privacy', label: 'Privacy' },
+        { href: '/terms', label: 'Terms & Conditions' },
+        { href: '/account/feedback', label: 'Feedback' },
+        { href: '/sitemap.xml', label: 'Sitemap' },
+    ] as const;
     const socialLinks = [
         { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon },
         { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon },
@@ -44,16 +54,17 @@ export function Footer({ className }: FooterProps) {
 
     return (
         <footer className={cn("border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-6 md:py-8 mt-auto", className)}>
-            <div className="container px-4 md:px-6 flex flex-col items-center justify-center gap-4 text-center mx-auto">
-                <p className="text-sm text-muted-foreground">
-                    &copy; {currentYear} FresherFlow. All rights reserved.
-                </p>
-                <div className="flex items-center gap-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
-                    <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
-                    <span className="text-muted-foreground/40">|</span>
-                    <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
-                    <span className="text-muted-foreground/40">|</span>
-                    <Link href="/account/feedback" className="hover:text-foreground transition-colors">Feedback</Link>
+            <div className="container px-4 md:px-6 flex flex-col items-center justify-center gap-5 text-center mx-auto">
+                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm font-semibold text-muted-foreground">
+                    {footerLinks.map((link) => (
+                        <Link
+                            key={link.href}
+                            href={link.href}
+                            className="hover:text-foreground transition-colors"
+                        >
+                            {link.label}
+                        </Link>
+                    ))}
                 </div>
                 <div className="flex flex-wrap items-center justify-center gap-2">
                     {socialLinks.map(({ href, label, Icon }) => (
@@ -75,6 +86,9 @@ export function Footer({ className }: FooterProps) {
                         FresherFlow is not affiliated with or endorsed by these companies.
                     </p>
                 </div>
+                <p className="text-sm text-muted-foreground">
+                    &copy; {currentYear} FresherFlow. All rights reserved.
+                </p>
             </div>
         </footer>
     );

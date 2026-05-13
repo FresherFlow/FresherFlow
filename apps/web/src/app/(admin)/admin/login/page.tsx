@@ -62,7 +62,7 @@ export default function AdminLoginPage() {
         } catch (err: unknown) {
             const error = err as { statusCode?: number; status?: number; message?: string };
             const status = error?.statusCode || error?.status;
-            const message = status === 503 || status === 504 
+            const message = status === 503 || status === 504
                 ? 'Infrastructure is currently unavailable. Please check the database status.'
                 : error.message || 'Registration failed.';
             toast.error(message);
@@ -104,7 +104,7 @@ export default function AdminLoginPage() {
         } catch (err: unknown) {
             const error = err as { statusCode?: number; status?: number; message?: string };
             const status = error?.statusCode || error?.status;
-            const message = status === 503 || status === 504 
+            const message = status === 503 || status === 504
                 ? 'Authentication service or database is unavailable. Please try again later.'
                 : error.message || 'Verification failed.';
             toast.error(message);
@@ -143,7 +143,7 @@ export default function AdminLoginPage() {
         } catch (err: unknown) {
             const error = err as { statusCode?: number; status?: number; message?: string };
             const status = error?.statusCode || error?.status;
-            const message = status === 503 || status === 504 
+            const message = status === 503 || status === 504
                 ? 'Database connection failed. Admin services are temporarily offline.'
                 : error.message || 'TOTP verification failed.';
             toast.error(message);
@@ -162,10 +162,10 @@ export default function AdminLoginPage() {
                     <div className="mx-auto w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center border border-primary/20">
                         <ShieldCheckIcon className="w-10 h-10 text-primary" />
                     </div>
-                    <h1 className="text-2xl font-bold tracking-tight uppercase text-foreground">Admin Portal</h1>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest opacity-60">Passkey or Authenticator</p>
+                    <h1 className="text-2xl font-bold tracking-tight capitalize text-foreground">Admin Portal</h1>
+                    <p className="text-[10px] text-muted-foreground capitalize font-bold tracking-widest opacity-60">Passkey or Authenticator</p>
                     {!adminEmailConfigured && (
-                        <p className="text-[9px] text-muted-foreground uppercase tracking-widest opacity-50">
+                        <p className="text-[9px] text-muted-foreground capitalize tracking-widest opacity-50">
                             Admin email not configured in client env
                         </p>
                     )}
@@ -180,7 +180,7 @@ export default function AdminLoginPage() {
                     >
                         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                         <FingerPrintIcon className="w-12 h-12 mb-3 group-hover:scale-110 transition-transform duration-300" />
-                        <span className="text-base font-bold uppercase tracking-widest">
+                        <span className="text-base font-bold capitalize tracking-widest">
                             {isLoading ? 'Verifying...' : 'Quick Access'}
                         </span>
                         <span className="text-[10px] opacity-70 mt-1 font-bold">Touch ID / Face ID / USB key</span>
@@ -190,7 +190,7 @@ export default function AdminLoginPage() {
                     {showOtherOptions && (
                         <form onSubmit={handleRegisterNewPasskey} className="p-6 bg-muted/30 rounded-2xl border border-border animate-in slide-in-from-top-2 duration-300 space-y-4">
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                                <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
                                     Register New Device
                                 </label>
                                 <input
@@ -204,7 +204,7 @@ export default function AdminLoginPage() {
                             <Button
                                 type="submit"
                                 disabled={isLoading}
-                                className="w-full h-11 text-[10px] font-bold uppercase tracking-widest"
+                                className="w-full h-11 text-[10px] font-bold capitalize tracking-widest"
                             >
                                 Create Passkey
                             </Button>
@@ -214,7 +214,7 @@ export default function AdminLoginPage() {
                     <form onSubmit={handleTotpLogin} className="p-6 bg-muted/30 rounded-2xl border border-border space-y-4">
                         {!adminEmailConfigured && (
                             <div className="space-y-1.5">
-                                <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                                <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
                                     Admin Email
                                 </label>
                                 <input
@@ -227,7 +227,7 @@ export default function AdminLoginPage() {
                             </div>
                         )}
                         <div className="space-y-1.5">
-                            <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                            <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
                                 Authenticator Code
                             </label>
                             <input
@@ -244,18 +244,18 @@ export default function AdminLoginPage() {
                         <Button
                             type="submit"
                             disabled={isLoading || totpCode.length !== 6}
-                            className="w-full h-11 text-[10px] font-bold uppercase tracking-widest"
+                            className="w-full h-11 text-[10px] font-bold capitalize tracking-widest"
                         >
                             Login with Authenticator
                         </Button>
-                        <p className="text-[10px] text-muted-foreground uppercase tracking-wider">
+                        <p className="text-[10px] text-muted-foreground capitalize tracking-wider">
                             Alternative path: use authenticator instead of passkey.
                         </p>
                     </form>
 
                     <button
                         onClick={() => setShowOtherOptions(!showOtherOptions)}
-                        className="w-full py-2 text-[10px] font-bold text-muted-foreground hover:text-foreground uppercase tracking-widest transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-2 text-[10px] font-bold text-muted-foreground hover:text-foreground capitalize tracking-widest transition-colors flex items-center justify-center gap-2"
                     >
                         <div className="h-[1px] flex-1 bg-border/50" />
                         <span>{showOtherOptions ? 'Hide Options' : 'Other Options'}</span>
@@ -264,7 +264,7 @@ export default function AdminLoginPage() {
                 </div>
 
                 <div className="pt-4 text-center">
-                    <p className="text-[9px] text-muted-foreground uppercase tracking-wider font-bold opacity-40 leading-relaxed">
+                    <p className="text-[9px] text-muted-foreground capitalize tracking-wider font-bold opacity-40 leading-relaxed">
                         Authorized Personnel Only<br />
                         Access attempts are monitored and logged.
                     </p>
@@ -273,9 +273,3 @@ export default function AdminLoginPage() {
         </div>
     );
 }
-
-
-
-
-
-

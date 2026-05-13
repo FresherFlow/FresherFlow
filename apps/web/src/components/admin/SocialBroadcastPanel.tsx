@@ -63,7 +63,7 @@ export default function SocialBroadcastPanel() {
                         <RefreshCw className="h-4 w-4" />
                     </Button>
                 </div>
-                
+
                 <div className="flex flex-col gap-3">
                     <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-medium text-muted-foreground w-16">Platform:</span>
@@ -106,13 +106,13 @@ export default function SocialBroadcastPanel() {
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-2 shrink-0">
-                                    <Badge variant="secondary" className="bg-muted text-xs font-semibold uppercase">{item.platform}</Badge>
+                                    <Badge variant="secondary" className="bg-muted text-xs font-semibold capitalize">{item.platform}</Badge>
                                     <Badge variant={item.status === 'FAILED' ? 'destructive' : item.status === 'PUBLISHED' ? 'default' : 'outline'} className="text-[10px] tracking-wide">
                                         {item.status.replace("_", " ")}
                                     </Badge>
                                 </div>
                             </div>
-                            
+
                             {item.errorMessage && (
                                 <div className="mt-3 mb-2 p-2 rounded bg-destructive/10 text-destructive text-[11px] font-mono break-all">
                                     {item.errorMessage}
@@ -121,13 +121,13 @@ export default function SocialBroadcastPanel() {
 
                             {!!item.payload && typeof item.payload === 'object' && !!(item.payload as Record<string, unknown>).text && (
                                 <div className="mt-3 p-3 rounded bg-muted/30 border border-border/50">
-                                     <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-1">Generated Text</p>
+                                     <p className="text-[10px] font-semibold text-muted-foreground capitalize mb-1">Generated Text</p>
                                      <p className="text-[11px] text-foreground whitespace-pre-wrap italic">
                                          {String((item.payload as Record<string, unknown>).text)}
                                      </p>
                                 </div>
                             )}
-                            
+
                             <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-border/50">
                                 <div className="space-y-0.5">
                                     <p className="text-[11px] text-muted-foreground">
@@ -139,7 +139,7 @@ export default function SocialBroadcastPanel() {
                                         Retries: {item.retryCount} • Ext ID: {item.externalPostId || "N/A"}
                                     </p>
                                 </div>
-                                
+
                                 {(item.status === "FAILED" || item.status === "DISABLED") && (
                                     <Button
                                         size="sm"

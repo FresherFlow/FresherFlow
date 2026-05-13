@@ -1,28 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
+import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
 
-// Helper to extract root domain from URL
-const getDomainFromUrl = (url: string): string | null => {
-    try {
-        const hostname = new URL(url).hostname.toLowerCase();
-        return hostname.startsWith('www.') ? hostname.slice(4) : hostname;
-    } catch {
-        return null; // Return null if invalid URL
-    }
-};
-
-const getRootDomain = (domain: string) => {
-    const parts = domain.split('.').filter(Boolean);
-    if (parts.length <= 2) return domain;
-    const tld = `${parts[parts.length - 2]}.${parts[parts.length - 1]}`;
-    if (tld === 'co.in' || tld === 'com.au') {
-        return parts.slice(-3).join('.');
-    }
-    return parts.slice(-2).join('.');
-};
+// Global in-memory cache for instant resolution
+const logoCache = new Map<string, string>();
 
 interface CompanyLogoProps {
     companyName: string;
@@ -35,79 +19,86 @@ interface CompanyLogoProps {
 }
 
 export default function CompanyLogo({ companyName, companyWebsite, companyLogoUrl, applyLink, className, priority = false }: CompanyLogoProps) {
-    const [imgError, setImgError] = useState(false);
-    const normalizedCompanyName = (companyName || '').toLowerCase();
-    const isTcsBrand = normalizedCompanyName.includes('tata consultancy services') || normalizedCompanyName.includes(' tcs') || normalizedCompanyName === 'tcs';
-
-    const knownDomains: Record<string, string> = {
-        wipro: 'wipro.com',
-        infosys: 'infosys.com',
-        tcs: 'tcs.com',
-        'tata consultancy services': 'tcs.com',
-        accenture: 'accenture.com',
-        deloitte: 'deloitte.com',
-        cognizant: 'cognizant.com',
-        capgemini: 'capgemini.com',
-        'tech mahindra': 'techmahindra.com',
-        hcl: 'hcltech.com',
-        'hcl technologies': 'hcltech.com',
-        ibm: 'ibm.com',
-        oracle: 'oracle.com',
-        sap: 'sap.com',
-        'amazon': 'amazon.com',
-        'google': 'google.com',
-        'microsoft': 'microsoft.com',
-        'meta': 'meta.com',
-        'atlassian': 'atlassian.com'
-    };
-
-    const normalizedCompany = companyName
-        ? companyName.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim()
-        : '';
-
-    const knownDomain = normalizedCompany
-        ? knownDomains[normalizedCompany]
-        || Object.entries(knownDomains).find(([key]) => normalizedCompany.includes(key))?.[1]
-        : undefined;
-
-    const websiteDomain = companyWebsite ? getDomainFromUrl(companyWebsite) : null;
-    const applyDomain = applyLink ? getDomainFromUrl(applyLink) : null;
-    const normalizedWebsiteDomain = websiteDomain ? getRootDomain(websiteDomain) : null;
-    const normalizedApplyDomain = applyDomain ? getRootDomain(applyDomain) : null;
-
     const [attemptIndex, setAttemptIndex] = useState(0);
+    const [imgError, setImgError] = useState(false);
 
-    const candidates: string[] = [];
-    if (companyLogoUrl) {
-        candidates.push(`${companyLogoUrl}?size=80`);
+    const normalizedName = (companyName || '').toLowerCase().trim();
+    const isTcsBrand = normalizedName.includes('tata consultancy services') || normalizedName.includes(' tcs') || normalizedName === 'tcs';
+
+    const candidates = useMemo(() => {
+        const urls: string[] = [];
+
+        // 1. Explicit Logo URL (highest priority)
+        if (companyLogoUrl) {
+            urls.push(`${companyLogoUrl}${companyLogoUrl.includes('?') ? '&' : '?'}size=80`);
+        }
+
+        // 2. Resolve Domain
+        const websiteDomain = companyWebsite ? getRootDomain(companyWebsite) : null;
+        const applyDomain = applyLink ? getRootDomain(applyLink) : null;
+
+        const cleanName = normalizedName.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+        const knownDomain = BRAND_DOMAINS[cleanName] ||
+            Object.entries(BRAND_DOMAINS).find(([key]) => cleanName.includes(key))?.[1];
+
+        const domainsToTry = Array.from(new Set([
+            websiteDomain,
+            applyDomain,
+            knownDomain,
+            // Heuristic fallback: try company-name.com if it's a single word
+            !knownDomain && cleanName.length > 2 && cleanName.length < 15 && !cleanName.includes(' ') ? `${cleanName}.com` : null
+        ].filter((d): d is string => !!d)));
+
+        // 3. Provider Rotation (Google -> Clearbit -> DuckDuckGo)
+        domainsToTry.forEach(d => {
+            // Google Favicon (Best overall coverage)
+            urls.push(`https://www.google.com/s2/favicons?domain=${d}&sz=128`);
+            // Clearbit (High fidelity)
+            urls.push(`https://logo.clearbit.com/${d}`);
+            // DuckDuckGo (Reliable backup)
+            urls.push(`https://icons.duckduckgo.com/ip3/${d}.ico`);
+        });
+
+        return Array.from(new Set(urls));
+    }, [companyLogoUrl, companyWebsite, applyLink, normalizedName]);
+
+    // Use cached URL if available for instant load
+    const cacheKey = candidates.join('|');
+    const [currentSrc, setCurrentSrc] = useState<string | null>(() => logoCache.get(cacheKey) || candidates[0] || null);
+
+    // Sync state when candidates change (prop change)
+    const [prevCacheKey, setPrevCacheKey] = useState(cacheKey);
+    if (cacheKey !== prevCacheKey) {
+        setPrevCacheKey(cacheKey);
+        const cached = logoCache.get(cacheKey);
+        if (cached) {
+            setCurrentSrc(cached);
+        } else {
+            setAttemptIndex(0);
+            setImgError(false);
+            setCurrentSrc(candidates[0] || null);
+        }
     }
-
-    const addLogoProvider = (domain: string) => {
-        candidates.push(`https://www.google.com/s2/favicons?domain=${domain}&sz=128`);
-    };
-
-    // Only use high-confidence domains for logo lookup.
-    // Constructed/guessed domains (from company name or apply link) are too unreliable
-    // and will cause DuckDuckGo to return its generic globe icon instead of a real logo.
-    if (normalizedWebsiteDomain) {
-        addLogoProvider(normalizedWebsiteDomain);
-    }
-    if (normalizedApplyDomain) {
-        addLogoProvider(normalizedApplyDomain);
-    }
-    if (knownDomain) {
-        addLogoProvider(knownDomain);
-    }
-
-    const dedupedCandidates = Array.from(new Set(candidates));
-
-    const currentSrc = dedupedCandidates[attemptIndex];
 
     const handleError = () => {
-        if (attemptIndex < dedupedCandidates.length - 1) {
-            setAttemptIndex(prev => prev + 1);
+        if (attemptIndex < candidates.length - 1) {
+            const nextIndex = attemptIndex + 1;
+            setAttemptIndex(nextIndex);
+            setCurrentSrc(candidates[nextIndex]);
         } else {
             setImgError(true);
+        }
+    };
+
+    const handleLoad = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+        const target = e.target as HTMLImageElement;
+        // Google's S2 favicon service returns a 16px globe for unknown domains
+        // even when sz=128 is requested. Treat it as a failure to trigger next provider.
+        if (target.naturalWidth <= 16 && target.naturalWidth > 0 && candidates[attemptIndex]?.includes('google.com')) {
+            handleError();
+        } else {
+            // Success! Cache the working URL
+            logoCache.set(cacheKey, candidates[attemptIndex]);
         }
     };
 
@@ -135,14 +126,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
                 height={48}
                 className="object-contain w-full h-full"
                 onError={handleError}
-                onLoad={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    // Google's S2 favicon service returns a 16px globe for unknown domains
-                    // even when sz=128 is requested. Treat it as a failure.
-                    if (target.naturalWidth <= 16 && target.naturalWidth > 0) {
-                        handleError();
-                    }
-                }}
+                onLoad={handleLoad}
                 priority={priority}
                 loading={priority ? undefined : 'lazy'}
                 unoptimized

@@ -41,7 +41,7 @@ export default function LoginPage() {
                         </Link>
                     </nav>
 
-                    <Link href="/" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold uppercase tracking-widest text-foreground transition-colors hover:border-primary/30 hover:text-primary md:hidden">
+                    <Link href="/" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold capitalize tracking-widest text-foreground transition-colors hover:border-primary/30 hover:text-primary md:hidden">
                         Home
                     </Link>
                 </div>

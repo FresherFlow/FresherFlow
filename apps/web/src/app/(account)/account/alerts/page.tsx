@@ -128,7 +128,7 @@ export default function AccountAlertsPage() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                         <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            <span className="text-xs font-bold capitalize tracking-widest text-muted-foreground">
                                 Min relevance score
                             </span>
                             <input
@@ -144,7 +144,7 @@ export default function AccountAlertsPage() {
                         </label>
 
                         <label className="space-y-1">
-                            <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+                            <span className="text-xs font-bold capitalize tracking-widest text-muted-foreground">
                                 Daily digest hour (0-23)
                             </span>
                             <input
@@ -161,7 +161,7 @@ export default function AccountAlertsPage() {
                     </div>
 
                     <label className="space-y-1 block pt-1">
-                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Timezone</span>
+                        <span className="text-xs font-bold capitalize tracking-widest text-muted-foreground">Timezone</span>
                         <input
                             type="text"
                             value={prefs.timezone}
@@ -212,9 +212,3 @@ function ToggleRow({
         </div>
     );
 }
-
-
-
-
-
-

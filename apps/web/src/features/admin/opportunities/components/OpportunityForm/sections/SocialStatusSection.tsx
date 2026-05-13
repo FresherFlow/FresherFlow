@@ -36,8 +36,8 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
           <h2 className="text-lg font-semibold text-foreground">Social Delivery Status</h2>
           <p className="text-sm text-muted-foreground mt-1">Cross-platform publish flow visibility.</p>
         </div>
-        <button 
-          type="button" 
+        <button
+          type="button"
           onClick={onRefresh}
           className="p-2 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
           title="Refresh Status"
@@ -77,16 +77,16 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
                       {post.status.replace('_', ' ')}
                     </span>
                   </div>
-                  
+
                   {post.errorMessage && (
                     <p className="text-sm text-red-500 mt-2 font-mono bg-red-500/10 p-2 rounded">
                       {post.errorMessage}
                     </p>
                   )}
-                  
+
                   {!!post.payload && typeof post.payload === 'object' && !!(post.payload as Record<string, unknown>).text && (
                     <div className="mt-3">
-                      <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Generated Caption Preview</p>
+                      <p className="text-[10px] font-medium text-muted-foreground capitalize tracking-wider mb-1">Generated Caption Preview</p>
                       <pre className="text-xs bg-muted/50 p-3 rounded-md border border-border/50 font-sans whitespace-pre-wrap text-foreground italic leading-relaxed">
                         {String((post.payload as Record<string, unknown>).text)}
                       </pre>
@@ -130,9 +130,3 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
     </div>
   );
 }
-
-
-
-
-
-

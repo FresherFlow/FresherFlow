@@ -17,6 +17,7 @@ import { SalarySection } from './OpportunityForm/sections/SalarySection';
 import { ApplyLinkSection } from './OpportunityForm/sections/ApplyLinkSection';
 import { ExpirationSection } from './OpportunityForm/sections/ExpirationSection';
 import { WalkInDetailsSection } from './OpportunityForm/sections/WalkInDetailsSection';
+import { GovernmentJobSection } from './OpportunityForm/sections/GovernmentJobSection';
 import { ParserSection } from './OpportunityForm/sections/ParserSection';
 import { TimelineSection } from './OpportunityForm/sections/TimelineSection';
 import { PaperAirplaneIcon } from '@heroicons/react/24/outline';
@@ -24,26 +25,28 @@ import Link from 'next/link';
 
 // Hooks & Utils
 import { useOpportunityForm } from '../useOpportunityForm';
+import { GOVERNMENT_JOB_TEMPLATE, INTERNSHIP_TEMPLATE, JOB_TEMPLATE, WALKIN_TEMPLATE } from '../jsonTemplates';
 import { useOpportunityFormDerived } from '@/app/(admin)/admin/opportunities/create/hooks/useOpportunityFormDerived';
 import { useOpportunityFormHandlers } from '@/app/(admin)/admin/opportunities/create/hooks/useOpportunityFormHandlers';
 
 export type OpportunityFormPageProps = {
     mode?: 'create' | 'edit';
     opportunityId?: string;
+    initialGovernmentMode?: boolean;
 };
 
-export function OpportunityFormPage({ mode = 'create', opportunityId }: OpportunityFormPageProps) {
+export function OpportunityFormPage({ mode = 'create', opportunityId, initialGovernmentMode = false }: OpportunityFormPageProps) {
     const { isAuthenticated } = useAdmin();
     const router = useRouter();
     const isEditMode = mode === 'edit' && !!opportunityId;
 
     const form = useOpportunityForm(mode, opportunityId);
-    
-    const { 
-        commonDegrees, 
-        customDegrees, 
-        visibleCourseOptions, 
-        visibleSpecializationOptions 
+
+    const {
+        commonDegrees,
+        customDegrees,
+        visibleCourseOptions,
+        visibleSpecializationOptions
     } = useOpportunityFormDerived(form);
 
     const {
@@ -58,6 +61,12 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         }
     }, [isAuthenticated, router]);
 
+    useEffect(() => {
+        if (!isEditMode && initialGovernmentMode) {
+            form.setIsGovernmentJob(true);
+        }
+    }, [form, initialGovernmentMode, isEditMode]);
+
     const handleQuickLocation = (loc: string) => {
         if (form.locations.toLowerCase().includes(loc.toLowerCase())) return;
         form.setLocations((prev: string) => prev ? `${prev}, ${loc}` : loc);
@@ -71,18 +80,18 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
     return (
         <div className="max-w-4xl mx-auto px-4 py-8 md:py-12">
             <div className="mb-8">
-                <FormHeader 
-                    isEditMode={isEditMode} 
-                    showParser={form.showParser} 
-                    setShowParser={form.setShowParser} 
+                <FormHeader
+                    isEditMode={isEditMode}
+                    showParser={form.showParser}
+                    setShowParser={form.setShowParser}
                 />
             </div>
 
             {form.publishedListing && (
                 <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                    <ShareListingBanner 
-                        title={form.publishedListing.title} 
-                        company={form.publishedListing.company} 
+                    <ShareListingBanner
+                        title={form.publishedListing.title}
+                        company={form.publishedListing.company}
                         onCopyCaption={handleCopyCaption as (text: string) => void}
                         onCopyFullPack={handleCopyFullPack}
                     />
@@ -91,16 +100,16 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
 
             {isEditMode && form.socialPosts?.length > 0 && (
                 <div className="mb-8 animate-in zoom-in-95 duration-200">
-                    <SocialStatusSection 
-                        socialPosts={form.socialPosts} 
-                        onRefresh={form.fetchOpportunityForEdit} 
+                    <SocialStatusSection
+                        socialPosts={form.socialPosts}
+                        onRefresh={form.fetchOpportunityForEdit}
                     />
                 </div>
             )}
 
             {form.showParser && (
                 <div className="mb-8 animate-in zoom-in-95 duration-200">
-                    <ParserSection 
+                    <ParserSection
                         pastedText={form.pastedText}
                         setPastedText={form.setPastedText}
                         pastedJson={form.pastedJson}
@@ -110,17 +119,23 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                         applyJsonToForm={() => form.applyJsonData(JSON.parse(form.pastedJson))}
                         jsonReport={null}
                         closeParser={() => form.setShowParser(false)}
-                        jobTemplate='{"type":"JOB","title":"Software Engineer","company":"Google","locations":["Bangalore"],"allowedPassoutYears":[2024,2025],"allowedDegrees":["DEGREE"],"allowedCourses":["B.E","B.Tech"]}'
-                        internshipTemplate='{"type":"INTERNSHIP","title":"SDE Intern","company":"Amazon","locations":["Hyderabad"],"allowedPassoutYears":[2025,2026],"allowedDegrees":["DEGREE"]}'
-                        walkinTemplate='{"type":"WALKIN","title":"Direct Walk-in","company":"Zoho","locations":["Chennai"],"startDate":"2024-06-01","startTime":"09:00","venueAddress":"Zoho Estancia, Chennai"}'
+                        jobTemplate={JOB_TEMPLATE}
+                        internshipTemplate={INTERNSHIP_TEMPLATE}
+                        walkinTemplate={WALKIN_TEMPLATE}
+                        governmentTemplate={GOVERNMENT_JOB_TEMPLATE}
                     />
                 </div>
             )}
 
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6 md:space-y-8">
-                <TypeSelection type={form.type} setType={form.setType} />
+                <TypeSelection
+                    type={form.type}
+                    setType={form.setType}
+                    isGovernmentJob={form.isGovernmentJob}
+                    setIsGovernmentJob={form.setIsGovernmentJob}
+                />
 
-                <JobInfoSection 
+                <JobInfoSection
                     title={form.title} setTitle={form.setTitle}
                     company={form.company} setCompany={form.setCompany}
                     companyWebsite={form.companyWebsite} setCompanyWebsite={form.setCompanyWebsite}
@@ -131,14 +146,14 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                     notesHighlights={form.notesHighlights} setNotesHighlights={form.setNotesHighlights}
                     description={form.description} setDescription={form.setDescription}
                     duplicateCheckComponent={
-                        <DuplicateCheck 
-                            checking={form.checkingDuplicates} 
-                            candidates={form.duplicateCandidates} 
+                        <DuplicateCheck
+                            checking={form.checkingDuplicates}
+                            candidates={form.duplicateCandidates}
                         />
                     }
                 />
 
-                <EligibilitySection 
+                <EligibilitySection
                     allowedDegrees={form.allowedDegrees}
                     handleDegreeToggle={(deg) => form.setAllowedDegrees(prev => prev.includes(deg) ? prev.filter(d => d !== deg) : [...prev, deg])}
                     allowedCourses={form.allowedCourses}
@@ -156,32 +171,95 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                     customDegrees={customDegrees}
                 />
 
-                <LogisticsSection 
+                <LogisticsSection
                     type={form.type}
                     locations={form.locations} setLocations={form.setLocations}
                     handleQuickLocation={handleQuickLocation}
                     workMode={form.workMode} setWorkMode={form.setWorkMode}
                 />
 
-                <SalarySection 
+                <SalarySection
                     salaryRange={form.salaryRange} setSalaryRange={form.setSalaryRange}
                     salaryAmount={form.salaryAmount} setSalaryAmount={form.setSalaryAmount}
                     salaryPeriod={form.salaryPeriod} setSalaryPeriod={form.setSalaryPeriod}
                 />
 
-                <ApplyLinkSection 
+                <ApplyLinkSection
                     sourceLink={form.sourceLink} setSourceLink={form.setSourceLink}
                     applyLink={form.applyLink} setApplyLink={form.setApplyLink}
                     type={form.type}
                 />
 
-                <ExpirationSection 
+                {form.isGovernmentJob && (
+                    <GovernmentJobSection
+                        governmentTags={form.governmentTags}
+                        setGovernmentTags={form.setGovernmentTags}
+                        department={form.governmentDepartment}
+                        setDepartment={form.setGovernmentDepartment}
+                        organization={form.governmentOrganization}
+                        setOrganization={form.setGovernmentOrganization}
+                        recruitingBody={form.recruitingBody}
+                        setRecruitingBody={form.setRecruitingBody}
+                        officialWebsiteUrl={form.officialWebsiteUrl}
+                        setOfficialWebsiteUrl={form.setOfficialWebsiteUrl}
+                        officialNotificationUrl={form.officialNotificationUrl}
+                        setOfficialNotificationUrl={form.setOfficialNotificationUrl}
+                        advertisementNumber={form.advertisementNumber}
+                        setAdvertisementNumber={form.setAdvertisementNumber}
+                        postName={form.postName}
+                        setPostName={form.setPostName}
+                        applicationMode={form.applicationMode}
+                        setApplicationMode={form.setApplicationMode}
+                        applicationModes={form.applicationModes}
+                        setApplicationModes={form.setApplicationModes}
+                        vacancyCount={form.vacancyCount}
+                        setVacancyCount={form.setVacancyCount}
+                        vacanciesJson={form.vacanciesJson}
+                        setVacanciesJson={form.setVacanciesJson}
+                        applicationFee={form.applicationFee}
+                        setApplicationFee={form.setApplicationFee}
+                        applicationFeeJson={form.applicationFeeJson}
+                        setApplicationFeeJson={form.setApplicationFeeJson}
+                        ageMin={form.ageMin}
+                        setAgeMin={form.setAgeMin}
+                        ageMax={form.ageMax}
+                        setAgeMax={form.setAgeMax}
+                        ageRelaxation={form.ageRelaxation}
+                        setAgeRelaxation={form.setAgeRelaxation}
+                        eligibilityDetailsJson={form.eligibilityDetailsJson}
+                        setEligibilityDetailsJson={form.setEligibilityDetailsJson}
+                        reservationNotes={form.reservationNotes}
+                        setReservationNotes={form.setReservationNotes}
+                        importantInstructions={form.importantInstructions}
+                        setImportantInstructions={form.setImportantInstructions}
+                        applicationStartDate={form.applicationStartDate}
+                        setApplicationStartDate={form.setApplicationStartDate}
+                        applicationEndDate={form.applicationEndDate}
+                        setApplicationEndDate={form.setApplicationEndDate}
+                        examDate={form.examDate}
+                        setExamDate={form.setExamDate}
+                        examDatesJson={form.examDatesJson}
+                        setExamDatesJson={form.setExamDatesJson}
+                        admitCardDate={form.admitCardDate}
+                        setAdmitCardDate={form.setAdmitCardDate}
+                        resultDate={form.resultDate}
+                        setResultDate={form.setResultDate}
+                        selectionStages={form.selectionStages}
+                        setSelectionStages={form.setSelectionStages}
+                        governmentRequiredDocuments={form.governmentRequiredDocuments}
+                        setGovernmentRequiredDocuments={form.setGovernmentRequiredDocuments}
+                        governmentRequiredDocumentsJson={form.governmentRequiredDocumentsJson}
+                        setGovernmentRequiredDocumentsJson={form.setGovernmentRequiredDocumentsJson}
+                    />
+                )}
+
+                <ExpirationSection
                     expiresAt={form.expiresAt} setExpiresAt={form.setExpiresAt}
                     onToggleAmPm={form.onToggleAmPm}
                 />
 
                 {form.type === 'WALKIN' && (
-                    <WalkInDetailsSection 
+                    <WalkInDetailsSection
                         startDate={form.startDate} setStartDate={form.setStartDate}
                         endDate={form.endDate} setEndDate={form.setEndDate}
                         startTime={form.startTime} setStartTime={form.setStartTime}
@@ -195,7 +273,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                 )}
 
                 {isEditMode && opportunityId && (
-                    <TimelineSection 
+                    <TimelineSection
                         isEditMode={isEditMode}
                         timelineEvents={form.timelineEvents}
                         setTimelineEvents={form.setTimelineEvents}
@@ -227,7 +305,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
                     <button
                         type="submit"
                         disabled={form.isLoading}
-                        className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-bold uppercase tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus:ring-2 focus:ring-offset-2 w-full md:w-auto order-1 md:order-2"
+                        className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-bold capitalize tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus:ring-2 focus:ring-offset-2 w-full md:w-auto order-1 md:order-2"
                     >
                         {form.isLoading ? (
                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
@@ -241,9 +319,3 @@ export function OpportunityFormPage({ mode = 'create', opportunityId }: Opportun
         </div>
     );
 }
-
-
-
-
-
-

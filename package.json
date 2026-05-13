@@ -1,79 +1,89 @@
 {
-    "name": "fresherflow",
-    "version": "1.0.0",
-    "description": "Job & Walk-in Opportunity Platform - Proper Monorepo",
-    "private": true,
-    "workspaces": [
-        "apps/*",
-        "packages/*"
-    ],
-    "scripts": {
-        "prune:api": "turbo prune fresherflow-api --docker",
-        "prune:web": "turbo prune fresherflow-web --docker",
-        "kill:port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 5000 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 5000 is free' }\"",
-        "kill:web-port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 3000 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 3000 is free' }\"",
-        "kill:worker-port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 5001 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 5001 is free' }\"",
-        "kill:admin-mobile-port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 8082 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 8082 is free' }\"",
-        "kill:mobile-port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 8081 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 8081 is free' }\"",
-        "kill:ports": "npm run kill:web-port && npm run kill:port && npm run kill:worker-port && npm run kill:admin-mobile-port && npm run kill:mobile-port",
-        "dev": "npm run kill:ports && turbo run dev --concurrency=20",
-        "dev:stack": "concurrently -k -n API,WEB -c green,cyan \"npm run dev:api\" \"npm run dev:web\"",
-        "dev:start": "npm run kill:ports && concurrently -k -n API,WEB,WORKER -c green,cyan,yellow \"npm run dev:api\" \"npm run dev:web\" \"npm run dev --workspace=apps/worker\"",
-        "dev:check": "node scripts/check-local-dev.js",
-        "dev:api": "npm run dev --workspace=apps/api",
-        "dev:worker": "npm run dev --workspace=apps/worker",
-        "dev:web": "npm run dev --workspace=apps/web",
-        "dev:admin-mobile": "npm run start --workspace=apps/admin-mobile",
-        "dev:mobile": "npm run start --workspace=apps/mobile",
-        "android:admin-mobile": "npm run android --workspace=apps/admin-mobile",
-        "android:admin-mobile:offline": "npm run android:offline --workspace=apps/admin-mobile",
-        "android:mobile": "npm run android --workspace=apps/mobile",
-        "android:mobile:offline": "npm run android:offline --workspace=apps/mobile",
-        "build": "turbo run build",
-        "build:api": "turbo run build --filter=fresherflow-api",
-        "build:web": "turbo run build --filter=fresherflow-web",
-        "deploy:web": "npm run build:web",
-        "deploy:api": "turbo run db:generate --filter=fresherflow-api && npm run prisma:migrate --workspace=apps/api && turbo run build --filter=fresherflow-api",
-        "start:api": "npm run start --workspace=apps/api",
-        "start:worker": "npm run start:worker --workspace=apps/api",
-        "start:web": "npm run start --workspace=apps/web",
-        "db:generate": "npm run db:generate --workspace=apps/api",
-        "db:push": "npm run db:push --workspace=apps/api",
-        "db:studio": "npm run db:studio --workspace=apps/api",
-        "lint": "turbo run lint",
-        "lint:api": "turbo run lint --filter=fresherflow-api",
-        "lint:web": "turbo run lint --filter=fresherflow-web",
-        "clean": "rimraf apps/*/node_modules apps/*/dist packages/*/node_modules packages/*/dist node_modules",
-        "typecheck": "turbo run typecheck",
-        "test": "turbo run test"
-    },
-    "dependencies": {
-        "react-native-svg": "15.15.3",
-        "turbo": "^2.8.1"
-    },
-    "devDependencies": {
-        "@mapbox/node-pre-gyp": "^2.0.3",
-        "concurrently": "^8.2.2",
-        "eslint": "^8.57.1",
-        "eslint-import-resolver-typescript": "^4.4.4",
-        "react-refresh": "^0.14.2",
-        "rimraf": "^5.0.5",
-        "typescript": "^5.7.3"
-    },
-    "packageManager": "npm@9.8.0",
-    "engines": {
-        "node": ">=20.0.0",
-        "npm": ">=9.0.0"
-    },
-    "keywords": [
-        "monorepo",
-        "jobs",
-        "walk-ins",
-        "opportunities"
-    ],
-    "author": "",
-    "license": "MIT",
-    "overrides": {
-        "tar": "^7.5.7"
-    }
+  "name": "fresherflow",
+  "version": "1.0.0",
+  "description": "Job & Walk-in Opportunity Platform - Proper Monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "prune:api": "turbo prune fresherflow-api --docker",
+    "prune:web": "turbo prune fresherflow-web --docker",
+    "kill:port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 5000 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 5000 is free' }\"",
+    "kill:web-port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 3000 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 3000 is free' }\"",
+    "kill:worker-port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 5001 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 5001 is free' }\"",
+    "kill:admin-mobile-port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 8082 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 8082 is free' }\"",
+    "kill:mobile-port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 8081 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 8081 is free' }\"",
+    "kill:ports": "npm run kill:web-port && npm run kill:port && npm run kill:worker-port && npm run kill:admin-mobile-port && npm run kill:mobile-port",
+    "dev": "npm run kill:ports && turbo run dev --concurrency=20",
+    "dev:stack": "concurrently -k -n API,WEB -c green,cyan \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:start": "npm run kill:ports && concurrently -k -n API,WEB,WORKER -c green,cyan,yellow \"npm run dev:api\" \"npm run dev:web\" \"npm run dev --workspace=apps/worker\"",
+    "dev:check": "node scripts/check-local-dev.js",
+    "dev:api": "npm run dev --workspace=apps/api",
+    "dev:worker": "npm run dev --workspace=apps/worker",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:admin-mobile": "npm run start --workspace=apps/admin-mobile",
+    "dev:mobile": "npm run start --workspace=apps/mobile",
+    "android:admin-mobile": "npm run android --workspace=apps/admin-mobile",
+    "android:admin-mobile:offline": "npm run android:offline --workspace=apps/admin-mobile",
+    "android:mobile": "npm run android --workspace=apps/mobile",
+    "android:mobile:offline": "npm run android:offline --workspace=apps/mobile",
+    "build": "turbo run build",
+    "build:api": "turbo run build --filter=fresherflow-api",
+    "build:web": "turbo run build --filter=fresherflow-web",
+    "build:mobile": "turbo run build --filter=mobile",
+    "deploy:web": "npm run build:web",
+    "deploy:api": "turbo run db:generate --filter=fresherflow-api && npm run prisma:migrate --workspace=apps/api && turbo run build --filter=fresherflow-api",
+    "start:api": "npm run start --workspace=apps/api",
+    "start:worker": "npm run start:worker --workspace=apps/api",
+    "start:web": "npm run start --workspace=apps/web",
+    "db:generate": "npm run db:generate --workspace=apps/api",
+    "db:push": "npm run db:push --workspace=apps/api",
+    "db:studio": "npm run db:studio --workspace=apps/api",
+    "lint": "turbo run lint",
+    "lint:api": "turbo run lint --filter=fresherflow-api",
+    "lint:web": "turbo run lint --filter=fresherflow-web",
+    "lint:mobile": "turbo run lint --filter=mobile",
+    "clean": "rimraf apps/*/node_modules apps/*/dist packages/*/node_modules packages/*/dist node_modules",
+    "typecheck": "turbo run typecheck",
+    "typecheck:mobile": "turbo run typecheck --filter=mobile",
+    "test": "turbo run test",
+    "tree": "node docs/update_tree.js",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "dependencies": {
+    "react-native-reanimated": "3.16.7",
+    "react-native-svg": "15.15.3",
+    "turbo": "^2.8.1",
+    "expo": "~54.0.34",
+    "react": "19.1.0",
+    "react-native": "0.81.5"
+  },
+  "devDependencies": {
+    "@mapbox/node-pre-gyp": "^2.0.3",
+    "concurrently": "^8.2.2",
+    "eslint": "^8.57.1",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "react-refresh": "^0.14.2",
+    "rimraf": "^5.0.5",
+    "typescript": "^5.7.3"
+  },
+  "packageManager": "npm@9.8.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "monorepo",
+    "jobs",
+    "walk-ins",
+    "opportunities"
+  ],
+  "author": "",
+  "license": "MIT",
+  "overrides": {
+    "tar": "^7.5.7"
+  }
 }

@@ -23,7 +23,7 @@ export function LogisticsSection({
             </h3>
 
             <div className="space-y-2">
-                <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Locations</label>
+                <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Locations</label>
                 <input
                     required
                     value={locations}
@@ -37,7 +37,7 @@ export function LogisticsSection({
                             key={loc}
                             type="button"
                             onClick={() => handleQuickLocation(loc)}
-                            className="px-2 py-1 rounded bg-muted/50 hover:bg-primary/10 hover:text-primary text-[10px] font-bold uppercase transition-all border border-transparent hover:border-primary/20"
+                            className="px-2 py-1 rounded bg-muted/50 hover:bg-primary/10 hover:text-primary text-[10px] font-bold capitalize transition-all border border-transparent hover:border-primary/20"
                         >
                             + {loc}
                         </button>
@@ -47,7 +47,7 @@ export function LogisticsSection({
 
             {type !== 'WALKIN' && (
                 <div className="space-y-2.5">
-                    <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Work mode</label>
+                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Work mode</label>
                     <div className="grid grid-cols-3 gap-2">
                         {(['ONSITE', 'HYBRID', 'REMOTE'] as const).map((mode) => (
                             <button

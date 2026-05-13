@@ -8,6 +8,7 @@ import Link from 'next/link';
 import toast from 'react-hot-toast';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import { useClickOutside } from '@/lib/hooks/useClickOutside';
+import { calculateProfileCompletion } from '@/lib/profileCompletion';
 
 // Components
 import { ProfileStatusCard } from './components/ProfileStatusCard';
@@ -25,7 +26,7 @@ export default function ProfilePage() {
     const skillRef = useRef<HTMLDivElement>(null);
     const [cityOpen, setCityOpen] = useState(false);
     const [skillOpen, setSkillOpen] = useState(false);
-    
+
     const {
         fullName, setFullName,
         educationLevel, setEducationLevel,
@@ -97,7 +98,7 @@ export default function ProfilePage() {
         if (result.ok) setCityOpen(false);
     };
 
-    const pct = profile?.completionPercentage ?? 0;
+    const pct = calculateProfileCompletion(profile).percentage;
 
     return (
         <AuthGate>

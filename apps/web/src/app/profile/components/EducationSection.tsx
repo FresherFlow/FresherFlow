@@ -70,10 +70,10 @@ export const EducationSection = ({
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Highest Qualification</p>
+                            <p className="text-[11px] font-semibold text-muted-foreground capitalize tracking-wider mb-1">Highest Qualification</p>
                             {profile?.gradCourse ? (
                                 <div>
-                                    <p className="text-sm md:text-base font-semibold">{profile.pgCourse ? profile.pgCourse : profile.gradCourse} <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded ml-1 text-muted-foreground">{profile.educationLevel}</span></p>
+                                    <p className="text-sm md:text-base font-semibold">{profile.pgCourse ? profile.pgCourse : profile.gradCourse} <span className="text-[10px] font-bold bg-muted px-1.5 py-0.5 rounded ml-1 text-muted-foreground capitalize">{profile.educationLevel?.toLowerCase()}</span></p>
                                     <p className="text-[13px] text-muted-foreground mt-0.5">
                                         {profile.pgCourse ? profile.pgSpecialization : profile.gradSpecialization} · Class of {profile.pgCourse ? profile.pgYear : profile.gradYear}
                                     </p>
@@ -82,7 +82,7 @@ export const EducationSection = ({
                         </div>
                         {profile?.pgCourse && (
                             <div>
-                                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">Undergrad Degree</p>
+                                <p className="text-[11px] font-semibold text-muted-foreground capitalize tracking-wider mb-1">Undergrad Degree</p>
                                 <p className="text-sm md:text-base font-semibold">{profile.gradCourse}</p>
                                 <p className="text-[13px] text-muted-foreground mt-0.5">{profile.gradSpecialization} · Class of {profile.gradYear}</p>
                             </div>
@@ -90,11 +90,11 @@ export const EducationSection = ({
                     </div>
                     <div className="flex items-center gap-8 pt-4 border-t border-border/40">
                         <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">10th Class</p>
+                            <p className="text-[11px] font-semibold text-muted-foreground capitalize tracking-wider mb-1">10th Class</p>
                             <p className="text-sm md:text-base font-medium">{profile?.tenthYear ? `${profile.tenthYear}` : <span className="text-sm italic opacity-50">Not set</span>}</p>
                         </div>
                         <div>
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">12th / Diploma</p>
+                            <p className="text-[11px] font-semibold text-muted-foreground capitalize tracking-wider mb-1">12th / Diploma</p>
                             <p className="text-sm md:text-base font-medium">{profile?.twelfthYear ? `${profile.twelfthYear}` : <span className="text-sm italic opacity-50">Not set</span>}</p>
                         </div>
                     </div>
@@ -163,9 +163,3 @@ export const EducationSection = ({
         </CompactSection>
     );
 };
-
-
-
-
-
-

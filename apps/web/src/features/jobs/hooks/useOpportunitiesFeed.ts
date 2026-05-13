@@ -7,6 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { readFeedCache, saveFeedCache } from '@/lib/offline/opportunitiesFeedCache';
 import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { enqueueOfflineSaveToggle } from '@/lib/offline/actionQueue';
+import { useSiteMode } from '@/contexts/SiteModeContext';
+import { filterOpportunitiesForSiteMode } from '@/lib/opportunityMode';
 
 interface UseOpportunitiesFeedOptions {
     type?: string | null;
@@ -34,6 +36,7 @@ export function useOpportunitiesFeed({
     maxSalary,
 }: UseOpportunitiesFeedOptions) {
     const { user, profile, isLoading: authLoading } = useAuth();
+    const { mode } = useSiteMode();
 
     // Compute the initial cache scope synchronously
     const normalizedType = (type || 'all').toLowerCase();
@@ -136,7 +139,8 @@ export function useOpportunitiesFeed({
                     minSalary: minSalary || undefined,
                     maxSalary: maxSalary || undefined,
                     closingSoon: closingSoon || undefined,
-                    page: pageNum
+                    page: pageNum,
+                    limit: user ? 50 : 200
                 })) as FeedResponse;
             }
 
@@ -199,7 +203,9 @@ export function useOpportunitiesFeed({
     }, [loadOpportunities, authLoading, user, showOnlySaved]);
 
     const filteredOpps = useMemo(() => {
-        const filtered = opportunities.filter(opp => {
+        const modeFiltered = filterOpportunitiesForSiteMode(opportunities, mode);
+
+        const filtered = modeFiltered.filter(opp => {
             const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => loc.toLowerCase().includes(selectedLoc.toLowerCase()));
 
             const matchesClosingSoon = !closingSoon || (() => {
@@ -250,7 +256,7 @@ export function useOpportunitiesFeed({
 
             return (a.id || '').localeCompare(b.id || '');
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile, mode]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {

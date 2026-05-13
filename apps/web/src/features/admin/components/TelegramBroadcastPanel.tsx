@@ -191,24 +191,24 @@ export default function TelegramBroadcastPanel() {
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                     <div className="rounded-lg border p-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Sent</p>
+                        <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">Sent</p>
                         <p className="text-lg font-bold text-foreground">{summary.sent}</p>
                     </div>
                     <div className="rounded-lg border p-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Failed</p>
+                        <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">Failed</p>
                         <p className="text-lg font-bold text-red-600 dark:text-red-400">{summary.failed}</p>
                     </div>
                     <div className="rounded-lg border p-2">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Skipped</p>
+                        <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">Skipped</p>
                         <p className="text-lg font-bold text-amber-600 dark:text-amber-400">{summary.skipped}</p>
                     </div>
                 </div>
                 <div className="rounded-lg border p-2">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Delivery success rate ({windowFilter})</p>
+                    <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">Delivery success rate ({windowFilter})</p>
                     <p className="text-lg font-bold text-foreground">{successRate}%</p>
                 </div>
                 <div className="rounded-lg border p-3 space-y-2">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <p className="text-[10px] font-bold capitalize tracking-wider text-muted-foreground">
                         Top posts {windowFilter === "7d" ? "this week" : `(${windowFilter})`}
                     </p>
                     {topPosts.length === 0 ? (
@@ -285,9 +285,3 @@ export default function TelegramBroadcastPanel() {
         </Card>
     );
 }
-
-
-
-
-
-

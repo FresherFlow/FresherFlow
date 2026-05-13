@@ -133,7 +133,7 @@ export default function OpenGraphImage() {
                                 fontSize: 23,
                                 fontWeight: 700,
                                 letterSpacing: 1.6,
-                                textTransform: 'uppercase',
+                                textTransform: 'capitalize',
                                 color: '#ffffff',
                             }}
                         >
@@ -190,9 +190,3 @@ export default function OpenGraphImage() {
         size
     );
 }
-
-
-
-
-
-

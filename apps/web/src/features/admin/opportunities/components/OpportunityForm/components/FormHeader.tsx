@@ -24,22 +24,24 @@ export function FormHeader({ isEditMode, showParser, setShowParser }: FormHeader
                     </p>
                 </div>
                 {!isEditMode && (
-                    <button
-                        type="button"
-                        onClick={() => setShowParser(!showParser)}
-                        className="inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm w-full md:w-auto"
-                    >
-                        <BoltIcon className="w-4 h-4 mr-2" />
-                        Auto-fill text
-                    </button>
+                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                        <button
+                            type="button"
+                            onClick={() => setShowParser(!showParser)}
+                            className="inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors shadow-sm w-full md:w-auto"
+                        >
+                            <BoltIcon className="w-4 h-4 mr-2" />
+                            Auto-fill text
+                        </button>
+                        <Link
+                            href="/admin/government-jobs/create"
+                            className="inline-flex items-center justify-center h-10 px-4 rounded-md text-sm font-medium border border-input bg-background hover:bg-accent transition-colors shadow-sm w-full md:w-auto"
+                        >
+                            Govt Job Editor
+                        </Link>
+                    </div>
                 )}
             </div>
         </div>
     );
 }
-
-
-
-
-
-

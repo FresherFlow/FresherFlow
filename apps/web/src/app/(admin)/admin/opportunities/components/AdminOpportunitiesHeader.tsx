@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { PlusCircleIcon, ArrowPathIcon, DocumentTextIcon } from '@heroicons/react/24/outline';
+import { PlusCircleIcon, ArrowPathIcon, DocumentTextIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 
 interface AdminOpportunitiesHeaderProps {
     isLoading: boolean;
@@ -33,8 +33,12 @@ export const AdminOpportunitiesHeader = ({
                     className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
                 >
                     <DocumentTextIcon className="w-4 h-4 mr-2" />
-                    Export CSV
+                    Share Link
                 </a>
+                <Link href="/admin/opportunities?status=DRAFT" className="inline-flex h-9 items-center justify-center rounded-md border border-amber-500/30 bg-amber-500/5 px-3 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-500/10">
+                    <ExclamationCircleIcon className="w-4 h-4 mr-2" />
+                    Review Queue
+                </Link>
                 <Link href="/admin/opportunities/create" className="inline-flex h-9 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90">
                     <PlusCircleIcon className="w-4 h-4 mr-2" />
                     New listing

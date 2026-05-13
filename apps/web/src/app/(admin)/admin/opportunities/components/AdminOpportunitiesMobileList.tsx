@@ -3,22 +3,22 @@ import Link from 'next/link';
 import { Opportunity } from '@fresherflow/types';
 import { SocialOpportunity } from '@/features/admin/opportunities/listUtils';
 import CompanyLogo from '@/features/system/components/ui/CompanyLogo';
-import { 
-    MapPinIcon, 
-    CalendarIcon, 
-    PencilSquareIcon, 
-    TrashIcon, 
-    ClockIcon, 
-    CheckCircleIcon, 
-    ArrowPathIcon, 
-    EyeIcon, 
+import {
+    MapPinIcon,
+    CalendarIcon,
+    PencilSquareIcon,
+    TrashIcon,
+    ClockIcon,
+    CheckCircleIcon,
+    ArrowPathIcon,
+    EyeIcon,
     DocumentDuplicateIcon,
     ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
-import { 
-    formatLastVerified, 
-    formatLinkHealth, 
-    getStatusLabel, 
+import {
+    formatLastVerified,
+    formatLinkHealth,
+    getStatusLabel,
     linkHealthClass,
     getStatusBadgeClass
 } from '@/features/admin/opportunities/listUtils';
@@ -73,7 +73,7 @@ export const AdminOpportunitiesMobileList = ({
                                 <div className="font-medium text-foreground">{opp.title}</div>
                                 <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 flex-wrap">
                                     <span>{opp.company}</span>
-                                    <span className="text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded bg-muted/50 border border-border">
+                                    <span className="text-[9px] capitalize tracking-wide px-1.5 py-0.5 rounded bg-muted/50 border border-border">
                                         {opp.type}
                                     </span>
                                 </div>
@@ -187,9 +187,3 @@ export const AdminOpportunitiesMobileList = ({
         </div>
     );
 };
-
-
-
-
-
-

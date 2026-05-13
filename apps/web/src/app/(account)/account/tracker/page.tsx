@@ -150,7 +150,7 @@ export default function AccountTrackerPage() {
                         <h1 className="text-xl font-bold tracking-tight text-foreground">Sign in required</h1>
                         <p className="text-sm text-muted-foreground">Log in to view your application progress.</p>
                     </div>
-                    <Link href="/login" className="premium-button h-11 px-8 inline-flex items-center justify-center font-bold uppercase tracking-widest text-xs">
+                    <Link href="/login" className="premium-button h-11 px-8 inline-flex items-center justify-center font-bold capitalize tracking-widest text-xs">
                         Sign in to FresherFlow
                     </Link>
                 </div>
@@ -164,7 +164,7 @@ export default function AccountTrackerPage() {
 
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-2 md:gap-4 pb-4 md:pb-6">
                     <h1 className="text-lg font-bold tracking-tight text-foreground">Application Tracker</h1>
-                    <Link href="/opportunities" className="self-start text-[11px] font-bold uppercase tracking-widest text-primary hover:underline flex items-center gap-1.5">
+                    <Link href="/opportunities" className="self-start text-[11px] font-bold capitalize tracking-widest text-primary hover:underline flex items-center gap-1.5">
                         <BriefcaseIcon className="w-4 h-4" />
                         Browse More Opportunities
                     </Link>
@@ -184,7 +184,7 @@ export default function AccountTrackerPage() {
                                         : 'border-transparent bg-transparent text-muted-foreground hover:text-foreground'
                                 )}
                             >
-                                <span className="text-[11px] font-bold uppercase tracking-widest whitespace-nowrap">
+                                <span className="text-[11px] font-bold capitalize tracking-widest whitespace-nowrap">
                                     {STATUS_LABEL[status]}
                                 </span>
                                 <span className="inline-flex h-5 min-w-[1.25rem] items-center justify-center rounded-full border border-border px-1.5 text-[11px] font-bold text-muted-foreground tabular-nums">
@@ -225,14 +225,14 @@ export default function AccountTrackerPage() {
                                                 <button
                                                     key={s}
                                                     onClick={() => handleUpdateStatus(opp.id, s)}
-                                                    className="rounded-lg border border-border px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-muted-foreground hover:text-foreground"
+                                                    className="rounded-lg border border-border px-2.5 py-1.5 text-[10px] font-bold capitalize tracking-wide text-muted-foreground hover:text-foreground"
                                                 >
                                                     {STATUS_LABEL[s]}
                                                 </button>
                                             ))}
                                             <button
                                                 onClick={() => handleRemove(opp.id)}
-                                                className="ml-auto rounded-lg border border-destructive/30 px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-wide text-destructive hover:bg-destructive/10"
+                                                className="ml-auto rounded-lg border border-destructive/30 px-2.5 py-1.5 text-[10px] font-bold capitalize tracking-wide text-destructive hover:bg-destructive/10"
                                             >
                                                 <TrashIcon className="inline w-3.5 h-3.5 mr-1" />
                                                 Stop

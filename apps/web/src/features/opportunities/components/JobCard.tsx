@@ -8,7 +8,9 @@ import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
-import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
+import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
+import FireIcon from '@heroicons/react/24/outline/FireIcon';
+import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@repo/ui/utils/error-web';
@@ -44,20 +46,15 @@ type JobWithActions = Opportunity & {
     matchReason?: string;
 };
 
-// Strips verbose prefixes for compact display in the card
-const formatMatchReason = (reason: string): string => {
-    if (reason === 'Your preferred city') return 'Preferred city';
-    const inner = reason.match(/^Not eligible \((.+)\)$/);
-    if (inner) return inner[1];
-    return reason;
-};
 
 export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin, priority = false, variant = 'default' }: JobCardProps) {
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
-    const displayMatchScore = typeof job.matchScore === 'number'
-        ? Math.max(0, Math.min(100, Math.round(job.matchScore)))
-        : undefined;
+
+    // Feature: Heat & Trust Badges from Plan
+    const heatBadge = job.shareCount && job.shareCount > 10 ? 'Trending' : job.verificationFailures === 0 ? 'High Signal' : null;
+    const isTrusted = job.verificationFailures === 0 && (job.shareCount || 0) > 5;
+
 
     // Derive tracker status from actions array if available
     const trackerAction = (job as JobWithActions).actions?.find?.((a: JobAction) =>
@@ -164,7 +161,8 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
 
     const metaChips = (() => {
         const chips: string[] = [];
-        chips.push(isDrive ? 'Hiring Drive' : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Drive' : 'Full-time');
+        if (job.governmentJobDetails || (job.tags || []).some((tag) => /government/i.test(tag))) chips.push('Government');
+        chips.push(isDrive ? 'Hiring Drive' : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time');
         if (isDrive) chips.push('Campus 2024-2026');
         if (isDrive) chips.push('0-2 Yrs');
         const maxChips = variant === 'compact' ? 1 : 2;
@@ -188,7 +186,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     return (
         <div
             className={cn(
-                "group relative bg-card border border-border/50 rounded-xl p-4 md:p-5 shadow-md dark:shadow-none transition-all duration-200 hover:border-primary/40 hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 hover:bg-linear-to-b hover:from-white/3 hover:to-transparent flex flex-col gap-3 overflow-hidden",
+                "group relative bg-card border border-border/50 rounded-xl p-4 md:p-5 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 flex flex-col gap-3 overflow-hidden",
                 isClosingSoon() && !isExpired() && "border-primary/45",
                 isExpired() && "opacity-70",
                 "cursor-pointer"
@@ -203,6 +201,32 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             {isClosingSoon() && !isExpired() && (
                 <div className="absolute left-0 top-0 h-[2px] w-full bg-primary/45" />
             )}
+
+            {/* Top Bar: Heat Badge + Meta */}
+            <div className="flex items-center justify-between gap-2 z-20 pointer-events-none">
+                <div className="flex items-center gap-2">
+                    {heatBadge && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider border border-amber-500/20">
+                            <FireIcon className="w-3 h-3" />
+                            {heatBadge}
+                        </span>
+                    )}
+                    {isTrusted && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase tracking-wider border border-blue-500/20">
+                            <CheckBadgeIcon className="w-3 h-3" />
+                            Trusted
+                        </span>
+                    )}
+                </div>
+                <div className="flex items-center gap-2">
+                   {getPostedLabel() && (
+                        <span className={cn("text-[10px] font-bold uppercase tracking-wider text-muted-foreground", isFreshlyPosted() && "text-primary")}>
+                            {getPostedLabel()}
+                        </span>
+                    )}
+                </div>
+            </div>
+
             {/* Header: Company + Title + Save */}
             <div className="flex justify-between items-start">
                 <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -215,44 +239,13 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         >
                             {job.company}
                         </Link>
-                        {(getPostedLabel() || typeof displayMatchScore === 'number') && (
-                            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                                {getPostedLabel() && (
-                                    <span className={cn(isFreshlyPosted() && "text-primary/90")}>{getPostedLabel()}</span>
-                                )}
-                                {getPostedLabel() && typeof displayMatchScore === 'number' && (
-                                    <span className="opacity-40">-</span>
-                                )}
-                                {typeof displayMatchScore === 'number' && (
-                                    displayMatchScore === 0 && job.matchReason?.includes('Not eligible') ? (
-                                        <span className="text-destructive/90 font-medium">
-                                            Not Eligible
-                                        </span>
-                                    ) : displayMatchScore === 0 && job.matchReason === 'Eligible' ? (
-                                        <span className="text-foreground/85 font-medium">
-                                            Eligible
-                                        </span>
-                                    ) : displayMatchScore === 0 && job.matchReason?.includes('Complete profile') ? (
-                                        <span className="text-muted-foreground/70 font-medium">
-                                            Setup profile
-                                        </span>
-                                    ) : (
-                                        <span className="text-primary/80 font-medium">
-                                            {displayMatchScore}% match
-                                        </span>
-                                    )
-                                )}
-                            </div>
-                        )}
                         <h3 className="mt-0.5 text-[17px] md:text-[18px] font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
                             {job.normalizedRole || job.title}
                         </h3>
-
-
                     </div>
                 </div>
 
-                <div className="flex flex-col items-end shrink-0 w-[76px]">
+                <div className="flex flex-col items-end shrink-0">
                     <div className="flex items-center gap-1">
                         <button
                             onClick={handleShareClick}
@@ -275,35 +268,17 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             {isSaved ? <BookmarkSolidIcon className="w-5 h-5" aria-hidden="true" /> : <BookmarkIcon className="w-5 h-5" aria-hidden="true" />}
                         </button>
                     </div>
-                    {typeof displayMatchScore === 'number' && job.matchReason && job.matchReason !== 'General fit' && job.matchReason !== 'Eligible' && (
-                        <div
-                            title={formatMatchReason(job.matchReason)}
-                            className="mt-3 flex justify-end"
-                        >
-                            <InformationCircleIcon
-                                className={cn(
-                                    'w-4 h-4',
-                                    displayMatchScore === 0 && job.matchReason.includes('Not eligible')
-                                        ? 'text-destructive/70'
-                                        : 'text-muted-foreground/50'
-                                )}
-                            />
-                        </div>
-                    )}
                 </div>
             </div>
 
-            {/* Spacer: pushes badges/meta/footer to consistent bottom position */}
-            <div className="flex-1" />
-
-            {/* Badges */}
+            {/* Badges row */}
             <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-1.5 min-w-0 flex-nowrap overflow-hidden">
                     {metaChips.map((chip, idx) => (
                         <span
                             key={`${chip}-${idx}`}
                             className={cn(
-                                "inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-full",
+                                "inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-md",
                                 idx === 0
                                     ? "bg-muted/80 text-foreground border border-border/70"
                                     : "bg-muted/60 text-muted-foreground border border-border/60"
@@ -316,9 +291,9 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                 {job.expiresAt && (
                     <span
                         className={cn(
-                            "inline-flex max-w-[54%] items-center gap-1 px-2 py-0.5 border text-xs font-medium normal-case tracking-normal rounded-full whitespace-nowrap",
+                            "inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold rounded-md whitespace-nowrap",
                             isExpired()
-                                ? "bg-destructive/5 border-destructive/25 text-destructive dark:bg-destructive/10 dark:border-destructive/30"
+                                ? "bg-destructive/5 border-destructive/25 text-destructive"
                                 : isClosingSoon()
                                     ? "bg-amber-100/70 border-amber-400/70 text-amber-800 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
                                     : "bg-muted/70 border-border/70 text-foreground/80"
@@ -331,10 +306,10 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             </div>
 
             {/* Key Meta */}
-            <div className="flex items-center justify-between text-[13px] text-muted-foreground min-w-0">
+            <div className="flex items-center justify-between text-[13px] text-muted-foreground min-w-0 py-1">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
                     <MapPinIcon className="w-4 h-4 shrink-0" aria-hidden="true" />
-                    <span className="truncate text-muted-foreground" title={locationInfo.fullLabel}>{locationInfo.shortLabel}</span>
+                    <span className="truncate" title={locationInfo.fullLabel}>{locationInfo.shortLabel}</span>
                 </span>
                 {salaryLabel && (
                     <span className="inline-flex items-center gap-1.5 min-w-0">
@@ -344,26 +319,22 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                 )}
             </div>
 
-            {/* Footer */}
-            <div className="flex items-center justify-between pt-1 mt-auto">
-                <div className="flex items-center gap-1.5">
+            {/* Footer: Community Stats + CTA */}
+            <div className="flex items-center justify-between pt-2 mt-auto border-t border-border/40">
+                <div className="flex items-center gap-3">
+                    {job.shareCount && job.shareCount > 0 ? (
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
+                            <UsersIcon className="w-3.5 h-3.5" />
+                            <span>{job.shareCount} Shared</span>
+                        </div>
+                    ) : null}
                     {(trackerStatus === 'APPLIED' || (!trackerStatus && isApplied)) && (
-                        <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium border border-primary/20">
+                        <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-bold uppercase tracking-wider border border-primary/20">
                             Applied
                         </span>
                     )}
-                    {trackerStatus && trackerStatus !== 'APPLIED' && (
-                        <span className="inline-flex items-center px-2 py-0.5 bg-muted text-muted-foreground rounded text-xs font-medium border border-border">
-                            {trackerStatus === 'PLANNED' ? 'Planned'
-                                : trackerStatus === 'SAVED_FOR_LATER' ? 'Saved for later'
-                                    : trackerStatus === 'INTERVIEWING' ? 'Interviewing'
-                                        : trackerStatus === 'OFFERED' ? 'Offered'
-                                            : trackerStatus === 'REJECTED' ? 'Rejected'
-                                                : trackerStatus.charAt(0) + trackerStatus.slice(1).toLowerCase()}
-                        </span>
-                    )}
                 </div>
-                <div className="flex items-center gap-1 text-primary text-[14px] font-semibold group-hover:translate-x-0.5 transition-transform duration-300">
+                <div className="flex items-center gap-1 text-primary text-[13px] font-bold group-hover:translate-x-1 transition-transform duration-300 uppercase tracking-tight">
                     <span>View Details</span>
                     <ChevronRightIcon className="w-3.5 h-3.5" aria-hidden="true" />
                 </div>
@@ -387,9 +358,3 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
         </div>
     );
 }
-
-
-
-
-
-

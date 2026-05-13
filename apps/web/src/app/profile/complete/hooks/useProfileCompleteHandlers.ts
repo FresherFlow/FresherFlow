@@ -23,9 +23,9 @@ export interface ProfileCompleteForm {
 }
 
 export function useProfileCompleteHandlers(
-    form: ProfileCompleteForm, 
-    refreshUser: () => Promise<void>,
-    setCurrentStep: (step: 'education' | 'preferences' | 'readiness') => void
+    form: ProfileCompleteForm,
+    forceRefreshProfile: () => Promise<void>,
+    setCurrentStep: (step: 'education' | 'preferences') => void
 ) {
     const router = useRouter();
     const [isLoading, setIsLoading] = useState(false);
@@ -35,14 +35,14 @@ export function useProfileCompleteHandlers(
             fullName: form.fullName,
             requireFullName: true,
             educationLevel: form.educationLevel,
-            tenthYear: form.tenthYear, 
+            tenthYear: form.tenthYear,
             twelfthYear: form.twelfthYear,
-            gradCourse: form.gradCourse, 
-            gradSpecialization: form.gradSpecialization, 
+            gradCourse: form.gradCourse,
+            gradSpecialization: form.gradSpecialization,
             gradYear: form.gradYear,
-            hasPG: form.hasPG, 
-            pgCourse: form.pgCourse, 
-            pgSpecialization: form.pgSpecialization, 
+            hasPG: form.hasPG,
+            pgCourse: form.pgCourse,
+            pgSpecialization: form.pgSpecialization,
             pgYear: form.pgYear,
         });
 
@@ -55,20 +55,20 @@ export function useProfileCompleteHandlers(
         const tid = toast.loading('Saving education details...');
         try {
             await profileApi.updateEducation({
-                fullName: form.fullName, 
+                fullName: form.fullName,
                 educationLevel: form.educationLevel,
                 tenthYear: validation.years.tenthYear,
                 twelfthYear: validation.years.twelfthYear,
-                gradCourse: form.gradCourse, 
+                gradCourse: form.gradCourse,
                 gradSpecialization: form.gradSpecialization,
                 gradYear: validation.years.gradYear,
-                ...(validation.includePG && { 
-                    pgCourse: form.pgCourse, 
-                    pgSpecialization: form.pgSpecialization, 
-                    pgYear: validation.years.pgYear 
+                ...(validation.includePG && {
+                    pgCourse: form.pgCourse,
+                    pgSpecialization: form.pgSpecialization,
+                    pgYear: validation.years.pgYear,
                 }),
             });
-            await refreshUser();
+            await forceRefreshProfile();
             toast.success('Education saved.', { id: tid });
             setCurrentStep('preferences');
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -79,44 +79,35 @@ export function useProfileCompleteHandlers(
         }
     };
 
-    const handlePreferencesSubmit = async () => {
-        if (form.interestedIn.length === 0 || form.preferredCities.length === 0 || form.workModes.length === 0) {
-            toast.error('Preferences incomplete');
-            return;
-        }
-        setIsLoading(true);
-        const tid = toast.loading('Saving preferences...');
-        try {
-            await profileApi.updatePreferences({ 
-                interestedIn: form.interestedIn, 
-                preferredCities: form.preferredCities, 
-                workModes: form.workModes 
-            });
-            await refreshUser();
-            toast.success('Preferences saved.', { id: tid });
-            setCurrentStep('readiness');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        } catch (err: unknown) {
-            toast.error((err as Error).message || 'Update failed', { id: tid });
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
     const handleReadinessSubmit = async () => {
-        if (form.skills.length === 0) {
-            toast.error('Add at least one skill');
+        if (form.interestedIn.length === 0 || form.preferredCities.length === 0 || form.workModes.length === 0) {
+            toast.error('Please fill in your career preferences');
             return;
         }
+        if (form.skills.length === 0) {
+            toast.error('Add at least one professional skill');
+            return;
+        }
+
         setIsLoading(true);
         const tid = toast.loading('Finalizing your profile...');
         try {
-            await profileApi.updateReadiness({ availability: 'IMMEDIATE', skills: form.skills });
-            await refreshUser();
-            toast.success('Profile complete!', { id: tid });
+            await profileApi.updatePreferences({
+                interestedIn: form.interestedIn,
+                preferredCities: form.preferredCities,
+                workModes: form.workModes,
+            });
+
+            await profileApi.updateReadiness({
+                availability: 'IMMEDIATE',
+                skills: form.skills,
+            });
+
+            await forceRefreshProfile();
+            toast.success('Profile complete! Welcome to FresherFlow.', { id: tid });
             router.push('/dashboard');
         } catch (err: unknown) {
-            toast.error((err as Error).message || 'Update failed', { id: tid });
+            toast.error((err as Error).message || 'Finalization failed', { id: tid });
         } finally {
             setIsLoading(false);
         }
@@ -125,12 +116,6 @@ export function useProfileCompleteHandlers(
     return {
         isLoading,
         handleEducationSubmit,
-        handlePreferencesSubmit,
-        handleReadinessSubmit
+        handleReadinessSubmit,
     };
 }
-
-
-
-
-

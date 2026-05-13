@@ -50,6 +50,70 @@ export interface ParsedJob {
     contactPerson?: string;
     contactPhone?: string;
     description?: string;
+    tags?: string[];
+    governmentJobDetails?: {
+        department?: string;
+        organization?: string;
+        recruitingBody?: string;
+        officialWebsiteUrl?: string;
+        officialNotificationUrl?: string;
+        advertisementNumber?: string;
+        postName?: string;
+        applicationMode?: string;
+        applicationModes?: string[];
+        vacancyCount?: number | string;
+        vacancies?: Array<{
+            postName: string;
+            total?: number;
+            categoryBreakup?: Record<string, number>;
+            qualification?: string;
+            age?: string;
+        }>;
+        applicationFee?: string;
+        applicationFeeDetails?: {
+            general?: number;
+            obc?: number;
+            ews?: number;
+            sc?: number;
+            st?: number;
+            pwd?: number;
+            female?: number;
+            other?: Record<string, number>;
+        };
+        ageMin?: number | string;
+        ageMax?: number | string;
+        ageRelaxation?: string;
+        eligibilityDetails?: {
+            education?: string[];
+            age?: { min?: number; max?: number; notes?: string };
+            experience?: string[];
+            additional?: string[];
+        };
+        reservationNotes?: string;
+        importantInstructions?: string;
+        applicationStartDate?: string;
+        applicationEndDate?: string;
+        examDate?: string;
+        examDates?: {
+            prelims?: string;
+            mains?: string;
+            skillTest?: string;
+            interview?: string;
+            medical?: string;
+            documentVerification?: string;
+            other?: string;
+        };
+        admitCardDate?: string;
+        resultDate?: string;
+        selectionStages?: string[];
+        requiredDocuments?: string[];
+        requiredDocumentDetails?: Array<{
+            name: string;
+            mandatory?: boolean;
+            notes?: string;
+        }>;
+        seoTags?: string[];
+    };
     walkInDetails?: {
         dateRange?: string;
         timeRange?: string;
@@ -278,8 +342,3 @@ export const normalizeWorkModeValue = (value: unknown): 'ONSITE' | 'HYBRID' | 'R
     if (normalized.includes('REMOTE') || normalized.includes('HOME')) return 'REMOTE';
     return undefined;
 };
-
-
-
-
-

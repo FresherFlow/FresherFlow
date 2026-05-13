@@ -8,7 +8,7 @@ export default function OgPreviewPage() {
                 </p>
 
                 <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Open Graph</p>
+                    <p className="text-xs font-semibold capitalize tracking-wider text-muted-foreground">Open Graph</p>
                     <div className="overflow-hidden rounded-xl border border-border bg-card">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -20,7 +20,7 @@ export default function OgPreviewPage() {
                 </div>
 
                 <div className="space-y-2">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Twitter</p>
+                    <p className="text-xs font-semibold capitalize tracking-wider text-muted-foreground">Twitter</p>
                     <div className="overflow-hidden rounded-xl border border-border bg-card">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img

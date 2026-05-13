@@ -12,12 +12,14 @@ import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
 import { useInstallPrompt } from '@/contexts/InstallPromptContext';
-import { NAV_ROUTES } from './routeConfig';
+import { getNavRoutes } from './routeConfig';
+import { useSiteMode } from '@/contexts/SiteModeContext';
 
 const MobileNavMenu = dynamic(() => import('../MobileNavMenu'), { ssr: false });
 
-function getMobileTitle(pathname: string): string {
-    const match = NAV_ROUTES.find(r => pathname === r.href || pathname.startsWith(`${r.href}/`));
+function getMobileTitle(pathname: string, mode: "private" | "govt"): string {
+    const navRoutes = getNavRoutes(mode);
+    const match = navRoutes.find(r => pathname === r.href || pathname.startsWith(`${r.href}/`));
     if (match?.mobileTitle) return match.mobileTitle;
     if (pathname.startsWith('/jobs/')) return 'Job';
     if (pathname.startsWith('/internships/')) return 'Internship';
@@ -38,7 +40,8 @@ export function MobileTopNav() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const { canInstall, promptInstall } = useInstallPrompt();
-    const mobileTitle = getMobileTitle(pathname);
+    const { mode } = useSiteMode();
+    const mobileTitle = getMobileTitle(pathname, mode);
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 8);
@@ -66,16 +69,24 @@ export function MobileTopNav() {
             >
                 <div className="w-full flex items-center justify-between px-4 h-full">
                     {/* Brand */}
-                    <Link href={user ? '/dashboard' : '/'} className="flex items-center gap-2 min-w-0">
+                    <Link
+                        href={user ? '/dashboard' : '/'}
+                        onClick={(event) => {
+                            const targetHref = user ? '/dashboard' : '/';
+                            if (pathname === targetHref) event.preventDefault();
+                        }}
+                        className="flex items-center gap-2 min-w-0"
+                    >
                         <LogoImage width={24} height={24} className="w-6 h-6 object-contain shrink-0" />
                         <span className="text-[16px] font-semibold tracking-[0.01em] text-foreground/95 truncate leading-none">
                             {mobileTitle}
                         </span>
                     </Link>
- 
+
                     {/* Right Actions */}
                     {user ? (
                         <div className="flex items-center gap-1 shrink-0">
+
                             {canInstall && (
                                 <button type="button" onClick={() => void promptInstall('navbar')} className="px-2 py-1 rounded-lg border border-primary/25 bg-primary/10 text-[10px] font-semibold text-primary" aria-label="Install app">
                                     Install

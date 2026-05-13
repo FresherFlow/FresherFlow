@@ -71,7 +71,7 @@ export default function SavedJobsPage() {
                 <div className="text-center space-y-6 max-w-md w-full bg-card p-8 rounded-xl border border-border shadow-lg">
                     <h1 className="text-2xl font-bold tracking-tight text-foreground">Sign in required</h1>
                     <p className="text-muted-foreground font-medium">Please sign in to access your saved opportunities.</p>
-                    <Link href="/login" className="w-full h-11 bg-primary text-primary-foreground font-bold uppercase tracking-widest text-xs rounded-lg flex items-center justify-center hover:bg-primary/90 transition-all">Sign in</Link>
+                    <Link href="/login" className="w-full h-11 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-xs rounded-lg flex items-center justify-center hover:bg-primary/90 transition-all">Sign in</Link>
                 </div>
             </div>
         );
@@ -91,7 +91,7 @@ export default function SavedJobsPage() {
                     </Link>
                     <div className="space-y-0.5">
                         <h1 className="text-2xl font-bold tracking-tight text-foreground">Saved</h1>
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest">Your bookmarked opportunities</p>
+                        <p className="text-xs font-medium text-muted-foreground capitalize tracking-widest">Your bookmarked opportunities</p>
                     </div>
                 </div>
 
@@ -112,7 +112,7 @@ export default function SavedJobsPage() {
                         </div>
                         <Link
                             href="/opportunities"
-                            className="inline-flex h-10 items-center justify-center px-8 bg-primary text-primary-foreground font-bold uppercase tracking-widest text-xs rounded-lg hover:bg-primary/90 transition-all shadow-md"
+                            className="inline-flex h-10 items-center justify-center px-8 bg-primary text-primary-foreground font-bold capitalize tracking-widest text-xs rounded-lg hover:bg-primary/90 transition-all shadow-md"
                         >
                             Browse feed
                         </Link>
@@ -127,7 +127,7 @@ export default function SavedJobsPage() {
                             >
                                 <div className="flex justify-between items-start gap-4">
                                     <div className="space-y-1.5 flex-1 min-w-0">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest truncate">{job.company}</p>
+                                        <p className="text-[10px] font-bold text-muted-foreground capitalize tracking-widest truncate">{job.company}</p>
                                         <h3 className="font-bold text-foreground text-lg leading-tight truncate pr-2 group-hover:text-primary transition-colors">{job.title}</h3>
                                     </div>
                                     <button
@@ -141,14 +141,14 @@ export default function SavedJobsPage() {
                                 </div>
 
                                 <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${job.type === 'WALKIN' ? 'bg-amber-500/10 text-slate-900 dark:text-amber-300 border-amber-500/20' :
+                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold capitalize tracking-wide border ${job.type === 'WALKIN' ? 'bg-amber-500/10 text-slate-900 dark:text-amber-300 border-amber-500/20' :
                                         job.type === 'INTERNSHIP' ? 'bg-purple-500/10 text-purple-600 border-purple-500/20' :
                                             'bg-blue-500/10 text-blue-600 border-blue-500/20'
                                         }`}>
                                         {job.type}
                                     </span>
                                     {getProgressLabel(job) && (
-                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border bg-primary/10 text-primary border-primary/20">
+                                        <span className="px-2 py-0.5 rounded text-[10px] font-bold capitalize tracking-wide border bg-primary/10 text-primary border-primary/20">
                                             {getProgressLabel(job)}
                                         </span>
                                     )}
@@ -165,10 +165,3 @@ export default function SavedJobsPage() {
         </div>
     );
 }
-
-
-
-
-
-
-
