@@ -6,7 +6,6 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Platform,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from 'react-native';
@@ -28,6 +27,7 @@ import {
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
+import { alpha, theme } from '@/theme';
 import { useProfile } from '@/hooks/useProfile';
 import { useFollows } from '@/hooks/useFollows';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -37,17 +37,15 @@ import { RootStackParamList } from '@/navigation/AppNavigator';
 // Premium System
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
-import { RADIUS } from '@/system/constants/dimensions';
+import { RADIUS, mScale } from '@/system/constants/dimensions';
+import { TYPOGRAPHY } from '@/system/constants/typography';
 import { useUI } from '@/contexts/UIContext';
 import { calculateProfileCompletion } from '@/utils/profileCompletion';
 import { PremiumPopup } from '@/system/components/PremiumPopup';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
+
 
 const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
@@ -96,31 +94,31 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-      <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
-          <PremiumHeader
-              title="Identity"
-              subtitle="Manage your professional presence"
-              rightSlot={
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.notificationBtn}
-                    onPress={() => navigation.navigate('Notifications')}
-                  >
-                      <Bell size={22} color={currentTheme.colors.text} />
-                      {unreadCount > 0 && (
-                          <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary }]} />
-                      )}
-                  </TouchableOpacity>
-              }
-          />
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 100 }]}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        stickyHeaderIndices={[0]}
       >
+          <View style={[styles.stickyHeader, { paddingTop: insets.top + 10, backgroundColor: currentTheme.colors.background }]}>
+              <PremiumHeader
+                  title="Identity"
+                  subtitle="Manage your professional presence"
+                  rightSlot={
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.notificationBtn}
+                        onPress={() => navigation.navigate('Notifications')}
+                      >
+                          <Bell size={22} color={currentTheme.colors.text} />
+                          {unreadCount > 0 && (
+                              <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary }]} />
+                          )}
+                      </TouchableOpacity>
+                  }
+              />
+          </View>
           <View style={styles.container}>
               {/* Profile Card */}
               <View style={styles.identitySection}>
@@ -142,7 +140,7 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
               {profile && user && (
                 <View style={[styles.completionSection, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
                     <View style={styles.completionHeader}>
-                        <Text style={[styles.completionLabel, { color: currentTheme.colors.primary }]}>PROFILE COMPLETION</Text>
+                        <Text style={[styles.completionLabel, { color: currentTheme.colors.primary }]}>Profile Completion</Text>
                         <Text style={[styles.completionValue, { color: currentTheme.colors.primary }]}>{calculateProfileCompletion(profile).percentage}%</Text>
                     </View>
                     <View style={[styles.progressTrack, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
@@ -162,13 +160,13 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     style={[styles.authButton, { backgroundColor: currentTheme.colors.primary }]}
                     onPress={() => navigation.navigate('Auth')}
                   >
-                      <Text style={[styles.authButtonText, { color: currentTheme.colors.background }]}>JOIN FRESHERFLOW</Text>
+                      <Text style={[styles.authButtonText, { color: currentTheme.colors.background }]}>Join FresherFlow</Text>
                   </TouchableOpacity>
               )}
 
               {/* Menu Sections */}
               <View style={styles.menuSections}>
-                  <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>CAREER ASSETS</Text>
+                  <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Career Assets</Text>
                   <SurfaceCard style={styles.groupCard}>
                       <MenuRow
                         icon={Award}
@@ -207,7 +205,7 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
                   {!isGuest && (follows.companies.length > 0 || follows.tags.length > 0 || follows.contributors.length > 0) && (
                     <>
-                        <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>FOLLOWING</Text>
+                        <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Following</Text>
                         <SurfaceCard style={styles.groupCard}>
                             <ScrollView
                                 horizontal
@@ -239,7 +237,7 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     </>
                   )}
 
-                  <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>COMMUNITY & SYSTEM</Text>
+                  <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Community & System</Text>
                   <SurfaceCard style={styles.groupCard}>
                       <MenuRow
                         icon={Palette}
@@ -352,9 +350,9 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     name: {
-        fontSize: 22,
+        fontSize: mScale(22),
         fontWeight: '900',
-        letterSpacing: -1,
+        letterSpacing: -0.5,
     },
     email: {
         fontSize: 14,
@@ -369,9 +367,9 @@ const styles = StyleSheet.create({
         marginBottom: 40,
     },
     authButtonText: {
-        fontSize: 12,
+        fontSize: 13,
         fontWeight: '900',
-        letterSpacing: 1,
+        letterSpacing: 0.5,
     },
     completionSection: {
         marginBottom: 40,
@@ -385,7 +383,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     completionLabel: {
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: '800',
     },
     completionValue: {
@@ -413,9 +411,7 @@ const styles = StyleSheet.create({
         gap: 0,
     },
     groupLabel: {
-        fontSize: 10,
-        fontWeight: '900',
-        letterSpacing: 1.5,
+        ...TYPOGRAPHY.label,
         marginLeft: 12,
         marginBottom: 12,
         marginTop: 32,
@@ -461,15 +457,13 @@ const styles = StyleSheet.create({
         fontWeight: '900',
     },
     statLabel: {
-        fontSize: 9,
-        fontWeight: '900',
-        letterSpacing: 1,
+        ...TYPOGRAPHY.label,
         marginTop: 4,
     },
     statDivider: {
         width: 1,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(128,128,128,0.1)',
+        borderBottomColor: theme.colors.dividerSubtle,
     },
     footer: {
         marginTop: 60,

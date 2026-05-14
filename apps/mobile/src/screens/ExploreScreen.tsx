@@ -1,4 +1,6 @@
 import React, { memo, useCallback, useRef } from 'react';
+import { FlashList } from '@shopify/flash-list';
+
 import {
     StyleSheet,
     Text,
@@ -6,14 +8,12 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     StatusBar,
-    Platform,
     ScrollView,
-    FlatList,
     NativeSyntheticEvent,
     NativeScrollEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Compass, Filter, Building2, ChevronRight } from 'lucide-react-native';
+import { Compass, Filter, Building2, ChevronRight, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
@@ -22,18 +22,21 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useSaved } from '@repo/frontend-core';
 import { CompanyLogo } from '@repo/ui';
-import { SurfaceCard, PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { SurfaceCard, PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
 import { PremiumSearchBar } from '@/system/components/PremiumSearchBar';
-import { FilterSheet } from '@/system/components/FilterSheet';
+import { FilterSheet, FilterSheetRef } from '@/system/components/FilterSheet';
 import { FilterChip } from '@/system/components/FilterChip';
 import { SPACING } from '@/system/constants/dimensions';
 import { useExplore } from '@/hooks/useExplore';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { CORE_CATEGORIES, CONTROLLED_TAGS, CATEGORY_LABELS } from '@fresherflow/constants';
 import { useToast } from '@/contexts/ToastContext';
+import { alpha } from '@/theme';
+import { toTitleCase } from '@/utils/text';
+import { TYPOGRAPHY } from '@/system/constants/typography';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ExploreMain'>;
 
@@ -53,10 +56,7 @@ type ExploreItem =
   | { type: 'discovery'; key: string }
   | { type: 'empty'; key: string };
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
+
 
 import { useUI } from '@/contexts/UIContext';
 
@@ -75,7 +75,7 @@ const CompanyCard = memo(({ company, onPress, theme }: { company: CompanySummary
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                         <View style={{ backgroundColor: alpha(theme.colors.primary, 0.1), paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }}>
                             <Text style={{ fontSize: 10, fontWeight: '900', color: theme.colors.primary, letterSpacing: 0.5 }}>
-                                {company.opportunityCount} {company.opportunityCount === 1 ? 'JOB' : 'JOBS'}
+                                {company.opportunityCount} {company.opportunityCount === 1 ? 'Job' : 'Jobs'}
                             </Text>
                         </View>
                         {company.industry && !['JOB', 'INTERNSHIP', 'WALKIN', 'WALK-IN'].includes(company.industry.toUpperCase()) && (
@@ -107,7 +107,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         setSearchQuery
     } = useExplore();
 
-    const [sheetVisible, setSheetVisible] = React.useState(false);
+    const filterSheetRef = React.useRef<FilterSheetRef>(null);
     const [viewMode, setViewMode] = React.useState<'opportunities' | 'companies'>('opportunities');
 
     const derivedCompanies = React.useMemo(() => {
@@ -172,25 +172,37 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
                         Try adjusting your search or filters to find what you're looking for.
                     </Text>
+                    {(activeFilterCount > 0 || searchQuery.trim() !== '') && (
+                        <TouchableOpacity 
+                            style={[styles.clearEmptyBtn, { borderColor: currentTheme.colors.primary }]}
+                            onPress={() => {
+                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                setFilters({ type: null, tag: null, workMode: null, batchYear: null });
+                                setSearchQuery('');
+                            }}
+                        >
+                            <Text style={{ color: currentTheme.colors.primary, fontWeight: '700' }}>Clear all filters</Text>
+                        </TouchableOpacity>
+                    )}
                 </>
             )}
         </View>
     ), [loading, currentTheme]);
 
-    const paddingTopOs = Platform.OS === 'ios' ? 50 : 20;
 
-    const activeFilterCount = (filters.type ? 1 : 0) + (filters.workMode ? 1 : 0) + (filters.batchYear ? 1 : 0);
+
+    const activeFilterCount = (filters.type ? 1 : 0) + (filters.workMode ? 1 : 0) + (filters.batchYear ? 1 : 0) + (filters.tag ? 1 : 0);
 
     const getResultsText = () => {
-        if (viewMode === 'companies') return `FOUND ${derivedCompanies.length} COMPANIES`;
-        if (!searchQuery && activeFilterCount === 0) return `RECENT OPPORTUNITIES`;
-        let text = `FOUND ${resultsCount} RESULTS`;
-        if (searchQuery.trim()) text += ` FOR "${searchQuery.toUpperCase()}"`;
+        if (viewMode === 'companies') return `Found ${derivedCompanies.length} companies`;
+        if (!searchQuery && activeFilterCount === 0) return `Recent Opportunities`;
+        let text = `Found ${resultsCount} results`;
+        if (searchQuery.trim()) text += ` for "${searchQuery}"`;
         else if (filters.type) {
-            const label = filters.type === 'JOB' ? 'JOBS' : filters.type === 'INTERNSHIP' ? 'INTERNSHIPS' : 'WALK-INS';
-            text = `FOUND ${resultsCount} ${label}`;
+            const label = filters.type === 'JOB' ? 'jobs' : filters.type === 'INTERNSHIP' ? 'internships' : 'walk-ins';
+            text = `Found ${resultsCount} ${label}`;
         } else if (filters.tag) {
-            text = `FOUND ${resultsCount} FOR ${filters.tag.toUpperCase()}`;
+            text = `Found ${resultsCount} for ${filters.tag}`;
         }
         return text;
     };
@@ -199,10 +211,67 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         <Screen safe={false}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-            <FlatList<ExploreItem>
+            <View style={{ backgroundColor: currentTheme.colors.background, paddingTop: insets.top + 10 }}>
+                <PremiumHeader
+                    title="Discovery"
+                    subtitle="Explore Opportunities"
+                    style={{ paddingBottom: 0 }}
+                    rightSlot={
+                        <TouchableOpacity
+                            onPress={() => {
+                                console.log('[ExploreScreen] Opening FilterSheet via Ref');
+                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                filterSheetRef.current?.present();
+                            }}
+                            style={[styles.filterBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                        >
+                            <View>
+                                <Filter size={20} color={currentTheme.colors.primary} />
+                                {activeFilterCount > 0 && (
+                                    <View style={[styles.badge, { backgroundColor: currentTheme.colors.error, borderColor: currentTheme.colors.background }]} />
+                                )}
+                            </View>
+                        </TouchableOpacity>
+                    }
+                />
+                <View style={[styles.searchContainer, { backgroundColor: currentTheme.colors.background }]}>
+                    <PremiumSearchBar
+                        value={searchQuery}
+                        onChangeText={setSearchQuery}
+                        onClear={() => setSearchQuery('')}
+                        placeholder="Search roles or companies..."
+                    />
+                </View>
+
+                {(activeFilterCount > 0 || searchQuery) && (
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.chipScroll}
+                        contentContainerStyle={styles.chipContent}
+                    >
+                        {filters.type && (
+                            <FilterChip label={CATEGORY_LABELS[filters.type] || filters.type} onRemove={() => setFilters({ type: null })} />
+                        )}
+                        {filters.tag && (
+                            <FilterChip label={filters.tag} onRemove={() => setFilters({ tag: null })} />
+                        )}
+                        {filters.workMode && (
+                            <FilterChip label={filters.workMode} onRemove={() => setFilters({ workMode: null })} />
+                        )}
+                        {filters.batchYear && (
+                            <FilterChip label={`${filters.batchYear} Batch`} onRemove={() => setFilters({ batchYear: null })} />
+                        )}
+                    </ScrollView>
+                )}
+                <View style={{ height: 8 }} />
+            </View>
+
+            <FlashList<ExploreItem>
                 data={(() => {
+                    const items: ExploreItem[] = [];
+
                     if (viewMode === 'companies') {
-                        const items: ExploreItem[] = [];
                         items.push({ type: 'discovery', key: 'discovery' });
                         if (derivedCompanies.length > 0) {
                             items.push({ type: 'stats', key: 'company_stats', count: derivedCompanies.length });
@@ -215,8 +284,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         return items;
                     }
 
-                    const showDiscovery = !searchQuery && activeFilterCount === 0;
-                    const items: ExploreItem[] = [];
+                    const showDiscovery = !searchQuery && !filters.tag && activeFilterCount === 0;
 
                     if (showDiscovery) {
                         items.push({ type: 'discovery', key: 'discovery' });
@@ -233,11 +301,13 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
                     return items;
                 })()}
+                // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                estimatedItemSize={160}
                 keyExtractor={(item) => item.key}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
-                stickyHeaderIndices={[0]}
-                renderItem={({ item }) => {
+                renderItem={({ item, index }) => {
+
                     if (item.type === 'discovery') {
                         return (
                             <>
@@ -251,38 +321,55 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                         contentContainerStyle={styles.categoryScroll}
                                     >
                                         <TouchableOpacity
-                                            onPress={() => setViewMode('companies')}
+                                            onPress={() => {
+                                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                setViewMode(viewMode === 'companies' ? 'opportunities' : 'companies');
+                                            }}
                                             style={[styles.categoryCard, {
-                                                backgroundColor: viewMode === 'companies' ? alpha(currentTheme.colors.success, 0.15) : alpha(currentTheme.colors.success, 0.05),
+                                                backgroundColor: viewMode === 'companies' ? currentTheme.colors.success : alpha(currentTheme.colors.success, 0.05),
                                                 flexDirection: 'row',
                                                 alignItems: 'center',
                                                 gap: 8,
-                                                borderWidth: viewMode === 'companies' ? 1 : 0,
+                                                borderWidth: 1,
                                                 borderColor: viewMode === 'companies' ? currentTheme.colors.success : 'transparent'
                                             }]}
                                         >
-                                            <Building2 size={16} color={currentTheme.colors.success} />
-                                            <Text style={[styles.categoryLabel, { color: currentTheme.colors.success }]}>
+                                            <Building2 size={16} color={viewMode === 'companies' ? currentTheme.colors.background : currentTheme.colors.success} />
+                                            <Text style={[styles.categoryLabel, { color: viewMode === 'companies' ? currentTheme.colors.background : currentTheme.colors.success }]}>
                                                 Companies
                                             </Text>
+                                            {viewMode === 'companies' && (
+                                                <X size={14} color={currentTheme.colors.background} />
+                                            )}
                                         </TouchableOpacity>
 
                                         {CORE_CATEGORIES.map((cat: OpportunityType) => (
                                             <TouchableOpacity
                                                 key={cat}
                                                 onPress={() => {
-                                                    setViewMode('opportunities');
-                                                    setFilters({ type: cat });
+                                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    if (filters.type === cat && viewMode === 'opportunities') {
+                                                        setFilters({ type: null });
+                                                    } else {
+                                                        setViewMode('opportunities');
+                                                        setFilters({ type: cat });
+                                                    }
                                                 }}
                                                 style={[styles.categoryCard, {
-                                                    backgroundColor: (viewMode === 'opportunities' && filters.type === cat) ? alpha(currentTheme.colors.primary, 0.15) : alpha(currentTheme.colors.primary, 0.05),
-                                                    borderWidth: (viewMode === 'opportunities' && filters.type === cat) ? 1 : 0,
-                                                    borderColor: (viewMode === 'opportunities' && filters.type === cat) ? currentTheme.colors.primary : 'transparent'
+                                                    backgroundColor: (viewMode === 'opportunities' && filters.type === cat) ? currentTheme.colors.primary : alpha(currentTheme.colors.primary, 0.05),
+                                                    borderWidth: 1,
+                                                    borderColor: (viewMode === 'opportunities' && filters.type === cat) ? currentTheme.colors.primary : 'transparent',
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    gap: 6
                                                 }]}
                                             >
-                                                <Text style={[styles.categoryLabel, { color: currentTheme.colors.primary }]}>
+                                                <Text style={[styles.categoryLabel, { color: (viewMode === 'opportunities' && filters.type === cat) ? currentTheme.colors.background : currentTheme.colors.primary }]}>
                                                     {CATEGORY_LABELS[cat] || cat}
                                                 </Text>
+                                                {(viewMode === 'opportunities' && filters.type === cat) && (
+                                                    <X size={14} color={currentTheme.colors.background} />
+                                                )}
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
@@ -301,16 +388,31 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                             <TouchableOpacity
                                                 key={tag}
                                                 onPress={() => {
-                                                    setViewMode('opportunities');
-                                                    setFilters({ tag });
+                                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    if (filters.tag === tag && viewMode === 'opportunities') {
+                                                        setFilters({ tag: null });
+                                                    } else {
+                                                        setViewMode('opportunities');
+                                                        setFilters({ tag });
+                                                    }
                                                 }}
                                                 style={[styles.tagChip, {
-                                                    backgroundColor: (viewMode === 'opportunities' && filters.tag === tag) ? alpha(currentTheme.colors.text, 0.1) : alpha(currentTheme.colors.text, 0.05),
-                                                    borderWidth: (viewMode === 'opportunities' && filters.tag === tag) ? 1 : 0,
-                                                    borderColor: (viewMode === 'opportunities' && filters.tag === tag) ? currentTheme.colors.text : 'transparent'
+                                                    backgroundColor: (viewMode === 'opportunities' && filters.tag === tag) ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05),
+                                                    borderWidth: 1,
+                                                    borderColor: (viewMode === 'opportunities' && filters.tag === tag) ? currentTheme.colors.primary : 'transparent',
+                                                    flexDirection: 'row',
+                                                    alignItems: 'center',
+                                                    gap: 6
                                                 }]}
                                             >
-                                                <Text style={[styles.tagText, { color: currentTheme.colors.text }]}>{tag}</Text>
+                                                <Text style={[styles.tagText, { 
+                                                    color: (viewMode === 'opportunities' && filters.tag === tag) ? currentTheme.colors.background : currentTheme.colors.text 
+                                                }]}>
+                                                    {toTitleCase(tag)}
+                                                </Text>
+                                                {(viewMode === 'opportunities' && filters.tag === tag) && (
+                                                    <X size={14} color={currentTheme.colors.background} />
+                                                )}
                                             </TouchableOpacity>
                                         ))}
                                     </ScrollView>
@@ -351,80 +453,36 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         );
                     }
 
-                    return (
-                        <JobCard
-                            opportunity={item.data}
-                            onPress={() => {
-                                void saveDetailCache(item.data);
-                                navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
-                            }}
-                            onSave={() => handleToggleSave(item.data)}
-                            isSaved={isSaved(item.data.id)}
-                        />
-                    );
-                }}
-                ListHeaderComponent={
-                    <View style={{ backgroundColor: currentTheme.colors.background, paddingTop: 8 }}>
-                        <PremiumHeader
-                            title="Discovery"
-                            subtitle="Explore Opportunities"
-                            style={{ paddingBottom: 0 }}
-                            rightSlot={
-                                <TouchableOpacity
-                                    onPress={() => setSheetVisible(true)}
-                                    style={[styles.filterBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
-                                >
-                                    <View>
-                                        <Filter size={20} color={currentTheme.colors.primary} />
-                                        {activeFilterCount > 0 && (
-                                            <View style={[styles.badge, { backgroundColor: currentTheme.colors.error }]} />
-                                        )}
-                                    </View>
-                                </TouchableOpacity>
-                            }
-                        />
-                        <View style={[styles.searchContainer, { backgroundColor: currentTheme.colors.background }]}>
-                            <PremiumSearchBar
-                                value={searchQuery}
-                                onChangeText={setSearchQuery}
-                                onClear={() => setSearchQuery('')}
-                                placeholder="Search roles or companies..."
+                    if (item.type === 'opportunity') {
+                        return (
+                            <JobCard
+                                opportunity={item.data}
+                                index={index}
+                                onPress={() => {
+                                    void saveDetailCache(item.data);
+                                    navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
+                                }}
+                                onSave={() => handleToggleSave(item.data)}
+                                isSaved={isSaved(item.data.id)}
                             />
-                        </View>
+                        );
+                    }
 
-                        {(activeFilterCount > 0 || searchQuery) && (
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                style={styles.chipScroll}
-                                contentContainerStyle={styles.chipContent}
-                            >
-                                {filters.type && (
-                                    <FilterChip label={CATEGORY_LABELS[filters.type] || filters.type} onRemove={() => setFilters({ type: null })} />
-                                )}
-                                {filters.tag && (
-                                    <FilterChip label={filters.tag} onRemove={() => setFilters({ tag: null })} />
-                                )}
-                                {filters.workMode && (
-                                    <FilterChip label={filters.workMode} onRemove={() => setFilters({ workMode: null })} />
-                                )}
-                                {filters.batchYear && (
-                                    <FilterChip label={`${filters.batchYear} Batch`} onRemove={() => setFilters({ batchYear: null })} />
-                                )}
-                            </ScrollView>
-                        )}
-                    </View>
-                }
+                    return null;
+                }}
                 ListEmptyComponent={null}
-                contentContainerStyle={[styles.scrollContent, { paddingTop: paddingTopOs + 20, paddingBottom: insets.bottom + 72 }]}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 72 }]}
                 showsVerticalScrollIndicator={false}
-                onRefresh={onRefresh}
-                refreshing={refreshing}
+                refreshControl={
+                    <PremiumRefreshControl
+                        refreshing={refreshing}
+                        onRefresh={onRefresh}
+                    />
+                }
             />
 
             <FilterSheet
-                visible={sheetVisible}
-                onClose={() => setSheetVisible(false)}
+                ref={filterSheetRef}
                 filters={filters}
                 onApply={setFilters}
             />
@@ -436,7 +494,7 @@ const styles = StyleSheet.create({
     stickyHeader: {
         zIndex: 10,
         borderBottomWidth: 0.5,
-        borderBottomColor: 'rgba(255,255,255,0.05)',
+        borderBottomColor: '#000', // Static fallback
     },
     scrollContent: {
         // paddingBottom removed - now dynamic
@@ -461,9 +519,7 @@ const styles = StyleSheet.create({
         marginBottom: 12,
     },
     sectionTitle: {
-        fontSize: 16,
-        fontWeight: '900',
-        letterSpacing: -0.5,
+        ...TYPOGRAPHY.sectionTitle,
     },
     categoryScroll: {
         paddingHorizontal: SPACING.lg,
@@ -501,8 +557,7 @@ const styles = StyleSheet.create({
         width: 10,
         height: 10,
         borderRadius: 5,
-        borderWidth: 2,
-        borderColor: '#020404',
+        borderColor: '#000', // Static fallback
     },
     chipScroll: {
         marginTop: 12,
@@ -517,9 +572,9 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     resultsText: {
-        fontSize: 10,
+        fontSize: 12,
         fontWeight: '900',
-        letterSpacing: 1.5,
+        letterSpacing: 0.5,
     },
     cardWrapper: {
         paddingHorizontal: SPACING.lg,
@@ -531,6 +586,13 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingTop: 60,
         paddingHorizontal: 40,
+    },
+    clearEmptyBtn: {
+        marginTop: 20,
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: 12,
+        borderWidth: 1,
     },
     emptyIcon: {
         width: 100,

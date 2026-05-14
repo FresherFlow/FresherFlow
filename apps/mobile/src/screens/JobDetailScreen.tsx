@@ -1,4 +1,4 @@
-import React, { useMemo, memo, useCallback, useState } from 'react';
+import React, { memo, useCallback, useMemo, useRef } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -23,6 +23,7 @@ import {
   Share2,
   ShieldCheck,
   History,
+  Clock,
   Users,
   Bell,
   ChevronLeft,
@@ -39,22 +40,28 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/contexts/ThemeContext';
+import { alpha } from '@/theme';
 import { useFollows } from '@/hooks/useFollows';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useOpportunityDetail } from '@/hooks/useOpportunityDetail';
 import { renderFormattedDescription } from '@/utils/DescriptionParser';
 import { markJobAsSeen } from '@/utils/seenJobs';
+import { formatSalary } from '@/utils/formatters';
 
 import { useNotifications } from '@repo/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
+import { differenceInDays } from 'date-fns';
 
+
+import { TYPOGRAPHY } from '@/system/constants/typography';
 
 // Premium System
+import { toTitleCase, formatListToTitleCase } from '@/utils/text';
 import { Screen, Section } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard, GlassCard } from '@/system/components/PremiumPrimitives';
-import { ReportActionSheet } from '@/system/components/ReportActionSheet';
+import { ReportActionSheet, ReportActionSheetRef } from '@/system/components/ReportActionSheet';
 import { MatchScoreGauge } from '@/system/components/MatchScoreGauge';
 import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING } from '../system/constants/dimensions';
@@ -62,10 +69,7 @@ import { CommentSection } from '@/system/components/CommentSection';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
+
 
 const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
   const { currentTheme } = useTheme();
@@ -96,7 +100,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
   const { showSuccess } = useToast();
   const { showToast } = useNotifications();
 
-  const [reportSheetVisible, setReportSheetVisible] = useState(false);
+  const reportSheetRef = useRef<ReportActionSheetRef>(null);
   const scrollY = React.useRef(new Animated.Value(0)).current;
   const fabAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -158,7 +162,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
   const fadeAnim7 = React.useRef(new Animated.Value(0)).current;
 
   const handleReport = useCallback(() => {
-    setReportSheetVisible(true);
+    reportSheetRef.current?.present();
   }, []);
 
 
@@ -216,9 +220,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         styles.stickyHeader,
         {
           opacity: headerOpacity,
-          height: insets.top + 80,
+          height: insets.top + 90,
           transform: [{ translateY: headerTranslateY }],
-          paddingTop: insets.top,
+          paddingTop: insets.top + 10,
           backgroundColor: currentTheme.colors.background,
           justifyContent: 'center',
         }
@@ -301,7 +305,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                 size={mScale(56)}
                             />
                             <Text style={[styles.matchLabel, { color: currentTheme.colors.textMuted, marginTop: 4 }]}>
-                                {opportunity.isEligible === false ? 'MATCH' : 'FIT'}
+                                {opportunity.isEligible === false ? 'Match' : 'Fit'}
                             </Text>
                         </View>
                     )}
@@ -311,7 +315,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         styles.matchReasonText,
                         { color: opportunity.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary }
                     ]}>
-                        {opportunity.matchReason.toUpperCase()}
+                        {opportunity.matchReason}
                     </Text>
                 )}
 
@@ -336,13 +340,36 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <Text style={[styles.companyName, { color: currentTheme.colors.text }]}>{opportunity.company}</Text>
                             <View style={styles.badgeRow}>
                                 <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{opportunity.type.toUpperCase()}</Text>
+                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{opportunity.type.charAt(0) + opportunity.type.slice(1).toLowerCase()}</Text>
                                 </View>
-                                {opportunity.verificationFailures === 0 && (
-                                    <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.success, 0.05) }]}>
-                                        <ShieldCheck size={12} color={currentTheme.colors.success} />
+                                {(() => {
+                                  const postedAt = opportunity.postedAt ? new Date(opportunity.postedAt) : null;
+                                  if (!postedAt || isNaN(postedAt.getTime())) return null;
+                                  const diff = Math.max(0, differenceInDays(new Date(), postedAt));
+                                  const label = diff === 0 ? 'Posted Today' : diff === 1 ? 'Posted 1d Ago' : `Posted ${diff}d Ago`;
+                                  return (
+                                    <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
+                                        <Text style={[styles.typeText, { color: currentTheme.colors.primary, fontSize: 9 }]}>{label}</Text>
                                     </View>
-                                )}
+                                  );
+                                })()}
+                                {(() => {
+                                  if (!opportunity.expiresAt) return null;
+                                  const expiryDate = new Date(opportunity.expiresAt);
+                                  const now = new Date();
+                                  if (isNaN(expiryDate.getTime())) return null;
+
+                                  const isExpired = expiryDate < now;
+                                  const daysLeft = Math.max(0, differenceInDays(expiryDate, now));
+                                  const label = isExpired ? 'Expired' : daysLeft === 0 ? 'Closing Today' : daysLeft <= 3 ? `${daysLeft}d Left` : null;
+                                  if (!label) return null;
+
+                                  return (
+                                    <View style={[styles.verifiedBadge, { backgroundColor: alpha(isExpired ? currentTheme.colors.error : currentTheme.colors.warning, 0.1) }]}>
+                                        <Text style={[styles.typeText, { color: isExpired ? currentTheme.colors.error : currentTheme.colors.warning, fontSize: 9 }]}>{label}</Text>
+                                    </View>
+                                  );
+                                })()}
                             </View>
                         </View>
                     </TouchableOpacity>
@@ -358,7 +385,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         ]}
                     >
                         <Text style={[styles.followButtonText, { color: currentTheme.colors.primary }]}>
-                            {isFollowing('COMPANY', opportunity.company) ? 'FOLLOWING' : 'FOLLOW'}
+                            {isFollowing('COMPANY', opportunity.company) ? 'Following' : 'Follow'}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -370,21 +397,21 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 <View style={styles.momentumItem}>
                     <History size={16} color={currentTheme.colors.primary} />
                     <Text style={[styles.momentumText, { color: currentTheme.colors.text }]}>
-                        <Text style={{ color: currentTheme.colors.textMuted }}>VIEWS</Text> {opportunity.clicksCount || 0}
+                        <Text style={{ color: currentTheme.colors.textMuted }}>Views</Text> {opportunity.clicksCount || 0}
                     </Text>
                 </View>
                 <View style={[styles.momentumDivider, { backgroundColor: currentTheme.colors.border }]} />
                 <View style={styles.momentumItem}>
                     <Users size={16} color={currentTheme.colors.success} />
                     <Text style={[styles.momentumText, { color: currentTheme.colors.text }]}>
-                        <Text style={{ color: currentTheme.colors.textMuted }}>SHARES</Text> {opportunity.sharesCount || 0}
+                        <Text style={{ color: currentTheme.colors.textMuted }}>Shares</Text> {opportunity.sharesCount || 0}
                     </Text>
                 </View>
                 <View style={[styles.momentumDivider, { backgroundColor: currentTheme.colors.border }]} />
                 <View style={styles.momentumItem}>
                     <MessageSquare size={16} color={currentTheme.colors.warning} />
                     <Text style={[styles.momentumText, { color: currentTheme.colors.text }]}>
-                        <Text style={{ color: currentTheme.colors.textMuted }}>FEEDBACK</Text> {opportunity.commentsCount || 0}
+                        <Text style={{ color: currentTheme.colors.textMuted }}>Feedback</Text> {opportunity.commentsCount || 0}
                     </Text>
                 </View>
                 </SurfaceCard>
@@ -395,11 +422,11 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 <SurfaceCard style={styles.detailCard}>
                     <View style={styles.detailRow}>
                         <View style={styles.detailItemHalf}>
-                            <ShieldCheck size={20} color={currentTheme.colors.primary} />
+                            <Clock size={20} color={currentTheme.colors.primary} />
                             <View style={styles.detailContent}>
-                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>WORK MODE</Text>
+                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Work Mode</Text>
                                 <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
-                                    {opportunity.workMode || 'Hybrid'}
+                                    {toTitleCase(opportunity.workMode) || 'Hybrid'}
                                 </Text>
                             </View>
                         </View>
@@ -407,9 +434,11 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         <View style={styles.detailItemHalf}>
                             <CircleDollarSign size={20} color={currentTheme.colors.primary} />
                             <View style={styles.detailContent}>
-                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>SALARY</Text>
+                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>
+                                    {opportunity.type === 'INTERNSHIP' ? 'Stipend' : 'Salary'}
+                                </Text>
                                 <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
-                                    {opportunity.salaryRange || 'NDA'}
+                                    {formatSalary(opportunity) || 'NDA'}
                                 </Text>
                             </View>
                         </View>
@@ -417,29 +446,82 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
                     <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
 
-                    <View style={styles.detailItem}>
-                        <Briefcase size={20} color={currentTheme.colors.primary} />
-                        <View style={styles.detailContent}>
-                            <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>ROLE</Text>
-                            <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
-                                {opportunity.jobFunction || opportunity.type}
-                            </Text>
+                    <View style={styles.detailRow}>
+                        <View style={styles.detailItemHalf}>
+                            <Briefcase size={20} color={currentTheme.colors.primary} />
+                            <View style={styles.detailContent}>
+                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Experience</Text>
+                                <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
+                                    {opportunity.experienceMax ? `${opportunity.experienceMin || 0}-${opportunity.experienceMax}y` : 'Fresher'}
+                                </Text>
+                            </View>
+                        </View>
+                        <View style={[styles.detailDividerVertical, { backgroundColor: currentTheme.colors.border }]} />
+                        <View style={styles.detailItemHalf}>
+                            <Users size={20} color={currentTheme.colors.primary} />
+                            <View style={styles.detailContent}>
+                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Employment</Text>
+                                <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
+                                    {toTitleCase(opportunity.employmentType) || (opportunity.type === 'INTERNSHIP' ? 'Internship' : 'Full-time')}
+                                </Text>
+                            </View>
                         </View>
                     </View>
+
+                    {(opportunity.jobFunction || opportunity.normalizedRole) && (
+                        <>
+                            <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
+                            <View style={styles.detailItem}>
+                                <ShieldCheck size={20} color={currentTheme.colors.primary} />
+                                <View style={styles.detailContent}>
+                                    <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Functional Role</Text>
+                                    <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
+                                        {toTitleCase(opportunity.jobFunction || opportunity.normalizedRole)}
+                                    </Text>
+                                </View>
+                            </View>
+                        </>
+                    )}
 
                     <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
 
                     <View style={styles.detailItem}>
                         <MapPin size={20} color={currentTheme.colors.primary} />
                         <View style={styles.detailContent}>
-                            <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>LOCATION</Text>
+                            <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Location</Text>
                             <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
-                                {opportunity.locations?.join(', ') || 'Remote'}
+                                {formatListToTitleCase(opportunity.locations) || 'Remote'}
                             </Text>
                         </View>
                     </View>
+
                 </SurfaceCard>
             </Animated.View>
+
+            {/* Drive Timeline (NEW) */}
+            {opportunity.events && opportunity.events.length > 0 && (
+                <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <Section title="Recruitment Timeline">
+                        <SurfaceCard style={styles.timelineCard}>
+                            {opportunity.events.sort((a, b) => new Date(a.eventDate).getTime() - new Date(b.eventDate).getTime()).map((event, idx) => (
+                                <View key={idx} style={[styles.timelineItem, idx === (opportunity.events?.length || 0) - 1 && { borderBottomWidth: 0 }]}>
+                                    <View style={styles.timelineMarker}>
+                                        <View style={[styles.timelineDot, { backgroundColor: new Date(event.eventDate) < new Date() ? currentTheme.colors.textMuted : currentTheme.colors.primary }]} />
+                                        {idx < (opportunity.events?.length || 0) - 1 && <View style={[styles.timelineLine, { backgroundColor: currentTheme.colors.border }]} />}
+                                    </View>
+                                    <View style={styles.timelineContent}>
+                                        <Text style={[styles.timelineTitle, { color: currentTheme.colors.text }]}>{event.title}</Text>
+                                        <Text style={[styles.timelineDate, { color: currentTheme.colors.textMuted }]}>
+                                            {new Date(event.eventDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </Text>
+                                        {event.notes && <Text style={[styles.timelineNotes, { color: alpha(currentTheme.colors.text, 0.6) }]}>{event.notes}</Text>}
+                                    </View>
+                                </View>
+                            ))}
+                        </SurfaceCard>
+                    </Section>
+                </Animated.View>
+            )}
 
             {/* Incentives / Perks (Conditional) */}
             {opportunity.incentives && (
@@ -447,7 +529,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     <View style={[styles.perksBox, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderColor: alpha(currentTheme.colors.success, 0.1) }]}>
                         <Trophy size={16} color={currentTheme.colors.success} />
                         <Text style={[styles.perksText, { color: currentTheme.colors.success }]}>
-                            PERKS: {opportunity.incentives}
+                            Perks: {opportunity.incentives}
                         </Text>
                     </View>
                 </Animated.View>
@@ -462,7 +544,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                 <Calendar size={18} color={currentTheme.colors.primary} />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>ALLOWED BATCHES</Text>
+                                <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>Allowed Batches</Text>
                                 <Text style={[styles.reqValue, { color: currentTheme.colors.text }]}>
                                     {opportunity.allowedPassoutYears?.length > 0
                                         ? opportunity.allowedPassoutYears.join(', ')
@@ -476,9 +558,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                 <GraduationCap size={18} color={currentTheme.colors.primary} />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>ELIGIBILITY</Text>
+                                <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>Eligibility</Text>
                                 <Text style={[styles.reqValue, { color: currentTheme.colors.text }]}>
-                                    {[...(opportunity.allowedDegrees || []), ...(opportunity.allowedCourses || [])].join(', ') || 'Open Eligibility'}
+                                    {formatListToTitleCase([...(opportunity.allowedDegrees || []), ...(opportunity.allowedCourses || [])]) || 'Open Eligibility'}
                                 </Text>
                             </View>
                         </View>
@@ -487,12 +569,14 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <View style={[styles.skillSection, { borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.1) }]}>
                                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                                     <Cpu size={14} color={currentTheme.colors.textMuted} />
-                                    <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted, marginBottom: 0 }]}>KEY SKILLS</Text>
+                                    <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted, marginBottom: 0 }]}>Key Skills</Text>
                                 </View>
                                 <View style={styles.tagCloud}>
                                     {opportunity.requiredSkills.map((skill, idx) => (
                                         <View key={idx} style={[styles.skillTag, { backgroundColor: alpha(currentTheme.colors.text, 0.04), borderColor: alpha(currentTheme.colors.border, 0.3) }]}>
-                                            <Text style={[styles.skillTagText, { color: currentTheme.colors.text }]}>{skill.toUpperCase()}</Text>
+                                            <Text style={[styles.skillTagText, { color: currentTheme.colors.text }]}>
+                                                {toTitleCase(skill)}
+                                            </Text>
                                         </View>
                                     ))}
                                 </View>
@@ -501,6 +585,19 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     </SurfaceCard>
                 </Section>
             </Animated.View>
+
+            {/* Selection Process (NEW) */}
+            {opportunity.selectionProcess && (
+                <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <Section title="Selection Process">
+                        <SurfaceCard style={styles.selectionCard}>
+                            <Text style={[styles.selectionText, { color: currentTheme.colors.text }]}>
+                                {opportunity.selectionProcess}
+                            </Text>
+                        </SurfaceCard>
+                    </Section>
+                </Animated.View>
+            )}
 
             {/* Walk-in Details (Conditional) */}
             {opportunity.type === 'WALKIN' && opportunity.walkInDetails && (
@@ -543,26 +640,56 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
                             <View style={styles.govtInfoRow}>
                                 <View style={styles.govtInfoItem}>
-                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>VACANCIES</Text>
+                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>Vacancies</Text>
                                     <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{opportunity.governmentJobDetails.vacancyCount || 'As per norms'}</Text>
                                 </View>
                                 <View style={styles.govtInfoItem}>
-                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>LAST DATE</Text>
+                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>Last Date</Text>
                                     <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{opportunity.governmentJobDetails.applicationEndDate || 'Check portal'}</Text>
                                 </View>
                             </View>
 
                             <View style={[styles.govtFeeBox, { backgroundColor: alpha(currentTheme.colors.text, 0.04) }]}>
-                                <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 4 }]}>APPLICATION FEE</Text>
+                                <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 4 }]}>Application Fee</Text>
                                 <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{opportunity.governmentJobDetails.applicationFee || 'Nil / Varied'}</Text>
                             </View>
+
+                            {opportunity.governmentJobDetails.vacancies && opportunity.governmentJobDetails.vacancies.length > 0 && (
+                                <View style={{ marginBottom: 20 }}>
+                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 8 }]}>Vacancy Breakup</Text>
+                                    <View style={{ gap: 8 }}>
+                                        {opportunity.governmentJobDetails.vacancies.map((v, i) => (
+                                            <View key={i} style={[styles.govtVacancyItem, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
+                                                <Text style={[styles.govtVacancyPost, { color: currentTheme.colors.text }]}>{v.postName}</Text>
+                                                <Text style={[styles.govtVacancyCount, { color: currentTheme.colors.primary }]}>{v.total} Posts</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
+
+                            {opportunity.governmentJobDetails.examDates && (
+                                <View style={{ marginBottom: 20 }}>
+                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 8 }]}>Exam Schedule</Text>
+                                    <View style={{ gap: 8 }}>
+                                        {Object.entries(opportunity.governmentJobDetails.examDates).filter(([, v]) => !!v).map(([k, v], i) => (
+                                            <View key={i} style={styles.govtExamRow}>
+                                                <Text style={[styles.govtExamLabel, { color: currentTheme.colors.textMuted }]}>
+                                                    {k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
+                                                </Text>
+                                                <Text style={[styles.govtExamValue, { color: currentTheme.colors.text }]}>{v}</Text>
+                                            </View>
+                                        ))}
+                                    </View>
+                                </View>
+                            )}
 
                             {opportunity.governmentJobDetails.officialNotificationUrl && (
                                 <TouchableOpacity
                                     style={[styles.govtLink, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]}
                                     onPress={() => Linking.openURL(opportunity.governmentJobDetails!.officialNotificationUrl!)}
                                 >
-                                    <Text style={[styles.govtLinkText, { color: currentTheme.colors.primary }]}>READ OFFICIAL NOTIFICATION</Text>
+                                    <Text style={[styles.govtLinkText, { color: currentTheme.colors.primary }]}>Read Official Notification</Text>
                                     <ExternalLink size={14} color={currentTheme.colors.primary} />
                                 </TouchableOpacity>
                             )}
@@ -720,7 +847,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                       })
                   }}>
                       <Text style={[styles.applyFabText, { color: currentTheme.colors.background }]} numberOfLines={1}>
-                          APPLY NOW
+                          Apply Now
                       </Text>
                   </Animated.View>
                   <ExternalLink size={20} color={currentTheme.colors.background} />
@@ -729,8 +856,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
       </Animated.View>
 
       <ReportActionSheet
-          visible={reportSheetVisible}
-          onClose={() => setReportSheetVisible(false)}
+          ref={reportSheetRef}
           onReport={() => {
               void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
               showSuccess('Opportunity reported successfully. Thank you for your feedback!');
@@ -795,9 +921,9 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     typeText: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '900',
-        letterSpacing: 1,
+        letterSpacing: 0.5,
     },
     verifiedBadge: {
         flexDirection: 'row',
@@ -884,9 +1010,8 @@ const styles = StyleSheet.create({
         gap: SPACING.sm,
     },
     momentumText: {
-        fontSize: mScale(10),
-        fontWeight: '800',
-        letterSpacing: 1,
+        ...TYPOGRAPHY.label,
+        color: 'inherit', // Fallback for color management
     },
     momentumDivider: {
         width: 1,
@@ -919,14 +1044,11 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     detailLabel: {
-        fontSize: mScale(9),
-        fontWeight: '800',
-        letterSpacing: 1.5,
+        ...TYPOGRAPHY.label,
         marginBottom: 2,
     },
     detailValue: {
-        fontSize: mScale(13),
-        fontWeight: '700',
+        ...TYPOGRAPHY.value,
         lineHeight: 18,
     },
     detailDivider: {
@@ -977,16 +1099,11 @@ const styles = StyleSheet.create({
         paddingHorizontal: 16,
         borderRadius: 28,
         gap: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 8,
     },
     applyFabText: {
         fontSize: 14,
         fontWeight: '900',
-        letterSpacing: 1.2,
+        letterSpacing: 0.5,
     },
     similarList: {
         gap: 12,
@@ -1059,14 +1176,11 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     reqLabel: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 1.2,
+        ...TYPOGRAPHY.label,
         marginBottom: 2,
     },
     reqValue: {
-        fontSize: 14,
-        fontWeight: '700',
+        ...TYPOGRAPHY.value,
     },
     skillSection: {
         marginTop: 20,
@@ -1084,7 +1198,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     skillTagText: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '900',
         letterSpacing: 0.5,
     },
@@ -1159,19 +1273,47 @@ const styles = StyleSheet.create({
         flex: 1,
     },
     govtLabel: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 1,
+        ...TYPOGRAPHY.label,
         marginBottom: 4,
     },
     govtValue: {
-        fontSize: 14,
-        fontWeight: '700',
+        ...TYPOGRAPHY.value,
     },
     govtFeeBox: {
         padding: 16,
         borderRadius: 16,
         marginBottom: 20,
+    },
+    govtVacancyItem: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 12,
+    },
+    govtVacancyPost: {
+        fontSize: 13,
+        fontWeight: '700',
+        flex: 1,
+        marginRight: 8,
+    },
+    govtVacancyCount: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    govtExamRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 4,
+    },
+    govtExamLabel: {
+        fontSize: 12,
+        fontWeight: '700',
+    },
+    govtExamValue: {
+        fontSize: 12,
+        fontWeight: '700',
     },
     govtLink: {
         flexDirection: 'row',
@@ -1202,6 +1344,58 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: 0.5,
         flex: 1,
+    },
+    timelineCard: {
+        padding: 24,
+        borderRadius: 28,
+    },
+    timelineItem: {
+        flexDirection: 'row',
+        gap: 16,
+        paddingBottom: 20,
+    },
+    timelineMarker: {
+        alignItems: 'center',
+        width: 12,
+    },
+    timelineDot: {
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        zIndex: 2,
+    },
+    timelineLine: {
+        width: 2,
+        flex: 1,
+        marginTop: 4,
+    },
+    timelineContent: {
+        flex: 1,
+        marginTop: -2,
+    },
+    timelineTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        marginBottom: 4,
+    },
+    timelineDate: {
+        fontSize: 12,
+        fontWeight: '600',
+        marginBottom: 8,
+    },
+    timelineNotes: {
+        fontSize: 13,
+        lineHeight: 18,
+        fontWeight: '500',
+    },
+    selectionCard: {
+        padding: 24,
+        borderRadius: 28,
+    },
+    selectionText: {
+        fontSize: 14,
+        lineHeight: 22,
+        fontWeight: '500',
     },
     staticControls: {
         position: 'absolute',

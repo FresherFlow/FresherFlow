@@ -26,6 +26,7 @@ import CompanyScreen from '@/screens/CompanyScreen';
 import AlertSettingsScreen from '@/screens/AlertSettingsScreen';
 import ApplicationTrackerScreen from '@/screens/ApplicationTrackerScreen';
 import FeedbackScreen from '@/screens/FeedbackScreen';
+import LegalScreen from '@/screens/LegalScreen';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUserAuth as useAuth } from '@repo/frontend-core';
@@ -64,6 +65,7 @@ export type RootStackParamList = {
   AlertSettings: undefined;
   ApplicationTracker: undefined;
   Feedback: undefined;
+  Legal: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootStackParamList>();
@@ -131,6 +133,7 @@ const ProfileStack = () => (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="ProfileMain" component={ProfileScreen} />
         <Stack.Screen name="Referrals" component={ReferralsScreen} />
+        <Stack.Screen name="Feedback" component={FeedbackScreen} />
     </Stack.Navigator>
 );
 
@@ -139,7 +142,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { currentTheme } = useTheme();
   const { tabBarTranslateY, isKeyboardVisible } = useUI();
-  const { unreadCount, unseenFeedCount } = useNotifications();
+  useNotifications();
 
   const isDark = currentTheme.mode === 'dark';
 
@@ -198,16 +201,6 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
               ]}>
                 {label}
               </Text>
-              {route.name === 'Feed' && unseenFeedCount > 0 && (
-                <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, right: '30%' }]}>
-                  <Text style={styles.badgeText}>{unseenFeedCount}</Text>
-                </View>
-              )}
-              {route.name === 'Profile' && unreadCount > 0 && (
-                <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary }]}>
-                  <Text style={styles.badgeText}>{unreadCount}</Text>
-                </View>
-              )}
             </TouchableOpacity>
           );
         })}
@@ -239,14 +232,14 @@ const styles = StyleSheet.create({
         bottom: 0,
         left: 0,
         right: 0,
-        height: Platform.OS === 'ios' ? 72 : 58,
+        height: Platform.OS === 'ios' ? 80 : 64,
         elevation: 0,
         overflow: 'hidden',
     },
     tabBarInner: {
         flex: 1,
         flexDirection: 'row',
-        paddingBottom: Platform.OS === 'ios' ? 12 : 0,
+        paddingBottom: Platform.OS === 'ios' ? 16 : 0,
     },
     tabItem: {
         flex: 1,
@@ -255,9 +248,8 @@ const styles = StyleSheet.create({
         gap: 4,
     },
     tabLabel: {
-        fontSize: 10,
+        fontSize: 11,
         fontWeight: '800',
-        textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     badge: {
@@ -304,6 +296,7 @@ export const AppNavigator = () => {
       <Stack.Screen name="AlertSettings" component={AlertSettingsScreen} />
       <Stack.Screen name="ApplicationTracker" component={ApplicationTrackerScreen} />
       <Stack.Screen name="Feedback" component={FeedbackScreen} />
+      <Stack.Screen name="Legal" component={LegalScreen} />
       {!user ? (
         <Stack.Screen
           name="Auth"

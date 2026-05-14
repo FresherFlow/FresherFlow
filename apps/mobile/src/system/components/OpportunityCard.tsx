@@ -1,12 +1,17 @@
-import React, { memo, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View, Animated } from 'react-native';
-import { CircleDollarSign, MapPin, Users, Clock, ShieldCheck, Bookmark, ChevronRight, MessageSquare } from 'lucide-react-native';
+import React, { memo } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { CircleDollarSign, MapPin, Users, Clock, Bookmark, ChevronRight, MessageSquare, Briefcase } from 'lucide-react-native';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
+import { alpha } from '@/theme';
 import { SurfaceCard } from './PremiumPrimitives';
 import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
-import { OpportunityActionSheet } from './OpportunityActionSheet';
+import { TYPOGRAPHY } from '../constants/typography';
+
+import { haptic } from '@/utils/haptics';
+import { formatSalary } from '@/utils/formatters';
+import { toTitleCase, formatListToTitleCase } from '@/utils/text';
 
 interface Props {
   opportunity: Opportunity & { matchReason?: string; matchScore?: number; isEligible?: boolean };
@@ -15,25 +20,27 @@ interface Props {
   isSaved?: boolean;
   heatBadge?: 'TRENDING' | 'FAST_FILLING' | 'MOST_SAVED';
   matchScore?: number;
+  index?: number;
 }
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
+
 
 const getTypeConfig = (type: OpportunityType, theme: AppTheme) => {
   switch (type) {
     case OpportunityType.JOB:
-      return { label: 'FULL TIME', color: theme.colors.primary, bg: alpha(theme.colors.primary, 0.1) };
+      return { label: 'Full Time', color: theme.colors.primary, bg: alpha(theme.colors.primary, 0.1) };
     case OpportunityType.INTERNSHIP:
-      return { label: 'INTERNSHIP', color: theme.colors.info, bg: alpha(theme.colors.info, 0.1) };
+      return { label: 'Internship', color: theme.colors.info, bg: alpha(theme.colors.info, 0.1) };
     case OpportunityType.WALKIN:
-      return { label: 'WALK-IN', color: theme.colors.warning, bg: alpha(theme.colors.warning, 0.1) };
+      return { label: 'Walk-in', color: theme.colors.warning, bg: alpha(theme.colors.warning, 0.1) };
     default:
-      return { label: type, color: theme.colors.textMuted, bg: alpha(theme.colors.text, 0.05) };
+      return { label: toTitleCase(type), color: theme.colors.textMuted, bg: alpha(theme.colors.text, 0.05) };
   }
 };
+
+import { MotiView } from 'moti';
+import { isToday, isBefore, differenceInDays } from 'date-fns';
+import { useUIStore } from '@/store/useUIStore';
 
 export const OpportunityCard = memo(({
   opportunity,
@@ -42,61 +49,58 @@ export const OpportunityCard = memo(({
   isSaved,
   heatBadge,
   matchScore,
+  index = 0,
 }: Props) => {
   const { currentTheme } = useTheme();
-  const scale = React.useRef(new Animated.Value(1)).current;
+  const openActionSheet = useUIStore(s => s.actionSheet.open);
 
-  const handlePressIn = () => {
-    Animated.spring(scale, {
-        toValue: 0.96,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 100
-    }).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.spring(scale, {
-        toValue: 1,
-        useNativeDriver: true,
-        friction: 8,
-        tension: 100
-    }).start();
-  };
   const config = getTypeConfig(opportunity.type, currentTheme);
 
-  const [actionSheetVisible, setActionSheetVisible] = useState(false);
-
   const handleLongPress = () => {
-      setActionSheetVisible(true);
+      haptic.medium();
+      openActionSheet(opportunity);
   };
 
   const expiryInfo = (() => {
     if (!opportunity.expiresAt) return null;
-    const days = Math.ceil((new Date(opportunity.expiresAt).getTime() - Date.now()) / (24 * 60 * 60 * 1000));
-    if (days < 0) return { label: 'EXPIRED', color: currentTheme.colors.error };
-    if (days === 0) return { label: 'CLOSING TODAY', color: currentTheme.colors.warning };
-    if (days <= 3) return { label: `${days}D LEFT`, color: currentTheme.colors.warning };
+    const expiryDate = new Date(opportunity.expiresAt);
+    const now = new Date();
+
+    if (isBefore(expiryDate, now)) return { label: 'Expired', color: currentTheme.colors.error };
+    if (isToday(expiryDate)) return { label: 'Closing Today', color: currentTheme.colors.warning };
+    
+    const daysLeft = differenceInDays(expiryDate, now);
+    if (daysLeft <= 3) return { label: `${daysLeft}d Left`, color: currentTheme.colors.warning };
+    
     return null;
   })();
 
   const computedHeatBadge = (() => {
-      if (heatBadge) return { label: heatBadge.replace('_', ' '), color: currentTheme.colors.warning };
-      if (opportunity.trendingScore && opportunity.trendingScore > 50) return { label: 'HOT', color: currentTheme.colors.error };
-      if (opportunity.clicksCount && opportunity.clicksCount > 100) return { label: 'FAST FILLING', color: currentTheme.colors.warning };
-      if (opportunity.savesCount && opportunity.savesCount > 20) return { label: 'MOST SAVED', color: currentTheme.colors.info };
+      if (heatBadge) {
+          const label = heatBadge.replace('_', ' ').toLowerCase();
+          return { label: label.charAt(0).toUpperCase() + label.slice(1), color: currentTheme.colors.warning };
+      }
+      if (opportunity.trendingScore && opportunity.trendingScore > 50) return { label: 'Hot', color: currentTheme.colors.error };
+      if (opportunity.clicksCount && opportunity.clicksCount > 100) return { label: 'Fast Filling', color: currentTheme.colors.warning };
+      if (opportunity.savesCount && opportunity.savesCount > 20) return { label: 'Most Saved', color: currentTheme.colors.info };
       return null;
   })();
 
   const effectiveMatchScore = matchScore ?? opportunity.matchScore;
 
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
+    <MotiView 
+        from={{ opacity: 0, scale: 0.98 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ 
+            type: 'timing', 
+            duration: 300,
+            delay: Math.min(index * 50, 500)
+        }}
+    >
         <SurfaceCard
             onPress={onPress}
             onLongPress={handleLongPress}
-            onPressIn={handlePressIn}
-            onPressOut={handlePressOut}
             style={styles.container}
         >
       <View style={styles.header}>
@@ -105,22 +109,37 @@ export const OpportunityCard = memo(({
                 <View style={[styles.typeBadge, { backgroundColor: config.bg }]}>
                     <Text style={[styles.typeText, { color: config.color }]}>{config.label}</Text>
                 </View>
-                {opportunity.linkHealth === 'HEALTHY' && (
-                    <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.success, 0.05) }]}>
-                        <ShieldCheck size={mScale(10)} color={currentTheme.colors.success} />
-                        <Text style={[styles.verifiedText, { color: currentTheme.colors.success }]}>VERIFIED</Text>
+                {(() => {
+                  const postedAt = opportunity.postedAt ? new Date(opportunity.postedAt) : null;
+                  if (!postedAt || isNaN(postedAt.getTime())) return null;
+                  const diff = Math.max(0, differenceInDays(new Date(), postedAt));
+                  const label = diff === 0 ? 'Posted Today' : diff === 1 ? 'Posted 1d Ago' : `Posted ${diff}d Ago`;
+                  const isFresh = diff <= 1;
+                  
+                  return (
+                    <View style={[
+                      styles.verifiedBadge, 
+                      { backgroundColor: alpha(isFresh ? currentTheme.colors.primary : currentTheme.colors.text, 0.05) }
+                    ]}>
+                      <Text style={[
+                        styles.verifiedText, 
+                        { color: isFresh ? currentTheme.colors.primary : currentTheme.colors.textMuted }
+                      ]}>
+                        {label}
+                      </Text>
                     </View>
-                )}
+                  );
+                })()}
                 {(effectiveMatchScore !== undefined || opportunity.isEligible !== undefined) && (
                     <View style={[
                         styles.verifiedBadge,
-                        { backgroundColor: alpha((opportunity.isEligible === false) ? currentTheme.colors.error : '#10B981', 0.05) }
+                        { backgroundColor: alpha((opportunity.isEligible === false) ? currentTheme.colors.error : currentTheme.colors.success, 0.05) }
                     ]}>
                         <Text style={[
                             styles.verifiedText,
-                            { color: (opportunity.isEligible === false) ? currentTheme.colors.error : '#10B981' }
+                            { color: (opportunity.isEligible === false) ? currentTheme.colors.error : currentTheme.colors.success }
                         ]}>
-                            {(opportunity.isEligible === false) ? 'INELIGIBLE' : `${effectiveMatchScore}% MATCH`}
+                            {(opportunity.isEligible === false) ? 'Ineligible' : `${effectiveMatchScore}% Match`}
                         </Text>
                     </View>
                 )}
@@ -145,7 +164,10 @@ export const OpportunityCard = memo(({
                     styles.bookmarkBtn,
                     { backgroundColor: 'transparent' }
                 ]}
-                onPress={() => onSave?.(opportunity)}
+                onPress={() => {
+                    haptic.success();
+                    onSave?.(opportunity);
+                }}
             >
                 <Bookmark
                     size={mScale(20)}
@@ -159,13 +181,21 @@ export const OpportunityCard = memo(({
           <View style={styles.metaItem}>
               <MapPin size={mScale(12)} color={currentTheme.colors.textMuted} />
               <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
-                  {opportunity.locations?.join(', ') || 'Remote'}
+                  {formatListToTitleCase(opportunity.locations) || 'Remote'}
               </Text>
           </View>
-          {opportunity.salaryRange && (
+          {formatSalary(opportunity) && (
               <View style={styles.metaItem}>
                   <CircleDollarSign size={mScale(12)} color={currentTheme.colors.textMuted} />
-                  <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>{opportunity.salaryRange}</Text>
+                  <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>{formatSalary(opportunity)}</Text>
+              </View>
+          )}
+          {(opportunity.experienceMin !== undefined || opportunity.experienceMax !== undefined) && (
+              <View style={styles.metaItem}>
+                  <Briefcase size={mScale(12)} color={currentTheme.colors.textMuted} />
+                  <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>
+                      {opportunity.experienceMax ? `${opportunity.experienceMin || 0}-${opportunity.experienceMax}y` : 'Fresher'}
+                  </Text>
               </View>
           )}
       </View>
@@ -211,15 +241,8 @@ export const OpportunityCard = memo(({
               <ChevronRight size={mScale(14)} color={currentTheme.colors.primary} />
           </View>
       </View>
-      <OpportunityActionSheet
-          visible={actionSheetVisible}
-          opportunity={opportunity}
-          onClose={() => setActionSheetVisible(false)}
-          onSave={onSave}
-          isSaved={isSaved}
-      />
         </SurfaceCard>
-    </Animated.View>
+    </MotiView>
   );
 });
 
@@ -256,7 +279,7 @@ const styles = StyleSheet.create({
         borderRadius: RADIUS.lg,
     },
     typeText: {
-        fontSize: mScale(9),
+        fontSize: 11,
         fontWeight: '900',
         letterSpacing: 0.5,
     },
@@ -305,7 +328,7 @@ const styles = StyleSheet.create({
         fontWeight: '900',
     },
     matchLabel: {
-        fontSize: mScale(8),
+        fontSize: mScale(10),
         fontWeight: '800',
         marginTop: -2,
     },
@@ -358,8 +381,7 @@ const styles = StyleSheet.create({
         borderRadius: RADIUS.xs,
     },
     heatText: {
-        fontSize: mScale(9),
-        fontWeight: '900',
+        ...TYPOGRAPHY.badge,
     },
     expiryBadge: {
         flexDirection: 'row',
@@ -370,8 +392,7 @@ const styles = StyleSheet.create({
         borderRadius: RADIUS.xs,
     },
     expiryText: {
-        fontSize: mScale(9),
-        fontWeight: '900',
+        ...TYPOGRAPHY.badge,
     },
     actionArea: {
         flexDirection: 'row',

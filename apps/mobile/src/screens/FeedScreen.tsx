@@ -1,15 +1,15 @@
 import React, { useCallback, memo, useState, useMemo, useRef, useEffect } from 'react';
+import { MotiView } from 'moti';
+import { FlashList } from '@shopify/flash-list';
 import {
   StyleSheet,
   Text,
   View,
   TouchableOpacity,
-  RefreshControl,
   FlatList,
   ScrollView,
   ActivityIndicator,
   Platform,
-  Animated,
   BackHandler,
   ToastAndroid,
 } from 'react-native';
@@ -17,7 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import {
     TrendingUp,
-  Compass,
+    Compass,
+    Bell,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useSaved } from '@repo/frontend-core';
@@ -26,12 +27,13 @@ import { useFeed } from '@/hooks/useFeed';
 import { saveDetailCache } from '@/utils/offlineCache';
 import { clearUnseenCount } from '@/utils/localNotifications';
 import { Opportunity } from '@fresherflow/types';
+import { useNotifications } from '@/hooks/useNotifications';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { mScale, SPACING, RADIUS, SCREEN_WIDTH } from '@/system/constants/dimensions';
 
@@ -101,7 +103,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                 <View style={styles.statsLabel}>
                     <TrendingUp size={mScale(12)} color={currentTheme.colors.primary} />
                     <Text style={[styles.statsText, { color: currentTheme.colors.textMuted }]}>
-                        <Text style={{ fontWeight: '800', color: currentTheme.colors.text }}>SHOWING</Text> {item.count} OPPORTUNITIES
+                        <Text style={{ fontWeight: '800', color: currentTheme.colors.text }}>Showing</Text> {item.count} opportunities
                     </Text>
                 </View>
             </View>
@@ -110,6 +112,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
         return (
             <JobCard
                 opportunity={item.data}
+                index={item.index}
                 onPress={() => {
                     void saveDetailCache(item.data);
                     navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
@@ -127,7 +130,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                 <Text style={[styles.emptyTitle, { color: currentTheme.colors.text, textAlign: 'center' }]}>Community is quiet right now</Text>
                 <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>Try adjusting your filters or search keywords.</Text>
                 <View style={{ marginTop: SPACING.lg, width: '100%', alignItems: 'center' }}>
-                    <Text style={{ fontSize: mScale(12), fontWeight: '700', color: currentTheme.colors.textMuted, marginBottom: SPACING.sm, letterSpacing: 0.5 }}>TRENDING TAGS</Text>
+                    <Text style={{ fontSize: mScale(12), fontWeight: '700', color: currentTheme.colors.textMuted, marginBottom: SPACING.sm, letterSpacing: 0.5 }}>Trending Tags</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, justifyContent: 'center' }}>
                         {['Software Engineer', 'React', 'Remote', '2026 Batch', 'AI/ML'].map(tag => (
                             <TouchableOpacity
@@ -154,12 +157,15 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     }
   }, [currentTheme, navigation, isSaved, toggleSave]);
 
+  
   return (
     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
-        <FlatList
+        <FlashList<FeedItem>
             data={listData}
             renderItem={renderItem}
             keyExtractor={(item) => item.key}
+            // @ts-expect-error - FlashList typing bug with estimatedItemSize
+            estimatedItemSize={160}
             showsVerticalScrollIndicator={false}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + mScale(60) }]}
             onEndReached={loadMore}
@@ -167,7 +173,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
             scrollEventThrottle={16}
             keyboardShouldPersistTaps="always"
             refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={currentTheme.colors.primary} />
+                <PremiumRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
             }
             ListFooterComponent={
                 loadingMore ? <ActivityIndicator style={{ margin: SPACING.md }} color={currentTheme.colors.primary} /> : null
@@ -178,10 +184,12 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
 });
 
 const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
+  const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
   const { showSuccess } = useToast();
   const { isSaved, toggleSave } = useSaved();
   const { hideTabBar, showTabBar } = useUI();
+  const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState(0);
   const pagerRef = useRef<FlatList>(null);
   const tabListRef = useRef<ScrollView>(null);
@@ -215,8 +223,6 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
   // Tab indicator animations
   const [tabLayouts, setTabLayouts] = useState<{[key: number]: {x: number, width: number}}>({});
-  const indicatorX = useRef(new Animated.Value(0)).current;
-  const indicatorWidth = useRef(new Animated.Value(0)).current;
 
   const feeds = [
     { id: null, label: 'For You' },
@@ -226,37 +232,16 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     { id: 'internships', label: 'Internships' },
   ];
 
-  const hasInitialLayout = useRef(false);
 
   // Update indicator position and ensure tab bar is visible when switching tabs
   useEffect(() => {
     showTabBar();
-    if (tabLayouts[activeTab]) {
-      const { x, width } = tabLayouts[activeTab];
-
-      if (!hasInitialLayout.current) {
-        indicatorX.setValue(x);
-        indicatorWidth.setValue(width);
-        hasInitialLayout.current = true;
-      } else {
-        Animated.spring(indicatorX, {
-          toValue: x,
-          useNativeDriver: false,
-          tension: 140,
-          friction: 12,
-        }).start();
-        Animated.spring(indicatorWidth, {
-          toValue: width,
-          useNativeDriver: false,
-          tension: 140,
-          friction: 12,
-        }).start();
-      }
-    }
-  }, [activeTab, tabLayouts, indicatorX, indicatorWidth]);
+  }, [activeTab]);
 
   // Track scroll position for hide/show tab bar
+  // Track scroll position and visibility state for performance
   const scrollOffset = useRef(0);
+  const isTabBarVisible = useRef(true);
 
   const handleToggleSave = useCallback((opportunity: Opportunity) => {
     const wasSaved = isSaved(opportunity.id);
@@ -267,11 +252,14 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
     const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
-
-    if (Math.abs(currentOffset - scrollOffset.current) > 20) {
-        if (direction === 'down' && currentOffset > 100) {
+    
+    // Minimal threshold to avoid jitter
+    if (Math.abs(currentOffset - scrollOffset.current) > 30) {
+        if (direction === 'down' && currentOffset > 100 && isTabBarVisible.current) {
+            isTabBarVisible.current = false;
             hideTabBar();
-        } else if (direction === 'up' || currentOffset < 50) {
+        } else if ((direction === 'up' || currentOffset < 50) && !isTabBarVisible.current) {
+            isTabBarVisible.current = true;
             showTabBar();
         }
         scrollOffset.current = currentOffset;
@@ -322,9 +310,20 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
   return (
     <Screen safe={false}>
-      <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+      <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
         <PremiumHeader
             title="Discover"
+            rightSlot={
+                <TouchableOpacity 
+                    onPress={() => navigation.navigate('Notifications')}
+                    style={styles.notificationBtn}
+                >
+                    <Bell size={24} color={currentTheme.colors.text} />
+                    {unreadCount > 0 && (
+                        <View style={{ backgroundColor: currentTheme.colors.primary, position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4 }} />
+                    )}
+                </TouchableOpacity>
+            }
         />
 
         <View style={styles.feedSelector}>
@@ -361,12 +360,15 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         </TouchableOpacity>
                     );
                 })}
-                <Animated.View
+                <MotiView
+                    animate={{
+                        left: tabLayouts[activeTab]?.x || 0,
+                        width: tabLayouts[activeTab]?.width || 0,
+                    }}
+                    transition={{ type: 'spring', damping: 28, stiffness: 300, mass: 0.8 }}
                     style={[
                         styles.tabIndicator,
                         {
-                            left: indicatorX,
-                            width: indicatorWidth,
                             backgroundColor: currentTheme.colors.primary,
                         }
                     ]}
@@ -434,10 +436,16 @@ const styles = StyleSheet.create({
         borderRadius: 1,
     },
     feedTabText: {
-        fontSize: mScale(13),
+        fontSize: mScale(14),
         fontWeight: '800',
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+    },
+    notificationBtn: {
+        width: mScale(44),
+        height: mScale(44),
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: -SPACING.sm,
     },
     themeBtn: {
         width: mScale(44),
@@ -459,9 +467,9 @@ const styles = StyleSheet.create({
         gap: SPACING.sm,
     },
     statsText: {
-        fontSize: mScale(10),
+        fontSize: mScale(11),
         fontWeight: '800',
-        letterSpacing: 1.2,
+        letterSpacing: 0.5,
     },
     skeleton: {
         height: mScale(160),

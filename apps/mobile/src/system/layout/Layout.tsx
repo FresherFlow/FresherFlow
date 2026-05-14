@@ -1,7 +1,8 @@
 import React from 'react';
 import { StyleSheet, View, ViewProps, SafeAreaView, StatusBar, ViewStyle, Text } from 'react-native';
 import { useTheme } from '@/contexts/ThemeContext';
-import { SPACING, mScale } from '../constants/dimensions';
+import { SPACING } from '../constants/dimensions';
+import { TYPOGRAPHY } from '../constants/typography';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -48,7 +49,7 @@ export const Section: React.FC<SectionProps> = ({ title, children, style }) => {
         <View style={[styles.section, style]}>
             {title && (
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>{title.toUpperCase()}</Text>
+                    <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>{title}</Text>
                     <View style={[styles.sectionLine, { backgroundColor: alpha(currentTheme.colors.border, 0.2) }]} />
                 </View>
             )}
@@ -72,9 +73,7 @@ const styles = StyleSheet.create({
         gap: SPACING.md,
     },
     sectionTitle: {
-        fontSize: mScale(11),
-        fontWeight: '800',
-        letterSpacing: 1.5,
+        ...TYPOGRAPHY.sectionTitle,
     },
     sectionLine: {
         flex: 1,

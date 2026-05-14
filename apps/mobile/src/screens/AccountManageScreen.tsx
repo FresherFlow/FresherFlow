@@ -6,8 +6,8 @@ import {
     ScrollView,
     TouchableOpacity,
     StatusBar,
-    Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
     Mail, 
     ChevronRight,
@@ -17,6 +17,7 @@ import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { useUserAuth as useAuth } from '@repo/frontend-core';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
+import { TYPOGRAPHY } from '@/system/constants/typography';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -30,6 +31,7 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
+    const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const { user } = useAuth();
 
@@ -39,7 +41,7 @@ const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
-            <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+            <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                 <SecondaryHeader 
                     title="Security" 
                     onBack={() => navigation.goBack()}
@@ -58,7 +60,7 @@ const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         </Text>
                     </View>
 
-                    <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>CREDENTIALS</Text>
+                    <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Credentials</Text>
                     <SurfaceCard style={styles.groupCard}>
                         <SettingRow 
                             icon={Mail} 
@@ -139,9 +141,7 @@ const styles = StyleSheet.create({
         lineHeight: 22,
     },
     groupLabel: {
-        fontSize: 10,
-        fontWeight: '900',
-        letterSpacing: 1.5,
+        ...TYPOGRAPHY.label,
         marginLeft: 12,
         marginBottom: 12,
         marginTop: 32,

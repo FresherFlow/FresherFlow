@@ -1,14 +1,14 @@
 import React from 'react';
+import { FlashList } from '@shopify/flash-list';
 import {
     View,
     Text,
     StyleSheet,
-    FlatList,
     ActivityIndicator,
     RefreshControl,
     TouchableOpacity,
-    Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -17,6 +17,7 @@ import { Screen, Section } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { SPACING, mScale } from '@/system/constants/dimensions';
+import { TYPOGRAPHY } from '@/system/constants/typography';
 import { ShieldCheck, Award, UserPlus, UserCheck } from 'lucide-react-native';
 import { useFollows } from '@/hooks/useFollows';
 import * as Haptics from 'expo-haptics';
@@ -29,6 +30,7 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
+    const insets = useSafeAreaInsets();
     const { userId } = route.params;
     const { currentTheme } = useTheme();
     const { user, opportunities, loading, loadMore, refresh } = useContributor(userId);
@@ -86,7 +88,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                             styles.followText,
                             { color: followingContributor ? currentTheme.colors.primary : currentTheme.colors.background }
                         ]}>
-                            {followingContributor ? 'FOLLOWING' : 'FOLLOW'}
+                            {followingContributor ? 'Following' : 'Follow'}
                         </Text>
                     </TouchableOpacity>
                 </View>
@@ -95,17 +97,17 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                     <View style={styles.statsRow}>
                         <View style={styles.statBox}>
                             <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{user.stats.totalPublished}</Text>
-                            <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>LIVE</Text>
+                            <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Live</Text>
                         </View>
                         <View style={[styles.statDivider, { backgroundColor: currentTheme.colors.border }]} />
                         <View style={styles.statBox}>
                             <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{user.stats.totalContributed}</Text>
-                            <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>SHARED</Text>
+                            <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Shared</Text>
                         </View>
                         <View style={[styles.statDivider, { backgroundColor: currentTheme.colors.border }]} />
                         <View style={styles.statBox}>
                             <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{user.stats.approvalRate}%</Text>
-                            <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>TRUST</Text>
+                            <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Trust</Text>
                         </View>
                     </View>
                 </SurfaceCard>
@@ -121,7 +123,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
 
     if (loading && !user) {
         return (
-            <View style={[styles.loadingCenter, { backgroundColor: currentTheme.colors.background }]}>
+            <View style={{ paddingTop: insets.top + 10, backgroundColor: currentTheme.colors.background }}>
                 <ActivityIndicator size="large" color={currentTheme.colors.primary} />
             </View>
         );
@@ -129,7 +131,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
 
     return (
         <Screen safe={false}>
-            <View style={{ paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
+            <View style={{ paddingTop: insets.top + 10 }}>
                 <PremiumHeader
                     title="Member Profile"
                     showBack
@@ -137,7 +139,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                 />
             </View>
 
-            <FlatList
+            <FlashList
                 data={opportunities}
                 keyExtractor={(item) => item.id}
                 renderItem={({ item }) => (
@@ -148,6 +150,8 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                 )}
                 ListHeaderComponent={renderHeader}
                 contentContainerStyle={styles.listContent}
+                // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                estimatedItemSize={160}
                 showsVerticalScrollIndicator={false}
                 onEndReached={loadMore}
                 onEndReachedThreshold={0.5}
@@ -158,7 +162,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                     !loading ? (
                         <View style={styles.emptyContainer}>
                             <Award size={48} color={alpha(currentTheme.colors.textMuted, 0.2)} />
-                            <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No live shares</Text>
+                            <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No Live Shares</Text>
                             <Text style={[styles.emptyDesc, { color: currentTheme.colors.textMuted }]}>
                                 All shared links are currently under review or have expired.
                             </Text>
@@ -209,6 +213,12 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 8,
     },
+    groupLabel: {
+        ...TYPOGRAPHY.label,
+        marginLeft: 12,
+        marginBottom: 12,
+        marginTop: 32,
+    },
     name: {
         fontSize: mScale(22),
         fontWeight: '900',
@@ -228,9 +238,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     followText: {
-        fontSize: mScale(11),
-        fontWeight: '900',
-        letterSpacing: 0.5,
+        ...TYPOGRAPHY.badge,
     },
     statsCard: {
         padding: SPACING.lg,
@@ -249,9 +257,7 @@ const styles = StyleSheet.create({
         fontWeight: '900',
     },
     statLabel: {
-        fontSize: mScale(10),
-        fontWeight: '800',
-        letterSpacing: 1,
+        ...TYPOGRAPHY.label,
         marginTop: 4,
     },
     statDivider: {
