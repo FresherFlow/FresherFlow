@@ -4,12 +4,8 @@ const ALERT_PREFS_KEY = 'ff:alert_preferences';
 
 export type AlertPreference = {
     enabled: boolean;
-    emailEnabled: boolean;
-    dailyDigest: boolean;
     closingSoon: boolean;
     minRelevanceScore: number;
-    preferredHour: number;
-    timezone: string;
 };
 
 export async function saveLocalAlertPrefs(prefs: AlertPreference): Promise<void> {

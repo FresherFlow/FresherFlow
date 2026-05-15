@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, View, ViewProps, SafeAreaView, StatusBar, ViewStyle, Text } from 'react-native';
+import { StyleSheet, View, ViewProps, StatusBar, ViewStyle, Text } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { SPACING } from '../constants/dimensions';
 import { TYPOGRAPHY } from '../constants/typography';

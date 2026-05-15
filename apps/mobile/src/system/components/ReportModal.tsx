@@ -71,7 +71,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({ visible, onClose, onSe
             animationType="fade"
             onRequestClose={onClose}
         >
-            <Pressable style={styles.overlay} onPress={onClose}>
+            <Pressable style={[styles.overlay, { backgroundColor: currentTheme.colors.overlay }]} onPress={onClose}>
                 <Pressable style={[styles.content, { backgroundColor: currentTheme.colors.background }]}>
                     <View style={styles.header}>
                         <View style={styles.titleRow}>
@@ -116,7 +116,7 @@ export const ReportModal: React.FC<ReportModalProps> = ({ visible, onClose, onSe
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: '#000', // Static fallback
         justifyContent: 'flex-end',
     },
     content: {

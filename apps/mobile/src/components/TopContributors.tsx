@@ -1,5 +1,6 @@
 import React, { memo } from 'react';
-import { StyleSheet, Text, View, FlatList, TouchableOpacity, Image } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Image } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { Trophy, Medal, Star, ArrowRight } from 'lucide-react-native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 
@@ -70,11 +71,13 @@ const TopContributors = memo(() => {
            <ArrowRight size={18} color={currentTheme.colors.primary} />
         </TouchableOpacity>
       </View>
-      <FlatList
+      <FlashList
         data={MOCK_CONTRIBUTORS}
         renderItem={renderItem}
         keyExtractor={(item) => item.id}
         horizontal
+        // @ts-expect-error - FlashList typing bug with estimatedItemSize
+        estimatedItemSize={210}
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.listContent}
         snapToInterval={220}

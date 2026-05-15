@@ -25,7 +25,7 @@ export const MatchScoreGauge: React.FC<MatchScoreGaugeProps> = ({
 
     const baseColor = isEligible ? currentTheme.colors.primary : currentTheme.colors.error;
     // Always use premium green for eligible matches
-    const progressColor = isEligible ? '#10B981' : baseColor;
+    const progressColor = isEligible ? currentTheme.colors.success : baseColor;
 
     return (
         <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>

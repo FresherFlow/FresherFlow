@@ -40,3 +40,6 @@ function resolveApiUrl(): string {
 }
 
 export const API_URL = resolveApiUrl();
+
+// Dynamically point to the same machine as the API for the bootstrap feed
+export const BOOTSTRAP_FEED_URL = `${API_URL}/bootstrap-feed.min.json`;

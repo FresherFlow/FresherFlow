@@ -1,5 +1,18 @@
 
 
+export const alpha = (color: string, opacity: number) => {
+    if (!color || color.startsWith('rgba')) return color;
+    // Handle hex
+    if (color.startsWith('#')) {
+        const hex = color.replace('#', '');
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`;
+    }
+    return color;
+};
+
 export const theme = {
     colors: {
         primary: '#F5F7F8',
@@ -22,6 +35,13 @@ export const theme = {
         elevation2: 'rgba(245, 247, 248, 0.03)',
         elevation3: 'rgba(245, 247, 248, 0.11)',
         elevation4: 'rgba(245, 247, 248, 0.12)',
+        // Semantic Translucent Tokens
+        dividerSubtle: 'rgba(245, 247, 248, 0.05)',
+        glassSubtle: 'rgba(245, 247, 248, 0.03)',
+        overlaySubtle: 'rgba(2, 4, 4, 0.7)',
+        // Static Translucent Tokens (Legacy compatibility)
+        blackTranslucent: 'rgba(0, 0, 0, 0.05)',
+        blackOverlay: 'rgba(0, 0, 0, 0.5)',
     },
     spacing: {
         xxs: 4,
