@@ -90,6 +90,8 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
     }
 
     return [
+        /* TEMPORARY PIVOT: Hide personalized routes on web */
+        /*
         {
             href: '/dashboard',
             label: 'Dashboard',
@@ -99,6 +101,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             showInMobileTabs: true,
             icon: HomeIcon,
         },
+        */
         {
             href: '/opportunities',
             label: 'Search',
@@ -135,6 +138,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             showInMobileTabs: true,
             icon: BriefcaseIcon,
         },
+        /*
         {
             href: '/account/tracker',
             label: 'Tracker',
@@ -147,5 +151,6 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             mobileTitle: 'Saved',
             showInDesktop: true,
         },
+        */
     ];
 }

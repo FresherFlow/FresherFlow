@@ -1,7 +1,7 @@
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 function normalizeUrl(value: string | undefined, fallback: string): string {
-    const raw = (value || '').trim();
+    const raw = (value || '').trim().replace(/^['"]|['"]$/g, '');
     if (!raw) return fallback;
     try {
         return new URL(raw).origin.replace(/\/+$/, '');
@@ -15,7 +15,7 @@ function normalizeUrl(value: string | undefined, fallback: string): string {
 }
 
 function normalizeHost(value: string | undefined, fallback: string): string {
-    const raw = (value || '').trim();
+    const raw = (value || '').trim().replace(/^['"]|['"]$/g, '');
     if (!raw) return fallback;
     try {
         return new URL(raw).hostname.toLowerCase();
@@ -87,3 +87,8 @@ export const ADMIN_WEB_HOST = normalizeHost(
     process.env.NEXT_PUBLIC_ADMIN_WEB_HOST,
     getFallbackHost()
 );
+
+export const BOOTSTRAP_FEED_URL =
+    process.env.NEXT_PUBLIC_BOOTSTRAP_FEED_URL ||
+    process.env.BOOTSTRAP_FEED_URL ||
+    'https://cdn.fresherflow.com/bootstrap-feed.json';

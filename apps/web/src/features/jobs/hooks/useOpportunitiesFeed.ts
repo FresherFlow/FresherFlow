@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Opportunity } from '@fresherflow/types';
-import { opportunitiesApi, savedApi } from '@/lib/api/client';
+// WEB PIVOT: keep API imports disabled while public web runs from CDN/static JSON.
+// import { opportunitiesApi, savedApi } from '@/lib/api/client';
 import { useDebounce } from '@/lib/hooks/useDebounce';
 import toast from 'react-hot-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,6 +10,8 @@ import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { enqueueOfflineSaveToggle } from '@/lib/offline/actionQueue';
 import { useSiteMode } from '@/contexts/SiteModeContext';
 import { filterOpportunitiesForSiteMode } from '@/lib/opportunityMode';
+
+const WEB_STATIC_DISCOVERY = true;
 
 interface UseOpportunitiesFeedOptions {
     type?: string | null;
@@ -19,6 +22,11 @@ interface UseOpportunitiesFeedOptions {
     search: string;
     minSalary?: number | null;
     maxSalary?: number | null;
+    initialData?: {
+        opportunities: Opportunity[];
+        total: number;
+        cachedAt?: number;
+    } | null;
 }
 
 type OpportunityAction = {
@@ -34,6 +42,7 @@ export function useOpportunitiesFeed({
     search,
     minSalary,
     maxSalary,
+    initialData
 }: UseOpportunitiesFeedOptions) {
     const { user, profile, isLoading: authLoading } = useAuth();
     const { mode } = useSiteMode();
@@ -43,12 +52,14 @@ export function useOpportunitiesFeed({
     const initialCacheScope = `type:${normalizedType}`;
 
     const [opportunities, setOpportunities] = useState<Opportunity[]>(() => {
+        if (initialData?.opportunities) return initialData.opportunities;
         if (typeof window === 'undefined') return [];
         if (showOnlySaved) return [];
         const cached = readFeedCache(initialCacheScope);
         return cached?.opportunities || [];
     });
     const [totalCount, setTotalCount] = useState<number>(() => {
+        if (initialData?.total !== undefined) return initialData.total;
         if (typeof window === 'undefined') return 0;
         if (showOnlySaved) return 0;
         const cached = readFeedCache(initialCacheScope);
@@ -57,14 +68,16 @@ export function useOpportunitiesFeed({
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState<boolean>(() => {
+        if (initialData?.opportunities) return false;
         if (typeof window === 'undefined') return true;
         if (showOnlySaved) return true;
         const cached = readFeedCache(initialCacheScope);
         return !cached?.opportunities?.length;
     });
     const [error, setError] = useState<string | null>(null);
-    const [usingCachedFeed, setUsingCachedFeed] = useState<boolean>(false);
+    const [usingCachedFeed, setUsingCachedFeed] = useState<boolean>(() => !!initialData);
     const [cachedAt, setCachedAt] = useState<number | null>(() => {
+        if (initialData?.cachedAt) return initialData.cachedAt;
         if (typeof window === 'undefined') return null;
         if (showOnlySaved) return null;
         return readFeedCache(initialCacheScope)?.cachedAt || null;
@@ -84,6 +97,26 @@ export function useOpportunitiesFeed({
     }, [opportunities.length]);
 
     const loadOpportunities = useCallback(async (pageNum = 1, append = false) => {
+        if (WEB_STATIC_DISCOVERY) {
+            if (showOnlySaved) {
+                setError('Saved jobs are available in the mobile app.');
+                setOpportunities([]);
+                setTotalCount(0);
+                setIsLoading(false);
+                return;
+            }
+
+            const staticOpps = initialData?.opportunities || readFeedCache(cacheScope)?.opportunities || [];
+            setOpportunities(staticOpps);
+            setTotalCount(initialData?.total ?? staticOpps.length);
+            setPage(1);
+            setHasMore(false);
+            setError(null);
+            setProfileIncomplete(null);
+            setIsLoading(false);
+            return;
+        }
+
         if (authLoading) return;
         const timestamp = Date.now();
         lastRequestTimestamp.current = timestamp;
@@ -112,18 +145,21 @@ export function useOpportunitiesFeed({
                     setIsLoading(false);
                     return;
                 }
-                data = (await savedApi.list()) as FeedResponse;
+                throw new Error('Saved jobs are disabled on web');
+                // data = (await savedApi.list()) as FeedResponse;
                 if (type) {
                     data.opportunities = data.opportunities?.filter((opp: Opportunity) => opp.type === type) || [];
                 }
             } else if (shouldUseBackendSearch) {
-                const searchData = (await opportunitiesApi.search({
-                    q: normalizedSearch,
-                    type: type || undefined,
-                    city: selectedLoc || undefined,
-                    page: pageNum,
-                    limit: 50,
-                })) as FeedResponse & { hits?: Opportunity[]; totalHits?: number; hasMore?: boolean };
+                throw new Error('Backend search is disabled on web');
+                // const searchData = (await opportunitiesApi.search({
+                //     q: normalizedSearch,
+                //     type: type || undefined,
+                //     city: selectedLoc || undefined,
+                //     page: pageNum,
+                //     limit: 50,
+                // })) as FeedResponse & { hits?: Opportunity[]; totalHits?: number; hasMore?: boolean };
+                const searchData = { hits: [], totalHits: 0, total: 0, limit: 0, hasMore: false };
                 data = {
                     opportunities: searchData.hits || [],
                     total: searchData.totalHits ?? searchData.total ?? (searchData.hits?.length || 0),
@@ -133,15 +169,17 @@ export function useOpportunitiesFeed({
                     setHasMore(Boolean(searchData.hasMore));
                 }
             } else {
-                data = (await opportunitiesApi.list({
-                    type: type || undefined,
-                    city: selectedLoc || undefined,
-                    minSalary: minSalary || undefined,
-                    maxSalary: maxSalary || undefined,
-                    closingSoon: closingSoon || undefined,
-                    page: pageNum,
-                    limit: user ? 50 : 200
-                })) as FeedResponse;
+                throw new Error('Opportunity API list is disabled on web');
+                // data = (await opportunitiesApi.list({
+                //     type: type || undefined,
+                //     city: selectedLoc || undefined,
+                //     minSalary: minSalary || undefined,
+                //     maxSalary: maxSalary || undefined,
+                //     closingSoon: closingSoon || undefined,
+                //     page: pageNum,
+                //     limit: user ? 50 : 200
+                // })) as FeedResponse;
+                data = { opportunities: [], total: 0, limit: 0 };
             }
 
             // Freshness check: only update if this is the most recent request
@@ -194,18 +232,34 @@ export function useOpportunitiesFeed({
                 setIsLoading(false);
             }
         }
-    }, [type, selectedLoc, user, authLoading, showOnlySaved, minSalary, maxSalary, closingSoon, cacheScope, normalizedSearch, shouldUseBackendSearch]);
+    }, [type, selectedLoc, user, authLoading, showOnlySaved, minSalary, maxSalary, closingSoon, cacheScope, normalizedSearch, shouldUseBackendSearch, initialData]);
 
     useEffect(() => {
         if (!authLoading) {
-            loadOpportunities();
+            // If we have initial data, we already rendered. 
+            // We only need to trigger a background sync if we're not searching
+            // or if the initial data is old.
+            const hasInitialData = !!initialData?.opportunities?.length;
+            if (hasInitialData && !shouldUseBackendSearch) {
+                // Background sync (SWR)
+                loadOpportunities(1, false);
+            } else {
+                loadOpportunities();
+            }
         }
-    }, [loadOpportunities, authLoading, user, showOnlySaved]);
+    }, [loadOpportunities, authLoading, user, showOnlySaved, !!initialData]);
 
     const filteredOpps = useMemo(() => {
         const modeFiltered = filterOpportunitiesForSiteMode(opportunities, mode);
 
         const filtered = modeFiltered.filter(opp => {
+            const matchesSearch = !normalizedSearch || [
+                opp.title,
+                opp.normalizedRole,
+                opp.company,
+                opp.description,
+            ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch.toLowerCase()));
+
             const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => loc.toLowerCase().includes(selectedLoc.toLowerCase()));
 
             const matchesClosingSoon = !closingSoon || (() => {
@@ -221,7 +275,7 @@ export function useOpportunitiesFeed({
 
             const matchesYear = !selectedYear || (opp.allowedPassoutYears || []).includes(selectedYear);
 
-            return matchesLoc && matchesClosingSoon && matchesSalary && matchesYear;
+            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSalary && matchesYear;
         });
 
         const enriched = filtered.map((opp) => {
@@ -256,11 +310,11 @@ export function useOpportunitiesFeed({
 
             return (a.id || '').localeCompare(b.id || '');
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile, mode]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile, mode, normalizedSearch]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
-            toast.error('Please log in to save opportunities');
+            toast.error('Saved jobs are available in the mobile app');
             return;
         }
 
@@ -282,7 +336,9 @@ export function useOpportunitiesFeed({
 
         // Background sync
         try {
-            const result = await savedApi.toggle(opportunityId) as { saved: boolean };
+            throw new Error('Saved jobs are disabled on web');
+            // const result = await savedApi.toggle(opportunityId) as { saved: boolean };
+            const result = { saved: newSavedState };
 
             // Verify sync result matches optimistic state
             if (result.saved !== newSavedState) {

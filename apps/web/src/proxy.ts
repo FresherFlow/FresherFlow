@@ -3,8 +3,12 @@ import { handleHostRouting } from "./proxy/hosts";
 import { handleAuth } from "./proxy/auth";
 import { applySeoHeaders } from "./proxy/seo";
 
-export function proxy(req: NextRequest) {
-    // 0. Check if maintenance mode is active (migrated from middleware.ts)
+/**
+ * Standard Next.js Middleware
+ * Replaces the misnamed src/proxy.ts to follow standard conventions.
+ */
+export default function middleware(req: NextRequest) {
+    // 0. Check if maintenance mode is active
     if (process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true') {
         if (req.nextUrl.pathname.startsWith('/api')) {
             return new NextResponse(

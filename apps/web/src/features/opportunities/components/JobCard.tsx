@@ -14,10 +14,10 @@ import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@repo/ui/utils/error-web';
-import { getOpportunityPathFromItem } from '@fresherflow/domain';
+import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
-import { getOpportunityDisplaySalary, normalizeSalaryInput, parseOpportunityLocation } from '@fresherflow/domain';
-import { buildShareUrl } from '@fresherflow/domain';
+import { getOpportunityDisplaySalary, normalizeSalaryInput, parseOpportunityLocation } from '@/lib/opportunityDisplay';
+import { buildShareUrl } from '@/lib/share';
 
 /**
  * JobCard - REFINED TYPOGRAPHY PATTERN

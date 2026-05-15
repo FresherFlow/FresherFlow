@@ -30,20 +30,24 @@ export function handleAuth(req: NextRequest) {
         }
     }
 
-    // App/Public Auth
-    if (isUserPath(pathname) && !loggedIn) {
-        const loginUrl = new URL(`${req.nextUrl.protocol}//${req.nextUrl.host}/login`);
-        loginUrl.searchParams.set("redirect", pathname);
-        return NextResponse.redirect(loginUrl, 307);
+    // WEB PIVOT: user/account routes are frozen for now. Keep old login/dashboard logic here
+    // for later restoration, but send users to the app download page instead of waking APIs.
+    // if (isUserPath(pathname) && !loggedIn) {
+    //     const loginUrl = new URL(`${req.nextUrl.protocol}//${req.nextUrl.host}/login`);
+    //     loginUrl.searchParams.set("redirect", pathname);
+    //     return NextResponse.redirect(loginUrl, 307);
+    // }
+    if (isUserPath(pathname) && hostRole !== 'admin') {
+        return NextResponse.redirect(new URL('/download', req.url), 307);
     }
 
-    if (pathname === "/login" && loggedIn && hostRole !== 'admin') {
-        return redirectWithMethodAwareness(req, getSafeRedirectTarget(req.nextUrl.searchParams.get('redirect')));
-    }
+    // if (pathname === "/login" && loggedIn && hostRole !== 'admin') {
+    //     return redirectWithMethodAwareness(req, getSafeRedirectTarget(req.nextUrl.searchParams.get('redirect')));
+    // }
 
-    if (pathname === "/" && loggedIn && hostRole !== 'admin') {
-        return redirectWithMethodAwareness(req, "/dashboard");
-    }
+    // if (pathname === "/" && loggedIn && hostRole !== 'admin') {
+    //     return redirectWithMethodAwareness(req, "/dashboard");
+    // }
 
     return null;
 }

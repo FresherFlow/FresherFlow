@@ -1,12 +1,12 @@
-import { buildShareUrl, type SharePlatform } from '@fresherflow/domain';
+import { buildShareUrl, type SharePlatform } from '@/lib/share';
 export type { SharePlatform };
 import { SITE_URL } from '@/lib/runtimeConfig';
 
-import { getOpportunityPath } from '@fresherflow/domain';
+import { getOpportunityPath } from '@/lib/opportunityPath';
 import {
     normalizeCourseName,
     normalizeSpecializationName,
-} from '@fresherflow/domain';
+} from '@/lib/profileConstants';
 
 export type OpportunityKind = 'JOB' | 'INTERNSHIP' | 'WALKIN';
 

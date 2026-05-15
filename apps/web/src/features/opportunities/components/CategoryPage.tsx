@@ -62,9 +62,14 @@ const CATEGORY_CONFIG = {
 
 interface CategoryPageProps {
     type: OpportunityType;
+    initialData?: {
+        opportunities: Opportunity[];
+        total: number;
+        cachedAt?: number;
+    } | null;
 }
 
-function CategoryPageContent({ type }: CategoryPageProps) {
+function CategoryPageContent({ type, initialData }: CategoryPageProps) {
     const { user } = useAuth();
     const config = CATEGORY_CONFIG[type];
     const IconComponent = config.icon;
@@ -115,6 +120,7 @@ function CategoryPageContent({ type }: CategoryPageProps) {
         minSalary: filters.salary,
         selectedYear: filters.year,
         search,
+        initialData,
     });
 
     const isJobSaved = (opp: Opportunity) => opp.isSaved || false;
@@ -321,10 +327,10 @@ function CategoryPageContent({ type }: CategoryPageProps) {
     );
 }
 
-export default function CategoryPage({ type }: CategoryPageProps) {
+export default function CategoryPage({ type, initialData }: CategoryPageProps) {
     return (
         <Suspense fallback={<FeedPageSkeleton />}>
-            <CategoryPageContent type={type} />
+            <CategoryPageContent type={type} initialData={initialData} />
         </Suspense>
     );
 }

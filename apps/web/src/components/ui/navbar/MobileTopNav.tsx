@@ -109,8 +109,14 @@ export function MobileTopNav() {
                             </button>
                         </div>
                     ) : (
+                        /* TEMPORARY PIVOT: Hide Sign in on mobile web */
+                        /* 
                         <Link href="/login" className="inline-flex items-center h-8 px-3.5 rounded-lg bg-foreground text-background text-[11px] font-semibold hover:opacity-85 transition-all shadow-sm shrink-0">
                             Sign in
+                        </Link>
+                        */
+                        <Link href="/download" className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-85 transition-all shadow-sm shrink-0">
+                            Get App
                         </Link>
                     )}
                 </div>

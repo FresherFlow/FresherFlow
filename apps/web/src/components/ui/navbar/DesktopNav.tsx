@@ -111,8 +111,14 @@ export function DesktopNav() {
                                     </Link>
                                 </div>
                             ) : (
+                                /* TEMPORARY PIVOT: Hide Sign in button on web discovery layer */
+                                /* 
                                 <Link href="/login" className="ml-1 inline-flex items-center h-8 px-4 rounded-lg bg-foreground text-background text-xs font-semibold hover:opacity-85 transition-all shadow-sm">
                                     Sign in
+                                </Link>
+                                */
+                                <Link href="/download" className="ml-1 inline-flex items-center h-8 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all shadow-sm">
+                                    Get App
                                 </Link>
                             )}
                         </>

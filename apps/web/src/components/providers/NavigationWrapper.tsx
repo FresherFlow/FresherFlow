@@ -5,7 +5,8 @@ import { usePathname } from 'next/navigation';
 import { Navbar, MobileNav } from '@/components/ui/Navigation';
 import { Footer } from '@/components/ui/Footer';
 import { cn } from '@/lib/utils';
-import OfflineActionSync from '@/components/providers/OfflineActionSync';
+// WEB PIVOT: keep offline sync code for later, but do not mount it on SEO web.
+// import OfflineActionSync from '@/components/providers/OfflineActionSync';
 import { AuthContext } from '@/contexts/AuthContext';
 import { ADMIN_WEB_HOST } from '@/lib/runtimeConfig';
 
@@ -18,7 +19,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
     const isAdminRoute = normalizedPathname.startsWith('/admin') || isAdminHost;
 
-    const hideNav = isAdminRoute || isAuthRoute;
+    const hideNav = isAdminRoute; // TEMPORARY PIVOT: Universal header everywhere except admin
     const isHomePage = pathname === '/';
 
     const authContext = useContext(AuthContext);
@@ -26,7 +27,8 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
     return (
         <>
-            {!isAdminRoute && pathname !== '/' && <OfflineActionSync />}
+            {/* WEB PIVOT: disabled user offline sync to avoid background API calls. */}
+            {/* {!isAdminRoute && pathname !== '/' && <OfflineActionSync />} */}
             {!hideNav && (
                 <Suspense fallback={null}>
                     <Navbar />
@@ -35,12 +37,12 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
             <main className={cn(
                 "relative w-full overflow-x-hidden",
                 !isAdminRoute && "pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-[4.75rem]",
-                !isAuthRoute && !isAdminRoute && !isHomePage && "pb-4 md:pb-8",
-                (isAuthRoute || isAdminRoute) && "min-h-screen flex flex-col"
+                !isAdminRoute && !isHomePage && "pb-4 md:pb-8",
+                isAdminRoute && "min-h-screen flex flex-col"
             )}>
                 <div className={cn(
                     "flex-1 flex flex-col",
-                    (!isAuthRoute && !isAdminRoute) && "min-h-[calc(100vh-10rem)]"
+                    !isAdminRoute && "min-h-[calc(100vh-10rem)]"
                 )}>
                     {children}
                 </div>
