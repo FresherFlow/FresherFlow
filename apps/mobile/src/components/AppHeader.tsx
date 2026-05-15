@@ -18,6 +18,11 @@ interface AppHeaderProps {
   isTransparent?: boolean;
 }
 
+const alpha = (color: string, opacity: number) => {
+  if (color.startsWith('rgba')) return color;
+  return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+};
+
 const AppHeader: React.FC<AppHeaderProps> = memo(({
   title,
   subtitle,
@@ -42,7 +47,7 @@ const AppHeader: React.FC<AppHeaderProps> = memo(({
           tint={currentTheme.mode === 'dark' ? 'dark' : 'light'}
           style={[
             StyleSheet.absoluteFill,
-            { backgroundColor: currentTheme.mode === 'dark' ? 'rgba(13, 15, 20, 0.7)' : 'rgba(248, 250, 252, 0.8)' }
+            { backgroundColor: currentTheme.mode === 'dark' ? alpha(currentTheme.colors.background, 0.7) : alpha(currentTheme.colors.background, 0.8) }
           ]}
         />
       )}
@@ -126,10 +131,9 @@ const styles = StyleSheet.create({
     fontSize: 22,
   },
   headerSubtitle: {
-    fontSize: 12,
+    fontSize: 13,
     marginTop: 2,
     fontWeight: '600',
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   rightActionContainer: {

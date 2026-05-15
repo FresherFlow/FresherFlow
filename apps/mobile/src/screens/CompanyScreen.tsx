@@ -7,6 +7,7 @@ import {
     ActivityIndicator,
     StatusBar,
     Animated,
+    Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Share2, Globe, Building2, Home } from 'lucide-react-native';
@@ -68,7 +69,7 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-            <View style={{ paddingTop: insets.top, backgroundColor: currentTheme.colors.background }}>
+            <View style={{ paddingTop: insets.top + 10, backgroundColor: currentTheme.colors.background }}>
                 <PremiumHeader
                     title={companyName}
                     compact
@@ -111,10 +112,17 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
 
                         <View style={styles.badgeRow}>
                             <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
-                                <Text style={[styles.badgeText, { color: currentTheme.colors.success }]}>VERIFIED FEED</Text>
+                                <Text style={[styles.badgeText, { color: currentTheme.colors.success }]}>OFFICIAL SOURCE</Text>
                             </View>
                             {website && (
-                                <TouchableOpacity style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                <TouchableOpacity 
+                                    activeOpacity={0.7}
+                                    onPress={() => {
+                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        void Linking.openURL(website);
+                                    }}
+                                    style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                                >
                                     <Globe size={10} color={currentTheme.colors.primary} />
                                     <Text style={[styles.badgeText, { color: currentTheme.colors.primary }]}>WEBSITE</Text>
                                 </TouchableOpacity>
@@ -135,9 +143,10 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                         </View>
                     </View>
                 }
-                renderItem={({ item }) => (
+                renderItem={({ item, index }) => (
                     <JobCard
                         opportunity={item}
+                        index={index}
                         onPress={() => {
                             void saveDetailCache(item);
                             navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
@@ -329,11 +338,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         height: 56,
         borderRadius: 28,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.3,
-        shadowRadius: 12,
-        elevation: 8,
     },
     fabInner: {
         flexDirection: 'row',

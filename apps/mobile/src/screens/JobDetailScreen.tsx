@@ -52,7 +52,7 @@ import { useNotifications } from '@repo/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, isBefore, isToday } from 'date-fns';
 
 
 import { TYPOGRAPHY } from '@/system/constants/typography';
@@ -66,6 +66,7 @@ import { MatchScoreGauge } from '@/system/components/MatchScoreGauge';
 import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING } from '../system/constants/dimensions';
 import { CommentSection } from '@/system/components/CommentSection';
+import { getDisplayHandle } from '@fresherflow/utils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -211,6 +212,22 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     );
   }
 
+    const expiryInfo = useMemo(() => {
+        if (!opportunity?.expiresAt) return null;
+        const expiryDate = new Date(opportunity.expiresAt);
+        const now = new Date();
+        if (isNaN(expiryDate.getTime())) return null;
+
+        const isExpired = isBefore(expiryDate, now);
+        if (isExpired) return { label: 'Expired', color: currentTheme.colors.error, type: 'EXPIRED' };
+        if (isToday(expiryDate)) return { label: 'Closing Today', color: currentTheme.colors.warning, type: 'URGENT' };
+
+        const daysLeft = differenceInDays(expiryDate, now);
+        if (daysLeft <= 3) return { label: `${daysLeft}d Left`, color: currentTheme.colors.warning, type: 'URGENT' };
+
+        return null;
+    }, [opportunity?.expiresAt, currentTheme]);
+
     return (
     <Screen safe={false}>
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
@@ -291,16 +308,27 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         <View style={styles.container}>
             {/* Hero Section */}
             <Animated.View style={[styles.hero, { opacity: heroOpacity, transform: [{ translateY: heroTranslateY }, { scale: heroScale }] }]}>
+                {expiryInfo && (
+                    <View style={[
+                        styles.statusBanner, 
+                        { backgroundColor: alpha(expiryInfo.color, 0.1), borderColor: alpha(expiryInfo.color, 0.2) }
+                    ]}>
+                        <Clock size={14} color={expiryInfo.color} />
+                        <Text style={[styles.statusBannerText, { color: expiryInfo.color }]}>
+                            This opportunity is {expiryInfo.label.toLowerCase()}
+                        </Text>
+                    </View>
+                )}
                 <LinearGradient
                     colors={[alpha(currentTheme.colors.primary, 0.15), 'transparent']}
                     style={styles.heroGradient}
                 />
                 <View style={styles.titleRow}>
                     <Text style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}>{opportunity.title}</Text>
-                    {opportunity.matchScore !== undefined && (
+                    {((opportunity.matchScore !== undefined && opportunity.matchScore > 0) || opportunity.isEligible === false) && (
                         <View style={{ alignItems: 'center' }}>
                             <MatchScoreGauge
-                                score={opportunity.matchScore}
+                                score={opportunity.matchScore ?? 0}
                                 isEligible={opportunity.isEligible !== false}
                                 size={mScale(56)}
                             />
@@ -310,7 +338,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         </View>
                     )}
                 </View>
-                {opportunity.matchReason && (
+                {opportunity.matchReason && opportunity.matchScore !== undefined && opportunity.matchScore > 0 && (
                     <Text style={[
                         styles.matchReasonText,
                         { color: opportunity.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary }
@@ -350,23 +378,6 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                   return (
                                     <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
                                         <Text style={[styles.typeText, { color: currentTheme.colors.primary, fontSize: 9 }]}>{label}</Text>
-                                    </View>
-                                  );
-                                })()}
-                                {(() => {
-                                  if (!opportunity.expiresAt) return null;
-                                  const expiryDate = new Date(opportunity.expiresAt);
-                                  const now = new Date();
-                                  if (isNaN(expiryDate.getTime())) return null;
-
-                                  const isExpired = expiryDate < now;
-                                  const daysLeft = Math.max(0, differenceInDays(expiryDate, now));
-                                  const label = isExpired ? 'Expired' : daysLeft === 0 ? 'Closing Today' : daysLeft <= 3 ? `${daysLeft}d Left` : null;
-                                  if (!label) return null;
-
-                                  return (
-                                    <View style={[styles.verifiedBadge, { backgroundColor: alpha(isExpired ? currentTheme.colors.error : currentTheme.colors.warning, 0.1) }]}>
-                                        <Text style={[styles.typeText, { color: isExpired ? currentTheme.colors.error : currentTheme.colors.warning, fontSize: 9 }]}>{label}</Text>
                                     </View>
                                   );
                                 })()}
@@ -725,7 +736,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <Text style={[styles.trustDesc, { color: currentTheme.colors.textMuted }]}>This opportunity has been shared {opportunity.sharesCount || 0} times by verified users.</Text>
                         </View>
                     </View>
-                    {opportunity.rawIngestions?.[0]?.creator?.fullName && (
+                    {opportunity.rawIngestions?.[0]?.creator && (
                         <View style={[styles.trustRow, { marginTop: 16, borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.1), paddingTop: 16 }]}>
                             <Share2 size={18} color={currentTheme.colors.warning} />
                             <View>
@@ -741,7 +752,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                             }
                                         }}
                                     >
-                                        @{opportunity.rawIngestions[0].creator.fullName.toLowerCase().replace(/\s+/g, '')}
+                                        {getDisplayHandle(opportunity.rawIngestions[0].creator)}
                                     </Text>
                                 </Text>
                             </View>
@@ -811,49 +822,55 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
       </Animated.ScrollView>
 
       {/* Floating Action FAB */}
-      <Animated.View
-        style={[
-            styles.fabContainer,
-            {
-                bottom: insets.bottom + 20,
-                width: fabAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [56, SCREEN_WIDTH * 0.5]
-                })
-            }
-        ]}
-      >
-          <TouchableOpacity
-            activeOpacity={0.9}
-            style={[styles.applyFab, { backgroundColor: currentTheme.colors.primary }]}
-            onPress={handleApply}
-          >
-              <View style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '100%',
-              }}>
-                  <Animated.View style={{
-                      overflow: 'hidden',
-                      width: fabAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 100] // Scaled for half-width
-                      }),
-                      opacity: fabAnim,
-                      marginRight: fabAnim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0, 8]
-                      })
-                  }}>
-                      <Text style={[styles.applyFabText, { color: currentTheme.colors.background }]} numberOfLines={1}>
-                          Apply Now
-                      </Text>
-                  </Animated.View>
-                  <ExternalLink size={20} color={currentTheme.colors.background} />
-              </View>
-          </TouchableOpacity>
-      </Animated.View>
+      {opportunity.applyLink && opportunity.applyLink.trim().length > 0 && (
+        <Animated.View
+            style={[
+                styles.fabContainer,
+                {
+                    bottom: insets.bottom + 20,
+                    width: fabAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [56, SCREEN_WIDTH * 0.5]
+                    }),
+                    opacity: expiryInfo?.type === 'EXPIRED' ? 0.8 : 1
+                }
+            ]}
+        >
+            <TouchableOpacity
+                activeOpacity={0.9}
+                style={[
+                    styles.applyFab, 
+                    { backgroundColor: expiryInfo?.type === 'EXPIRED' ? currentTheme.colors.textMuted : currentTheme.colors.primary }
+                ]}
+                onPress={handleApply}
+            >
+                <View style={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '100%',
+                }}>
+                    <Animated.View style={{
+                        overflow: 'hidden',
+                        width: fabAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, expiryInfo?.type === 'EXPIRED' ? 140 : 100] // More width for "Opportunity Expired"
+                        }),
+                        opacity: fabAnim,
+                        marginRight: fabAnim.interpolate({
+                            inputRange: [0, 1],
+                            outputRange: [0, 8]
+                        })
+                    }}>
+                        <Text style={[styles.applyFabText, { color: currentTheme.colors.background }]} numberOfLines={1}>
+                            {expiryInfo?.type === 'EXPIRED' ? 'Opportunity Expired' : 'Apply Now'}
+                        </Text>
+                    </Animated.View>
+                    <ExternalLink size={20} color={currentTheme.colors.background} />
+                </View>
+            </TouchableOpacity>
+        </Animated.View>
+      )}
 
       <ReportActionSheet
           ref={reportSheetRef}
@@ -1412,6 +1429,31 @@ const styles = StyleSheet.create({
         top: 0,
         left: 0,
         right: 0,
+    },
+    statusBanner: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 12,
+        marginBottom: 16,
+        borderWidth: 1,
+    },
+    statusBannerText: {
+        fontSize: 12,
+        fontWeight: '800',
+        letterSpacing: 0.3,
+    },
+    expiryBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    expiryBadgeText: {
+        fontSize: 9,
+        fontWeight: '900',
+        letterSpacing: 0.5,
     },
 });
 

@@ -3,11 +3,13 @@ import {
     View,
     Text,
     StyleSheet,
-    FlatList,
     RefreshControl,
     TouchableOpacity,
     Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlashList } from '@shopify/flash-list';
+import * as Haptics from 'expo-haptics';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -26,6 +28,7 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const MySharesScreen: React.FC<Props> = ({ navigation }) => {
+    const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const { shares, stats, loading, loadMore, refresh } = useMyShares();
 
@@ -34,17 +37,17 @@ const MySharesScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.statsGrid}>
                 <View style={styles.statItem}>
                     <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{stats.totalShared}</Text>
-                    <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>SHARED</Text>
+                    <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Shared</Text>
                 </View>
                 <View style={[styles.statDivider, { backgroundColor: currentTheme.colors.border }]} />
                 <View style={styles.statItem}>
                     <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{stats.totalPublished}</Text>
-                    <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>LIVE</Text>
+                    <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Live</Text>
                 </View>
                 <View style={[styles.statDivider, { backgroundColor: currentTheme.colors.border }]} />
                 <View style={styles.statItem}>
                     <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{stats.approvalRate}%</Text>
-                    <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>APPROVAL</Text>
+                    <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Approval</Text>
                 </View>
             </View>
         </View>
@@ -69,6 +72,7 @@ const MySharesScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity
                 disabled={status !== 'PUBLISHED'}
                 onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     if (opp) {
                         // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         void saveDetailCache(opp as any);
@@ -116,7 +120,7 @@ const MySharesScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
         <Screen safe={false}>
-            <View style={{ paddingTop: Platform.OS === 'ios' ? 50 : 20 }}>
+            <View style={{ paddingTop: insets.top + 10 }}>
                 <PremiumHeader
                     title="My Shares"
                     showBack
@@ -124,11 +128,13 @@ const MySharesScreen: React.FC<Props> = ({ navigation }) => {
                 />
             </View>
 
-            <FlatList
+            <FlashList
                 data={shares}
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
                 ListHeaderComponent={renderHeader}
+                // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                estimatedItemSize={120}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
                 onEndReached={loadMore}
@@ -147,6 +153,7 @@ const MySharesScreen: React.FC<Props> = ({ navigation }) => {
                         </View>
                     ) : null
                 }
+                removeClippedSubviews={Platform.OS === 'android'}
             />
         </Screen>
     );
@@ -174,9 +181,9 @@ const styles = StyleSheet.create({
         fontWeight: '900',
     },
     statLabel: {
-        fontSize: mScale(10),
+        fontSize: mScale(11),
         fontWeight: '800',
-        letterSpacing: 1,
+        letterSpacing: 0.5,
         marginTop: 4,
     },
     statDivider: {
@@ -218,9 +225,8 @@ const styles = StyleSheet.create({
         gap: 6,
     },
     statusText: {
-        fontSize: mScale(10),
+        fontSize: mScale(11),
         fontWeight: '900',
-        textTransform: 'uppercase',
     },
     impactRow: {
         flexDirection: 'row',

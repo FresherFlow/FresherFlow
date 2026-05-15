@@ -11,12 +11,13 @@ import {
     Platform,
     StatusBar,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X, Plus, Zap, Timer, Check, Pencil } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { COMMON_SKILLS, AVAILABILITY_OPTIONS } from '@/utils/constants';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { useSkills } from '@/hooks/useSkills';
+import { useSkills, SkillsFormData } from '@/hooks/useSkills';
 import * as Haptics from 'expo-haptics';
 import { Availability } from '@fresherflow/types';
 
@@ -31,23 +32,27 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
+    const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
 
     const {
         profile,
         saving,
+        handleSubmit,
         skills,
         skillInput,
         setSkillInput,
         availability,
-        setAvailability,
         showSuggestions,
         setShowSuggestions,
         addSkill,
         removeSkill,
         handleSave,
         loadingCache,
-    } = useSkills(navigation);
+        isValid,
+        errors,
+        setValue,
+    } = useSkills();
 
     const hasData = (profile?.skills?.length ?? 0) > 0;
     const [isEditing, setIsEditing] = useState(false);
@@ -66,18 +71,20 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     ).slice(0, 5);
 
     const onSave = useCallback(async () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        await handleSave();
-        setIsEditing(false);
-    }, [handleSave]);
+        void handleSubmit(async (data: SkillsFormData) => {
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            await handleSave(data);
+            setIsEditing(false);
+        })();
+    }, [handleSubmit, handleSave]);
 
     const availabilityLabel = AVAILABILITY_OPTIONS.find(o => o.value === (profile?.availability || availability))?.label || 'Immediate';
 
     return (
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-                <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+                <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                     <SecondaryHeader
                         title="Capability"
                         onBack={() => navigation.goBack()}
@@ -86,8 +93,8 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 <TouchableOpacity
                                     activeOpacity={0.7}
                                     onPress={onSave}
-                                    disabled={saving}
-                                    style={[styles.saveBtn, { backgroundColor: currentTheme.colors.primary }]}
+                                    disabled={saving || !isValid}
+                                    style={[styles.saveBtn, { backgroundColor: isValid ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.2) }]}
                                 >
                                     {saving
                                         ? <ActivityIndicator size="small" color={currentTheme.colors.background} />
@@ -118,7 +125,7 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         <View style={styles.viewSection}>
                             <View style={styles.sectionHeader}>
                                 <Zap size={16} color={currentTheme.colors.primary} />
-                                <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>TECHNICAL STACK</Text>
+                                <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Technical Stack</Text>
                             </View>
                             <SurfaceCard style={styles.viewCard}>
                                 <View style={styles.tagContainer}>
@@ -135,10 +142,10 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         <View style={styles.viewSection}>
                             <View style={styles.sectionHeader}>
                                 <Timer size={16} color={currentTheme.colors.primary} />
-                                <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>AVAILABILITY</Text>
+                                <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Availability</Text>
                             </View>
                             <SurfaceCard style={styles.viewCard}>
-                                <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted }]}>JOINING TIMELINE</Text>
+                                <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted }]}>Joining Timeline</Text>
                                 <Text style={[styles.viewFieldValue, { color: currentTheme.colors.text }]}>{availabilityLabel}</Text>
                             </SurfaceCard>
                         </View>
@@ -172,11 +179,11 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <Zap size={16} color={currentTheme.colors.primary} />
-                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>TECHNICAL STACK</Text>
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Technical Stack</Text>
                                 </View>
 
                                 <SurfaceCard style={styles.card}>
-                                    <View style={[styles.inputContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
+                                    <View style={[styles.inputContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: errors.skills ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1) }]}>
                                         <TextInput
                                             style={[styles.input, { color: currentTheme.colors.text }]}
                                             placeholder="Add a skill..."
@@ -192,6 +199,7 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                             </TouchableOpacity>
                                         )}
                                     </View>
+                                    {errors.skills && <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{errors.skills.message}</Text>}
 
                                     {showSuggestions && skillInput.length > 0 && suggestions.length > 0 && (
                                         <View style={styles.suggestionsContainer}>
@@ -231,7 +239,7 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <Timer size={16} color={currentTheme.colors.primary} />
-                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>AVAILABILITY</Text>
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Availability</Text>
                                 </View>
                                 <View style={styles.tileContainer}>
                                     {AVAILABILITY_OPTIONS.map((opt) => {
@@ -241,7 +249,10 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                 key={opt.value}
                                                 activeOpacity={0.8}
                                                 style={[styles.tile, { backgroundColor: isActive ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.03), borderColor: isActive ? currentTheme.colors.primary : alpha(currentTheme.colors.border, 0.1) }]}
-                                                onPress={() => setAvailability(opt.value as Availability)}
+                                                onPress={() => {
+                                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    setValue('availability', opt.value as Availability, { shouldValidate: true });
+                                                }}
                                             >
                                                 <Text style={[styles.tileText, { color: isActive ? currentTheme.colors.background : currentTheme.colors.text }]}>{opt.label}</Text>
                                                 {isActive && <Check size={14} color={currentTheme.colors.background} strokeWidth={4} />}
@@ -272,20 +283,21 @@ const styles = StyleSheet.create({
     section: { marginBottom: 32 },
     viewSection: { marginBottom: 28, marginTop: 20 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-    sectionLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+    sectionLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
     card: { padding: 16, borderRadius: 28 },
     viewCard: { padding: 20, borderRadius: 24 },
-    viewFieldLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 6 },
+    viewFieldLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6 },
     viewFieldValue: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
     inputContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 56, borderRadius: 18, borderWidth: 1 },
     input: { flex: 1, fontSize: 16, fontWeight: '600' },
+    errorText: { fontSize: 11, color: '#FF4444', marginTop: 8, marginLeft: 4, fontWeight: '600' },
     addInlineBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
     suggestionsContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16 },
     suggestionItem: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12 },
     suggestionText: { fontSize: 12, fontWeight: '700' },
     tagContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 16, minHeight: 40 },
     tag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
-    tagText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
+    tagText: { fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
     viewTag: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
     viewTagText: { fontSize: 13, fontWeight: '700' },
     emptyText: { fontSize: 14, fontStyle: 'italic', padding: 8 },
@@ -297,3 +309,4 @@ const styles = StyleSheet.create({
 });
 
 export default memo(EditSkillsScreen);
+

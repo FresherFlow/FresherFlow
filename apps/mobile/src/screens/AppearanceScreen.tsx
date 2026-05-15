@@ -6,8 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   StatusBar,
-  Platform,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, Palette, Moon, Sun, Smartphone, Zap } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -16,6 +16,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
 // Premium System
+import { mScale } from '@/system/constants/dimensions';
+import { TYPOGRAPHY } from '@/system/constants/typography';
 import { Screen } from '@/system/layout/Layout';
 import { SecondaryHeader, PremiumToggle } from '@/system/components/PremiumPrimitives';
 
@@ -27,6 +29,7 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const AppearanceScreen = ({ navigation }: Props) => {
+  const insets = useSafeAreaInsets();
   const { currentTheme, themeMode, setThemeMode, isAmoled, toggleAmoled } = useTheme();
 
   const handleModeSelect = useCallback((mode: 'light' | 'dark' | 'system') => {
@@ -44,7 +47,7 @@ const AppearanceScreen = ({ navigation }: Props) => {
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
       
-      <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+      <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
         <SecondaryHeader 
             title="Appearance" 
             onBack={() => navigation.goBack()}
@@ -56,7 +59,7 @@ const AppearanceScreen = ({ navigation }: Props) => {
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>Display Mode</Text>
           <View style={styles.modeGrid}>
             <ModeCard 
-              label={isAmoled && themeMode === 'dark' ? "AMOLED" : "Dark"} 
+              label={isAmoled && themeMode === 'dark' ? "Amoled" : "Dark"} 
               active={themeMode === 'dark'} 
               icon={Moon} 
               onPress={() => handleModeSelect('dark')} 
@@ -81,9 +84,9 @@ const AppearanceScreen = ({ navigation }: Props) => {
 
         {isDarkMode && (
             <View style={styles.section}>
-                <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>OLED Optimization</Text>
+                <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>Oled Optimization</Text>
                 <PremiumToggle 
-                    title="AMOLED Black"
+                    title="Amoled Black"
                     description="Pure black background for OLED screens"
                     value={isAmoled}
                     onValueChange={onToggleAmoled}
@@ -156,12 +159,9 @@ const styles = StyleSheet.create({
     marginBottom: 40,
   },
   sectionTitle: {
-    fontSize: 11,
-    fontWeight: '900',
-    marginBottom: 16,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-    marginLeft: 4,
+      ...TYPOGRAPHY.label,
+      marginBottom: 16,
+      marginLeft: 4,
   },
   modeGrid: {
     flexDirection: 'row',
@@ -218,18 +218,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   infoTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+      fontSize: mScale(16),
+      fontWeight: '800',
+      letterSpacing: -0.5,
   },
   infoSubtitle: {
-    fontSize: 13,
-    fontWeight: '500',
-    marginTop: 2,
-    lineHeight: 18,
+      fontSize: mScale(13),
+      fontWeight: '500',
+      marginTop: 2,
+      lineHeight: 18,
   },
 });
 
 export default memo(AppearanceScreen);
-
-

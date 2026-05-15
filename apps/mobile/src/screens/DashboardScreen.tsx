@@ -1,17 +1,19 @@
 import React, { memo, useRef, useCallback } from 'react';
+import { FlashList } from '@shopify/flash-list';
+import { Opportunity } from '@fresherflow/types';
+
 import * as Haptics from 'expo-haptics';
 import {
     StyleSheet,
     Text,
     View,
-    FlatList,
     TouchableOpacity,
     StatusBar,
-    Platform,
     NativeSyntheticEvent,
     NativeScrollEvent,
     ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     LayoutDashboard,
     Search,
@@ -43,6 +45,7 @@ import { saveDetailCache } from '@/utils/offlineCache';
 import { useSaved } from '@repo/frontend-core';
 
 const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
+    const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const { hideTabBar, showTabBar } = useUI();
     const { highlights, recentActivity, latestJobs, appliedJobs, loading, refresh } = useDashboard();
@@ -92,7 +95,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <Bookmark size={16} color={currentTheme.colors.primary} />
                         </View>
                         <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{recentActivity.length}</Text>
-                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>SAVED</Text>
+                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Saved</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => setActiveTab('applied')}
@@ -104,14 +107,14 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>
                             {appliedJobs.length}
                         </Text>
-                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>APPLIED</Text>
+                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Applied</Text>
                     </TouchableOpacity>
                     <View style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.warning, 0.05), borderRadius: 24 }]}>
                         <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
                             <Trophy size={16} color={currentTheme.colors.warning} />
                         </View>
                         <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>0</Text>
-                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>OFFERS</Text>
+                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Offers</Text>
                     </View>
                 </View>
 
@@ -167,8 +170,8 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                         navigation.navigate('JobDetail', { opportunity: opp, opportunityId: opp.id });
                                     }}
                                 >
-                                    <View style={styles.deadlineBadge}>
-                                        <Text style={[styles.deadlineBadgeText, { color: currentTheme.colors.error }]}>URGENT</Text>
+                                    <View style={[styles.deadlineBadge, { backgroundColor: alpha(currentTheme.colors.inverseText, 0.1) }]}>
+                                        <Text style={[styles.deadlineBadgeText, { color: currentTheme.colors.error }]}>Urgent</Text>
                                     </View>
                                     <Text style={[styles.deadlineTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{opp.title}</Text>
                                     <Text style={[styles.deadlineCompany, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>{opp.company}</Text>
@@ -201,26 +204,29 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 onPress={() => navigation.navigate('Explore')}
             >
                 <Search size={18} color={currentTheme.colors.background} />
-                <Text style={[styles.actionBtnText, { color: currentTheme.colors.background }]}>FIND JOBS</Text>
+                <Text style={[styles.actionBtnText, { color: currentTheme.colors.background }]}>Find Jobs</Text>
             </TouchableOpacity>
         </View>
     );
 
-    const paddingTopOs = Platform.OS === 'ios' ? 50 : 20;
+    const paddingTopOs = insets.top + 10;
+
 
     return (
         <Screen safe={false}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-            <FlatList
+            <FlashList<Opportunity>
                 data={filteredItems}
                 keyExtractor={(item) => item.id}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
-                stickyHeaderIndices={[0]}
-                renderItem={({ item }) => (
+                // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                estimatedItemSize={160}
+                renderItem={({ item, index }) => (
                     <JobCard
                         opportunity={item}
+                        index={index}
                         onPress={() => {
                             void saveDetailCache(item);
                             navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
@@ -260,16 +266,12 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     tab: {
-        paddingHorizontal: 16,
-        paddingVertical: 10,
         borderRadius: 20,
-        backgroundColor: 'rgba(0,0,0,0.03)',
     },
     tabText: {
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: '800',
         letterSpacing: 0.5,
-        textTransform: 'uppercase',
     },
     statsGrid: {
         flexDirection: 'row',
@@ -296,9 +298,9 @@ const styles = StyleSheet.create({
         letterSpacing: -0.5,
     },
     statLabel: {
-        fontSize: 9,
+        fontSize: 10,
         fontWeight: '800',
-        letterSpacing: 1,
+        letterSpacing: 0.5,
         marginTop: 4,
     },
     sectionHeader: {
@@ -383,10 +385,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
     },
     deadlineBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 2,
         borderRadius: 6,
-        backgroundColor: 'rgba(255,255,255,0.1)',
         alignSelf: 'flex-start',
         marginBottom: 8,
     },

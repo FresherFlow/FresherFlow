@@ -1,92 +1,18 @@
-import React, { useEffect, useRef } from 'react';
-import { StyleSheet, Text, View, Dimensions, Animated, Image } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text, View, Dimensions, Image } from 'react-native';
 import { Briefcase, Zap, Users } from 'lucide-react-native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import LogoImage from '@/assets/logo.png';
 import LogoWhiteImage from '@/assets/logo-white.png';
+import { MotiView, AnimatePresence } from 'moti';
 
 const { width } = Dimensions.get('window');
-
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
 
 const MESSAGES = [
   { text: 'Shared by Scouts. Verified by Us.', icon: Zap },
   { text: 'Collaborative Opportunity Discovery.', icon: Briefcase },
   { text: 'Join the contributor network.', icon: Users },
 ];
-
-export const BrandIntroLoader: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
-  const { currentTheme } = useTheme();
-  const styles = createStyles(currentTheme);
-
-  const logoScale = useRef(new Animated.Value(0.8)).current;
-  const logoOpacity = useRef(new Animated.Value(0)).current;
-  const msgOpacity = useRef(new Animated.Value(1)).current;
-  const progressWidth = useRef(new Animated.Value(0)).current;
-  const [msgIndex, setMsgIndex] = React.useState(0);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(logoScale, { toValue: 1, duration: 1000, useNativeDriver: true }),
-      Animated.timing(logoOpacity, { toValue: 1, duration: 800, useNativeDriver: true }),
-      Animated.timing(progressWidth, { toValue: 1, duration: 2500, useNativeDriver: false }),
-    ]).start();
-
-    const interval = setInterval(() => {
-      Animated.timing(msgOpacity, { toValue: 0, duration: 200, useNativeDriver: true }).start(() => {
-        setMsgIndex((prev) => (prev + 1) % MESSAGES.length);
-        Animated.timing(msgOpacity, { toValue: 1, duration: 200, useNativeDriver: true }).start();
-      });
-    }, 800);
-
-    const timeout = setTimeout(() => {
-      onComplete();
-    }, 2500);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, []);
-
-  const CurrentIcon = MESSAGES[msgIndex].icon;
-
-  return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <Animated.View style={[styles.logoContainer, { transform: [{ scale: logoScale }], opacity: logoOpacity }]}>
-          <View style={styles.logoBox}>
-            <Image 
-              source={currentTheme.mode === 'dark' ? LogoWhiteImage : LogoImage}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
-          </View>
-          <Text style={styles.brandName}>FresherFlow</Text>
-          <Text style={styles.tagline}>Opportunity Discovery Network</Text>
-        </Animated.View>
-
-        <Animated.View style={[styles.messageRow, { opacity: msgOpacity }]}>
-          <CurrentIcon size={16} color={currentTheme.colors.primary} />
-          <Text style={styles.messageText}>{MESSAGES[msgIndex].text}</Text>
-        </Animated.View>
-      </View>
-
-      <View style={styles.footer}>
-        <View style={styles.progressBar}>
-          <Animated.View
-            style={[styles.progressFill, {
-              width: progressWidth.interpolate({ inputRange: [0, 1], outputRange: ['0%', '100%'] })
-            }]}
-          />
-        </View>
-      </View>
-    </View>
-  );
-};
 
 const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
@@ -130,12 +56,11 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     letterSpacing: -1,
   },
   tagline: {
-    fontSize: 14,
+    fontSize: 15,
     color: theme.colors.textMuted,
     marginTop: 8,
     fontWeight: '700',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
   },
   messageRow: {
     flexDirection: 'row',
@@ -171,3 +96,79 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     backgroundColor: theme.colors.primary,
   },
 });
+
+const alpha = (color: string, opacity: number) => {
+    if (color.startsWith('rgba')) return color;
+    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+};
+
+export const BrandIntroLoader: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+  const { currentTheme } = useTheme();
+  const styles = createStyles(currentTheme);
+  const [msgIndex, setMsgIndex] = React.useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setMsgIndex((prev) => (prev + 1) % MESSAGES.length);
+    }, 1500);
+
+    const timeout = setTimeout(() => {
+      onComplete();
+    }, 3500);
+
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, []);
+
+  const CurrentIcon = MESSAGES[msgIndex].icon;
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.content}>
+        <MotiView 
+            from={{ opacity: 0, scale: 0.9, translateY: 10 }}
+            animate={{ opacity: 1, scale: 1, translateY: 0 }}
+            transition={{ type: 'spring', damping: 15, stiffness: 100 }}
+            style={styles.logoContainer}
+        >
+          <View style={styles.logoBox}>
+            <Image 
+              source={currentTheme.mode === 'dark' ? LogoWhiteImage : LogoImage}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+          </View>
+          <Text style={styles.brandName}>FresherFlow</Text>
+          <Text style={styles.tagline}>Opportunity Discovery Network</Text>
+        </MotiView>
+
+        <AnimatePresence exitBeforeEnter>
+            <MotiView 
+                key={`msg-${msgIndex}`}
+                from={{ opacity: 0, translateY: 5 }}
+                animate={{ opacity: 1, translateY: 0 }}
+                exit={{ opacity: 0, translateY: -5 }}
+                transition={{ type: 'timing', duration: 300 }}
+                style={styles.messageRow}
+            >
+                <CurrentIcon size={16} color={currentTheme.colors.primary} />
+                <Text style={styles.messageText}>{MESSAGES[msgIndex].text}</Text>
+            </MotiView>
+        </AnimatePresence>
+      </View>
+
+      <View style={styles.footer}>
+        <View style={styles.progressBar}>
+          <MotiView
+            from={{ width: 0 }}
+            animate={{ width: width * 0.4 }}
+            transition={{ type: 'timing', duration: 3500 }}
+            style={styles.progressFill}
+          />
+        </View>
+      </View>
+    </View>
+  );
+};

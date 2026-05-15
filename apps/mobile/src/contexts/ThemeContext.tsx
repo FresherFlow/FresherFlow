@@ -2,31 +2,43 @@ import React, { createContext, useState, useContext, useEffect, ReactNode, useMe
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, useColorScheme } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { theme as staticTheme } from '../theme';
+import { theme as staticTheme, alpha } from '../theme';
 
 // ─── Nuvio Base Colors ───────────────────────────────────────────
-const getNuvioDarkColors = (isAmoled: boolean) => ({
-  primary: '#F5F7F8',
-  secondary: '#FF6B6B',
-  background: isAmoled ? '#000000' : '#0D0D0D', 
-  darkBackground: isAmoled ? '#000000' : '#0D0D0D',
-  surface: isAmoled ? '#050505' : '#1A1A1A',
-  surfaceMuted: isAmoled ? '#0A0A0A' : '#121212',
-  accent: '#F5F7F8',
-  text: '#F5F7F8',
-  textMuted: 'rgba(245, 247, 248, 0.6)',
-  border: isAmoled ? 'rgba(245, 247, 248, 0.08)' : 'rgba(245, 247, 248, 0.12)',
-  muted: 'rgba(245, 247, 248, 0.3)',
-  error: '#FF5252',
-  success: '#4ADE80',
-  warning: '#FBBF24',
-  info: '#D2E8F7',
-  overlay: isAmoled ? 'rgba(0, 0, 0, 0.9)' : 'rgba(13, 15, 20, 0.8)',
-  inverseText: '#0F172A',
-  glassBackground: 'rgba(255, 255, 255, 0.03)',
-  glassBorder: 'rgba(255, 255, 255, 0.08)',
-  glassMuted: 'rgba(255, 255, 255, 0.05)',
-});
+const getNuvioDarkColors = (isAmoled: boolean) => {
+  const primary = '#F5F7F8';
+  const background = isAmoled ? '#000000' : '#0D0D0D';
+  
+  return {
+    primary,
+    secondary: '#FF6B6B',
+    background,
+    darkBackground: isAmoled ? '#000000' : '#0D0D0D',
+    surface: isAmoled ? '#050505' : '#1A1A1A',
+    surfaceMuted: isAmoled ? '#0A0A0A' : '#121212',
+    accent: primary,
+    text: primary,
+    textMuted: alpha(primary, 0.6),
+    border: isAmoled ? alpha(primary, 0.08) : alpha(primary, 0.12),
+    muted: alpha(primary, 0.3),
+    error: '#FF5252',
+    success: '#4ADE80',
+    warning: '#FBBF24',
+    info: '#D2E8F7',
+    overlay: isAmoled ? alpha('#000000', 0.9) : alpha('#0D0F14', 0.8),
+    inverseText: '#0F172A',
+    glassBackground: alpha('#FFFFFF', 0.03),
+    glassBorder: alpha('#FFFFFF', 0.08),
+    glassMuted: alpha('#FFFFFF', 0.05),
+    // Semantic Tokens
+    dividerSubtle: alpha(primary, 0.05),
+    glassSubtle: alpha(primary, 0.03),
+    overlaySubtle: isAmoled ? alpha('#000000', 0.7) : alpha('#0D0F14', 0.7),
+    // Static Translucent Tokens
+    blackTranslucent: alpha('#000000', 0.05),
+    blackOverlay: alpha('#000000', 0.5),
+  };
+};
 
 const lightBaseColors = {
   primary: '#1A1D23',
@@ -44,11 +56,18 @@ const lightBaseColors = {
   success: '#10B981',
   warning: '#F59E0B',
   info: '#3B82F6',
-  overlay: 'rgba(15, 23, 42, 0.4)',
+  overlay: alpha('#0F172A', 0.4),
   inverseText: '#FFFFFF',
-  glassBackground: 'rgba(255, 255, 255, 0.4)',
-  glassBorder: 'rgba(0, 0, 0, 0.05)',
-  glassMuted: 'rgba(0, 0, 0, 0.05)',
+  glassBackground: alpha('#FFFFFF', 0.4),
+  glassBorder: alpha('#000000', 0.05),
+  glassMuted: alpha('#000000', 0.05),
+  // Semantic Tokens
+  dividerSubtle: alpha('#0F172A', 0.05),
+  glassSubtle: alpha('#0F172A', 0.03),
+  overlaySubtle: alpha('#0F172A', 0.4),
+  // Static Translucent Tokens
+  blackTranslucent: alpha('#000000', 0.05),
+  blackOverlay: alpha('#000000', 0.5),
 };
 
 const DEFAULT_TOKENS = {

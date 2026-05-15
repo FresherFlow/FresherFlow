@@ -3,13 +3,14 @@ import {
     StyleSheet,
     Text,
     View,
-    FlatList,
     TouchableOpacity,
     ActivityIndicator,
     Platform,
     Alert,
     ScrollView,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { FlashList } from '@shopify/flash-list';
 import { 
     Briefcase,
     Trash2, 
@@ -56,6 +57,7 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) => {
+    const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const [loading, setLoading] = useState(true);
     const [actions, setActions] = useState<ActionRecord[]>([]);
@@ -78,7 +80,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
     }, [loadData]);
 
     const handleUpdateStatus = async (opportunityId: string, newStatus: ActionType) => {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         try {
             await actionsApi.track(opportunityId, newStatus);
             setActions(prev => prev.map(a => 
@@ -140,7 +142,10 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
             <SurfaceCard style={styles.jobCard}>
                 <TouchableOpacity 
                     activeOpacity={0.7}
-                    onPress={() => navigation.navigate('JobDetail', { opportunityId: opp.id })}
+                    onPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        navigation.navigate('JobDetail', { opportunityId: opp.id });
+                    }}
                     style={styles.cardHeader}
                 >
                     <CompanyLogo 
@@ -186,7 +191,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
 
     return (
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
-            <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+            <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                 <SecondaryHeader 
                     title="Tracker" 
                     onBack={() => navigation.goBack()}
@@ -245,10 +250,12 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                     <ActivityIndicator color={currentTheme.colors.primary} />
                 </View>
             ) : (
-                <FlatList
+                <FlashList
                     data={activeItems}
                     keyExtractor={item => item.id}
                     renderItem={renderItem}
+                    // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                    estimatedItemSize={140}
                     contentContainerStyle={styles.listContent}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
@@ -263,6 +270,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                     }
                     onRefresh={loadData}
                     refreshing={false}
+                    removeClippedSubviews={Platform.OS === 'android'}
                 />
             )}
         </Screen>
@@ -288,10 +296,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     tabText: {
-        fontSize: 13,
+        fontSize: 14,
         fontWeight: '800',
         letterSpacing: 0.5,
-        textTransform: 'uppercase',
     },
     countBadge: {
         minWidth: 20,

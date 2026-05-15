@@ -22,15 +22,17 @@ import {
   CheckCircle2,
   Share2,
   LogOut,
-  HelpCircle
+  HelpCircle,
+  Users
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
-import { alpha, theme } from '@/theme';
+import { alpha } from '@/theme';
 import { useProfile } from '@/hooks/useProfile';
 import { useFollows } from '@/hooks/useFollows';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useMyShares } from '@/hooks/useMyShares';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
@@ -42,16 +44,16 @@ import { TYPOGRAPHY } from '@/system/constants/typography';
 import { useUI } from '@/contexts/UIContext';
 import { calculateProfileCompletion } from '@/utils/profileCompletion';
 import { PremiumPopup } from '@/system/components/PremiumPopup';
+import { getDisplayHandle } from '@fresherflow/utils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
-
-
 
 const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
   const { user, profile, handleLogout: onLogout } = useProfile();
   const { unreadCount } = useNotifications();
+  const { stats: contributionStats } = useMyShares();
   const { follows, unfollow } = useFollows();
   const { hideTabBar, showTabBar } = useUI();
 
@@ -103,7 +105,7 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
       >
           <View style={[styles.stickyHeader, { paddingTop: insets.top + 10, backgroundColor: currentTheme.colors.background }]}>
               <PremiumHeader
-                  title="Identity"
+                  title="Profile"
                   subtitle="Manage your professional presence"
                   rightSlot={
                       <TouchableOpacity
@@ -113,29 +115,14 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                       >
                           <Bell size={22} color={currentTheme.colors.text} />
                           {unreadCount > 0 && (
-                              <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary }]} />
+                              <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]} />
                           )}
                       </TouchableOpacity>
                   }
               />
           </View>
           <View style={styles.container}>
-              {/* Profile Card */}
-              <View style={styles.identitySection}>
-                  <View style={[styles.avatarBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
-                      <UserIcon size={40} color={currentTheme.colors.text} strokeWidth={1.5} />
-                      {!isGuest && (
-                          <View style={[styles.verifiedBadge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]}>
-                              <CheckCircle2 size={12} color={currentTheme.colors.background} strokeWidth={3} />
-                          </View>
-                      )}
-                  </View>
-                  <View style={styles.identityText}>
-                      <Text style={[styles.name, { color: currentTheme.colors.text }]}>{user?.fullName || 'Guest Explorer'}</Text>
-                      <Text style={[styles.email, { color: currentTheme.colors.textMuted }]}>{user?.email || 'Join FresherFlow to start'}</Text>
-                  </View>
-              </View>
-
+              
               {/* Completion Card */}
               {profile && user && (
                 <View style={[styles.completionSection, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
@@ -146,11 +133,6 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <View style={[styles.progressTrack, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
                         <View style={[styles.progressFill, { width: `${calculateProfileCompletion(profile).percentage}%`, backgroundColor: currentTheme.colors.primary }]} />
                     </View>
-                    <Text style={[styles.completionSub, { color: currentTheme.colors.textMuted }]}>
-                        {calculateProfileCompletion(profile).percentage === 100
-                            ? 'Your professional identity is fully optimized for top recruiters.'
-                            : `Complete ${calculateProfileCompletion(profile).missingFields[0]} to improve your match score.`}
-                    </Text>
                 </View>
               )}
 
@@ -166,6 +148,51 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
               {/* Menu Sections */}
               <View style={styles.menuSections}>
+                  
+                  {!isGuest && (
+                    <>
+                        <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Identity Card</Text>
+                        <SurfaceCard style={styles.identityCard}>
+                            <View style={styles.identityHeader}>
+                                <View style={[styles.avatarBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
+                                    <UserIcon size={24} color={currentTheme.colors.text} strokeWidth={2} />
+                                    <View style={[styles.verifiedBadge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]}>
+                                        <CheckCircle2 size={8} color={currentTheme.colors.background} strokeWidth={3} />
+                                    </View>
+                                </View>
+                                <View style={styles.identityInfo}>
+                                    <Text style={[styles.name, { color: currentTheme.colors.text }]}>
+                                        {getDisplayHandle(user)}
+                                    </Text>
+                                    <Text style={[styles.email, { color: currentTheme.colors.textMuted }]}>
+                                        {user?.fullName || user?.email}
+                                    </Text>
+                                </View>
+                            </View>
+                            
+                            <View style={[styles.cardDivider, { backgroundColor: alpha(currentTheme.colors.border, 0.05) }]} />
+                            
+                            <View style={styles.cardActions}>
+                                <TouchableOpacity 
+                                    style={styles.cardActionBtn}
+                                    onPress={() => onNavigate('AccountManage')}
+                                >
+                                    <Settings size={16} color={currentTheme.colors.textMuted} />
+                                    <Text style={[styles.cardActionText, { color: currentTheme.colors.textMuted }]}>Account Settings</Text>
+                                </TouchableOpacity>
+                                
+                                <TouchableOpacity 
+                                    style={[styles.cardActionBtn, styles.logoutBtn]}
+                                    onPress={onLogoutPress}
+                                >
+                                    <LogOut size={16} color={currentTheme.colors.error} />
+                                    <Text style={[styles.cardActionText, { color: currentTheme.colors.error }]}>Sign Out</Text>
+                                </TouchableOpacity>
+                            </View>
+                        </SurfaceCard>
+                    </>
+                  )}
+
                   <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Career Assets</Text>
                   <SurfaceCard style={styles.groupCard}>
                       <MenuRow
@@ -191,17 +218,40 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         label="Application Tracker"
                         onPress={() => onNavigate('ApplicationTracker')}
                         currentTheme={currentTheme}
-                      />
-                      <MenuRow
-                        icon={Share2}
-                        label="My Shares"
-                        onPress={() => onNavigate('MyShares')}
-                        currentTheme={currentTheme}
                         isLast
                       />
-                      </SurfaceCard>
-
-
+                  </SurfaceCard>
+                  
+                  {!isGuest && (
+                    <>
+                        <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>My Contributions</Text>
+                        <SurfaceCard style={styles.groupCard}>
+                            <View style={styles.statsRow}>
+                                <View style={styles.statBox}>
+                                    <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{contributionStats.totalShared}</Text>
+                                    <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Shared</Text>
+                                </View>
+                                <View style={[styles.statDivider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
+                                <View style={styles.statBox}>
+                                    <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{contributionStats.totalPublished}</Text>
+                                    <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Live</Text>
+                                </View>
+                                <View style={[styles.statDivider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
+                                <View style={styles.statBox}>
+                                    <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{contributionStats.approvalRate}%</Text>
+                                    <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Trust</Text>
+                                </View>
+                            </View>
+                            <MenuRow
+                                icon={Share2}
+                                label="View My Contribution History"
+                                onPress={() => onNavigate('MyShares')}
+                                currentTheme={currentTheme}
+                                isLast
+                            />
+                        </SurfaceCard>
+                    </>
+                  )}
 
                   {!isGuest && (follows.companies.length > 0 || follows.tags.length > 0 || follows.contributors.length > 0) && (
                     <>
@@ -240,15 +290,15 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                   <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Community & System</Text>
                   <SurfaceCard style={styles.groupCard}>
                       <MenuRow
-                        icon={Palette}
-                        label="Interface Appearance"
-                        onPress={() => navigation.navigate('Appearance')}
+                        icon={Users}
+                        label="Invite & Earn Badges"
+                        onPress={() => onNavigate('Invite')}
                         currentTheme={currentTheme}
                       />
                       <MenuRow
-                        icon={Settings}
-                        label="Security & Account"
-                        onPress={() => onNavigate('AccountManage')}
+                        icon={Palette}
+                        label="Interface Appearance"
+                        onPress={() => navigation.navigate('Appearance')}
                         currentTheme={currentTheme}
                       />
                       <MenuRow
@@ -256,13 +306,6 @@ const ProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         label="Support & Feedback"
                         onPress={onSupportPress}
                         currentTheme={currentTheme}
-                      />
-                      <MenuRow
-                        icon={LogOut}
-                        label="Sign Out"
-                        onPress={onLogoutPress}
-                        currentTheme={currentTheme}
-                        destructive
                         isLast
                       />
                   </SurfaceCard>
@@ -320,44 +363,73 @@ const styles = StyleSheet.create({
     container: {
         paddingHorizontal: 20,
     },
-    identitySection: {
+    identityCard: {
+        padding: 20,
+        borderRadius: 28,
+        marginBottom: 8,
+    },
+    identityHeader: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 32,
-        marginTop: 12,
         gap: 16,
     },
     avatarBox: {
-        width: 72,
-        height: 72,
-        borderRadius: 24,
+        width: 56,
+        height: 56,
+        borderRadius: 20,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 1,
+        position: 'relative',
     },
     verifiedBadge: {
         position: 'absolute',
-        bottom: -4,
-        right: -4,
-        width: 22,
-        height: 22,
-        borderRadius: 11,
+        bottom: -2,
+        right: -2,
+        width: 18,
+        height: 18,
+        borderRadius: 9,
         alignItems: 'center',
         justifyContent: 'center',
         borderWidth: 2,
     },
-    identityText: {
+    identityInfo: {
         flex: 1,
     },
     name: {
-        fontSize: mScale(22),
+        fontSize: mScale(17),
         fontWeight: '900',
-        letterSpacing: -0.5,
+        letterSpacing: -0.3,
     },
     email: {
-        fontSize: 14,
+        fontSize: 12,
         fontWeight: '600',
         marginTop: 2,
+    },
+    cardDivider: {
+        height: 1,
+        marginVertical: 16,
+        width: '100%',
+    },
+    cardActions: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    cardActionBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingVertical: 4,
+    },
+    logoutBtn: {
+        // Optional specific styles for logout
+    },
+    cardActionText: {
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
     },
     authButton: {
         height: 60,
@@ -396,16 +468,10 @@ const styles = StyleSheet.create({
         borderRadius: 3,
         width: '100%',
         overflow: 'hidden',
-        marginBottom: 12,
     },
     progressFill: {
         height: '100%',
         borderRadius: 3,
-    },
-    completionSub: {
-        fontSize: 12,
-        fontWeight: '600',
-        lineHeight: 18,
     },
     menuSections: {
         gap: 0,
@@ -462,24 +528,7 @@ const styles = StyleSheet.create({
     },
     statDivider: {
         width: 1,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.dividerSubtle,
-    },
-    footer: {
-        marginTop: 60,
-        alignItems: 'center',
-    },
-    footerText: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 2,
-        opacity: 0.5,
-    },
-    versionText: {
-        fontSize: 10,
-        fontWeight: '700',
-        marginTop: 6,
-        letterSpacing: 1,
+        height: 24,
     },
     notificationBtn: {
         width: 44,
@@ -496,7 +545,7 @@ const styles = StyleSheet.create({
         height: 10,
         borderRadius: 5,
         borderWidth: 2,
-        borderColor: 'transparent', // Will be filled with primary in the component
+        borderColor: 'transparent',
     },
     followsList: {
         padding: 16,

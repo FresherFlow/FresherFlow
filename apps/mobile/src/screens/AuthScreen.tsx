@@ -12,7 +12,9 @@ import {
     ScrollView,
     Alert,
 } from 'react-native';
-import { Chrome, Mail, ArrowRight, ShieldCheck, ChevronLeft } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Controller } from 'react-hook-form';
+import { Chrome, Mail, ArrowRight, ShieldCheck } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLogin } from '@/hooks/useLogin';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -32,24 +34,31 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const AuthScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
+    const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const {
-        email, setEmail,
-        otp, setOtp,
+        control,
+        handleSubmit,
+        email,
+        otp,
         otpSent, setOtpSent,
         loading,
         handleSendOtp,
         handleVerifyOtp,
         handleResend,
         resendTimer,
+        errors,
+        isValid,
+        setValue,
+        handleGoogleSignIn,
     } = useLogin(route);
 
     // Auto-verify when OTP is 6 digits
     useEffect(() => {
         if (otp.length === 6 && !loading) {
-            void handleVerifyOtp();
+            void handleSubmit(handleVerifyOtp)();
         }
-    }, [handleVerifyOtp, loading, otp]);
+    }, [handleSubmit, handleVerifyOtp, loading, otp]);
 
     const onGuestContinue = () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -60,24 +69,18 @@ const AuthScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             <KeyboardAvoidingView
-                behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
             >
-                <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+                <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                     <PremiumHeader
                         title={otpSent ? "Verify" : "Join"}
                         subtitle={otpSent ? "Authentication" : "Discovery-first platform"}
-                        leftSlot={otpSent ? (
-                            <TouchableOpacity
-                                onPress={() => {
-                                    setOtpSent(false);
-                                    setOtp('');
-                                }}
-                                style={styles.backBtn}
-                            >
-                                <ChevronLeft size={24} color={currentTheme.colors.text} />
-                            </TouchableOpacity>
-                        ) : undefined}
+                        showBack={otpSent}
+                        onBack={() => {
+                            setOtpSent(false);
+                            setValue('otp', '');
+                        }}
                     />
                 </View>
 
@@ -101,47 +104,57 @@ const AuthScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                         <View style={styles.form}>
                             {!otpSent ? (
                                 <>
-                                    <View style={[styles.inputGroup, { borderBottomColor: alpha(currentTheme.colors.text, 0.1) }]}>
-                                        <Mail size={18} color={alpha(currentTheme.colors.text, 0.4)} />
-                                        <TextInput
-                                            style={[styles.cleanInput, { color: currentTheme.colors.text }]}
-                                            placeholder="Enter your email"
-                                            placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.5)}
-                                            value={email}
-                                            onChangeText={setEmail}
-                                            autoCapitalize="none"
-                                            keyboardType="email-address"
-                                            autoComplete="email"
-                                        />
-                                    </View>
+                                    <Controller
+                                        control={control}
+                                        name="email"
+                                        render={({ field: { onChange, onBlur, value } }) => (
+                                            <View>
+                                                <View style={[
+                                                    styles.inputGroup, 
+                                                    { borderBottomColor: errors.email ? currentTheme.colors.error : alpha(currentTheme.colors.text, 0.1) }
+                                                ]}>
+                                                    <Mail size={18} color={alpha(currentTheme.colors.text, 0.4)} />
+                                                    <TextInput
+                                                        style={[styles.cleanInput, { color: currentTheme.colors.text }]}
+                                                        placeholder="Enter your email"
+                                                        placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.5)}
+                                                        value={value}
+                                                        onChangeText={onChange}
+                                                        onBlur={onBlur}
+                                                        autoCapitalize="none"
+                                                        keyboardType="email-address"
+                                                        autoComplete="email"
+                                                    />
+                                                </View>
+                                                {errors.email && (
+                                                    <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>
+                                                        {errors.email.message}
+                                                    </Text>
+                                                )}
+                                            </View>
+                                        )}
+                                    />
 
                                      <TouchableOpacity
                                         style={[
                                             styles.actionBtn,
                                             {
-                                                backgroundColor: email ? currentTheme.colors.text : alpha(currentTheme.colors.text, 0.4),
+                                                backgroundColor: isValid ? currentTheme.colors.text : alpha(currentTheme.colors.text, 0.4),
                                                 opacity: loading ? 0.7 : 1
                                             }
                                         ]}
-                                        onPress={() => {
-                                            try {
-                                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                            } catch (e) {
-                                                console.warn('[Auth] Haptics failed:', e);
-                                            }
-                                            void handleSendOtp();
-                                        }}
-                                        disabled={loading || !email}
+                                        onPress={handleSubmit(handleSendOtp)}
+                                        disabled={loading || !isValid}
                                         activeOpacity={0.8}
                                     >
                                         {loading ? (
                                             <View style={styles.btnInner}>
                                                 <ActivityIndicator color={currentTheme.colors.background} />
-                                                <Text style={[styles.actionText, { color: currentTheme.colors.background, marginLeft: 8 }]}>SENDING...</Text>
+                                                <Text style={[styles.actionText, { color: currentTheme.colors.background, marginLeft: 8 }]}>Sending...</Text>
                                             </View>
                                         ) : (
                                             <View style={styles.btnInner}>
-                                                <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>CONTINUE</Text>
+                                                <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Continue</Text>
                                                 <ArrowRight size={16} color={currentTheme.colors.background} />
                                             </View>
                                         )}
@@ -149,19 +162,26 @@ const AuthScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
 
                                     <View style={styles.dividerContainer}>
                                         <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.text, 0.1) }]} />
-                                        <Text style={[styles.dividerText, { color: currentTheme.colors.textMuted }]}>OR CONTINUE WITH</Text>
+                                        <Text style={[styles.dividerText, { color: currentTheme.colors.textMuted }]}>Or continue with</Text>
                                         <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.text, 0.1) }]} />
                                     </View>
 
                                     <TouchableOpacity
                                         style={[styles.socialBtn, { borderColor: alpha(currentTheme.colors.text, 0.1) }]}
-                                        onPress={() => Alert.alert("Coming Soon", "Native Google Sign-In is being optimized.")}
+                                        onPress={handleGoogleSignIn}
+                                        disabled={loading}
                                         activeOpacity={0.8}
                                     >
-                                        <Chrome size={20} color={currentTheme.colors.text} />
-                                        <Text style={[styles.socialText, { color: currentTheme.colors.text }]}>
-                                            Continue with Google
-                                        </Text>
+                                        {loading && !otpSent ? (
+                                            <ActivityIndicator color={currentTheme.colors.text} />
+                                        ) : (
+                                            <>
+                                                <Chrome size={20} color={currentTheme.colors.text} />
+                                                <Text style={[styles.socialText, { color: currentTheme.colors.text }]}>
+                                                    Continue with Google
+                                                </Text>
+                                            </>
+                                        )}
                                     </TouchableOpacity>
 
                                     <TouchableOpacity
@@ -174,17 +194,23 @@ const AuthScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                             ) : (
                                  <>
                                     <View style={styles.otpWrapper}>
-                                        <PremiumOtpInput
-                                            value={otp}
-                                            onChangeText={setOtp}
-                                            theme={currentTheme}
-                                            autoFocus
+                                        <Controller
+                                            control={control}
+                                            name="otp"
+                                            render={({ field: { onChange, value } }) => (
+                                                <PremiumOtpInput
+                                                    value={value || ''}
+                                                    onChangeText={onChange}
+                                                    theme={currentTheme}
+                                                    autoFocus
+                                                />
+                                            )}
                                         />
                                     </View>
 
                                     <TouchableOpacity
                                         style={[styles.actionBtn, { backgroundColor: currentTheme.colors.text }]}
-                                        onPress={handleVerifyOtp}
+                                        onPress={handleSubmit(handleVerifyOtp)}
                                         disabled={loading || otp.length < 6}
                                         activeOpacity={0.9}
                                     >
@@ -192,7 +218,7 @@ const AuthScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                                             <ActivityIndicator color={currentTheme.colors.background} />
                                         ) : (
                                             <View style={styles.btnInner}>
-                                                <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>VERIFY & JOIN</Text>
+                                                <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Verify & Join</Text>
                                                 <ShieldCheck size={16} color={currentTheme.colors.background} />
                                             </View>
                                         )}
@@ -216,7 +242,7 @@ const AuthScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                                         <TouchableOpacity
                                             onPress={() => {
                                                 setOtpSent(false);
-                                                setOtp('');
+                                                setValue('otp', '');
                                             }}
                                             style={styles.changeEmailBtn}
                                         >
@@ -232,8 +258,18 @@ const AuthScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                         <View style={styles.legalSection}>
                             <Text style={[styles.legalText, { color: currentTheme.colors.textMuted }]}>
                                 By continuing, you agree to our{' '}
-                                <Text style={{ color: currentTheme.colors.text, fontWeight: '700' }}>Terms</Text> and{' '}
-                                <Text style={{ color: currentTheme.colors.text, fontWeight: '700' }}>Privacy Policy</Text>.
+                                <Text 
+                                    onPress={() => navigation.navigate('Legal')}
+                                    style={{ color: currentTheme.colors.text, fontWeight: '700' }}
+                                >
+                                    Terms
+                                </Text> and{' '}
+                                <Text 
+                                    onPress={() => navigation.navigate('Legal')}
+                                    style={{ color: currentTheme.colors.text, fontWeight: '700' }}
+                                >
+                                    Privacy Policy
+                                </Text>.
                             </Text>
                         </View>
                     </View>
@@ -312,7 +348,7 @@ const styles = StyleSheet.create({
     dividerText: {
         fontSize: 10,
         fontWeight: '900',
-        letterSpacing: 1.5,
+        letterSpacing: 0.5,
         opacity: 0.4,
     },
     inputGroup: {
@@ -343,7 +379,13 @@ const styles = StyleSheet.create({
     actionText: {
         fontSize: 14,
         fontWeight: '900',
-        letterSpacing: 1,
+        letterSpacing: 0.5,
+    },
+    errorText: {
+        fontSize: 12,
+        fontWeight: '700',
+        marginTop: 8,
+        marginLeft: 4,
     },
     guestBtn: {
         alignItems: 'center',

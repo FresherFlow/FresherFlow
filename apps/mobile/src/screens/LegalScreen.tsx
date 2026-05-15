@@ -36,19 +36,22 @@ const LegalScreen: React.FC = memo(() => {
             >
                 <LegalSection 
                     title="Terms of Service"
-                    content={`Welcome to FresherFlow. By using our application, you agree to the following terms:\n\n1. Use of Service: You must be at least 18 years old or have parental consent to use this service.\n\n2. User Conduct: You agree not to use the service for any unlawful purposes or to interfere with the operation of the service.\n\n3. Intellectual Property: All content, logos, and features are the exclusive property of FresherFlow.\n\n4. Limitation of Liability: FresherFlow is not responsible for any direct or indirect damages resulting from your use of the service.`}
+                    content={`Welcome to FresherFlow. These terms govern your use of the FresherFlow platform. By accessing our services, you agree to these conditions.\n\n1. ELIGIBILITY\nYou must be at least 18 years of age or have explicit parental consent to use this application. By using FresherFlow, you represent that you meet these eligibility requirements.\n\n2. USER CONDUCT\nYou agree to use FresherFlow only for lawful purposes related to job discovery and career advancement. Prohibited activities include, but are not limited to, the submission of fraudulent job links, automated scraping of data, or attempting to compromise the security of our systems.\n\n3. INTELLECTUAL PROPERTY\nThe FresherFlow name, logo, and all original content and features are the exclusive property of the FresherFlow team. You may not reproduce or distribute any part of the service without prior written consent.\n\n4. NO GUARANTEE OF EMPLOYMENT\nFresherFlow is a discovery platform. We do not guarantee employment or specific outcomes from using our service. Job postings are sourced from various providers and crowdsourced contributions; while we strive for accuracy, users should perform their own due diligence before applying.\n\n5. LIMITATION OF LIABILITY\nTo the maximum extent permitted by law, FresherFlow shall not be liable for any indirect, incidental, or consequential damages resulting from your use of the platform.`}
                 />
 
-                <View style={[styles.divider, { backgroundColor: currentTheme.colors.border, opacity: 0.2 }]} />
+                <View style={[styles.divider, { backgroundColor: currentTheme.colors.border, opacity: 0.1 }]} />
 
                 <LegalSection 
                     title="Privacy Policy"
-                    content={`Your privacy is important to us. Here is how we handle your data:\n\n1. Information Collection: We collect information you provide directly to us, such as your email and profile details.\n\n2. Use of Information: We use your data to provide and improve our services, and to notify you about relevant opportunities.\n\n3. Data Sharing: We do not sell your personal data to third parties. We may share anonymized data for analytics.\n\n4. Security: We use industry-standard measures to protect your personal information.`}
+                    content={`At FresherFlow, we are committed to protecting your professional privacy. This policy explains how we collect and manage your data.\n\n1. DATA COLLECTION\nWe collect information you provide directly, including your email address, educational background, and professional preferences. We also collect anonymous interaction data (saves, clicks) to improve our recommendation engine.\n\n2. DATA USAGE\nYour data is used to personalize your job feed, send relevant alerts, and maintain your professional profile. We use industry-standard encryption to protect your sensitive information.\n\n3. THIRD-PARTY SERVICES\nFresherFlow integrates with Firebase (Google) for authentication. Your use of these features is also subject to Google's privacy policies. We do not sell your personal data to advertisers.\n\n4. DATA RETENTION & DELETION\nYou have the right to request deletion of your account and associated data at any time via the Account settings. We process these requests in accordance with applicable data protection laws (GDPR/CCPA).\n\n5. UPDATES\nWe may update this policy from time to time. Continued use of the app after changes constitutes acceptance of the updated terms.`}
                 />
 
                 <View style={styles.footer}>
                     <Text style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
-                        Last Updated: May 2026
+                        Version 1.0.4  ·  Last Updated: May 2026
+                    </Text>
+                    <Text style={[styles.copyright, { color: currentTheme.colors.textMuted }]}>
+                        © 2026 FresherFlow Team. All rights reserved.
                     </Text>
                 </View>
             </ScrollView>
@@ -67,9 +70,13 @@ const styles = StyleSheet.create({
     sectionTitle: {
         ...TYPOGRAPHY.h2,
         marginBottom: 16,
+        fontSize: 18,
+        fontWeight: '900',
     },
     sectionContent: {
         ...TYPOGRAPHY.body,
+        lineHeight: 22,
+        fontSize: 14,
     },
     divider: {
         height: 1,
@@ -79,12 +86,20 @@ const styles = StyleSheet.create({
     footer: {
         marginTop: 16,
         alignItems: 'center',
+        paddingBottom: 20,
     },
     footerText: {
-        fontSize: 13,
-        fontWeight: '700',
+        fontSize: 11,
+        fontWeight: '800',
         letterSpacing: 0.5,
+        marginBottom: 8,
+    },
+    copyright: {
+        fontSize: 10,
+        fontWeight: '600',
+        opacity: 0.6,
     }
 });
 
 export default LegalScreen;
+

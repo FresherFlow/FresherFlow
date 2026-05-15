@@ -21,6 +21,7 @@ import { TYPOGRAPHY } from '@/system/constants/typography';
 import { ShieldCheck, Award, UserPlus, UserCheck } from 'lucide-react-native';
 import { useFollows } from '@/hooks/useFollows';
 import * as Haptics from 'expo-haptics';
+import { getDisplayHandle } from '@fresherflow/utils';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ContributorProfile'>;
 
@@ -54,18 +55,20 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                 <View style={styles.profileSection}>
                     <View style={[styles.avatar, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
                         <Text style={[styles.avatarText, { color: currentTheme.colors.primary }]}>
-                            {user.fullName.charAt(0).toUpperCase()}
+                            {(user.fullName || getDisplayHandle(user).replace('@', '')).charAt(0).toUpperCase()}
                         </Text>
                     </View>
                     <View style={styles.nameInfo}>
                         <View style={styles.nameRow}>
-                            <Text style={[styles.name, { color: currentTheme.colors.text }]}>{user.fullName}</Text>
+                            <Text style={[styles.name, { color: currentTheme.colors.text }]}>
+                                {getDisplayHandle(user)}
+                            </Text>
                             {user.trustLevel === 'CONTRIBUTOR' && (
                                 <ShieldCheck size={18} color={currentTheme.colors.success} fill={alpha(currentTheme.colors.success, 0.1)} />
                             )}
                         </View>
                         <Text style={[styles.role, { color: currentTheme.colors.textMuted }]}>
-                            {user.trustLevel === 'CONTRIBUTOR' ? 'Trusted Scout' : 'Community Member'}
+                            {user.fullName || (user.trustLevel === 'CONTRIBUTOR' ? 'Trusted Scout' : 'Community Member')}
                         </Text>
                     </View>
                     <TouchableOpacity
@@ -114,7 +117,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
 
                 <Section title="Their Shares">
                     <Text style={[styles.sectionDesc, { color: currentTheme.colors.textMuted }]}>
-                        Opportunities verified and published from {user.fullName}'s reports.
+                        Opportunities verified and published from {getDisplayHandle(user)}'s reports.
                     </Text>
                 </Section>
             </View>

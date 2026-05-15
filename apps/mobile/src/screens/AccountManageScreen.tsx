@@ -11,13 +11,16 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
     Mail, 
     ChevronRight,
+    ShieldCheck,
+    FileText,
+    Info,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
-import { useUserAuth as useAuth } from '@repo/frontend-core';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { TYPOGRAPHY } from '@/system/constants/typography';
+import { useProfile } from '@/hooks/useProfile';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -33,8 +36,8 @@ const alpha = (color: string, opacity: number) => {
 const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
-    const { user } = useAuth();
-
+    const { user } = useProfile();
+    
 
 
     return (
@@ -43,35 +46,67 @@ const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             
             <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                 <SecondaryHeader 
-                    title="Security" 
+                    title="Account" 
                     onBack={() => navigation.goBack()}
                 />
             </View>
 
             <ScrollView 
                 showsVerticalScrollIndicator={false} 
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
             >
                 <View style={styles.content}>
                     <View style={styles.heroSection}>
                         <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Safe &{'\n'}Secure.</Text>
                         <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
-                            Your professional data is encrypted and private. Manage your credentials and privacy settings here.
+                            Manage your professional identity and data privacy.
                         </Text>
                     </View>
 
-                    <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Credentials</Text>
+                    <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Identity</Text>
                     <SurfaceCard style={styles.groupCard}>
                         <SettingRow 
                             icon={Mail} 
                             label="Email Address" 
-                            value={user?.email || 'N/A'}
+                            value={user?.email || 'Guest Explorer'}
+                            currentTheme={currentTheme}
+                        />
+                        <SettingRow 
+                            icon={ShieldCheck} 
+                            label="Privacy & Data" 
+                            value="Manage your visibility"
                             currentTheme={currentTheme}
                             isLast
                         />
                     </SurfaceCard>
+
+                    <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Legal & Compliance</Text>
+                    <SurfaceCard style={styles.groupCard}>
+                        <SettingRow 
+                            icon={FileText} 
+                            label="Terms of Service" 
+                            currentTheme={currentTheme}
+                            onPress={() => navigation.navigate('Legal')}
+                        />
+                        <SettingRow 
+                            icon={ShieldCheck} 
+                            label="Privacy Policy" 
+                            currentTheme={currentTheme}
+                            onPress={() => navigation.navigate('Legal')}
+                            isLast
+                        />
+                    </SurfaceCard>
+
+                    <View style={styles.footerInfo}>
+                        <Info size={16} color={currentTheme.colors.textMuted} />
+                        <Text style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
+                            FresherFlow v1.0.4 (Production Build)
+                        </Text>
+                    </View>
                 </View>
             </ScrollView>
+
+
         </Screen>
     );
 });
@@ -88,23 +123,24 @@ interface SettingRowProps {
 
 const SettingRow = ({ icon: Icon, label, value, isLast, currentTheme, destructive, onPress }: SettingRowProps) => (
     <TouchableOpacity 
-        style={[styles.row, !isLast && { borderBottomWidth: 1, borderBottomColor: alpha(currentTheme.colors.border, 0.1) }]}
+        style={[styles.row, !isLast && { borderBottomWidth: 1, borderBottomColor: alpha(currentTheme.colors.border, 0.05) }]}
         onPress={() => {
             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             onPress?.();
         }}
         activeOpacity={0.7}
+        disabled={!onPress}
     >
         <View style={styles.rowLeft}>
-            <View style={[styles.iconBox, { backgroundColor: alpha(destructive ? currentTheme.colors.error : currentTheme.colors.text, 0.05) }]}>
-                <Icon size={18} color={destructive ? currentTheme.colors.error : currentTheme.colors.text} />
+            <View style={[styles.iconBox, { backgroundColor: alpha(destructive ? currentTheme.colors.error : currentTheme.colors.text, 0.04) }]}>
+                <Icon size={18} color={destructive ? currentTheme.colors.error : currentTheme.colors.text} strokeWidth={2} />
             </View>
             <View>
                 <Text style={[styles.rowLabel, { color: destructive ? currentTheme.colors.error : currentTheme.colors.text }]}>{label}</Text>
                 {value && <Text style={[styles.rowValue, { color: currentTheme.colors.textMuted }]}>{value}</Text>}
             </View>
         </View>
-        <ChevronRight size={16} color={currentTheme.colors.textMuted} />
+        {onPress && <ChevronRight size={14} color={alpha(currentTheme.colors.textMuted, 0.3)} strokeWidth={3} />}
     </TouchableOpacity>
 );
 
@@ -112,15 +148,8 @@ const styles = StyleSheet.create({
     stickyHeader: {
         zIndex: 10,
     },
-    backBtn: {
-        width: 40,
-        height: 40,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: -8,
-    },
     scrollContent: {
-        paddingBottom: 60,
+        paddingTop: 12,
     },
     content: {
         paddingHorizontal: 20,
@@ -139,6 +168,7 @@ const styles = StyleSheet.create({
         fontSize: 15,
         marginTop: 12,
         lineHeight: 22,
+        fontWeight: '500',
     },
     groupLabel: {
         ...TYPOGRAPHY.label,
@@ -154,7 +184,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        padding: 20,
+        padding: 18,
     },
     rowLeft: {
         flexDirection: 'row',
@@ -170,7 +200,7 @@ const styles = StyleSheet.create({
     },
     rowLabel: {
         fontSize: 15,
-        fontWeight: '800',
+        fontWeight: '700',
     },
     rowValue: {
         fontSize: 12,
@@ -178,16 +208,18 @@ const styles = StyleSheet.create({
         marginTop: 2,
     },
     footerInfo: {
-        marginTop: 48,
+        marginTop: 60,
         alignItems: 'center',
-        gap: 12,
-        paddingBottom: 40,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        gap: 8,
     },
     footerText: {
-        fontSize: 12,
-        fontWeight: '600',
-        textAlign: 'center',
+        fontSize: 11,
+        fontWeight: '800',
+        letterSpacing: 0.5,
     }
 });
 
 export default memo(AccountManageScreen);
+

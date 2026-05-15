@@ -143,6 +143,14 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
         navigation.navigate('JobDetail', { opportunity: alert.opportunity, opportunityId: alert.opportunity.id });
     }, [navigation, markRead]);
 
+    // Ensure we have fresh data when entering the screen
+    React.useEffect(() => {
+        const unsubscribe = navigation.addListener('focus', () => {
+            void refresh();
+        });
+        return unsubscribe;
+    }, [navigation, refresh]);
+
     const flattenedData = useMemo(() => {
         const today: LocalAlert[] = [];
         const yesterday: LocalAlert[] = [];

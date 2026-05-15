@@ -12,6 +12,7 @@ import {
   Platform,
   BackHandler,
   ToastAndroid,
+  ViewToken,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -25,6 +26,7 @@ import { useSaved } from '@repo/frontend-core';
 
 import { useFeed } from '@/hooks/useFeed';
 import { saveDetailCache } from '@/utils/offlineCache';
+import { markJobAsSeen } from '@/utils/seenJobs';
 import { clearUnseenCount } from '@/utils/localNotifications';
 import { Opportunity } from '@fresherflow/types';
 import { useNotifications } from '@/hooks/useNotifications';
@@ -75,13 +77,38 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     loadingMore,
     totalResults,
     setSearchQuery,
+    isBootstrapping,
   } = useFeed(tabFeedType);
+
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 50,
+  }).current;
+
+  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
+    viewableItems.forEach((viewable) => {
+      const item = viewable.item as FeedItem;
+      if (item.type === 'opportunity' && item.data?.id) {
+        void markJobAsSeen(item.data.id);
+      }
+    });
+  }, []);
+
+  useFocusEffect(
+    useCallback(() => {
+      // Task 11: Clear unseen count when feed is active
+      void clearUnseenCount();
+    }, [])
+  );
 
   const listData = useMemo(() => {
     const data: FeedItem[] = [];
-    data.push({ type: 'stats', count: totalResults, key: 'stats' });
+    
+    // Only show stats if we actually have items to show
+    if (filteredOpportunities.length > 0) {
+      data.push({ type: 'stats', count: filteredOpportunities.length, key: 'stats' });
+    }
 
-    if (loading && !refreshing) {
+    if (loading && !refreshing && filteredOpportunities.length === 0) {
       [1, 2, 3].forEach(i => data.push({ type: 'skeleton', key: `skeleton-${i}` }));
     } else if (filteredOpportunities.length === 0) {
       data.push({ type: 'empty', key: 'empty' });
@@ -92,7 +119,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     }
 
     return data;
-  }, [loading, filteredOpportunities, totalResults, refreshing]);
+  }, [loading, filteredOpportunities, refreshing]);
 
   const renderItem = useCallback(({ item }: { item: FeedItem }) => {
     switch (item.type) {
@@ -106,6 +133,9 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                         <Text style={{ fontWeight: '800', color: currentTheme.colors.text }}>Showing</Text> {item.count} opportunities
                     </Text>
                 </View>
+                {isBootstrapping && (
+                    <ActivityIndicator size="small" color={currentTheme.colors.primary} style={{ transform: [{ scale: 0.6 }] }} />
+                )}
             </View>
         );
       case 'opportunity':
@@ -122,7 +152,27 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
             />
         );
       case 'skeleton':
-        return <View style={[styles.skeleton, { backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />;
+        return (
+            <MotiView
+                from={{ opacity: 0.4 }}
+                animate={{ opacity: 0.8 }}
+                transition={{
+                    type: 'timing',
+                    duration: 1000,
+                    loop: true,
+                }}
+                style={styles.skeletonCard}
+            >
+                <View style={styles.skeletonHeader}>
+                    <View style={[styles.skeletonCircle, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]} />
+                    <View style={{ flex: 1, gap: 8 }}>
+                        <View style={[styles.skeletonLine, { width: '80%', backgroundColor: alpha(currentTheme.colors.text, 0.05) }]} />
+                        <View style={[styles.skeletonLine, { width: '40%', height: 12, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+                    </View>
+                </View>
+                <View style={[styles.skeletonLine, { width: '100%', marginTop: 20, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+            </MotiView>
+        );
       case 'empty':
         return (
             <View style={styles.emptyContainer}>
@@ -167,6 +217,8 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
             // @ts-expect-error - FlashList typing bug with estimatedItemSize
             estimatedItemSize={160}
             showsVerticalScrollIndicator={false}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + mScale(60) }]}
             onEndReached={loadMore}
             onScroll={handleScroll}
@@ -471,11 +523,27 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: 0.5,
     },
-    skeleton: {
-        height: mScale(160),
+    skeletonCard: {
+        height: mScale(140),
         marginHorizontal: SPACING.lg,
         marginBottom: SPACING.md,
-        borderRadius: RADIUS.lg,
+        padding: SPACING.md,
+        borderRadius: RADIUS.xl,
+        backgroundColor: 'rgba(0,0,0,0.02)',
+    },
+    skeletonHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    skeletonCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+    },
+    skeletonLine: {
+        height: 16,
+        borderRadius: 4,
     },
     emptyContainer: {
         alignItems: 'center',

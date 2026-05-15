@@ -8,16 +8,17 @@ import {
     TextInput,
     ActivityIndicator,
     StatusBar,
-    Platform,
     KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { Plus, X, Target, MapPin, Briefcase, Globe, Pencil } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { OPPORTUNITY_TYPES, WORK_MODES, INDIAN_CITIES } from '@/utils/constants';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
-import { usePreferences } from '@/hooks/usePreferences';
+import { usePreferences, PreferencesFormData } from '@/hooks/usePreferences';
 
 import { Screen } from '@/system/layout/Layout';
 import { SecondaryHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
@@ -30,21 +31,28 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
+    const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
 
     const {
         profile,
         saving,
-        interestedIn, setInterestedIn,
-        workModes, setWorkModes,
-        preferredCities, setPreferredCities,
-        cityInput, setCityInput,
-        showCitySuggestions, setShowCitySuggestions,
+        handleSubmit,
+        interestedIn,
+        workModes,
+        preferredCities,
+        cityInput,
+        setCityInput,
+        showCitySuggestions,
+        setShowCitySuggestions,
         toggleItem,
         addCity,
+        removeCity,
         handleSave,
         loadingCache,
-    } = usePreferences(navigation);
+        isValid,
+        errors,
+    } = usePreferences();
 
     const hasData = (profile?.interestedIn?.length ?? 0) > 0;
     const [isEditing, setIsEditing] = useState(false);
@@ -62,22 +70,24 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         c => c.toLowerCase().includes(cityInput.toLowerCase()) && !preferredCities.includes(c)
     ).slice(0, 5);
 
-    const onToggle = (list: string[], setter: (val: string[]) => void, item: string) => {
+    const onToggle = (field: keyof PreferencesFormData, item: string) => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        toggleItem(list, setter, item);
+        toggleItem(field, item);
     };
 
     const onSave = useCallback(async () => {
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        await handleSave();
-        setIsEditing(false);
-    }, [handleSave]);
+        void handleSubmit(async (data: PreferencesFormData) => {
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            await handleSave(data);
+            setIsEditing(false);
+        })();
+    }, [handleSubmit, handleSave]);
 
     return (
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-                <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
+                <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                     <SecondaryHeader
                         title="Interests"
                         onBack={() => navigation.goBack()}
@@ -86,8 +96,8 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 <TouchableOpacity
                                     activeOpacity={0.7}
                                     onPress={onSave}
-                                    disabled={saving}
-                                    style={[styles.saveBtn, { backgroundColor: currentTheme.colors.primary }]}
+                                    disabled={saving || !isValid}
+                                    style={[styles.saveBtn, { backgroundColor: isValid ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.2) }]}
                                 >
                                     {saving
                                         ? <ActivityIndicator size="small" color={currentTheme.colors.background} />
@@ -119,7 +129,7 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <View style={styles.viewSection}>
                                 <View style={styles.sectionHeader}>
                                     <Target size={16} color={currentTheme.colors.primary} />
-                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>LOOKING FOR</Text>
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Looking For</Text>
                                 </View>
                                 <SurfaceCard style={styles.viewCard}>
                                     <View style={styles.chipRow}>
@@ -136,7 +146,7 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <View style={styles.viewSection}>
                                 <View style={styles.sectionHeader}>
                                     <Briefcase size={16} color={currentTheme.colors.primary} />
-                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>WORK MODE</Text>
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Work Mode</Text>
                                 </View>
                                 <SurfaceCard style={styles.viewCard}>
                                     <View style={styles.chipRow}>
@@ -153,7 +163,7 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <View style={styles.viewSection}>
                                 <View style={styles.sectionHeader}>
                                     <MapPin size={16} color={currentTheme.colors.primary} />
-                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>TARGET CITIES</Text>
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Target Cities</Text>
                                 </View>
                                 <SurfaceCard style={styles.viewCard}>
                                     {(profile?.preferredCities || []).length === 0 ? (
@@ -202,7 +212,7 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <Target size={16} color={currentTheme.colors.primary} />
-                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>OPPORTUNITY TYPE</Text>
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Opportunity Type</Text>
                                 </View>
                                 <View style={styles.grid}>
                                     {OPPORTUNITY_TYPES.map(type => {
@@ -212,20 +222,21 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                 key={type}
                                                 activeOpacity={0.8}
                                                 style={[styles.gridItem, { backgroundColor: active ? currentTheme.colors.text : alpha(currentTheme.colors.text, 0.03), borderColor: active ? currentTheme.colors.text : alpha(currentTheme.colors.border, 0.1) }]}
-                                                onPress={() => onToggle(interestedIn, setInterestedIn, type)}
+                                                onPress={() => onToggle('interestedIn', type)}
                                             >
                                                 <Text style={[styles.gridItemText, { color: active ? currentTheme.colors.background : currentTheme.colors.text }]}>{type}</Text>
                                             </TouchableOpacity>
                                         );
                                     })}
                                 </View>
+                                {errors.interestedIn && <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{errors.interestedIn.message}</Text>}
                             </View>
 
                             {/* Work Mode */}
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <Briefcase size={16} color={currentTheme.colors.primary} />
-                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>WORK MODE</Text>
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Work Mode</Text>
                                 </View>
                                 <View style={styles.grid}>
                                     {WORK_MODES.map(mode => {
@@ -235,23 +246,24 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                 key={mode}
                                                 activeOpacity={0.8}
                                                 style={[styles.gridItem, { backgroundColor: active ? currentTheme.colors.text : alpha(currentTheme.colors.text, 0.03), borderColor: active ? currentTheme.colors.text : alpha(currentTheme.colors.border, 0.1) }]}
-                                                onPress={() => onToggle(workModes, setWorkModes, mode)}
+                                                onPress={() => onToggle('workModes', mode)}
                                             >
                                                 <Text style={[styles.gridItemText, { color: active ? currentTheme.colors.background : currentTheme.colors.text }]}>{mode}</Text>
                                             </TouchableOpacity>
                                         );
                                     })}
                                 </View>
+                                {errors.workModes && <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{errors.workModes.message}</Text>}
                             </View>
 
                             {/* Locations */}
                             <View style={styles.section}>
                                 <View style={styles.sectionHeader}>
                                     <Globe size={16} color={currentTheme.colors.primary} />
-                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>TARGET LOCATIONS</Text>
+                                    <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Target Locations</Text>
                                 </View>
                                 <SurfaceCard style={styles.card}>
-                                    <View style={[styles.inputContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
+                                    <View style={[styles.inputContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: errors.preferredCities ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1) }]}>
                                         <TextInput
                                             style={[styles.input, { color: currentTheme.colors.text }]}
                                             placeholder="Add a city..."
@@ -266,6 +278,7 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                             </TouchableOpacity>
                                         )}
                                     </View>
+                                    {errors.preferredCities && <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{errors.preferredCities.message}</Text>}
 
                                     {showCitySuggestions && cityInput.length > 0 && citySuggestions.length > 0 && (
                                         <View style={styles.suggestionsContainer}>
@@ -293,7 +306,7 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                 <TouchableOpacity
                                                     key={city}
                                                     activeOpacity={0.7}
-                                                    onPress={() => setPreferredCities(preferredCities.filter(c => c !== city))}
+                                                    onPress={() => removeCity(city)}
                                                     style={[styles.tag, { backgroundColor: currentTheme.colors.text }]}
                                                 >
                                                     <Text style={[styles.tagText, { color: currentTheme.colors.background }]}>{city}</Text>
@@ -326,15 +339,16 @@ const styles = StyleSheet.create({
     section: { marginBottom: 32 },
     viewSection: { marginBottom: 24 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-    sectionLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
+    sectionLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
     grid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     gridItem: { flex: 1, minWidth: '45%', height: 56, borderRadius: 18, borderWidth: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 },
-    gridItemText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
+    gridItemText: { fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+    errorText: { fontSize: 11, color: '#FF4444', marginTop: 8, marginLeft: 4, fontWeight: '600' },
     card: { padding: 16, borderRadius: 28 },
     viewCard: { padding: 20, borderRadius: 24 },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     viewChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12 },
-    viewChipText: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
+    viewChipText: { fontSize: 13, fontWeight: '700', letterSpacing: 0.5 },
     inputContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 56, borderRadius: 18, borderWidth: 1 },
     input: { flex: 1, fontSize: 16, fontWeight: '600' },
     addInlineBtn: { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
@@ -343,7 +357,7 @@ const styles = StyleSheet.create({
     suggestionText: { fontSize: 12, fontWeight: '700' },
     tagContainer: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 24, minHeight: 50 },
     tag: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14 },
-    tagText: { fontSize: 12, fontWeight: '900', textTransform: 'uppercase', letterSpacing: 0.5 },
+    tagText: { fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
     emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 20, gap: 12 },
     emptyText: { fontSize: 14, fontWeight: '600', fontStyle: 'italic' },
     editBlock: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 16, borderRadius: 20, borderWidth: 1, marginTop: 8 },
@@ -351,3 +365,4 @@ const styles = StyleSheet.create({
 });
 
 export default memo(EditPreferencesScreen);
+

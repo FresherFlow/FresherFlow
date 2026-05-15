@@ -1,28 +1,32 @@
 import React, { memo, useCallback, useRef } from 'react';
+import { FlashList } from '@shopify/flash-list';
+
 import {
     StyleSheet,
     Text,
     View,
-    FlatList,
     TouchableOpacity,
     ActivityIndicator,
     StatusBar,
-    Platform,
     NativeSyntheticEvent,
     NativeScrollEvent,
 } from 'react-native';
-import { Bookmark, Compass } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Bookmark, Compass, Bell } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
+import { Opportunity } from '@fresherflow/types';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { saveDetailCache } from '@/utils/offlineCache';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 import { mScale, SPACING, RADIUS } from '@/system/constants/dimensions';
+import { TYPOGRAPHY } from '@/system/constants/typography';
+import { useNotifications } from '@/hooks/useNotifications';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SavedList'>;
 
@@ -34,9 +38,11 @@ const alpha = (color: string, opacity: number) => {
 import { useUI } from '@/contexts/UIContext';
 
 const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
+    const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const { savedJobs, loading, refresh } = useSavedJobs();
     const { hideTabBar, showTabBar } = useUI();
+    const { unreadCount } = useNotifications();
 
     // Track scroll position for hide/show tab bar
     const scrollOffset = useRef(0);
@@ -73,7 +79,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         onPress={() => navigation.navigate('Explore')}
                     >
                         <Compass size={18} color={currentTheme.colors.background} />
-                        <Text style={[styles.exploreBtnText, { color: currentTheme.colors.background }]}>EXPLORE ROLES</Text>
+                        <Text style={[styles.exploreBtnText, { color: currentTheme.colors.background }]}>Explore Roles</Text>
                     </TouchableOpacity>
                 </>
             )}
@@ -84,21 +90,35 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         <Screen safe={false}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-            <View style={[styles.stickyHeader, { paddingTop: Platform.OS === 'ios' ? 50 : 20 }]}>
+            <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                 <PremiumHeader
                     title="Library"
                     subtitle="Saved Opportunities"
+                    rightSlot={
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('Notifications')}
+                            style={styles.notificationBtn}
+                        >
+                            <Bell size={24} color={currentTheme.colors.text} />
+                            {unreadCount > 0 && (
+                                <View style={{ backgroundColor: currentTheme.colors.primary, position: 'absolute', top: 10, right: 10, width: 8, height: 8, borderRadius: 4 }} />
+                            )}
+                        </TouchableOpacity>
+                    }
                 />
             </View>
 
-            <FlatList
+            <FlashList<Opportunity>
                 data={savedJobs}
                 keyExtractor={(item) => item.id}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
-                renderItem={({ item }) => (
+                // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                estimatedItemSize={160}
+                renderItem={({ item, index }) => (
                     <JobCard
                         opportunity={item}
+                        index={index}
                         onPress={() => {
                             void saveDetailCache(item);
                             navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
@@ -110,7 +130,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     !loading && savedJobs.length > 0 ? (
                         <View style={styles.resultsHeader}>
                             <Text style={[styles.resultsText, { color: currentTheme.colors.textMuted }]}>
-                                {savedJobs.length} SAVED OPPORTUNITIES
+                                {savedJobs.length} Saved Opportunities
                             </Text>
                         </View>
                     ) : null
@@ -118,8 +138,9 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 ListEmptyComponent={renderEmpty}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
-                onRefresh={refresh}
-                refreshing={loading}
+                refreshControl={
+                    <PremiumRefreshControl refreshing={loading} onRefresh={refresh} />
+                }
             />
         </Screen>
     );
@@ -128,6 +149,13 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 const styles = StyleSheet.create({
     stickyHeader: {
         zIndex: 10,
+    },
+    notificationBtn: {
+        width: mScale(44),
+        height: mScale(44),
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: -SPACING.sm,
     },
     scrollContent: {
         paddingBottom: 100,
@@ -139,9 +167,7 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.sm,
     },
     resultsText: {
-        fontSize: mScale(10),
-        fontWeight: '800',
-        letterSpacing: 1.5,
+        ...TYPOGRAPHY.label,
     },
     cardWrapper: {
         paddingHorizontal: SPACING.lg,
