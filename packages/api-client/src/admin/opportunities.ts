@@ -1,5 +1,5 @@
 import { apiClient } from './apiClient';
-import { Opportunity, OpportunityListResponse } from '@fresherflow/types';
+import { Opportunity, OpportunityListResponse, RawOpportunity } from '@fresherflow/types';
 
 export interface OpportunityListParams {
     page?: number;
@@ -91,9 +91,21 @@ export const adminOpportunitiesApi = {
         apiClient<{ message: string }>(`/api/admin/opportunities/${oppId}/events/${eventId}`, {
             method: 'DELETE',
         }),
+
     exportCSV: (params: { status?: string }) =>
         apiClient<{ message: string }>('/api/admin/opportunities/export', {
             method: 'POST',
             body: JSON.stringify(params),
         }),
+
+    getSubmissions: () =>
+        apiClient<{ submissions: RawOpportunity[] }>('/api/admin/opportunities/submissions'),
+
+    rejectSubmission: (id: string) =>
+        apiClient<{ success: boolean }>(`/api/admin/opportunities/submissions/${id}/reject`, {
+            method: 'POST',
+        }),
+
+    summary: () =>
+        apiClient<{ summary: Record<string, unknown> }>('/api/admin/opportunities/summary'),
 };

@@ -1,7 +1,11 @@
+import axios, { AxiosInstance, AxiosError, AxiosRequestConfig } from 'axios';
+import superjson from 'superjson';
 import { getInferredBaseUrl } from './config';
 
-export interface RequestOptions extends RequestInit {
+export interface RequestOptions extends AxiosRequestConfig {
     timeoutMs?: number;
+    body?: unknown;
+    useSuperJson?: boolean;
 }
 
 export interface SecureStorage {
@@ -30,80 +34,112 @@ export class HttpError extends Error {
 }
 
 export class ApiClient {
-    private baseUrl: string;
+    private axiosInstance: AxiosInstance;
     private storage?: SecureStorage;
-    private defaultHeaders: Record<string, string>;
     private onErrorCallback?: (error: HttpError | Error, endpoint: string) => void;
-    private onResponseCallback?: (response: Response, endpoint: string) => void;
 
     constructor(baseUrl: string, storage?: SecureStorage, options?: {
         onError?: (error: HttpError | Error, endpoint: string) => void;
-        onResponse?: (response: Response, endpoint: string) => void;
         defaultHeaders?: Record<string, string>;
     }) {
-        this.baseUrl = baseUrl.replace(/\/+$/, '');
         this.storage = storage;
         this.onErrorCallback = options?.onError;
-        this.onResponseCallback = options?.onResponse;
-        this.defaultHeaders = options?.defaultHeaders || {};
+
+        this.axiosInstance = axios.create({
+            baseURL: baseUrl.replace(/\/+$/, ''),
+            timeout: 10000,
+            headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-From': 'fresherflow-client',
+                ...options?.defaultHeaders,
+            },
+        });
+
+        // Request Interceptor for Token and Anon ID injection
+        this.axiosInstance.interceptors.request.use(async (config) => {
+            if (this.storage) {
+                const [token, anonId] = await Promise.all([
+                    this.storage.getItem('ff_auth_token_v1'),
+                    this.storage.getItem('ff_anon_user_id')
+                ]);
+
+                if (token) {
+                    config.headers.Authorization = `Bearer ${token}`;
+                }
+
+                if (anonId) {
+                    config.headers['x-fresherflow-anon-id'] = anonId;
+                }
+            }
+            return config;
+        });
+
+        // Response Interceptor for Error normalization
+        this.axiosInstance.interceptors.response.use(
+            (response) => response,
+            (error: AxiosError) => {
+                let normalizedError: Error;
+
+                if (!error.response) {
+                    normalizedError = new OfflineError();
+                } else {
+                    const status = error.response.status;
+                    const body = error.response.data;
+                    const message = (body as { message?: string })?.message || `Request failed (${status})`;
+                    normalizedError = new HttpError(message, status, body);
+                }
+
+                if (this.onErrorCallback) {
+                    this.onErrorCallback(normalizedError, error.config?.url || 'unknown');
+                }
+
+                return Promise.reject(normalizedError);
+            }
+        );
     }
 
     async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-        const url = `${this.baseUrl}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-
-
-        const headers: Record<string, string> = {
-            Accept: 'application/json',
-            'Content-Type': 'application/json',
-            'X-Requested-From': 'fresherflow-client',
-            ...this.defaultHeaders,
-            ...(options.headers as Record<string, string> || {}),
-        };
-
-        if (this.storage) {
-            const token = await this.storage.getItem('ff_auth_token_v1');
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
+        const { timeoutMs, body, ...axiosOptions } = options;
+        
+        // Handle Request Payload with SuperJSON if enabled
+        if (body && !axiosOptions.data) {
+            if (typeof body === 'string') {
+                try {
+                    axiosOptions.data = JSON.parse(body);
+                } catch {
+                    axiosOptions.data = body;
+                }
+            } else {
+                axiosOptions.data = body;
             }
         }
 
-        const controller = new AbortController();
-        const timeoutMs = options.timeoutMs ?? 10000;
-        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+        const response = await this.axiosInstance.request<T>({
+            url: endpoint,
+            timeout: timeoutMs,
+            ...axiosOptions,
+            // If the backend sends SuperJSON envelope, we need to parse it.
+            // For now, we'll try to deserialize the response data if it looks like SuperJSON.
+            transformResponse: [
+                (data) => {
+                    if (!data) return data;
+                    try {
+                        const parsed = JSON.parse(data);
+                        // If it's a SuperJSON envelope (json/meta), parse it
+                        if (parsed && typeof parsed === 'object' && parsed.json && parsed.meta) {
+                            return superjson.deserialize(parsed);
+                        }
+                        // Fallback to standard parse
+                        return parsed;
+                    } catch {
+                        return data;
+                    }
+                }
+            ]
+        });
 
-        try {
-            const response = await fetch(url, {
-                ...options,
-                headers,
-                credentials: 'include',
-                signal: controller.signal,
-            });
-
-            clearTimeout(timeoutId);
-
-            if (this.onResponseCallback) {
-                this.onResponseCallback(response, endpoint);
-            }
-
-            const text = await response.text();
-            let payload: unknown = null;
-            try { if (text) payload = JSON.parse(text); } catch { payload = text; }
-
-            if (!response.ok) {
-                const message = payload && typeof payload === 'object' && (payload as Record<string, unknown>).message
-                    ? (payload as Record<string, unknown>).message as string
-                    : `Request failed (${response.status})`;
-                const error = new HttpError(message, response.status, payload);
-                if (this.onErrorCallback) this.onErrorCallback(error, endpoint);
-                throw error;
-            }
-
-            return payload as T;
-        } catch (error: unknown) {
-            clearTimeout(timeoutId);
-            if (this.onErrorCallback && (error instanceof Error)) this.onErrorCallback(error, endpoint);
-            throw error;
-        }
+        return response.data as T;
     }
 }
 
@@ -111,15 +147,11 @@ let globalClient: ApiClient | null = null;
 
 export function configureClient(baseUrl?: string, storage?: SecureStorage, options?: {
     onError?: (error: HttpError | Error, endpoint: string) => void;
-    onResponse?: (response: Response, endpoint: string) => void;
 }) {
     const finalBaseUrl = baseUrl || getInferredBaseUrl();
     globalClient = new ApiClient(finalBaseUrl, storage, options);
 }
 
-/**
- * Shared API Caller wrapper used by all module endpoints declarations.
- */
 export async function apiClient<T = unknown>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     if (!globalClient) {
         throw new Error('ApiClient not configured. Call configureClient(...) before using endpoints.');

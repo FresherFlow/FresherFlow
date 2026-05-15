@@ -6,6 +6,8 @@ export interface Contributor {
     fullName: string;
     trustLevel: string;
     createdAt: string;
+    username?: string;
+    usernameUpdatedAt?: string;
     stats: {
         totalContributed: number;
         totalPublished: number;

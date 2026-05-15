@@ -10,6 +10,7 @@ export interface MetricsV2 {
         expired: number;
         new24h: number;
         liveWalkins: number;
+        pendingSubmissions: number;
     };
     traffic: {
         applications30d: number;

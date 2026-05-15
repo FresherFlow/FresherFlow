@@ -30,5 +30,13 @@ export const authApi = {
         await apiClient('/api/auth/logout', { method: 'POST' });
     },
 
-    me: () => apiClient('/api/auth/me')
+    me: () => apiClient('/api/auth/me'),
+    
+    handshake: (firebaseToken: string, anonSessionId?: string | null) =>
+        apiClient<AuthResponse>('/api/auth/handshake', {
+            method: 'POST',
+            body: JSON.stringify({ token: firebaseToken, anon_session_id: anonSessionId })
+        }),
 };
+
+

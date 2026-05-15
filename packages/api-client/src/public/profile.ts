@@ -87,6 +87,6 @@ export const profileApi = {
         }),
 
     // Backward-compatible aliases
-    getContributions: (page = 1) => profileApi.getShares(page) as any,
-    submitContribution: (data: any) => profileApi.submitShare(data) as any,
+    getContributions: (page = 1) => profileApi.getShares(page),
+    submitContribution: (data: { url?: string; referral?: { contact: string; description: string; company: string; companyUrl?: string } }) => profileApi.submitShare(data),
 };
