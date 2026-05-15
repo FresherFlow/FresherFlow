@@ -17,7 +17,8 @@
     "lucide-react": "^0.563.0",
     "lucide-react-native": "*",
     "tailwind-merge": "^3.4.0",
-    "@fresherflow/utils": "*"
+    "@fresherflow/utils": "*",
+    "expo-image": "*"
   },
   "scripts": {
     "build": "tsc",

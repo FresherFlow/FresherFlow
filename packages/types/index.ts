@@ -132,13 +132,18 @@ export enum RawOpportunityStatus {
 
 export interface User {
     id: string;
-    email: string;
+    email?: string;
     fullName: string | null;
     role: Role;
     trustLevel?: UserTrustLevel;
     createdAt: Date | string;
     profile?: Profile;
     isTwoFactorEnabled?: boolean;
+    isAnonymous: boolean;
+    anon_id?: string;
+    username: string | null;
+    usernameUpdatedAt?: Date | string | null;
+    lastLogin?: Date | string;
 }
 
 export interface Profile {
@@ -172,6 +177,7 @@ export interface Admin {
     id: string;
     email: string;
     fullName: string;
+    role: Role;
     createdAt: Date;
     isTwoFactorEnabled?: boolean;
     totpEnabled?: boolean;
@@ -411,6 +417,14 @@ export interface UserAction {
     opportunity?: Opportunity;
 }
 
+export interface SavedOpportunity {
+    id: string;
+    userId: string;
+    opportunityId: string;
+    createdAt: Date | string;
+    opportunity?: Opportunity;
+}
+
 export interface ListingFeedback {
     id: string;
     userId: string;
@@ -452,6 +466,21 @@ export interface RawOpportunity {
     errorMessage?: string | null;
     createdAt: Date | string;
     updatedAt: Date | string;
+
+    // Included relations
+    createdBy?: {
+        id: string;
+        fullName: string | null;
+        email: string | null;
+    } | null;
+}
+
+export interface RawOpportunityListResponse {
+    submissions: RawOpportunity[];
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
 }
 
 // ========================================
@@ -465,6 +494,7 @@ export interface AuthResponse {
     } | Profile;
     accessToken?: string;
     refreshToken?: string;
+    firebaseCustomToken?: string;
 }
 
 export interface ProfileResponse {

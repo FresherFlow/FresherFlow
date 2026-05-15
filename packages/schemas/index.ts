@@ -39,6 +39,15 @@ export const verifyOtpSchema = z.object({
     code: z.string().length(6, 'Verification code must be 6 digits')
 });
 
+export const usernameSchema = z.string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(20, 'Username must be at most 20 characters')
+    .regex(/^[a-z0-9_]+$/, 'Username must be lowercase, alphanumeric, or underscore');
+
+export const claimUsernameSchema = z.object({
+    username: usernameSchema
+});
+
 // ========================================
 // PROFILE SCHEMAS
 // ========================================
@@ -169,3 +178,4 @@ export type SubmitFeedbackInput = z.infer<typeof submitFeedbackSchema>;
 export type AppFeedbackInput = z.infer<typeof appFeedbackSchema>;
 export type OpportunityFiltersInput = z.infer<typeof opportunityFiltersSchema>;
 export type AdminOpportunityFiltersInput = z.infer<typeof adminOpportunityFiltersSchema>;
+export type UsernameInput = z.infer<typeof claimUsernameSchema>;

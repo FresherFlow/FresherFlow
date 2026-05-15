@@ -6,3 +6,5 @@ export * from './companyLogo';
 export * from './urlNormalization';
 export * from './fingerprint';
 export * from './domains';
+export * from './user';
+export * from './username';

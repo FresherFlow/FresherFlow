@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { View, Image, Text, Platform } from 'react-native';
+import { View, Text } from 'react-native';
+import { Image } from 'expo-image';
 import { useUITheme } from './theme';
 import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
 
@@ -29,9 +30,9 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
 
         const websiteDomain = website ? getRootDomain(website) : null;
         const applyDomain = applyLink ? getRootDomain(applyLink) : null;
-        
+
         const cleanName = normalizedName.replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
-        const knownDomain = BRAND_DOMAINS[cleanName] || 
+        const knownDomain = BRAND_DOMAINS[cleanName] ||
             Object.entries(BRAND_DOMAINS).find(([key]) => cleanName.includes(key))?.[1];
 
         const domainsToTry = Array.from(new Set([
@@ -54,40 +55,40 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
         return Array.from(new Set(urls));
     }, [explicitLogoUrl, website, applyLink, normalizedName]);
 
-    const [currentSrc, setCurrentSrc] = useState<string | null>(null);
-
     // Global in-memory cache for instant resolution
     const memCache = useMemo(() => {
         const g = global as unknown as { _logoCache?: Map<string, string> };
         return g._logoCache || (g._logoCache = new Map<string, string>());
     }, []);
 
-    // Cache key based on the candidates
-    const cacheKey = useMemo(() => candidates.join('|'), [candidates]);
+    // Cache key based on the candidates or name if no candidates
+    const cacheKey = useMemo(() => {
+        if (candidates.length === 0) return `name_${normalizedName}`;
+        return candidates.join('|');
+    }, [candidates, normalizedName]);
+
+    const [currentSrc, setCurrentSrc] = useState<string | null>(() => memCache.get(cacheKey) || null);
+    const [prevCacheKey, setPrevCacheKey] = useState<string | null>(cacheKey);
+
+    // Synchronous reset when company/cacheKey changes to avoid recycling artifacts
+    // and provide instant cached resolution (the "use cached" request)
+    if (cacheKey !== prevCacheKey) {
+        setPrevCacheKey(cacheKey);
+        setCurrentSrc(memCache.get(cacheKey) || null);
+        setAttemptIndex(0);
+        setImgError(false);
+    }
 
     React.useEffect(() => {
         let mounted = true;
-        const initCache = async () => {
-            // 1. Try memory cache first
+        const initCache = () => {
+            // Memory cache check for instant resolution
             if (memCache.has(cacheKey)) {
                 if (mounted) setCurrentSrc(memCache.get(cacheKey)!);
                 return;
             }
 
-            // 2. Try AsyncStorage (for offline persistence)
-            if (Platform.OS !== 'web') {
-                try {
-                    const AsyncStorage = require('@react-native-async-storage/async-storage').default; // eslint-disable-line @typescript-eslint/no-require-imports
-                    const stored = await AsyncStorage.getItem(`logo_cache_${cacheKey}`);
-                    if (stored && mounted) {
-                        memCache.set(cacheKey, stored);
-                        setCurrentSrc(stored);
-                        return;
-                    }
-                } catch { /* ignore */ }
-            }
-
-            // 3. Fallback to first candidate
+            // Fallback to first candidate (expo-image will handle disk check automatically)
             if (mounted) {
                 setAttemptIndex(0);
                 setImgError(false);
@@ -122,27 +123,6 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
         }
     };
 
-    const handleLoadSuccess = (e: { nativeEvent: { source: { width: number } } }) => {
-        // Handle Google's 16px fallback globe
-        const { width } = e.nativeEvent.source;
-        if (width <= 16 && width > 0 && currentSrc?.includes('google.com')) {
-            handleLoadError();
-            return;
-        }
-
-        // Cache the successful URL!
-        if (currentSrc) {
-            memCache.set(cacheKey, currentSrc);
-            if (Platform.OS !== 'web') {
-                void (async () => {
-                    try {
-                        const AsyncStorage = require('@react-native-async-storage/async-storage').default; // eslint-disable-line @typescript-eslint/no-require-imports
-                        await AsyncStorage.setItem(`logo_cache_${cacheKey}`, currentSrc);
-                    } catch { /* ignore */ }
-                })();
-            }
-        }
-    };
 
     if (currentSrc && !imgError) {
         return (
@@ -150,9 +130,17 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
                 <Image
                     source={{ uri: currentSrc }}
                     style={{ width: size, height: size }}
-                    resizeMode="contain"
+                    contentFit="contain"
+                    cachePolicy="disk"
                     onError={handleLoadError}
-                    onLoad={handleLoadSuccess}
+                    onLoad={(e: { source: { width: number; height: number } }) => {
+                        // Google 16px globe check (fallback sentinel)
+                        if (e.source.width <= 16 && currentSrc?.includes('google.com')) {
+                            handleLoadError();
+                        } else {
+                            memCache.set(cacheKey, currentSrc!);
+                        }
+                    }}
                 />
             </View>
         );
@@ -168,10 +156,10 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
 
     return (
         <View style={[containerStyle, { backgroundColor: colors.surfaceMuted || colors.surface }]}>
-            <Text style={{ 
-                color: colors.primary, 
-                fontSize: Math.round(size * 0.4), 
-                fontWeight: '900' 
+            <Text style={{
+                color: colors.primary,
+                fontSize: Math.round(size * 0.4),
+                fontWeight: '900'
             }}>
                 {name ? name.charAt(0).toUpperCase() : 'C'}
             </Text>
