@@ -2,9 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
-import { API_URL } from '@/lib/runtimeConfig';
 import { getSiteMode } from '@/lib/siteModeServer';
 import { GovtLandingPage } from '@/features/landing/GovtLandingPage';
+import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 
 export const metadata: Metadata = {
     title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
@@ -36,24 +36,38 @@ export const metadata: Metadata = {
 export const revalidate = 86400;
 
 async function getLiveOpportunityCount(): Promise<number> {
-    try {
-        const apiUrl = API_URL;
-        if (!apiUrl) return 0;
-        const base = apiUrl.replace(/\/+$/, '');
-        const res = await fetch(`${base}/api/stats`, {
-            next: { revalidate: 86400 },
-        });
-        if (!res.ok) return 0;
-        const data = await res.json() as { opportunities?: number };
-        return typeof data.opportunities === 'number' ? data.opportunities : 0;
-    } catch {
-        return 0;
-    }
+    // WEB PIVOT: use CDN/static bootstrap feed count. Do not wake API for landing stats.
+    const feed = await fetchBootstrapFeed();
+    return feed?.count || feed?.opportunities.length || 0;
 }
 
 export default async function LandingPage() {
-    const liveCount = await getLiveOpportunityCount();
-    const mode = await getSiteMode();
+    const start = Date.now();
+    
+    // ZERO-BLOCKING STRATEGY:
+    // We race the data fetching against a 500ms timeout.
+    // If the data takes longer than 500ms, we render with defaults to stop the "circling" hang.
+    let liveCount = 0;
+    let mode: any = 'private';
+
+    try {
+        const dataPromise = Promise.all([
+            getLiveOpportunityCount(),
+            getSiteMode()
+        ]);
+
+        const timeoutPromise = new Promise<[number, any]>((resolve) => 
+            setTimeout(() => resolve([0, 'private']), 500)
+        );
+
+        const [resolvedCount, resolvedMode] = await Promise.race([dataPromise, timeoutPromise]);
+        liveCount = resolvedCount;
+        mode = resolvedMode;
+    } catch (err) {
+        console.error('[Landing] Critical data resolution failure:', err);
+    }
+    
+    console.log(`[Landing] Page data resolved in ${Date.now() - start}ms (mode: ${mode}, count: ${liveCount})`);
 
     if (mode === 'govt') {
         return <GovtLandingPage liveCount={liveCount} />;
@@ -86,8 +100,14 @@ export default async function LandingPage() {
                                         Open the live feed
                                         <ArrowRightIcon className="w-4 h-4 ml-2" />
                                     </Link>
+                                    {/* TEMPORARY PIVOT: Hide Sign in on landing */}
+                                    {/* 
                                     <Link href="/login" className="premium-button-outline px-6 text-[12px] capitalize tracking-widest">
                                         Sign in
+                                    </Link>
+                                    */}
+                                    <Link href="/download" className="premium-button-outline px-6 text-[12px] capitalize tracking-widest">
+                                        Get the App
                                     </Link>
                                 </div>
                                 <div className="grid grid-cols-3 gap-4 pt-4">
@@ -104,36 +124,13 @@ export default async function LandingPage() {
                                 </div>
                             </div>
 
-                            <div className="rounded-3xl border border-border bg-card/80 backdrop-blur p-5 shadow-2xl">
-                                <div className="flex items-center justify-between">
-                                    <span className="text-xs font-semibold capitalize tracking-widest text-muted-foreground">Today</span>
-                                    <span className="text-[10px] font-semibold capitalize tracking-widest text-success">Verified</span>
-                                </div>
-                                <div className="mt-4 space-y-3">
-                                    {[
-                                        { company: 'Google', role: 'SDE-1 (Off Campus)', type: 'Job', status: 'Verified' },
-                                        { company: 'Amazon', role: 'Front-end Intern', type: 'Internship', status: 'Active' },
-                                        { company: 'Zomato', role: 'Graduate Engineer Trainee', type: 'Walk-in', status: 'Verified' }
-                                    ].map((item, i) => (
-                                        <div key={i} className="rounded-2xl border border-border bg-background/70 p-4">
-                                            <div className="flex items-start justify-between">
-                                                <div>
-                                                    <h3 className="text-sm font-semibold text-foreground">{item.role}</h3>
-                                                    <p className="text-[11px] font-medium text-muted-foreground">{item.company}</p>
-                                                </div>
-                                                <span className="text-[9px] font-bold px-2 py-0.5 rounded-full capitalize tracking-wider bg-primary/10 text-primary">
-                                                    {item.type}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between pt-3">
-                                                <span className="text-[10px] font-bold capitalize tracking-wider text-success">
-                                                    {item.status}
-                                                </span>
-                                                <span className="text-[9px] text-muted-foreground capitalize">Direct apply</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
+                            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-border bg-card/80 backdrop-blur group">
+                                <img 
+                                    alt="Professional collaboration" 
+                                    className="w-full h-[500px] object-cover grayscale-[0.1] transition-transform duration-700 group-hover:scale-105" 
+                                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3tZJKvyI6tc96EkTndqlfFMEk4KqIdS2q0HKEDeAG3JExuSOyfTY_Df5ThvVRWlpwTfFeK5PPFA-gNhJvDGD80MbMvIMKAq_dvMc5ERdu9GFzynplovygxGg1Jwvaw89hUjtQa-ooCRA5soLZa3Cykp41b3AI7AgTKbPaTIupk13KMl_EGzcWZQfmIQ4UutVy278nvm7hKh4UHSgju6JmA0PDUT57o91tGcwYAao2dirY_UmttpRATIhoaTrbr_fDhalmVNfoAkv-" 
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent" />
                             </div>
                         </div>
                         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808010_1px,transparent_1px),linear-gradient(to_bottom,#80808010_1px,transparent_1px)] bg-size-[48px_48px] -z-10" />
@@ -255,8 +252,8 @@ export default async function LandingPage() {
                                 Open the verified feed and move fast on real opportunities.
                             </p>
                             <div className="flex justify-center">
-                                <Link href="/opportunities" className="premium-button px-8 text-[12px] capitalize tracking-widest">
-                                    Open the feed
+                                <Link href="/download" className="premium-button px-8 text-[12px] capitalize tracking-widest">
+                                    Get the App
                                 </Link>
                             </div>
                         </div>

@@ -1,52 +1,69 @@
-import Link from 'next/link';
-import LoginForm from './LoginForm';
-import { LogoImage } from '@/components/ui/navbar/LogoImage';
+import { redirect } from 'next/navigation';
 
-export const metadata = {
-    title: 'Sign In',
-    description: 'Sign in to FresherFlow - access your personalized feed of verified jobs, internships, and walk-ins for freshers.',
-    packets: {
-        google: 'notranslate'
-    },
-    robots: {
-        index: false,
-        follow: false,
-    },
-};
-
-export default function LoginPage() {
-    return (
-        <>
-            <header className="fixed inset-x-0 top-0 z-[90] border-b border-border/70 bg-background/95 backdrop-blur-md">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:h-[88px] md:px-6">
-                    <Link href="/" className="flex items-center gap-2.5">
-                        <LogoImage width={28} height={28} className="h-7 w-7 object-contain" />
-                        <span className="text-[17px] font-semibold tracking-[0.01em] text-foreground">
-                            FresherFlow
-                        </span>
-                    </Link>
-
-                    <nav className="hidden items-center gap-2 md:flex">
-                        <Link href="/jobs" className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                            Jobs
-                        </Link>
-                        <Link href="/internships" className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                            Internships
-                        </Link>
-                        <Link href="/walk-ins" className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                            Walk-ins
-                        </Link>
-                        <Link href="/" className="rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold text-foreground transition-colors hover:border-primary/30 hover:text-primary">
-                            Back to site
-                        </Link>
-                    </nav>
-
-                    <Link href="/" className="rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold capitalize tracking-widest text-foreground transition-colors hover:border-primary/30 hover:text-primary md:hidden">
-                        Home
-                    </Link>
-                </div>
-            </header>
-            <LoginForm />
-        </>
-    );
+export default function FrozenUserRoute() {
+  redirect('/download');
 }
+
+// /* WEB PIVOT: old user route implementation preserved below for later restoration.
+// import Link from 'next/link';
+// import { redirect } from 'next/navigation';
+// // import LoginForm from './LoginForm';
+// 
+// export const metadata = {
+//     title: 'Sign In',
+//     description: 'Sign in to FresherFlow - access your personalized feed of verified jobs, internships, and walk-ins for freshers.',
+//     packets: {
+//         google: 'notranslate'
+//     },
+//     robots: {
+//         index: false,
+//         follow: false,
+//     },
+// };
+// 
+// export default function LoginPage() {
+//     // TEMPORARY PIVOT: Redirect web users to download page
+//     redirect('/download');
+// 
+//     return (
+//         <>
+//             {/* TEMPORARY PIVOT: Redirect web users to mobile for auth */}
+//             <div className="min-h-screen flex items-center justify-center pt-20 px-4">
+//                 <div className="max-w-md w-full space-y-8 p-8 rounded-3xl border border-border bg-card text-center shadow-xl">
+//                     <div className="space-y-4">
+//                         <h1 className="text-2xl font-bold tracking-tight">Login moved to Mobile</h1>
+//                         <p className="text-muted-foreground">
+//                             Personalized features like Saved Jobs and the Application Tracker are now exclusive to the FresherFlow Mobile App.
+//                         </p>
+//                     </div>
+//                     <div className="pt-4 flex flex-col gap-3">
+//                         <Link 
+//                             href="/opportunities" 
+//                             className="premium-button w-full justify-center text-xs capitalize tracking-widest"
+//                          >
+//                             Get the Mobile App
+//                         </Link>
+//                         <Link 
+//                             href="/" 
+//                             className="text-sm font-medium text-primary hover:underline"
+//                         >
+//                             Continue as Guest
+//                         </Link>
+//                     </div>
+//                     <p className="pt-6 text-[10px] text-muted-foreground uppercase tracking-widest leading-loose">
+//                         Official Discovery Layer • Guest Access Enabled
+//                     </p>
+//                 </div>
+//             </div>
+// 
+//             {/* 
+//             <LoginForm /> 
+//             */}
+//         </>
+//     );
+// }
+// 
+// */
+// 
+// 
+

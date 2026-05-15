@@ -1,40 +1,42 @@
 import { Metadata } from 'next';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
+import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-    title: 'Walk-in Drives & Campus Hiring',
-    description: 'Discover walk-in interview drives and on-campus recruitment events near you. Get complete venue details, timing, required documents, and eligibility for immediate hiring opportunities.',
-    keywords: 'walk-in drives, walk-in interviews, campus placement, fresher walk-ins, direct walk-in jobs, on-campus hiring, immediate hiring',
+    title: 'Walk-in Interview Drives',
+    description: 'Find direct walk-in interview drives near you. Explore verified on-site hiring events for freshers with clear venue details, eligibility criteria, and interview dates.',
+    keywords: 'walk-in interviews, direct hiring events, fresher walk-ins, off campus drives, interview venues, direct interview openings',
     openGraph: {
-        title: 'Walk-in Drives & Campus Hiring | FresherFlow',
-        description: 'Discover walk-in interview drives and on-campus recruitment events across India.',
+        title: 'Walk-in Interview Drives | FresherFlow',
+        description: 'Find direct walk-in interview drives for freshers across India.',
         type: 'website',
         images: [
             {
                 url: '/main.png',
                 width: 1200,
                 height: 630,
-                alt: 'Verified walk-in drives on FresherFlow',
+                alt: 'Verified walk-ins on FresherFlow',
             },
         ],
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Walk-in Drives & Campus Hiring | FresherFlow',
-        description: 'Discover walk-in interview drives and on-campus recruitment events across India.',
+        title: 'Walk-in Interview Drives | FresherFlow',
+        description: 'Find direct walk-in interview drives for freshers across India.',
         images: ['/main.png'],
     },
 };
 
-export default function WalkInsPage() {
-    return <CategoryPage type={OpportunityType.WALKIN} />;
+export default async function WalkInsPage() {
+    const bootstrapData = await fetchBootstrapFeed();
+    const initialData = bootstrapData ? {
+        opportunities: bootstrapData.opportunities.filter(o => o.type === OpportunityType.WALKIN),
+        total: bootstrapData.count,
+        cachedAt: new Date(bootstrapData.generatedAt).getTime(),
+    } : null;
+
+    return <CategoryPage type={OpportunityType.WALKIN} initialData={initialData} />;
 }
-
-
-
-
-
-

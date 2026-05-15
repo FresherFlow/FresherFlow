@@ -5,7 +5,7 @@ import { Suspense } from 'react';
 import { getSiteMode } from '@/lib/siteModeServer';
 import OpportunityDetailClient from './OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
-import { getOpportunityPath } from '@fresherflow/domain';
+import { getOpportunityPath } from '@/lib/opportunityPath';
 import {
     fetchOpportunityForPage,
     generateOpportunityMetadata,

@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { type Opportunity, type Profile } from '@fresherflow/types';
-import { parseOpportunityLocation, getOpportunityDisplaySalary, normalizeSalaryInput } from '@fresherflow/domain';
+import { parseOpportunityLocation, getOpportunityDisplaySalary, normalizeSalaryInput } from '@/lib/opportunityDisplay';
 import { getDriveDates, getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 import {
     buildEligibilitySnapshot,
@@ -10,12 +10,12 @@ import {
     isClosingSoon,
     isExpired,
     sortTimelineEvents,
-} from '@fresherflow/domain';
+} from './detailUtils';
 import {
     buildLoginFromDetailHref,
     getCurrentActionType,
     getTrackerOptions,
-} from '@fresherflow/domain';
+} from '@/lib/opportunityDetailHelpers';
 
 export function useOpportunityDerivedState(opp: Opportunity, profile: Profile | null, searchParams: URLSearchParams) {
     const [now] = useState(() => Date.now());

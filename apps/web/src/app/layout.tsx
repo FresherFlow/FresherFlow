@@ -5,10 +5,11 @@ import { SmartToaster } from "@/components/providers/SmartToaster";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { InstallPromptProvider } from "@/contexts/InstallPromptContext";
 import { NavigationWrapper } from "@/components/providers/NavigationWrapper";
-import ServiceWorkerRegister from "@/components/providers/ServiceWorkerRegister";
-import PushNotificationProvider from "@/components/providers/PushNotificationProvider";
-import { ThemeScript } from "@/components/providers/ThemeScript";
-import OfflineNotification from "@/components/ui/OfflineNotification";
+// WEB PIVOT: keep these imports disabled until web app mode returns.
+// import ServiceWorkerRegister from "@/components/providers/ServiceWorkerRegister";
+// import PushNotificationProvider from "@/components/providers/PushNotificationProvider";
+// import { ThemeScript } from "@/components/providers/ThemeScript";
+// import OfflineNotification from "@/components/ui/OfflineNotification";
 import InstallAppBanner from "@/components/ui/InstallAppBanner";
 import { SiteModeProvider } from "@/contexts/SiteModeContext";
 import { getSiteMode } from "@/lib/siteModeServer";
@@ -16,7 +17,8 @@ import { PageTransitionWrapper } from "@/components/providers/PageTransitionWrap
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
-import { ADMIN_WEB_HOST, SITE_URL } from "@/lib/runtimeConfig";
+import { HeadInjections } from "@/components/providers/HeadInjections";
+import { SITE_URL } from "@/lib/runtimeConfig";
 
 const SITE_ORIGIN = SITE_URL;
 const METADATA_BASE = SITE_ORIGIN ? new URL(SITE_ORIGIN) : undefined;
@@ -82,7 +84,15 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialSiteMode = await getSiteMode();
+  // Race site mode resolution against a 500ms timeout to prevent layout hangs
+  let initialSiteMode: any = 'private';
+  try {
+    const modePromise = getSiteMode();
+    const timeoutPromise = new Promise<any>((resolve) => setTimeout(() => resolve('private'), 500));
+    initialSiteMode = await Promise.race([modePromise, timeoutPromise]);
+  } catch (err) {
+    console.warn('[Layout] Site mode resolution failed, falling back to private', err);
+  }
   const gaId = process.env.NEXT_PUBLIC_GA_ID || '';
   const enableVercelAnalytics = process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
   const enableSpeedInsights = process.env.NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS === 'true';
@@ -91,8 +101,7 @@ export default async function RootLayout({
       <head>
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#e2eaf2" id="theme-color-meta" />
-        {/* Dynamic theme-color updated via ThemeScript & ThemeContext */}
-        <ThemeScript />
+        <HeadInjections />
         <meta property="og:image" content={OG_IMAGE_URL} />
         <meta property="og:image:secure_url" content={OG_IMAGE_URL} />
         <meta property="og:image:type" content="image/png" />
@@ -113,20 +122,6 @@ export default async function RootLayout({
             }),
           }}
         />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function () {
-                var manifestLink = document.getElementById('ff-manifest-link');
-                if (!manifestLink) return;
-                var hostname = window.location.hostname.toLowerCase();
-                if (hostname === '${ADMIN_WEB_HOST}'.toLowerCase()) {
-                  manifestLink.setAttribute('href', '/admin-manifest.json');
-                }
-              })();
-            `,
-          }}
-        />
       </head>
       <body className="antialiased bg-background text-foreground selection:bg-primary/20" suppressHydrationWarning>
         <ThemeProvider>
@@ -142,15 +137,17 @@ export default async function RootLayout({
                     </NavigationWrapper>
                     <InstallAppBanner />
                   </InstallPromptProvider>
-                  <PushNotificationProvider />
+                  {/* WEB PIVOT: disabled push subscription API calls. */}
+                  {/* <PushNotificationProvider /> */}
                 </ConditionalAuthProvider>
               </AuthFormDataProvider>
             </PageTransitionWrapper>
           </SiteModeProvider>
         </ThemeProvider>
-        <ServiceWorkerRegister />
+        {/* WEB PIVOT: disabled service worker/offline runtime. */}
+        {/* <ServiceWorkerRegister /> */}
         <SmartToaster />
-        <OfflineNotification />
+        {/* <OfflineNotification /> */}
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
         {enableVercelAnalytics ? <Analytics /> : null}
         {enableSpeedInsights ? <SpeedInsights /> : null}

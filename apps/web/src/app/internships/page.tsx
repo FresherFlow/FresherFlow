@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
+import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 
 export const revalidate = 3600;
 
@@ -29,12 +30,13 @@ export const metadata: Metadata = {
     },
 };
 
-export default function InternshipsPage() {
-    return <CategoryPage type={OpportunityType.INTERNSHIP} />;
+export default async function InternshipsPage() {
+    const bootstrapData = await fetchBootstrapFeed();
+    const initialData = bootstrapData ? {
+        opportunities: bootstrapData.opportunities.filter(o => o.type === OpportunityType.INTERNSHIP),
+        total: bootstrapData.count,
+        cachedAt: new Date(bootstrapData.generatedAt).getTime(),
+    } : null;
+
+    return <CategoryPage type={OpportunityType.INTERNSHIP} initialData={initialData} />;
 }
-
-
-
-
-
-

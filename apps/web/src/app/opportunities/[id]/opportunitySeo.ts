@@ -1,6 +1,7 @@
 import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
-import { getOpportunityPath, parseOpportunityLocation } from '@fresherflow/domain';
+import { getOpportunityPath } from '@/lib/opportunityPath';
+import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
 import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
 import { API_URL, SITE_URL } from '@/lib/runtimeConfig';
 import { SiteMode } from '@/lib/siteMode';

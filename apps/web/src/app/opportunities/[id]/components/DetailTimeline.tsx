@@ -1,4 +1,4 @@
-import { TimelineEventView } from '@fresherflow/domain';
+import { TimelineEventView } from '../detailUtils';
 import { cn } from '@/shared/ui/cn';
 import { useState } from 'react';
 

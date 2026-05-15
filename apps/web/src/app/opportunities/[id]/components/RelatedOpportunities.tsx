@@ -3,7 +3,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
-import { parseOpportunityLocation, getOpportunityPathFromItem } from '@fresherflow/domain';
+import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
+import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 
 type RelatedOpportunitiesProps = {
     relatedOpps: Opportunity[];

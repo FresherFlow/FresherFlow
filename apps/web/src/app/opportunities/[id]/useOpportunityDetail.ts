@@ -8,9 +8,12 @@ import { getRecentViewedByIdOrSlug, saveRecentViewed } from '@/shared/api/offlin
 // removed unused sync status import
 import { enqueueOfflineActionTrack, enqueueOfflineSaveToggle } from '@/shared/api/offline/actionQueue';
 import { analytics } from '@/shared/api/analytics';
-import { parseOpportunityLocation, getOpportunityPathFromItem } from '@fresherflow/domain';
-import { buildLoginFromDetailHref, getDetailShareUrl } from '@fresherflow/domain';
-import { getRelatedOpportunities } from '@fresherflow/domain';
+import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
+import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
+import { buildLoginFromDetailHref, getDetailShareUrl } from '@/lib/opportunityDetailHelpers';
+import { getRelatedOpportunities } from './detailUtils';
+
+const WEB_STATIC_DISCOVERY = true;
 
 export function useOpportunityDetail(id: string, initialData?: Opportunity | null, user?: User | null) {
     const router = useRouter();
@@ -44,6 +47,11 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
     const hasAttemptedLoadRef = useRef(false);
 
     const loadOpportunity = useCallback(async () => {
+        if (WEB_STATIC_DISCOVERY) {
+            setIsLoading(false);
+            setError(initialData ? null : 'Listing unavailable.');
+            return;
+        }
         if (initialData) return;
 
         setIsLoading(true);
@@ -116,12 +124,13 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
         if (opp && !hasTrackedDetailViewRef.current) {
             hasTrackedDetailViewRef.current = true;
             analytics.jobView(opp.id, opp.company, parseOpportunityLocation(opp.locations).shortLabel);
-            growthApi.trackEvent('DETAIL_VIEW', 'opportunity_detail', { opportunityId: opp.id }).catch(() => undefined);
+            // WEB PIVOT: disabled backend growth tracking on public detail pages.
+            // growthApi.trackEvent('DETAIL_VIEW', 'opportunity_detail', { opportunityId: opp.id }).catch(() => undefined);
         }
     }, [opp]);
 
     useEffect(() => {
-        if (!opp || !user) return;
+        if (WEB_STATIC_DISCOVERY || !opp || !user) return;
 
         const trackView = async () => {
             try {
@@ -138,7 +147,7 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
     }, [opp, user]);
 
     useEffect(() => {
-        if (!opp) return;
+        if (WEB_STATIC_DISCOVERY || !opp) return;
 
         const loadRelated = async () => {
             setIsLoadingRelated(true);
@@ -169,7 +178,9 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
         }
 
         try {
-            const result = await savedApi.toggle(opp.id) as { saved: boolean };
+            throw new Error('Saved jobs are disabled on web');
+            // const result = await savedApi.toggle(opp.id) as { saved: boolean };
+            const result = { saved: newSavedState };
             if (result.saved !== newSavedState) {
                 setOpp(prev => prev ? { ...prev, isSaved: result.saved } : null);
             }
@@ -244,12 +255,13 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
         if (user) {
             actionsApi.track(opp.id, applyAction).catch(() => undefined);
         }
-        growthApi.trackEvent('APPLY_CLICK', 'opportunity_detail').catch(() => undefined);
-        opportunityClicksApi.trackApplyClick(
-            opp.id,
-            'opportunity_detail',
-            opp.applyLink || opp.companyWebsite || null
-        ).catch(() => undefined);
+        // WEB PIVOT: no backend tracking from public web.
+        // growthApi.trackEvent('APPLY_CLICK', 'opportunity_detail').catch(() => undefined);
+        // opportunityClicksApi.trackApplyClick(
+        //     opp.id,
+        //     'opportunity_detail',
+        //     opp.applyLink || opp.companyWebsite || null
+        // ).catch(() => undefined);
 
         if (opp.applyLink) {
             window.open(opp.applyLink, '_blank', 'noopener,noreferrer');
@@ -268,7 +280,8 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
             url: shareUrl,
         };
 
-        growthApi.trackEvent('SHARE_JOB', 'opportunity_detail').catch(() => undefined);
+        // WEB PIVOT: no backend share tracking from public web.
+        // growthApi.trackEvent('SHARE_JOB', 'opportunity_detail').catch(() => undefined);
         try {
             if (navigator.share) {
                 await navigator.share(shareData);

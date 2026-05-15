@@ -1,5 +1,5 @@
 import { type Opportunity, type User } from '@fresherflow/types';
-import { TimelineEventView } from '@fresherflow/domain';
+import { TimelineEventView } from '../detailUtils';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/shared/ui/cn';
 import { Button } from '@/components/ui/Button';

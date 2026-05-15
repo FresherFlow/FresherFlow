@@ -148,6 +148,11 @@ export function formatLpaValue(value: string) {
     return /\bLPA\b/i.test(value) ? value : `${value} LPA`;
 }
 
+export function formatTimeText12Hour(value?: string | null) {
+    if (!value) return 'Not specified';
+    return value;
+}
+
 export function isExpired(opportunity: Opportunity) {
     if (!opportunity.expiresAt) return false;
     return new Date(opportunity.expiresAt) < new Date();
