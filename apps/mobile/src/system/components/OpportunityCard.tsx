@@ -12,6 +12,7 @@ import { TYPOGRAPHY } from '../constants/typography';
 import { haptic } from '@/utils/haptics';
 import { formatSalary } from '@/utils/formatters';
 import { toTitleCase, formatListToTitleCase } from '@/utils/text';
+import { getDisplayHandle } from '@fresherflow/utils';
 
 interface Props {
   opportunity: Opportunity & { matchReason?: string; matchScore?: number; isEligible?: boolean };
@@ -101,7 +102,10 @@ export const OpportunityCard = memo(({
         <SurfaceCard
             onPress={onPress}
             onLongPress={handleLongPress}
-            style={styles.container}
+            style={[
+                styles.container,
+                opportunity.isEligible === false && { opacity: 0.75 }
+            ]}
         >
       <View style={styles.header}>
         <View style={styles.titleArea}>
@@ -130,7 +134,7 @@ export const OpportunityCard = memo(({
                     </View>
                   );
                 })()}
-                {(effectiveMatchScore !== undefined || opportunity.isEligible !== undefined) && (
+                {((effectiveMatchScore !== undefined && effectiveMatchScore > 0) || opportunity.isEligible === false) && (
                     <View style={[
                         styles.verifiedBadge,
                         { backgroundColor: alpha((opportunity.isEligible === false) ? currentTheme.colors.error : currentTheme.colors.success, 0.05) }
@@ -169,36 +173,56 @@ export const OpportunityCard = memo(({
                     onSave?.(opportunity);
                 }}
             >
-                <Bookmark
-                    size={mScale(20)}
-                    color={isSaved ? currentTheme.colors.primary : currentTheme.colors.textMuted}
-                    fill={isSaved ? currentTheme.colors.primary : 'transparent'}
-                />
+                <MotiView
+                    animate={{
+                        scale: isSaved ? [1, 1.3, 1] : 1,
+                    }}
+                    transition={{
+                        type: 'spring',
+                        damping: 12,
+                        stiffness: 200,
+                    }}
+                >
+                    <Bookmark
+                        size={mScale(20)}
+                        color={isSaved ? currentTheme.colors.primary : currentTheme.colors.textMuted}
+                        fill={isSaved ? currentTheme.colors.primary : 'transparent'}
+                    />
+                </MotiView>
             </TouchableOpacity>
       </View>
 
-      <View style={styles.metaRow}>
-          <View style={styles.metaItem}>
-              <MapPin size={mScale(12)} color={currentTheme.colors.textMuted} />
-              <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
-                  {formatListToTitleCase(opportunity.locations) || 'Remote'}
-              </Text>
-          </View>
-          {formatSalary(opportunity) && (
-              <View style={styles.metaItem}>
-                  <CircleDollarSign size={mScale(12)} color={currentTheme.colors.textMuted} />
-                  <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>{formatSalary(opportunity)}</Text>
-              </View>
-          )}
-          {(opportunity.experienceMin !== undefined || opportunity.experienceMax !== undefined) && (
-              <View style={styles.metaItem}>
-                  <Briefcase size={mScale(12)} color={currentTheme.colors.textMuted} />
-                  <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>
-                      {opportunity.experienceMax ? `${opportunity.experienceMin || 0}-${opportunity.experienceMax}y` : 'Fresher'}
-                  </Text>
-              </View>
-          )}
-      </View>
+      {(() => {
+          const locs = opportunity.locations || [];
+          const locationLabel = locs.length === 0 ? 'Remote' : (locs.length <= 2 ? formatListToTitleCase(locs) : `${toTitleCase(locs[0])}, ${toTitleCase(locs[1])} +${locs.length - 2} more`);
+          const salaryLabel = formatSalary(opportunity);
+          const isCrowded = (locationLabel.length + (salaryLabel?.length || 0)) > 35;
+
+          return (
+            <View style={styles.metaRow}>
+                <View style={styles.metaItem}>
+                    <MapPin size={mScale(12)} color={currentTheme.colors.textMuted} />
+                    <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                        {locationLabel}
+                    </Text>
+                </View>
+                {salaryLabel && (
+                    <View style={styles.metaItem}>
+                        <CircleDollarSign size={mScale(12)} color={currentTheme.colors.textMuted} />
+                        <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>{salaryLabel}</Text>
+                    </View>
+                )}
+                {!isCrowded && (opportunity.experienceMin !== undefined || opportunity.experienceMax !== undefined) && (
+                    <View style={styles.metaItem}>
+                        <Briefcase size={mScale(12)} color={currentTheme.colors.textMuted} />
+                        <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>
+                            {opportunity.experienceMax ? `${opportunity.experienceMin || 0}-${opportunity.experienceMax}y` : 'Fresher'}
+                        </Text>
+                    </View>
+                )}
+            </View>
+          );
+      })()}
 
       <View style={[styles.footer, { borderTopColor: alpha(currentTheme.colors.border, 0.3) }]}>
           <View style={styles.footerInfo}>
@@ -224,14 +248,14 @@ export const OpportunityCard = memo(({
                   </View>
               )}
               {expiryInfo && (
-                  <View style={[styles.expiryBadge, { backgroundColor: alpha(expiryInfo.color, 0.1) }]}>
+                  <View style={[styles.expiryBadge, { backgroundColor: alpha(expiryInfo.color, 0.05) }]}>
                       <Clock size={mScale(10)} color={expiryInfo.color} />
                       <Text style={[styles.expiryText, { color: expiryInfo.color }]}>{expiryInfo.label}</Text>
                   </View>
               )}
-              {opportunity.rawIngestions?.[0]?.creator?.fullName && (
+              {opportunity.rawIngestions?.[0]?.creator && (
                   <Text style={[styles.contributorText, { color: currentTheme.colors.textMuted }]}>
-                      by {opportunity.rawIngestions[0].creator.fullName.split(' ')[0]}
+                      Shared by {getDisplayHandle(opportunity.rawIngestions[0].creator)}
                   </Text>
               )}
           </View>
@@ -341,6 +365,7 @@ const styles = StyleSheet.create({
     },
     metaRow: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         marginTop: SPACING.md,
         gap: SPACING.md,
     },

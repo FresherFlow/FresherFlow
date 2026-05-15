@@ -70,7 +70,7 @@ export const renderFormattedDescription = (text: string, options: ParserOptions)
       flushList(`h-${i}`);
       elements.push(
         <Text key={`h-${i}`} style={[styles.heading, { color: theme.colors.text }]}>
-          {headingMatch[1].trim().toUpperCase()}
+          {headingMatch[1].trim()}
         </Text>
       );
       continue;
@@ -93,7 +93,7 @@ export const renderFormattedDescription = (text: string, options: ParserOptions)
       flushList(`ch-${i}`);
       elements.push(
         <Text key={`ch-${i}`} style={[styles.heading, { color: theme.colors.text }]}>
-          {colonHeading.toUpperCase()}
+          {colonHeading}
         </Text>
       );
       continue;
@@ -147,9 +147,9 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   heading: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 0.5,
     marginTop: 12,
     marginBottom: 10,
     opacity: 0.9,

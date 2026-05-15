@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Opportunity } from '@fresherflow/types';
 
-const FEED_CACHE_KEY = 'fresherflow_feed_cache';
+const FEED_INDEX_KEY = 'fresherflow_feed_index';
+const JOB_PREFIX = 'fresherflow_job_';
 const SHARES_CACHE_KEY = 'fresherflow_shares_cache';
 const COMPANIES_CACHE_KEY = 'fresherflow_companies_cache';
 const ALERTS_CACHE_KEY = 'fresherflow_alerts_cache';
@@ -25,29 +26,90 @@ export const getLastSyncTimestamp = async (): Promise<string | null> => {
     }
 };
 
-export interface FeedCache {
-    items: Opportunity[];
-    timestamp: number;
-}
-
-export const saveFeedCache = async (items: Opportunity[]) => {
+/**
+ * Saves a single opportunity atomically to its own key.
+ * This prevents "Large Object" serialization lag.
+ */
+export const saveOpportunityAtomic = async (job: Opportunity) => {
     try {
-        const cache: FeedCache = {
-            items,
-            timestamp: Date.now(),
-        };
-        await AsyncStorage.setItem(FEED_CACHE_KEY, JSON.stringify(cache));
-    } catch (error) {
-        console.warn('Failed to save feed cache', error);
+        await AsyncStorage.setItem(`${JOB_PREFIX}${job.id}`, JSON.stringify(job));
+    } catch (e) {
+        console.warn(`[Atomic] Failed to save job ${job.id}`, e);
     }
 };
 
-export const readFeedCache = async (): Promise<FeedCache | null> => {
+/**
+ * Reads a single opportunity by ID.
+ */
+export const getOpportunityAtomic = async (id: string): Promise<Opportunity | null> => {
     try {
-        const data = await AsyncStorage.getItem(FEED_CACHE_KEY);
+        const data = await AsyncStorage.getItem(`${JOB_PREFIX}${id}`);
         return data ? JSON.parse(data) : null;
+    } catch {
+        return null;
+    }
+};
+
+export interface FeedIndex {
+    ids: string[];
+    timestamp: number;
+}
+
+/**
+ * Saves the feed as a list of IDs + individual atomic job saves using BATCH operations.
+ */
+export const saveFeedCache = async (items: Opportunity[]) => {
+    try {
+        if (items.length === 0) return;
+        
+        // 1. Perform Storage Garbage Collection
+        await pruneGhostJobs(items.map(i => i.id));
+
+        // 2. Prepare batch set
+        const batch: [string, string][] = items.map(job => [
+            `${JOB_PREFIX}${job.id}`,
+            JSON.stringify(job)
+        ]);
+
+        // 3. Execute multiSet for maximum bridge efficiency
+        await AsyncStorage.multiSet(batch);
+
+        // 4. Save the index (order)
+        const index: FeedIndex = {
+            ids: items.map(i => i.id),
+            timestamp: Date.now(),
+        };
+        await AsyncStorage.setItem(FEED_INDEX_KEY, JSON.stringify(index));
     } catch (error) {
-        console.warn('Failed to read feed cache', error);
+        console.warn('Failed to save batch feed cache', error);
+    }
+};
+
+/**
+ * Reads the feed by reconstructing it from the index and atomic keys using BATCH read.
+ */
+export const readFeedCache = async (): Promise<{ items: Opportunity[], timestamp: number } | null> => {
+    try {
+        const indexJson = await AsyncStorage.getItem(FEED_INDEX_KEY);
+        if (!indexJson) return null;
+
+        const index: FeedIndex = JSON.parse(indexJson);
+        if (!index.ids || index.ids.length === 0) return null;
+
+        // 3. Batch read all keys from the index
+        const keys = index.ids.map(id => `${JOB_PREFIX}${id}`);
+        const pairs = await AsyncStorage.multiGet(keys);
+        
+        const items: Opportunity[] = pairs
+            .map(([, value]) => value ? JSON.parse(value) : null)
+            .filter((j): j is Opportunity => j !== null);
+
+        return {
+            items,
+            timestamp: index.timestamp
+        };
+    } catch (error) {
+        console.warn('Failed to read batch feed cache', error);
         return null;
     }
 };
@@ -203,18 +265,15 @@ export const readSimilarCache = async (opportunityId: string): Promise<SimilarCa
  */
 export const findJobsByCompanyLocally = async (companyName: string): Promise<Opportunity[]> => {
     try {
-        const [feedData, exploreData] = await Promise.all([
-            AsyncStorage.getItem(FEED_CACHE_KEY),
-            AsyncStorage.getItem('fresherflow_explore_cache') // Note: Explore uses its own key
-        ]);
+        const feedCache = await readFeedCache();
+        const exploreData = await AsyncStorage.getItem('fresherflow_explore_cache');
 
-        const allJobs: Opportunity[] = [];
-        const seenIds = new Set<string>();
+        const allJobs: Opportunity[] = feedCache?.items || [];
+        const seenIds = new Set<string>(allJobs.map(j => j.id));
 
-        const process = (json: string | null) => {
-            if (!json) return;
+        if (exploreData) {
             try {
-                const parsed = JSON.parse(json);
+                const parsed = JSON.parse(exploreData);
                 const items = Array.isArray(parsed) ? parsed : (parsed.items || []);
                 items.forEach((job: Opportunity) => {
                     if (job && job.id && !seenIds.has(job.id)) {
@@ -223,17 +282,58 @@ export const findJobsByCompanyLocally = async (companyName: string): Promise<Opp
                     }
                 });
             } catch (e) {
-                console.warn('Failed to parse cache chunk during local search', e);
+                console.warn('Failed to parse explore cache chunk', e);
             }
-        };
-
-        process(feedData);
-        process(exploreData);
+        }
 
         const target = companyName.toLowerCase().trim();
         return allJobs.filter(job => job.company.toLowerCase().trim() === target);
     } catch (error) {
         console.warn('Local company job search failed', error);
         return [];
+    }
+};
+
+/**
+ * Prunes jobs from disk that are no longer present in the primary index.
+ * This prevents the "Ghost Jobs" issue where thousands of individual keys stay on disk.
+ */
+export const pruneGhostJobs = async (currentIds: string[]) => {
+    try {
+        const oldIndexJson = await AsyncStorage.getItem(FEED_INDEX_KEY);
+        if (!oldIndexJson) return;
+
+        const oldIndex: FeedIndex = JSON.parse(oldIndexJson);
+        const newIdsSet = new Set(currentIds);
+        
+        // Identify jobs that were in the old feed but are not in the current one
+        const ghostIds = oldIndex.ids.filter(id => !newIdsSet.has(id));
+        
+        if (ghostIds.length > 0) {
+            const ghostKeys = ghostIds.map(id => `${JOB_PREFIX}${id}`);
+            // Also prune detail caches for these jobs to be extra thorough
+            const detailKeys = ghostIds.map(id => `${DETAIL_CACHE_PREFIX}${id}`);
+            
+            await AsyncStorage.multiRemove([...ghostKeys, ...detailKeys]);
+            console.log(`[OfflineCache] GC: Pruned ${ghostIds.length} ghost jobs from disk`);
+        }
+    } catch (e) {
+        console.warn('[OfflineCache] GC Failed', e);
+    }
+};
+/**
+ * Wipes all FresherFlow related cache from disk.
+ * Use this for debugging cold-start or forcing a fresh sync.
+ */
+export const clearAllCache = async () => {
+    try {
+        const allKeys = await AsyncStorage.getAllKeys();
+        const ffKeys = allKeys.filter(k => k.startsWith('fresherflow_'));
+        if (ffKeys.length > 0) {
+            await AsyncStorage.multiRemove(ffKeys);
+        }
+        console.log(`[OfflineCache] Successfully cleared ${ffKeys.length} keys`);
+    } catch (e) {
+        console.warn('[OfflineCache] Clear failed', e);
     }
 };

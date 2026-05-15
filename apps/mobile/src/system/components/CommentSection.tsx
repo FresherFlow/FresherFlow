@@ -10,20 +10,19 @@ import {
 import * as Haptics from 'expo-haptics';
 import { Send, Trash2, MessageSquare, ShieldCheck } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
+import { alpha } from '@/theme';
 import { useNotifications } from '@repo/frontend-core';
 import { useComments } from '@/hooks/useComments';
 import { Section } from '@/system/layout/Layout';
 import { SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { SPACING, RADIUS, mScale } from '@/system/constants/dimensions';
+import { getDisplayHandle } from '@fresherflow/utils';
 
 interface CommentSectionProps {
     opportunityId: string;
 }
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
+
 
 export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId }) => {
     const { currentTheme } = useTheme();
@@ -105,11 +104,11 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
                 ) : comments.length > 0 ? (
                     <View style={styles.commentsList}>
                         {comments.map((comment) => (
-                            <View key={comment.id} style={styles.commentItem}>
+                            <View key={comment.id} style={[styles.commentItem, { borderBottomColor: alpha(currentTheme.colors.border, 0.1) }]}>
                                 <View style={styles.commentHeader}>
                                     <View style={styles.userBadge}>
                                         <Text style={[styles.userName, { color: currentTheme.colors.text }]}>
-                                            {comment.user.fullName || 'Anonymous'}
+                                            {getDisplayHandle(comment.user)}
                                         </Text>
                                         <View style={[styles.verifiedTag, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
                                             <ShieldCheck size={10} color={currentTheme.colors.success} />
@@ -176,7 +175,7 @@ const styles = StyleSheet.create({
     commentItem: {
         paddingVertical: SPACING.sm,
         borderBottomWidth: 0.5,
-        borderBottomColor: 'rgba(0,0,0,0.05)',
+        borderBottomColor: '#000', // Static fallback
     },
     commentHeader: {
         flexDirection: 'row',

@@ -1,20 +1,30 @@
-import React from 'react';
+import React, { useCallback, useMemo, useRef, forwardRef, useImperativeHandle } from 'react';
 import {
     StyleSheet,
     View,
     Text,
     TouchableOpacity,
+    BackHandler
 } from 'react-native';
 import { AlertTriangle, ChevronRight, Info, Link, Trash2, Ban } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { 
+    BottomSheetModal, 
+    BottomSheetView, 
+    BottomSheetBackdrop,
+    BottomSheetBackdropProps
+} from '@gorhom/bottom-sheet';
 import { useTheme } from '@/contexts/ThemeContext';
-import { mScale } from '../constants/dimensions';
-import { PremiumActionSheet } from './PremiumActionSheet';
+import { mScale, RADIUS, SPACING } from '../constants/dimensions';
+
+export interface ReportActionSheetRef {
+    present: () => void;
+    dismiss: () => void;
+}
 
 interface ReportActionSheetProps {
-    visible: boolean;
-    onClose: () => void;
     onReport: (reason: string) => void;
+    onClose?: () => void;
 }
 
 const alpha = (color: string, opacity: number) => {
@@ -22,8 +32,33 @@ const alpha = (color: string, opacity: number) => {
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
 };
 
-export const ReportActionSheet: React.FC<ReportActionSheetProps> = ({ visible, onClose, onReport }) => {
+export const ReportActionSheet = forwardRef<ReportActionSheetRef, ReportActionSheetProps>(({ onReport, onClose }, ref) => {
     const { currentTheme } = useTheme();
+    const [isVisible, setIsVisible] = React.useState(false);
+    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const snapPoints = useMemo(() => ['65%'], []);
+
+    const handleSheetChange = useCallback((index: number) => {
+        setIsVisible(index >= 0);
+    }, []);
+
+    React.useEffect(() => {
+        const handleBackPress = () => {
+            if (isVisible) {
+                bottomSheetModalRef.current?.dismiss();
+                return true;
+            }
+            return false;
+        };
+
+        const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+        return () => subscription.remove();
+    }, [isVisible]);
+
+    useImperativeHandle(ref, () => ({
+        present: () => bottomSheetModalRef.current?.present(),
+        dismiss: () => bottomSheetModalRef.current?.dismiss(),
+    }));
 
     const reasons = [
         { id: 'expired', label: 'Expired / Closed Opportunity', icon: Ban },
@@ -36,49 +71,84 @@ export const ReportActionSheet: React.FC<ReportActionSheetProps> = ({ visible, o
     const handleReport = (reason: string) => {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         onReport(reason);
-        onClose();
+        bottomSheetModalRef.current?.dismiss();
     };
 
-    return (
-        <PremiumActionSheet visible={visible} onClose={onClose}>
-            <View style={styles.header}>
-                <View style={[styles.iconBox, { backgroundColor: alpha(currentTheme.colors.error, 0.1) }]}>
-                    <AlertTriangle size={24} color={currentTheme.colors.error} />
-                </View>
-                <View>
-                    <Text style={[styles.title, { color: currentTheme.colors.text }]}>Report Opportunity</Text>
-                    <Text style={[styles.subtitle, { color: currentTheme.colors.textMuted }]}>Help us keep the community accurate</Text>
-                </View>
-            </View>
-
-            <View style={styles.list}>
-                {reasons.map((item) => (
-                    <TouchableOpacity
-                        key={item.id}
-                        style={[styles.reasonItem, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}
-                        onPress={() => handleReport(item.label)}
-                    >
-                        <View style={[styles.reasonIcon, { backgroundColor: alpha(item.destructive ? currentTheme.colors.error : currentTheme.colors.primary, 0.1) }]}>
-                            <item.icon size={20} color={item.destructive ? currentTheme.colors.error : currentTheme.colors.primary} />
-                        </View>
-                        <Text style={[styles.reasonLabel, { color: item.destructive ? currentTheme.colors.error : currentTheme.colors.text }]}>
-                            {item.label}
-                        </Text>
-                        <ChevronRight size={18} color={currentTheme.colors.textMuted} />
-                    </TouchableOpacity>
-                ))}
-            </View>
-
-            <View style={styles.footer}>
-                <Text style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
-                    Our team reviews reports within 24 hours. Thank you!
-                </Text>
-            </View>
-        </PremiumActionSheet>
+    const renderBackdrop = useCallback(
+        (props: BottomSheetBackdropProps) => (
+            <BottomSheetBackdrop
+                {...props}
+                appearsOnIndex={0}
+                disappearsOnIndex={-1}
+                opacity={0.4}
+            />
+        ),
+        []
     );
-};
+
+    return (
+        <BottomSheetModal
+            ref={bottomSheetModalRef}
+            snapPoints={snapPoints}
+            onDismiss={onClose}
+            onChange={handleSheetChange}
+            backdropComponent={renderBackdrop}
+            backgroundStyle={{ 
+                backgroundColor: currentTheme.colors.surface,
+                borderTopLeftRadius: RADIUS.xl * 1.5,
+                borderTopRightRadius: RADIUS.xl * 1.5,
+            }}
+            handleIndicatorStyle={{ 
+                backgroundColor: alpha(currentTheme.colors.text, 0.15),
+                width: 36,
+                height: 5,
+                borderRadius: 2.5,
+            }}
+        >
+            <BottomSheetView style={styles.container}>
+                <View style={styles.header}>
+                    <View style={[styles.iconBox, { backgroundColor: alpha(currentTheme.colors.error, 0.1) }]}>
+                        <AlertTriangle size={24} color={currentTheme.colors.error} />
+                    </View>
+                    <View>
+                        <Text style={[styles.title, { color: currentTheme.colors.text }]}>Report Opportunity</Text>
+                        <Text style={[styles.subtitle, { color: currentTheme.colors.textMuted }]}>Help us keep the community accurate</Text>
+                    </View>
+                </View>
+
+                <View style={styles.list}>
+                    {reasons.map((item) => (
+                        <TouchableOpacity
+                            key={item.id}
+                            style={[styles.reasonItem, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}
+                            onPress={() => handleReport(item.label)}
+                        >
+                            <View style={[styles.reasonIcon, { backgroundColor: alpha(item.destructive ? currentTheme.colors.error : currentTheme.colors.primary, 0.1) }]}>
+                                <item.icon size={20} color={item.destructive ? currentTheme.colors.error : currentTheme.colors.primary} />
+                            </View>
+                            <Text style={[styles.reasonLabel, { color: item.destructive ? currentTheme.colors.error : currentTheme.colors.text }]}>
+                                {item.label}
+                            </Text>
+                            <ChevronRight size={18} color={currentTheme.colors.textMuted} />
+                        </TouchableOpacity>
+                    ))}
+                </View>
+
+                <View style={styles.footer}>
+                    <Text style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
+                        Our team reviews reports within 24 hours. Thank you!
+                    </Text>
+                </View>
+            </BottomSheetView>
+        </BottomSheetModal>
+    );
+});
 
 const styles = StyleSheet.create({
+    container: {
+        flex: 1,
+        paddingHorizontal: SPACING.lg,
+    },
     header: {
         flexDirection: 'row',
         alignItems: 'center',

@@ -19,23 +19,27 @@ export const FilterChip: React.FC<FilterChipProps> = ({ label, onRemove, active 
     };
 
     return (
-        <View style={[
-            styles.chip, 
-            { 
-                backgroundColor: active ? alpha(currentTheme.colors.primary, 0.1) : currentTheme.colors.surface,
-                borderColor: active ? alpha(currentTheme.colors.primary, 0.3) : currentTheme.colors.border
-            }
-        ]}>
+        <TouchableOpacity 
+            activeOpacity={0.7}
+            onPress={onRemove}
+            style={[
+                styles.chip, 
+                { 
+                    backgroundColor: active ? alpha(currentTheme.colors.primary, 0.1) : currentTheme.colors.surface,
+                    borderColor: active ? alpha(currentTheme.colors.primary, 0.3) : currentTheme.colors.border
+                }
+            ]}
+        >
             <Text style={[
                 styles.label, 
                 { color: active ? currentTheme.colors.primary : currentTheme.colors.text }
             ]}>
                 {label}
             </Text>
-            <TouchableOpacity onPress={onRemove} style={styles.removeBtn}>
+            <View style={styles.removeBtn}>
                 <X size={mScale(12)} color={active ? currentTheme.colors.primary : currentTheme.colors.textMuted} />
-            </TouchableOpacity>
-        </View>
+            </View>
+        </TouchableOpacity>
     );
 };
 
@@ -50,9 +54,8 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     label: {
-        fontSize: mScale(12),
+        fontSize: mScale(13),
         fontWeight: '700',
-        textTransform: 'uppercase',
         letterSpacing: 0.5,
     },
     removeBtn: {

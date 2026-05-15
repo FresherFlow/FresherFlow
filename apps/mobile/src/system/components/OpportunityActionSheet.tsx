@@ -23,8 +23,15 @@ import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { Opportunity } from '@fresherflow/types';
 import { useTheme } from '@/contexts/ThemeContext';
+import { theme } from '@/theme';
+import { useSaved } from '@repo/frontend-core';
 import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
+
+const alpha = (color: string, opacity: number) => {
+    if (color.startsWith('rgba')) return color;
+    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+};
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -36,17 +43,126 @@ interface Props {
     isSaved?: boolean;
 }
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+/**
+ * Shared Content for both Modal-based and BottomSheet-based Action Sheets
+ */
+export const OpportunityActionSheetContent: React.FC<{
+    opportunity: Opportunity;
+    onClose: () => void;
+}> = ({ opportunity: activeOpportunity, onClose }) => {
+    const { currentTheme } = useTheme();
+    const { isSaved: checkIsSaved, toggleSave } = useSaved();
+    
+    const isSaved = checkIsSaved(activeOpportunity.id);
+
+    const handleShare = async () => {
+        await Share.share({
+            message: `Check out this ${activeOpportunity.title} at ${activeOpportunity.company} on FresherFlow! \n\nLink: ${activeOpportunity.applyLink || 'https://fresherflow.in'}`
+        });
+        onClose();
+    };
+
+    const handleCopy = async () => {
+        if (activeOpportunity.applyLink) {
+            await Clipboard.setStringAsync(activeOpportunity.applyLink);
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        }
+        onClose();
+    };
+
+    const handleSave = () => {
+        toggleSave(activeOpportunity);
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        onClose();
+    };
+
+    return (
+        <View style={styles.contentContainer}>
+            <View style={styles.header}>
+                <CompanyLogo
+                    name={activeOpportunity.company}
+                    website={activeOpportunity.companyWebsite}
+                    applyLink={activeOpportunity.applyLink}
+                    logoUrl={activeOpportunity.companyLogoUrl}
+                    size={mScale(52)}
+                />
+                <View style={styles.headerText}>
+                    <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={1}>
+                        {activeOpportunity.title}
+                    </Text>
+                    <Text style={[styles.company, { color: currentTheme.colors.textMuted }]}>
+                        {activeOpportunity.company}
+                    </Text>
+                </View>
+                <TouchableOpacity
+                    onPress={onClose}
+                    style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
+                >
+                    <X size={20} color={currentTheme.colors.text} />
+                </TouchableOpacity>
+            </View>
+
+            {activeOpportunity.applyLink && (
+                <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={handleCopy}
+                    style={[styles.linkPreview, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
+                >
+                    <View style={styles.linkIconBox}>
+                        <Copy size={16} color={currentTheme.colors.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.linkLabel, { color: currentTheme.colors.textMuted }]}>APPLY LINK</Text>
+                        <Text style={[styles.linkText, { color: currentTheme.colors.primary }]} numberOfLines={3}>
+                            {activeOpportunity.applyLink}
+                        </Text>
+                    </View>
+                </TouchableOpacity>
+            )}
+
+            <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
+
+            <View style={styles.actions}>
+                <ActionRow
+                    icon={Bookmark}
+                    label={isSaved ? "Remove from Saved" : "Save Opportunity"}
+                    onPress={handleSave}
+                    color={isSaved ? currentTheme.colors.primary : currentTheme.colors.text}
+                    isSaved={isSaved}
+                />
+                <ActionRow
+                    icon={Share2}
+                    label="Share Opportunity"
+                    onPress={handleShare}
+                />
+                {activeOpportunity.applyLink && activeOpportunity.applyLink.trim().length > 0 && (
+                    <ActionRow
+                        icon={Copy}
+                        label="Copy Apply Link"
+                        onPress={handleCopy}
+                    />
+                )}
+                <ActionRow
+                    icon={Flag}
+                    label="Report Inaccurate Info"
+                    onPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        onClose();
+                    }}
+                    destructive
+                />
+            </View>
+        </View>
+    );
 };
 
+/**
+ * Standard Modal-based Action Sheet (Backward Compatible)
+ */
 export const OpportunityActionSheet: React.FC<Props> = ({
     visible,
     opportunity,
     onClose,
-    onSave,
-    isSaved
 }) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
@@ -121,26 +237,6 @@ export const OpportunityActionSheet: React.FC<Props> = ({
     if (!shouldRender && !visible) return null;
     if (!activeOpportunity) return null;
 
-    const handleShare = async () => {
-        await Share.share({
-            message: `Check out this ${activeOpportunity.title} at ${activeOpportunity.company} on FresherFlow! \n\nLink: ${activeOpportunity.applyLink || 'https://fresherflow.in'}`
-        });
-        closeSheet();
-    };
-
-    const handleCopy = async () => {
-        if (activeOpportunity.applyLink) {
-            await Clipboard.setStringAsync(activeOpportunity.applyLink);
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
-        closeSheet();
-    };
-
-    const handleSave = () => {
-        onSave?.(activeOpportunity);
-        closeSheet();
-    };
-
     const translateY = Animated.add(
         animValue.interpolate({
             inputRange: [0, 1],
@@ -191,80 +287,11 @@ export const OpportunityActionSheet: React.FC<Props> = ({
                     ]}
                     {...panResponder.panHandlers}
                 >
-                    <View style={[styles.handle, { backgroundColor: alpha(currentTheme.colors.text, 0.2) }]} />
-
-                    <View style={styles.header}>
-                        <CompanyLogo
-                            name={activeOpportunity.company}
-                            website={activeOpportunity.companyWebsite}
-                            applyLink={activeOpportunity.applyLink}
-                            logoUrl={activeOpportunity.companyLogoUrl}
-                            size={mScale(52)}
-                        />
-                        <View style={styles.headerText}>
-                            <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                                {activeOpportunity.title}
-                            </Text>
-                            <Text style={[styles.company, { color: currentTheme.colors.textMuted }]}>
-                                {activeOpportunity.company}
-                            </Text>
-                        </View>
-                        <TouchableOpacity
-                            onPress={closeSheet}
-                            style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
-                        >
-                            <X size={20} color={currentTheme.colors.text} />
-                        </TouchableOpacity>
-                    </View>
-
-                    {activeOpportunity.applyLink && (
-                        <TouchableOpacity
-                            activeOpacity={0.7}
-                            onPress={handleCopy}
-                            style={[styles.linkPreview, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
-                        >
-                            <View style={styles.linkIconBox}>
-                                <Copy size={16} color={currentTheme.colors.primary} />
-                            </View>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.linkLabel, { color: currentTheme.colors.textMuted }]}>APPLY LINK</Text>
-                                <Text style={[styles.linkText, { color: currentTheme.colors.primary }]} numberOfLines={3}>
-                                    {activeOpportunity.applyLink}
-                                </Text>
-                            </View>
-                        </TouchableOpacity>
-                    )}
-
-                    <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
-
-                    <View style={styles.actions}>
-                        <ActionRow
-                            icon={Bookmark}
-                            label={isSaved ? "Remove from Saved" : "Save Opportunity"}
-                            onPress={handleSave}
-                            color={isSaved ? currentTheme.colors.primary : currentTheme.colors.text}
-                            isSaved={isSaved}
-                        />
-                        <ActionRow
-                            icon={Share2}
-                            label="Share Opportunity"
-                            onPress={handleShare}
-                        />
-                        <ActionRow
-                            icon={Copy}
-                            label="Copy Apply Link"
-                            onPress={handleCopy}
-                        />
-                        <ActionRow
-                            icon={Flag}
-                            label="Report Inaccurate Info"
-                            onPress={() => {
-                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                onClose();
-                            }}
-                            destructive
-                        />
-                    </View>
+                    <View style={[styles.handle, { backgroundColor: alpha(currentTheme.colors.text, 0.15) }]} />
+                    <OpportunityActionSheetContent 
+                        opportunity={activeOpportunity}
+                        onClose={closeSheet}
+                    />
                 </Animated.View>
             </View>
         </Modal>
@@ -326,19 +353,23 @@ const styles = StyleSheet.create({
     sheet: {
         borderTopLeftRadius: RADIUS.xl,
         borderTopRightRadius: RADIUS.xl,
-        paddingHorizontal: SPACING.lg,
         elevation: 10,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: -4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
     },
+    contentContainer: {
+        width: '100%',
+        paddingHorizontal: SPACING.lg,
+    },
     handle: {
-        width: 40,
-        height: 4,
-        borderRadius: 2,
+        width: 36,
+        height: 5,
+        borderRadius: 2.5,
         alignSelf: 'center',
         marginVertical: 12,
+        backgroundColor: '#000', // Static fallback
     },
     header: {
         flexDirection: 'row',
@@ -378,7 +409,7 @@ const styles = StyleSheet.create({
         width: 32,
         height: 32,
         borderRadius: 10,
-        backgroundColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: theme.colors.blackTranslucent,
         alignItems: 'center',
         justifyContent: 'center',
     },

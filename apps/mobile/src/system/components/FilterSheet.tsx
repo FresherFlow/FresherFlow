@@ -1,16 +1,29 @@
 import React, { useState } from 'react';
+import { produce } from 'immer';
 import {
     StyleSheet,
     View,
     Text,
     TouchableOpacity,
-    ScrollView,
     Dimensions,
-    Platform
+    Platform,
+    BackHandler
 } from 'react-native';
 import { X, Check } from 'lucide-react-native';
+import { 
+    BottomSheetModal, 
+    BottomSheetView, 
+    BottomSheetScrollView, 
+    BottomSheetBackdrop,
+    BottomSheetBackdropProps,
+    BottomSheetFooter,
+    BottomSheetFooterProps
+} from '@gorhom/bottom-sheet';
 import { useTheme } from '@/contexts/ThemeContext';
+import { alpha } from '@/theme';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
+
+
 import * as Haptics from 'expo-haptics';
 import { ExploreFilters } from '@/hooks/useExplore';
 
@@ -19,47 +32,62 @@ import { OpportunityType, WorkMode } from '@fresherflow/types';
 const { height } = Dimensions.get('window');
 
 interface FilterSheetProps {
-    visible: boolean;
-    onClose: () => void;
     filters: ExploreFilters;
     onApply: (filters: ExploreFilters) => void;
+    onClose?: () => void;
 }
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
+export interface FilterSheetRef {
+    present: () => void;
+    dismiss: () => void;
+}
 
-import { PremiumActionSheet } from './PremiumActionSheet';
 
-export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filters: initialFilters, onApply }) => {
+
+export const FilterSheet = React.forwardRef<FilterSheetRef, FilterSheetProps>(({ filters: initialFilters, onApply, onClose }, ref) => {
     const { currentTheme } = useTheme();
     const [tempFilters, setTempFilters] = useState<ExploreFilters>(initialFilters);
+    const [isVisible, setIsVisible] = useState(false);
+    const bottomSheetModalRef = React.useRef<BottomSheetModal>(null);
+    const snapPoints = React.useMemo(() => ['85%'], []);
+
+    React.useImperativeHandle(ref, () => ({
+        present: () => bottomSheetModalRef.current?.present(),
+        dismiss: () => bottomSheetModalRef.current?.dismiss(),
+    }));
 
     const toggleType = (type: ExploreFilters['type']) => {
         void Haptics.selectionAsync();
-        setTempFilters(prev => ({ ...prev, type: prev.type === type ? null : type }));
+        setTempFilters(produce(draft => {
+            draft.type = draft.type === type ? null : type;
+        }));
     };
 
     const toggleWorkMode = (mode: ExploreFilters['workMode']) => {
         void Haptics.selectionAsync();
-        setTempFilters(prev => ({ ...prev, workMode: prev.workMode === mode ? null : mode }));
+        setTempFilters(produce(draft => {
+            draft.workMode = draft.workMode === mode ? null : mode;
+        }));
     };
 
     const toggleBatchYear = (year: number) => {
         void Haptics.selectionAsync();
-        setTempFilters(prev => ({ ...prev, batchYear: prev.batchYear === year ? null : year }));
+        setTempFilters(produce(draft => {
+            draft.batchYear = draft.batchYear === year ? null : year;
+        }));
     };
 
     const setSort = (sort: ExploreFilters['sort']) => {
         void Haptics.selectionAsync();
-        setTempFilters(prev => ({ ...prev, sort }));
+        setTempFilters(produce(draft => {
+            draft.sort = sort;
+        }));
     };
 
     const handleApply = () => {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         onApply(tempFilters);
-        onClose();
+        bottomSheetModalRef.current?.dismiss();
     };
 
     const handleReset = () => {
@@ -73,8 +101,63 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filt
         };
         setTempFilters(reset);
         onApply(reset);
-        onClose();
+        bottomSheetModalRef.current?.dismiss();
     };
+
+    const handleSheetChange = React.useCallback((index: number) => {
+        setIsVisible(index >= 0);
+    }, []);
+
+    React.useEffect(() => {
+        const handleBackPress = () => {
+            if (isVisible) {
+                bottomSheetModalRef.current?.dismiss();
+                return true;
+            }
+            return false;
+        };
+
+        const subscription = BackHandler.addEventListener('hardwareBackPress', handleBackPress);
+        return () => subscription.remove();
+    }, [isVisible]);
+
+    const renderBackdrop = React.useCallback(
+        (props: BottomSheetBackdropProps) => (
+            <BottomSheetBackdrop
+                {...props}
+                appearsOnIndex={0}
+                disappearsOnIndex={-1}
+                opacity={0.4}
+                style={[props.style, { backgroundColor: currentTheme.colors.overlay }]}
+            />
+        ),
+        []
+    );
+
+    const renderFooter = React.useCallback(
+        (props: BottomSheetFooterProps) => (
+            <BottomSheetFooter {...props} bottomInset={0}>
+                <View style={[styles.footer, { 
+                    borderTopColor: alpha(currentTheme.colors.border, 0.1),
+                    backgroundColor: currentTheme.colors.surface,
+                }]}>
+                    <TouchableOpacity
+                        onPress={handleReset}
+                        style={[styles.resetBtn, { borderColor: currentTheme.colors.border }]}
+                    >
+                        <Text style={[styles.resetText, { color: currentTheme.colors.textMuted }]}>Clear All</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        onPress={handleApply}
+                        style={[styles.applyBtn, { backgroundColor: currentTheme.colors.text }]}
+                    >
+                        <Text style={[styles.applyText, { color: currentTheme.colors.background }]}>Apply Filters</Text>
+                    </TouchableOpacity>
+                </View>
+            </BottomSheetFooter>
+        ),
+        [currentTheme, handleReset, handleApply]
+    );
 
     const FilterSection = ({ title, children }: { title: string, children: React.ReactNode }) => (
         <View style={styles.section}>
@@ -105,66 +188,70 @@ export const FilterSheet: React.FC<FilterSheetProps> = ({ visible, onClose, filt
     );
 
     return (
-        <PremiumActionSheet visible={visible} onClose={onClose}>
-            <View style={{ height: height * 0.75 }}>
+        <BottomSheetModal
+            ref={bottomSheetModalRef}
+            snapPoints={snapPoints}
+            onDismiss={onClose}
+            onChange={handleSheetChange}
+            backdropComponent={renderBackdrop}
+            footerComponent={renderFooter}
+            backgroundStyle={{ 
+                backgroundColor: currentTheme.colors.surface,
+                borderTopLeftRadius: RADIUS.xl * 1.5,
+                borderTopRightRadius: RADIUS.xl * 1.5,
+            }}
+            handleIndicatorStyle={{ 
+                backgroundColor: alpha(currentTheme.colors.text, 0.15),
+                width: 36,
+                height: 5,
+                borderRadius: 2.5,
+            }}
+        >
+            <BottomSheetView style={{ flex: 1 }}>
                 <View style={styles.header}>
                     <Text style={[styles.title, { color: currentTheme.colors.text }]}>Discovery Filters</Text>
-                    <TouchableOpacity onPress={onClose} style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
+                    <TouchableOpacity onPress={() => bottomSheetModalRef.current?.dismiss()} style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
                         <X size={20} color={currentTheme.colors.text} />
                     </TouchableOpacity>
                 </View>
 
-                <View style={{ flex: 1 }}>
-                    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-                        <FilterSection title="OPPORTUNITY TYPE">
-                            <Option label="Jobs" active={tempFilters.type === OpportunityType.JOB} onPress={() => toggleType(OpportunityType.JOB)} />
-                            <Option label="Internships" active={tempFilters.type === OpportunityType.INTERNSHIP} onPress={() => toggleType(OpportunityType.INTERNSHIP)} />
-                            <Option label="Walk-ins" active={tempFilters.type === OpportunityType.WALKIN} onPress={() => toggleType(OpportunityType.WALKIN)} />
-                        </FilterSection>
-
-                        <FilterSection title="WORK MODE">
-                            <Option label="Remote" active={tempFilters.workMode === WorkMode.REMOTE} onPress={() => toggleWorkMode(WorkMode.REMOTE)} />
-                            <Option label="Hybrid" active={tempFilters.workMode === WorkMode.HYBRID} onPress={() => toggleWorkMode(WorkMode.HYBRID)} />
-                            <Option label="On-site" active={tempFilters.workMode === WorkMode.ONSITE} onPress={() => toggleWorkMode(WorkMode.ONSITE)} />
-                        </FilterSection>
-
-                        <FilterSection title="GRADUATION BATCH">
-                            {[2024, 2025, 2026, 2027].map(year => (
-                                <Option
-                                    key={year}
-                                    label={`${year} Batch`}
-                                    active={tempFilters.batchYear === year}
-                                    onPress={() => toggleBatchYear(year)}
-                                />
-                            ))}
-                        </FilterSection>
-
-                        <FilterSection title="SORT BY">
-                            <Option label="Latest First" active={tempFilters.sort === 'latest'} onPress={() => setSort('latest')} />
-                            <Option label="Trending" active={tempFilters.sort === 'trending'} onPress={() => setSort('trending')} />
-                            <Option label="Closing Soon" active={tempFilters.sort === 'closing_soon'} onPress={() => setSort('closing_soon')} />
-                        </FilterSection>
-                    </ScrollView>
-                </View>
-
-                <View style={[styles.footer, { borderTopColor: alpha(currentTheme.colors.border, 0.2) }]}>
-                    <TouchableOpacity
-                        onPress={handleReset}
-                        style={[styles.resetBtn, { borderColor: currentTheme.colors.border }]}
-                    >
-                        <Text style={[styles.resetText, { color: currentTheme.colors.textMuted }]}>Reset</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={handleApply}
-                        style={[styles.applyBtn, { backgroundColor: currentTheme.colors.text }]}
-                    >
-                        <Text style={[styles.applyText, { color: currentTheme.colors.background }]}>Apply Filters</Text>
-                    </TouchableOpacity>
-                </View>
-            </View>
-        </PremiumActionSheet>
+                <BottomSheetScrollView 
+                    showsVerticalScrollIndicator={false} 
+                    contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+                >
+                    <FilterSection title="Opportunity Type">
+                        <Option label="Jobs" active={tempFilters.type === OpportunityType.JOB} onPress={() => toggleType(OpportunityType.JOB)} />
+                        <Option label="Internships" active={tempFilters.type === OpportunityType.INTERNSHIP} onPress={() => toggleType(OpportunityType.INTERNSHIP)} />
+                        <Option label="Walk-ins" active={tempFilters.type === OpportunityType.WALKIN} onPress={() => toggleType(OpportunityType.WALKIN)} />
+                    </FilterSection>
+ 
+                    <FilterSection title="Work Mode">
+                        <Option label="Remote" active={tempFilters.workMode === WorkMode.REMOTE} onPress={() => toggleWorkMode(WorkMode.REMOTE)} />
+                        <Option label="Hybrid" active={tempFilters.workMode === WorkMode.HYBRID} onPress={() => toggleWorkMode(WorkMode.HYBRID)} />
+                        <Option label="On-site" active={tempFilters.workMode === WorkMode.ONSITE} onPress={() => toggleWorkMode(WorkMode.ONSITE)} />
+                    </FilterSection>
+ 
+                    <FilterSection title="Graduation Batch">
+                        {[2024, 2025, 2026, 2027].map(year => (
+                            <Option
+                                key={year}
+                                label={`${year} Batch`}
+                                active={tempFilters.batchYear === year}
+                                onPress={() => toggleBatchYear(year)}
+                            />
+                        ))}
+                    </FilterSection>
+ 
+                    <FilterSection title="Sort By">
+                        <Option label="Latest First" active={tempFilters.sort === 'latest'} onPress={() => setSort('latest')} />
+                        <Option label="Trending" active={tempFilters.sort === 'trending'} onPress={() => setSort('trending')} />
+                        <Option label="Closing Soon" active={tempFilters.sort === 'closing_soon'} onPress={() => setSort('closing_soon')} />
+                    </FilterSection>
+                </BottomSheetScrollView>
+            </BottomSheetView>
+        </BottomSheetModal>
     );
-};
+});
 
 const styles = StyleSheet.create({
     overlay: {
@@ -173,7 +260,7 @@ const styles = StyleSheet.create({
     },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.6)',
+        backgroundColor: '#000', // Static fallback
     },
     sheet: {
         height: height * 0.75,
@@ -208,10 +295,9 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.xl,
     },
     sectionTitle: {
-        fontSize: mScale(10),
+        fontSize: mScale(12),
         fontWeight: '900',
-        letterSpacing: 1.5,
-        textTransform: 'uppercase',
+        letterSpacing: 0.5,
         marginBottom: SPACING.md,
     },
     optionsGrid: {

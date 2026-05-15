@@ -1,16 +1,14 @@
 import React, { useRef, useEffect } from 'react';
-import { StyleSheet, View, Text, ViewStyle, TouchableOpacity, StyleProp, TextStyle, Animated } from 'react-native';
+import { StyleSheet, View, Text, ViewStyle, StyleProp, TextStyle, Animated, TouchableOpacity, RefreshControl, RefreshControlProps } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
+import { alpha } from '@/theme';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
+
 
 interface SurfaceProps {
     children: React.ReactNode;
@@ -24,7 +22,7 @@ interface SurfaceProps {
 
 export const SurfaceCard: React.FC<SurfaceProps> = ({ children, style, accent, onPress, onLongPress, onPressIn, onPressOut }) => {
     const { currentTheme } = useTheme();
-    const Container = (onPress || onLongPress || onPressIn || onPressOut) ? TouchableOpacity : View;
+    const Container = (onPress || onLongPress || onPressIn || onPressOut) ? TouchableOpacity : View as React.ElementType;
 
     return (
         <Container
@@ -58,7 +56,7 @@ export const SurfaceCard: React.FC<SurfaceProps> = ({ children, style, accent, o
 
 export const GlassCard: React.FC<SurfaceProps> = ({ children, style, onPress }) => {
     const { currentTheme } = useTheme();
-    const Container = onPress ? TouchableOpacity : View;
+    const Container = onPress ? TouchableOpacity : View as React.ElementType;
 
     return (
         <Container
@@ -98,7 +96,12 @@ export const PremiumHeader: React.FC<{
     };
 
     return (
-        <View style={[styles.header, compact && { paddingTop: 0, paddingBottom: 0 }, style]}>
+        <View style={[
+            styles.header, 
+            { backgroundColor: currentTheme.colors.background },
+            compact && { paddingTop: 0, paddingBottom: 0 }, 
+            style
+        ]}>
             <View style={[styles.headerContent, compact && { alignItems: 'center', marginBottom: 0 }]}>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: compact ? 'center' : 'flex-end', gap: SPACING.sm }}>
                     {showBack && (
@@ -134,7 +137,7 @@ export const SecondaryHeader: React.FC<{
     return (
         <View style={styles.header}>
             <View style={styles.headerContent}>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.md }}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
                     <TouchableOpacity onPress={onBack} style={styles.backBtn}>
                         <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
                     </TouchableOpacity>
@@ -208,12 +211,25 @@ export const PremiumToggle: React.FC<{
                 <Animated.View style={[
                     styles.switchThumb,
                     {
-                        backgroundColor: value ? currentTheme.colors.background : '#FFFFFF',
+                        backgroundColor: value ? currentTheme.colors.background : (currentTheme.mode === 'dark' ? '#FFFFFF' : '#FFFFFF'), // Standard white thumb
+                        shadowColor: currentTheme.colors.text,
                         transform: [{ translateX }],
                     }
                 ]} />
             </View>
         </TouchableOpacity>
+    );
+};
+
+export const PremiumRefreshControl: React.FC<RefreshControlProps> = (props) => {
+    const { currentTheme } = useTheme();
+    return (
+        <RefreshControl
+            tintColor={currentTheme.colors.primary}
+            colors={[currentTheme.colors.primary]}
+            progressBackgroundColor={currentTheme.mode === 'dark' ? currentTheme.colors.surface : '#FFFFFF'}
+            {...props}
+        />
     );
 };
 
@@ -260,10 +276,9 @@ const styles = StyleSheet.create({
         lineHeight: mScale(44),
     },
     headerSubtitle: {
-        fontSize: mScale(12),
+        fontSize: mScale(13),
         fontWeight: '600',
-        textTransform: 'uppercase',
-        letterSpacing: 1.5,
+        letterSpacing: 0.5,
         marginTop: 4,
         opacity: 0.8,
     },
@@ -279,6 +294,8 @@ const styles = StyleSheet.create({
         borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',
+        marginLeft: -12,
+        marginRight: 4,
     },
     backBtnHeader: {
         width: 48,
