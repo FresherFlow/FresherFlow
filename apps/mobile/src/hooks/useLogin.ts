@@ -1,58 +1,100 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useUserAuth as useAuth, useNotifications } from '@repo/frontend-core';
-import * as Schemas from '@fresherflow/schemas';
-
+import { z } from 'zod';
+import { auth } from '@/config/firebase';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleAuthProvider, signInWithCredential, signInWithCustomToken } from '@react-native-firebase/auth';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/AppNavigator';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
+const authSchema = z.object({
+    email: z.string().email('Invalid email address'),
+    otp: z.string().length(6, 'OTP must be 6 digits').optional(),
+});
+
+type AuthFormData = z.infer<typeof authSchema>;
+
 export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: string } }) => {
     const { sendOtp, verifyOtp } = useAuth();
     const { requestPushPermission } = useNotifications();
-    const [email, setEmail] = useState(route.params?.prefilledEmail || '');
-    const [otp, setOtp] = useState('');
     const [otpSent, setOtpSent] = useState(!!route.params?.prefilledEmail);
     const [loading, setLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(0);
 
-    const handleSendOtp = useCallback(async () => {
-        const trimmedEmail = email.trim();
+    const {
+        control,
+        handleSubmit,
+        watch,
+        setValue,
+        formState: { errors, isValid },
+    } = useForm<AuthFormData>({
+        resolver: zodResolver(authSchema),
+        defaultValues: {
+            email: route.params?.prefilledEmail || '',
+            otp: '',
+        },
+        mode: 'onChange',
+    });
 
-        let validation;
-        try {
-            validation = Schemas.sendOtpSchema.safeParse({ email: trimmedEmail });
-        } catch (e) {
-            console.error('[Auth] CRITICAL: Schema validation crashed:', e);
-            Alert.alert('System Error', 'Validation engine crashed. Please check console logs.');
-            return;
-        }
+    const email = watch('email');
+    const otp = watch('otp') || '';
 
-        if (!validation.success) {
-            console.warn('[Auth] Validation failed:', JSON.stringify(validation.error.format(), null, 2));
-            Alert.alert('Invalid Email', validation.error.issues[0]?.message || 'Invalid email');
-            return;
-        }
-
+    const handleSendOtp = useCallback(async (data: AuthFormData) => {
         setLoading(true);
         try {
-            await sendOtp(email.trim());
+            await sendOtp(data.email.trim());
             setOtpSent(true);
             setResendTimer(60);
         } catch (error: unknown) {
             console.error('[Auth] Failed to send OTP:', error);
             const msg = error instanceof Error ? error.message : 'Could not send code';
-            Alert.alert('Verification Failed', `${msg}\n\nPlease check your internet connection and if the API is reachable.`);
+            Alert.alert('Verification Failed', `${msg}\n\nPlease check your internet connection.`);
         } finally {
             setLoading(false);
         }
-    }, [email, sendOtp]);
+    }, [sendOtp]);
+
+    const handleGoogleSignIn = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Get the users ID token
+            const response = await GoogleSignin.signIn();
+            const idToken = response.data?.idToken;
+
+            if (!idToken) throw new Error('No ID token found');
+
+
+            // Create a Google credential with the token
+            const googleCredential = GoogleAuthProvider.credential(idToken);
+
+            // Sign-in the user with the credential
+            // This will trigger onAuthStateChanged in useAuthStore for "Instant Auth"
+            await signInWithCredential(auth, googleCredential);
+            
+            try {
+                await requestPushPermission();
+            } catch (e) {
+                console.warn('Failed to register push after google login', e);
+            }
+        } catch (error: any) {
+            console.error('[Auth] Google Sign-In failed:', error);
+            if (error.code !== 'ASYNC_OP_IN_PROGRESS') {
+                Alert.alert('Google Sign-In failed', 'Could not complete authentication.');
+            }
+        } finally {
+            setLoading(false);
+        }
+    }, [requestPushPermission]);
 
     const handleResend = useCallback(async () => {
         if (resendTimer > 0 || loading) return;
-        void handleSendOtp();
-    }, [resendTimer, loading, handleSendOtp]);
+        await handleSendOtp({ email, otp });
+    }, [resendTimer, loading, handleSendOtp, email, otp]);
 
     useEffect(() => {
         let interval: NodeJS.Timeout;
@@ -64,17 +106,17 @@ export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: s
         return () => clearInterval(interval);
     }, [resendTimer]);
 
-    const handleVerifyOtp = useCallback(async () => {
-        const validation = Schemas.verifyOtpSchema.safeParse({ email: email.trim(), code: otp.trim() });
-        if (!validation.success) {
-            Alert.alert('Invalid Input', validation.error.issues[0]?.message || 'Invalid code');
-            return;
-        }
-
+    const handleVerifyOtp = useCallback(async (data: AuthFormData) => {
+        if (!data.otp) return;
+        
         setLoading(true);
         try {
-            await verifyOtp(email.trim(), otp.trim());
-
+            const result = await verifyOtp(data.email.trim(), data.otp.trim());
+            
+            // Bridge custom OTP backend with Firebase Instant Auth
+            if (result && result.firebaseCustomToken) {
+                await signInWithCustomToken(auth, result.firebaseCustomToken);
+            }
             try {
                 await requestPushPermission();
             } catch (e) {
@@ -82,21 +124,28 @@ export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: s
             }
         } catch (error: unknown) {
             console.error('[Auth] Verification failed:', error);
-            setOtp(''); // Clear OTP on failure to stop the loop
+            setValue('otp', ''); // Clear OTP on failure
             Alert.alert('Login failed', (error as Error).message || 'Could not verify code');
         } finally {
             setLoading(false);
         }
-    }, [email, otp, verifyOtp, requestPushPermission]);
+    }, [verifyOtp, requestPushPermission, setValue]);
 
     return {
-        email, setEmail,
-        otp, setOtp,
-        otpSent, setOtpSent,
+        control,
+        handleSubmit,
+        email,
+        otp,
+        otpSent,
+        setOtpSent,
         loading,
         handleSendOtp,
         handleVerifyOtp,
+        handleGoogleSignIn,
         handleResend,
         resendTimer,
+        errors,
+        isValid,
+        setValue,
     };
 };

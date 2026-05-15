@@ -1,11 +1,21 @@
 import { useState, useCallback } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { opportunitiesApi, profileApi } from '@fresherflow/api-client';
-import { ParsedJob } from '@fresherflow/types';
+import { ParsedJob, Opportunity } from '@fresherflow/types';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
-import { useUserAuth as useAuth } from '@repo/frontend-core';
 import { readFeedCache } from '@/utils/offlineCache';
-import { NavigationProp } from '@react-navigation/native';
-import { RootStackParamList } from '@/navigation/AppNavigator';
+
+const shareSchema = z.object({
+    url: z.string().optional(),
+    company: z.string().min(2, 'Company name is too short').optional(),
+    contact: z.string().min(3, 'Contact info is required').optional(),
+    description: z.string().min(5, 'Details should be more descriptive').optional(),
+    companyUrl: z.string().optional(),
+});
+
+export type ShareFormData = z.infer<typeof shareSchema>;
 
 export type ShareResult = {
     success: boolean;
@@ -14,16 +24,35 @@ export type ShareResult = {
     pending?: boolean;
 };
 
-export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
-    const { user } = useAuth();
-    const [url, setUrl] = useState('');
+export const useShare = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [preview, setPreview] = useState<(Partial<ParsedJob> & { duplicateCount?: number; isDuplicate?: boolean; existingId?: string | null }) | null>(null);
 
+    const {
+        control,
+        handleSubmit,
+        watch,
+        setValue,
+        reset,
+        formState: { errors, isValid },
+    } = useForm<ShareFormData>({
+        resolver: zodResolver(shareSchema),
+        defaultValues: {
+            url: '',
+            company: '',
+            contact: '',
+            description: '',
+            companyUrl: '',
+        },
+        mode: 'onChange',
+    });
+
+    const watchedUrl = watch('url');
+
     const handleParse = useCallback(async (manualUrl?: string) => {
-        const urlToUse = manualUrl || url;
-        if (!urlToUse.trim()) return;
+        const urlToUse = manualUrl || watchedUrl;
+        if (!urlToUse || !urlToUse.trim()) return;
 
         setLoading(true);
         setError(null);
@@ -35,7 +64,7 @@ export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
             // 1. Local Duplicate Check (Feed Cache)
             const cache = await readFeedCache();
             if (cache && cache.items.length > 0) {
-                const urlMatch = cache.items.find(job =>
+                const urlMatch = cache.items.find((job: Opportunity) =>
                     (job.sourceLink && normalizeOpportunityUrl(job.sourceLink) === normalized) ||
                     (job.applyLink && normalizeOpportunityUrl(job.applyLink) === normalized)
                 );
@@ -70,10 +99,10 @@ export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
         } finally {
             setLoading(false);
         }
-    }, [url]);
+    }, [watchedUrl]);
 
     const handleShare = useCallback(async (): Promise<ShareResult | undefined> => {
-        if (!preview) {
+        if (!preview || !watchedUrl) {
             return undefined;
         }
 
@@ -81,7 +110,7 @@ export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
         setError(null);
 
         try {
-            const normalized = normalizeOpportunityUrl(url);
+            const normalized = normalizeOpportunityUrl(watchedUrl);
             const response = await opportunitiesApi.shareLink(normalized);
 
             return {
@@ -105,21 +134,28 @@ export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
         } finally {
             setLoading(false);
         }
-    }, [preview, user, url, navigation]);
+    }, [preview, watchedUrl]);
 
-    const handleReferral = useCallback(async (referralData: { contact: string; description: string; company: string; companyUrl?: string }): Promise<ShareResult | undefined> => {
+    const handleReferral = useCallback(async (data: ShareFormData): Promise<ShareResult | undefined> => {
         setLoading(true);
         setError(null);
 
         try {
-            const response = await profileApi.submitShare({ referral: referralData });
+            const response = await profileApi.submitShare({ 
+                referral: {
+                    company: data.company || '',
+                    contact: data.contact || '',
+                    description: data.description || '',
+                    companyUrl: data.companyUrl
+                } 
+            });
             setLoading(false);
 
             if (response.success && response.share) {
                 return {
                     success: true,
                     id: response.share.id || '',
-                    pending: true // Referrals are always pending review
+                    pending: true 
                 };
             }
         } catch (err: unknown) {
@@ -134,8 +170,11 @@ export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
     }, []);
 
     return {
-        url,
-        setUrl,
+        control,
+        handleSubmit,
+        watch,
+        setValue,
+        reset,
         loading,
         error,
         preview,
@@ -143,5 +182,7 @@ export const useShare = (navigation?: NavigationProp<RootStackParamList>) => {
         handleParse,
         handleShare,
         handleReferral,
+        isValid,
+        errors,
     };
 };

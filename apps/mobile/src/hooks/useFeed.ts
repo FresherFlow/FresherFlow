@@ -1,13 +1,17 @@
-import { useCallback, useMemo, useState, useRef, useEffect } from 'react';
-import { Platform } from 'react-native';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { Opportunity, OpportunityType, OpportunityListResponse, Profile } from '@fresherflow/types';
-import { opportunitiesApi, getInferredBaseUrl } from '@fresherflow/api-client';
+import { useNotificationStore } from '@/store/useNotificationStore';
+import { opportunitiesApi } from '@fresherflow/api-client';
 import { useUserAuth as useAuth, useNotifications } from '@repo/frontend-core';
 import { saveFeedCache, readFeedCache, getLastSyncTimestamp, saveLastSyncTimestamp } from '@/utils/offlineCache';
 import { diffAndNotify } from '@/utils/localNotifications';
 import { getLocalProfile } from '@/utils/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import Fuse from 'fuse.js';
+import axios from 'axios';
+import { BOOTSTRAP_FEED_URL } from '@/config/api';
 
 // Global tracker to prevent multiple tabs from syncing at the same time
 let globalLastSyncTimestamp = 0;
@@ -15,44 +19,15 @@ let globalLastSyncTimestamp = 0;
 export const useFeed = (initialFeedType: string | null = null) => {
     const { user, profile: authProfile } = useAuth();
     useNotifications();
-    const [jobs, setJobs] = useState<Opportunity[]>([]);
+    const queryClient = useQueryClient();
+    
     const [localProfile, setLocalProfile] = useState<Profile | null>(null);
-
-    // Smart Sync Logic: Update only statuses/expiries without full re-fetch
-    const performSync = useCallback(async (force = false) => {
-        // Throttle: Don't sync more than once every 60 seconds across all hook instances
-        const now = Date.now();
-        if (!force && now - globalLastSyncTimestamp < 60000) return;
-        globalLastSyncTimestamp = now;
-
-        try {
-            const since = await getLastSyncTimestamp();
-            const response = await opportunitiesApi.sync(since || undefined);
-            
-            if (response.updates && response.updates.length > 0) {
-                console.log(`[useFeed] Syncing ${response.updates.length} updates...`);
-                setJobs(prev => {
-                    const updateMap = new Map(response.updates.map(u => [u.id, u]));
-                    
-                    // Update existing jobs, filter out deleted ones
-                    const updatedJobs = prev.map(job => {
-                        const update = updateMap.get(job.id);
-                        if (update) {
-                            return { ...job, ...update };
-                        }
-                        return job;
-                    }).filter(job => !job.deletedAt && job.status !== 'ARCHIVED');
-
-                    void saveFeedCache(updatedJobs);
-                    return updatedJobs;
-                });
-            }
-            
-            await saveLastSyncTimestamp(response.timestamp);
-        } catch (e) {
-            console.warn('[useFeed] Smart sync failed', e);
-        }
-    }, []);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [activeFilter, setActiveFilter] = useState<'ALL' | OpportunityType>('ALL');
+    const [activeCity, setActiveCity] = useState('ALL');
+    const [selectedTag, setSelectedTag] = useState<string | null>(null);
+    const [feedType, setFeedType] = useState<string | null>(initialFeedType);
+    const [cachedItems, setCachedItems] = useState<Opportunity[]>([]);
 
     // Sync local profile for scoring
     useEffect(() => {
@@ -62,128 +37,147 @@ export const useFeed = (initialFeedType: string | null = null) => {
         };
         void syncProfile();
     }, [authProfile]);
-    const [loading, setLoading] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [activeFilter, setActiveFilter] = useState<'ALL' | OpportunityType>('ALL');
-    const [activeCity, setActiveCity] = useState('ALL');
-    const [offlineMode, setOfflineMode] = useState(false);
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [selectedTag, setSelectedTag] = useState<string | null>(null);
-    const [feedType, setFeedType] = useState<string | null>(initialFeedType);
-    const [totalResults, setTotalResults] = useState(0);
-    const fetchingRef = useRef(false);
-    const initialLoadDone = useRef(false);
 
-    const fetchJobs = useCallback(async (reset = false, silent = false, overridePage?: number) => {
-        if (fetchingRef.current) return;
-        fetchingRef.current = true;
-        
-        console.log(`[useFeed] fetching from: ${getInferredBaseUrl()} (Platform: ${Platform.OS})`);
-        
-        const currentPage = reset ? 1 : (overridePage ?? page);
-        if (reset) {
-            setPage(1);
-            setHasMore(true);
-        }
-        
-        if (!silent && currentPage === 1) setLoading(true);
-        if (currentPage > 1) setLoadingMore(true);
-        
-        try {
-            const data = await opportunitiesApi.list({
+    // Instant Hydration from Offline Cache or CDN Bootstrap (Task 25)
+    const [isBootstrapping, setIsBootstrapping] = useState(false);
+
+    useEffect(() => {
+        const hydrate = async () => {
+            const cached = await readFeedCache();
+            if (cached && cached.items.length > 0) {
+                setCachedItems(cached.items);
+                return;
+            }
+
+            // If empty (First Install), try ultra-fast CDN bootstrap
+            setIsBootstrapping(true);
+            try {
+                const response = await axios.get(BOOTSTRAP_FEED_URL, { timeout: 3000 });
+                if (response.data?.opportunities) {
+                    setCachedItems(response.data.opportunities);
+                }
+            } catch (e) {
+                console.log('[useFeed] Bootstrap fetch skipped/failed:', (e as Error).message);
+            } finally {
+                setIsBootstrapping(false);
+            }
+        };
+        void hydrate();
+    }, []);
+
+    const queryKey = ['feed', activeFilter, activeCity, selectedTag, feedType];
+
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading,
+        isRefetching,
+        error,
+        refetch,
+    } = useInfiniteQuery({
+        queryKey,
+        queryFn: async ({ pageParam = 1 }) => {
+            const response = await opportunitiesApi.list({
                 type: activeFilter === 'ALL' ? undefined : activeFilter,
                 city: activeCity === 'ALL' ? undefined : activeCity,
                 tag: selectedTag || undefined,
                 feedType: feedType || undefined,
-                page: currentPage,
+                page: pageParam as number,
             }) as OpportunityListResponse;
 
-            const opportunities = Array.isArray(data.opportunities) ? data.opportunities : [];
-            const responseTotal = data.total ?? 0;
+            const opportunities = response.opportunities || [];
+            const profile = await getLocalProfile();
             
-            if (reset) {
-                setJobs(opportunities);
-                await saveFeedCache(opportunities);
-                await diffAndNotify(opportunities);
-                setHasMore(opportunities.length > 0 && (responseTotal === 0 || opportunities.length < responseTotal));
-                setTotalResults(responseTotal || opportunities.length);
-            } else {
-                setJobs(prev => {
-                    const existingIds = new Set(prev.map(j => j.id));
-                    const newJobs = opportunities.filter(j => !existingIds.has(j.id));
-                    const updated = [...prev, ...newJobs];
-                    
-                    setHasMore(opportunities.length > 0 && newJobs.length > 0 && (responseTotal === 0 || updated.length < responseTotal));
-                    setTotalResults(responseTotal || updated.length);
-                    
-                    return updated;
+            // PRECOMPUTE: Score and Eligibility (Only if profile has meaningful data)
+            const hasProfileData = profile && (
+                (profile.skills && profile.skills.length > 0) ||
+                (profile.preferredCities && profile.preferredCities.length > 0) ||
+                (profile.interestedIn && profile.interestedIn.length > 0) ||
+                profile.educationLevel
+            );
+
+            const scoredOpportunities = opportunities.map(job => {
+                if (!hasProfileData) return job;
+                const match = calculateMatchScore(profile, job);
+                return {
+                    ...job,
+                    matchScore: match.score > 0 ? match.score : undefined,
+                    matchReason: match.score > 0 ? match.reason : undefined,
+                    isEligible: match.isEligible
+                };
+            });
+
+            // Persistence side-effects (Atomic)
+            if (pageParam === 1 && scoredOpportunities.length > 0) {
+                void saveFeedCache(scoredOpportunities);
+                void diffAndNotify(scoredOpportunities).then(() => {
+                    // Trigger a store refresh so the bell dot updates immediately
+                    void useNotificationStore.getState().fetchUnreadCount();
                 });
             }
+
+            return { ...response, opportunities: scoredOpportunities };
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) => {
+            const loadedSoFar = allPages.reduce((acc, p) => acc + (p.opportunities?.length || 0), 0);
+            return (lastPage.opportunities?.length > 0 && loadedSoFar < (lastPage.total || 0)) 
+                ? allPages.length + 1 
+                : undefined;
+        },
+        staleTime: 1000 * 60 * 5,
+    });
+
+    // Unified Data Source: Remote Data with Cache Fallback for instant render
+    const jobs = useMemo(() => {
+        const remoteData = data?.pages.flatMap(page => page.opportunities || []) || [];
+        return remoteData.length > 0 ? remoteData : cachedItems;
+    }, [data, cachedItems]);
+
+    const totalResults = useMemo(() => {
+        return data?.pages[0]?.total || jobs.length;
+    }, [data, jobs.length]);
+
+    // Smart Sync Logic
+    const performSync = useCallback(async (force = false) => {
+        const now = Date.now();
+        if (!force && now - globalLastSyncTimestamp < 60000) return;
+        globalLastSyncTimestamp = now;
+
+        try {
+            const since = await getLastSyncTimestamp();
+            const response = await opportunitiesApi.sync(since || undefined);
             
-            setOfflineMode(false);
-            setError(null);
-        } catch (err) {
-            console.error('[useFeed] fetch failed:', err);
-            setOfflineMode(true);
-            setError(null);
-            setHasMore(false);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-            setLoadingMore(false);
-            fetchingRef.current = false;
-        }
-    }, [activeFilter, activeCity, selectedTag, feedType, page]);
-
-    const loadMore = useCallback(() => {
-        if (!loading && !loadingMore && hasMore && !offlineMode && !fetchingRef.current) {
-            const nextPage = page + 1;
-            setPage(nextPage);
-            void fetchJobs(false, true, nextPage);
-        }
-    }, [loading, loadingMore, hasMore, offlineMode, fetchJobs, page]);
-
-    // Cache Loading Effect
-    useEffect(() => {
-        const loadInitialCache = async () => {
-            const cached = await readFeedCache();
-            if (cached && cached.items.length > 0) {
-                setJobs(cached.items);
-                setTotalResults(cached.items.length);
-                setOfflineMode(false);
-                initialLoadDone.current = true;
-                
-                // Only fetch fresh data in background if cache is older than 5 minutes
-                const isCacheStale = (Date.now() - cached.timestamp) > 5 * 60 * 1000;
-                if (isCacheStale) {
-                    void fetchJobs(true, true);
-                } else {
-                    // Even if cache is fresh, do a lightweight status sync
-                    void performSync();
-                }
-            } else {
-                void fetchJobs(true, false);
-                initialLoadDone.current = true;
+            if (response.updates && response.updates.length > 0) {
+                void queryClient.invalidateQueries({ queryKey });
             }
-        };
-        void loadInitialCache();
-    }, [performSync]);
+            
+            await saveLastSyncTimestamp(response.timestamp);
+        } catch (e) {
+            console.warn('[useFeed] Smart sync failed', e);
+        }
+    }, [queryClient, queryKey]);
 
     useFocusEffect(
         useCallback(() => {
-            // Run a lightweight sync when the screen comes into focus
             void performSync();
         }, [performSync])
     );
 
+    // Fuse.js Indexing - Only rebuild when data source actually changes
+    const fuseIndex = useMemo(() => {
+        if (jobs.length === 0) return null;
+        return new Fuse(jobs, {
+            keys: ['title', 'company', 'jobFunction', 'locations'],
+            threshold: 0.3,
+        });
+    }, [jobs]);
+
     const filteredOpportunities = useMemo(() => {
         let result = jobs;
 
-        // Local Filter Wiring: Ensure UI responds immediately and remains consistent
         if (activeFilter !== 'ALL') {
             result = result.filter(j => j.type === activeFilter);
         }
@@ -195,7 +189,6 @@ export const useFeed = (initialFeedType: string | null = null) => {
         } else if (feedType === 'internships') {
             result = result.filter(j => j.type === 'INTERNSHIP');
         } else if (feedType === 'trending') {
-            // Simple Trending wiring: Use trendingScore if available, else calculate simple engagement score
             result = [...result].sort((a, b) => {
                 const scoreA = a.trendingScore || ((a.sharesCount || 0) * 5 + (a.savesCount || 0) * 3 + (a.clicksCount || 0));
                 const scoreB = b.trendingScore || ((b.sharesCount || 0) * 5 + (b.savesCount || 0) * 3 + (b.clicksCount || 0));
@@ -203,41 +196,25 @@ export const useFeed = (initialFeedType: string | null = null) => {
             });
         }
 
-        if (searchQuery.trim()) {
-            const lowerQuery = searchQuery.toLowerCase();
-            result = result.filter(
-                (job: Opportunity) =>
-                    job.title.toLowerCase().includes(lowerQuery) ||
-                    job.company.toLowerCase().includes(lowerQuery),
-            );
+        if (searchQuery.trim() && fuseIndex) {
+            result = fuseIndex.search(searchQuery).map(r => r.item);
         }
 
-        // Sink Expired to Bottom (Task 11, Item 7)
-        const now = new Date();
-        const active = result.filter(j => !j.expiresAt || new Date(j.expiresAt) > now);
-        const expired = result.filter(j => j.expiresAt && new Date(j.expiresAt) <= now);
+        // Final fast pass for active/expired separation
+        const now = Date.now();
+        const active: Opportunity[] = [];
+        const expired: Opportunity[] = [];
         
-        const combined = [...active, ...expired];
-
-        // Add Local Match Scoring
-        return combined.map(job => {
-            if (!localProfile) return job;
-            
-            const match = calculateMatchScore(localProfile, job);
-            return {
-                ...job,
-                matchScore: match.score,
-                matchReason: match.reason,
-                isEligible: match.isEligible
-            };
-        });
-    }, [jobs, searchQuery, activeFilter, feedType, localProfile]);
-
-    const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        void fetchJobs(true, true);
-        void performSync(true);
-    }, [fetchJobs, performSync]);
+        for (const j of result) {
+            if (!j.expiresAt || new Date(j.expiresAt).getTime() > now) {
+                active.push(j);
+            } else {
+                expired.push(j);
+            }
+        }
+        
+        return [...active, ...expired];
+    }, [jobs, fuseIndex, searchQuery, activeFilter, feedType]);
 
     const clearFilters = useCallback(() => {
         setSearchQuery('');
@@ -253,10 +230,10 @@ export const useFeed = (initialFeedType: string | null = null) => {
         user,
         profile: localProfile,
         opportunities: jobs,
-        loading,
-        refreshing,
-        loadingMore,
-        error,
+        loading: isLoading,
+        refreshing: isRefetching,
+        loadingMore: isFetchingNextPage,
+        error: error ? (error as Error).message : null,
         searchQuery,
         setSearchQuery,
         activeFilter,
@@ -267,15 +244,18 @@ export const useFeed = (initialFeedType: string | null = null) => {
         setSelectedTag,
         feedType,
         setFeedType,
-        offlineMode,
-        fetchJobs,
-        onRefresh,
-        loadMore,
+        offlineMode: !!error,
+        onRefresh: refetch,
+        loadMore: () => {
+            if (hasNextPage && !isFetchingNextPage) {
+                void fetchNextPage();
+            }
+        },
         filteredOpportunities,
         clearFilters,
         hasActiveFilters,
         totalResults,
-        hasMore,
+        hasMore: hasNextPage,
+        isBootstrapping,
     };
-
 };

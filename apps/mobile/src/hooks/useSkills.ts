@@ -1,77 +1,99 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/navigation/AppNavigator';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
 import { Availability } from '@fresherflow/types';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'EditSkills'>;
-
 import { useProfile } from './useProfile';
 
-export const useSkills = (navigation: Props['navigation']) => {
+
+const skillsSchema = z.object({
+    skills: z.array(z.string()).min(1, 'Please add at least one skill'),
+    availability: z.string().min(1, 'Required'),
+});
+
+export type SkillsFormData = z.infer<typeof skillsSchema>;
+
+export const useSkills = () => {
     const { profile, updateReadiness, loadingCache } = useProfile();
     const [saving, setSaving] = useState(false);
-
-    const [skills, setSkills] = useState<string[]>(profile?.skills || []);
     const [skillInput, setSkillInput] = useState('');
-    const [availability, setAvailability] = useState<Availability>(profile?.availability as Availability || 'IMMEDIATE');
     const [showSuggestions, setShowSuggestions] = useState(false);
+
+    const {
+        control,
+        handleSubmit,
+        reset,
+        watch,
+        setValue,
+        formState: { errors, isValid },
+    } = useForm<SkillsFormData>({
+        resolver: zodResolver(skillsSchema),
+        defaultValues: {
+            skills: profile?.skills || [],
+            availability: profile?.availability || 'IMMEDIATE',
+        },
+        mode: 'onChange',
+    });
+
+    const skills = watch('skills');
+    const availability = watch('availability');
 
     // Sync form fields when AsyncStorage profile loads
     useEffect(() => {
         if (!profile) return;
-        if (profile.skills) setSkills(profile.skills);
-        if (profile.availability) setAvailability(profile.availability);
-    }, [profile?.skills?.length, profile?.availability]);
+        reset({
+            skills: profile.skills || [],
+            availability: profile.availability || 'IMMEDIATE',
+        });
+    }, [profile, reset]);
 
     const addSkill = useCallback((skill: string) => {
         const trimmed = skill.trim();
         if (trimmed && !skills.includes(trimmed)) {
-            setSkills(prev => [...prev, trimmed]);
+            setValue('skills', [...skills, trimmed], { shouldValidate: true });
             setSkillInput('');
             setShowSuggestions(false);
         }
-    }, [skills]);
+    }, [skills, setValue]);
 
     const removeSkill = useCallback((skill: string) => {
-        setSkills(prev => prev.filter(s => s !== skill));
-    }, []);
+        setValue('skills', skills.filter(s => s !== skill), { shouldValidate: true });
+    }, [skills, setValue]);
 
-    const handleSave = useCallback(async () => {
-        if (skills.length === 0) {
-            Alert.alert('Details Required', 'Please add at least one skill');
-            return;
-        }
-
+    const handleSave = useCallback(async (data: SkillsFormData) => {
         setSaving(true);
         try {
             await updateReadiness({
-                availability,
-                skills,
+                availability: data.availability as Availability,
+                skills: data.skills,
             });
-            // Screen will switch to view mode via its own useEffect
         } catch (error: unknown) {
             Alert.alert('Error', (error as Error).message || 'Failed to update skills');
         } finally {
             setSaving(false);
         }
-    }, [skills, availability, updateReadiness, navigation]);
+    }, [updateReadiness]);
 
     return {
         profile,
         saving,
+        control,
+        handleSubmit,
+        setValue,
         skills,
         skillInput,
         setSkillInput,
         availability,
-        setAvailability,
         showSuggestions,
         setShowSuggestions,
         addSkill,
         removeSkill,
         handleSave,
         loadingCache,
+        isValid,
+        errors,
     };
 };
+

@@ -84,9 +84,9 @@ export const useOpportunityDetail = (
 
                 const fullOpportunity = {
                     ...(hasFullData ? data.opportunity : (cachedHasFullData ? cached : data.opportunity)),
-                    matchScore: match.score,
-                    matchReason: match.reason,
-                    isEligible: match.isEligible
+                    matchScore: initialOpportunity?.matchScore ?? match.score,
+                    matchReason: initialOpportunity?.matchReason ?? match.reason,
+                    isEligible: initialOpportunity?.isEligible ?? match.isEligible
                 };
 
                 setOpportunity(fullOpportunity as ExtendedOpportunity);
@@ -178,14 +178,9 @@ export const useOpportunityDetail = (
                     }
                 }
 
-                // Fallback to API only if local results are insufficient
-                const data = await opportunitiesApi.getSimilar(opportunityId) as { opportunities: Opportunity[] };
-                if (cancelled) return;
-                const results = data.opportunities || [];
-                setSimilarOpportunities(results);
-                void saveSimilarCache(opportunityId, results);
+                // If we reach here, similarity was calculated from local pool and we have enough or all possible results
             } catch (err) {
-                console.warn('Local/API similarity failed', err);
+                console.warn('Local similarity calculation failed', err);
                 if (cached && !cancelled) setSimilarOpportunities(cached.opportunities);
             }
         };
@@ -199,16 +194,19 @@ export const useOpportunityDetail = (
         if (!opportunity) return;
         try {
             const shareUrl = `${MOBILE_SITE_URL}${getPublicOpportunityPath(opportunity)}`;
+            const message = `🚀 Found a great opportunity for you!\n\n${opportunity.title.toUpperCase()}\n📍 ${opportunity.company}\n\nView full details and apply here:\n${shareUrl}\n\nShared via FresherFlow`;
+
             const result = await Share.share({
-                message: `Check out this opportunity: ${opportunity.title} at ${opportunity.company}\n\nView details: ${shareUrl}${opportunity.applyLink ? `\nApply here: ${opportunity.applyLink}` : ''}`,
+                message: message,
                 url: shareUrl,
+                title: 'Share Opportunity',
             });
 
             if (result.action === Share.sharedAction && user) {
                 void actionsApi.track(opportunity.id, ActionType.SHARED);
             }
         } catch (shareError) {
-            console.error('Error sharing opportunity', shareError);
+            console.log('Share action failed', shareError);
         }
     }, [opportunity, user]);
 

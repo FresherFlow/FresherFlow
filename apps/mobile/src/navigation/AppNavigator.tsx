@@ -18,7 +18,7 @@ import EditEducationScreen from '@/screens/EditEducationScreen';
 import EditSkillsScreen from '@/screens/EditSkillsScreen';
 import EditPreferencesScreen from '@/screens/EditPreferencesScreen';
 import DashboardScreen from '@/screens/DashboardScreen';
-import ReferralsScreen from '@/screens/ReferralsScreen';
+import InviteScreen from '@/screens/InviteScreen';
 import AccountManageScreen from '@/screens/AccountManageScreen';
 import NotificationsScreen from '@/screens/NotificationsScreen';
 import ContributorProfileScreen from '@/screens/ContributorProfileScreen';
@@ -27,6 +27,7 @@ import AlertSettingsScreen from '@/screens/AlertSettingsScreen';
 import ApplicationTrackerScreen from '@/screens/ApplicationTrackerScreen';
 import FeedbackScreen from '@/screens/FeedbackScreen';
 import LegalScreen from '@/screens/LegalScreen';
+import ChooseUsernameScreen from '@/screens/ChooseUsernameScreen';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUserAuth as useAuth } from '@repo/frontend-core';
@@ -56,7 +57,7 @@ export type RootStackParamList = {
   EditPreferences: undefined;
   Appearance: undefined;
   Dashboard: undefined;
-  Referrals: undefined;
+  Invite: undefined;
   AccountManage: undefined;
   Notifications: undefined;
   MyShares: undefined;
@@ -66,6 +67,7 @@ export type RootStackParamList = {
   ApplicationTracker: undefined;
   Feedback: undefined;
   Legal: undefined;
+  ChooseUsername: undefined;
 };
 
 const Tab = createBottomTabNavigator<RootStackParamList>();
@@ -132,7 +134,7 @@ const SavedStack = () => (
 const ProfileStack = () => (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="ProfileMain" component={ProfileScreen} />
-        <Stack.Screen name="Referrals" component={ReferralsScreen} />
+        <Stack.Screen name="Invite" component={InviteScreen} />
         <Stack.Screen name="Feedback" component={FeedbackScreen} />
     </Stack.Navigator>
 );
@@ -194,7 +196,9 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
               style={styles.tabItem}
               activeOpacity={0.7}
             >
-              <TabIcon focused={isFocused} color={isFocused ? currentTheme.colors.primary : currentTheme.colors.textMuted} IconComponent={Icon} />
+              <View>
+                <TabIcon focused={isFocused} color={isFocused ? currentTheme.colors.primary : currentTheme.colors.textMuted} IconComponent={Icon} />
+              </View>
               <Text style={[
                 styles.tabLabel,
                 { color: isFocused ? currentTheme.colors.primary : currentTheme.colors.textMuted }
@@ -252,22 +256,6 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: 0.5,
     },
-    badge: {
-        position: 'absolute',
-        top: 10,
-        right: '25%',
-        minWidth: 16,
-        height: 16,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingHorizontal: 4,
-    },
-    badgeText: {
-        color: '#FFFFFF',
-        fontSize: 9,
-        fontWeight: '900',
-    },
 });
 
 export const AppNavigator = () => {
@@ -275,16 +263,22 @@ export const AppNavigator = () => {
 
   if (isLoading) return null;
 
+  const initialRoute = user && !user.username && !user.isAnonymous ? "ChooseUsername" : "Main";
+
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+    <Stack.Navigator 
+        screenOptions={{ headerShown: false, animation: 'fade' }}
+        initialRouteName={initialRoute}
+    >
       <Stack.Screen name="Main" component={TabNavigator} />
+      <Stack.Screen name="ChooseUsername" component={ChooseUsernameScreen} />
       <Stack.Screen
         name="JobDetail"
         component={JobDetailScreen}
       />
       <Stack.Screen name="Appearance" component={AppearanceScreen} />
       <Stack.Screen name="Dashboard" component={DashboardScreen} />
-      <Stack.Screen name="Referrals" component={ReferralsScreen} />
+      <Stack.Screen name="Invite" component={InviteScreen} />
       <Stack.Screen name="AccountManage" component={AccountManageScreen} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} />
       <Stack.Screen name="EditEducation" component={EditEducationScreen} />

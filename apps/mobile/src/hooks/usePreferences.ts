@@ -1,84 +1,116 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Alert } from 'react-native';
-
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/navigation/AppNavigator';
-
-type Props = NativeStackScreenProps<RootStackParamList, 'EditPreferences'>;
-
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 import { useProfile } from './useProfile';
 
-export const usePreferences = (navigation: Props['navigation']) => {
+const preferencesSchema = z.object({
+    interestedIn: z.array(z.string()).min(1, 'Select at least one type'),
+    workModes: z.array(z.string()).min(1, 'Select at least one mode'),
+    preferredCities: z.array(z.string()).min(1, 'Select at least one city').max(5, 'Maximum 5 cities allowed'),
+});
+
+export type PreferencesFormData = z.infer<typeof preferencesSchema>;
+
+export const usePreferences = () => {
     const { profile, updatePreferences, loadingCache } = useProfile();
     const [saving, setSaving] = useState(false);
-
-    const [interestedIn, setInterestedIn] = useState<string[]>(profile?.interestedIn || []);
-    const [workModes, setWorkModes] = useState<string[]>(profile?.workModes || []);
-    const [preferredCities, setPreferredCities] = useState<string[]>(profile?.preferredCities || []);
     const [cityInput, setCityInput] = useState('');
     const [showCitySuggestions, setShowCitySuggestions] = useState(false);
+
+    const {
+        control,
+        handleSubmit,
+        reset,
+        watch,
+        setValue,
+        formState: { errors, isValid },
+    } = useForm<PreferencesFormData>({
+        resolver: zodResolver(preferencesSchema),
+        defaultValues: {
+            interestedIn: profile?.interestedIn || [],
+            workModes: profile?.workModes || [],
+            preferredCities: profile?.preferredCities || [],
+        },
+        mode: 'onChange',
+    });
+
+    const interestedIn = watch('interestedIn');
+    const workModes = watch('workModes');
+    const preferredCities = watch('preferredCities');
 
     // Sync form fields when AsyncStorage profile loads
     useEffect(() => {
         if (!profile) return;
-        if (profile.interestedIn) setInterestedIn(profile.interestedIn);
-        if (profile.workModes) setWorkModes(profile.workModes);
-        if (profile.preferredCities) setPreferredCities(profile.preferredCities);
-    }, [profile?.interestedIn?.length, profile?.workModes?.length, profile?.preferredCities?.length]);
+        reset({
+            interestedIn: profile.interestedIn || [],
+            workModes: profile.workModes || [],
+            preferredCities: profile.preferredCities || [],
+        });
+    }, [profile, reset]);
 
-    const toggleItem = useCallback((list: string[], setList: (l: string[]) => void, item: string) => {
-        if (list.includes(item)) {
-            setList(list.filter(i => i !== item));
+    const toggleItem = useCallback((field: keyof PreferencesFormData, value: string) => {
+        const current = watch(field);
+        if (current.includes(value)) {
+            setValue(field, current.filter(i => i !== value), { shouldValidate: true });
         } else {
-            setList([...list, item]);
+            setValue(field, [...current, value], { shouldValidate: true });
         }
-    }, []);
+    }, [watch, setValue]);
 
     const addCity = useCallback((city: string) => {
-        if (preferredCities.length >= 5) {
-            Alert.alert('Limit Reached', 'You can select up to 5 cities');
-            return;
-        }
         const trimmed = city.trim();
         if (trimmed && !preferredCities.includes(trimmed)) {
-            setPreferredCities(prev => [...prev, trimmed]);
+            if (preferredCities.length >= 5) {
+                Alert.alert('Limit Reached', 'You can select up to 5 cities');
+                return;
+            }
+            setValue('preferredCities', [...preferredCities, trimmed], { shouldValidate: true });
             setCityInput('');
             setShowCitySuggestions(false);
         }
-    }, [preferredCities.length]);
+    }, [preferredCities, setValue]);
 
-    const handleSave = useCallback(async () => {
-        if (interestedIn.length === 0 || workModes.length === 0 || preferredCities.length === 0) {
-            Alert.alert('Preferences Required', 'Please select at least one value for all sections');
-            return;
-        }
+    const removeCity = useCallback((city: string) => {
+        setValue('preferredCities', preferredCities.filter(c => c !== city), { shouldValidate: true });
+    }, [preferredCities, setValue]);
 
+    const handleSave = useCallback(async (data: PreferencesFormData) => {
         setSaving(true);
         try {
             await updatePreferences({
-                interestedIn,
-                workModes,
-                preferredCities,
+                interestedIn: data.interestedIn,
+                workModes: data.workModes,
+                preferredCities: data.preferredCities,
             });
-            // Mode switch handled by screen
         } catch (error: unknown) {
             Alert.alert('Error', (error as Error).message || 'Failed to update preferences');
         } finally {
             setSaving(false);
         }
-    }, [interestedIn, workModes, preferredCities, updatePreferences, navigation]);
+    }, [updatePreferences]);
 
     return {
         profile,
         saving,
-        interestedIn, setInterestedIn,
-        workModes, setWorkModes,
-        preferredCities, setPreferredCities,
-        cityInput, setCityInput,
-        showCitySuggestions, setShowCitySuggestions,
+        control,
+        handleSubmit,
+        interestedIn,
+        workModes,
+        preferredCities,
+        cityInput,
+        setCityInput,
+        showCitySuggestions,
+        setShowCitySuggestions,
         toggleItem,
         addCity,
+        removeCity,
         handleSave,
         loadingCache,
+        isValid,
+        errors,
+        setValue,
     };
 };
+
