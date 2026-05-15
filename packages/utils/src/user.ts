@@ -1,0 +1,28 @@
+import { User } from '@fresherflow/types';
+
+/**
+ * Returns a user-facing handle for a user.
+ * 
+ * Logic:
+ * 1. If username exists: @username
+ * 2. If anonymous: @user_{last 4 of anon_id}
+ * 3. Fallback: @user_{last 4 of user_id}
+ * 
+ * @param user The user object (partial allowed as long as required fields exist)
+ */
+export function getDisplayHandle(user: { username?: string | null; isAnonymous?: boolean; anon_id?: string | null; id?: string | null } | null | undefined): string {
+    if (!user) return '@anonymous';
+
+    if (user.username) {
+        return `@${user.username}`;
+    }
+
+    if (user.isAnonymous && user.anon_id) {
+        const suffix = user.anon_id.slice(-4).toLowerCase();
+        return `@user_${suffix}`;
+    }
+
+    // Ultimate fallback for registered users without username
+    const idSuffix = user.id ? user.id.slice(-4).toLowerCase() : 'xxxx';
+    return `@user_${idSuffix}`;
+}
