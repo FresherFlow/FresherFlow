@@ -185,23 +185,25 @@ enum UserTrustLevel {
 // ============================================================================
 
 model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  passwordHash String?
-  fullName     String?
-  role         Role     @default(USER)
-  provider     String?  @default("credentials") // credentials, google, email
-  providerId   String?  // e.g. Google sub id
-  referralCode String?  @unique
+  id               String         @id @default(uuid())
+  firebase_uid     String?        @unique
+  username         String?        @unique
+  usernameUpdatedAt DateTime?
+  email            String?        @unique
+  fullName         String?
+  role             Role           @default(USER)
+  referralCode     String?        @unique
   referredByUserId String?
-  referredAt   DateTime?
-  trustScore   Float    @default(0.0)
-  trustLevel   UserTrustLevel @default(NEW)
-  createdAt    DateTime @default(now())
+  referredAt       DateTime?
+  trustScore       Float          @default(0.0)
+  trustLevel       UserTrustLevel @default(NEW)
+  isAnonymous      Boolean        @default(false)
+  anon_id          String?        @unique
+  lastLogin        DateTime?
+  createdAt        DateTime       @default(now())
 
   // Relations
   profile            Profile?
-  refreshTokens      RefreshToken[]
   actions            UserAction[]
   feedback           ListingFeedback[]
   appFeedback        AppFeedback[]
@@ -278,19 +280,6 @@ model WebAuthnChallenge {
 
   @@index([userId])
   @@index([expiresAt])
-}
-
-model RefreshToken {
-  id        String    @id @default(uuid())
-  userId    String
-  tokenHash String // NOT unique - allows multiple devices
-  expiresAt DateTime
-  revokedAt DateTime?
-  createdAt DateTime  @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId]) // Index for efficient lookups
 }
 
 model Profile {

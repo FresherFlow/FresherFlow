@@ -1,12 +1,23 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useState, useEffect } from 'react';
 import { getPendingOfflineActionsCount, subscribeOfflineActionQueue } from './actionQueue';
 
 export function useOfflineActionQueue(ownerId?: string) {
-    return useSyncExternalStore(
-        subscribeOfflineActionQueue,
-        () => getPendingOfflineActionsCount(ownerId),
-        () => 0
-    );
+    const [count, setCount] = useState(0);
+
+    useEffect(() => {
+        const updateCount = async () => {
+            const newCount = await getPendingOfflineActionsCount(ownerId);
+            setCount(newCount);
+        };
+
+        void updateCount();
+        return subscribeOfflineActionQueue(() => {
+            void updateCount();
+        });
+    }, [ownerId]);
+
+    return count;
 }
+

@@ -1,9 +1,10 @@
 import { ActionType } from '@fresherflow/types';
 import { actionsApi, savedApi } from '@fresherflow/api-client';
+import { storage } from '../lib/storage';
+import { Platform } from 'react-native';
 
 const OFFLINE_ACTION_QUEUE_KEY = 'ff_offline_action_queue_v1';
 const MAX_RETRY_ATTEMPTS = 10;
-const OFFLINE_ACTION_QUEUE_EVENT = 'ff-offline-action-queue-change';
 
 type OfflineActionBase = {
     id: string;
@@ -34,14 +35,13 @@ type FlushResult = {
     remaining: number;
 };
 
-function canUseStorage() {
-    return typeof window !== 'undefined';
-}
+// Internal simple event emitter for cross-platform change notification
+const listeners = new Set<() => void>();
+const notify = () => listeners.forEach(l => l());
 
-function readQueue(): OfflineAction[] {
-    if (!canUseStorage()) return [];
+async function readQueue(): Promise<OfflineAction[]> {
     try {
-        const raw = window.localStorage.getItem(OFFLINE_ACTION_QUEUE_KEY);
+        const raw = await storage.getItem(OFFLINE_ACTION_QUEUE_KEY);
         if (!raw) return [];
         const parsed = JSON.parse(raw) as OfflineAction[];
         return Array.isArray(parsed) ? parsed : [];
@@ -50,10 +50,9 @@ function readQueue(): OfflineAction[] {
     }
 }
 
-function writeQueue(queue: OfflineAction[]) {
-    if (!canUseStorage()) return;
-    window.localStorage.setItem(OFFLINE_ACTION_QUEUE_KEY, JSON.stringify(queue));
-    window.dispatchEvent(new Event(OFFLINE_ACTION_QUEUE_EVENT));
+async function writeQueue(queue: OfflineAction[]) {
+    await storage.setItem(OFFLINE_ACTION_QUEUE_KEY, JSON.stringify(queue));
+    notify();
 }
 
 function nextId() {
@@ -64,8 +63,8 @@ function matchesOwner(action: OfflineAction, ownerId?: string) {
     return !action.ownerId || !ownerId || action.ownerId === ownerId;
 }
 
-export function enqueueOfflineSaveToggle(opportunityId: string, ownerId?: string) {
-    const queue = readQueue();
+export async function enqueueOfflineSaveToggle(opportunityId: string, ownerId?: string) {
+    const queue = await readQueue();
     const lastToggleIdx = [...queue].reverse().findIndex(
         (item) => item.type === 'SAVE_TOGGLE' && item.opportunityId === opportunityId && item.ownerId === ownerId
     );
@@ -74,7 +73,7 @@ export function enqueueOfflineSaveToggle(opportunityId: string, ownerId?: string
     if (lastToggleIdx >= 0) {
         const idx = queue.length - 1 - lastToggleIdx;
         queue.splice(idx, 1);
-        writeQueue(queue);
+        await writeQueue(queue);
         return;
     }
 
@@ -86,17 +85,18 @@ export function enqueueOfflineSaveToggle(opportunityId: string, ownerId?: string
         createdAt: Date.now(),
         attempts: 0,
     });
-    writeQueue(queue);
+    await writeQueue(queue);
 }
 
-export function enqueueOfflineActionTrack(opportunityId: string, actionType: ActionType, ownerId?: string) {
-    const queue = readQueue().filter((item) => {
+export async function enqueueOfflineActionTrack(opportunityId: string, actionType: ActionType, ownerId?: string) {
+    const existingQueue = await readQueue();
+    const filteredQueue = existingQueue.filter((item) => {
         if (!matchesOwner(item, ownerId) || item.opportunityId !== opportunityId) return true;
         // Keep only latest state transition for a listing.
         return item.type !== 'ACTION_TRACK' && item.type !== 'ACTION_REMOVE';
     });
 
-    queue.push({
+    filteredQueue.push({
         id: nextId(),
         type: 'ACTION_TRACK',
         ownerId,
@@ -105,16 +105,17 @@ export function enqueueOfflineActionTrack(opportunityId: string, actionType: Act
         createdAt: Date.now(),
         attempts: 0,
     });
-    writeQueue(queue);
+    await writeQueue(filteredQueue);
 }
 
-export function enqueueOfflineActionRemove(opportunityId: string, ownerId?: string) {
-    const queue = readQueue().filter((item) => {
+export async function enqueueOfflineActionRemove(opportunityId: string, ownerId?: string) {
+    const existingQueue = await readQueue();
+    const filteredQueue = existingQueue.filter((item) => {
         if (!matchesOwner(item, ownerId) || item.opportunityId !== opportunityId) return true;
         return item.type === 'SAVE_TOGGLE';
     });
 
-    queue.push({
+    filteredQueue.push({
         id: nextId(),
         type: 'ACTION_REMOVE',
         ownerId,
@@ -122,21 +123,18 @@ export function enqueueOfflineActionRemove(opportunityId: string, ownerId?: stri
         createdAt: Date.now(),
         attempts: 0,
     });
-    writeQueue(queue);
+    await writeQueue(filteredQueue);
 }
 
-export function getPendingOfflineActionsCount(ownerId?: string): number {
-    return readQueue().filter((item) => matchesOwner(item, ownerId)).length;
+export async function getPendingOfflineActionsCount(ownerId?: string): Promise<number> {
+    const queue = await readQueue();
+    return queue.filter((item) => matchesOwner(item, ownerId)).length;
 }
 
 export function subscribeOfflineActionQueue(listener: () => void) {
-    if (!canUseStorage()) return () => undefined;
-    const handler = () => listener();
-    window.addEventListener(OFFLINE_ACTION_QUEUE_EVENT, handler);
-    window.addEventListener('storage', handler);
+    listeners.add(listener);
     return () => {
-        window.removeEventListener(OFFLINE_ACTION_QUEUE_EVENT, handler);
-        window.removeEventListener('storage', handler);
+        listeners.delete(listener);
     };
 }
 
@@ -153,11 +151,11 @@ async function runOfflineAction(action: OfflineAction) {
 }
 
 export async function flushOfflineActions(ownerId?: string): Promise<FlushResult> {
-    const queue = readQueue();
+    const queue = await readQueue();
     if (!queue.length) return { synced: 0, failed: 0, remaining: 0 };
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        return { synced: 0, failed: 0, remaining: queue.length };
-    }
+    
+    // Check connectivity - navigator.onLine is web-only, but we're mostly worried about API accessibility anyway
+    // In React Native, NetInfo should be used, but for now we rely on the catch block.
 
     let synced = 0;
     let failed = 0;
@@ -189,10 +187,11 @@ export async function flushOfflineActions(ownerId?: string): Promise<FlushResult
         }
     }
 
-    writeQueue(remaining);
+    await writeQueue(remaining);
     return {
         synced,
         failed: authFailed ? failed + 1 : failed,
         remaining: remaining.length,
     };
 }
+
