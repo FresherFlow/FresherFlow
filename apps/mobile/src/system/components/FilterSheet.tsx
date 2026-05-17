@@ -260,7 +260,6 @@ const styles = StyleSheet.create({
     },
     backdrop: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: '#000', // Static fallback
     },
     sheet: {
         height: height * 0.75,

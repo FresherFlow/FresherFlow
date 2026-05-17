@@ -55,10 +55,9 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
         const eligibilityResult = checkEligibility(opportunityForCheck as unknown as Opportunity, profile as unknown as Profile, req.userId);
 
         if (!eligibilityResult.eligible) {
-            return next(new AppError(
-                eligibilityResult.reason || 'Not eligible for this opportunity',
-                403
-            ));
+            // Personal pipeline/actions tracking is allowed for all jobs regardless of eligibility matching.
+            // We just log this warning for debugging purposes.
+            console.warn(`[Actions] User ${req.userId} tracking ineligible opportunity ${opportunityId}: ${eligibilityResult.reason}`);
         }
 
         // WALK-IN ATTENDED VALIDATION (Backend Only)
