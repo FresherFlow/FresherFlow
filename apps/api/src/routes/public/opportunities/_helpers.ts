@@ -11,22 +11,10 @@ function parsePositiveIntEnv(value: string | undefined, fallback: number): numbe
 }
 
 export const GUEST_FEED_LIMIT = parsePositiveIntEnv(process.env.GUEST_FEED_LIMIT, 200);
-export const MAX_FEED_LIMIT = parsePositiveIntEnv(
-    process.env.PUBLIC_FEED_MAX_LIMIT,
-    process.env.NODE_ENV === 'production' ? 200 : 100
-);
-export const MAX_FEED_PAGE = parsePositiveIntEnv(
-    process.env.PUBLIC_FEED_MAX_PAGE,
-    process.env.NODE_ENV === 'production' ? 50 : 200
-);
-export const GUEST_FEED_CACHE_TTL_SECONDS = parsePositiveIntEnv(
-    process.env.PUBLIC_FEED_CACHE_TTL_SECONDS,
-    process.env.NODE_ENV === 'production' ? 21600 : 300
-);
-export const GUEST_DETAIL_CACHE_TTL_SECONDS = parsePositiveIntEnv(
-    process.env.PUBLIC_DETAIL_CACHE_TTL_SECONDS,
-    process.env.NODE_ENV === 'production' ? 21600 : 300
-);
+export const MAX_FEED_LIMIT = parsePositiveIntEnv(process.env.PUBLIC_FEED_MAX_LIMIT, 200);
+export const MAX_FEED_PAGE = parsePositiveIntEnv(process.env.PUBLIC_FEED_MAX_PAGE, 50);
+export const GUEST_FEED_CACHE_TTL_SECONDS = parsePositiveIntEnv(process.env.PUBLIC_FEED_CACHE_TTL_SECONDS, 21600);
+export const GUEST_DETAIL_CACHE_TTL_SECONDS = parsePositiveIntEnv(process.env.PUBLIC_DETAIL_CACHE_TTL_SECONDS, 21600);
 export const GUEST_FEED_CACHE_CONTROL = 'public, max-age=300, s-maxage=21600, stale-while-revalidate=86400';
 export const GUEST_DETAIL_CACHE_CONTROL = 'public, max-age=300, s-maxage=21600, stale-while-revalidate=86400';
 export const MAX_DETAIL_ID_LENGTH = 200;
@@ -74,6 +62,9 @@ export const publicDetailBotLimiter = createRateLimiter({
 });
 
 export function tryResolveUserIdFromCookie(req: Request): string | null {
+    // If the optionalAuth/requireAuth middleware has already resolved a user (token or anon), use it.
+    if (req.userId) return req.userId;
+
     const token = req.cookies?.accessToken;
     if (!token) return null;
     try {
@@ -99,6 +90,13 @@ export function buildGuestOpportunitySelect() {
         salaryPeriod: true,
         employmentType: true,
         tags: true,
+        requiredSkills: true,
+        allowedDegrees: true,
+        allowedCourses: true,
+        allowedSpecializations: true,
+        allowedPassoutYears: true,
+        experienceMin: true,
+        experienceMax: true,
         applyLink: true,
         expiresAt: true,
         postedAt: true,
@@ -159,6 +157,7 @@ export function buildPublicOpportunitySelect(userId?: string) {
         verificationFailures: true,
         lastVerifiedAt: true,
         lastVerified: true,
+        clicksCount: true,
         events: {
             orderBy: { eventDate: 'asc' as const },
             select: {
@@ -237,7 +236,7 @@ export function buildPublicOpportunitySelect(userId?: string) {
                 createdBy: {
                     select: {
                         id: true,
-                        fullName: true,
+                        username: true,
                         trustLevel: true,
                     }
                 }

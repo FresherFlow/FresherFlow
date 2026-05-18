@@ -6,7 +6,7 @@ import { logger } from '@fresherflow/logger';
 import { redis } from '@fresherflow/redis';
 import prisma from '../../../infrastructure/database/prisma';
 import { AppError } from '../../../middleware/errorHandler';
-import { filterAndRankOpportunitiesForUser, rankOpportunitiesForUser } from '@fresherflow/domain';
+import { rankOpportunitiesForUser } from '@fresherflow/domain';
 import {
     isLikelyBotTraffic, publicFeedLimiter, publicFeedBotLimiter,
     GUEST_FEED_LIMIT, MAX_FEED_LIMIT, MAX_FEED_PAGE, GUEST_FEED_CACHE_TTL_SECONDS,
@@ -154,7 +154,24 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
 
         const mappedResults = (dbFiltered as unknown as (Opportunity & { savedBy?: unknown[] })[]).map((opp) => {
             const { savedBy, ...rest } = opp;
-            return { ...rest, isSaved: Boolean(savedBy && (savedBy as unknown[]).length > 0) } as unknown as Opportunity;
+
+            // Map rawIngestions so that createdBy is also returned as creator to resolve name drift
+            const rawIngestionsMapped = (rest.rawIngestions as Array<{ createdBy?: { username: string } | null } & Record<string, unknown>>)?.map((ri) => ({
+                ...ri,
+                creator: ri.createdBy,
+            })) || [];
+
+            const creator = rawIngestionsMapped[0]?.creator;
+            const isReferral = Boolean(creator);
+            const referredByUsername = creator?.username || undefined;
+
+            return {
+                ...rest,
+                rawIngestions: rawIngestionsMapped,
+                isReferral,
+                referredByUsername,
+                isSaved: Boolean(savedBy && (savedBy as unknown[]).length > 0)
+            } as unknown as Opportunity;
         });
 
         if (isGuest) {
@@ -167,10 +184,10 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
 
         let finalResults = mappedResults;
         if (!isAdmin && profile) {
-            const ranked = filterAndRankOpportunitiesForUser(
+            // Rank everything, but don't filter out yet (Show ineligible at bottom)
+            const ranked = rankOpportunitiesForUser(
                 mappedResults,
-                profile as unknown as Profile,
-                userId || undefined
+                profile as unknown as Profile
             );
             finalResults = ranked.slice(0, effectiveLimit).map((item) => ({
                 ...item.opportunity,

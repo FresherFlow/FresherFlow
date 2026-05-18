@@ -32,6 +32,7 @@ import lifecycleRouter from './lifecycle';
 import exportRouter   from './export';
 import parseRouter    from './parse';
 import eventsRouter   from './events';
+import submissionsRouter from './submissions';
 
 const router: Router = express.Router();
 
@@ -45,6 +46,7 @@ router.use('/', bulkRouter);     // POST /bulk
 router.use('/', listRouter);     // GET /, GET /summary, GET /:id
 router.use('/', createRouter);   // POST /, POST /ingest-draft, PUT /:id
 router.use('/', lifecycleRouter); // POST /:id/expire, POST /:id/restore, DELETE /:id
+router.use('/submissions', submissionsRouter);
 
 // Nested event routes with mergeParams so they inherit :id
 router.use('/:id/events', eventsRouter);

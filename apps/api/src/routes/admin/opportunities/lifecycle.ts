@@ -7,6 +7,8 @@ import { AppError } from '../../../middleware/errorHandler';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
 import { publishOpportunity } from '../../../application/opportunity/publish';
 import { rejectOpportunity } from '../../../application/opportunity/moderation';
+import { StaticFeedService } from '../../../infrastructure/services/staticFeed.service';
+import { adminCache } from '../../../infrastructure/cache/adminCache';
 
 const router = Router();
 
@@ -36,7 +38,13 @@ router.post(
             });
 
             res.json({ opportunity, message: 'Opportunity marked as expired' });
+
+            adminCache.invalidate(existing.id as string);
+            if (existing.slug) adminCache.invalidate(existing.slug as string);
+            adminCache.invalidateLists();
+
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+            void StaticFeedService.refresh();
         } catch (error) {
             next(error);
         }
@@ -66,10 +74,16 @@ router.post(
             });
 
             res.json({ opportunity, message: 'Opportunity restored from deleted list' });
+
+            adminCache.invalidate(existing.id as string);
+            if (existing.slug) adminCache.invalidate(existing.slug as string);
+            adminCache.invalidateLists();
+
             void invalidatePublicOpportunityCache({
                 idsOrSlugs: [existing.id as string, existing.slug as string, opportunity.id as string, opportunity.slug as string],
                 purgeFeed: true,
             });
+            void StaticFeedService.refresh();
         } catch (error) {
             next(error);
         }
@@ -106,7 +120,13 @@ router.delete(
             });
 
             res.json({ opportunity, message: 'Opportunity removed successfully (soft delete)' });
+
+            adminCache.invalidate(existing.id as string);
+            if (existing.slug) adminCache.invalidate(existing.slug as string);
+            adminCache.invalidateLists();
+
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+            void StaticFeedService.refresh();
         } catch (error) {
             next(error);
         }
@@ -136,6 +156,12 @@ router.post(
             const opportunity = await publishOpportunity(existing.id as string, adminId);
 
             res.json({ opportunity, message: 'Opportunity published successfully' });
+
+            adminCache.invalidate(existing.id as string);
+            if (existing.slug) adminCache.invalidate(existing.slug as string);
+            adminCache.invalidateLists();
+
+            void StaticFeedService.refresh();
         } catch (error) {
             next(error);
         }
@@ -167,7 +193,13 @@ router.post(
             const opportunity = await rejectOpportunity(existing.id as string, adminId, reason, false);
 
             res.json({ opportunity, message: 'Opportunity rejected and archived' });
+
+            adminCache.invalidate(existing.id as string);
+            if (existing.slug) adminCache.invalidate(existing.slug as string);
+            adminCache.invalidateLists();
+
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+            void StaticFeedService.refresh();
         } catch (error) {
             next(error);
         }
@@ -199,7 +231,13 @@ router.post(
             const opportunity = await rejectOpportunity(existing.id as string, adminId, reason, true);
 
             res.json({ opportunity, message: 'Opportunity flagged as spam and archived' });
+
+            adminCache.invalidate(existing.id as string);
+            if (existing.slug) adminCache.invalidate(existing.slug as string);
+            adminCache.invalidateLists();
+
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+            void StaticFeedService.refresh();
         } catch (error) {
             next(error);
         }

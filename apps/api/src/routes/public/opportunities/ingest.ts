@@ -38,6 +38,21 @@ router.post('/ingest', async (req: Request, res: Response, next: NextFunction) =
             select: { id: true }
         });
 
+        // Check for existing pending/review opportunity
+        const existingRaw = await prisma.rawOpportunity.findFirst({
+            where: {
+                sourceLink: normalizedUrl,
+                status: { in: ['FETCHED', 'DRAFT_CREATED'] }
+            },
+            select: { id: true }
+        });
+
+        if (existingRaw) {
+            return res.status(409).json({
+                message: 'This link is already under review!'
+            });
+        }
+
         const result = await UrlParser.parseUrl(normalizedUrl).catch((err: Error) => {
             throw new AppError(`Parsing failed: ${err.message}`, 500);
         });

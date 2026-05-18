@@ -1,4 +1,4 @@
-import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType } from '@fresherflow/database';
+import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { normalizeEducationBuckets } from '@fresherflow/domain';
 import { AdminOpportunityRequest } from '../../../types/admin';

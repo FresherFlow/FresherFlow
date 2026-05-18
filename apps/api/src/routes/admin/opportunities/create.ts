@@ -14,6 +14,7 @@ import {
 } from './_helpers';
 import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
 import { Opportunity } from '@fresherflow/types';
+import { adminCache } from '../../../infrastructure/cache/adminCache';
 
 const router = Router();
 
@@ -85,6 +86,20 @@ router.post(
             });
 
             await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
+
+            // If linked to a raw opportunity submission, update it
+            if (data.rawOpportunityId) {
+                await prisma.rawOpportunity.update({
+                    where: { id: data.rawOpportunityId as string },
+                    data: {
+                        status: 'DRAFT_CREATED',
+                        mappedOpportunityId: opportunity.id as string
+                    }
+                });
+            }
+
+            // Clear cache on write
+            adminCache.invalidateLists();
 
             res.status(201).json({ opportunity, message: 'Opportunity created successfully. Social posting queued.' });
         } catch (error) {
@@ -178,9 +193,22 @@ router.post(
                 include: { walkInDetails: true, governmentJobDetails: true },
             });
 
+            // If linked to a raw opportunity submission, update it
+            if (data.rawOpportunityId) {
+                await prisma.rawOpportunity.update({
+                    where: { id: data.rawOpportunityId as string },
+                    data: {
+                        status: 'DRAFT_CREATED',
+                        mappedOpportunityId: opportunity.id as string
+                    }
+                });
+            }
+
             // Drafts only notify admin privately, no broadcast/alerts/social
             // But we might want a "draft created" internal notification if we had one.
             // Keeping it simple for now as it was.
+
+            adminCache.invalidateLists();
 
             res.status(201).json({ opportunity, message: 'Draft ingested successfully. Review and publish from admin.' });
         } catch (error) {
@@ -255,6 +283,17 @@ router.put(
                 include: { walkInDetails: true, governmentJobDetails: true },
             });
 
+            // If linked to a raw opportunity submission, update it
+            if (data.rawOpportunityId) {
+                await prisma.rawOpportunity.update({
+                    where: { id: data.rawOpportunityId as string },
+                    data: {
+                        status: 'DRAFT_CREATED',
+                        mappedOpportunityId: opportunity.id as string
+                    }
+                });
+            }
+
             let responseMessage = 'Opportunity updated successfully';
             if (existing.status !== OpportunityStatus.PUBLISHED && opportunity.status === OpportunityStatus.PUBLISHED) {
                 await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
@@ -266,6 +305,11 @@ router.put(
                     oldSlug: existing.slug !== opportunity.slug ? (existing.slug as string) : undefined
                 });
             }
+
+            // Invalidate specific detail and all lists
+            adminCache.invalidate(existing.id as string);
+            if (existing.slug) adminCache.invalidate(existing.slug as string);
+            adminCache.invalidateLists();
 
             res.json({ opportunity, message: responseMessage });
         } catch (error) {

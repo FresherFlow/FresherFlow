@@ -1,8 +1,9 @@
-import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, Availability as DbAvailability } from '../../lib/prisma';
+import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode } from '../../lib/prisma';
 import { OpportunityStatus, OpportunityType, EducationLevel, WorkMode, Availability, Opportunity } from '@fresherflow/types';
 import { EligibilityService } from '../eligibility/eligibility.service';
 import { generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
 import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '@fresherflow/search';
+import { discoveryEmitter } from '../../infrastructure/events/DiscoveryEmitter';
 
 /**
  * Opportunity Service - Business Logic Layer
@@ -40,7 +41,7 @@ export class OpportunityService {
                 slug,
                 postedByUserId: adminId,
                 status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
-                type: (data.type || OpportunityType.JOB) as unknown as DbOpportunityType,
+                type: (data.type || OpportunityType.JOB) as 'JOB' | 'INTERNSHIP' | 'WALKIN',
                 title: data.title || '',
                 company: data.company || '',
                 description: data.description || '',
@@ -82,6 +83,7 @@ export class OpportunityService {
             },
         });
 
+        discoveryEmitter.trigger();
         return published;
     }
 
@@ -125,6 +127,7 @@ export class OpportunityService {
             },
         });
 
+        discoveryEmitter.trigger();
         return updated;
     }
 
@@ -155,6 +158,7 @@ export class OpportunityService {
         });
 
 
+        discoveryEmitter.trigger();
         return deleted;
     }
 
@@ -169,6 +173,7 @@ export class OpportunityService {
             },
         });
 
+        discoveryEmitter.trigger();
         return expired;
     }
 
@@ -244,7 +249,7 @@ export class OpportunityService {
         // Preference Filter: Opportunity Type
         if (profile.interestedIn && (profile.interestedIn as unknown[]).length > 0) {
             andConditions.push({
-                type: { in: (profile.interestedIn as unknown) as DbOpportunityType[] }
+                type: { in: (profile.interestedIn as unknown) as ('JOB' | 'INTERNSHIP' | 'WALKIN')[] }
             });
         }
 

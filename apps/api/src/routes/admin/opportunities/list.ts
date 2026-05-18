@@ -6,6 +6,7 @@ import { searchOpportunities } from '../../../application/opportunity';
 import {
     normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere,
 } from './_helpers';
+import { adminCache } from '../../../infrastructure/cache/adminCache';
 
 const router = Router();
 
@@ -15,6 +16,10 @@ const router = Router();
  */
 router.get('/', async (req: Request, res: Response, next: NextFunction) => {
     try {
+        const cacheKey = `list_${JSON.stringify(req.query)}`;
+        const cached = adminCache.get(cacheKey);
+        if (cached) return res.json(cached);
+
         const { type, status, includeCounts, includeWalkInDetails, limit, offset, cursor, page, q, sort, linkHealth, activeOnly } = req.query;
         const where: Prisma.OpportunityWhereInput = {};
         const andFilters: Prisma.OpportunityWhereInput[] = [];
@@ -130,7 +135,12 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         const currentPage = take ? Math.floor((skip || 0) / take) + 1 : 1;
         const totalPages = take ? Math.max(1, Math.ceil(total / take)) : 1;
 
-        res.json({ opportunities, total, page: currentPage, pageSize, totalPages });
+        const responsePayload = { opportunities, total, page: currentPage, pageSize, totalPages };
+
+        // Cache the list response
+        adminCache.set(cacheKey, responsePayload);
+
+        res.json(responsePayload);
     } catch (error) {
         next(error);
     }
@@ -142,6 +152,10 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
  */
 router.get('/summary', async (_req: Request, res: Response, next: NextFunction) => {
     try {
+        const cacheKey = 'summary_all';
+        const cached = adminCache.get(cacheKey);
+        if (cached) return res.json(cached);
+
         const now = new Date();
         const liveWhere: Prisma.OpportunityWhereInput = {
             status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
@@ -149,7 +163,7 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
             expiredAt: null,
             OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
         };
-        const [total, active, walkins, liveWalkins, drafts, archived, deleted, expired] =
+        const [total, active, walkins, liveWalkins, drafts, archived, deleted, expired, submissions] =
             await prisma.$transaction([
                 prisma.opportunity.count({ where: { deletedAt: null } }),
                 prisma.opportunity.count({ where: liveWhere }),
@@ -159,8 +173,12 @@ router.get('/summary', async (_req: Request, res: Response, next: NextFunction) 
                 prisma.opportunity.count({ where: { status: OpportunityStatus.ARCHIVED as unknown as DbOpportunityStatus, deletedAt: null } }),
                 prisma.opportunity.count({ where: { deletedAt: { not: null } } }),
                 prisma.opportunity.count({ where: buildExpiredWhere(now) }),
+                prisma.rawOpportunity.count({ where: { status: 'FETCHED' } }),
             ]);
-        res.json({ summary: { total, active, walkins, liveWalkins, drafts, archived, deleted, expired } });
+
+        const responsePayload = { summary: { total, active, walkins, liveWalkins, drafts, archived, deleted, expired, submissions } };
+        adminCache.set(cacheKey, responsePayload);
+        res.json(responsePayload);
     } catch (error) {
         next(error);
     }
@@ -173,6 +191,11 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
     try {
         const id = req.params.id as string;
         if (!id) return res.status(400).json({ message: 'Opportunity ID or slug is required' });
+
+        const cacheKey = `detail_${id}`;
+        const cached = adminCache.get(cacheKey);
+        if (cached) return res.json(cached);
+
         const opportunity = await prisma.opportunity.findFirst({
             where: { OR: [{ id }, { slug: id }] },
             include: {
@@ -184,7 +207,10 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
             },
         });
         if (!opportunity) return res.status(404).json({ message: 'Opportunity not found' });
-        res.json({ opportunity });
+
+        const responsePayload = { opportunity };
+        adminCache.set(cacheKey, responsePayload);
+        res.json(responsePayload);
     } catch (error) {
         next(error);
     }

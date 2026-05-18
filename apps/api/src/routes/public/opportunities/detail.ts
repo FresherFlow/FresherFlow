@@ -91,10 +91,31 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
         }
         if (userId) res.setHeader('Vary', 'Cookie, Authorization');
 
+        const [appliedCount, selectedCount] = await Promise.all([
+            prisma.userAction.count({ where: { opportunityId: opportunity.id, actionType: 'APPLIED' } }),
+            prisma.userAction.count({ where: { opportunityId: opportunity.id, actionType: 'SELECTED' } })
+        ]);
+
         const { savedBy, ...opportunitySafe } = opportunity as typeof opportunity & { savedBy?: Array<{ id: string }> };
+
+        // Map rawIngestions so that createdBy is also returned as creator to resolve name drift
+        const rawIngestionsMapped = (opportunitySafe.rawIngestions as Array<{ createdBy?: { username: string } | null } & Record<string, unknown>>)?.map((ri) => ({
+            ...ri,
+            creator: ri.createdBy,
+        })) || [];
+
+        const creator = rawIngestionsMapped[0]?.creator;
+        const isReferral = Boolean(creator);
+        const referredByUsername = creator?.username || undefined;
+
         const opportunityWithSaved = {
             ...opportunitySafe,
-            isSaved: Boolean(savedBy && savedBy.length > 0)
+            rawIngestions: rawIngestionsMapped,
+            isReferral,
+            referredByUsername,
+            isSaved: Boolean(savedBy && savedBy.length > 0),
+            appliedCount,
+            selectedCount
         };
 
         let isEligible = true;
