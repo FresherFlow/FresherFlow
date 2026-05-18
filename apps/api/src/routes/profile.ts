@@ -11,6 +11,7 @@ import { AppError } from '../middleware/errorHandler';
 import { Profile } from '@fresherflow/types';
 import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/domain';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
+import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
 
 const router: Router = express.Router();
 
@@ -442,10 +443,92 @@ router.post('/shares', optionalAuth, validate(contributionSchema), async (req: R
     }
 });
 
+// GET /api/profile/username/check
+router.get('/username/check', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const username = (req.query.username as string)?.toLowerCase();
+        if (!username || username.length < 3) {
+            return res.json({ available: false, reason: 'Too short' });
+        }
+
+        const existing = await prisma.user.findUnique({
+            where: { username }
+        });
+
+        res.json({ available: !existing });
+    } catch (error) {
+        next(error);
+    }
+});
+
+// POST /api/profile/username/claim
+router.post('/username/claim', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { username: rawUsername } = req.body;
+        const username = rawUsername?.toLowerCase();
+
+        // 1. Basic Validation
+        if (!username || username.length < 3 || username.length > 20) {
+            return next(new AppError('Username must be 3-20 characters', 400));
+        }
+        if (!/^[a-z0-9_]+$/.test(username)) {
+            return next(new AppError('Username can only contain lowercase letters, numbers, and underscores', 400));
+        }
+
+        // 2. Cooldown Check
+        const cooldownDays = Number(process.env.USERNAME_COOLDOWN_DAYS || 30);
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            select: { username: true, usernameUpdatedAt: true }
+        });
+
+        if (user?.usernameUpdatedAt) {
+            const lastUpdate = new Date(user.usernameUpdatedAt);
+            const now = new Date();
+            const daysSinceUpdate = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
+            
+            if (daysSinceUpdate < cooldownDays) {
+                return next(new AppError(`Username can only be changed once every ${cooldownDays} days. Please wait ${Math.ceil(cooldownDays - daysSinceUpdate)} more days.`, 403));
+            }
+        }
+
+        // 3. Availability Check
+        const existing = await prisma.user.findUnique({
+            where: { username }
+        });
+
+        if (existing && existing.id !== req.userId) {
+            return next(new AppError('Username is already taken', 409));
+        }
+
+        // 4. Update
+        const updatedUser = await prisma.user.update({
+            where: { id: req.userId },
+            data: { 
+                username,
+                usernameUpdatedAt: new Date()
+            }
+        });
+
+        // Regenerate static usernames index instantly
+        void StaticFeedService.refreshUsernames();
+
+        res.json({ 
+            success: true, 
+            username: updatedUser.username,
+            message: 'Username claimed successfully' 
+        });
+    } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+            return next(new AppError('Username is already taken', 409));
+        }
+        next(error);
+    }
+});
+
 // Backward-compatible aliases
-router.get('/contributions', requireAuth, (req, res, next) => {
-    // Redirect or just call the same handler
-    return (router as any).handle(req, res, next);
+router.get('/contributions', requireAuth, (req, res, _next) => {
+    res.redirect(301, '/api/profile/shares');
 });
 
 export default router;

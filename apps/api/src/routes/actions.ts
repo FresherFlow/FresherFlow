@@ -131,7 +131,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
 // GET /api/actions/summary - Aggregated counts only
 router.get('/summary', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const [applied, planned, interviewed, selected] = await Promise.all([
+        const [applied, planned, interviewed, selected, oa, rejected] = await Promise.all([
             prisma.userAction.count({
                 where: { userId: req.userId, actionType: 'APPLIED' }
             }),
@@ -149,6 +149,12 @@ router.get('/summary', requireAuth, async (req: Request, res: Response, next: Ne
             }),
             prisma.userAction.count({
                 where: { userId: req.userId, actionType: 'SELECTED' }
+            }),
+            prisma.userAction.count({
+                where: { userId: req.userId, actionType: 'OA' }
+            }),
+            prisma.userAction.count({
+                where: { userId: req.userId, actionType: 'REJECTED' }
             })
         ]);
 
@@ -157,7 +163,9 @@ router.get('/summary', requireAuth, async (req: Request, res: Response, next: Ne
                 applied,
                 planned,
                 interviewed,
-                selected
+                selected,
+                oa,
+                rejected
             }
         });
     } catch (error) {

@@ -20,7 +20,7 @@ router.get('/:userId/opportunities', async (req, res) => {
         where: { id: userId },
         select: {
             id: true,
-            fullName: true,
+            username: true,
             trustLevel: true,
             createdAt: true,
         }

@@ -23,7 +23,7 @@ router.get('/:id/comments', async (req, res) => {
             user: {
                 select: {
                     id: true,
-                    fullName: true,
+                    username: true,
                 }
             }
         },
@@ -43,8 +43,8 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
     const id = req.params.id as string;
     const { text } = req.body;
     const userId = req.userId;
-    if (!userId) {
-        throw new AppError('Authentication required.', 401);
+    if (!userId || req.isAnonymous) {
+        throw new AppError('Sign in required to post comments.', 401);
     }
 
     if (!text || text.trim().length === 0 || text.length > 500) {
@@ -75,7 +75,7 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
                 user: {
                     select: {
                         id: true,
-                        fullName: true,
+                        username: true,
                     }
                 }
             }
@@ -110,7 +110,7 @@ router.delete('/:id/comments/:commentId', requireAuth, async (req, res) => {
         throw new AppError('Comment not found.', 404);
     }
 
-    if (comment.userId !== userId) {
+    if (comment.userId !== userId || req.isAnonymous) {
         throw new AppError('Not authorized to delete this comment.', 403);
     }
 
