@@ -139,7 +139,10 @@ export function hmacSHA256(message: string, key: string): string {
 }
 
 // 3. Dynamic Request Signature generator
-export function generateCdnSignature(pathname: string, secret: string = 'fresherflow_default_edge_secret'): { t: string; sig: string } {
+export function generateCdnSignature(
+    pathname: string, 
+    secret: string = process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET || 'fresherflow_default_edge_secret'
+): { t: string; sig: string } {
     const t = Math.floor(Date.now() / 1000).toString();
     const message = `${pathname}:${t}`;
     const sig = hmacSHA256(message, secret);
