@@ -22,8 +22,8 @@ type Props = {
 // ISR for public detail pages to absorb bot/preview traffic at CDN.
 export const revalidate = 3600;
 
-// Prevent hitting the backend for any unknown or expired job URLs
-export const dynamicParams = false;
+// Allow dynamic rendering and ISR caching for newly published opportunities using the CDN JSON feed
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
     const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');

@@ -17,9 +17,42 @@ import {
     getTrackerOptions,
 } from '@/lib/opportunityDetailHelpers';
 
-export function useOpportunityDerivedState(opp: Opportunity, profile: Profile | null, searchParams: URLSearchParams) {
+export function useOpportunityDerivedState(opp: Opportunity | null, profile: Profile | null, searchParams: URLSearchParams) {
     const [now] = useState(() => Date.now());
     return useMemo(() => {
+        if (!opp) {
+            return {
+                hasApplyLink: false,
+                isWalkinFlow: false,
+                currentAction: null,
+                trackerOptions: [],
+                timelineEvents: [],
+                upcomingTimelineEvents: [],
+                isCampusDrive: false,
+                driveDates: { regStart: null, regEnd: null, examDate: null },
+                driveMeta: {
+                    isTcsNqt: false,
+                    badges: [],
+                    maxCtcLabel: '',
+                    overviewPoints: [],
+                    selectionSteps: [],
+                    applySteps: [],
+                    salaryRows: [],
+                    salaryNote: ''
+                },
+                locationInfo: { shortLabel: '', fullLabel: '', city: '', state: '' },
+                displaySalary: '',
+                listingState: 'INACTIVE',
+                eligibilitySnapshot: null,
+                educationDetails: { level: 'Any Graduate', courses: null, specializations: null },
+                loginFromDetailHref: '',
+                driveDateItems: [],
+                formatDeadline: () => '',
+                isExpired: () => false,
+                isClosingSoon: () => false
+            };
+        }
+
         const hasApplyLink = Boolean(opp.applyLink || opp.companyWebsite);
         const isWalkinFlow = opp.type === 'WALKIN';
         const currentAction = getCurrentActionType(opp);
