@@ -1,0 +1,142 @@
+name: Generate Standalone Release APK
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on any tag starting with v (e.g., v1.0.0)
+
+jobs:
+  build-apk:
+    name: Build & Release Standalone APK
+    runs-on: ubuntu-latest
+
+    services:
+      redis:
+        image: redis:alpine
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npm run db:generate --workspace=@fresherflow/database
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://dummy:dummy@localhost:5432/dummy' }}
+
+      - name: Build Monorepo Dependencies
+        run: npx turbo build --filter=mobile
+
+      - name: Extract Tag Version
+        id: get_version
+        run: |
+          # Extract version from tag (e.g. refs/tags/v1.2.3 -> 1.2.3)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted Version: $VERSION"
+
+      - name: Inject Version into Configuration Files
+        run: |
+          # 1. Update version in apps/mobile/app.json
+          node -e "
+            const fs = require('fs');
+            const appJson = JSON.parse(fs.readFileSync('apps/mobile/app.json', 'utf8'));
+            appJson.expo.version = '${{ env.VERSION }}';
+            // Also increment versionCode based on GITHUB_RUN_NUMBER to avoid Google Play conflicts
+            if (appJson.expo.android) {
+              appJson.expo.android.versionCode = parseInt('${{ github.run_number }}') + 100;
+            }
+            fs.writeFileSync('apps/mobile/app.json', JSON.stringify(appJson, null, 2));
+            console.log('Successfully injected version ${{ env.VERSION }} into apps/mobile/app.json');
+          "
+
+          # 2. Update version in apps/mobile/package.json
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('apps/mobile/package.json', 'utf8'));
+            pkg.version = '${{ env.VERSION }}';
+            fs.writeFileSync('apps/mobile/package.json', JSON.stringify(pkg, null, 2));
+            console.log('Successfully injected version ${{ env.VERSION }} into apps/mobile/package.json');
+          "
+
+          # 3. Update version in apps/web/package.json
+          node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync('apps/web/package.json', 'utf8'));
+            pkg.version = '${{ env.VERSION }}';
+            fs.writeFileSync('apps/web/package.json', JSON.stringify(pkg, null, 2));
+            console.log('Successfully injected version ${{ env.VERSION }} into apps/web/package.json');
+          "
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Cache Gradle Packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('apps/mobile/android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Make Gradle Wrapper Executable
+        run: chmod +x gradlew
+        cwd: apps/mobile/android
+
+      - name: Build Android Release APK
+        run: ./gradlew assembleRelease --no-daemon
+        cwd: apps/mobile/android
+        env:
+          ORG_GRADLE_PROJECT_reactNativeArchitectures: arm64-v8a,armeabi-v7a,x86_64
+
+      - name: Rename APK for Release
+        run: |
+          mkdir -p build-artifacts
+          cp apps/mobile/android/app/build/outputs/apk/release/app-release.apk build-artifacts/FresherFlow-v${{ env.VERSION }}.apk
+          echo "Artifact prepared at build-artifacts/FresherFlow-v${{ env.VERSION }}.apk"
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: FresherFlow ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          body: |
+            ### 📱 Standalone Android App v${{ env.VERSION }}
+            This is an automatically compiled production release of the FresherFlow Android Application!
+            
+            #### 🛠️ What's New in this Version:
+            * Dynamic offline search & MMKV Cache-First enhancements.
+            * Zero-Spinner instantaneous application tracking loaded directly from Native C++ MMKV.
+            * Butter-smooth, physical 1:1 marquee interaction & brand-accurate community SVGs.
+            * Complete cryptographic signature protection for static edge CDN feeds.
+            
+            #### 📥 Installation:
+            Download and install the **`FresherFlow-v${{ env.VERSION }}.apk`** file below directly on your Android device!
+          files: |
+            build-artifacts/FresherFlow-v${{ env.VERSION }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
