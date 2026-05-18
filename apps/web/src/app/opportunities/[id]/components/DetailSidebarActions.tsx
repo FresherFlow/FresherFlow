@@ -44,7 +44,7 @@ export function DetailSidebarActions({
     formatDeadline
 }: DetailSidebarActionsProps) {
     return (
-        <aside className="lg:col-span-4 space-y-3 lg:sticky lg:top-24">
+        <div className="space-y-4">
             {opp.type === 'WALKIN' && (
                 <div className="hidden lg:block bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">
                     <h4 className="text-xs font-bold uppercase tracking-widest text-primary">Walk-in snapshot</h4>
@@ -184,6 +184,6 @@ export function DetailSidebarActions({
                     </Link>
                 </div>
             )}
-        </aside>
+        </div>
     );
 }

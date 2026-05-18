@@ -194,10 +194,10 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                         />
                     </div>
                 ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 md:gap-4 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
 
                     {/* Left Column */}
-                    <div className="lg:col-span-8 space-y-3 md:space-y-4">
+                    <div className="space-y-4 md:space-y-6">
 
                         {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning />}
 
@@ -244,30 +244,6 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             </>
                         )}
 
-                        {ds.isCampusDrive && (
-                            <DetailCampusDriveInfo
-                                driveMeta={ds.driveMeta}
-                                hasApplyLink={ds.hasApplyLink}
-                                handleApply={handleApply}
-                            />
-                        )}
-
-                        <DetailTimeline
-                            timelineEvents={ds.timelineEvents}
-                            upcomingTimelineEvents={ds.upcomingTimelineEvents}
-                        />
-
-                        {!isGovernmentJob && (
-                            <DetailRequirements
-                                opp={opp}
-                                educationDetails={ds.educationDetails}
-                            />
-                        )}
-
-                        {opp.type === 'WALKIN' && opp.walkInDetails && (
-                            <WalkInDetailsCard walkInDetails={opp.walkInDetails} />
-                        )}
-
                         {!user && (
                             <QuickActionsMobile
                                 onReportClick={() => {
@@ -279,7 +255,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                     </div>
 
                     {/* Right Column */}
-                    <aside className="lg:col-span-4 space-y-3 lg:sticky lg:top-24">
+                    <aside className="space-y-4 md:space-y-6 lg:sticky lg:top-24">
                         {/* Eligibility Snapshot Hidden */}
 
                         <DetailSidebarActions
@@ -298,6 +274,30 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             loginFromDetailHref={ds.loginFromDetailHref}
                             listingState={ds.listingState}
                             formatDeadline={ds.formatDeadline}
+                        />
+
+                        {!isGovernmentJob && (
+                            <DetailRequirements
+                                opp={opp}
+                                educationDetails={ds.educationDetails}
+                            />
+                        )}
+
+                        {opp.type === 'WALKIN' && opp.walkInDetails && (
+                            <WalkInDetailsCard walkInDetails={opp.walkInDetails} />
+                        )}
+
+                        {ds.isCampusDrive && (
+                            <DetailCampusDriveInfo
+                                driveMeta={ds.driveMeta}
+                                hasApplyLink={ds.hasApplyLink}
+                                handleApply={handleApply}
+                            />
+                        )}
+
+                        <DetailTimeline
+                            timelineEvents={ds.timelineEvents}
+                            upcomingTimelineEvents={ds.upcomingTimelineEvents}
                         />
                     </aside>
                 </div>
