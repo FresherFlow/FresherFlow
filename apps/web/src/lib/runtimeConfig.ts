@@ -88,14 +88,33 @@ export const ADMIN_WEB_HOST = normalizeHost(
     getFallbackHost()
 );
 
+const IS_SERVER = typeof window === 'undefined';
+const DEFAULT_CDN_HOST = IS_SERVER ? 'https://api.fresherflow.in' : 'https://cdn.fresherflow.in';
+
 export const BOOTSTRAP_FEED_URL =
     process.env.NEXT_PUBLIC_BOOTSTRAP_FEED_URL ||
     process.env.BOOTSTRAP_FEED_URL ||
     (process.env.NEXT_PUBLIC_CDN_URL
-        ? `${process.env.NEXT_PUBLIC_CDN_URL}/bootstrap-feed.json`
-        : 'https://cdn.fresherflow.com/bootstrap-feed.json');
+        ? `${process.env.NEXT_PUBLIC_CDN_URL}/bootstrap-feed.min.json`
+        : `${DEFAULT_CDN_HOST}/bootstrap-feed.min.json`);
 
 export const GET_CATEGORY_SHARD_URL = (id: string) =>
     process.env.NEXT_PUBLIC_CDN_URL
         ? `${process.env.NEXT_PUBLIC_CDN_URL}/categories/${id}.json`
-        : `https://cdn.fresherflow.com/categories/${id}.json`;
+        : `${DEFAULT_CDN_HOST}/categories/${id}.json`;
+
+export const EDUCATION_METADATA_URL =
+    process.env.NEXT_PUBLIC_CDN_URL
+        ? `${process.env.NEXT_PUBLIC_CDN_URL}/education.json`
+        : `${DEFAULT_CDN_HOST}/education.json`;
+
+export const SKILLS_METADATA_URL =
+    process.env.NEXT_PUBLIC_CDN_URL
+        ? `${process.env.NEXT_PUBLIC_CDN_URL}/skills.json`
+        : `${DEFAULT_CDN_HOST}/skills.json`;
+
+export const CITIES_METADATA_URL =
+    process.env.NEXT_PUBLIC_CDN_URL
+        ? `${process.env.NEXT_PUBLIC_CDN_URL}/cities.json`
+        : `${DEFAULT_CDN_HOST}/cities.json`;
+
