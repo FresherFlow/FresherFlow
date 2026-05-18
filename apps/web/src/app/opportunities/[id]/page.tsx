@@ -22,6 +22,24 @@ type Props = {
 // ISR for public detail pages to absorb bot/preview traffic at CDN.
 export const revalidate = 3600;
 
+// Prevent hitting the backend for any unknown or expired job URLs
+export const dynamicParams = false;
+
+export async function generateStaticParams() {
+    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+    const feed = await fetchBootstrapFeed();
+    
+    if (!feed?.opportunities) return [];
+    
+    const params: { id: string }[] = [];
+    for (const opp of feed.opportunities) {
+        if (opp.slug) params.push({ id: opp.slug });
+        if (opp.id) params.push({ id: opp.id });
+    }
+    
+    return params;
+}
+
 // Generate dynamic SEO metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id: slugOrId } = await params;
