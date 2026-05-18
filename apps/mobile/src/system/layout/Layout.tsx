@@ -1,14 +1,11 @@
 import React from 'react';
 import { StyleSheet, View, ViewProps, StatusBar, ViewStyle, Text } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { SPACING } from '../constants/dimensions';
 import { TYPOGRAPHY } from '../constants/typography';
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
+import { alpha } from '@/theme';
 
 export interface ScreenProps extends ViewProps {
     safe?: boolean;
@@ -17,13 +14,16 @@ export interface ScreenProps extends ViewProps {
 
 export const Screen: React.FC<ScreenProps> = ({ children, style, safe = true, bg, ...props }) => {
     const { currentTheme } = useTheme();
-    const Container = safe ? SafeAreaView : View;
+    const insets = useSafeAreaInsets();
 
     return (
-        <Container 
+        <View 
             style={[
                 styles.screen, 
-                { backgroundColor: bg || currentTheme.colors.background },
+                { 
+                    backgroundColor: bg || currentTheme.colors.background,
+                    paddingTop: safe ? insets.top : 0
+                },
                 style
             ]} 
             {...props}
@@ -34,7 +34,7 @@ export const Screen: React.FC<ScreenProps> = ({ children, style, safe = true, bg
                 translucent 
             />
             {children}
-        </Container>
+        </View>
     );
 };
 

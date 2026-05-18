@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, OpportunityType, WorkMode } from '@fresherflow/types';
 
 interface ActionSheetState {
   isOpen: boolean;
@@ -8,9 +8,30 @@ interface ActionSheetState {
   close: () => void;
 }
 
+export interface PersistedExploreFilters {
+  type: OpportunityType | null;
+  workMode: WorkMode | null;
+  batchYear: number | null;
+  tag: string | null;
+  sort: 'latest' | 'trending' | 'closing_soon';
+}
+
 interface UIState {
   actionSheet: ActionSheetState;
+  exploreFilters: PersistedExploreFilters;
+  usernameNudgeDismissed: boolean;
+  setUsernameNudgeDismissed: (dismissed: boolean) => void;
+  setExploreFilters: (filters: Partial<PersistedExploreFilters>) => void;
+  resetExploreFilters: () => void;
 }
+
+const initialFilters: PersistedExploreFilters = {
+  type: null,
+  workMode: null,
+  batchYear: null,
+  tag: null,
+  sort: 'latest',
+};
 
 export const useUIStore = create<UIState>((set) => ({
   actionSheet: {
@@ -23,4 +44,11 @@ export const useUIStore = create<UIState>((set) => ({
       actionSheet: { ...state.actionSheet, isOpen: false, opportunity: null } 
     })),
   },
+  exploreFilters: initialFilters,
+  usernameNudgeDismissed: false,
+  setUsernameNudgeDismissed: (dismissed) => set({ usernameNudgeDismissed: dismissed }),
+  setExploreFilters: (newFilters) => set((state) => ({
+    exploreFilters: { ...state.exploreFilters, ...newFilters }
+  })),
+  resetExploreFilters: () => set({ exploreFilters: initialFilters }),
 }));

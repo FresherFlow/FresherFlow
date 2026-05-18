@@ -1,84 +1,49 @@
 import React, { useRef, useEffect } from 'react';
-import { Platform, Animated, View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { Platform, Animated, View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, Compass, PlusCircle, Bookmark, User } from 'lucide-react-native';
 
 
-import FeedScreen from '@/screens/FeedScreen';
-import ExploreScreen from '@/screens/ExploreScreen';
-import ShareScreen from '@/screens/ShareScreen';
-import JobDetailScreen from '@/screens/JobDetailScreen';
-import SavedScreen from '@/screens/SavedScreen';
-import ProfileScreen from '@/screens/ProfileScreen';
-import MySharesScreen from '@/screens/MySharesScreen';
-import AuthScreen from '@/screens/AuthScreen';
-import AppearanceScreen from '@/screens/AppearanceScreen';
-import EditEducationScreen from '@/screens/EditEducationScreen';
-import EditSkillsScreen from '@/screens/EditSkillsScreen';
-import EditPreferencesScreen from '@/screens/EditPreferencesScreen';
-import DashboardScreen from '@/screens/DashboardScreen';
-import InviteScreen from '@/screens/InviteScreen';
-import AccountManageScreen from '@/screens/AccountManageScreen';
-import NotificationsScreen from '@/screens/NotificationsScreen';
-import ContributorProfileScreen from '@/screens/ContributorProfileScreen';
-import CompanyScreen from '@/screens/CompanyScreen';
-import AlertSettingsScreen from '@/screens/AlertSettingsScreen';
-import ApplicationTrackerScreen from '@/screens/ApplicationTrackerScreen';
-import FeedbackScreen from '@/screens/FeedbackScreen';
-import LegalScreen from '@/screens/LegalScreen';
-import ChooseUsernameScreen from '@/screens/ChooseUsernameScreen';
+import FeedScreen from '@/screens/feed/FeedScreen';
+import ExploreScreen from '@/screens/feed/ExploreScreen';
+import ShareScreen from '@/screens/social/ShareScreen';
+import JobDetailScreen from '@/screens/discovery/JobDetailScreen';
+import SavedScreen from '@/screens/feed/SavedScreen';
+import SettingsScreen from '@/screens/profile/SettingsScreen';
+import MySharesScreen from '@/screens/social/MySharesScreen';
+import AuthScreen from '@/screens/auth/AuthScreen';
+import AppearanceScreen from '@/screens/settings/AppearanceScreen';
+import EditEducationScreen from '@/screens/profile/EditEducationScreen';
+import EditSkillsScreen from '@/screens/profile/EditSkillsScreen';
+import EditPreferencesScreen from '@/screens/profile/EditPreferencesScreen';
+import CareerProfileScreen from '@/screens/profile/CareerProfileScreen';
+import DashboardScreen from '@/screens/profile/DashboardScreen';
+import InviteScreen from '@/screens/social/InviteScreen';
+import AccountManageScreen from '@/screens/settings/AccountManageScreen';
+import NotificationsScreen from '@/screens/social/NotificationsScreen';
+import ContributorProfileScreen from '@/screens/discovery/ContributorProfileScreen';
+import CompanyScreen from '@/screens/discovery/CompanyScreen';
+import AlertSettingsScreen from '@/screens/settings/AlertSettingsScreen';
+import ApplicationTrackerScreen from '@/screens/settings/ApplicationTrackerScreen';
+import FeedbackScreen from '@/screens/settings/FeedbackScreen';
+import LegalScreen from '@/screens/settings/LegalScreen';
+import ChooseUsernameScreen from '@/screens/auth/ChooseUsernameScreen';
+import AboutScreen from '@/screens/settings/AboutScreen';
+import JobWebViewScreen from '@/screens/discovery/JobWebViewScreen';
+import OTAUpdatesScreen from '@/screens/settings/OTAUpdatesScreen';
 
 import { useTheme } from '@/contexts/ThemeContext';
-import { useUserAuth as useAuth } from '@repo/frontend-core';
-import { Opportunity } from '@fresherflow/types';
-import { useNotifications } from '@/hooks/useNotifications';
 import { useUI } from '@/contexts/UIContext';
+import { useNotifications } from '@/hooks/useNotifications';
+import { AuthGate } from './AuthGate';
 
-export type RootStackParamList = {
-  // Tab Roots
-  Feed: undefined;
-  Explore: undefined;
-  Share: { url?: string } | undefined;
-  Saved: undefined;
-  Profile: undefined;
-
-  // Stack Screens
-  FeedList: undefined;
-  ExploreMain: undefined;
-  ShareMain: { url?: string } | undefined;
-  SavedList: undefined;
-  ProfileMain: undefined;
-  JobDetail: { opportunity?: Opportunity; job?: Opportunity; opportunityId?: string };
-  Auth: { prefilledEmail?: string } | undefined;
-  Main: undefined;
-  EditEducation: undefined;
-  EditSkills: undefined;
-  EditPreferences: undefined;
-  Appearance: undefined;
-  Dashboard: undefined;
-  Invite: undefined;
-  AccountManage: undefined;
-  Notifications: undefined;
-  MyShares: undefined;
-  ContributorProfile: { userId: string };
-  CompanyDetail: { companyName: string; companyLogoUrl?: string; website?: string; currentJob?: Opportunity };
-  AlertSettings: undefined;
-  ApplicationTracker: undefined;
-  Feedback: undefined;
-  Legal: undefined;
-  ChooseUsername: undefined;
-};
+import { RootStackParamList } from './types';
+export type { RootStackParamList };
+import { alpha } from '@/theme';
 
 const Tab = createBottomTabNavigator<RootStackParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
-
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) {
-        return color.replace(/[\d.]+\)$/g, `${opacity})`);
-    }
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
 
 const TabIcon = React.memo(({ focused, color, IconComponent }: {
   focused: boolean;
@@ -133,9 +98,7 @@ const SavedStack = () => (
 
 const ProfileStack = () => (
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="ProfileMain" component={ProfileScreen} />
-        <Stack.Screen name="Invite" component={InviteScreen} />
-        <Stack.Screen name="Feedback" component={FeedbackScreen} />
+        <Stack.Screen name="ProfileMain" component={SettingsScreen} />
     </Stack.Navigator>
 );
 
@@ -258,46 +221,64 @@ const styles = StyleSheet.create({
     },
 });
 
-export const AppNavigator = () => {
-  const { user, isLoading } = useAuth();
+// --- Full app stack (anonymous + authenticated users) ---
+// Auth is a modal inside here — guest users can navigate to it contextually.
+const AppStack = () => (
+  <Stack.Navigator
+    screenOptions={{ headerShown: false, animation: 'fade' }}
+    initialRouteName="Main"
+  >
+    <Stack.Screen name="Main" component={TabNavigator} />
+    <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+    <Stack.Screen name="Appearance" component={AppearanceScreen} />
+    <Stack.Screen name="Dashboard" component={DashboardScreen} />
+    <Stack.Screen name="Invite" component={InviteScreen} />
+    <Stack.Screen name="AccountManage" component={AccountManageScreen} />
+    <Stack.Screen name="Notifications" component={NotificationsScreen} />
+    <Stack.Screen name="EditEducation" component={EditEducationScreen} />
+    <Stack.Screen name="EditSkills" component={EditSkillsScreen} />
+    <Stack.Screen name="EditPreferences" component={EditPreferencesScreen} />
+    <Stack.Screen name="CareerProfile" component={CareerProfileScreen} />
+    <Stack.Screen name="MyShares" component={MySharesScreen} />
+    <Stack.Screen name="ContributorProfile" component={ContributorProfileScreen} />
+    <Stack.Screen name="About" component={AboutScreen} />
+    <Stack.Screen name="CompanyDetail" component={CompanyScreen} />
+    <Stack.Screen name="AlertSettings" component={AlertSettingsScreen} />
+    <Stack.Screen name="ApplicationTracker" component={ApplicationTrackerScreen} />
+    <Stack.Screen name="Feedback" component={FeedbackScreen} />
+    <Stack.Screen name="Legal" component={LegalScreen} />
+    <Stack.Screen name="JobWebView" component={JobWebViewScreen} />
+    <Stack.Screen name="ChooseUsername" component={ChooseUsernameScreen} />
+    <Stack.Screen name="OTAUpdates" component={OTAUpdatesScreen} />
+    {/* Auth is a contextual modal — anonymous users land here when they try an auth-gated action */}
+    <Stack.Screen name="Auth" component={AuthScreen} options={{ presentation: 'modal' }} />
+  </Stack.Navigator>
+);
 
-  if (isLoading) return null;
+// --- Username required stack (real user logged in but no @handle yet) ---
+const UsernameStack = () => (
+  <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+    <Stack.Screen name="ChooseUsername" component={ChooseUsernameScreen} />
+  </Stack.Navigator>
+);
 
-  const initialRoute = user && !user.username && !user.isAnonymous ? "ChooseUsername" : "Main";
-
+/**
+ * AppNavigator delegates ALL routing decisions to AuthGate.
+ * No auth logic lives here — add rules in AuthGate.tsx.
+ */
+const AppLoading = () => {
+  const { currentTheme } = useTheme();
   return (
-    <Stack.Navigator 
-        screenOptions={{ headerShown: false, animation: 'fade' }}
-        initialRouteName={initialRoute}
-    >
-      <Stack.Screen name="Main" component={TabNavigator} />
-      <Stack.Screen name="ChooseUsername" component={ChooseUsernameScreen} />
-      <Stack.Screen
-        name="JobDetail"
-        component={JobDetailScreen}
-      />
-      <Stack.Screen name="Appearance" component={AppearanceScreen} />
-      <Stack.Screen name="Dashboard" component={DashboardScreen} />
-      <Stack.Screen name="Invite" component={InviteScreen} />
-      <Stack.Screen name="AccountManage" component={AccountManageScreen} />
-      <Stack.Screen name="Notifications" component={NotificationsScreen} />
-      <Stack.Screen name="EditEducation" component={EditEducationScreen} />
-      <Stack.Screen name="EditSkills" component={EditSkillsScreen} />
-      <Stack.Screen name="EditPreferences" component={EditPreferencesScreen} />
-      <Stack.Screen name="MyShares" component={MySharesScreen} />
-      <Stack.Screen name="ContributorProfile" component={ContributorProfileScreen} />
-      <Stack.Screen name="CompanyDetail" component={CompanyScreen} />
-      <Stack.Screen name="AlertSettings" component={AlertSettingsScreen} />
-      <Stack.Screen name="ApplicationTracker" component={ApplicationTrackerScreen} />
-      <Stack.Screen name="Feedback" component={FeedbackScreen} />
-      <Stack.Screen name="Legal" component={LegalScreen} />
-      {!user ? (
-        <Stack.Screen
-          name="Auth"
-          component={AuthScreen}
-          options={{ presentation: 'modal' }}
-        />
-      ) : null}
-    </Stack.Navigator>
+    <View style={{ flex: 1, backgroundColor: currentTheme.colors.background, justifyContent: 'center', alignItems: 'center' }}>
+      <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+    </View>
   );
 };
+
+export const AppNavigator = () => (
+  <AuthGate
+    loading={<AppLoading />}
+    needsUsername={<UsernameStack />}
+    app={<AppStack />}
+  />
+);

@@ -37,6 +37,19 @@ const getNuvioDarkColors = (isAmoled: boolean) => {
     // Static Translucent Tokens
     blackTranslucent: alpha('#000000', 0.05),
     blackOverlay: alpha('#000000', 0.5),
+    // Brand/Social Colors
+    social: {
+        linkedin: '#0077B5',
+        twitter: '#1DA1F2',
+        instagram: '#E4405F',
+        facebook: '#1877F2',
+        whatsapp: '#25D366',
+        telegram: '#26A5E4',
+    },
+    // Semantic Accents
+    indigo: '#6366f1',
+    emerald: '#10b981',
+    amber: '#f59e0b',
   };
 };
 
@@ -68,6 +81,19 @@ const lightBaseColors = {
   // Static Translucent Tokens
   blackTranslucent: alpha('#000000', 0.05),
   blackOverlay: alpha('#000000', 0.5),
+  // Brand/Social Colors
+  social: {
+      linkedin: '#0077B5',
+      twitter: '#1DA1F2',
+      instagram: '#E4405F',
+      facebook: '#1877F2',
+      whatsapp: '#25D366',
+      telegram: '#26A5E4',
+  },
+  // Semantic Accents
+  indigo: '#4f46e5',
+  emerald: '#059669',
+  amber: '#d97706',
 };
 
 const DEFAULT_TOKENS = {
