@@ -12,8 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
 // removed unused feedbackApi import
 
-// Components
-import { EligibilitySnapshotCard } from './components/EligibilitySnapshotCard';
+// EligibilitySnapshotCard hidden
 import { WalkInDetailsCard } from './components/WalkInDetailsCard';
 import { RelatedOpportunities } from './components/RelatedOpportunities';
 import { DetailRequirements } from './components/DetailRequirements';
@@ -169,14 +168,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
                             isClosingSoon={ds.isClosingSoon}
                         />
 
-                        <EligibilitySnapshotCard
-                            alwaysVisible
-                            statusLabel={ds.eligibilitySnapshot.statusLabel}
-                            statusTone={ds.eligibilitySnapshot.statusTone}
-                            mustFix={ds.eligibilitySnapshot.mustFix}
-                            matchedSkills={ds.eligibilitySnapshot.matchedSkills}
-                            missingSkills={ds.eligibilitySnapshot.missingSkills}
-                        />
+                        {/* Eligibility Snapshot Hidden */}
 
                         <GovernmentOpportunityOverview opp={opp} />
 
@@ -288,13 +280,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
 
                     {/* Right Column */}
                     <aside className="lg:col-span-4 space-y-3 lg:sticky lg:top-24">
-                        <EligibilitySnapshotCard
-                            statusLabel={ds.eligibilitySnapshot.statusLabel}
-                            statusTone={ds.eligibilitySnapshot.statusTone}
-                            mustFix={ds.eligibilitySnapshot.mustFix}
-                            matchedSkills={ds.eligibilitySnapshot.matchedSkills}
-                            missingSkills={ds.eligibilitySnapshot.missingSkills}
-                        />
+                        {/* Eligibility Snapshot Hidden */}
 
                         <DetailSidebarActions
                             user={user}

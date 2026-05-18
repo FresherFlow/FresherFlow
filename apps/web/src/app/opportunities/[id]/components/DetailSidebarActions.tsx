@@ -1,8 +1,7 @@
 import { ActionType, type Opportunity, type User, type OpportunityEvent } from '@fresherflow/types';
 import { cn } from '@/shared/ui/cn';
 import { Button } from '@/components/ui/Button';
-import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
-import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
+// removed bookmark icons
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 // removed unused ClockIcon import
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
@@ -117,25 +116,7 @@ export function DetailSidebarActions({
                         </div>
                     )}
 
-                    <div className="grid grid-cols-1 gap-2">
-                        <button
-                            onClick={handleToggleSave}
-                            className={cn(
-                                "flex items-center justify-center gap-2 h-9 rounded-lg border transition-all text-xs font-bold uppercase",
-                                opp.isSaved ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
-                            )}
-                        >
-                            {opp.isSaved ? <BookmarkSolidIcon className="w-3.5 h-3.5" /> : <BookmarkIcon className="w-3.5 h-3.5" />}
-                            {opp.isSaved ? 'Saved' : 'Save'}
-                        </button>
-                    </div>
-                    {!user && (
-                        <p className="text-xs text-center text-muted-foreground leading-relaxed">
-                            <Link href={loginFromDetailHref} className="text-primary hover:underline font-semibold">
-                                Create account
-                            </Link> to track and save jobs
-                        </p>
-                    )}
+                    {/* Save button and track note hidden */}
                 </div>
 
                 <div className="pt-3 flex items-center justify-between">

@@ -217,32 +217,10 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         >
                             {job.company}
                         </Link>
-                        {(getPostedLabel() || typeof displayMatchScore === 'number') && (
+                        {(getPostedLabel()) && (
                             <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
                                 {getPostedLabel() && (
                                     <span className={cn(isFreshlyPosted() && "text-primary/90")}>{getPostedLabel()}</span>
-                                )}
-                                {getPostedLabel() && typeof displayMatchScore === 'number' && (
-                                    <span className="opacity-40">-</span>
-                                )}
-                                {typeof displayMatchScore === 'number' && (
-                                    displayMatchScore === 0 && job.matchReason?.includes('Not eligible') ? (
-                                        <span className="text-destructive/90 font-medium">
-                                            Not Eligible
-                                        </span>
-                                    ) : displayMatchScore === 0 && job.matchReason === 'Eligible' ? (
-                                        <span className="text-foreground/85 font-medium">
-                                            Eligible
-                                        </span>
-                                    ) : displayMatchScore === 0 && job.matchReason?.includes('Complete profile') ? (
-                                        <span className="text-muted-foreground/70 font-medium">
-                                            Setup profile
-                                        </span>
-                                    ) : (
-                                        <span className="text-primary/80 font-medium">
-                                            {displayMatchScore}% match
-                                        </span>
-                                    )
                                 )}
                             </div>
                         )}
@@ -277,21 +255,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             {isSaved ? <BookmarkSolidIcon className="w-5 h-5" aria-hidden="true" /> : <BookmarkIcon className="w-5 h-5" aria-hidden="true" />}
                         </button>
                     </div>
-                    {typeof displayMatchScore === 'number' && job.matchReason && job.matchReason !== 'General fit' && job.matchReason !== 'Eligible' && (
-                        <div
-                            title={formatMatchReason(job.matchReason)}
-                            className="mt-3 flex justify-end"
-                        >
-                            <InformationCircleIcon
-                                className={cn(
-                                    'w-4 h-4',
-                                    displayMatchScore === 0 && job.matchReason.includes('Not eligible')
-                                        ? 'text-destructive/70'
-                                        : 'text-muted-foreground/50'
-                                )}
-                            />
-                        </div>
-                    )}
+
                 </div>
             </div>
 

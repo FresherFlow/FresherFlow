@@ -77,7 +77,13 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
             }
         }
 
-        if (!opportunity) throw new AppError('Opportunity not found', 404);
+        if (!opportunity) {
+            // Cache 404 in Redis to prevent scraper bots from hammering the database
+            if (isGuest && guestDetailCacheKey && redis_client) {
+                await redis_client.setex(guestDetailCacheKey, GUEST_DETAIL_CACHE_TTL_SECONDS, JSON.stringify({ error: 'Opportunity not found', is404: true })).catch(() => null);
+            }
+            throw new AppError('Opportunity not found', 404);
+        }
 
         const isGovernmentOpportunity = Boolean(opportunity.governmentJobDetails);
         if ((effectiveSiteMode === 'govt' && !isGovernmentOpportunity) || (effectiveSiteMode === 'private' && isGovernmentOpportunity)) {

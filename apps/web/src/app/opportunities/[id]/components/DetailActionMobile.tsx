@@ -3,8 +3,7 @@ import { TimelineEventView } from '../detailUtils';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/shared/ui/cn';
 import { Button } from '@/components/ui/Button';
-import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
-import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
+// removed bookmark icons
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
@@ -60,45 +59,24 @@ export function DetailActionMobile({
                 </Button>
             )}
 
-            {user ? (
-                <button
-                    onClick={handleToggleSave}
-                    className={cn(
-                        "w-full flex items-center justify-center gap-2 h-12 rounded-lg border transition-all text-xs font-bold uppercase tracking-wide",
-                        opp.isSaved ? "bg-primary/10 text-primary border-primary/20" : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
-                    )}
-                >
-                    {opp.isSaved ? <BookmarkSolidIcon className="w-4 h-4" /> : <BookmarkIcon className="w-4 h-4" />}
-                    {opp.isSaved ? 'Saved' : 'Save'}
-                </button>
-            ) : (
-                <>
-                    <div className="grid grid-cols-2 gap-2">
-                        <button
-                            onClick={handleShare}
-                            className="flex items-center justify-center gap-2 h-12 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
-                        >
-                            <ShareIcon className="w-4 h-4" />
-                            Share
-                        </button>
-                        <button
-                            onClick={handleCopyLink}
-                            className="flex items-center justify-center gap-2 h-12 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
-                        >
-                            <LinkIcon className="w-4 h-4" />
-                            Copy Link
-                        </button>
-                    </div>
-
+             {!user && (
+                <div className="grid grid-cols-2 gap-2">
                     <button
-                        onClick={() => router.push(loginFromDetailHref)}
-                        className="w-full flex items-center justify-center gap-2 h-12 rounded-lg border transition-all text-xs font-bold uppercase tracking-wide bg-muted/30 border-border text-muted-foreground hover:bg-muted/50"
+                        onClick={handleShare}
+                        className="flex items-center justify-center gap-2 h-12 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
                     >
-                        <BookmarkIcon className="w-4 h-4" />
-                        Save
+                        <ShareIcon className="w-4 h-4" />
+                        Share
                     </button>
-                </>
-            )}
+                    <button
+                        onClick={handleCopyLink}
+                        className="flex items-center justify-center gap-2 h-12 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
+                    >
+                        <LinkIcon className="w-4 h-4" />
+                        Copy Link
+                    </button>
+                </div>
+             )}
         </div>
     );
 }

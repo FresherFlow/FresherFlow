@@ -184,20 +184,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                             </p>
                         </div>
 
-                        {/* Network status on the far right */}
-                        <div className="flex items-center gap-2 shrink-0 self-start md:self-auto">
-                            <div className={cn(
-                                "px-2.5 py-1 rounded-full border text-[9px] font-bold capitalize tracking-widest",
-                                isOnline ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/20" : "bg-amber-500/10 text-foreground border-amber-500/20"
-                            )}>
-                                {isOnline ? 'Online' : 'Offline'}
-                            </div>
-                            {usingCachedFeed && (
-                                <div className="px-2.5 py-1 rounded-full border border-amber-500/20 bg-amber-500/10 text-foreground text-[9px] font-bold capitalize tracking-widest">
-                                    Cached
-                                </div>
-                            )}
-                        </div>
+                        {/* Network status hidden */}
                     </div>
 
                     {/* Filter buttons on left row + Search Bar right next to them */}
