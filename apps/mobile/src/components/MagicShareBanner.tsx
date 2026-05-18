@@ -13,7 +13,7 @@ import { Zap, X } from 'lucide-react-native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/navigation/AppNavigator';
+import { RootStackParamList } from '@/navigation/types';
 
 const JOB_LINK_REGEX = /linkedin\.com\/jobs|careers\.|job-detail|hiring|internship|lever\.co|greenhouse\.io|workday|smartrecruiters/i;
 

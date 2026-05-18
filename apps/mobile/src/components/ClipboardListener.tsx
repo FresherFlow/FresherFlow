@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/navigation/AppNavigator';
+import { RootStackParamList } from '@/navigation/types';
 
 // Regex to detect common job board URLs or fresherflow links
 const JOB_LINK_REGEX = /(https?:\/\/[^\s]+(?:fresherflow\.com|linkedin\.com\/jobs|naukri\.com|instahyre\.com|wellfound\.com|ycombinator\.com\/jobs)[^\s]*)/i;

@@ -46,7 +46,7 @@ const TopContributors = memo(() => {
           <Image source={{ uri: item.avatar }} style={styles.avatar} />
         ) : (
           <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarInitial}>{item.name[0]}</Text>
+            <Text style={styles.avatarInitial}>{item.name.substring(0, 2).toUpperCase()}</Text>
           </View>
         )}
       </View>

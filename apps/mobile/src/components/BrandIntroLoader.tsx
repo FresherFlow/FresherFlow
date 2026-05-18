@@ -39,11 +39,6 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     marginBottom: 20,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    shadowColor: theme.colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
   },
   logoImage: {
     width: '60%',
@@ -106,6 +101,7 @@ export const BrandIntroLoader: React.FC<{ onComplete: () => void }> = ({ onCompl
   const { currentTheme } = useTheme();
   const styles = createStyles(currentTheme);
   const [msgIndex, setMsgIndex] = React.useState(0);
+  const [exiting, setExiting] = React.useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -113,8 +109,11 @@ export const BrandIntroLoader: React.FC<{ onComplete: () => void }> = ({ onCompl
     }, 1500);
 
     const timeout = setTimeout(() => {
-      onComplete();
-    }, 3500);
+      setExiting(true);
+      setTimeout(() => {
+        onComplete();
+      }, 300);
+    }, 3000);
 
     return () => {
       clearInterval(interval);
@@ -125,12 +124,21 @@ export const BrandIntroLoader: React.FC<{ onComplete: () => void }> = ({ onCompl
   const CurrentIcon = MESSAGES[msgIndex].icon;
 
   return (
-    <View style={styles.container}>
+    <MotiView 
+      animate={{ opacity: exiting ? 0 : 1 }}
+      transition={{ type: 'timing', duration: 300 }}
+      style={styles.container}
+    >
       <View style={styles.content}>
         <MotiView 
             from={{ opacity: 0, scale: 0.9, translateY: 10 }}
             animate={{ opacity: 1, scale: 1, translateY: 0 }}
-            transition={{ type: 'spring', damping: 15, stiffness: 100 }}
+            transition={{ 
+                type: 'spring', 
+                damping: 12, 
+                stiffness: 100, 
+                mass: 0.9 
+            }}
             style={styles.logoContainer}
         >
           <View style={styles.logoBox}>
@@ -169,6 +177,6 @@ export const BrandIntroLoader: React.FC<{ onComplete: () => void }> = ({ onCompl
           />
         </View>
       </View>
-    </View>
+    </MotiView>
   );
 };

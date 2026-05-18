@@ -18,10 +18,7 @@ interface AppHeaderProps {
   isTransparent?: boolean;
 }
 
-const alpha = (color: string, opacity: number) => {
-  if (color.startsWith('rgba')) return color;
-  return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
+import { alpha } from '@/theme';
 
 const AppHeader: React.FC<AppHeaderProps> = memo(({
   title,
