@@ -2,9 +2,7 @@ name: Scheduled Background Jobs
 
 on:
   schedule:
-    # Run every 10 minutes (Admin keep-warm)
-    - cron: '*/10 * * * *'
-    # Run twice daily at 8 AM and 8 PM IST (2:30 UTC and 14:30 UTC)
+    # Run twice daily at 8 AM and 8 PM IST (2:30 UTC and 14:30 UTC) (Alerts)
     - cron: '30 2,14 * * *'
     # Run at midnight IST (18:30 UTC) (Expiry)
     - cron: '30 18 * * *'
@@ -14,22 +12,10 @@ on:
 
 jobs:
   run-cron-tasks:
+    # TOGGLE: Only run if explicitly enabled in GitHub Actions Variables or if triggered manually
+    if: github.event_name == 'workflow_dispatch' || vars.ENABLE_CRON_TASKS == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Keep APIs and Worker warm (Every 10 mins)
-        if: github.event.schedule == '*/10 * * * *' || github.event_name == 'workflow_dispatch'
-        env:
-          ADMIN_API_BASE_URL: ${{ secrets.ADMIN_API_BASE_URL }}
-          WORKER_URL: ${{ secrets.WORKER_URL }}
-        run: |
-          if [ -n "$ADMIN_API_BASE_URL" ]; then
-            curl -f -sS "$ADMIN_API_BASE_URL/api/health" > /dev/null || echo "Admin API keep-warm ping failed"
-          fi
-          
-          if [ -n "$WORKER_URL" ]; then
-            curl -f -sS "$WORKER_URL" > /dev/null || echo "Worker keep-warm ping failed"
-          fi
-
       - name: Trigger Alerts (Twice daily — 8 AM & 8 PM IST)
         if: github.event.schedule == '30 2,14 * * *' || github.event_name == 'workflow_dispatch'
         env:
@@ -56,3 +42,28 @@ jobs:
         run: |
           curl -f -X POST "$API_BASE_URL/api/cron/verify" \
             -H "Authorization: Bearer $CRON_SECRET"
+
+      - name: Refresh Bootstrap Feed (Scheduled)
+        if: github.event_name == 'workflow_dispatch' || (github.event.schedule != '0 21 * * *' && github.event.schedule != '30 2,14 * * *' && github.event.schedule != '30 18 * * *')
+        env:
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Fetching latest bootstrap feed from API..."
+          JSON_DATA=$(curl -f -X POST "$API_BASE_URL/api/cron/bootstrap-feed" \
+            -H "Authorization: Bearer $CRON_SECRET")
+          
+          echo "$JSON_DATA" > bootstrap-feed.min.json
+          
+          # Deployment: Cloudflare Pages Direct Upload
+          if [ -n "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "Deploying to Cloudflare Pages..."
+            mkdir -p dist-cdn
+            mv bootstrap-feed.min.json dist-cdn/
+            # Note: Project 'fresherflow-cdn' must be created in Cloudflare Pages first
+            npx wrangler pages deploy dist-cdn --project-name fresherflow-cdn --branch main
+          else
+            echo "CLOUDFLARE_API_TOKEN not found, skipping Pages deploy. JSON generated at bootstrap-feed.min.json"
+          fi
