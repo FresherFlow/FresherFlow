@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { opportunitiesApi, actionsApi, savedApi, growthApi, opportunityClicksApi } from '@/shared/api/client';
+import { actionsApi, growthApi } from '@/shared/api/client';
 import { ActionType, type Opportunity, type User } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import { toastError } from '@/shared/ui/error';
@@ -47,22 +47,33 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
     const hasAttemptedLoadRef = useRef(false);
 
     const loadOpportunity = useCallback(async () => {
-        if (WEB_STATIC_DISCOVERY) {
-            setIsLoading(false);
-            setError(initialData ? null : 'Listing unavailable.');
-            return;
-        }
         if (initialData) return;
 
         setIsLoading(true);
         setError(null);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         try {
-            const { opportunity } = await opportunitiesApi.getById(id) as { opportunity: Opportunity };
-            clearTimeout(timeoutId);
+            // CDN-first single-source-of-truth detail resolver
+            const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+            const feed = await fetchBootstrapFeed();
+            if (!feed?.opportunities) {
+                throw new Error('Failed to load listings from CDN.');
+            }
+
+            const opportunity = feed.opportunities.find(
+                (opp) => opp.slug === id || opp.id === id
+            );
+
+            if (!opportunity) {
+                // Fallback to recent viewed in case of offline / local cache
+                const cachedOpportunity = getRecentViewedByIdOrSlug(id);
+                if (cachedOpportunity) {
+                    setOpp(cachedOpportunity);
+                    toast.success('Offline mode: loaded cached listing.');
+                    return;
+                }
+                throw new Error('Listing not found.');
+            }
 
             const sanitized = {
                 ...opportunity,
@@ -80,27 +91,12 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
                 isSaved: opportunity.isSaved || false
             });
         } catch (err: unknown) {
-            clearTimeout(timeoutId);
-            
-            const cachedOpportunity = getRecentViewedByIdOrSlug(id);
-            if (cachedOpportunity) {
-                setOpp(cachedOpportunity);
-                toast.success('Offline mode: loaded cached listing.');
-                return;
-            }
-
-            const isAbort = err instanceof Error && err.name === 'AbortError';
-            const errorMessage = isAbort 
-                ? 'Request timed out. Please check your connection.' 
-                : (err as Error)?.message || 'Listing not found.';
-            
+            const errorMessage = (err as Error)?.message || 'Listing not found.';
             setError(errorMessage);
 
             if (!hasShownNotFoundRef.current) {
                 hasShownNotFoundRef.current = true;
-                if (!isAbort) {
-                    toastError(err, 'Listing not found.');
-                }
+                toastError(err, 'Listing not found.');
             }
         } finally {
             setIsLoading(false);
@@ -147,13 +143,18 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
     }, [opp, user]);
 
     useEffect(() => {
-        if (WEB_STATIC_DISCOVERY || !opp) return;
+        if (!opp) return;
 
         const loadRelated = async () => {
             setIsLoadingRelated(true);
             try {
-                const data = await opportunitiesApi.list({ type: opp.type }) as { opportunities: Opportunity[] };
-                setRelatedOpps(getRelatedOpportunities(opp, data.opportunities || []));
+                const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+                const feed = await fetchBootstrapFeed();
+                if (feed?.opportunities) {
+                    setRelatedOpps(getRelatedOpportunities(opp, feed.opportunities));
+                } else {
+                    setRelatedOpps([]);
+                }
             } catch {
                 setRelatedOpps([]);
             } finally {
