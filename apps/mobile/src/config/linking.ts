@@ -1,6 +1,6 @@
 import * as Linking from 'expo-linking';
 import { LinkingOptions, getStateFromPath } from '@react-navigation/native';
-import { RootStackParamList } from '@/navigation/AppNavigator';
+import { RootStackParamList } from '@/navigation/types';
 import { MOBILE_LINKING_PREFIXES } from '@/config/runtime';
 
 export const linking: LinkingOptions<RootStackParamList> = {
@@ -56,6 +56,16 @@ export const linking: LinkingOptions<RootStackParamList> = {
       rewrittenPath = rewrittenPath.replace('/walk-ins/details/', '/opportunities/');
     } else if (rewrittenPath.startsWith('/walkins/details/')) {
       rewrittenPath = rewrittenPath.replace('/walkins/details/', '/opportunities/');
+    } else if (rewrittenPath.startsWith('/r/')) {
+      // Capture referral code
+      const code = rewrittenPath.split('/r/')[1]?.split('?')[0];
+      if (code) {
+        import('@/store/useAuthStore').then(({ useAuthStore }) => {
+          useAuthStore.getState().setReferralCode(code.toUpperCase());
+        });
+      }
+      // Redirect to Feed or Auth depending on where we want the user to land
+      rewrittenPath = '/feed'; 
     }
     return getStateFromPath(rewrittenPath, options);
   },

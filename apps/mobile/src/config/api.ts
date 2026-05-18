@@ -43,3 +43,9 @@ export const API_URL = resolveApiUrl();
 
 // Dynamically point to the same machine as the API for the bootstrap feed
 export const BOOTSTRAP_FEED_URL = `${API_URL}/bootstrap-feed.min.json`;
+export const TAKEN_USERNAMES_URL = `${API_URL}/taken-usernames.min.json`;
+export const GET_CATEGORY_SHARD_URL = (id: string) => `${API_URL}/categories/${id}.json`;
+export const EDUCATION_METADATA_URL = `${API_URL}/education.json`;
+export const SKILLS_METADATA_URL = `${API_URL}/skills.json`;
+export const CITIES_METADATA_URL = `${API_URL}/cities.json`;
+

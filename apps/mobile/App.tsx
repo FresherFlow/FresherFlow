@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import './src/config/firebaseApp';
+import * as Sentry from '@sentry/react-native';
+
+Sentry.init({
+  dsn: 'https://placeholder@sentry.io/placeholder', // TODO: Update with real DSN before prod
+  enableNative: true,
+  tracesSampleRate: 1.0,
+});
 import { NavigationContainer, DarkTheme, DefaultTheme, useNavigationContainerRef } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -10,24 +16,37 @@ import { OfflineBanner } from './src/system/components/OfflineBanner';
 import * as Notifications from 'expo-notifications';
 import * as Linking from 'expo-linking';
 import { markLocalAlertAsRead } from './src/utils/localNotifications';
+import { getOpportunityAtomic, readDetailCache } from './src/utils/offlineCache';
+
+// Register global cache reader for frontend-core offline action queue
+(global as any).readJobDetailsFromCache = async (id: string) => {
+  try {
+    const job = await getOpportunityAtomic(id);
+    if (job) return job;
+    return await readDetailCache(id);
+  } catch (e) {
+    console.warn('[GlobalCache] Failed to read job details:', e);
+    return null;
+  }
+};
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
+    shouldShowBanner: true,
+    shouldShowList: true,
   }),
 });
 
 import { 
-    UserAuthProvider as AuthProvider, 
     NotificationProvider, 
     SavedProvider,
     secureStorage,
-    useUserAuth 
 } from '@repo/frontend-core';
 import { linking } from './src/config/linking';
-import { configureClient } from '@fresherflow/api-client';
+import { configureClient, HttpError } from '@fresherflow/api-client';
 import { ThemeProvider, useTheme } from './src/contexts/ThemeContext';
 import { ToastProvider } from './src/contexts/ToastContext';
 import { UIProvider } from './src/contexts/UIContext';
@@ -41,74 +60,80 @@ import { BottomSheetModalProvider } from '@gorhom/bottom-sheet';
 
 import { GlobalActionSheet } from './src/system/components/GlobalActionSheet';
 import { ErrorBoundary } from './src/system/components/ErrorBoundary';
-import { IdentityManager } from './src/utils/identity';
-
-// Initialize Identity & Auth
-void IdentityManager.initialize();
-void AuthManager.initialize();
-
-// Configure API client
-configureClient(API_URL, secureStorage);
+import { FirstRunGate } from './src/system/components/FirstRunGate';
 
 import { useAuthStore, AuthManager } from './src/store/useAuthStore';
 import { useAuthHandshake } from './src/hooks/useAuthHandshake';
+import { useEmailLinkSignIn } from './src/hooks/useEmailLinkSignIn';
 
-// Bridges mobile store identity to shared context
-const IdentitySync = ({ children }: { children: React.ReactNode }) => {
-  const { anonSessionId, setAnonSessionId } = useUserAuth();
-  const mobileAnonId = useAuthStore(s => s.anonSessionId);
-
-  React.useEffect(() => {
-    if (mobileAnonId && mobileAnonId !== anonSessionId) {
-      setAnonSessionId?.(mobileAnonId);
+// Configure API client
+configureClient(API_URL, secureStorage, {
+  onError: (err) => {
+    if (err instanceof HttpError && err.status === 401) {
+      const { isAuthenticated, triggerHandshake } = useAuthStore.getState();
+      if (isAuthenticated) {
+        console.log('[Auth] Detected 401 Unauthorized, triggering re-handshake...');
+        triggerHandshake();
+      }
     }
-  }, [mobileAnonId, anonSessionId, setAnonSessionId]);
+  }
+});
 
-  return <>{children}</>;
-};
 
-// Notification Subscriber bridge
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const NotificationSubscriber = ({ children }: { children: any }) => {
-  const { user } = useUserAuth();
-  return <NotificationProvider userId={user?.id}>{children}</NotificationProvider>;
+// Auth Bridge: Maps Zustand auth state to shared Provider props
+// This allows @repo/frontend-core providers to remain "pure" (prop-based) 
+// while the mobile app remains "Zustand-first".
+const AuthBridge = ({ children }: { children: React.ReactNode }) => {
+  const { user } = useAuthStore();
+  // We don't have a separate anonSessionId in mobile yet, 
+  // but we pass it as null to satisfy the prop requirement.
+  return (
+    <NotificationProvider userId={user?.id}>
+      <SavedProvider userId={user?.id} anonSessionId={null}>
+        {/* @ts-expect-error - ReactNode version mismatch in monorepo */}
+        {children}
+      </SavedProvider>
+    </NotificationProvider>
+  );
 };
 
 const AppContent = () => {
   useAuthHandshake(); // Background handshake logic
+  useEmailLinkSignIn(); // Listen and complete email magic link logins
   const [isLoaded, setIsLoaded] = useState(false);
   const { currentTheme } = useTheme();
 
   const isDark = currentTheme.mode === 'dark';
   const baseTheme = isDark ? DarkTheme : DefaultTheme;
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
-  const { user, isLoading } = useUserAuth();
+  const { user, isSyncing: isLoading } = useAuthStore();
 
   React.useEffect(() => {
-    if (!isLoading && user && !user.username && !user.isAnonymous) {
-      // Force redirect to ChooseUsername if missing
-      const timer = setTimeout(() => {
-        if (navigationRef.isReady()) {
-           navigationRef.reset({
-             index: 0,
-             routes: [{ name: 'ChooseUsername' }],
-           });
-        }
-      }, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [user?.username, user?.id, user?.isAnonymous, isLoading]);
+    // Initialize Google Sign-In & Firebase Auth listeners after native bridge boots
+    void AuthManager.initialize();
+  }, []);
+
+
 
   // Handle push notification clicks
   const lastNotificationResponse = Notifications.useLastNotificationResponse();
   React.useEffect(() => {
     if (lastNotificationResponse) {
       const data = lastNotificationResponse.notification.request.content.data;
-      if (data?.jobId) {
-        void markLocalAlertAsRead(data.jobId as string);
-      }
-      if (data?.url && typeof data.url === 'string') {
-        void Linking.openURL(data.url);
+      
+      // Navigate based on structured data
+      if (navigationRef.isReady()) {
+          if (data?.jobId) {
+            void markLocalAlertAsRead(data.jobId as string);
+            navigationRef.navigate('JobDetail', { opportunityId: data.jobId as string });
+          } else if (data?.userId) {
+            navigationRef.navigate('ContributorProfile', { userId: data.userId as string });
+          } else if (data?.screen) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            navigationRef.navigate(data.screen as any);
+          } else if (data?.url && typeof data.url === 'string') {
+            void Linking.openURL(data.url);
+          }
       }
     }
   }, [lastNotificationResponse]);
@@ -135,13 +160,13 @@ const AppContent = () => {
       {!isLoaded ? (
         <BrandIntroLoader onComplete={() => setIsLoaded(true)} />
       ) : (
-        <>
+        <FirstRunGate>
           <NavigationContainer ref={navigationRef} linking={linking} theme={navTheme}>
             <AppNavigator />
           </NavigationContainer>
           <OfflineBanner />
           <GlobalActionSheet />
-        </>
+        </FirstRunGate>
       )}
     </View>
   );
@@ -158,17 +183,11 @@ export default function App() {
                 <QueryClientProvider client={queryClient}>
                   <ToastProvider>
                     <UIThemeContext.Provider value={theme}>
-                      <AuthProvider>
-                        <IdentitySync>
-                          <NotificationSubscriber>
-                            <SavedProvider>
-                              <BottomSheetModalProvider>
-                                <AppContent />
-                              </BottomSheetModalProvider>
-                            </SavedProvider>
-                          </NotificationSubscriber>
-                        </IdentitySync>
-                      </AuthProvider>
+                          <AuthBridge>
+                            <BottomSheetModalProvider>
+                              <AppContent />
+                            </BottomSheetModalProvider>
+                          </AuthBridge>
                     </UIThemeContext.Provider>
                   </ToastProvider>
                 </QueryClientProvider>

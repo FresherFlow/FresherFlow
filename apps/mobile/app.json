@@ -25,6 +25,38 @@
       },
       "package": "in.fresherflow.app",
       "googleServicesFile": "./google-services.json",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "fresherflow-3604b.firebaseapp.com",
+              "pathPrefix": "/__/auth/links"
+            },
+            {
+              "scheme": "https",
+              "host": "fresherflow-3604b.web.app",
+              "pathPrefix": "/__/auth/links"
+            },
+            {
+              "scheme": "https",
+              "host": "fresherflow.in",
+              "pathPrefix": "/opportunities"
+            },
+            {
+              "scheme": "https",
+              "host": "fresherflow.in",
+              "pathPrefix": "/jobs"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "edgeToEdgeEnabled": true,
       "softwareKeyboardLayoutMode": "pan",
       "statusBar": {
@@ -41,7 +73,9 @@
       "expo-secure-store",
       "expo-notifications",
       "@react-native-firebase/app",
-      "@react-native-firebase/auth"
+      "@react-native-firebase/auth",
+      "@sentry/react-native",
+      "expo-web-browser"
     ],
     "extra": {
       "apiUrl": "https://api.fresherflow.in",
