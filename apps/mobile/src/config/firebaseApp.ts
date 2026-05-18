@@ -1,14 +1,22 @@
-import { getApps, initializeApp } from '@react-native-firebase/app';
-
-const firebaseOptions = {
-  apiKey: 'AIzaSyBETyES-NR7K9Y5UJSeMnOk4y2W5VaO1Rk',
-  appId: '1:346180935352:android:cf097b2afbea868053de4d',
-  projectId: 'fresherflow-3604b',
-  storageBucket: 'fresherflow-3604b.firebasestorage.app',
-  messagingSenderId: '346180935352',
-  databaseURL: 'https://fresherflow-3604b.firebaseio.com',
+type NativeFirebaseAppModule = {
+  getApps?: () => unknown[];
+  initializeApp?: (options?: Record<string, unknown>) => unknown;
 };
 
-if (!getApps().length) {
-  void initializeApp(firebaseOptions);
+function loadNativeFirebaseApp(): NativeFirebaseAppModule | null {
+  try {
+    // Native Firebase is bundled only in a dev client or Android/iOS build.
+    // Expo Go can import this file, but it cannot load the native module.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('@react-native-firebase/app') as NativeFirebaseAppModule;
+  } catch (error) {
+    console.warn('[Firebase] Native Firebase app unavailable. Use Expo dev client or Android build.', error);
+    return null;
+  }
+}
+
+const nativeApp = loadNativeFirebaseApp();
+
+if (nativeApp?.getApps && nativeApp?.initializeApp && nativeApp.getApps().length === 0) {
+  void nativeApp.initializeApp();
 }
