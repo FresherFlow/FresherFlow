@@ -19,6 +19,9 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { HeadInjections } from "@/components/providers/HeadInjections";
 import { SITE_URL } from "@/lib/runtimeConfig";
+import { SiteMode } from "@/lib/siteMode";
+import { AuthFormDataProvider } from "@/contexts/AuthFormDataContext";
+import { ErrorBoundary } from "@/components/providers/ErrorBoundary";
 
 const SITE_ORIGIN = SITE_URL;
 const METADATA_BASE = SITE_ORIGIN ? new URL(SITE_ORIGIN) : undefined;
@@ -76,19 +79,16 @@ export const metadata: Metadata = {
   }
 };
 
-import { AuthFormDataProvider } from "@/contexts/AuthFormDataContext";
-import { ErrorBoundary } from "@/components/providers/ErrorBoundary";
-
 export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   // Race site mode resolution against a 500ms timeout to prevent layout hangs
-  let initialSiteMode: any = 'private';
+  let initialSiteMode: SiteMode = 'private';
   try {
     const modePromise = getSiteMode();
-    const timeoutPromise = new Promise<any>((resolve) => setTimeout(() => resolve('private'), 500));
+    const timeoutPromise = new Promise<SiteMode>((resolve) => setTimeout(() => resolve('private'), 500));
     initialSiteMode = await Promise.race([modePromise, timeoutPromise]);
   } catch (err) {
     console.warn('[Layout] Site mode resolution failed, falling back to private', err);

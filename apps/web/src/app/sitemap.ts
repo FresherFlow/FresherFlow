@@ -45,7 +45,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       slug: item.slug ?? null,
       type: item.type as SitemapOpportunity['type'],
       postedAt: String(item.postedAt || feed?.generatedAt || new Date().toISOString()),
-      updatedAt: item.updatedAt ? String(item.updatedAt) : undefined,
+      updatedAt: item.publishedAt ? String(item.publishedAt) : undefined,
     }));
 
     const seenEntries = new Set<string>();

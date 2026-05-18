@@ -91,4 +91,11 @@ export const ADMIN_WEB_HOST = normalizeHost(
 export const BOOTSTRAP_FEED_URL =
     process.env.NEXT_PUBLIC_BOOTSTRAP_FEED_URL ||
     process.env.BOOTSTRAP_FEED_URL ||
-    'https://cdn.fresherflow.com/bootstrap-feed.json';
+    (process.env.NEXT_PUBLIC_CDN_URL
+        ? `${process.env.NEXT_PUBLIC_CDN_URL}/bootstrap-feed.json`
+        : 'https://cdn.fresherflow.com/bootstrap-feed.json');
+
+export const GET_CATEGORY_SHARD_URL = (id: string) =>
+    process.env.NEXT_PUBLIC_CDN_URL
+        ? `${process.env.NEXT_PUBLIC_CDN_URL}/categories/${id}.json`
+        : `https://cdn.fresherflow.com/categories/${id}.json`;

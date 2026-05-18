@@ -834,9 +834,10 @@ export const appFeedbackApi = {
 // Saved API calls
 export const savedApi = {
     list: () => apiClient('/api/saved'),
-    toggle: (opportunityId: string) =>
+    toggle: (opportunityId: string, details?: Record<string, unknown>) =>
         apiClient(`/api/saved/${opportunityId}`, {
-            method: 'POST'
+            method: 'POST',
+            body: details ? JSON.stringify(details) : undefined
         })
 };
 
