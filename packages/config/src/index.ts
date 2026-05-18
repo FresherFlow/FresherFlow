@@ -49,6 +49,12 @@ const envSchema = z.object({
     ENABLE_EMAIL_SENDING: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
     ENABLE_WORKER_QUEUE_HEALTH: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
     ENABLE_WORKER_DEEP_HEALTH: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
+    ENABLE_PUSH_NOTIFICATIONS: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
+    ENABLE_TELEGRAM_BROADCAST: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
+    ENABLE_SOCIAL_POSTING: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
+    ENABLE_LINK_VERIFICATION: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
+    ENABLE_INGESTION: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
+    ENABLE_CRON_TASKS: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
     REDIS_ENABLED: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
 }).superRefine((value, ctx) => {
     if (value.NODE_ENV !== 'test' && !value.DATABASE_URL) {

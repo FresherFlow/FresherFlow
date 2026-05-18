@@ -44,6 +44,11 @@ export async function processCronJob(job: Job<CronJobData>): Promise<void> {
         return;
     }
 
+    if (task === 'LINK_VERIFICATION' && process.env.ENABLE_LINK_VERIFICATION === 'false') {
+        logger.info('[cron] Link verification disabled. Skipping...');
+        return;
+    }
+
     try {
         await callCronEndpoint(endpoint);
         logger.info(`[cron] Task completed: ${task}`, { jobId: job.id });

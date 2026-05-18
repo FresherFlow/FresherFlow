@@ -2,6 +2,7 @@ import { Queue, ConnectionOptions, Job } from 'bullmq';
 import type { RedisOptions } from 'ioredis';
 import { redis } from '@fresherflow/redis';
 import { env } from '@fresherflow/config';
+import { logger } from '@fresherflow/logger';
 import { processEmailJob } from './processors/email.processor';
 import { processCronJob } from './processors/cron.processor';
 import { processPushJob } from './processors/push.processor';
@@ -112,24 +113,53 @@ export const WORKER_DEFINITIONS = [
         name: QUEUE_NAMES.notifications,
         handler: async (job: Job) => {
             if (job.name === 'send-email') return processEmailJob(job);
-            if (job.name === 'send-push') return processPushJob(job);
+            if (job.name === 'send-push') {
+                if (!env.ENABLE_PUSH_NOTIFICATIONS) {
+                    logger.info('[notifications] Push notifications disabled. Skipping...');
+                    return;
+                }
+                return processPushJob(job);
+            }
             throw new Error(`[notifications] Unknown job name: ${job.name}`);
         },
     },
     {
         name: QUEUE_NAMES.broadcast,
         handler: async (job: Job) => {
-            if (job.name === 'send-telegram') return processTelegramJob(job);
-            if (job.name === 'process-social-post') return processSocialJob(job);
+            if (job.name === 'send-telegram') {
+                if (!env.ENABLE_TELEGRAM_BROADCAST) {
+                    logger.info('[broadcast] Telegram broadcast disabled. Skipping...');
+                    return;
+                }
+                return processTelegramJob(job);
+            }
+            if (job.name === 'process-social-post') {
+                if (!env.ENABLE_SOCIAL_POSTING) {
+                    logger.info('[broadcast] Social posting disabled. Skipping...');
+                    return;
+                }
+                return processSocialJob(job);
+            }
             throw new Error(`[broadcast] Unknown job name: ${job.name}`);
         },
     },
     {
         name: QUEUE_NAMES.internal,
         handler: async (job: Job) => {
-            if (job.name === 'cron-task') return processCronJob(job);
-            if (job.name === 'ingestion-payload') return processIngestionJob(job);
-            if (job.name === 'process-user-share') return processIngestionJob(job);
+            if (job.name === 'cron-task') {
+                if (!env.ENABLE_CRON_TASKS) {
+                    logger.info('[internal] Cron tasks disabled. Skipping...');
+                    return;
+                }
+                return processCronJob(job);
+            }
+            if (job.name === 'ingestion-payload' || job.name === 'process-user-share') {
+                if (!env.ENABLE_INGESTION) {
+                    logger.info('[internal] Ingestion disabled. Skipping...');
+                    return;
+                }
+                return processIngestionJob(job);
+            }
             throw new Error(`[internal] Unknown job name: ${job.name}`);
         },
     },

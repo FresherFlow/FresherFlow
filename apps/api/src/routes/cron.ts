@@ -2,11 +2,15 @@ import { Router } from 'express';
 import { runExpiryCycle } from '../cron/expiryCron';
 import { runLinkVerification } from '../infrastructure/services/verificationBot';
 import { runAlertsCycle } from '../infrastructure/services/alerts.service';
+import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
 import { logger } from '@fresherflow/logger';
 
 const router = Router();
 
 function isCronTaskEnabled(envVar: string): boolean {
+    // Check global master switch first
+    if (process.env.ENABLE_CRON_TASKS === 'false') return false;
+
     const rawValue = process.env[envVar];
     if (typeof rawValue === 'string') {
         const normalized = rawValue.trim().toLowerCase();
@@ -14,7 +18,7 @@ function isCronTaskEnabled(envVar: string): boolean {
         if (['false', '0', 'no', 'off'].includes(normalized)) return false;
     }
 
-    return process.env.NODE_ENV !== 'production';
+    return false; // Default to false (Manual-First / Lean Infrastructure)
 }
 
 // Middleware to verify cron secret
@@ -43,9 +47,9 @@ router.use((req, res, next) => {
 
 router.post('/verify', async (req, res) => {
     try {
-        if (!isCronTaskEnabled('ENABLE_CRON_VERIFY')) {
-            logger.info('Skipping link verification cycle because ENABLE_CRON_VERIFY is disabled');
-            res.status(202).json({ success: true, skipped: true, reason: 'ENABLE_CRON_VERIFY disabled' });
+        if (!isCronTaskEnabled('ENABLE_LINK_VERIFICATION')) {
+            logger.info('Skipping link verification cycle because ENABLE_LINK_VERIFICATION is disabled');
+            res.status(202).json({ success: true, skipped: true, reason: 'ENABLE_LINK_VERIFICATION disabled' });
             return;
         }
 
@@ -88,6 +92,28 @@ router.post('/expire', async (req, res) => {
         res.json({ success: true, message: 'Expiry cycle complete', results });
     } catch (error) {
         logger.error('Failed to run cron', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+router.post('/bootstrap-feed', async (req, res) => {
+    try {
+        logger.info('Generating bootstrap feed via cron API');
+        const results = await StaticFeedService.generateBootstrapFeed();
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to generate bootstrap feed', error);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+router.post('/refresh', async (req, res) => {
+    try {
+        logger.info('Starting full static asset refresh via cron API');
+        await StaticFeedService.refresh();
+        res.json({ success: true, message: 'Static refresh initiated' });
+    } catch (error) {
+        logger.error('Failed to refresh static shards', error);
         res.status(500).json({ success: false, error: 'Internal server error' });
     }
 });

@@ -2,6 +2,7 @@ import { prisma } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
 import TelegramService from '../infrastructure/services/telegram.service';
+import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
 
 function formatDateKeyInTimezone(date: Date, timezone: string): string {
     const formatter = new Intl.DateTimeFormat('en-CA', {
@@ -17,12 +18,12 @@ function formatDateKeyInTimezone(date: Date, timezone: string): string {
  * ============================================================================
  * EXPIRY CRON JOB - Production-Correct Implementation
  * ============================================================================
- * 
+ *
  * TIME MODEL (Non-Negotiable):
  * - All expiry calculations use UTC time
  * - Database stores timestamps in UTC
  * - Cron trigger time (midnight) is configured via EXPIRY_CRON_TIMEZONE
- * 
+ *
  * IDEMPOTENCY:
  * - Safe to run multiple times
  * - Prunes old data (Free Tier Storage Safety)
@@ -85,28 +86,35 @@ export async function runExpiryCycle() {
         });
 
         // 3. STALE WARNINGS
-        const thirtyDaysAgo = new Date(nowUTC);
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const staleListingDays = Number(process.env.STALE_LISTING_DAYS || 30);
+        const staleThreshold = new Date(nowUTC);
+        staleThreshold.setDate(staleThreshold.getDate() - staleListingDays);
+
         const staleListings = await prisma.opportunity.count({
             where: {
                 status: OpportunityStatus.PUBLISHED,
                 expiresAt: null,
                 type: { not: OpportunityType.WALKIN },
-                lastVerified: { lt: thirtyDaysAgo }
+                lastVerified: { lt: staleThreshold }
             }
         });
 
         // 4. DATABASE PRUNING (Free Tier Storage Safety)
-        // Prune RawOpportunity > 14 days and AlertDispatchLog > 30 days
-        const fourteenDaysAgo = new Date(nowUTC);
-        fourteenDaysAgo.setDate(fourteenDaysAgo.getDate() - 14);
-        
-        const rawPruned = await prisma.rawOpportunity.deleteMany({
-            where: { createdAt: { lt: fourteenDaysAgo } }
-        });
+        // Prune RawOpportunity and AlertDispatchLog thresholds
+        const rawPruneDays = Number(process.env.PRUNE_RAW_OPPORTUNITY_DAYS || 14);
+        const logsPruneDays = Number(process.env.PRUNE_LOGS_DAYS || 30);
 
+        const rawPruneThreshold = new Date(nowUTC);
+        rawPruneThreshold.setDate(rawPruneThreshold.getDate() - rawPruneDays);
+
+        const logsPruneThreshold = new Date(nowUTC);
+        logsPruneThreshold.setDate(logsPruneThreshold.getDate() - logsPruneDays);
+
+        const rawPruned = await prisma.rawOpportunity.deleteMany({
+            where: { createdAt: { lt: rawPruneThreshold } }
+        });
         const logsPruned = await prisma.alertDispatchLog.deleteMany({
-            where: { createdAt: { lt: thirtyDaysAgo } }
+            where: { createdAt: { lt: logsPruneThreshold } }
         });
 
         const endTime = new Date();
@@ -128,6 +136,11 @@ export async function runExpiryCycle() {
             staleWarnings: summary.staleWarnings,
             prunedCount: rawPruned.count + logsPruned.count
         });
+
+        // Trigger bootstrap feed refresh if anything expired
+        if (summary.totalExpired > 0) {
+            void StaticFeedService.refresh();
+        }
 
         return summary;
 

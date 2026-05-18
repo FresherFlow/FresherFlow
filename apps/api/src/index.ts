@@ -2,6 +2,9 @@ import dotenv from 'dotenv';
 // Load environment variables immediately
 dotenv.config();
 
+import fs from 'fs';
+import path from 'path';
+
 import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
@@ -21,6 +24,9 @@ import httpLogger from './middleware/httpLogger';
 setupCleanLogging();
 
 import { csrfGate } from './middleware/csrf';
+
+import { optionalAuth } from './middleware/auth';
+import './lib/firebase';
 
 // Import routes
 import authRoutes from './routes/auth';
@@ -51,6 +57,10 @@ import referralRoutes from './routes/referrals';
 import contributorsRoutes from './routes/public/contributors';
 import followsRoutes from './routes/follows';
 import joblinksRoutes from './routes/public/joblinks';
+import usernameRoutes from './routes/username';
+import publicStatsRoutes from './routes/public/stats';
+import { StaticFeedService } from './infrastructure/services/staticFeed.service';
+import { initializeQueueListeners } from './infrastructure/services/push-notification.service';
 
 const app: Application = express();
 const PORT = env.PORT || 5000;
@@ -174,6 +184,8 @@ app.use(cors({
 // Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static('public'));
+
 
 // observabilityMiddleware
 app.use(observabilityMiddleware);
@@ -183,6 +195,7 @@ app.use('/api', healthRoutes);
 if (isUserMode) {
     app.use('/api/public/growth', growthRoutes);
     app.use('/api/public', opportunityClickRoutes);
+    app.use('/api/public/stats', publicStatsRoutes);
     app.use('/api/cron', cronRoutes);
 }
 
@@ -281,8 +294,70 @@ app.get('/robots.txt', (_req, res) => {
     res.type('text/plain').send('User-agent: *\nDisallow: /');
 });
 
-app.get('/sitemap.xml', (_req, res) => {
-    res.type('application/xml').send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+app.get('/bootstrap-feed.min.json', async (req, res) => {
+    try {
+        const filePath = path.join(process.cwd(), 'public', 'bootstrap-feed.min.json');
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+
+        // Fallback if file not yet generated
+        const results = await StaticFeedService.generateBootstrapFeed();
+        res.json(results);
+
+        // Background refresh to create the file
+        void StaticFeedService.refresh();
+    } catch (error) {
+        logger.error('Failed to serve bootstrap feed', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/companies-directory.min.json', async (req, res) => {
+    try {
+        const filePath = path.join(process.cwd(), 'public', 'companies-directory.min.json');
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+
+        // Fallback
+        const results = await StaticFeedService.generateBootstrapFeed(); // Dummy for dir
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve companies directory', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/categories/:id.json', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const filePath = path.join(process.cwd(), 'public', 'categories', `${id}.json`);
+        if (fs.existsSync(filePath)) {
+            return res.sendFile(filePath);
+        }
+        res.status(404).json({ error: 'Category shard not found' });
+    } catch (error) {
+        logger.error('Failed to serve category shard', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.get('/sitemap.xml', async (req, res) => {
+    try {
+        const filePath = path.join(process.cwd(), 'public', 'sitemap.xml');
+        if (fs.existsSync(filePath)) {
+            res.type('application/xml').send(fs.readFileSync(filePath, 'utf-8'));
+            return;
+        }
+
+        // Fallback
+        const xml = await StaticFeedService.generateSitemap();
+        res.type('application/xml').send(xml);
+    } catch (error) {
+        logger.error('Failed to serve sitemap', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 });
 
 if (isUserMode) {
@@ -291,7 +366,7 @@ if (isUserMode) {
     app.use('/api/auth/login', authLimiter);
     app.use('/api/auth', authRoutes);
     app.use('/api/profile', profileRoutes);
-    app.use('/api/opportunities', opportunitiesRoutes);
+    app.use('/api/opportunities', optionalAuth, opportunitiesRoutes);
     app.use('/api/actions', actionsRoutes);
     app.use('/api/saved', savedRoutes);
     app.use('/api/dashboard', dashboardRoutes);
@@ -305,6 +380,7 @@ if (isUserMode) {
     app.use('/api/public/referrals', referralRoutes);
     app.use('/api/public/contributors', contributorsRoutes);
     app.use('/api/follows', followsRoutes);
+    app.use('/api/username', usernameRoutes);
 }
 
 if (isAdminMode) {
@@ -356,6 +432,9 @@ app.listen(PORT, () => {
     logger.info(`API mode: ${APP_MODE}`);
     logger.info(`Frontend URL: ${process.env.FRONTEND_URL}`);
     logger.info(`Sentry: ${process.env.SENTRY_DSN ? 'Enabled' : 'Disabled'}`);
+
+    // Initialize BullMQ event listeners for admin push notifications
+    initializeQueueListeners();
 
     // Start cron jobs - MIGRATED TO GITHUB ACTIONS
     // startExpiryCron();

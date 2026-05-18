@@ -1,27 +1,34 @@
 import express, { Request, Response } from 'express';
+import fs from 'fs';
+import path from 'path';
 import prisma from '../../infrastructure/database/prisma';
-import { OpportunityStatus } from '@fresherflow/types';
+import { redis } from '@fresherflow/redis';
 
 const router = express.Router();
 
-import { redis } from '@fresherflow/redis';
-
 /**
  * @route   GET /api/health
- * @desc    Lightweight health check for uptime monitoring
- * @access  Public
+ * @desc    Lightweight health check (Gate-able)
  */
 router.get('/health', (req: Request, res: Response) => {
-    // Return immediately without DB or Auth checks
+    // Kill switch to stop Render/Monitoring hits entirely
+    if (process.env.ENABLE_HEALTH_CHECK === 'false') {
+        res.status(503).json({ error: 'Health checks disabled in this environment' });
+        return;
+    }
     res.status(200).send('ok');
 });
 
 /**
  * @route   GET /api/health/deep
  * @desc    Detailed health check (DB, Redis)
- * @access  Public
  */
 router.get('/health/deep', async (req: Request, res: Response) => {
+    if (process.env.ENABLE_HEALTH_CHECK === 'false') {
+        res.status(503).json({ error: 'Health checks disabled' });
+        return;
+    }
+
     const [dbStatus, redisStatus] = await Promise.allSettled([
         prisma.$queryRaw`SELECT 1`,
         redis.ping(),
@@ -41,20 +48,24 @@ router.get('/health/deep', async (req: Request, res: Response) => {
 
 /**
  * @route   GET /api/stats
- * @desc    Public site stats (opportunity count) for landing page
- * @access  Public
+ * @desc    Landing page stats (Served from STATIC to save Neon compute)
  */
 router.get('/stats', async (req: Request, res: Response) => {
     try {
+        const statsPath = path.join(process.cwd(), 'public', 'stats.json');
+
+        // Serve static if exists (Zero-DB)
+        if (fs.existsSync(statsPath)) {
+            const data = fs.readFileSync(statsPath, 'utf8');
+            res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
+            return res.json(JSON.parse(data));
+        }
+
+        // Fallback to DB only if static file is missing
         const count = await prisma.opportunity.count({
-            where: {
-                status: OpportunityStatus.PUBLISHED,
-                deletedAt: null,
-                AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] }],
-            },
+            where: { status: 'PUBLISHED', deletedAt: null },
         });
-        res.setHeader('Cache-Control', 'public, max-age=3600, s-maxage=3600');
-        res.json({ opportunities: count });
+        res.json({ opportunities: count, fallback: true });
     } catch {
         res.json({ opportunities: 0 });
     }
