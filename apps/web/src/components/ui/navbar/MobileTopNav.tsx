@@ -115,7 +115,14 @@ export function MobileTopNav() {
                             Sign in
                         </Link>
                         */
-                        <Link href="/download" className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-85 transition-all shadow-sm shrink-0">
+                        <Link
+                            href="/download"
+                            target="_self"
+                            onClick={(event) => {
+                                if (pathname === '/download') event.preventDefault();
+                            }}
+                            className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-85 transition-all shadow-sm shrink-0"
+                        >
                             Get App
                         </Link>
                     )}

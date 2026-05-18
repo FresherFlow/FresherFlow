@@ -261,28 +261,7 @@ export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedTyp
                 )}
             </div>
 
-            {/* Closing Soon toggle */}
-            <button
-                onClick={() => setFilters({ ...filters, closingSoon: !filters.closingSoon })}
-                aria-pressed={filters.closingSoon}
-                className={cn(chipBase, filters.closingSoon ? chipActive : chipDefault)}
-            >
-                <ClockIcon className="w-3.5 h-3.5" />
-                Closing Soon
-                {filters.closingSoon && <div className="w-1.5 h-1.5 rounded-full bg-primary ml-0.5" />}
-            </button>
 
-            {/* Saved toggle */}
-            <button
-                onClick={() => { if (isLoggedIn) setFilters({ ...filters, saved: !filters.saved }); }}
-                aria-pressed={filters.saved}
-                disabled={!isLoggedIn}
-                title={!isLoggedIn ? 'Sign in to use saved filter' : undefined}
-                className={cn(chipBase, filters.saved ? chipActive : chipDefault, !isLoggedIn && 'opacity-40 cursor-not-allowed')}
-            >
-                <BookmarkIcon className="w-3.5 h-3.5" />
-                Saved
-            </button>
 
             {/* Clear all */}
             {hasAnyFilter && (

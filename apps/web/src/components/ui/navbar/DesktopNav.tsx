@@ -59,7 +59,7 @@ export function DesktopNav() {
                 </Link>
 
                 {/* Center Nav Links */}
-                {!isLoading && user && (
+                {!isLoading && (
                     <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
                         {desktopRoutes.map((route) => {
                             const isActive = pathname === route.href || pathname.startsWith(`${route.href}/`);
@@ -117,7 +117,14 @@ export function DesktopNav() {
                                     Sign in
                                 </Link>
                                 */
-                                <Link href="/download" className="ml-1 inline-flex items-center h-8 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all shadow-sm">
+                                <Link
+                                    href="/download"
+                                    target="_self"
+                                    onClick={(event) => {
+                                        if (pathname === '/download') event.preventDefault();
+                                    }}
+                                    className="ml-1 inline-flex items-center h-8 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all shadow-sm"
+                                >
                                     Get App
                                 </Link>
                             )}

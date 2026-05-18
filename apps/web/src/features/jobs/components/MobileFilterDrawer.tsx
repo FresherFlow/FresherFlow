@@ -237,21 +237,7 @@ export function MobileFilterDrawer({
                         </div>
                     </Section>
 
-                    <div className="py-4 grid grid-cols-2 gap-2">
-                        <Pill active={draftClosingSoon} onClick={() => setDraftClosingSoon(!draftClosingSoon)}>
-                            Closing soon
-                        </Pill>
-                        <Pill
-                            active={draftShowOnlySaved}
-                            onClick={() => {
-                                if (!isLoggedIn) return;
-                                setDraftShowOnlySaved(!draftShowOnlySaved);
-                            }}
-                            disabled={!isLoggedIn}
-                        >
-                            Saved only
-                        </Pill>
-                    </div>
+
                 </div>
 
                 <div className="border-t border-border p-4">

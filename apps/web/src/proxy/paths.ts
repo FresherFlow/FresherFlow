@@ -43,6 +43,7 @@ export function isPublicPath(pathname: string) {
     if (pathname === "/join") return true;
     if (pathname.startsWith("/r/")) return true;
     if (pathname.startsWith("/jobs")) return true;
+    if (pathname.startsWith("/opportunities")) return true;
     if (pathname.startsWith("/internships")) return true;
     if (pathname.startsWith("/walk-ins")) return true;
     if (pathname.startsWith("/walkins")) return true;

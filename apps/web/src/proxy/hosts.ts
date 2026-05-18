@@ -1,20 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { isUserPath, isPublicPath, isPublicDetailPath } from "./paths";
+import { isPublicDetailPath } from "./paths";
 import { getHostRole, redirectWithMethodAwareness, resolveHosts } from "./utils";
-
-function isPublicOnlyPath(pathname: string) {
-    if (pathname === '/') return true;
-    if (pathname === '/privacy') return true;
-    if (pathname === '/terms') return true;
-    if (pathname === '/join') return true;
-    if (pathname.startsWith('/r/')) return true;
-    return false;
-}
 
 export function handleHostRouting(req: NextRequest) {
     const { hostname, pathname, search } = req.nextUrl;
     const normalizedHost = hostname.toLowerCase();
-    const { APP_WEB_HOST, PUBLIC_WEB_HOST, ADMIN_WEB_HOST, USER_LOGIN_HOST } = resolveHosts(req);
+    const { PUBLIC_WEB_HOST, ADMIN_WEB_HOST, USER_LOGIN_HOST } = resolveHosts(req);
     const hostRole = getHostRole(normalizedHost, req);
     const isProd = process.env.NODE_ENV === 'production';
 
@@ -30,11 +21,10 @@ export function handleHostRouting(req: NextRequest) {
         if (isPublicDetailPath(pathname)) {
             return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${search}`);
         }
-        
         // Rewrite admin.fresherflow.in/* -> /admin/*
         const rewriteUrl = req.nextUrl.clone();
         if (!pathname.startsWith('/admin')) {
-             rewriteUrl.pathname = `/admin${pathname}`;
+            rewriteUrl.pathname = `/admin${pathname}`;
         }
         return NextResponse.rewrite(rewriteUrl);
     }
@@ -46,39 +36,18 @@ export function handleHostRouting(req: NextRequest) {
     }
 
     // 3. Public Host handling
+    // NOTE: app.fresherflow.in is temporarily disabled.
+    // All paths serve directly from fresherflow.in — no redirects to app subdomain.
     if (hostRole === 'public') {
-        if (isUserPath(pathname)) {
-            return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${search}`);
-        }
-        if (!isPublicPath(pathname) && pathname !== '/' && pathname !== '/login' && pathname !== '/signup') {
-            return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${APP_WEB_HOST}${pathname}${search}`);
-        }
-    }
-
-    // 4. App Host handling
-    if (hostRole === 'app') {
-        if (pathname === '/') {
-            return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${APP_WEB_HOST}/dashboard${search}`);
+        if (pathname === '/login') {
+            return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${USER_LOGIN_HOST}${pathname}${search}`);
         }
         if (pathname === '/signup') {
             const loginUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/login`);
             loginUrl.searchParams.set('intent', 'signup');
             return NextResponse.redirect(loginUrl, 307);
         }
-        if (isPublicOnlyPath(pathname) && pathname !== '/login' && pathname !== '/signup') {
-            return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${search}`);
-        }
-    }
-
-    // 5. Auth explicit host routing
-    if (hostRole === 'public' && pathname === '/login') {
-        return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${USER_LOGIN_HOST}${pathname}${search}`);
-    }
-
-    if (hostRole === 'public' && pathname === '/signup') {
-        const loginUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/login`);
-        loginUrl.searchParams.set('intent', 'signup');
-        return NextResponse.redirect(loginUrl, 307);
+        return null;
     }
 
     return null;

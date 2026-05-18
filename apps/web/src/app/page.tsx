@@ -3,9 +3,9 @@ import Link from 'next/link';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import { getSiteMode } from '@/lib/siteModeServer';
 import { GovtLandingPage } from '@/features/landing/GovtLandingPage';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed, fetchEducationMetadata, fetchSkillsMetadata, EducationMetadata } from '@/lib/api/cdnFeed';
 import { SiteMode } from '@/lib/siteMode';
-import { NoiseSimulator } from '@/features/landing/NoiseSimulator';
+
 import { EligibilityMatcher } from '@/features/landing/EligibilityMatcher';
 import { Opportunity } from '@fresherflow/types';
 
@@ -50,26 +50,34 @@ export default async function LandingPage() {
     let liveCount = 0;
     let mode: SiteMode = 'private';
     let opportunities: Opportunity[] = [];
+    let educationMetadata: EducationMetadata | null = null;
+    let skillsMetadata: string[] | null = null;
 
     try {
         const feedPromise = fetchBootstrapFeed();
         const modePromise = getSiteMode();
+        const eduPromise = fetchEducationMetadata();
+        const skillsPromise = fetchSkillsMetadata();
 
         const dataPromise = Promise.all([
             feedPromise,
-            modePromise
+            modePromise,
+            eduPromise,
+            skillsPromise
         ]);
 
-        const timeoutPromise = new Promise<[null, SiteMode]>((resolve) =>
-            setTimeout(() => resolve([null, 'private']), 500)
+        const timeoutPromise = new Promise<[null, SiteMode, null, null]>((resolve) =>
+            setTimeout(() => resolve([null, 'private', null, null]), 500)
         );
 
-        const [resolvedFeed, resolvedMode] = await Promise.race([dataPromise, timeoutPromise]);
+        const [resolvedFeed, resolvedMode, resolvedEdu, resolvedSkills] = await Promise.race([dataPromise, timeoutPromise]);
         mode = resolvedMode;
         if (resolvedFeed) {
             opportunities = resolvedFeed.opportunities || [];
             liveCount = resolvedFeed.count || opportunities.length || 0;
         }
+        educationMetadata = resolvedEdu;
+        skillsMetadata = resolvedSkills;
     } catch (err) {
         console.error('[Landing] Critical data resolution failure:', err);
     }
@@ -85,10 +93,6 @@ export default async function LandingPage() {
     return (
         <>
             <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20 relative overflow-hidden">
-                {/* Visual Accent Glows */}
-                <div className="absolute top-[-10%] left-[-20%] w-[60%] h-[50%] rounded-full bg-gradient-to-br from-primary/10 to-accent/5 blur-3xl pointer-events-none" />
-                <div className="absolute top-[30%] right-[-10%] w-[50%] h-[40%] rounded-full bg-gradient-to-bl from-accent/10 to-primary/5 blur-3xl pointer-events-none" />
-
                 <main className="flex-1 flex flex-col relative z-10">
 
                     {/* Hero Section */}
@@ -108,7 +112,7 @@ export default async function LandingPage() {
                                     Before you apply, we verify. FresherFlow replaces noisy job boards with a clean, 100% verified stream of off-campus jobs, internships, and walk-ins. Checked by hand, proven by logic.
                                 </p>
                                 <div className="flex flex-wrap items-center gap-3.5 pt-2">
-                                    <Link href="/opportunities" className="premium-button px-7 text-[12px] uppercase tracking-widest shadow-xl shadow-primary/10">
+                                    <Link href="/opportunities" className="premium-button px-7 text-[12px] uppercase tracking-widest shadow-md">
                                         Open Live Feed
                                         <ArrowRightIcon className="w-4 h-4 ml-1" />
                                     </Link>
@@ -116,7 +120,7 @@ export default async function LandingPage() {
                                         Get the App
                                     </Link>
                                 </div>
-                                <div className="grid grid-cols-3 gap-4 pt-6">
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
                                     {[
                                         { label: 'Links Checked', value: '100%' },
                                         { label: 'Verified Roles', value: countLabel },
@@ -130,11 +134,10 @@ export default async function LandingPage() {
                                 </div>
                             </div>
 
-                            <div className="relative rounded-3xl overflow-hidden shadow-2xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20">
-                                <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-accent/5 pointer-events-none z-10" />
+                            <div className="relative rounded-3xl overflow-hidden shadow-xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20">
                                 <img 
                                     alt="FresherFlow Interface Demonstration"
-                                    className="w-full h-[480px] object-cover rounded-2xl grayscale-[0.05] transition-transform duration-700 group-hover:scale-[1.02]"
+                                    className="w-full h-[240px] sm:h-[320px] md:h-[480px] object-cover rounded-2xl grayscale-[0.05] transition-transform duration-700 group-hover:scale-[1.02]"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3tZJKvyI6tc96EkTndqlfFMEk4KqIdS2q0HKEDeAG3JExuSOyfTY_Df5ThvVRWlpwTfFeK5PPFA-gNhJvDGD80MbMvIMKAq_dvMc5ERdu9GFzynplovygxGg1Jwvaw89hUjtQa-ooCRA5soLZa3Cykp41b3AI7AgTKbPaTIupk13KMl_EGzcWZQfmIQ4UutVy278nvm7hKh4UHSgju6JmA0PDUT57o91tGcwYAao2dirY_UmttpRATIhoaTrbr_fDhalmVNfoAkv-" 
                                 />
                             </div>
@@ -142,23 +145,7 @@ export default async function LandingPage() {
                         <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800d_1px,transparent_1px),linear-gradient(to_bottom,#8080800d_1px,transparent_1px)] bg-size-[48px_48px] -z-10" />
                     </section>
 
-                    {/* Pillar 1: Flow Protocol Live Sandbox */}
-                    <section className="py-14 md:py-20 px-6 border-t border-border/40 bg-muted/10">
-                        <div className="max-w-6xl mx-auto space-y-10">
-                            <div className="max-w-2xl mx-auto text-center space-y-3">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                                    Operational Pillar 01
-                                </span>
-                                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-                                    Manual verification removes 100% of the noise.
-                                </h2>
-                                <p className="text-sm md:text-base text-muted-foreground">
-                                    No duplicate listings, no promotional courses, and no broken URLs. Every post is indexed from the source and run through the Flow Protocol.
-                                </p>
-                            </div>
-                            <NoiseSimulator opportunities={opportunities} />
-                        </div>
-                    </section>
+
 
                     {/* Pillar 2: Smart Fit Dynamic Sandbox */}
                     <section className="py-14 md:py-20 px-6 border-t border-border/40">
@@ -174,7 +161,11 @@ export default async function LandingPage() {
                                     Stop reading endless text blocks to check if your graduation year or degree qualifies. The Smart Fit Engine calculates your suitability in real-time.
                                 </p>
                             </div>
-                            <EligibilityMatcher opportunities={opportunities} />
+                            <EligibilityMatcher 
+                                opportunities={opportunities} 
+                                educationMetadata={educationMetadata || undefined}
+                                skillsMetadata={skillsMetadata || undefined}
+                            />
                         </div>
                     </section>
 
@@ -251,8 +242,7 @@ export default async function LandingPage() {
 
                     {/* Final Premium CTA Card */}
                     <section className="py-20 px-6 border-t border-border/40 bg-muted/5">
-                        <div className="max-w-5xl mx-auto text-center space-y-8 rounded-3xl border border-border bg-card/60 backdrop-blur-md p-10 md:p-14 shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+                        <div className="max-w-5xl mx-auto text-center space-y-8 rounded-3xl border border-border bg-card/60 backdrop-blur-md p-10 md:p-14 shadow-xl relative overflow-hidden">
                             <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight">
                                 Stop searching. Start applying.
                             </h2>
@@ -260,7 +250,7 @@ export default async function LandingPage() {
                                 Join thousands of students getting fast, direct redirection to authentic, manual-checked tech openings.
                             </p>
                             <div className="flex justify-center pt-2">
-                                <Link href="/download" className="premium-button px-9 text-[12px] uppercase tracking-widest shadow-xl shadow-primary/10">
+                                <Link href="/download" className="premium-button px-9 text-[12px] uppercase tracking-widest shadow-md">
                                     Download App
                                 </Link>
                             </div>

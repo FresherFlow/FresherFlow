@@ -2,66 +2,46 @@
 
 import React, { useState } from "react";
 import { Opportunity, EducationLevel } from "@fresherflow/types";
+import Link from "next/link";
+import { getOpportunityPath } from "@/lib/opportunityPath";
+import { EducationMetadata } from "@/lib/api/cdnFeed";
 
-interface OpportunityMock {
-  id: string | number;
-  title: string;
-  company: string;
-  degrees: string[];
-  gradYears: number[];
-  skills: string[];
-  salaryRange: string;
-}
-
-const MOCK_OPPORTUNITIES_FALLBACK: OpportunityMock[] = [
-  {
-    id: 1,
-    title: "Software Engineer - React Frontend",
-    company: "Razorpay",
-    degrees: ["B.Tech", "B.E.", "BCA", "M.Tech"],
-    gradYears: [2025, 2026],
-    skills: ["React", "JavaScript", "TypeScript"],
-    salaryRange: "Rs. 8L - Rs. 12L LPA"
-  },
-  {
-    id: 2,
-    title: "Graduate Analyst (Data Engineering)",
-    company: "Goldman Sachs",
-    degrees: ["B.Tech", "M.Tech", "B.Sc", "M.Sc"],
-    gradYears: [2025],
-    skills: ["Python", "SQL", "Java"],
-    salaryRange: "Rs. 14L - Rs. 18L LPA"
-  },
-  {
-    id: 3,
-    title: "Product Operations Specialist",
-    company: "Zepto",
-    degrees: ["Any Degree", "BBA", "B.Com", "BCA", "B.Tech"],
-    gradYears: [2025, 2026, 2027],
-    skills: ["Excel", "SQL", "Product Operations"],
-    salaryRange: "Rs. 6L - Rs. 8L LPA"
-  }
-];
 
 interface EligibilityMatcherProps {
   opportunities?: Opportunity[];
+  educationMetadata?: EducationMetadata;
+  skillsMetadata?: string[];
 }
 
-export function EligibilityMatcher({ opportunities }: EligibilityMatcherProps) {
-  const [selectedDegree, setSelectedDegree] = useState("B.Tech");
-  const [selectedGradYear, setSelectedGradYear] = useState<number>(2026);
-  const [selectedSkill, setSelectedSkill] = useState("React");
+export function EligibilityMatcher({ 
+  opportunities, 
+  educationMetadata, 
+  skillsMetadata 
+}: EligibilityMatcherProps) {
+  const currentYear = new Date().getFullYear();
+  
+  // Extract and format dynamic degrees from CDN education.json
+  const degreesOptions = educationMetadata?.courses?.DEGREE
+    ? educationMetadata.courses.DEGREE.slice(0, 5).map(c => c.replace(" / B.E.", ""))
+    : ["B.Tech", "BCA", "BBA", "B.Sc", "M.Tech"];
 
-  const degreesOptions = ["B.Tech", "BCA", "BBA", "B.Sc", "M.Tech"];
-  const gradYearsOptions = [2025, 2026, 2027];
-  const skillsOptions = ["React", "Python", "SQL", "JavaScript", "Excel"];
+  // Compute dynamic batches (current-1, current, current+1)
+  const gradYearsOptions = [currentYear - 1, currentYear, currentYear + 1];
+
+  // Extract dynamic skills from CDN skills.json, filtering generic soft skills
+  const skillsOptions = skillsMetadata && skillsMetadata.length > 0
+    ? skillsMetadata
+        .filter(s => !["communication skills", "problem solving", "analytical skills"].includes(s))
+        .slice(0, 5)
+        .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+    : ["React", "Python", "SQL", "JavaScript", "Excel"];
+
+  const [selectedDegree, setSelectedDegree] = useState(degreesOptions[0] || "B.Tech");
+  const [selectedGradYear, setSelectedGradYear] = useState<number>(gradYearsOptions[1] || 2026);
+  const [selectedSkill, setSelectedSkill] = useState(skillsOptions[0] || "React");
 
   return (
-    <div className="w-full rounded-3xl border border-border bg-card/60 backdrop-blur-md p-6 md:p-8 shadow-2xl relative overflow-hidden">
-      {/* Background glow decorator */}
-      <div className="absolute -top-24 -left-24 w-48 h-48 bg-accent/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
-
+    <div className="w-full rounded-3xl border border-border bg-card/60 backdrop-blur-md p-5 sm:p-6 md:p-8 shadow-xl relative overflow-hidden">
       <div className="max-w-5xl mx-auto space-y-8 relative z-10">
         <div className="text-center space-y-2">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-muted/50 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">
@@ -185,11 +165,12 @@ export function EligibilityMatcher({ opportunities }: EligibilityMatcherProps) {
                 }
 
                 return (
-                  <div
+                  <Link
                     key={opp.id}
-                    className={`premium-card relative overflow-hidden transition-all duration-300 border ${
+                    href={getOpportunityPath(opp.type, opp.slug || opp.id)}
+                    className={`block premium-card relative overflow-hidden transition-all duration-300 border hover:border-primary/45 hover:shadow-md ${
                       isFullyEligible
-                        ? "border-success/35 bg-success/5 shadow-[0_4px_12px_rgba(34,197,94,0.06)]"
+                        ? "border-success/45 bg-success/[0.03] shadow-sm"
                         : "border-border/80 opacity-65"
                     }`}
                   >
@@ -234,7 +215,7 @@ export function EligibilityMatcher({ opportunities }: EligibilityMatcherProps) {
                       </div>
 
                       {/* Fit Assessment Banner */}
-                      <div className="pt-3 border-t border-border/40 flex items-center justify-between text-xs">
+                      <div className="pt-3 border-t border-border/40 flex flex-col sm:flex-row sm:items-center gap-2 justify-between text-xs">
                         {isFullyEligible ? (
                           <div className="flex items-center gap-1.5 text-success font-bold tracking-tight">
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -256,103 +237,20 @@ export function EligibilityMatcher({ opportunities }: EligibilityMatcherProps) {
                         )}
 
                         {isFullyEligible && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Direct Apply Ready {'->'}
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors">
+                            Direct Apply Ready {"->"}
                           </span>
                         )}
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 );
               })
             ) : (
-              MOCK_OPPORTUNITIES_FALLBACK.map((opp) => {
-                const degreeMatch = opp.degrees.includes("Any Degree") || opp.degrees.includes(selectedDegree);
-                const gradMatch = opp.gradYears.includes(selectedGradYear);
-                const skillMatch = opp.skills.includes(selectedSkill);
-                const isFullyEligible = degreeMatch && gradMatch && skillMatch;
-
-                return (
-                  <div
-                    key={opp.id}
-                    className={`premium-card relative overflow-hidden transition-all duration-300 border ${
-                      isFullyEligible
-                        ? "border-success/35 bg-success/5 shadow-[0_4px_12px_rgba(34,197,94,0.06)]"
-                        : "border-border/80 opacity-65"
-                    }`}
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                            {opp.company}
-                          </span>
-                          <h4 className="text-sm md:text-base font-bold tracking-tight text-foreground">
-                            {opp.title}
-                          </h4>
-                        </div>
-                        <span className="text-xs font-bold text-foreground bg-muted px-2.5 py-1 rounded-md border border-border/40 whitespace-nowrap">
-                          {opp.salaryRange}
-                        </span>
-                      </div>
-
-                      {/* Eligibility details */}
-                      <div className="flex flex-wrap gap-1.5">
-                        <span
-                          className={`badge text-[10px] font-bold tracking-tight uppercase ${
-                            degreeMatch ? "badge-success" : "bg-error/10 text-error"
-                          }`}
-                        >
-                          {selectedDegree} {degreeMatch ? "Eligible" : "Excluded"}
-                        </span>
-                        <span
-                          className={`badge text-[10px] font-bold tracking-tight uppercase ${
-                            gradMatch ? "badge-success" : "bg-error/10 text-error"
-                          }`}
-                        >
-                          {selectedGradYear} Batch {gradMatch ? "Eligible" : "Excluded"}
-                        </span>
-                        <span
-                          className={`badge text-[10px] font-bold tracking-tight uppercase ${
-                            skillMatch ? "badge-success" : "bg-error/10 text-error"
-                          }`}
-                        >
-                          {selectedSkill} {skillMatch ? "Eligible" : "Excluded"}
-                        </span>
-                      </div>
-
-                      {/* Fit Assessment Banner */}
-                      <div className="pt-3 border-t border-border/40 flex items-center justify-between text-xs">
-                        {isFullyEligible ? (
-                          <div className="flex items-center gap-1.5 text-success font-bold tracking-tight">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                            Matched: 100% Eligible
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-error font-semibold tracking-tight">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <span>
-                              Ineligible: {!degreeMatch && "Degree mismatch"}
-                              {degreeMatch && !gradMatch && "Batch mismatch"}
-                              {degreeMatch && gradMatch && !skillMatch && `Requires ${opp.skills.join(" or ")}`}
-                            </span>
-                          </div>
-                        )}
-
-                        {isFullyEligible && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                            Direct Apply Ready {'->'}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
+              <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed border-border rounded-2xl bg-muted/10 space-y-2">
+                <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs font-semibold text-muted-foreground">Loading live verified opportunities...</span>
+              </div>
             )}
           </div>
         </div>

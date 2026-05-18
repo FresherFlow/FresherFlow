@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { BOOTSTRAP_FEED_URL } from "@/lib/runtimeConfig";
 
 export const runtime = "edge";
 export const revalidate = 86400; // 24 hours — job details don't change within minutes
@@ -7,6 +8,51 @@ const size = {
   width: 1200,
   height: 630,
 };
+
+async function signPathname(pathname: string, secret: string): Promise<{ t: number; sig: string }> {
+  const t = Math.floor(Date.now() / 1000);
+  const message = `${pathname}:${t}`;
+
+  const encoder = new TextEncoder();
+  const keyData = encoder.encode(secret);
+  const messageData = encoder.encode(message);
+
+  const cryptoObj = globalThis.crypto;
+  const key = await cryptoObj.subtle.importKey(
+    "raw",
+    keyData,
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"]
+  );
+
+  const signature = await cryptoObj.subtle.sign(
+    "HMAC",
+    key,
+    messageData
+  );
+
+  const hashArray = Array.from(new Uint8Array(signature));
+  const sig = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+
+  return { t, sig };
+}
+
+async function getSignedUrl(url: string): Promise<string> {
+  const secret = process.env.CDN_SIGNATURE_SECRET;
+  if (secret && (url.includes("cdn.fresherflow.in") || url.includes("fresherflow.pages.dev"))) {
+    try {
+      const parsedUrl = new URL(url);
+      const { t, sig } = await signPathname(parsedUrl.pathname, secret);
+      parsedUrl.searchParams.set("t", t.toString());
+      parsedUrl.searchParams.set("sig", sig);
+      return parsedUrl.toString();
+    } catch (err) {
+      console.error("Failed to sign CDN url in OG route:", err);
+    }
+  }
+  return url;
+}
 
 type OpportunityDto = {
   id: string;
@@ -82,6 +128,9 @@ const fetchWithTimeout = async (
       cache: options?.cacheMode ?? "force-cache",
       // Link signals if AbortSignal.any is available (Edge runtime) or manually fallback
       signal: typeof CustomAbortSignal.any === 'function' ? CustomAbortSignal.any(signals) : controller.signal,
+      headers: {
+        "Origin": process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.com"
+      },
     };
 
     if (typeof options?.revalidateSeconds === "number") {
@@ -318,22 +367,45 @@ export async function GET(
 
   let opportunity: OpportunityDto | null = null;
 
+  // 1. Try to fetch from the secure CDN feed first (100% Vercel-side)
   try {
-    const response = await fetchWithTimeout(
-      `${apiBase}/api/opportunities/${encodeURIComponent(id)}`,
-      3500,
+    const signedCdnUrl = await getSignedUrl(BOOTSTRAP_FEED_URL);
+    const cdnResponse = await fetchWithTimeout(
+      signedCdnUrl,
+      2500,
       undefined,
-      { cacheMode: "force-cache", revalidateSeconds: 300 }
+      { 
+        cacheMode: "force-cache", 
+        revalidateSeconds: 300 
+      }
     );
 
-    if (!response || !response.ok) {
-      return renderFallbackCard("Opportunity preview", "This listing is unavailable.");
+    if (cdnResponse && cdnResponse.ok) {
+      const payload = await cdnResponse.json();
+      const allOpportunities = (payload?.opportunities || []) as OpportunityDto[];
+      opportunity = allOpportunities.find((o) => o.id === id) || null;
     }
+  } catch (cdnError) {
+    console.warn("CDN preview fetch failed, trying Render API:", cdnError);
+  }
 
-    const payload = await response.json();
-    opportunity = payload?.opportunity || null;
-  } catch {
-    return renderFallbackCard("Opportunity preview", "Unable to load listing details right now.");
+  // 2. Fail-safe fallback: If CDN failed or didn't have the job, try Render API
+  if (!opportunity) {
+    try {
+      const response = await fetchWithTimeout(
+        `${apiBase}/api/opportunities/${encodeURIComponent(id)}`,
+        3500,
+        undefined,
+        { cacheMode: "force-cache", revalidateSeconds: 300 }
+      );
+
+      if (response && response.ok) {
+        const payload = await response.json();
+        opportunity = payload?.opportunity || null;
+      }
+    } catch (apiError) {
+      console.error("Render API preview fetch failed:", apiError);
+    }
   }
 
   if (!opportunity) {
