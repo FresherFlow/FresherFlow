@@ -1,7 +1,5 @@
 import React, { useMemo, useState } from 'react';
 import {
-    ActivityIndicator,
-    Image,
     KeyboardAvoidingView,
     Platform,
     StyleSheet,
@@ -9,15 +7,16 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { AlertCircle, ArrowRight, ChevronLeft, KeyRound, Mail } from 'lucide-react-native';
 import { useAdminAuth as useAuth } from '@repo/frontend-core';
-import { alpha } from '../../theme';
+import { alpha, theme } from '../../theme';
 import { useTheme } from '../../theme/ThemeProvider';
 import { AppButton, AppInput } from '@repo/ui';
-import { SurfaceCard } from '../system/components/SpecializedCards';
-import { FieldLabel } from '../system/components/Controls';
+import { SurfaceCard } from '../system/components/PremiumPrimitives';
+import { Screen } from '../system/layout/Layout';
 import { toast } from '../../lib/toast';
+import { mScale, SPACING, RADIUS } from '../../theme/dimensions';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const Passkey = Platform.OS !== 'web' ? require('react-native-passkey').Passkey : {
@@ -31,7 +30,7 @@ type Step = 'email' | 'totp';
 
 export const LoginScreen = () => {
     const { verifyTotp, getPasskeyOptions, verifyPasskey } = useAuth();
-    const { colors, spacing, sizes, typography } = useTheme();
+    const { currentTheme } = useTheme();
     const [step, setStep] = useState<Step>('email');
     const [email, setEmail] = useState('');
     const [otp, setOtp] = useState('');
@@ -46,13 +45,11 @@ export const LoginScreen = () => {
             setError('Enter a valid admin email.');
             return false;
         }
-
         return true;
     };
 
     const handlePasskeyLogin = async (options: unknown) => {
         setPasskeyLoading(true);
-
         try {
             const assertion = await Passkey.get(options);
             await verifyPasskey(email.trim(), assertion);
@@ -77,9 +74,7 @@ export const LoginScreen = () => {
 
     const handleContinue = async () => {
         setError('');
-        if (!validateEmail()) {
-            return;
-        }
+        if (!validateEmail()) return;
 
         setLoading(true);
         try {
@@ -109,9 +104,7 @@ export const LoginScreen = () => {
 
     const handlePasskeyLoginExplicit = async () => {
         setError('');
-        if (!validateEmail()) {
-            return;
-        }
+        if (!validateEmail()) return;
 
         setLoading(true);
         try {
@@ -120,7 +113,6 @@ export const LoginScreen = () => {
                 setError('No passkey is registered for this email.');
                 return;
             }
-
             await handlePasskeyLogin(options);
         } catch (errorValue) {
             console.error('[LoginScreen] Failed to fetch passkey options', errorValue);
@@ -148,46 +140,61 @@ export const LoginScreen = () => {
     };
 
     return (
-        <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-            <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-                <View style={[styles.content, { padding: spacing.xl }]}>
-                    <View style={[styles.hero, { marginBottom: sizes.card.xl.padding, gap: sizes.card.sm.gap }]}>
-                        {/* eslint-disable-next-line @typescript-eslint/no-require-imports */}
-                        <Image source={require('../../../assets/logo-white.png')} style={styles.logo} resizeMode="contain" />
-                        <Text style={[typography.title1, { color: colors.text }]}>Admin mobile</Text>
-                        <Text style={[typography.body, { color: colors.textMuted, textAlign: 'center' }]}>
+        <Screen safe>
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                style={styles.flex}
+            >
+                <View style={styles.container}>
+                    <View style={styles.hero}>
+                        <Image 
+                            // eslint-disable-next-line @typescript-eslint/no-require-imports
+                            source={require('../../../assets/logo-white.png')} 
+                            style={styles.logo} 
+                            contentFit="contain" 
+                        />
+                        <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>
+                            Admin Console
+                        </Text>
+                        <Text style={[styles.heroSubtitle, { color: currentTheme.colors.textMuted }]}>
                             {step === 'email'
-                                ? 'Use your admin email to continue with passkey or TOTP.'
-                                : 'Enter the current 6-digit TOTP code from your authenticator app.'}
+                                ? 'Authenticate with passkey or TOTP'
+                                : 'Enter your 6-digit authenticator code'}
                         </Text>
                     </View>
 
-                    <SurfaceCard style={{ padding: spacing.lg }}>
-                        <FieldLabel>Email</FieldLabel>
-                        <View style={[styles.inputRow, { gap: sizes.card.md.gap, marginBottom: sizes.card.md.padding }]}>
-                            <Mail size={sizes.icon.md} color={colors.textMuted} />
-                            <AppInput
-                                style={styles.flexInput}
-                                value={email}
-                                onChangeText={(value) => {
-                                    setEmail(value);
-                                    setError('');
-                                }}
-                                editable={step === 'email'}
-                                keyboardType="email-address"
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                placeholder="admin@fresherflow.in"
-                            />
+                    <SurfaceCard accent style={styles.loginCard}>
+                        <View style={styles.field}>
+                            <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>
+                                ADMIN EMAIL
+                            </Text>
+                            <View style={styles.inputWrapper}>
+                                <Mail size={18} color={currentTheme.colors.primary} style={styles.inputIcon} />
+                                <AppInput
+                                    style={styles.input}
+                                    value={email}
+                                    onChangeText={(value) => {
+                                        setEmail(value);
+                                        setError('');
+                                    }}
+                                    editable={step === 'email'}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    placeholder="admin@fresherflow.in"
+                                    placeholderTextColor={alpha(currentTheme.colors.text, 0.3)}
+                                />
+                            </View>
                         </View>
 
-                        {step === 'totp' ? (
-                            <>
-                                <FieldLabel>Authenticator code</FieldLabel>
-                                <View style={[styles.inputRow, { gap: sizes.card.md.gap, marginBottom: sizes.card.md.padding }]}>
-                                    <KeyRound size={sizes.icon.md} color={colors.textMuted} />
+                        {step === 'totp' && (
+                            <View style={styles.field}>
+                                <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>
+                                    SECURITY CODE
+                                </Text>
+                                <View style={styles.inputWrapper}>
+                                    <KeyRound size={18} color={currentTheme.colors.primary} style={styles.inputIcon} />
                                     <AppInput
-                                        style={styles.flexInput}
+                                        style={styles.input}
                                         value={otp}
                                         onChangeText={(value) => {
                                             setOtp(value);
@@ -197,28 +204,16 @@ export const LoginScreen = () => {
                                         maxLength={6}
                                         autoFocus
                                         placeholder="123456"
+                                        placeholderTextColor={alpha(currentTheme.colors.text, 0.3)}
                                     />
                                 </View>
-                            </>
-                        ) : null}
+                            </View>
+                        )}
 
                         {error ? (
-                            <View
-                                style={[
-                                    styles.errorBanner,
-                                    {
-                                        backgroundColor: alpha(colors.error, 0.12),
-                                        borderColor: alpha(colors.error, 0.25),
-                                        borderRadius: sizes.card.sm.borderRadius,
-                                        padding: sizes.card.sm.padding,
-                                        gap: sizes.card.sm.gap,
-                                        marginTop: sizes.card.sm.gap,
-                                        marginBottom: sizes.card.md.gap,
-                                    },
-                                ]}
-                            >
-                                <AlertCircle size={sizes.icon.sm} color={colors.error} />
-                                <Text style={[typography.footnoteStrong, { color: colors.error, flex: 1 }]}>{error}</Text>
+                            <View style={[styles.errorBox, { backgroundColor: alpha(currentTheme.colors.error, 0.1) }]}>
+                                <AlertCircle size={16} color={currentTheme.colors.error} />
+                                <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{error}</Text>
                             </View>
                         ) : null}
 
@@ -226,81 +221,154 @@ export const LoginScreen = () => {
                             label={step === 'email' ? 'Continue' : 'Sign In'}
                             onPress={step === 'email' ? handleContinue : handleVerifyOtp}
                             loading={loading}
-                            icon={!loading ? <ArrowRight size={sizes.icon.md} color={colors.background} /> : undefined}
-                            style={{ marginTop: sizes.card.sm.gap }}
+                            icon={!loading ? <ArrowRight size={20} color={currentTheme.colors.background} /> : undefined}
+                            style={styles.actionBtn}
                         />
 
                         {step === 'email' ? (
-                            <AppButton
-                                label={passkeyLoading ? 'Opening passkey...' : 'Use passkey now'}
+                            <TouchableOpacity 
                                 onPress={() => void handlePasskeyLoginExplicit()}
-                                variant="ghost"
                                 disabled={loading}
-                                icon={!passkeyLoading ? <KeyRound size={sizes.icon.md} color={colors.primary} /> : undefined}
-                                style={{ marginTop: sizes.card.sm.gap }}
-                            />
+                                style={styles.passkeyBtn}
+                            >
+                                <KeyRound size={16} color={currentTheme.colors.primary} />
+                                <Text style={[styles.passkeyText, { color: currentTheme.colors.primary }]}>
+                                    {passkeyLoading ? 'Authenticating...' : 'Sign in with Passkey'}
+                                </Text>
+                            </TouchableOpacity>
                         ) : (
                             <TouchableOpacity
-                                style={[styles.backButton, { marginTop: sizes.card.md.padding, gap: sizes.card.sm.gap }]}
+                                style={styles.backLink}
                                 onPress={() => {
                                     setStep('email');
                                     setOtp('');
                                     setError('');
                                 }}
                             >
-                                <ChevronLeft size={sizes.icon.sm} color={colors.textMuted} />
-                                <Text style={[typography.subheadline, { color: colors.textMuted }]}>Use a different email</Text>
+                                <ChevronLeft size={16} color={currentTheme.colors.textMuted} />
+                                <Text style={[styles.backLinkText, { color: currentTheme.colors.textMuted }]}>
+                                    Use a different email
+                                </Text>
                             </TouchableOpacity>
                         )}
                     </SurfaceCard>
 
-                    {(loading || passkeyLoading) && !error ? (
-                        <View style={styles.loadingRow}>
-                            <ActivityIndicator size="small" color={colors.primary} />
-                        </View>
-                    ) : null}
+                    <View style={styles.footer}>
+                        <Text style={[styles.footerText, { color: alpha(currentTheme.colors.text, 0.3) }]}>
+                            SECURE ADMIN ACCESS ONLY
+                        </Text>
+                    </View>
                 </View>
             </KeyboardAvoidingView>
-        </SafeAreaView>
+        </Screen>
     );
 };
 
 const styles = StyleSheet.create({
-    container: {
+    flex: {
         flex: 1,
     },
-    content: {
+    container: {
         flex: 1,
+        paddingHorizontal: SPACING.lg,
         justifyContent: 'center',
     },
     hero: {
         alignItems: 'center',
+        marginBottom: SPACING.xl,
     },
     logo: {
-        width: 168,
-        height: 42,
+        width: mScale(160),
+        height: mScale(40),
+        marginBottom: SPACING.lg,
+        opacity: 0.9,
     },
-    inputRow: {
+    heroTitle: {
+        fontSize: mScale(28),
+        fontWeight: '900',
+        letterSpacing: -1.2,
+        marginBottom: 8,
+    },
+    heroSubtitle: {
+        fontSize: mScale(15),
+        textAlign: 'center',
+        opacity: 0.8,
+    },
+    loginCard: {
+        padding: SPACING.lg,
+    },
+    field: {
+        marginBottom: SPACING.lg,
+    },
+    label: {
+        fontSize: mScale(10),
+        fontWeight: '900',
+        letterSpacing: 1.5,
+        marginBottom: SPACING.sm,
+    },
+    inputWrapper: {
         flexDirection: 'row',
         alignItems: 'center',
+        borderBottomWidth: 1,
+        borderBottomColor: alpha(theme.colors.text, 0.1),
+        paddingVertical: 8,
     },
-    flexInput: {
+    inputIcon: {
+        marginRight: SPACING.md,
+        opacity: 0.7,
+    },
+    input: {
+        flex: 1,
+        fontSize: mScale(16),
+        fontWeight: '700',
+        padding: 0,
+    },
+    errorBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: SPACING.md,
+        borderRadius: 12,
+        marginBottom: SPACING.lg,
+        gap: SPACING.sm,
+    },
+    errorText: {
+        fontSize: mScale(13),
+        fontWeight: '600',
         flex: 1,
     },
-    errorBanner: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        borderWidth: 1,
+    actionBtn: {
+        height: mScale(52),
+        borderRadius: RADIUS.lg,
     },
-    backButton: {
+    passkeyBtn: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        marginTop: SPACING.lg,
+        gap: 8,
     },
-    loadingRow: {
+    passkeyText: {
+        fontSize: mScale(14),
+        fontWeight: '700',
+    },
+    backLink: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 16,
+        justifyContent: 'center',
+        marginTop: SPACING.lg,
+        gap: 4,
+    },
+    backLinkText: {
+        fontSize: mScale(14),
+        fontWeight: '500',
+    },
+    footer: {
+        marginTop: SPACING.xl,
+        alignItems: 'center',
+    },
+    footerText: {
+        fontSize: mScale(10),
+        fontWeight: '900',
+        letterSpacing: 2,
     },
 });
-
-
