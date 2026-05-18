@@ -1,50 +1,61 @@
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { authApi } from '@fresherflow/api-client';
+import { AuthResponse } from '@fresherflow/types';
 import { flushOfflineActions } from '@repo/frontend-core';
-import { Alert } from 'react-native';
 
 export const useAuthHandshake = () => {
-    const { firebaseUser, user, anonSessionId, setAuth, setSyncing, isSyncing } = useAuthStore();
+    const { firebaseUser, user, setAuth, setSyncing, handshakeTrigger } = useAuthStore();
     const isHandshaking = useRef(false);
+    const retryCount = useRef(0); // <-- Ref to track retry attempts
+    const lastHandshakeTime = useRef(0); // <-- Ref to track last handshake timestamp for rate limiting
 
     useEffect(() => {
-        const performHandshake = async () => {
-            if (!firebaseUser || !anonSessionId || isHandshaking.current) return;
+        const performHandshake = async (isRetry = false) => {
+            if (!firebaseUser || isHandshaking.current) return;
             
-            // Check if we already have a real session (not optimistic)
-            // @ts-ignore - isOptimistic is an internal flag we added in the store
-            if (user && !user.isOptimistic) return;
+            const now = Date.now();
+            if (now - lastHandshakeTime.current < 5000) {
+                console.log('[Auth] Handshake rate-limited (last attempt was < 5s ago)');
+                return;
+            }
+            lastHandshakeTime.current = now;
+            
+            const isDifferentUser = user && user.id !== firebaseUser.uid;
+            const isForced = handshakeTrigger > 0;
+            if (user && user.isOptimistic === false && !isDifferentUser && !isForced) return;
 
             isHandshaking.current = true;
-            setSyncing(true);
 
             try {
-                const idToken = await firebaseUser.getIdToken();
+                const idToken = await firebaseUser.getIdToken(true);
+                const { referralCode, setReferralCode } = useAuthStore.getState();
                 
-                // Call the handshake endpoint on the Render API
-                const response = await authApi.handshake(idToken, anonSessionId) as { 
-                    user: any; 
-                    accessToken?: string;
-                };
+                const response = await authApi.handshake(idToken, referralCode || undefined) as AuthResponse;
 
                 if (response.user && response.accessToken) {
+                    console.log(`[Auth] Handshake successful for ${response.user.username || 'no-handle'}`);
                     setAuth(response.user, response.accessToken);
                     
-                    // On success, flush all buffered offline actions
-                    console.log('[Auth] Handshake successful, flushing offline actions...');
-                    await flushOfflineActions(response.user.id);
+                    if (referralCode) setReferralCode(null);
+                    await flushOfflineActions(response.user.id as string);
                 }
             } catch (error) {
                 console.error('[Auth] Handshake failed:', error);
-                // We don't alert here to avoid annoying the user while they use the optimistic UI.
-                // The next action they take will trigger a retry or show an error.
+                
+                // Silently retry exactly once after 15 seconds
+                if (retryCount.current < 1) {
+                    retryCount.current += 1;
+                    console.log('[Auth] Scheduling silent retry in 15 seconds...');
+                    setTimeout(() => {
+                        void performHandshake(true);
+                    }, 15000);
+                }
             } finally {
                 isHandshaking.current = false;
-                setSyncing(false);
             }
         };
 
         void performHandshake();
-    }, [firebaseUser, user, setAuth, setSyncing]);
+    }, [firebaseUser, user, setAuth, setSyncing, handshakeTrigger]);
 };

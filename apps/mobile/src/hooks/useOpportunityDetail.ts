@@ -1,14 +1,21 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Linking, Share } from 'react-native';
-import { Opportunity, OpportunityType, ActionType } from '@fresherflow/types';
-import { opportunitiesApi, opportunityClicksApi, actionsApi } from '@fresherflow/api-client';
-import { useUserAuth as useAuth, useNotifications, useSaved } from '@repo/frontend-core';
+import { Alert } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import * as Sharing from 'expo-sharing';
+import { Opportunity, OpportunityType, ActionType, FeedbackReason } from '@fresherflow/types';
+import { opportunitiesApi, opportunityClicksApi, actionsApi, feedbackApi } from '@fresherflow/api-client';
+import { useNotifications, useSaved } from '@repo/frontend-core';
+import { useAuthStore } from '@/store/useAuthStore';
+import { Analytics, EventNames } from '@/utils/analytics';
+import { useSettingsStore } from '@/store/useSettingsStore';
+import { useTracker } from '@/hooks/useTracker';
 import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache } from '@/utils/offlineCache';
 import { getLocalProfile } from '@/utils/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
 import { MOBILE_SITE_URL } from '@/config/runtime';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '@/navigation/AppNavigator';
+import { RootStackParamList } from '@/navigation/types';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -26,8 +33,10 @@ export const useOpportunityDetail = (
     initialOpportunity: ExtendedOpportunity | null,
     navigation: Props['navigation']
 ) => {
+    const { currentTheme } = useTheme();
     const { isSaved, toggleSave } = useSaved();
-    const { user } = useAuth();
+    const { isTracking, getStatus, updateStatus, toggleTracking } = useTracker();
+    const { user } = useAuthStore();
     const { showToast } = useNotifications();
     const [opportunity, setOpportunity] = useState<ExtendedOpportunity | null>(initialOpportunity);
     const [loading, setLoading] = useState(!opportunity);
@@ -190,19 +199,42 @@ export const useOpportunityDetail = (
         return () => { cancelled = true; };
     }, [opportunityId, showToast]);
 
+    const handleToggleSave = useCallback(async (opp: Opportunity) => {
+        const wasSaved = isSaved(opp.id);
+        toggleSave(opp);
+        try {
+            if (!wasSaved) {
+                if (!isTracking(opp.id)) {
+                    await toggleTracking(opp, ActionType.PLANNED);
+                }
+            } else {
+                if (isTracking(opp.id)) {
+                    await toggleTracking(opp);
+                }
+            }
+        } catch (err) {
+            console.warn('[OpportunityDetail] Failed to sync tracker with save action:', err);
+        }
+    }, [isSaved, toggleSave, isTracking, toggleTracking]);
+
     const handleShare = useCallback(async () => {
         if (!opportunity) return;
         try {
             const shareUrl = `${MOBILE_SITE_URL}${getPublicOpportunityPath(opportunity)}`;
-            const message = `🚀 Found a great opportunity for you!\n\n${opportunity.title.toUpperCase()}\n📍 ${opportunity.company}\n\nView full details and apply here:\n${shareUrl}\n\nShared via FresherFlow`;
 
-            const result = await Share.share({
-                message: message,
-                url: shareUrl,
-                title: 'Share Opportunity',
-            });
+            // Use expo-sharing for better native experience
+            if (await Sharing.isAvailableAsync()) {
+                await Sharing.shareAsync(shareUrl, {
+                    dialogTitle: 'Share Opportunity',
+                    mimeType: 'text/plain',
+                    UTI: 'public.plain-text',
+                });
+            } else {
+                // Fallback or handle appropriately
+                console.log('Sharing not available');
+            }
 
-            if (result.action === Share.sharedAction && user) {
+            if (user) {
                 void actionsApi.track(opportunity.id, ActionType.SHARED);
             }
         } catch (shareError) {
@@ -210,22 +242,84 @@ export const useOpportunityDetail = (
         }
     }, [opportunity, user]);
 
+    const handleReport = useCallback(async (reason: FeedbackReason) => {
+        if (!opportunityId) return false;
+        if (!user) {
+            Alert.alert('Sign in required', 'Please sign in to report this opportunity.');
+            return false;
+        }
+
+        try {
+            await feedbackApi.submit(opportunityId, reason);
+            if (user) {
+                void actionsApi.track(opportunityId, ActionType.REPORTED);
+            }
+            return true;
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Could not submit report';
+            // Specific handling for already reported (P2002 translated by backend)
+            if (msg.includes('already submitted')) {
+                Alert.alert('Already Reported', 'You have already reported this opportunity.');
+            } else {
+                Alert.alert('Report Failed', msg);
+            }
+            return false;
+        }
+    }, [opportunityId, user]);
+
+    const { openInAppWebView } = useSettingsStore();
+
     const handleApply = useCallback(async () => {
         if (!opportunity?.applyLink) {
             Alert.alert('Apply link unavailable', 'This opportunity does not have an application link yet.');
             return;
         }
+
+        // Automatically add to tracker if not already there
+        if (!isTracking(opportunity.id)) {
+            void toggleTracking(opportunity);
+        }
+
         try {
             await opportunityClicksApi.trackApplyClick(opportunity.id, 'mobile_app');
         } catch (trackError) {
             console.warn('Failed to track application action', trackError);
         }
+        
         try {
-            await Linking.openURL(opportunity.applyLink);
-        } catch {
+            void actionsApi.track(opportunity.id, ActionType.APPLIED);
+            Analytics.trackEvent(EventNames.JOB_APPLY_CLICKED, {
+                opportunityId: opportunity.id,
+                company: opportunity.company,
+                useWebView: openInAppWebView
+            });
+
+            if (openInAppWebView) {
+                Analytics.trackEvent(EventNames.WEBVIEW_OPENED, {
+                    url: opportunity.applyLink,
+                    opportunityId: opportunity.id
+                });
+                // BETA: Open in pure WebView
+                navigation.navigate('JobWebView', { 
+                    url: opportunity.applyLink, 
+                    title: opportunity.title 
+                });
+            } else {
+                // STANDARD: Open in OS in-app browser (Safe)
+                await WebBrowser.openBrowserAsync(opportunity.applyLink, {
+                    readerMode: false,
+                    dismissButtonStyle: 'close',
+                    toolbarColor: currentTheme.colors.background,
+                    controlsColor: currentTheme.colors.primary,
+                });
+            }
+            return true; // Indicate success for UI-side effects like StoreReview
+        } catch (err) {
+            console.error('Apply link opening failed:', err);
             Alert.alert('Could not open link', 'Please try again later.');
+            return false;
         }
-    }, [opportunity, user, navigation]);
+    }, [opportunity, isTracking, toggleTracking, openInAppWebView, navigation]);
 
     return {
         opportunity,
@@ -233,9 +327,14 @@ export const useOpportunityDetail = (
         error,
         eligibilityReason,
         isSaved,
-        toggleSave,
+        toggleSave: handleToggleSave,
+        isTracking,
+        getStatus,
+        updateStatus,
+        toggleTracking,
         handleShare,
         handleApply,
+        handleReport,
         similarOpportunities,
     };
 };

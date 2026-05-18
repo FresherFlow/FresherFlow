@@ -10,6 +10,14 @@ interface Highlights {
     };
     new?: Opportunity[];
     hot?: Opportunity[];
+    driveMilestones?: Array<{
+        opportunityId: string;
+        eventId: string;
+        eventType: string;
+        eventDate: string;
+        eventTitle: string;
+        opportunity: Opportunity;
+    }>;
     [key: string]: unknown;
 }
 

@@ -1,5 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { referralApi } from '@fresherflow/api-client';
+import { readInvitesCache, saveInvitesCache } from '@/utils/offlineCache';
 
 export interface ReferralStats {
   totalClicks: number;
@@ -32,33 +34,76 @@ export interface ReferralData {
   badges: Badge[];
 }
 
-export function useReferrals() {
-  const [data, setData] = useState<ReferralData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+interface CachedInvitesData {
+  items: unknown[];
+  stats: ReferralStats;
+  timestamp: number;
+  referralCode?: string;
+  shareUrl?: string;
+  badges?: Badge[];
+}
 
-  const fetchReferrals = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const res = await referralApi.getMe() as ReferralData;
-      setData(res);
-    } catch (err: unknown) {
-      console.error('Failed to fetch referrals:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load referral data');
-    } finally {
-      setLoading(false);
-    }
+export function useReferrals() {
+  const [cachedData, setCachedData] = useState<ReferralData | null>(null);
+  const [isHydrating, setIsHydrating] = useState(true);
+  const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+
+  // Instant Hydration
+  useEffect(() => {
+    const hydrate = async () => {
+      try {
+        const cached = await readInvitesCache() as CachedInvitesData | null;
+        if (cached) {
+          setCachedData({
+            referralCode: cached.referralCode || '',
+            shareUrl: cached.shareUrl || '',
+            stats: cached.stats,
+            referrals: cached.items as Referral[],
+            badges: cached.badges || [],
+          });
+        }
+      } finally {
+        setIsHydrating(false);
+      }
+    };
+    void hydrate();
   }, []);
 
-  useEffect(() => {
-    void fetchReferrals();
-  }, [fetchReferrals]);
+  const {
+    data,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
+    queryKey: ['referrals'],
+    queryFn: async () => {
+      const res = await referralApi.getMe() as ReferralData;
+      
+      // Persistence
+      void saveInvitesCache(res.referrals, res.stats, { 
+        referralCode: res.referralCode, 
+        shareUrl: res.shareUrl,
+        badges: res.badges
+      });
+      
+      return res;
+    },
+    staleTime: 1000 * 60 * 60, // 1 hour (referrals don't change fast)
+  });
+
+  const mergedData = data || cachedData;
+
+  const onRefresh = useCallback(async () => {
+    setIsManualRefreshing(true);
+    await refetch();
+    setIsManualRefreshing(false);
+  }, [refetch]);
 
   return {
-    ...data,
-    loading,
-    error,
-    refresh: fetchReferrals,
+    ...mergedData,
+    loading: (isLoading || isHydrating) && !mergedData?.referralCode,
+    refreshing: isManualRefreshing,
+    error: error ? (error as Error).message : null,
+    refresh: onRefresh,
   };
 }

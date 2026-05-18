@@ -54,7 +54,7 @@ export const useEditEducation = () => {
     } = useForm<EducationFormData>({
         resolver: zodResolver(educationSchema),
         defaultValues: {
-            educationLevel: profile?.educationLevel || 'DEGREE',
+            educationLevel: profile?.educationLevel || '',
             tenthYear: profile?.tenthYear?.toString() || '',
             twelfthYear: profile?.twelfthYear?.toString() || '',
             gradCourse: profile?.gradCourse || '',
@@ -77,7 +77,7 @@ export const useEditEducation = () => {
     useEffect(() => {
         if (!profile) return;
         reset({
-            educationLevel: profile.educationLevel || 'DEGREE',
+            educationLevel: profile.educationLevel || '',
             tenthYear: profile.tenthYear?.toString() || '',
             twelfthYear: profile.twelfthYear?.toString() || '',
             gradCourse: profile.gradCourse || '',

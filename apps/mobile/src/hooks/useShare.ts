@@ -6,13 +6,16 @@ import { opportunitiesApi, profileApi } from '@fresherflow/api-client';
 import { ParsedJob, Opportunity } from '@fresherflow/types';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
 import { readFeedCache } from '@/utils/offlineCache';
+import { getJSON, setJSON } from '@/utils/storage';
 
 const shareSchema = z.object({
     url: z.string().optional(),
-    company: z.string().min(2, 'Company name is too short').optional(),
-    contact: z.string().min(3, 'Contact info is required').optional(),
-    description: z.string().min(5, 'Details should be more descriptive').optional(),
+    title: z.string().optional(),
+    company: z.string().optional(),
+    contact: z.string().optional(),
+    description: z.string().optional(),
     companyUrl: z.string().optional(),
+    eligibleBatches: z.string().optional(),
 });
 
 export type ShareFormData = z.infer<typeof shareSchema>;
@@ -40,10 +43,12 @@ export const useShare = () => {
         resolver: zodResolver(shareSchema),
         defaultValues: {
             url: '',
+            title: '',
             company: '',
             contact: '',
             description: '',
             companyUrl: '',
+            eligibleBatches: '',
         },
         mode: 'onChange',
     });
@@ -60,6 +65,14 @@ export const useShare = () => {
 
         try {
             const normalized = normalizeOpportunityUrl(urlToUse);
+
+            // 0. Local Submitted Links Check
+            const submitted = getJSON<string[]>('fresherflow_submitted_links') || [];
+            if (submitted.includes(normalized)) {
+                setError('This link is already under review!');
+                setLoading(false);
+                return;
+            }
 
             // 1. Local Duplicate Check (Feed Cache)
             const cache = await readFeedCache();
@@ -111,7 +124,20 @@ export const useShare = () => {
 
         try {
             const normalized = normalizeOpportunityUrl(watchedUrl);
+            const cachedList = getJSON<string[]>('fresherflow_submitted_links') || [];
+            if (cachedList.includes(normalized)) {
+                setError('This link is already under review!');
+                setLoading(false);
+                return undefined;
+            }
+
             const response = await opportunitiesApi.shareLink(normalized);
+
+            // Add successfully submitted link to local cache if not duplicate
+            if (!response.existing) {
+                cachedList.push(normalized);
+                setJSON('fresherflow_submitted_links', cachedList);
+            }
 
             return {
                 success: true,
@@ -124,11 +150,11 @@ export const useShare = () => {
             if (error.status === 401) {
                 setError('Your session has expired. Please sign in again.');
             } else if (error.status === 409) {
-                setError(error.message || 'This link has already been shared.');
+                setError(error.message || 'This link is already under review!');
             } else if (error.status === 400) {
-                setError('Invalid URL format. Please check the link and try again.');
+                setError(error.message || 'Invalid URL format. Please check the link and try again.');
             } else {
-                setError('Something went wrong on our end. Please try again later.');
+                setError(error.message || 'Something went wrong on our end. Please try again later.');
             }
             return undefined;
         } finally {
@@ -143,10 +169,12 @@ export const useShare = () => {
         try {
             const response = await profileApi.submitShare({ 
                 referral: {
+                    title: data.title || '',
                     company: data.company || '',
                     contact: data.contact || '',
                     description: data.description || '',
-                    companyUrl: data.companyUrl
+                    companyUrl: data.companyUrl,
+                    eligibleBatches: data.eligibleBatches
                 } 
             });
             setLoading(false);
@@ -177,6 +205,7 @@ export const useShare = () => {
         reset,
         loading,
         error,
+        setError,
         preview,
         setPreview,
         handleParse,

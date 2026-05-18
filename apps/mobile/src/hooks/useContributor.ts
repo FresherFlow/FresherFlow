@@ -1,6 +1,8 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useCallback, useState, useEffect, useMemo } from 'react';
 import { contributorsApi } from '@fresherflow/api-client';
 import { Opportunity } from '@fresherflow/types';
+import { useInfiniteQuery } from '@tanstack/react-query';
+import { readContributionsCache, saveContributionsCache } from '@/utils/offlineCache';
 
 export interface ContributorStats {
     totalContributed: number;
@@ -19,51 +21,76 @@ export interface Contributor {
 }
 
 export function useContributor(userId: string) {
-    const [data, setData] = useState<{ user: Contributor; opportunities: Opportunity[] } | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [page, setPage] = useState(1);
-    const [hasMore, setHasMore] = useState(true);
+    const [cachedData, setCachedData] = useState<{ user: Contributor; opportunities: Opportunity[] } | null>(null);
+    const [isHydrating, setIsHydrating] = useState(true);
+    const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
-    const fetchContributor = useCallback(async (pageNum = 1) => {
-        try {
-            if (pageNum === 1) setLoading(true);
-            const res = await contributorsApi.list(userId, pageNum);
-            
-            if (pageNum === 1) {
-                setData(res);
-            } else {
-                setData(prev => prev ? {
-                    ...res,
-                    opportunities: [...prev.opportunities, ...res.opportunities]
-                } : res);
+    // Instant Hydration
+    useEffect(() => {
+        const hydrate = async () => {
+            try {
+                const cached = await readContributionsCache();
+                if (cached && cached.items.length > 0) {
+                    setCachedData({
+                        user: cached.user as Contributor,
+                        opportunities: cached.items as Opportunity[]
+                    });
+                }
+            } finally {
+                setIsHydrating(false);
             }
-            
-            setHasMore(res.hasMore);
-            setPage(pageNum);
-        } catch (err: unknown) {
-            console.error('Failed to fetch contributor:', err);
-            setError((err as Error).message || 'Failed to load contributor profile');
-        } finally {
-            setLoading(false);
-        }
+        };
+        void hydrate();
     }, [userId]);
 
-    const loadMore = useCallback(() => {
-        if (!loading && hasMore) {
-            void fetchContributor(page + 1);
-        }
-    }, [loading, hasMore, page, fetchContributor]);
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetchingNextPage,
+        isLoading,
+        error,
+        refetch,
+    } = useInfiniteQuery({
+        queryKey: ['contributor', userId],
+        queryFn: async ({ pageParam = 1 }) => {
+            const res = await contributorsApi.list(userId, pageParam as number);
+            
+            if (pageParam === 1) {
+                void saveContributionsCache(res.opportunities, res.user);
+            }
+            
+            return res;
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage) => lastPage.hasMore ? lastPage.page + 1 : undefined,
+        staleTime: 1000 * 60 * 5,
+    });
 
-    useEffect(() => {
-        void fetchContributor();
-    }, [fetchContributor]);
+    const user = data?.pages[0]?.user || cachedData?.user;
+    const opportunities = useMemo(() => {
+        const remote = data?.pages.flatMap(p => p.opportunities) || [];
+        return remote.length > 0 ? remote : (cachedData?.opportunities || []);
+    }, [data, cachedData]);
+
+    const onRefresh = useCallback(async () => {
+        setIsManualRefreshing(true);
+        await refetch();
+        setIsManualRefreshing(false);
+    }, [refetch]);
 
     return {
-        ...data,
-        loading,
-        error,
-        loadMore,
-        refresh: () => fetchContributor(1),
+        user,
+        opportunities,
+        loading: (isLoading || isHydrating) && !user,
+        refreshing: isManualRefreshing,
+        loadingMore: isFetchingNextPage,
+        error: error ? (error as Error).message : null,
+        loadMore: () => {
+            if (hasNextPage && !isFetchingNextPage) {
+                void fetchNextPage();
+            }
+        },
+        refresh: onRefresh,
     };
 }

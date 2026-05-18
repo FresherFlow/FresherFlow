@@ -1,6 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { followsApi } from '@fresherflow/api-client';
-import { useUserAuth as useAuth } from '@repo/frontend-core';
+import { useAuthStore } from '@/store/useAuthStore';
+import { getJSON, setJSON } from '@/utils/storage';
+import { enqueueOfflineFollowAdd, enqueueOfflineFollowRemove } from '@repo/frontend-core';
 
 interface Follows {
     tags: string[];
@@ -8,9 +10,27 @@ interface Follows {
     contributors: string[];
 }
 
+const FOLLOWS_CACHE_KEY = 'fresherflow_follows_cache_v1';
+
+const getCachedFollows = (): Follows => {
+    try {
+        const cached = getJSON<Follows>(FOLLOWS_CACHE_KEY);
+        if (cached && (cached.tags || cached.companies || cached.contributors)) {
+            return {
+                tags: cached.tags || [],
+                companies: cached.companies || [],
+                contributors: cached.contributors || [],
+            };
+        }
+    } catch (e) {
+        // ignore
+    }
+    return { tags: [], companies: [], contributors: [] };
+};
+
 export function useFollows() {
-    const { user } = useAuth();
-    const [follows, setFollows] = useState<Follows>({ tags: [], companies: [], contributors: [] });
+    const { user } = useAuthStore();
+    const [follows, setFollows] = useState<Follows>(getCachedFollows);
     const [loading, setLoading] = useState(false);
 
     const fetchFollows = useCallback(async () => {
@@ -18,7 +38,13 @@ export function useFollows() {
         setLoading(true);
         try {
             const data = await followsApi.get();
-            setFollows(data);
+            const sanitized = {
+                tags: data?.tags || [],
+                companies: data?.companies || [],
+                contributors: data?.contributors || [],
+            };
+            setFollows(sanitized);
+            setJSON(FOLLOWS_CACHE_KEY, sanitized);
         } catch (error) {
             console.error('Failed to fetch follows', error);
         } finally {
@@ -27,40 +53,81 @@ export function useFollows() {
     }, [user]);
 
     const follow = useCallback(async (type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
-        if (!user) return;
+        if (!user) return false;
+        
+        // Optimistic UI updates
+        const updateState = () => {
+            setFollows(prev => {
+                const key = type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors';
+                const currentList = prev[key as keyof Follows] || [];
+                if (currentList.includes(value)) return prev;
+                const next = {
+                    ...prev,
+                    [key]: [...currentList, value]
+                };
+                setJSON(FOLLOWS_CACHE_KEY, next);
+                return next;
+            });
+        };
+
         try {
+            // Apply optimistic UI state immediately to prevent lag
+            updateState();
             await followsApi.follow({ type, value });
-            setFollows(prev => ({
-                ...prev,
-                [type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors']: 
-                [...prev[type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors' as keyof Follows], value]
-            }));
             return true;
-        } catch (error) {
+        } catch (error: any) {
+            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
+            if (isOffline) {
+                console.log('[Follows] Offline detected. Enqueueing follow action in offline queue...', { type, value });
+                void enqueueOfflineFollowAdd(type, value, user.id);
+                return true;
+            }
+            
+            // Revert on real server failure
             console.error('Follow failed', error);
+            if (user) void fetchFollows();
             return false;
         }
-    }, [user]);
+    }, [user, fetchFollows]);
 
     const unfollow = useCallback(async (type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
-        if (!user) return;
+        if (!user) return false;
+
+        const updateState = () => {
+            setFollows(prev => {
+                const key = type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors';
+                const currentList = prev[key as keyof Follows] || [];
+                if (!currentList.includes(value)) return prev;
+                const next = {
+                    ...prev,
+                    [key]: currentList.filter(v => v !== value)
+                };
+                setJSON(FOLLOWS_CACHE_KEY, next);
+                return next;
+            });
+        };
+
         try {
+            updateState();
             await followsApi.unfollow({ type, value });
-            setFollows(prev => ({
-                ...prev,
-                [type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors']: 
-                prev[type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors' as keyof Follows].filter(v => v !== value)
-            }));
             return true;
-        } catch (error) {
+        } catch (error: any) {
+            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
+            if (isOffline) {
+                console.log('[Follows] Offline detected. Enqueueing unfollow action in offline queue...', { type, value });
+                void enqueueOfflineFollowRemove(type, value, user.id);
+                return true;
+            }
+
             console.error('Unfollow failed', error);
+            if (user) void fetchFollows();
             return false;
         }
-    }, [user]);
+    }, [user, fetchFollows]);
 
     const isFollowing = useCallback((type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
         const list = type === 'TAG' ? follows.tags : type === 'COMPANY' ? follows.companies : follows.contributors;
-        return list.includes(value);
+        return Array.isArray(list) && list.includes(value);
     }, [follows]);
 
     useEffect(() => {

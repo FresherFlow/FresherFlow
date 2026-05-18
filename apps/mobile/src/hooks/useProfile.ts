@@ -1,11 +1,24 @@
 import { useState, useCallback, useEffect } from 'react';
 import { actionsApi, profileApi } from '@fresherflow/api-client';
-import { useUserAuth as useAuth, useSaved } from '@repo/frontend-core';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useSaved } from '@repo/frontend-core';
 import { Profile } from '@fresherflow/types';
 import { saveLocalProfile, getLocalProfile } from '@/utils/localProfile';
 
+// --- In-memory cache & request deduplication layer ---
+let lastStatsFetchTime = 0;
+let lastProfileFetchTime = 0;
+let cachedAppliedCount = 0;
+let cachedShareStats = { totalShared: 0, totalPublished: 0, approvalRate: 0 };
+let cachedProfile: Profile | null = null;
+let cachedCompletionPercentage = 0;
+
+let activeStatsPromise: Promise<{ applied: number; shareStats: typeof cachedShareStats }> | null = null;
+let activeProfilePromise: Promise<{ profile: Profile; completionPercentage: number }> | null = null;
+
 export const useProfile = () => {
-    const { user, profile: authProfile, logout, refreshMe } = useAuth();
+    const { user, logout } = useAuthStore();
+    const refreshMe = async () => {}; // Placeholder to match previous interface
     const { savedJobs } = useSaved();
 
     const [fullProfile, setFullProfile] = useState<Profile | null>(null);
@@ -30,35 +43,103 @@ export const useProfile = () => {
 
     const fetchStats = useCallback(async () => {
         if (!user) return;
-        try {
-            const data = await actionsApi.summary() as { summary: { applied?: number } };
-            setAppliedCount(data.summary.applied || 0);
 
+        // 1. If stats were fetched in the last 10 seconds, serve from cache
+        if (Date.now() - lastStatsFetchTime < 10000) {
+            setAppliedCount(cachedAppliedCount);
+            setShareStats(cachedShareStats);
+            return;
+        }
+
+        // 2. Deduplicate simultaneous active requests
+        if (activeStatsPromise) {
+            try {
+                const res = await activeStatsPromise;
+                setAppliedCount(res.applied);
+                setShareStats(res.shareStats);
+            } catch {
+                // Handled in main promise
+            }
+            return;
+        }
+
+        activeStatsPromise = (async () => {
+            const data = await actionsApi.summary() as { summary: { applied?: number } };
+            const applied = data.summary.applied || 0;
+
+            let shareStatsVal = cachedShareStats;
             if (user) {
                 const res = await profileApi.getShares(1);
-                setShareStats(res.stats);
+                shareStatsVal = res.stats;
             }
+
+            return { applied, shareStats: shareStatsVal };
+        })();
+
+        try {
+            const res = await activeStatsPromise;
+            cachedAppliedCount = res.applied;
+            cachedShareStats = res.shareStats;
+            lastStatsFetchTime = Date.now();
+
+            setAppliedCount(res.applied);
+            setShareStats(res.shareStats);
         } catch (e) {
             console.warn('Failed to fetch user stats', e);
+        } finally {
+            activeStatsPromise = null;
         }
     }, [user]);
 
     const fetchProfile = useCallback(async () => {
         if (!user) return;
+
+        // 1. If profile was fetched in the last 10 seconds, serve from cache
+        if (Date.now() - lastProfileFetchTime < 10000 && cachedProfile) {
+            setFullProfile(cachedProfile);
+            setCompletionPercentage(cachedCompletionPercentage);
+            return;
+        }
+
+        // 2. Deduplicate simultaneous active requests
+        if (activeProfilePromise) {
+            try {
+                const res = await activeProfilePromise;
+                setFullProfile(res.profile);
+                setCompletionPercentage(res.completionPercentage);
+            } catch {
+                // Handled in main promise
+            }
+            return;
+        }
+
         setLoadingProfile(true);
-        try {
+        activeProfilePromise = (async () => {
             const [profileRes, completionRes] = await Promise.all([
                 profileApi.get(),
                 profileApi.getCompletion()
             ]) as [{ profile: Profile }, { completionPercentage: number }];
 
-            setFullProfile(profileRes.profile);
-            setCompletionPercentage(completionRes.completionPercentage);
-            await saveLocalProfile(profileRes.profile);
+            return {
+                profile: profileRes.profile,
+                completionPercentage: completionRes.completionPercentage
+            };
+        })();
+
+        try {
+            const res = await activeProfilePromise;
+            cachedProfile = res.profile;
+            cachedCompletionPercentage = res.completionPercentage;
+            lastProfileFetchTime = Date.now();
+
+            setFullProfile(res.profile);
+            setCompletionPercentage(res.completionPercentage);
+            await saveLocalProfile(res.profile);
         } catch (e) {
             console.warn('Failed to fetch profile data', e);
         } finally {
             setLoadingProfile(false);
+            activeProfilePromise = null;
         }
     }, [user]);
 
@@ -78,6 +159,8 @@ export const useProfile = () => {
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         setFullProfile(merged);
         await saveLocalProfile(merged);
+        // Invalidate profile cache to force fresh reload
+        lastProfileFetchTime = 0;
         // Background API sync — silent fail is fine, local save is source of truth
         try {
             await profileApi.updateEducation(data);
@@ -95,6 +178,8 @@ export const useProfile = () => {
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         setFullProfile(merged);
         await saveLocalProfile(merged);
+        // Invalidate profile cache
+        lastProfileFetchTime = 0;
         try {
             await profileApi.updatePreferences(data);
             await Promise.all([fetchProfile(), refreshMe()]);
@@ -107,6 +192,8 @@ export const useProfile = () => {
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         setFullProfile(merged);
         await saveLocalProfile(merged);
+        // Invalidate profile cache
+        lastProfileFetchTime = 0;
         try {
             await profileApi.updateReadiness(data);
             await Promise.all([fetchProfile(), refreshMe()]);
@@ -130,7 +217,7 @@ export const useProfile = () => {
         user,
         // fullProfile is local AsyncStorage data — source of truth for local-first testing
         // Falls back to authProfile only if local cache is empty
-        profile: fullProfile ?? authProfile,
+        profile: fullProfile ?? (user?.profile as Profile),
         completionPercentage,
         loadingProfile,
         loadingCache,
