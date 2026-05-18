@@ -28,36 +28,39 @@ function signPathname(pathname: string, secret: string): { t: number; sig: strin
  */
 export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null> {
     try {
-        let url = BOOTSTRAP_FEED_URL;
-        const secret = process.env.CDN_SIGNATURE_SECRET;
-        if (secret && (url.includes('cdn.fresherflow.in') || url.includes('fresherflow.pages.dev'))) {
-            try {
-                const parsedUrl = new URL(url);
-                const { t, sig } = signPathname(parsedUrl.pathname, secret);
-                parsedUrl.searchParams.set('t', t.toString());
-                parsedUrl.searchParams.set('sig', sig);
-                url = parsedUrl.toString();
-            } catch (err) {
-                console.error('Failed to sign CDN url:', err);
+        // Server-side (Vercel build / Next.js SSR): fetch directly from Render API.
+        // cdn.fresherflow.in has a Cloudflare Worker that blocks unsigned server requests.
+        // api.fresherflow.in goes straight to Render with no Worker in front of it.
+        const IS_SERVER = typeof window === 'undefined';
+        let url: string;
+
+        if (IS_SERVER) {
+            const apiBase = process.env.NEXT_PUBLIC_API_URL || 'https://api.fresherflow.in';
+            url = `${apiBase}/bootstrap-feed.min.json`;
+        } else {
+            url = BOOTSTRAP_FEED_URL;
+            const secret = process.env.CDN_SIGNATURE_SECRET;
+            if (secret && (url.includes('cdn.fresherflow.in') || url.includes('fresherflow.pages.dev'))) {
+                try {
+                    const parsedUrl = new URL(url);
+                    const { t, sig } = signPathname(parsedUrl.pathname, secret);
+                    parsedUrl.searchParams.set('t', t.toString());
+                    parsedUrl.searchParams.set('sig', sig);
+                    url = parsedUrl.toString();
+                } catch (err) {
+                    console.error('Failed to sign CDN url:', err);
+                }
             }
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
-
-        // For server-side fetches (Vercel build / Next.js SSR), there is no browser Origin header.
-        // The Cloudflare worker requires a build token to authenticate these requests.
-        const IS_SERVER = typeof window === 'undefined';
-        const buildToken = IS_SERVER ? process.env.CDN_BUILD_TOKEN : undefined;
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const res = await fetch(url, {
-            next: { revalidate: 3600 }, // Cache for 1 hour on the server
+            next: { revalidate: 3600 },
             signal: controller.signal,
-            headers: {
-                'Origin': SITE_URL || 'https://fresherflow.in',
-                ...(buildToken ? { 'X-CDN-Build-Token': buildToken } : {}),
-            }
         });
+
 
         clearTimeout(timeoutId);
 
