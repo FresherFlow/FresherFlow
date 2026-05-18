@@ -1,20 +1,18 @@
 /**
  * ============================================================================
- * CLOUDFLARE EDGE WORKER - PRODUCTION CORRECT SECURITY SHIELD (SECURE EDITION)
+ * CLOUDFLARE EDGE WORKER - PRODUCTION CORRECT SECURITY SHIELD (SECURE R2 EDITION)
  * ============================================================================
  * 
  * Enforces:
- * 1. Strict CORS checking for Web browsers.
- * 2. HMAC-SHA256 Cryptographic Request Signature validation for Mobile clients
+ * 1. HMAC-SHA256 Cryptographic Request Signature validation for all protected clients
  *    signing both the PATHNAME and TIMESTAMP (Path-locked replay prevention).
- * 3. Replay Attack Prevention (5-minute timestamp drift threshold).
- * 4. Safe Fail-Hard check for environment secrets (Zero dangerous default fallbacks).
+ * 2. Replay Attack Prevention (5-minute timestamp drift threshold).
+ * 3. Safe Fail-Hard check for environment secrets (Zero dangerous default fallbacks).
  */
 
 export interface Env {
     // Configured via Cloudflare Dashboard Environment Variables
     CDN_SIGNATURE_SECRET: string;
-    CDN_BUILD_TOKEN: string; // Shared with Vercel env as X-CDN-Build-Token header
 }
 
 // Secure constant-time comparison to prevent timing attacks
@@ -30,9 +28,9 @@ function safeCompare(a: string, b: string): boolean {
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
         // 1. FAIL HARD ON MISCONFIGURATION
-        if (!env.CDN_SIGNATURE_SECRET || !env.CDN_BUILD_TOKEN) {
+        if (!env.CDN_SIGNATURE_SECRET) {
             return new Response(JSON.stringify({ 
-                error: 'Edge Server Misconfigured: Missing CDN_SIGNATURE_SECRET or CDN_BUILD_TOKEN' 
+                error: 'Edge Server Misconfigured: Missing CDN_SIGNATURE_SECRET' 
             }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }
@@ -51,79 +49,25 @@ export default {
                             pathname.startsWith('/categories/');
 
         if (!isProtected) {
-            // Forward directly to origin (or edge cache) for public metadata
+            // Forward directly to origin (R2 bucket) for public metadata and sitemaps
             return fetch(request);
         }
 
-        // 3. SERVER BUILD TOKEN CHECK (Vercel builds, Next.js SSR)
-        // Server-side requests (no Origin/Referer) must present a pre-shared build token.
-        // This prevents competitors from doing a simple curl to steal the entire feed.
-        const buildToken = request.headers.get('X-CDN-Build-Token');
-        const origin = request.headers.get('Origin');
-        const referer = request.headers.get('Referer');
-        const userAgent = request.headers.get('User-Agent') || '';
-
-        const isServerSideRequest = !origin && !referer;
-        if (isServerSideRequest) {
-            if (!buildToken || !safeCompare(buildToken, env.CDN_BUILD_TOKEN)) {
-                return new Response(JSON.stringify({ error: 'Forbidden: Missing or invalid build token' }), {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-            // Valid build token — serve directly
-            return fetch(request);
-        }
-
-        // 4. WEB BROWSER ORIGIN PROTECTION (CORS)
-        // Identify browsers by origin/referer presence
-        const isWebBrowser = origin || referer || userAgent.includes('Mozilla');
-
-        if (isWebBrowser && !userAgent.includes('FresherFlow')) {
-            const allowedOrigins = [
-                'https://fresherflow.in',
-                'https://www.fresherflow.in',
-                'https://app.fresherflow.in',
-                'https://fresherflow.com',
-                'https://www.fresherflow.com',
-                'http://localhost:3000',
-                'http://localhost:3001'
-            ];
-            
-            const reqOrigin = origin || (referer ? new URL(referer).origin : '');
-            if (!allowedOrigins.includes(reqOrigin)) {
-                return new Response(JSON.stringify({ error: 'CORS Blocked: Unauthorized Web Domain' }), {
-                    status: 403,
-                    headers: { 'Content-Type': 'application/json' }
-                });
-            }
-            
-            // Allow Web fetch if origin matches
-            const response = await fetch(request);
-            const headers = new Headers(response.headers);
-            headers.set('Access-Control-Allow-Origin', reqOrigin);
-            headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
-            headers.set('Access-Control-Allow-Headers', 'Content-Type');
-            return new Response(response.body as any, { 
-                status: response.status, 
-                statusText: response.statusText, 
-                headers 
-            });
-        }
-
-        // 5. CRYPTOGRAPHIC SIGNATURE CHECK (MOBILE CLIENTS)
+        // 3. CRYPTOGRAPHIC SIGNATURE CHECK (REQUIRED FOR PROTECTED FEEDS)
         const timestampStr = url.searchParams.get('t');
         const signature = url.searchParams.get('sig');
+        const hasSignature = timestampStr && signature;
 
-        if (!timestampStr || !signature) {
+        if (!hasSignature) {
             return new Response(JSON.stringify({ 
-                error: 'Forbidden: Missing Cryptographic Signature parameters (t, sig)' 
+                error: 'Forbidden: Browser/unauthenticated access disabled for feed assets' 
             }), {
                 status: 403,
                 headers: { 'Content-Type': 'application/json' }
             });
         }
 
+        // 4. CRYPTOGRAPHIC SIGNATURE CHECK (MOBILE CLIENTS / SECURE SERVER-SIDE FRONTEND)
         // A. Prevent Replay Attacks (Timestamp drift must be < 5 minutes / 300 seconds)
         const clientTimestamp = parseInt(timestampStr, 10);
         const serverTimestamp = Math.floor(Date.now() / 1000);
@@ -179,7 +123,7 @@ export default {
                 });
             }
 
-            // Signature matches! Serve the static file from Edge cache or Origin
+            // Signature matches! Serve the static file directly from R2
             return fetch(request);
 
         } catch (e) {

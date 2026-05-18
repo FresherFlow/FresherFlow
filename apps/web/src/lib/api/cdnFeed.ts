@@ -6,6 +6,7 @@ import {
     EDUCATION_METADATA_URL, 
     SKILLS_METADATA_URL 
 } from '../runtimeConfig';
+import crypto from 'node:crypto';
 
 export interface BootstrapFeedResponse {
     opportunities: Opportunity[];
@@ -13,24 +14,42 @@ export interface BootstrapFeedResponse {
     generatedAt: string;
 }
 
-/**
- * Generates correct fetch options for the static CDN.
- * On server-side (Vercel builds, Next.js SSR), it attaches the pre-shared X-CDN-Build-Token header
- * to instantly pass Cloudflare Worker validation without needing short-lived cryptographic signatures.
- */
-function getCDNFetchOptions(options: RequestInit = {}): RequestInit {
-    const IS_SERVER = typeof window === 'undefined';
-    const headers = new Headers(options.headers || {});
+function signPathname(pathname: string, secret: string): { t: number; sig: string } {
+    const t = Math.floor(Date.now() / 1000);
+    const message = `${pathname}:${t}`;
+    const sig = crypto.createHmac('sha256', secret).update(message).digest('hex');
+    return { t, sig };
+}
 
-    if (IS_SERVER) {
-        const buildToken = process.env.CDN_BUILD_TOKEN;
-        if (buildToken) {
-            headers.set('X-CDN-Build-Token', buildToken);
+/**
+ * Signs a CDN URL if executed on the server-side (Vercel builds / Next.js SSR)
+ * to successfully pass through Cloudflare Worker request signature verification.
+ */
+function signUrlIfServer(url: string): string {
+    const IS_SERVER = typeof window === 'undefined';
+    if (!IS_SERVER) return url;
+
+    const secret = process.env.CDN_SIGNATURE_SECRET;
+    if (secret && (url.includes('cdn.fresherflow.in') || url.includes('fresherflow.pages.dev'))) {
+        try {
+            const parsedUrl = new URL(url);
+            const { t, sig } = signPathname(parsedUrl.pathname, secret);
+            parsedUrl.searchParams.set('t', t.toString());
+            parsedUrl.searchParams.set('sig', sig);
+            return parsedUrl.toString();
+        } catch (err) {
+            console.error('Failed to sign CDN url on server:', err);
         }
     }
-    
-    headers.set('Origin', SITE_URL || 'https://fresherflow.com');
+    return url;
+}
 
+/**
+ * Generates correct fetch options for the static CDN.
+ */
+function getCDNFetchOptions(options: RequestInit = {}): RequestInit {
+    const headers = new Headers(options.headers || {});
+    headers.set('Origin', SITE_URL || 'https://fresherflow.com');
     return {
         ...options,
         headers,
@@ -43,7 +62,7 @@ function getCDNFetchOptions(options: RequestInit = {}): RequestInit {
  */
 export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null> {
     try {
-        const url = BOOTSTRAP_FEED_URL;
+        const url = signUrlIfServer(BOOTSTRAP_FEED_URL);
 
         const controller = new AbortController();
         // 15s timeout to comfortably tolerate sleeping Render cold starts on unprimed caches
@@ -81,7 +100,7 @@ export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null
  */
 export async function fetchCategoryShard(id: string): Promise<BootstrapFeedResponse | null> {
     try {
-        const url = GET_CATEGORY_SHARD_URL(id);
+        const url = signUrlIfServer(GET_CATEGORY_SHARD_URL(id));
 
         const res = await fetch(url, getCDNFetchOptions({
             next: { revalidate: 3600 }
@@ -106,7 +125,7 @@ export interface EducationMetadata {
  */
 export async function fetchEducationMetadata(): Promise<EducationMetadata | null> {
     try {
-        const url = EDUCATION_METADATA_URL;
+        const url = signUrlIfServer(EDUCATION_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
             next: { revalidate: 86400 } // 24 hours cache
         }));
@@ -123,7 +142,7 @@ export async function fetchEducationMetadata(): Promise<EducationMetadata | null
  */
 export async function fetchSkillsMetadata(): Promise<string[] | null> {
     try {
-        const url = SKILLS_METADATA_URL;
+        const url = signUrlIfServer(SKILLS_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
             next: { revalidate: 86400 } // 24 hours cache
         }));
