@@ -29,6 +29,18 @@ addEventListener('fetch', function(event) {
 });
 
 async function handleRequest(request) {
+    // 0. HANDLE CORS PREFLIGHT OPTIONS REQUESTS
+    if (request.method === 'OPTIONS') {
+        return new Response(null, {
+            status: 204,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': '*'
+            }
+        });
+    }
+
     // 1. FAIL HARD ON MISCONFIGURATION
     // In classic Cloudflare workers, environment variables are bound to the global scope.
     var secret = typeof CDN_SIGNATURE_SECRET !== 'undefined' ? CDN_SIGNATURE_SECRET : null;

@@ -27,6 +27,18 @@ function safeCompare(a: string, b: string): boolean {
 
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
+        // 0. HANDLE CORS PREFLIGHT OPTIONS REQUESTS
+        if (request.method === 'OPTIONS') {
+            return new Response(null, {
+                status: 204,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                    'Access-Control-Allow-Headers': '*'
+                }
+            });
+        }
+
         // 1. FAIL HARD ON MISCONFIGURATION
         if (!env.CDN_SIGNATURE_SECRET) {
             return new Response(JSON.stringify({ 
