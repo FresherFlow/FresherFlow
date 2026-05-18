@@ -1,0 +1,7 @@
+{
+  "name": "react-native-mmkv",
+  "version": "3.2.0-mock",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "private": true
+}

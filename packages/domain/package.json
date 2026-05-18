@@ -15,7 +15,8 @@
         "@fresherflow/types": "*",
         "@fresherflow/constants": "*",
         "@fresherflow/logger": "*",
-        "@fresherflow/database": "*"
+        "@fresherflow/database": "*",
+        "@fresherflow/utils": "*"
     },
     "devDependencies": {
         "typescript": "^5.7.3",
