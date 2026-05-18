@@ -32,16 +32,14 @@ router.post('/:id/click', async (req: Request, res: Response, next: NextFunction
         // Update Engagement Counters (Item 160 in plan)
         await updateOpportunityEngagement(opportunity.id, 'click');
 
-        // Optional: Log to OpportunityClick table if detailed audit is needed
-        if (req.userId) {
-            await prisma.opportunityClick.create({
-                data: {
-                    opportunityId: opportunity.id,
-                    userId: req.userId,
-                    source: (req.headers['x-platform'] as string) || 'unknown'
-                }
-            }).catch(() => null); // Silently fail if unique constraint or other issue
-        }
+        // Use Buffered Event Service
+        const { eventService } = await import('../../../infrastructure/services/event.service');
+        await eventService.track({
+            type: 'CLICK_APPLY',
+            opportunityId: opportunity.id,
+            userId: req.userId || undefined,
+            source: (req.headers['x-platform'] as string) || 'unknown'
+        });
 
         return res.json({ success: true });
     } catch (error) {

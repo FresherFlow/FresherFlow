@@ -41,6 +41,9 @@ enum ActionType {
   SELECTED
   VIEWED  // Auto-tracked on job detail view
   SHARED
+  OA
+  REJECTED
+  REPORTED
   // Legacy values kept for compatibility with existing rows
   PLANNING
   ATTENDED
@@ -104,6 +107,18 @@ enum GrowthFunnelEvent {
   INSTALL_PROMPT_SHOWN
   INSTALL_ACCEPTED
   OPENED_STANDALONE
+  APP_INIT
+}
+
+enum PlatformEventType {
+  VIEW_JOB
+  CLICK_APPLY
+  SHARE_JOB
+  SAVE_JOB
+  REFERRAL_HIT
+  REFERRAL_CLICK
+  APP_INIT
+  AUTH_STEP
 }
 
 enum ReferralBadge {
@@ -212,12 +227,10 @@ model User {
   alertDeliveries    AlertDelivery[]
   alertDispatchLogs AlertDispatchLog[]
   pushSubscription   PushSubscription?
-  opportunityClicks OpportunityClick[]
+  platformEvents     PlatformEvent[]
   ingestionSources   IngestionSource[]
   referredBy         User?                @relation("UserReferrals", fields: [referredByUserId], references: [id], onDelete: SetNull)
   referrals          User[]               @relation("UserReferrals")
-  referralVisits     ReferralVisit[]      @relation("ReferralVisitReferrer")
-  referralVisitsAsVisitor ReferralVisit[] @relation("ReferralVisitVisitor")
   earnedReferralBadges ReferralBadgeGrant[]
 
   // Admin Relations (only for role=ADMIN)
@@ -425,9 +438,9 @@ model Opportunity {
   alertDeliveries AlertDelivery[]
   alertDispatchLogs AlertDispatchLog[]
   telegramBroadcasts TelegramBroadcast[]
-  clicks OpportunityClick[]
   rawIngestions RawOpportunity[]
   events OpportunityEvent[]
+  platformEvents PlatformEvent[]
   socialPosts SocialPost[]
   comments    OpportunityComment[]
 
@@ -595,36 +608,29 @@ model AlertPreference {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model GrowthEvent {
-  id        String            @id @default(uuid())
-  source    String            @default("unknown")
-  event     GrowthFunnelEvent
-  createdAt DateTime          @default(now())
+model PlatformEvent {
+  id            String            @id @default(uuid())
+  type          PlatformEventType
+  opportunityId String?
+  userId        String?
+  sessionId     String?
+  source        String?           @default("unknown")
+  metadata      Json?
+  createdAt     DateTime          @default(now())
 
-  @@index([createdAt])
-  @@index([source, event])
-  @@index([source, createdAt])
+  user        User?        @relation(fields: [userId], references: [id], onDelete: SetNull)
+  opportunity Opportunity? @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
+
+  @@index([type, createdAt])
+  @@index([opportunityId, createdAt])
+  @@index([userId, createdAt])
+  @@index([sessionId, createdAt])
 }
 
-model ReferralVisit {
-  id               String   @id @default(uuid())
-  referralCode     String
-  referrerUserId   String
-  visitorSessionId String?
-  visitorUserId    String?
-  referrer         String?
-  userAgent        String?
-  ipHash           String?
-  createdAt        DateTime @default(now())
-
-  referrerUser User  @relation("ReferralVisitReferrer", fields: [referrerUserId], references: [id], onDelete: Cascade)
-  visitorUser  User? @relation("ReferralVisitVisitor", fields: [visitorUserId], references: [id], onDelete: SetNull)
-
-  @@index([referralCode, createdAt])
-  @@index([referrerUserId, createdAt])
-  @@index([visitorSessionId, createdAt])
-  @@index([visitorUserId, createdAt])
-}
+// DEPRECATED Models (To be removed after migration)
+// model GrowthEvent { ... }
+// model ReferralVisit { ... }
+// model OpportunityClick { ... }
 
 model ReferralBadgeGrant {
   id        String         @id @default(uuid())
@@ -639,28 +645,7 @@ model ReferralBadgeGrant {
   @@index([badge, createdAt])
 }
 
-model OpportunityClick {
-  id            String   @id @default(uuid())
-  opportunityId String
-  userId        String?
-  sessionId     String?
-  source        String   @default("unknown")
-  targetUrl     String?
-  referrer      String?
-  userAgent     String?
-  ipHash        String?
-  isInternal    Boolean  @default(false)
-  createdAt     DateTime @default(now())
-
-  opportunity Opportunity @relation(fields: [opportunityId], references: [id], onDelete: Cascade)
-  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([createdAt])
-  @@index([opportunityId, createdAt])
-  @@index([isInternal, createdAt])
-  @@index([userId, createdAt])
-  @@index([sessionId, createdAt])
-}
+// Removed OpportunityClick (Moved to PlatformEvent)
 
 model AlertDelivery {
   id            String       @id @default(uuid())

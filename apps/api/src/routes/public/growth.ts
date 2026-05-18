@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
-import { recordGrowthEvent } from '../../infrastructure/services/growthFunnel.service';
+import { eventService } from '../../infrastructure/services/event.service';
+import { PlatformEventType } from '@fresherflow/database';
 import { createRateLimiter } from '../../middleware/rateLimit';
 
 const router = express.Router();
@@ -89,7 +90,24 @@ router.post('/event', growthEventLimiter, async (req: Request, res: Response) =>
     const ttl = getEventDedupeWindow(normalizedEvent);
     if (!lastSeen || lastSeen <= now) {
         recentEvents.set(dedupeKey, now + ttl);
-        await recordGrowthEvent(normalizedSource, normalizedEvent);
+
+        // Map GrowthFunnelEvent to PlatformEventType
+        let platformType: PlatformEventType | null = null;
+        if (normalizedEvent === 'DETAIL_VIEW') platformType = 'VIEW_JOB';
+        else if (normalizedEvent === 'SHARE_JOB') platformType = 'SHARE_JOB';
+        else if (normalizedEvent === 'SAVE_JOB') platformType = 'SAVE_JOB';
+        else if (normalizedEvent === 'APPLY_CLICK') platformType = 'CLICK_APPLY';
+        else if (normalizedEvent === 'OPENED_STANDALONE') platformType = 'APP_INIT';
+
+        if (platformType) {
+            await eventService.track({
+                type: platformType,
+                source: normalizedSource,
+                sessionId: normalizedSessionId,
+                opportunityId: normalizedOpportunityId || undefined,
+                metadata: { route: normalizedRoute }
+            });
+        }
     }
 
     res.status(202).json({ ok: true });

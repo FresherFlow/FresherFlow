@@ -5,6 +5,7 @@ import { requireAuth } from '../middleware/auth';
 import { createRateLimiter } from '../middleware/rateLimit';
 import crypto from 'crypto';
 import { getPublicSiteUrl } from '../utils/runtimeConfig';
+import { eventService } from '../infrastructure/services/event.service';
 
 const router: Router = express.Router();
 
@@ -34,10 +35,6 @@ const BADGE_META: Record<string, { label: string; description: string; emoji: st
 };
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function hashIp(ip: string): string {
-    return crypto.createHash('sha256').update(ip + (process.env.IP_HASH_SALT ?? 'ff')).digest('hex').slice(0, 16);
-}
 
 async function awardBadges(userId: string, signupCount: number) {
     const existingBadges = await prisma.referralBadgeGrant.findMany({ where: { userId } });
@@ -78,16 +75,15 @@ router.post('/:code/click', clickLimiter, async (req: Request, res: Response, ne
         });
         if (!referrer) return res.status(404).json({ error: 'Invalid code' });
 
-        const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ?? req.socket?.remoteAddress ?? '';
-
-        await prisma.referralVisit.create({
-            data: {
+        // Use Unified Event System
+        await eventService.track({
+            type: 'REFERRAL_CLICK',
+            source: 'referral_link',
+            sessionId: sessionId || undefined,
+            metadata: {
                 referralCode: code.toUpperCase(),
-                referrerUserId: referrer.id,
-                visitorSessionId: sessionId ?? null,
-                ipHash: hashIp(ip),
-                userAgent: (req.headers['user-agent'] ?? '').slice(0, 300),
-            },
+                referrerUserId: referrer.id
+            }
         });
 
         res.json({ ok: true });
@@ -95,13 +91,11 @@ router.post('/:code/click', clickLimiter, async (req: Request, res: Response, ne
 });
 
 // ─── GET /api/referrals/me ───────────────────────────────────────────────────
-// Authenticated: returns code, stats, referral list, earned badges
 
 router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const userId = req.userId!;
 
-        // Ensure user has a referral code (lazy generate)
         let user = await prisma.user.findUnique({
             where: { id: userId },
             select: { id: true, referralCode: true },
@@ -126,18 +120,21 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
                     maxRetries--;
                 }
             }
-            if (!codeGenerated) {
-                return res.status(500).json({ error: 'Failed to generate referral code' });
-            }
+            if (!codeGenerated) return res.status(500).json({ error: 'Failed to generate code' });
         }
 
         const code = user.referralCode!;
         const origin = process.env.FRONTEND_URL ?? getPublicSiteUrl();
         const shareUrl = `${origin}/r/${code}`;
 
-        // Stats
+        // Stats from PlatformEvent
         const [totalClicks, totalSignups, activated, referralsRaw] = await Promise.all([
-            prisma.referralVisit.count({ where: { referralCode: code } }),
+            prisma.platformEvent.count({
+                where: {
+                    type: 'REFERRAL_CLICK',
+                    metadata: { path: ['referralCode'], equals: code.toUpperCase() }
+                }
+            }),
             prisma.user.count({ where: { referredByUserId: userId } }),
             prisma.user.count({
                 where: {
@@ -164,13 +161,6 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
             select: { badge: true, createdAt: true },
         });
 
-        const earnedBadges = badges.map((b: { badge: string; createdAt: Date; }) => ({
-            badge: b.badge,
-            ...BADGE_META[b.badge],
-            earnedAt: b.createdAt,
-        }));
-        void earnedBadges; // Fix unused variable warning if intended for future use or just for side effects.
-
         const allBadges = BADGE_MILESTONES.map((m) => ({
             badge: m.badge,
             ...BADGE_META[m.badge],
@@ -194,16 +184,11 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
     } catch (e) { next(e); }
 });
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I, O, 0, 1 — easy to read
-
+const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function generateCode(len = 6): string {
     let code = '';
     const bytes = crypto.randomBytes(len);
-    for (let i = 0; i < len; i++) {
-        code += CHARS[bytes[i]! % CHARS.length];
-    }
+    for (let i = 0; i < len; i++) code += CHARS[bytes[i]! % CHARS.length];
     return code;
 }
 

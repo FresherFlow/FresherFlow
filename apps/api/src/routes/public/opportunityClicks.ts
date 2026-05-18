@@ -1,6 +1,6 @@
 import prisma from '../../infrastructure/database/prisma';
-import crypto from 'crypto';
 import express, { NextFunction, Request, Response } from 'express';
+import { eventService } from '../../infrastructure/services/event.service';
 
 import { optionalAuth } from '../../middleware/auth';
 import { updateOpportunityEngagement } from '../../application/opportunity/engagement';
@@ -8,28 +8,7 @@ import { updateOpportunityEngagement } from '../../application/opportunity/engag
 const router = express.Router();
 
 
-function getClientIp(req: Request): string {
-    const forwarded = req.headers['x-forwarded-for'];
-    const cfIp = req.headers['cf-connecting-ip'];
-    const realIp = req.headers['x-real-ip'];
-
-    const firstForwarded = Array.isArray(forwarded)
-        ? forwarded[0]
-        : typeof forwarded === 'string'
-            ? forwarded.split(',')[0]
-            : undefined;
-
-    const raw = (firstForwarded || (Array.isArray(cfIp) ? cfIp[0] : cfIp) || (Array.isArray(realIp) ? realIp[0] : realIp) || req.ip || 'unknown')
-        .toString()
-        .trim();
-
-    return raw.replace(/^::ffff:/, '');
-}
-
-function hashIp(ip: string): string {
-    const salt = process.env.ANALYTICS_IP_HASH_SALT || 'fresherflow-default-salt';
-    return crypto.createHash('sha256').update(`${salt}:${ip}`).digest('hex').slice(0, 24);
-}
+// IP hashing removed for privacy-first tracking
 
 function normalize(input: unknown, max = 200): string | null {
     if (typeof input !== 'string') return null;
@@ -58,8 +37,6 @@ router.post('/opportunities/:id/click', optionalAuth, async (req: Request, res: 
         const sessionId = normalize(req.body?.sessionId, 100);
         const targetUrl = normalize(req.body?.targetUrl, 500);
         const referrer = normalize(req.get('referer') || req.get('referrer'), 500);
-        const userAgent = normalize(req.get('user-agent'), 300);
-        const ipHash = hashIp(getClientIp(req));
 
         let isInternal = false;
         let userId: string | null = req.userId || null;
@@ -86,17 +63,17 @@ router.post('/opportunities/:id/click', optionalAuth, async (req: Request, res: 
             isInternal = true;
         }
 
-        await prisma.opportunityClick.create({
-            data: {
-                opportunityId: opportunity.id,
-                userId,
-                sessionId,
-                source,
+        // Use Buffered Event Service
+        await eventService.track({
+            type: 'CLICK_APPLY',
+            opportunityId: opportunity.id,
+            userId: userId || undefined,
+            sessionId: sessionId || undefined,
+            source,
+            metadata: {
                 targetUrl,
                 referrer,
-                userAgent,
-                ipHash,
-                isInternal,
+                isInternal
             }
         });
 

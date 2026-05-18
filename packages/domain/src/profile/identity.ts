@@ -1,5 +1,15 @@
-import { prisma } from '@fresherflow/database';
+import { prisma, Prisma } from '@fresherflow/database';
 import { logger } from '@fresherflow/logger';
+
+type MergeSavedOpportunity = {
+    id: string;
+    opportunityId: string;
+};
+
+type MergeUserAction = {
+    id: string;
+    opportunityId: string;
+};
 
 /**
  * IdentityMerger Service
@@ -21,17 +31,17 @@ export class IdentityMerger {
     static async mergeAnonymousData(anonId: string, permanentUserId: string) {
         logger.info(`Starting identity merge: ${anonId} -> ${permanentUserId}`);
 
-        return await prisma.$transaction(async (tx) => {
+        return await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
             // 1. Fetch data for both identities
             const [anonSaved, permanentSaved] = await Promise.all([
                 tx.savedOpportunity.findMany({ where: { userId: anonId } }),
                 tx.savedOpportunity.findMany({ where: { userId: permanentUserId } })
-            ]);
+            ]) as [MergeSavedOpportunity[], MergeSavedOpportunity[]];
 
             const [anonActions, permanentActions] = await Promise.all([
                 tx.userAction.findMany({ where: { userId: anonId } }),
                 tx.userAction.findMany({ where: { userId: permanentUserId } })
-            ]);
+            ]) as [MergeUserAction[], MergeUserAction[]];
 
             // 2. Identify transferable items (avoiding unique constraint violations)
             const permanentSavedIds = new Set(permanentSaved.map(s => s.opportunityId));
@@ -58,8 +68,8 @@ export class IdentityMerger {
                 });
             }
 
-            // 4. Execute click/event reassignments (no unique constraints here)
-            await tx.opportunityClick.updateMany({
+            // 4. Execute unified event reassignments (clicks, views, etc.)
+            await tx.platformEvent.updateMany({
                 where: { userId: anonId },
                 data: { userId: permanentUserId }
             });
