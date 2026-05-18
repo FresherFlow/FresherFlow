@@ -14,6 +14,7 @@
 export interface Env {
     // Configured via Cloudflare Dashboard Environment Variables
     CDN_SIGNATURE_SECRET: string;
+    CDN_BUILD_TOKEN: string; // Shared with Vercel env as X-CDN-Build-Token header
 }
 
 // Secure constant-time comparison to prevent timing attacks
@@ -29,9 +30,9 @@ function safeCompare(a: string, b: string): boolean {
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
         // 1. FAIL HARD ON MISCONFIGURATION
-        if (!env.CDN_SIGNATURE_SECRET) {
+        if (!env.CDN_SIGNATURE_SECRET || !env.CDN_BUILD_TOKEN) {
             return new Response(JSON.stringify({ 
-                error: 'Edge Server Misconfigured: Missing CDN_SIGNATURE_SECRET' 
+                error: 'Edge Server Misconfigured: Missing CDN_SIGNATURE_SECRET or CDN_BUILD_TOKEN' 
             }), {
                 status: 500,
                 headers: { 'Content-Type': 'application/json' }
@@ -54,18 +55,27 @@ export default {
             return fetch(request);
         }
 
-        // 3. WEB BROWSER ORIGIN PROTECTION (CORS)
+        // 3. SERVER BUILD TOKEN CHECK (Vercel builds, Next.js SSR)
+        // Server-side requests (no Origin/Referer) must present a pre-shared build token.
+        // This prevents competitors from doing a simple curl to steal the entire feed.
+        const buildToken = request.headers.get('X-CDN-Build-Token');
         const origin = request.headers.get('Origin');
         const referer = request.headers.get('Referer');
         const userAgent = request.headers.get('User-Agent') || '';
-        
-        // Server-to-server requests (Vercel builds, Next.js SSR) have no Origin or Referer.
-        // These are safe — only browsers send an Origin header.
+
         const isServerSideRequest = !origin && !referer;
         if (isServerSideRequest) {
+            if (!buildToken || !safeCompare(buildToken, env.CDN_BUILD_TOKEN)) {
+                return new Response(JSON.stringify({ error: 'Forbidden: Missing or invalid build token' }), {
+                    status: 403,
+                    headers: { 'Content-Type': 'application/json' }
+                });
+            }
+            // Valid build token — serve directly
             return fetch(request);
         }
 
+        // 4. WEB BROWSER ORIGIN PROTECTION (CORS)
         // Identify browsers by origin/referer presence
         const isWebBrowser = origin || referer || userAgent.includes('Mozilla');
 
@@ -97,7 +107,7 @@ export default {
             return new Response(response.body, { ...response, headers });
         }
 
-        // 4. CRYPTOGRAPHIC SIGNATURE CHECK (MOBILE CLIENTS)
+        // 5. CRYPTOGRAPHIC SIGNATURE CHECK (MOBILE CLIENTS)
         const timestampStr = url.searchParams.get('t');
         const signature = url.searchParams.get('sig');
 

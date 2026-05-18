@@ -1,5 +1,11 @@
 import { Opportunity } from '@fresherflow/types';
-import { BOOTSTRAP_FEED_URL, GET_CATEGORY_SHARD_URL } from '../runtimeConfig';
+import { 
+    BOOTSTRAP_FEED_URL, 
+    GET_CATEGORY_SHARD_URL, 
+    SITE_URL, 
+    EDUCATION_METADATA_URL, 
+    SKILLS_METADATA_URL 
+} from '../runtimeConfig';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -39,9 +45,18 @@ export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
 
+        // For server-side fetches (Vercel build / Next.js SSR), there is no browser Origin header.
+        // The Cloudflare worker requires a build token to authenticate these requests.
+        const IS_SERVER = typeof window === 'undefined';
+        const buildToken = IS_SERVER ? process.env.CDN_BUILD_TOKEN : undefined;
+
         const res = await fetch(url, {
             next: { revalidate: 3600 }, // Cache for 1 hour on the server
             signal: controller.signal,
+            headers: {
+                'Origin': SITE_URL || 'https://fresherflow.in',
+                ...(buildToken ? { 'X-CDN-Build-Token': buildToken } : {}),
+            }
         });
 
         clearTimeout(timeoutId);
@@ -61,20 +76,8 @@ export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null
 
         return data;
     } catch (err) {
-        console.warn('Bootstrap CDN unavailable, using bundled feed if present:', err instanceof Error ? err.message : err);
-        try {
-            const localPath = path.join(process.cwd(), 'public', 'bootstrap-feed.min.json');
-            const local = await readFile(localPath, 'utf8');
-            const data = JSON.parse(local) as BootstrapFeedResponse & { total?: number };
-            return {
-                opportunities: Array.isArray(data.opportunities) ? data.opportunities : [],
-                count: typeof data.count === 'number' ? data.count : data.total ?? data.opportunities?.length ?? 0,
-                generatedAt: data.generatedAt || new Date(0).toISOString(),
-            };
-        } catch (localErr) {
-            console.error('Bundled bootstrap feed unavailable:', localErr instanceof Error ? localErr.message : localErr);
-            return null;
-        }
+        console.warn('Bootstrap CDN fetch failed:', err instanceof Error ? err.message : err);
+        return null;
     }
 }
 
@@ -99,12 +102,61 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
 
         const res = await fetch(url, {
             next: { revalidate: 3600 },
+            headers: {
+                'Origin': SITE_URL || 'https://fresherflow.com'
+            }
         });
 
         if (!res.ok) return null;
         return await res.json() as BootstrapFeedResponse;
     } catch (err) {
         console.warn(`Failed to fetch shard ${id}:`, err);
+        return null;
+    }
+}
+
+export interface EducationMetadata {
+    educationLevels: string[];
+    courses: Record<string, string[]>;
+    specializations: Record<string, string[]>;
+}
+
+/**
+ * Fetches education metadata from CDN.
+ */
+export async function fetchEducationMetadata(): Promise<EducationMetadata | null> {
+    try {
+        const url = EDUCATION_METADATA_URL;
+        const res = await fetch(url, {
+            next: { revalidate: 86400 }, // 24 hours cache
+            headers: {
+                'Origin': SITE_URL || 'https://fresherflow.com'
+            }
+        });
+        if (!res.ok) return null;
+        return await res.json() as EducationMetadata;
+    } catch (err) {
+        console.warn('Failed to fetch education metadata from CDN:', err);
+        return null;
+    }
+}
+
+/**
+ * Fetches skills list from CDN.
+ */
+export async function fetchSkillsMetadata(): Promise<string[] | null> {
+    try {
+        const url = SKILLS_METADATA_URL;
+        const res = await fetch(url, {
+            next: { revalidate: 86400 }, // 24 hours cache
+            headers: {
+                'Origin': SITE_URL || 'https://fresherflow.com'
+            }
+        });
+        if (!res.ok) return null;
+        return await res.json() as string[];
+    } catch (err) {
+        console.warn('Failed to fetch skills metadata from CDN:', err);
         return null;
     }
 }
