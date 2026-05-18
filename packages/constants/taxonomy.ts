@@ -8,8 +8,6 @@ export const CORE_CATEGORIES = [
     OpportunityType.INTERNSHIP,
     OpportunityType.WALKIN,
     OpportunityType.REMOTE,
-    OpportunityType.GOVERNMENT,
-    OpportunityType.HACKATHONS,
 ];
 
 /**
@@ -31,6 +29,5 @@ export const CATEGORY_LABELS: Record<string, string> = {
     [OpportunityType.INTERNSHIP]: 'Internships',
     [OpportunityType.WALKIN]: 'Walk-ins',
     [OpportunityType.REMOTE]: 'Remote Only',
-    [OpportunityType.GOVERNMENT]: 'Govt Jobs',
-    [OpportunityType.HACKATHONS]: 'Hackathons',
 };
+

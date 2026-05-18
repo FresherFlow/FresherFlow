@@ -5,9 +5,7 @@
     "main": "dist/index.js",
     "scripts": {
         "prune:api": "turbo prune fresherflow-api --docker",
-        "predev": "npm run db:generate",
         "dev": "nodemon --exec \"npx ts-node\" src/index.ts",
-        "predev:worker": "npm run db:generate",
         "dev:worker": "nodemon --exec \"npx ts-node\" src/worker.ts",
         "build": "npm run build:deps && tsc && node ../../scripts/copy-parser-runtime.mjs",
         "build:deps": "npm --prefix ../.. run build --workspace=@fresherflow/types && npm --prefix ../.. run build --workspace=@fresherflow/constants && npm --prefix ../.. run build --workspace=@fresherflow/logger && npm --prefix ../.. run build --workspace=@fresherflow/config && npm --prefix ../.. run build --workspace=@fresherflow/schemas && npm --prefix ../.. run build --workspace=@fresherflow/search && npm --prefix ../.. run build --workspace=@fresherflow/domain && npm --prefix ../.. run build --workspace=@fresherflow/parser && npm --prefix ../.. run build --workspace=@fresherflow/utils",
@@ -22,7 +20,8 @@
         "test:ui": "vitest --ui",
         "build:api": "npm run build",
         "start:api": "npm run start",
-        "lint": "eslint \"src/**/*.ts\""
+        "lint": "eslint \"src/**/*.ts\"",
+        "typecheck": "tsc --noEmit"
     },
     "keywords": [
         "jobs",
@@ -69,6 +68,7 @@
         "dotenv": "^16.4.7",
         "express": "^4.21.2",
         "express-rate-limit": "^7.5.0",
+        "firebase-admin": "^13.10.0",
         "fuse.js": "^7.1.0",
         "google-auth-library": "^10.5.0",
         "helmet": "^8.0.0",

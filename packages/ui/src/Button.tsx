@@ -44,7 +44,7 @@ export const AppButton: React.FC<AppButtonProps> = ({
         primary: {
             backgroundColor: colors.primary,
             borderColor: colors.primary,
-            textColor: '#FFFFFF',
+            textColor: colors.inverseText,
             shadow: {
                 shadowColor: colors.primary,
                 shadowOffset: { width: 0, height: 4 },

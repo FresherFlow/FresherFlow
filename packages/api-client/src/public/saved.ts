@@ -2,8 +2,9 @@ import { apiClient } from './apiClient';
 // Optional types fallback placeholder
 export const savedApi = {
     list: () => apiClient('/api/saved'),
-    toggle: (opportunityId: string) =>
+    toggle: (opportunityId: string, details?: any) =>
         apiClient(`/api/saved/${opportunityId}`, {
-            method: 'POST'
+            method: 'POST',
+            body: details ? JSON.stringify(details) : undefined
         })
 };

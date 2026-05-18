@@ -6,7 +6,9 @@ export interface Comment {
     createdAt: string;
     user: {
         id: string;
-        fullName: string;
+        fullName?: string | null;
+        username?: string | null;
+        avatarUrl?: string | null;
     };
 }
 

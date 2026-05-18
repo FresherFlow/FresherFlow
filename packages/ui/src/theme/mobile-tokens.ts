@@ -15,6 +15,7 @@ export type ThemeColors = {
     info: string;
     overlay: string;
     darkBackground?: string;
+    inverseText: string;
 };
 
 export type ThemeMode = 'dark' | 'light';
@@ -44,6 +45,7 @@ export const darkColors: ThemeColors = {
     info: '#64B5F6',
     overlay: 'rgba(2, 4, 4, 0.7)',
     darkBackground: '#020404',
+    inverseText: '#000000',
 };
 
 export const lightColors: ThemeColors = {
@@ -62,6 +64,7 @@ export const lightColors: ThemeColors = {
     warning: '#b77914',
     info: '#1f78d1',
     overlay: 'rgba(17, 28, 46, 0.14)',
+    inverseText: '#FFFFFF',
 };
 
 export const builtInThemes: Record<string, Theme> = {

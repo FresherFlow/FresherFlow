@@ -17,6 +17,7 @@ export type ThemeColors = {
   info: string;
   overlay: string;
   darkBackground?: string;
+  inverseText: string;
 };
 
 export type ThemeSpacing = {

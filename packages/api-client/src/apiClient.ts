@@ -64,7 +64,7 @@ export class ApiClient {
                     this.storage.getItem('ff_anon_user_id')
                 ]);
 
-                if (token) {
+                if (token && !config.headers.Authorization) {
                     config.headers.Authorization = `Bearer ${token}`;
                 }
 

@@ -80,7 +80,7 @@ export const profileApi = {
             hasMore: boolean;
         }>(`/api/profile/shares?page=${page}`),
 
-    submitShare: (data: { url?: string; referral?: { contact: string; description: string; company: string; companyUrl?: string } }) =>
+    submitShare: (data: { url?: string; referral?: { title?: string; contact: string; description: string; company: string; companyUrl?: string; eligibleBatches?: string } }) =>
         apiClient<{ success: boolean; message: string; share: RawOpportunity }>('/api/profile/shares', {
             method: 'POST',
             body: JSON.stringify(data)
@@ -88,5 +88,5 @@ export const profileApi = {
 
     // Backward-compatible aliases
     getContributions: (page = 1) => profileApi.getShares(page),
-    submitContribution: (data: { url?: string; referral?: { contact: string; description: string; company: string; companyUrl?: string } }) => profileApi.submitShare(data),
+    submitContribution: (data: { url?: string; referral?: { title?: string; contact: string; description: string; company: string; companyUrl?: string; eligibleBatches?: string } }) => profileApi.submitShare(data),
 };
