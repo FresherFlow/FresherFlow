@@ -1,3 +1,5 @@
+'use client';
+
 import { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
 import { cn } from '@repo/ui/utils/cn';
@@ -358,3 +360,4 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
         </div>
     );
 }
+
