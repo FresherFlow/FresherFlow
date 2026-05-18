@@ -104,7 +104,11 @@ export default {
             headers.set('Access-Control-Allow-Origin', reqOrigin);
             headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
             headers.set('Access-Control-Allow-Headers', 'Content-Type');
-            return new Response(response.body, { ...response, headers });
+            return new Response(response.body as any, { 
+                status: response.status, 
+                statusText: response.statusText, 
+                headers 
+            });
         }
 
         // 5. CRYPTOGRAPHIC SIGNATURE CHECK (MOBILE CLIENTS)
