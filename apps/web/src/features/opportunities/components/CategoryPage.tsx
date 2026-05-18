@@ -331,6 +331,46 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                 </div>
             )
             }
+
+            {/* Category FAQ / Info Guide for Search Engines and Users (Soft 404 Prevention) */}
+            <div className="mt-16 pt-8 border-t border-border/50 space-y-6 max-w-3xl">
+                <h2 className="text-sm font-bold text-foreground tracking-tight uppercase tracking-wider">
+                    {type === OpportunityType.WALKIN 
+                        ? 'About Walk-in Interview Drives' 
+                        : type === OpportunityType.INTERNSHIP 
+                        ? 'About Fresher Internships' 
+                        : 'About Fresher Jobs'}
+                </h2>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                    {type === OpportunityType.WALKIN
+                        ? 'Walk-in interview drives are recruitment events where candidates can directly walk in for an interview without any prior appointment or referral. These drives are excellent fast-track opportunities for freshers to get hired quickly by top employers. Be sure to carry multiple copies of your resume, academic certificates, and a valid photo ID to the venue.'
+                        : type === OpportunityType.INTERNSHIP
+                        ? 'Internships are an exceptional way for fresh graduates and college students to gain practical industry experience, build their technical portfolios, and establish strong professional connections. Many fresher internships also lead to direct full-time pre-placement offers (PPOs).'
+                        : 'Explore verified entry-level job listings and off-campus recruitment drives for fresh graduates across India. These opportunities span across multiple domains including software development, IT services, finance, marketing, and operations, designed specifically for early-career professionals.'}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                    <div className="p-4 rounded-xl bg-card border border-border/60">
+                        <h3 className="text-xs font-bold text-foreground mb-1">
+                            {type === OpportunityType.WALKIN ? 'What to bring to a walk-in?' : 'How to qualify?'}
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            {type === OpportunityType.WALKIN
+                                ? 'Ensure you carry updated copies of your CV, a copy of the official job notification, any required graduation transcripts, and dress in professional business attire.'
+                                : 'Most entry-level listings require basic domain knowledge, a strong learning attitude, and a degree in relevant fields (B.E/B.Tech, M.C.A, B.Sc, etc.).'}
+                        </p>
+                    </div>
+                    <div className="p-4 rounded-xl bg-card border border-border/60">
+                        <h3 className="text-xs font-bold text-foreground mb-1">
+                            {type === OpportunityType.WALKIN ? 'Are walk-ins free?' : 'Are these listings verified?'}
+                        </h3>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                            {type === OpportunityType.WALKIN
+                                ? 'Yes, all verified walk-in drives published on FresherFlow are completely free. We strictly prohibit and filter out any paid training or fraudulent recruitment events.'
+                                : 'Yes, every listing is meticulously reviewed by our team to ensure it contains active apply links, clear job descriptions, and genuine employer details.'}
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
 
     );

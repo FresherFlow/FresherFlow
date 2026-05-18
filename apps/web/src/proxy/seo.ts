@@ -12,8 +12,7 @@ export function applySeoHeaders(req: NextRequest, res: NextResponse) {
     const isExplicitNoIndexPath =
         pathname === '/deadlines' ||
         pathname === '/referral' ||
-        pathname === '/sentry-example-page' ||
-        pathname.startsWith('/companies/');
+        pathname === '/sentry-example-page';
 
     if (
         isUserPath(pathname) ||
