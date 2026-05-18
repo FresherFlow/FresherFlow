@@ -1,7 +1,7 @@
-import { ActionType } from '@fresherflow/types';
-import { actionsApi, savedApi } from '@fresherflow/api-client';
+import { ActionType, FeedbackReason } from '@fresherflow/types';
+import { actionsApi, savedApi, feedbackApi, followsApi } from '@fresherflow/api-client';
 import { storage } from '../lib/storage';
-import { Platform } from 'react-native';
+
 
 const OFFLINE_ACTION_QUEUE_KEY = 'ff_offline_action_queue_v1';
 const MAX_RETRY_ATTEMPTS = 10;
@@ -27,7 +27,25 @@ type ActionRemove = OfflineActionBase & {
     type: 'ACTION_REMOVE';
 };
 
-type OfflineAction = SaveToggleAction | ActionTrack | ActionRemove;
+type ReportSubmitAction = OfflineActionBase & {
+    type: 'REPORT_SUBMIT';
+    reason: FeedbackReason;
+    description?: string;
+};
+
+type FollowAddAction = OfflineActionBase & {
+    type: 'FOLLOW_ADD';
+    followType: 'TAG' | 'COMPANY' | 'CONTRIBUTOR';
+    value: string;
+};
+
+type FollowRemoveAction = OfflineActionBase & {
+    type: 'FOLLOW_REMOVE';
+    followType: 'TAG' | 'COMPANY' | 'CONTRIBUTOR';
+    value: string;
+};
+
+type OfflineAction = SaveToggleAction | ActionTrack | ActionRemove | ReportSubmitAction | FollowAddAction | FollowRemoveAction;
 
 type FlushResult = {
     synced: number;
@@ -126,6 +144,71 @@ export async function enqueueOfflineActionRemove(opportunityId: string, ownerId?
     await writeQueue(filteredQueue);
 }
 
+export async function enqueueOfflineReport(opportunityId: string, reason: FeedbackReason, description?: string, ownerId?: string) {
+    const queue = await readQueue();
+    queue.push({
+        id: nextId(),
+        type: 'REPORT_SUBMIT',
+        ownerId,
+        opportunityId,
+        reason,
+        description,
+        createdAt: Date.now(),
+        attempts: 0,
+    });
+    await writeQueue(queue);
+}
+
+export async function enqueueOfflineFollowAdd(type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string, ownerId?: string) {
+    const queue = await readQueue();
+    const exists = queue.some(item => item.type === 'FOLLOW_ADD' && (item as any).followType === type && (item as any).value === value && item.ownerId === ownerId);
+    if (exists) return;
+
+    const unfollowIdx = queue.findIndex(item => item.type === 'FOLLOW_REMOVE' && (item as any).followType === type && (item as any).value === value && item.ownerId === ownerId);
+    if (unfollowIdx >= 0) {
+        queue.splice(unfollowIdx, 1);
+        await writeQueue(queue);
+        return;
+    }
+
+    queue.push({
+        id: nextId(),
+        type: 'FOLLOW_ADD',
+        ownerId,
+        opportunityId: 'follow_' + type.toLowerCase() + '_' + value.replace(/\s+/g, '_'),
+        followType: type,
+        value,
+        createdAt: Date.now(),
+        attempts: 0,
+    } as any);
+    await writeQueue(queue);
+}
+
+export async function enqueueOfflineFollowRemove(type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string, ownerId?: string) {
+    const queue = await readQueue();
+    const exists = queue.some(item => item.type === 'FOLLOW_REMOVE' && (item as any).followType === type && (item as any).value === value && item.ownerId === ownerId);
+    if (exists) return;
+
+    const followIdx = queue.findIndex(item => item.type === 'FOLLOW_ADD' && (item as any).followType === type && (item as any).value === value && item.ownerId === ownerId);
+    if (followIdx >= 0) {
+        queue.splice(followIdx, 1);
+        await writeQueue(queue);
+        return;
+    }
+
+    queue.push({
+        id: nextId(),
+        type: 'FOLLOW_REMOVE',
+        ownerId,
+        opportunityId: 'unfollow_' + type.toLowerCase() + '_' + value.replace(/\s+/g, '_'),
+        followType: type,
+        value,
+        createdAt: Date.now(),
+        attempts: 0,
+    } as any);
+    await writeQueue(queue);
+}
+
 export async function getPendingOfflineActionsCount(ownerId?: string): Promise<number> {
     const queue = await readQueue();
     return queue.filter((item) => matchesOwner(item, ownerId)).length;
@@ -140,22 +223,57 @@ export function subscribeOfflineActionQueue(listener: () => void) {
 
 async function runOfflineAction(action: OfflineAction) {
     if (action.type === 'SAVE_TOGGLE') {
-        await savedApi.toggle(action.opportunityId);
+        let details: any = null;
+        try {
+            if (typeof (global as any).readJobDetailsFromCache === 'function') {
+                details = await (global as any).readJobDetailsFromCache(action.opportunityId);
+            }
+        } catch (e) {
+            console.error('[ActionQueue] Global cache reader failed:', e);
+        }
+
+        if (!details) {
+            try {
+                const { readDetailCache, readSavedJobs } = require('./native');
+                details = await readDetailCache(action.opportunityId);
+                if (!details) {
+                    const saved = await readSavedJobs();
+                    details = saved.find((j: any) => j.id === action.opportunityId) || null;
+                }
+            } catch {
+                // Silently fallback if not available
+            }
+        }
+        await savedApi.toggle(action.opportunityId, details || undefined);
         return;
     }
     if (action.type === 'ACTION_TRACK') {
         await actionsApi.track(action.opportunityId, action.actionType);
         return;
     }
-    await actionsApi.remove(action.opportunityId);
+    if (action.type === 'ACTION_REMOVE') {
+        await actionsApi.remove(action.opportunityId);
+        return;
+    }
+    if (action.type === 'REPORT_SUBMIT') {
+        await feedbackApi.submit(action.opportunityId, action.reason, action.description);
+        return;
+    }
+    if (action.type === 'FOLLOW_ADD') {
+        const act = action as any;
+        await followsApi.follow({ type: act.followType, value: act.value });
+        return;
+    }
+    if (action.type === 'FOLLOW_REMOVE') {
+        const act = action as any;
+        await followsApi.unfollow({ type: act.followType, value: act.value });
+        return;
+    }
 }
 
 export async function flushOfflineActions(ownerId?: string): Promise<FlushResult> {
     const queue = await readQueue();
     if (!queue.length) return { synced: 0, failed: 0, remaining: 0 };
-    
-    // Check connectivity - navigator.onLine is web-only, but we're mostly worried about API accessibility anyway
-    // In React Native, NetInfo should be used, but for now we rely on the catch block.
 
     let synced = 0;
     let failed = 0;
@@ -194,4 +312,3 @@ export async function flushOfflineActions(ownerId?: string): Promise<FlushResult
         remaining: remaining.length,
     };
 }
-

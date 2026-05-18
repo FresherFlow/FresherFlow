@@ -4,7 +4,6 @@ import { readSavedJobs, saveSavedJobs, enqueueOfflineSaveToggle, subscribeOfflin
 
 import { savedApi } from '@fresherflow/api-client';
 import { secureStorage } from '../lib/storage';
-import { useUserAuth } from '../auth/UserAuthContext';
 
 interface SavedContextType {
   savedJobs: (Opportunity & { needsSync?: boolean })[];
@@ -16,12 +15,14 @@ interface SavedContextType {
 
 const SavedContext = createContext<SavedContextType | undefined>(undefined);
 
-export const SavedProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { user, anonSessionId } = useUserAuth();
+export const SavedProvider: React.FC<{ 
+  children: React.ReactNode,
+  userId?: string,
+  anonSessionId?: string | null
+}> = ({ children, userId, anonSessionId }) => {
   const [savedJobs, setSavedJobs] = useState<(Opportunity & { needsSync?: boolean })[]>([]);
   const [hasPendingSync, setHasPendingSync] = useState(false);
-
-  const ownerId = user?.id || anonSessionId || undefined;
+  const ownerId = userId || anonSessionId || undefined;
 
   const updatePendingCount = useCallback(async () => {
     const count = await getPendingOfflineActionsCount(ownerId);
@@ -76,7 +77,7 @@ export const SavedProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     // Backend sync
     try {
-        await savedApi.toggle(job.id);
+        await savedApi.toggle(job.id, job);
     } catch (err) {
         // Silently fail and buffer if offline or cold start
         console.log('[Saved] Backend sync failed, buffering locally...', err);
