@@ -13,3 +13,11 @@ export const formatListToTitleCase = (list: string[] | null | undefined): string
     if (!list || list.length === 0) return '';
     return list.map(item => toTitleCase(item)).join(', ');
 };
+
+export const normalizeQuery = (q: string | null | undefined): string => {
+    if (!q) return '';
+    return q
+        .toLowerCase()
+        .trim()
+        .replace(/[^a-z0-9\s-]/g, ''); // Strips all special characters except spaces and hyphens
+};

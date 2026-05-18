@@ -37,6 +37,7 @@ export function calculateProfileCompletion(profile: Profile | null): ProfileComp
     const hasGraduation =
         profile?.educationLevel &&
         profile?.gradCourse &&
+        profile?.gradSpecialization &&
         profile?.gradYear;
 
     if (hasGraduation) {
@@ -45,6 +46,7 @@ export function calculateProfileCompletion(profile: Profile | null): ProfileComp
         missingCategories.education = true;
         if (!profile?.educationLevel) missingFields.push('Education Level');
         if (!profile?.gradCourse) missingFields.push('UG Course');
+        if (!profile?.gradSpecialization) missingFields.push('Specialization');
         if (!profile?.gradYear) missingFields.push('UG Passout Year');
     }
 

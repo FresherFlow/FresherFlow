@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Opportunity } from '@fresherflow/types';
+import { getJSON, getString, setJSON, setString, remove, storage } from './storage';
 
 const FEED_INDEX_KEY = 'fresherflow_feed_index';
 const JOB_PREFIX = 'fresherflow_job_';
@@ -9,21 +9,16 @@ const ALERTS_CACHE_KEY = 'fresherflow_alerts_cache';
 const DETAIL_CACHE_PREFIX = 'fresherflow_detail_cache_';
 const COMPANY_JOBS_CACHE_PREFIX = 'fresherflow_company_jobs_cache_';
 const LAST_SYNC_KEY = 'fresherflow_last_sync_timestamp';
+const TRACKER_CACHE_KEY = 'fresherflow_tracker_cache';
+const CONTRIBUTIONS_CACHE_KEY = 'fresherflow_contributions_cache';
+const INVITES_CACHE_KEY = 'fresherflow_invites_cache';
 
 export const saveLastSyncTimestamp = async (timestamp: string) => {
-    try {
-        await AsyncStorage.setItem(LAST_SYNC_KEY, timestamp);
-    } catch (error) {
-        console.warn('Failed to save last sync timestamp', error);
-    }
+    setString(LAST_SYNC_KEY, timestamp);
 };
 
 export const getLastSyncTimestamp = async (): Promise<string | null> => {
-    try {
-        return await AsyncStorage.getItem(LAST_SYNC_KEY);
-    } catch {
-        return null;
-    }
+    return getString(LAST_SYNC_KEY);
 };
 
 /**
@@ -31,23 +26,14 @@ export const getLastSyncTimestamp = async (): Promise<string | null> => {
  * This prevents "Large Object" serialization lag.
  */
 export const saveOpportunityAtomic = async (job: Opportunity) => {
-    try {
-        await AsyncStorage.setItem(`${JOB_PREFIX}${job.id}`, JSON.stringify(job));
-    } catch (e) {
-        console.warn(`[Atomic] Failed to save job ${job.id}`, e);
-    }
+    setJSON(`${JOB_PREFIX}${job.id}`, job);
 };
 
 /**
  * Reads a single opportunity by ID.
  */
 export const getOpportunityAtomic = async (id: string): Promise<Opportunity | null> => {
-    try {
-        const data = await AsyncStorage.getItem(`${JOB_PREFIX}${id}`);
-        return data ? JSON.parse(data) : null;
-    } catch {
-        return null;
-    }
+    return getJSON<Opportunity>(`${JOB_PREFIX}${id}`);
 };
 
 export interface FeedIndex {
@@ -59,177 +45,107 @@ export interface FeedIndex {
  * Saves the feed as a list of IDs + individual atomic job saves using BATCH operations.
  */
 export const saveFeedCache = async (items: Opportunity[]) => {
-    try {
-        if (items.length === 0) return;
-        
-        // 1. Perform Storage Garbage Collection
-        await pruneGhostJobs(items.map(i => i.id));
+    if (items.length === 0) return;
+    
+    // 1. Perform Storage Garbage Collection
+    void pruneGhostJobs(items.map(i => i.id));
 
-        // 2. Prepare batch set
-        const batch: [string, string][] = items.map(job => [
-            `${JOB_PREFIX}${job.id}`,
-            JSON.stringify(job)
-        ]);
+    // 2. Save items (Synchronous in MMKV, but we wrap for compatibility)
+    items.forEach(job => {
+        setJSON(`${JOB_PREFIX}${job.id}`, job);
+    });
 
-        // 3. Execute multiSet for maximum bridge efficiency
-        await AsyncStorage.multiSet(batch);
-
-        // 4. Save the index (order)
-        const index: FeedIndex = {
-            ids: items.map(i => i.id),
-            timestamp: Date.now(),
-        };
-        await AsyncStorage.setItem(FEED_INDEX_KEY, JSON.stringify(index));
-    } catch (error) {
-        console.warn('Failed to save batch feed cache', error);
-    }
+    // 3. Save the index (order)
+    const index: FeedIndex = {
+        ids: items.map(i => i.id),
+        timestamp: Date.now(),
+    };
+    setJSON(FEED_INDEX_KEY, index);
 };
 
 /**
  * Reads the feed by reconstructing it from the index and atomic keys using BATCH read.
  */
 export const readFeedCache = async (): Promise<{ items: Opportunity[], timestamp: number } | null> => {
-    try {
-        const indexJson = await AsyncStorage.getItem(FEED_INDEX_KEY);
-        if (!indexJson) return null;
+    const index = getJSON<FeedIndex>(FEED_INDEX_KEY);
+    if (!index || !index.ids || index.ids.length === 0) return null;
 
-        const index: FeedIndex = JSON.parse(indexJson);
-        if (!index.ids || index.ids.length === 0) return null;
+    const items: Opportunity[] = index.ids
+        .map(id => getJSON<Opportunity>(`${JOB_PREFIX}${id}`))
+        .filter((j): j is Opportunity => j !== null);
 
-        // 3. Batch read all keys from the index
-        const keys = index.ids.map(id => `${JOB_PREFIX}${id}`);
-        const pairs = await AsyncStorage.multiGet(keys);
-        
-        const items: Opportunity[] = pairs
-            .map(([, value]) => value ? JSON.parse(value) : null)
-            .filter((j): j is Opportunity => j !== null);
-
-        return {
-            items,
-            timestamp: index.timestamp
-        };
-    } catch (error) {
-        console.warn('Failed to read batch feed cache', error);
-        return null;
-    }
+    return {
+        items,
+        timestamp: index.timestamp
+    };
 };
 
 export const saveSharesCache = async (shares: unknown[], stats: unknown) => {
-    try {
-        const cache = {
-            items: shares,
-            stats,
-            timestamp: Date.now(),
-        };
-        await AsyncStorage.setItem(SHARES_CACHE_KEY, JSON.stringify(cache));
-    } catch (error) {
-        console.warn('Failed to save shares cache', error);
-    }
+    const cache = {
+        items: shares,
+        stats,
+        timestamp: Date.now(),
+    };
+    setJSON(SHARES_CACHE_KEY, cache);
 };
 
 export const readSharesCache = async (): Promise<{ items: unknown[], stats: unknown, timestamp: number } | null> => {
-    try {
-        const data = await AsyncStorage.getItem(SHARES_CACHE_KEY);
-        return data ? JSON.parse(data) : null;
-    } catch (error) {
-        console.warn('Failed to read shares cache', error);
-        return null;
-    }
+    return getJSON(SHARES_CACHE_KEY);
 };
 
 export const saveCompaniesCache = async (companies: unknown[]) => {
-    try {
-        const cache = {
-            items: companies,
-            timestamp: Date.now(),
-        };
-        await AsyncStorage.setItem(COMPANIES_CACHE_KEY, JSON.stringify(cache));
-    } catch (error) {
-        console.warn('Failed to save companies cache', error);
-    }
+    const cache = {
+        items: companies,
+        timestamp: Date.now(),
+    };
+    setJSON(COMPANIES_CACHE_KEY, cache);
 };
 
 export const readCompaniesCache = async (): Promise<{ items: unknown[], timestamp: number } | null> => {
-    try {
-        const data = await AsyncStorage.getItem(COMPANIES_CACHE_KEY);
-        return data ? JSON.parse(data) : null;
-    } catch (error) {
-        console.warn('Failed to read companies cache', error);
-        return null;
-    }
+    return getJSON(COMPANIES_CACHE_KEY);
 };
 
 export const saveAlertsCache = async (alerts: unknown[], unreadCount: number) => {
-    try {
-        const cache = {
-            items: alerts,
-            unreadCount,
-            timestamp: Date.now(),
-        };
-        await AsyncStorage.setItem(ALERTS_CACHE_KEY, JSON.stringify(cache));
-    } catch (error) {
-        console.warn('Failed to save alerts cache', error);
-    }
+    const cache = {
+        items: alerts,
+        unreadCount,
+        timestamp: Date.now(),
+    };
+    setJSON(ALERTS_CACHE_KEY, cache);
 };
 
 export const readAlertsCache = async (): Promise<{ items: unknown[], unreadCount: number, timestamp: number } | null> => {
-    try {
-        const data = await AsyncStorage.getItem(ALERTS_CACHE_KEY);
-        return data ? JSON.parse(data) : null;
-    } catch (error) {
-        console.warn('Failed to read alerts cache', error);
-        return null;
-    }
+    return getJSON(ALERTS_CACHE_KEY);
 };
 
 export const saveCompanyJobsCache = async (companyName: string, jobs: Opportunity[]) => {
-    try {
-        const slug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const key = `${COMPANY_JOBS_CACHE_PREFIX}${slug}`;
-        const cache = {
-            items: jobs,
-            timestamp: Date.now(),
-        };
-        await AsyncStorage.setItem(key, JSON.stringify(cache));
-    } catch (error) {
-        console.warn(`Failed to save company jobs cache for ${companyName}`, error);
-    }
+    const slug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const key = `${COMPANY_JOBS_CACHE_PREFIX}${slug}`;
+    const cache = {
+        items: jobs,
+        timestamp: Date.now(),
+    };
+    setJSON(key, cache);
 };
 
 export const readCompanyJobsCache = async (companyName: string): Promise<{ items: Opportunity[], timestamp: number } | null> => {
-    try {
-        const slug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        const key = `${COMPANY_JOBS_CACHE_PREFIX}${slug}`;
-        const data = await AsyncStorage.getItem(key);
-        return data ? JSON.parse(data) : null;
-    } catch (error) {
-        console.warn(`Failed to read company jobs cache for ${companyName}`, error);
-        return null;
-    }
+    const slug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+    const key = `${COMPANY_JOBS_CACHE_PREFIX}${slug}`;
+    return getJSON(key);
 };
 
 const SIMILAR_CACHE_PREFIX = 'fresherflow_similar_cache_';
 
 export const saveDetailCache = async (opportunity: Opportunity) => {
-    try {
-        const cache = {
-            ...opportunity,
-            _cachedAt: Date.now()
-        };
-        await AsyncStorage.setItem(`${DETAIL_CACHE_PREFIX}${opportunity.id}`, JSON.stringify(cache));
-    } catch (error) {
-        console.warn('Failed to save detail cache', error);
-    }
+    const cache = {
+        ...opportunity,
+        _cachedAt: Date.now()
+    };
+    setJSON(`${DETAIL_CACHE_PREFIX}${opportunity.id}`, cache);
 };
 
 export const readDetailCache = async (id: string): Promise<Opportunity & { _cachedAt?: number } | null> => {
-    try {
-        const data = await AsyncStorage.getItem(`${DETAIL_CACHE_PREFIX}${id}`);
-        return data ? JSON.parse(data) : null;
-    } catch (error) {
-        console.warn('Failed to read detail cache', error);
-        return null;
-    }
+    return getJSON(`${DETAIL_CACHE_PREFIX}${id}`);
 };
 
 export interface SimilarCache {
@@ -238,25 +154,15 @@ export interface SimilarCache {
 }
 
 export const saveSimilarCache = async (opportunityId: string, opportunities: Opportunity[]) => {
-    try {
-        const cache: SimilarCache = {
-            opportunities,
-            timestamp: Date.now(),
-        };
-        await AsyncStorage.setItem(`${SIMILAR_CACHE_PREFIX}${opportunityId}`, JSON.stringify(cache));
-    } catch (error) {
-        console.warn('Failed to save similar cache', error);
-    }
+    const cache: SimilarCache = {
+        opportunities,
+        timestamp: Date.now(),
+    };
+    setJSON(`${SIMILAR_CACHE_PREFIX}${opportunityId}`, cache);
 };
 
 export const readSimilarCache = async (opportunityId: string): Promise<SimilarCache | null> => {
-    try {
-        const data = await AsyncStorage.getItem(`${SIMILAR_CACHE_PREFIX}${opportunityId}`);
-        return data ? JSON.parse(data) : null;
-    } catch (error) {
-        console.warn('Failed to read similar cache', error);
-        return null;
-    }
+    return getJSON(`${SIMILAR_CACHE_PREFIX}${opportunityId}`);
 };
 
 /**
@@ -266,7 +172,7 @@ export const readSimilarCache = async (opportunityId: string): Promise<SimilarCa
 export const findJobsByCompanyLocally = async (companyName: string): Promise<Opportunity[]> => {
     try {
         const feedCache = await readFeedCache();
-        const exploreData = await AsyncStorage.getItem('fresherflow_explore_cache');
+        const exploreData = getString('fresherflow_explore_cache');
 
         const allJobs: Opportunity[] = feedCache?.items || [];
         const seenIds = new Set<string>(allJobs.map(j => j.id));
@@ -299,26 +205,18 @@ export const findJobsByCompanyLocally = async (companyName: string): Promise<Opp
  * This prevents the "Ghost Jobs" issue where thousands of individual keys stay on disk.
  */
 export const pruneGhostJobs = async (currentIds: string[]) => {
-    try {
-        const oldIndexJson = await AsyncStorage.getItem(FEED_INDEX_KEY);
-        if (!oldIndexJson) return;
+    const oldIndex = getJSON<FeedIndex>(FEED_INDEX_KEY);
+    if (!oldIndex) return;
 
-        const oldIndex: FeedIndex = JSON.parse(oldIndexJson);
-        const newIdsSet = new Set(currentIds);
-        
-        // Identify jobs that were in the old feed but are not in the current one
-        const ghostIds = oldIndex.ids.filter(id => !newIdsSet.has(id));
-        
-        if (ghostIds.length > 0) {
-            const ghostKeys = ghostIds.map(id => `${JOB_PREFIX}${id}`);
-            // Also prune detail caches for these jobs to be extra thorough
-            const detailKeys = ghostIds.map(id => `${DETAIL_CACHE_PREFIX}${id}`);
-            
-            await AsyncStorage.multiRemove([...ghostKeys, ...detailKeys]);
-            console.log(`[OfflineCache] GC: Pruned ${ghostIds.length} ghost jobs from disk`);
-        }
-    } catch (e) {
-        console.warn('[OfflineCache] GC Failed', e);
+    const newIdsSet = new Set(currentIds);
+    const ghostIds = oldIndex.ids.filter(id => !newIdsSet.has(id));
+    
+    if (ghostIds.length > 0) {
+        ghostIds.forEach(id => {
+            remove(`${JOB_PREFIX}${id}`);
+            remove(`${DETAIL_CACHE_PREFIX}${id}`);
+        });
+        console.log(`[OfflineCache] GC: Pruned ${ghostIds.length} ghost jobs from disk`);
     }
 };
 /**
@@ -326,14 +224,48 @@ export const pruneGhostJobs = async (currentIds: string[]) => {
  * Use this for debugging cold-start or forcing a fresh sync.
  */
 export const clearAllCache = async () => {
-    try {
-        const allKeys = await AsyncStorage.getAllKeys();
-        const ffKeys = allKeys.filter(k => k.startsWith('fresherflow_'));
-        if (ffKeys.length > 0) {
-            await AsyncStorage.multiRemove(ffKeys);
-        }
-        console.log(`[OfflineCache] Successfully cleared ${ffKeys.length} keys`);
-    } catch (e) {
-        console.warn('[OfflineCache] Clear failed', e);
-    }
+    storage.clearAll();
+    console.log(`[OfflineCache] Successfully cleared all MMKV storage`);
+};
+export const saveTrackerCache = async (actions: unknown[]) => {
+    const cache = {
+        items: actions,
+        timestamp: Date.now(),
+    };
+    setJSON(TRACKER_CACHE_KEY, cache);
+};
+
+export const readTrackerCache = async (): Promise<{ items: unknown[], timestamp: number } | null> => {
+    return getJSON(TRACKER_CACHE_KEY);
+};
+
+export const readTrackerCacheSync = (): { items: unknown[], timestamp: number } | null => {
+    return getJSON(TRACKER_CACHE_KEY);
+};
+
+export const saveContributionsCache = async (contributions: unknown[], user: unknown) => {
+    const cache = {
+        items: contributions,
+        user,
+        timestamp: Date.now(),
+    };
+    setJSON(CONTRIBUTIONS_CACHE_KEY, cache);
+};
+
+export const readContributionsCache = async (): Promise<{ items: unknown[], user: unknown, timestamp: number } | null> => {
+    return getJSON(CONTRIBUTIONS_CACHE_KEY);
+};
+
+export const saveInvitesCache = async (invites: unknown[], stats: unknown, metadata: Record<string, unknown>) => {
+    const cache = {
+        items: invites,
+        stats,
+        ...metadata,
+        timestamp: Date.now(),
+    };
+    setJSON(INVITES_CACHE_KEY, cache);
+};
+
+export const readInvitesCache = async (): Promise<{ items: unknown[], stats: unknown, timestamp: number } | null> => {
+    return getJSON(INVITES_CACHE_KEY);
 };
