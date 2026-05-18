@@ -111,6 +111,28 @@ function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
 
 export async function fetchOpportunityForPage(slugOrId: string, siteMode: SiteMode = 'private'): Promise<ExtendedOpportunity | null> {
     try {
+        // Optimized: Fetch the complete opportunity list from the CDN JSON instead of querying the Render database backend.
+        // This prevents Render backend wake-ups, OOMs, and database connection limits during Vercel builds or revalidations.
+        const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+        const feed = await fetchBootstrapFeed();
+        if (!feed?.opportunities) return null;
+
+        const opportunity = feed.opportunities.find(
+            (opp) => opp.slug === slugOrId || opp.id === slugOrId
+        );
+
+        if (opportunity) {
+            return opportunity as ExtendedOpportunity;
+        }
+        return null;
+    } catch {
+        return null;
+    }
+}
+
+// ORIGINAL CODE (RENAMED TO BYPASS RENDER BACKEND FETCH):
+export async function fetchOpportunityForPageOld(slugOrId: string, siteMode: SiteMode = 'private'): Promise<ExtendedOpportunity | null> {
+    try {
         const query = new URLSearchParams({ siteMode });
         const response = await fetch(`${API_BASE}/api/opportunities/${encodeURIComponent(slugOrId)}?${query.toString()}`, {
             method: 'GET',
