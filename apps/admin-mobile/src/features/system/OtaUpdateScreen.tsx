@@ -1,127 +1,121 @@
+import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet, ScrollView } from 'react-native';
 import { Monitor, RefreshCw } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useOtaManager } from './hooks';
-import { ThemeColors } from '../../theme';
+import { Screen, Section } from './layout/Layout';
+import { SurfaceCard } from './components/PremiumPrimitives';
+import { SimpleHeader } from './components/SimpleHeader';
+import { theme } from '../../theme';
+import { mScale, SPACING } from '../../theme/dimensions';
 
-const createStyles = (c: ThemeColors) => StyleSheet.create({
-    screen: {
-        flex: 1,
-        backgroundColor: c.background,
-    },
+export const OtaUpdateScreen = () => {
+    const { currentTheme } = useTheme();
+    const ota = useOtaManager();
+    const { colors } = currentTheme;
+
+    return (
+        <Screen safe={true}>
+            <SimpleHeader title="OTA Updates" />
+            
+            <ScrollView contentContainerStyle={styles.content}>
+                <Section title="OTA Configuration">
+                    <SurfaceCard>
+                        <Text style={[styles.desc, { color: colors.text }]}>
+                            Platform administrative updates are delivered over-the-air to ensure zero-latency deployment of critical operational features.
+                        </Text>
+                        
+                        <View style={styles.infoRow}>
+                            <Monitor size={18} color={colors.primary} />
+                            <View style={styles.textContainer}>
+                                <Text style={[styles.label, { color: colors.text }]}>Deployment Status</Text>
+                                <Text style={[styles.meta, { color: colors.textMuted }]}>
+                                    {ota.state.statusText || 'System Idle'}
+                                </Text>
+                            </View>
+                        </View>
+
+                        <View style={styles.infoRow}>
+                            <View style={styles.iconPlaceholder} />
+                            <View style={styles.textContainer}>
+                                <Text style={[styles.label, { color: colors.text }]}>Release Channel</Text>
+                                <Text style={[styles.meta, { color: colors.textMuted }]}>
+                                    {ota.state.channel}
+                                </Text>
+                            </View>
+                        </View>
+                    </SurfaceCard>
+                </Section>
+
+                <TouchableOpacity
+                    style={[styles.actionBtn, { backgroundColor: colors.primary }, ota.state.checking && styles.buttonDisabled]}
+                    onPress={ota.checkForUpdate}
+                    disabled={ota.state.checking}
+                    activeOpacity={0.8}
+                >
+                    {ota.state.checking ? (
+                        <ActivityIndicator size="small" color={colors.background} />
+                    ) : (
+                        <>
+                            <RefreshCw size={18} color={colors.background} />
+                            <Text style={[styles.actionText, { color: colors.background }]}>Check for Update</Text>
+                        </>
+                    )}
+                </TouchableOpacity>
+            </ScrollView>
+        </Screen>
+    );
+};
+
+const styles = StyleSheet.create({
     content: {
-        padding: 16,
+        paddingHorizontal: SPACING.lg,
+        paddingBottom: 100,
     },
-    card: {
-        borderRadius: 16,
-        borderWidth: 1,
-        overflow: 'hidden',
-        marginBottom: 24,
+    desc: {
+        fontSize: mScale(14),
+        lineHeight: mScale(20),
+        fontWeight: '500',
+        marginBottom: SPACING.lg,
     },
-    cardHeader: {
-        padding: 16,
-        paddingBottom: 8,
-    },
-    cardTitle: {
-        fontSize: 14,
-        fontWeight: '600',
-        letterSpacing: 0.5,
-    },
-    row: {
+    infoRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        paddingVertical: SPACING.md,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.surfaceMuted,
     },
     textContainer: {
         flex: 1,
         marginLeft: 12,
-        marginRight: 8,
     },
     label: {
-        fontSize: 15,
-        fontWeight: '500',
+        fontSize: mScale(15),
+        fontWeight: '800',
+        letterSpacing: -0.3,
     },
-    desc: {
-        fontSize: 13,
+    meta: {
+        fontSize: mScale(12),
+        fontWeight: '600',
         marginTop: 2,
     },
-    value: {
-        fontSize: 15,
-        fontFamily: 'monospace',
+    iconPlaceholder: {
+        width: 18,
     },
     actionBtn: {
-        margin: 16,
-        backgroundColor: c.primary,
-        padding: 14,
-        borderRadius: 8,
+        marginTop: SPACING.xl,
+        height: mScale(52),
+        borderRadius: 14,
         alignItems: 'center',
         flexDirection: 'row',
         justifyContent: 'center',
+        gap: 8,
     },
     actionText: {
-        color: '#fff',
-        fontWeight: '600',
-        marginLeft: 8,
+        fontWeight: '900',
+        fontSize: mScale(15),
     },
     buttonDisabled: {
-        opacity: 0.7,
+        opacity: 0.6,
     },
 });
-
-export const OtaUpdateScreen = () => {
-    const { colors: c } = useTheme();
-    const s = createStyles(c);
-    const ota = useOtaManager();
-
-    return (
-        <ScrollView style={s.screen} contentContainerStyle={s.content}>
-            <View style={[s.card, { backgroundColor: c.surface, borderColor: c.border }]}>
-                <View style={[s.cardHeader, { borderBottomColor: c.border, borderBottomWidth: 1, paddingBottom: 16 }]}>
-                    <Text style={[s.cardTitle, { color: c.textMuted }]}>OVER-THE-AIR UPDATES</Text>
-                    <Text style={[s.desc, { color: c.text, marginTop: 6, lineHeight: 20 }]}>
-                        FresherFlow Admin uses Expo OTA updates to push new features and bug fixes directly to your device without requiring an App Store or Play Store update.
-                    </Text>
-                </View>
-
-                <View style={[s.row, { borderTopColor: c.border, borderTopWidth: StyleSheet.hairlineWidth }]}>
-                    <Monitor size={18} color={c.textMuted} />
-                    <View style={s.textContainer}>
-                        <Text style={[s.label, { color: c.text }]}>Status</Text>
-                        <Text style={[s.desc, { color: c.textMuted }]}>
-                            {ota.state.statusText || 'Idle'}
-                        </Text>
-                    </View>
-                </View>
-
-                <View style={[s.row, { borderBottomWidth: 0 }]}>
-                    <View style={{ width: 18 }} />
-                    <View style={s.textContainer}>
-                        <Text style={[s.label, { color: c.text }]}>Channel</Text>
-                        <Text style={[s.desc, { color: c.textMuted }]}>
-                            {ota.state.channel}
-                        </Text>
-                    </View>
-                </View>
-            </View>
-
-            <TouchableOpacity
-                style={[s.actionBtn, ota.state.checking && s.buttonDisabled]}
-                onPress={ota.checkForUpdate}
-                disabled={ota.state.checking}
-                activeOpacity={0.8}
-            >
-                {ota.state.checking ? (
-                    <ActivityIndicator size="small" color="#fff" />
-                ) : (
-                    <>
-                        <RefreshCw size={18} color="#fff" />
-                        <Text style={s.actionText}>Check for Update</Text>
-                    </>
-                )}
-            </TouchableOpacity>
-        </ScrollView>
-    );
-};
-
-

@@ -1,8 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { RefreshCw } from 'lucide-react-native';
+import { RefreshCw, AlertCircle } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
 import type { TelegramBroadcast } from '@fresherflow/api-client';
+import { alpha } from '../../../theme';
+import { mScale, SPACING, RADIUS } from '../../../theme/dimensions';
+import { SurfaceCard } from '../../system/components/PremiumPrimitives';
 
 interface BroadcastCardProps {
     item: TelegramBroadcast;
@@ -11,74 +14,139 @@ interface BroadcastCardProps {
 }
 
 export const BroadcastCard = ({ item, isRetrying, onRetry }: BroadcastCardProps) => {
-    const { colors } = useTheme();
+    const { currentTheme } = useTheme();
+    const { colors } = currentTheme;
 
-    const STATUS_META: Record<string, { color: string }> = {
-        SENT: { color: colors.success },
-        FAILED: { color: colors.error },
-        PENDING: { color: colors.accent },
-        RETRY: { color: colors.secondary },
+    const STATUS_COLORS: Record<string, string> = {
+        SENT: colors.success,
+        FAILED: colors.error,
+        PENDING: colors.secondary,
+        RETRY: colors.warning,
     };
 
-    const meta = STATUS_META[item.status] ?? STATUS_META.PENDING;
+    const statusColor = STATUS_COLORS[item.status] ?? colors.secondary;
     
     return (
-        <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-            <View style={styles.cardRow}>
-                <View style={[styles.statusDot, { backgroundColor: meta.color }]} />
-                <View style={{ flex: 1 }}>
-                    {item.opportunity && (
-                        <Text style={[styles.oppTitle, { color: colors.primary }]} numberOfLines={1}>
-                            {item.opportunity.title} · {item.opportunity.company}
+        <SurfaceCard style={styles.card}>
+            <View style={styles.content}>
+                <View style={styles.main}>
+                    <View style={styles.header}>
+                        <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
+                        <Text style={[styles.statusText, { color: statusColor }]}>
+                            {item.status}
                         </Text>
-                    )}
-                    <Text style={[styles.msgPreview, { color: colors.text }]} numberOfLines={3}>{item.message}</Text>
-                    <View style={styles.metaRow}>
-                        <View style={[styles.statusChip, { backgroundColor: meta.color + '20' }]}>
-                            <Text style={[styles.statusChipText, { color: meta.color }]}>{item.status}</Text>
-                        </View>
-                        <Text style={[styles.metaText, { color: colors.textMuted }]}>
+                        <Text style={[styles.timeText, { color: colors.textMuted }]}>
                             {item.sentAt
-                                ? new Date(item.sentAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
-                                : item.scheduledAt
-                                    ? `Scheduled: ${new Date(item.scheduledAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}`
-                                    : 'Not sent'}
+                                ? new Date(item.sentAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
+                                : '—'}
                         </Text>
                     </View>
-                    {(item.failureReason || (item as { errorMessage?: string }).errorMessage) && (
-                        <Text style={[styles.failReason, { color: colors.error }]} numberOfLines={2}>
-                            ⚠ {item.failureReason ?? (item as { errorMessage?: string }).errorMessage}
+
+                    {item.opportunity && (
+                        <Text style={[styles.oppTitle, { color: colors.text }]} numberOfLines={1}>
+                            {item.opportunity.company} · {item.opportunity.title}
                         </Text>
                     )}
+
+                    <Text style={[styles.message, { color: colors.textMuted }]} numberOfLines={2}>
+                        {item.message}
+                    </Text>
+
+                    {(item.failureReason || (item as { errorMessage?: string }).errorMessage) && (
+                        <View style={[styles.errorBox, { backgroundColor: alpha(colors.error, 0.05) }]}>
+                            <AlertCircle size={12} color={colors.error} />
+                            <Text style={[styles.errorText, { color: colors.error }]} numberOfLines={1}>
+                                {item.failureReason ?? (item as { errorMessage?: string }).errorMessage}
+                            </Text>
+                        </View>
+                    )}
                 </View>
+
                 {item.status === 'FAILED' && (
                     <TouchableOpacity 
-                        style={[styles.retryBtn, { backgroundColor: colors.secondary }, isRetrying && { opacity: 0.6 }]} 
+                        style={[styles.retryBtn, { backgroundColor: alpha(colors.error, 0.1) }]} 
                         onPress={() => onRetry(item.id)} 
                         disabled={isRetrying}
+                        activeOpacity={0.7}
                     >
                         {isRetrying ? (
-                            <ActivityIndicator size="small" color="#fff" />
+                            <ActivityIndicator size="small" color={colors.error} />
                         ) : (
-                            <RefreshCw size={14} color="#fff" />
+                            <RefreshCw size={16} color={colors.error} />
                         )}
                     </TouchableOpacity>
                 )}
             </View>
-        </View>
+        </SurfaceCard>
     );
 };
 
 const styles = StyleSheet.create({
-    card: { borderRadius: 12, borderWidth: 1, padding: 12 },
-    cardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-    statusDot: { width: 10, height: 10, borderRadius: 5, marginTop: 4 },
-    oppTitle: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
-    msgPreview: { fontSize: 13, lineHeight: 18 },
-    metaRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6 },
-    statusChip: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5 },
-    statusChipText: { fontSize: 10, fontWeight: '800' },
-    metaText: { fontSize: 11 },
-    failReason: { fontSize: 11, marginTop: 4 },
-    retryBtn: { padding: 8, borderRadius: 8, alignSelf: 'center', marginLeft: 4 },
+    card: { 
+        padding: SPACING.md,
+        paddingHorizontal: SPACING.lg,
+        marginBottom: 8,
+    },
+    content: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        gap: SPACING.md 
+    },
+    main: { 
+        flex: 1 
+    },
+    header: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 6,
+    },
+    statusDot: { 
+        width: 6, 
+        height: 6, 
+        borderRadius: 3 
+    },
+    statusText: {
+        fontSize: mScale(9),
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    timeText: {
+        fontSize: mScale(9),
+        fontWeight: '700',
+        marginLeft: 'auto',
+    },
+    oppTitle: { 
+        fontSize: mScale(15), 
+        fontWeight: '900', 
+        letterSpacing: -0.5,
+        marginBottom: 4 
+    },
+    message: { 
+        fontSize: mScale(12), 
+        fontWeight: '500',
+        lineHeight: 18,
+        opacity: 0.8
+    },
+    errorBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: RADIUS.sm,
+    },
+    errorText: {
+        fontSize: mScale(10),
+        fontWeight: '700',
+        flex: 1,
+    },
+    retryBtn: { 
+        width: mScale(40),
+        height: mScale(40),
+        borderRadius: RADIUS.md,
+        alignItems: 'center', 
+        justifyContent: 'center',
+    },
 });

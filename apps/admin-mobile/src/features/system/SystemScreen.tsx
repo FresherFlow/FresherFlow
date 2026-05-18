@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, View, ScrollView } from 'react-native';
 import { useFocusEffect, useNavigation, type NavigationProp } from '@react-navigation/native';
 import { AlertsControlCard } from './components/AlertsControlCard';
 import { ChannelStatusCard } from './components/ChannelStatusCard';
@@ -12,18 +12,21 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { 
     Screen, 
     Section,
-    PremiumHeader,
-} from './layout/Layout';
+} from '../system/layout/Layout';
+import { SimpleHeader } from '../system/components/SimpleHeader';
+import { SPACING } from '../../theme/dimensions';
 
 export const SystemScreen = () => {
-    const navigation = useNavigation<{ navigate: (screen: string, params?: Record<string, unknown>) => void; getParent: () => NavigationProp<Record<string, unknown>> | undefined }>();
-    const { colors, spacing } = useTheme();
+    const navigation = useNavigation<{ 
+        navigate: (screen: string, params?: Record<string, unknown>) => void; 
+        getParent: () => NavigationProp<Record<string, unknown>> | undefined 
+    }>();
+    const { currentTheme } = useTheme();
     const {
         health,
         linkStats,
         loading,
         refreshing,
-        setRefreshing,
         runningVerify,
         runningAlerts,
         runningBackfill,
@@ -50,24 +53,30 @@ export const SystemScreen = () => {
     }, [fetchAll]));
 
     const onRefresh = useCallback(() => {
-        setRefreshing(true);
         void fetchAll();
-    }, [fetchAll, setRefreshing]);
+    }, [fetchAll]);
 
     return (
-        <Screen>
-            <ScrollView
-                contentContainerStyle={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm, paddingBottom: spacing.xxl }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
-                showsVerticalScrollIndicator={false}
-            >
-                <PremiumHeader title="Ops" subtitle="System health" />
+        <Screen safe={true}>
+            <SimpleHeader title="System Control" />
 
+            <ScrollView
+                refreshControl={
+                    <RefreshControl 
+                        refreshing={refreshing} 
+                        onRefresh={onRefresh} 
+                        tintColor={currentTheme.colors.primary} 
+                    />
+                }
+                contentContainerStyle={{ paddingHorizontal: SPACING.lg, paddingBottom: 140 }}
+            >
                 {(loading && !feedbackAlerts) ? (
-                    <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: spacing.xl }} />
+                    <View style={{ height: 300, justifyContent: 'center', alignItems: 'center' }}>
+                        <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+                    </View>
                 ) : (
-                    <View style={{ gap: spacing.lg }}>
-                        <Section title="Channels">
+                    <View style={{ gap: SPACING.lg }}>
+                        <Section title="Channel Status">
                             <ChannelStatusCard
                                 feedbackAlerts={feedbackAlerts}
                                 telegramSummary={telegramSummary}
@@ -78,11 +87,15 @@ export const SystemScreen = () => {
                             />
                         </Section>
 
-                        <Section title="Link verification">
-                            <LinkHealthCard stats={linkStats} runningVerify={runningVerify} onVerify={runVerification} />
+                        <Section title="Link Verification">
+                            <LinkHealthCard 
+                                stats={linkStats} 
+                                runningVerify={runningVerify} 
+                                onVerify={runVerification} 
+                            />
                         </Section>
 
-                        <Section title="Alert controls">
+                        <Section title="Alert & Sync Control">
                             <AlertsControlCard
                                 runningAlerts={runningAlerts}
                                 onRunAlerts={runAlerts}
@@ -93,11 +106,11 @@ export const SystemScreen = () => {
                             />
                         </Section>
 
-                        <Section title="Dispatch logs">
+                        <Section title="Active Dispatch Logs">
                             <DispatchLogCard logs={dispatchLogs} />
                         </Section>
 
-                        <Section title="OTA rollout">
+                        <Section title="OTA Release Management">
                             <OtaUpdateCard
                                 statusText={otaStatusText}
                                 checkingOta={checkingOta}
@@ -108,7 +121,7 @@ export const SystemScreen = () => {
                             />
                         </Section>
 
-                        <Section title="Config readiness">
+                        <Section title="Infrastructure Readiness">
                             <ConfigHealthCard health={health} />
                         </Section>
                     </View>
@@ -117,5 +130,3 @@ export const SystemScreen = () => {
         </Screen>
     );
 };
-
-

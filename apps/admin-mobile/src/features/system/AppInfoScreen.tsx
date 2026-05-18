@@ -1,80 +1,108 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { Monitor, Info } from 'lucide-react-native';
+import { Monitor, Info, Database } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { useOtaManager } from './hooks';
-import { ThemeColors } from '../../theme';
+import { Screen, Section } from './layout/Layout';
+import { SurfaceCard } from './components/PremiumPrimitives';
+import { SimpleHeader } from './components/SimpleHeader';
+import { theme } from '../../theme';
+import { mScale, SPACING } from '../../theme/dimensions';
 
-const createStyles = (c: ThemeColors) => StyleSheet.create({
-    screen: {
-        flex: 1,
-        backgroundColor: c.background,
-    },
+export const AppInfoScreen = () => {
+    const { currentTheme } = useTheme();
+    const ota = useOtaManager();
+    const { colors } = currentTheme;
+
+    return (
+        <Screen safe={true}>
+            <SimpleHeader title="App Info" />
+            
+            <ScrollView contentContainerStyle={styles.content}>
+                <Section title="System Overview">
+                    <SurfaceCard>
+                        <InfoRow 
+                            icon={<Monitor size={18} color={colors.primary} />}
+                            label="Application Version"
+                            value={ota.state.appVersion}
+                        />
+                        <InfoRow 
+                            icon={<Database size={18} color={colors.primary} />}
+                            label="Release Channel"
+                            value={ota.state.channel}
+                        />
+                        <InfoRow 
+                            icon={<Info size={18} color={colors.primary} />}
+                            label="Current Update ID"
+                            value={ota.state.updateId || 'Native'}
+                            isLast
+                        />
+                    </SurfaceCard>
+                </Section>
+
+                <View style={styles.footer}>
+                    <Text style={[styles.footerText, { color: colors.textMuted }]}>
+                        Runtime Environment: {ota.state.runtimeVersion || 'Standard'}
+                    </Text>
+                </View>
+            </ScrollView>
+        </Screen>
+    );
+};
+
+const InfoRow = ({ icon, label, value, isLast }: { icon: React.ReactNode, label: string, value: string, isLast?: boolean }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <View style={[styles.row, !isLast && styles.border]}>
+            <View style={styles.iconContainer}>{icon}</View>
+            <View style={styles.textContainer}>
+                <Text style={[styles.label, { color: currentTheme.colors.text }]}>{label}</Text>
+                <Text style={[styles.value, { color: currentTheme.colors.textMuted }]}>{value}</Text>
+            </View>
+        </View>
+    );
+};
+
+const styles = StyleSheet.create({
     content: {
-        padding: 16,
-    },
-    card: {
-        borderRadius: 16,
-        borderWidth: 1,
-        overflow: 'hidden',
-        marginBottom: 24,
+        paddingHorizontal: SPACING.lg,
+        paddingBottom: 100,
     },
     row: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 16,
-        borderBottomWidth: StyleSheet.hairlineWidth,
+        paddingVertical: SPACING.md,
+    },
+    border: {
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.surfaceMuted,
+    },
+    iconContainer: {
+        width: 32,
     },
     textContainer: {
         flex: 1,
-        marginLeft: 12,
-        marginRight: 8,
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
     },
     label: {
-        fontSize: 15,
-        fontWeight: '500',
+        fontSize: mScale(14),
+        fontWeight: '800',
+        letterSpacing: -0.3,
     },
     value: {
-        fontSize: 15,
+        fontSize: mScale(12),
+        fontWeight: '600',
         fontFamily: 'monospace',
     },
+    footer: {
+        marginTop: SPACING.xl,
+        alignItems: 'center',
+    },
+    footerText: {
+        fontSize: mScale(11),
+        fontWeight: '700',
+        opacity: 0.5,
+    }
 });
-
-export const AppInfoScreen = () => {
-    const { colors: c } = useTheme();
-    const s = createStyles(c);
-    const ota = useOtaManager();
-
-    return (
-        <ScrollView style={s.screen} contentContainerStyle={s.content}>
-            <View style={[s.card, { backgroundColor: c.surface, borderColor: c.border }]}>
-
-                <View style={[s.row, { borderBottomColor: c.border }]}>
-                    <Monitor size={18} color={c.textMuted} />
-                    <View style={s.textContainer}>
-                        <Text style={[s.label, { color: c.text }]}>App Version</Text>
-                    </View>
-                    <Text style={[s.value, { color: c.textMuted }]}>{ota.state.appVersion}</Text>
-                </View>
-
-                <View style={[s.row, { borderBottomColor: c.border }]}>
-                    <Info size={18} color={c.textMuted} />
-                    <View style={s.textContainer}>
-                        <Text style={[s.label, { color: c.text }]}>OTA Channel</Text>
-                    </View>
-                    <Text style={[s.value, { color: c.textMuted }]}>{ota.state.channel}</Text>
-                </View>
-
-                <View style={[s.row, { borderBottomColor: c.border, borderBottomWidth: 0 }]}>
-                    <Monitor size={18} color={c.textMuted} />
-                    <View style={s.textContainer}>
-                        <Text style={[s.label, { color: c.text }]}>Update ID</Text>
-                    </View>
-                    <Text style={[s.value, { color: c.textMuted }]}>{ota.state.updateId}</Text>
-                </View>
-            </View>
-        </ScrollView>
-    );
-};
-
-

@@ -10,41 +10,18 @@ import {
 import { useTheme } from '../../../theme/ThemeProvider';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft } from 'lucide-react-native';
+import { mScale, SPACING } from '../../../theme/dimensions';
 
 const ANDROID_STATUSBAR_HEIGHT = StatusBar.currentHeight || 0;
 
 interface ScreenHeaderProps {
-    /**
-     * The main title displayed in the header
-     */
     title: string;
-    /**
-     * Optional custom right action component
-     */
     rightActionComponent?: React.ReactNode;
-    /**
-     * Optional back button
-     */
     showBackButton?: boolean;
-    /**
-     * Optional callback for back button press
-     */
     onBackPress?: () => void;
-    /**
-     * Optional children to render below the title row
-     */
     children?: React.ReactNode;
-    /**
-     * Whether to hide the header title row
-     */
     hideTitleRow?: boolean;
-    /**
-     * Optional custom style for title
-     */
     titleStyle?: object;
-    /**
-     * Whether to use a more compact layout
-     */
     compact?: boolean;
 }
 
@@ -58,18 +35,15 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
     titleStyle,
     compact = false,
 }) => {
-    const { colors } = useTheme();
+    const { currentTheme } = useTheme();
     const insets = useSafeAreaInsets();
+    const { colors } = currentTheme;
 
-    // Calculate header spacing following Nuvio implementation
     const topSpacing = Platform.OS === 'android' ? ANDROID_STATUSBAR_HEIGHT : insets.top;
-    
-    // Nuvio style heights: Android 80, iOS 60
     const headerBaseHeight = compact ? 50 : (Platform.OS === 'android' ? 80 : 60);
 
     return (
-        <>
-            {/* Fixed position header background - exact Nuvio logic */}
+        <View style={styles.container}>
             <View
                 style={[
                     styles.headerBackground,
@@ -80,17 +54,14 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                 ]}
             />
 
-            {/* Header Section */}
             <View
                 style={[
                     styles.header,
                     {
                         paddingTop: topSpacing,
-                        backgroundColor: 'transparent',
                     },
                 ]}
             >
-                {/* Title Row */}
                 {!hideTitleRow && (
                     <View
                         style={[
@@ -101,7 +72,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                         ]}
                     >
                         <View style={styles.headerContent}>
-                            {showBackButton ? (
+                            {showBackButton && (
                                 <TouchableOpacity
                                     style={styles.backButton}
                                     onPress={onBackPress}
@@ -109,7 +80,7 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                                 >
                                     <ArrowLeft size={24} color={colors.text} />
                                 </TouchableOpacity>
-                            ) : null}
+                            )}
 
                             <Text
                                 style={[
@@ -124,7 +95,6 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                                 {title}
                             </Text>
 
-                            {/* Right Action */}
                             {rightActionComponent ? (
                                 <View style={styles.rightActionContainer}>{rightActionComponent}</View>
                             ) : (
@@ -133,26 +103,24 @@ const ScreenHeader: React.FC<ScreenHeaderProps> = ({
                         </View>
                     </View>
                 )}
-
-                {/* Children (filters, search bar, etc.) */}
                 {children}
             </View>
-        </>
+        </View>
     );
 };
 
 const styles = StyleSheet.create({
+    container: {
+        zIndex: 10,
+    },
     headerBackground: {
         position: 'absolute',
         top: 0,
         left: 0,
         right: 0,
-        zIndex: 10,
-        // No border by default in Nuvio to maintain clean glassmorphic/flat look
     },
     header: {
-        paddingHorizontal: 20, // Increased padding to match Nuvio
-        zIndex: 11,
+        paddingHorizontal: SPACING.lg,
     },
     titleRow: {
         justifyContent: 'flex-end',
@@ -169,17 +137,16 @@ const styles = StyleSheet.create({
         marginRight: 8,
     },
     headerTitle: {
-        fontSize: 32, // Exact Nuvio Title Size
-        fontWeight: '800',
-        letterSpacing: 0.5,
+        fontSize: mScale(30),
+        fontWeight: '900',
+        letterSpacing: -1,
         flex: 1,
     },
     headerTitleCompact: {
-        fontSize: 24,
+        fontSize: mScale(20),
     },
     headerTitleWithBack: {
-        fontSize: 24,
-        flex: 1, // Allow title to take space but look better with back button
+        fontSize: mScale(22),
     },
     rightActionContainer: {
         minWidth: 40,
@@ -191,5 +158,3 @@ const styles = StyleSheet.create({
 });
 
 export default ScreenHeader;
-
-

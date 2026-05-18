@@ -1,7 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Zap, Play } from 'lucide-react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Play, RotateCcw, RefreshCw } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { mScale, SPACING, RADIUS } from '../../../theme/dimensions';
+import { SurfaceCard } from '../../system/components/PremiumPrimitives';
+import { AppButton } from '@repo/ui';
 
 interface AlertsControlCardProps {
     runningAlerts: boolean;
@@ -17,56 +20,58 @@ export const AlertsControlCard = ({
     runningBackfill, onRunBackfill,
     runningRefresh, onRefreshMetrics
 }: AlertsControlCardProps) => {
-    const { colors } = useTheme();
+    const { currentTheme } = useTheme();
 
     return (
-        <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-                <Zap size={16} color={colors.primary} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Alerts</Text>
+        <SurfaceCard style={styles.card}>
+            <Text style={[styles.cardDesc, { color: currentTheme.colors.textMuted }]}>
+                Manually trigger system dispatch cycles and cache synchronization.
+            </Text>
+            
+            <View style={styles.actions}>
+                <AppButton
+                    label="Run Alerts Cycle"
+                    onPress={onRunAlerts}
+                    loading={runningAlerts}
+                    icon={<Play size={14} color={currentTheme.colors.background} />}
+                    style={styles.btn}
+                />
+                <AppButton
+                    label="Backfill Notifications"
+                    onPress={onRunBackfill}
+                    loading={runningBackfill}
+                    variant="secondary"
+                    icon={<RotateCcw size={14} color={currentTheme.colors.text} />}
+                    style={styles.btn}
+                />
+                <AppButton
+                    label="Sync Metrics Cache"
+                    onPress={onRefreshMetrics}
+                    loading={runningRefresh}
+                    variant="ghost"
+                    icon={<RefreshCw size={14} color={currentTheme.colors.textMuted} />}
+                    style={styles.btn}
+                />
             </View>
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.cardDesc, { color: colors.textMuted }]}>Manually trigger the alerts dispatch cycle for scheduled jobs.</Text>
-                
-                <RunBtn loading={runningAlerts} onPress={onRunAlerts} label="Run Alerts Cycle" color={colors.secondary} />
-                <View style={{ height: 8 }} />
-                <RunBtn loading={runningBackfill} onPress={onRunBackfill} label="Backfill New-Job Alerts (72h)" color={colors.accent} />
-                <View style={{ height: 8 }} />
-                <RunBtn loading={runningRefresh} onPress={onRefreshMetrics} label="Refresh Metrics Cache" color={colors.textMuted} />
-            </View>
-        </View>
-    );
-};
-
-const RunBtn = ({ loading, onPress, label, color }: { loading: boolean; onPress: () => void; label: string; color?: string }) => {
-    const { colors } = useTheme();
-    return (
-        <TouchableOpacity 
-            style={[styles.runBtn, { backgroundColor: color ?? colors.primary }, loading && { opacity: 0.6 }]} 
-            onPress={onPress} 
-            disabled={loading}
-        >
-            {loading ? (
-                <ActivityIndicator size="small" color="#fff" />
-            ) : (
-                <>
-                    <Play size={16} color="#fff" />
-                    <Text style={styles.runBtnText}>{label}</Text>
-                </>
-            )}
-        </TouchableOpacity>
+        </SurfaceCard>
     );
 };
 
 const styles = StyleSheet.create({
-    section: { marginBottom: 8 },
-    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 10 },
-    sectionTitle: { fontSize: 16, fontWeight: '700' },
-    card: { borderRadius: 14, padding: 16, borderWidth: 1 },
-    cardDesc: { fontSize: 13, marginBottom: 14, lineHeight: 18 },
-    runBtn: {
-        flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-        gap: 8, paddingVertical: 12, borderRadius: 10,
+    card: { 
+        padding: SPACING.lg 
     },
-    runBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    cardDesc: { 
+        fontSize: mScale(13), 
+        fontWeight: '500',
+        lineHeight: mScale(18),
+        marginBottom: SPACING.lg,
+    },
+    actions: {
+        gap: SPACING.sm,
+    },
+    btn: {
+        height: mScale(48),
+        borderRadius: RADIUS.md,
+    }
 });

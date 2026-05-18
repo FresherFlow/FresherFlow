@@ -1,8 +1,10 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { AlertCircle } from 'lucide-react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import * as Updates from 'expo-updates';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { mScale, SPACING } from '../../../theme/dimensions';
+import { SurfaceCard } from '../../system/components/PremiumPrimitives';
+import { AppButton } from '@repo/ui';
 
 interface OtaUpdateCardProps {
     statusText: string;
@@ -21,59 +23,80 @@ export const OtaUpdateCard = ({
     onCheck,
     onInstall
 }: OtaUpdateCardProps) => {
-    const { colors } = useTheme();
+    const { currentTheme } = useTheme();
 
     return (
-        <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-                <AlertCircle size={16} color={colors.primary} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>App Updates (OTA)</Text>
-            </View>
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Text style={[styles.cardDesc, { color: colors.textMuted }]}>
-                    Runtime: {Updates.runtimeVersion ?? 'unknown'}{'\n'}
-                    Status: {statusText}
-                </Text>
-                <View style={styles.inlineActions}>
-                    <TouchableOpacity
-                        style={[styles.inlineBtn, { backgroundColor: colors.primary }, checkingOta && { opacity: 0.6 }]}
-                        onPress={onCheck}
-                        disabled={checkingOta || installingOta}
-                    >
-                        {checkingOta ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                            <Text style={styles.inlineBtnText}>Check Now</Text>
-                        )}
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                        style={[
-                            styles.inlineBtn, 
-                            { backgroundColor: colors.success }, 
-                            (!otaAvailable || installingOta || checkingOta) && { opacity: 0.6 }
-                        ]}
-                        onPress={onInstall}
-                        disabled={!otaAvailable || installingOta || checkingOta}
-                    >
-                        {installingOta ? (
-                            <ActivityIndicator size="small" color="#fff" />
-                        ) : (
-                            <Text style={styles.inlineBtnText}>Install</Text>
-                        )}
-                    </TouchableOpacity>
+        <SurfaceCard style={styles.card}>
+            <View style={styles.header}>
+                <View>
+                    <Text style={[styles.versionLabel, { color: currentTheme.colors.textMuted }]}>
+                        Runtime Version
+                    </Text>
+                    <Text style={[styles.versionValue, { color: currentTheme.colors.text }]}>
+                        {Updates.runtimeVersion ?? 'Development'}
+                    </Text>
+                </View>
+                <View style={[styles.statusBadge, { backgroundColor: currentTheme.colors.surfaceMuted }]}>
+                    <Text style={[styles.statusText, { color: currentTheme.colors.primary }]}>
+                        {statusText}
+                    </Text>
                 </View>
             </View>
-        </View>
+            
+            <View style={styles.actions}>
+                <AppButton
+                    label="Check Updates"
+                    onPress={onCheck}
+                    loading={checkingOta}
+                    variant="secondary"
+                    style={styles.flex}
+                />
+                <AppButton
+                    label="Install Now"
+                    onPress={onInstall}
+                    loading={installingOta}
+                    disabled={!otaAvailable}
+                    style={styles.flex}
+                />
+            </View>
+        </SurfaceCard>
     );
 };
 
 const styles = StyleSheet.create({
-    section: { marginBottom: 8 },
-    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 10 },
-    sectionTitle: { fontSize: 16, fontWeight: '700' },
-    card: { borderRadius: 14, padding: 16, borderWidth: 1 },
-    cardDesc: { fontSize: 13, marginBottom: 14, lineHeight: 18 },
-    inlineActions: { flexDirection: 'row', gap: 10 },
-    inlineBtn: { flex: 1, borderRadius: 10, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
-    inlineBtnText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+    flex: { flex: 1 },
+    card: { 
+        padding: SPACING.lg 
+    },
+    header: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: SPACING.lg,
+    },
+    versionLabel: {
+        fontSize: mScale(9),
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    versionValue: {
+        fontSize: mScale(16),
+        fontWeight: '900',
+        letterSpacing: -0.5,
+        marginTop: 2,
+    },
+    statusBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 6,
+    },
+    statusText: {
+        fontSize: mScale(9),
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    actions: {
+        flexDirection: 'row',
+        gap: SPACING.sm,
+    }
 });

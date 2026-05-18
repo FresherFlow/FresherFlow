@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useFocusEffect } from '@react-navigation/native';
 import { Send } from 'lucide-react-native';
 import { BroadcastCard } from './components/BroadcastCard';
@@ -9,7 +10,6 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { 
     Screen,
     Section,
-    PageIntro 
 } from '../system/layout/Layout';
 import { 
     MetricCard
@@ -23,16 +23,17 @@ import {
 import { 
     EmptyState 
 } from '../feedback/components/Feedback';
+import { SimpleHeader } from '../system/components/SimpleHeader';
+import { mScale, SPACING } from '../../theme/dimensions';
 
 export const TelegramScreen = () => {
-    const { colors, spacing } = useTheme();
+    const { currentTheme } = useTheme();
     const {
         broadcasts,
         statusFilter,
         selectedWindow,
         total,
         loading,
-        loadingMore,
         refreshing,
         retryingId,
         stats,
@@ -45,14 +46,18 @@ export const TelegramScreen = () => {
     } = useTelegram();
 
     useFocusEffect(useCallback(() => {
-        void fetchBroadcasts({ force: true });
+        void fetchBroadcasts();
     }, [fetchBroadcasts]));
 
     return (
-        <Screen>
-            <FlatList
+        <Screen safe={true}>
+            <SimpleHeader title="Telegram Operations" />
+            
+            <FlashList
                 data={broadcasts}
                 keyExtractor={(item) => item.id}
+                // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                estimatedItemSize={mScale(100)}
                 renderItem={({ item }) => (
                     <BroadcastCard
                         item={item}
@@ -61,8 +66,7 @@ export const TelegramScreen = () => {
                     />
                 )}
                 ListHeaderComponent={
-                    <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
-                        <PageIntro eyebrow="Telegram" title="Broadcasts" />
+                    <View style={{ gap: SPACING.lg }}>
                         <View style={styles.topBar}>
                             <View style={{ flex: 1 }}>
                                 <SegmentedControl
@@ -71,33 +75,46 @@ export const TelegramScreen = () => {
                                     onChange={onWindowChange}
                                 />
                             </View>
-                            <Text style={[styles.windowText, { color: colors.textMuted }]}>{total}</Text>
+                            <Text style={[styles.windowText, { color: currentTheme.colors.textMuted }]}>{total}</Text>
                         </View>
 
-                        <Section title="Broadcast state">
+                        <Section title="Broadcast State">
                             <MetricGrid>
-                                <MetricCard label="Sent" value={stats.sent} accent={colors.success} />
-                                <MetricCard label="Failed" value={stats.failed} accent={colors.error} />
-                                <MetricCard label="Skipped" value={stats.skipped} accent={colors.warning} />
-                                <MetricCard label="Visible total" value={total} accent={colors.primary} />
+                                <MetricCard label="Sent" value={stats.sent} accent={currentTheme.colors.success} />
+                                <MetricCard label="Failed" value={stats.failed} accent={currentTheme.colors.error} />
+                                <MetricCard label="Skipped" value={stats.skipped} accent={currentTheme.colors.warning} />
+                                <MetricCard label="Total" value={total} accent={currentTheme.colors.primary} />
                             </MetricGrid>
                         </Section>
 
-                        <Section title="Status filter">
+                        <Section title="Status Filter">
                             <BroadcastFilters currentFilter={statusFilter} onFilterChange={onFilter} />
                         </Section>
                     </View>
                 }
-                contentContainerStyle={{ padding: spacing.md, gap: 10, paddingBottom: spacing.xxl }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+                contentContainerStyle={{ 
+                    paddingHorizontal: SPACING.lg, 
+                    paddingBottom: 100,
+                    paddingTop: SPACING.md,
+                }}
+                refreshControl={
+                    <RefreshControl 
+                        refreshing={refreshing} 
+                        onRefresh={onRefresh} 
+                        tintColor={currentTheme.colors.primary} 
+                    />
+                }
                 onEndReached={onLoadMore}
                 onEndReachedThreshold={0.3}
-                ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
                 ListEmptyComponent={
                     loading ? (
-                        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 60 }} />
+                        <ActivityIndicator size="large" color={currentTheme.colors.primary} style={{ marginTop: 60 }} />
                     ) : (
-                        <EmptyState title="No broadcasts" message="Try widening the date range or changing the status filter." icon={<Send size={36} color={colors.border} />} />
+                        <EmptyState 
+                            title="No broadcasts" 
+                            message="Try widening the date range or changing filters." 
+                            icon={<Send size={36} color={currentTheme.colors.border} />} 
+                        />
                     )
                 }
             />
@@ -110,14 +127,12 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 12,
-        marginTop: 12,
+        marginTop: SPACING.sm,
     },
     windowText: {
         minWidth: 36,
         textAlign: 'right',
         fontSize: 13,
-        fontWeight: '700',
+        fontWeight: '900',
     },
 });
-
-

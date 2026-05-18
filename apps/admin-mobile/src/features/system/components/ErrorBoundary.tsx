@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { theme } from '../../../theme';
+import { useTheme } from '../../../theme/ThemeProvider';
+import type { ThemeColors } from '../../../theme';
 
 interface Props {
     children: React.ReactNode;
@@ -11,8 +12,8 @@ interface State {
     errorInfo: React.ErrorInfo | null;
 }
 
-export class ErrorBoundary extends React.Component<Props, State> {
-    constructor(props: Props) {
+class ErrorBoundaryInternal extends React.Component<Props & { colors: ThemeColors }, State> {
+    constructor(props: Props & { colors: ThemeColors }) {
         super(props);
         this.state = { error: null, errorInfo: null };
     }
@@ -27,47 +28,49 @@ export class ErrorBoundary extends React.Component<Props, State> {
 
     render() {
         const { error, errorInfo } = this.state;
+        const { colors } = this.props;
         if (!error) return this.props.children;
 
         return (
-            <View style={styles.container}>
+            <View style={[styles.container, { backgroundColor: colors.background }]}>
                 <Text style={styles.emoji}>💥</Text>
-                <Text style={styles.title}>Something crashed</Text>
-                <Text style={styles.message}>{error.message}</Text>
+                <Text style={[styles.title, { color: colors.text }]}>Something crashed</Text>
+                <Text style={[styles.message, { color: colors.error }]}>{error.message}</Text>
                 {errorInfo?.componentStack ? (
-                    <Text style={styles.stack} numberOfLines={6}>
+                    <Text style={[styles.stack, { color: colors.textMuted, backgroundColor: colors.surface }]} numberOfLines={6}>
                         {errorInfo.componentStack.trim()}
                     </Text>
                 ) : null}
-                <TouchableOpacity style={styles.btn} onPress={this.handleReset}>
-                    <Text style={styles.btnText}>Try Again</Text>
+                <TouchableOpacity style={[styles.btn, { backgroundColor: colors.primary }]} onPress={this.handleReset}>
+                    <Text style={[styles.btnText, { color: colors.white }]}>Try Again</Text>
                 </TouchableOpacity>
             </View>
         );
     }
 }
 
+export const ErrorBoundary = ({ children }: Props) => {
+    const { currentTheme } = useTheme();
+    return <ErrorBoundaryInternal colors={currentTheme.colors}>{children}</ErrorBoundaryInternal>;
+};
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: theme.colors.background,
         alignItems: 'center',
         justifyContent: 'center',
         padding: 28,
     },
     emoji: { fontSize: 52, marginBottom: 16 },
-    title: { fontSize: 20, fontWeight: '800', color: theme.colors.text, marginBottom: 8 },
+    title: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
     message: {
         fontSize: 14,
-        color: theme.colors.error,
         textAlign: 'center',
         marginBottom: 12,
         fontFamily: 'monospace',
     },
     stack: {
         fontSize: 10,
-        color: theme.colors.textMuted,
-        backgroundColor: theme.colors.surface,
         borderRadius: 8,
         padding: 10,
         marginBottom: 24,
@@ -75,12 +78,11 @@ const styles = StyleSheet.create({
         width: '100%',
     },
     btn: {
-        backgroundColor: theme.colors.primary,
         borderRadius: 12,
         paddingHorizontal: 28,
         paddingVertical: 13,
     },
-    btnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    btnText: { fontWeight: '800', fontSize: 15 },
 });
 
 

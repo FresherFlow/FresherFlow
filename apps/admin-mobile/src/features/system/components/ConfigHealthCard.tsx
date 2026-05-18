@@ -1,7 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { Shield, CheckCircle, XCircle } from 'lucide-react-native';
+import { CheckCircle, XCircle } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
+
+import { mScale, SPACING } from '../../../theme/dimensions';
+import { SurfaceCard } from '../../system/components/PremiumPrimitives';
 
 interface ConfigHealth {
     ready: Record<string, boolean>;
@@ -14,47 +17,67 @@ interface ConfigHealthCardProps {
 }
 
 export const ConfigHealthCard = ({ health }: ConfigHealthCardProps) => {
-    const { colors } = useTheme();
+    const { currentTheme } = useTheme();
     if (!health) return null;
 
     const StatusIcon = ({ ok }: { ok: boolean }) =>
-        ok ? <CheckCircle size={16} color={colors.success} /> : <XCircle size={16} color={colors.error} />;
+        ok ? <CheckCircle size={14} color={currentTheme.colors.success} /> : <XCircle size={14} color={currentTheme.colors.error} />;
 
     const formatKey = (k: string) => k.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
 
     return (
-        <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-                <Shield size={16} color={colors.primary} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Config Health</Text>
-            </View>
-            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                {[
-                    ['Readiness', health.ready],
-                    ['Environment', health.env],
-                    ['Database', health.db],
-                ].map(([label, entries], i) => (
-                    <React.Fragment key={label as string}>
-                        <Text style={[styles.subheading, { color: colors.textMuted }, i > 0 && { marginTop: 16 }]}>{label as string}</Text>
+        <SurfaceCard style={styles.card}>
+            {[
+                ['Deployment Readiness', health.ready],
+                ['Environment Setup', health.env],
+                ['Database Connectivity', health.db],
+            ].map(([label, entries], i) => (
+                <View key={label as string} style={[i > 0 && styles.groupSpacing, i > 0 && { borderTopColor: currentTheme.colors.border }]}>
+                    <Text style={[styles.subheading, { color: currentTheme.colors.textMuted }]}>
+                        {label as string}
+                    </Text>
+                    <View style={styles.entries}>
                         {Object.entries(entries as Record<string, boolean>).map(([k, v]) => (
                             <View key={k} style={styles.checkRow}>
                                 <StatusIcon ok={Boolean(v)} />
-                                <Text style={[styles.checkLabel, { color: colors.text }]}>{formatKey(k)}</Text>
+                                <Text style={[styles.checkLabel, { color: currentTheme.colors.text }]}>
+                                    {formatKey(k)}
+                                </Text>
                             </View>
                         ))}
-                    </React.Fragment>
-                ))}
-            </View>
-        </View>
+                    </View>
+                </View>
+            ))}
+        </SurfaceCard>
     );
 };
 
 const styles = StyleSheet.create({
-    section: { marginBottom: 8 },
-    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 10 },
-    sectionTitle: { fontSize: 16, fontWeight: '700' },
-    card: { borderRadius: 14, padding: 16, borderWidth: 1 },
-    subheading: { fontSize: 13, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10 },
-    checkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 },
-    checkLabel: { fontSize: 14, flex: 1 },
+    card: { 
+        padding: SPACING.lg 
+    },
+    groupSpacing: { 
+        marginTop: SPACING.lg,
+        paddingTop: SPACING.lg,
+        borderTopWidth: 1,
+    },
+    subheading: { 
+        fontSize: mScale(10), 
+        fontWeight: '900', 
+        letterSpacing: 1.5, 
+        marginBottom: SPACING.md 
+    },
+    entries: {
+        gap: 8,
+    },
+    checkRow: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        gap: 10,
+    },
+    checkLabel: { 
+        fontSize: mScale(14), 
+        fontWeight: '600',
+        flex: 1 
+    },
 });

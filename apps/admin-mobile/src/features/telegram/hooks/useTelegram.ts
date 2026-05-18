@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
-import { telegramsApi, type TelegramBroadcast, type TelegramBroadcastSummary } from '@fresherflow/api-client';
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
+import { telegramsApi } from '@fresherflow/api-client';
 import { toast } from '../../../lib/toast';
 import { type StatusFilter } from '../components/BroadcastFilters';
 
@@ -15,103 +16,117 @@ export const TELEGRAM_WINDOW_OPTIONS = [
 
 export type TelegramWindow = typeof TELEGRAM_WINDOW_OPTIONS[number]['value'];
 
+/**
+ * Hook for managing Telegram broadcast distribution.
+ * Uses useInfiniteQuery for standardized caching and pagination.
+ */
 export const useTelegram = () => {
-    const [broadcasts, setBroadcasts] = useState<TelegramBroadcast[]>([]);
     const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
     const [selectedWindow, setSelectedWindow] = useState<TelegramWindow>('7d');
-    const [page, setPage] = useState(1);
-    const [total, setTotal] = useState(0);
-    const [summary, setSummary] = useState<TelegramBroadcastSummary>({ sent: 0, failed: 0, skipped: 0 });
-    const [loading, setLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
     const [retryingId, setRetryingId] = useState<string | null>(null);
 
-    const fetchBroadcasts = useCallback(async (opts: { pg?: number; status?: StatusFilter; window?: TelegramWindow; force?: boolean } = {}) => {
-        const { pg = 1, status = statusFilter, window = selectedWindow } = opts;
-        try {
-            if (pg === 1) setLoading(true);
-            else setLoadingMore(true);
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetching,
+        isFetchingNextPage,
+        status,
+        refetch,
+    } = useInfiniteQuery({
+        queryKey: ['admin', 'telegrams', 'broadcasts', statusFilter, selectedWindow],
+        queryFn: ({ pageParam = 1 }) => {
+            const params: { limit: number; page: number; window: TelegramWindow; status?: string } = { 
+                limit: PAGE_SIZE, 
+                page: pageParam, 
+                window: selectedWindow 
+            };
+            if (statusFilter !== 'ALL') params.status = statusFilter;
+            return telegramsApi.broadcasts(params);
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) => {
+            const totalLoaded = allPages.reduce((acc, p) => acc + (p.broadcasts?.length || 0), 0);
+            if (totalLoaded < (lastPage.total || 0)) {
+                return allPages.length + 1;
+            }
+            return undefined;
+        },
+        staleTime: 1000 * 60 * 5,
+    });
 
-            const params: { limit: number; page: number; window: TelegramWindow; status?: string } = { limit: PAGE_SIZE, page: pg, window };
-            if (status !== 'ALL') params.status = status;
+    const broadcasts = useMemo(() => 
+        data?.pages.flatMap(p => p.broadcasts || []) ?? [], 
+        [data]
+    );
 
-            const data = await telegramsApi.broadcasts(params);
-            const rows = data.broadcasts ?? [];
+    const summary = useMemo(() => 
+        data?.pages[0]?.summary ?? { sent: 0, failed: 0, skipped: 0 }, 
+        [data]
+    );
 
-            if (pg === 1) setBroadcasts(rows);
-            else setBroadcasts((prev) => [...prev, ...rows]);
-
-            setTotal(data.total ?? rows.length);
-            setSummary(data.summary ?? { sent: 0, failed: 0, skipped: 0 });
-            setPage(pg);
-            setSelectedWindow(window);
-        } catch {
-            // Keep previous state
-        } finally {
-            setLoading(false);
-            setLoadingMore(false);
-            setRefreshing(false);
-        }
-    }, [selectedWindow, statusFilter]);
+    const total = data?.pages[0]?.total ?? 0;
 
     const onRefresh = useCallback(() => {
-        setRefreshing(true);
-        void fetchBroadcasts({ pg: 1, force: true });
-    }, [fetchBroadcasts]);
+        void refetch();
+    }, [refetch]);
 
     const onLoadMore = useCallback(() => {
-        if (!loadingMore && broadcasts.length < total) {
-            void fetchBroadcasts({ pg: page + 1 });
+        if (hasNextPage && !isFetchingNextPage) {
+            void fetchNextPage();
         }
-    }, [broadcasts.length, fetchBroadcasts, loadingMore, page, total]);
+    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
     const onFilter = useCallback((status: StatusFilter) => {
         setStatusFilter(status);
-        void fetchBroadcasts({ pg: 1, status, force: true });
-    }, [fetchBroadcasts]);
+    }, []);
 
     const onWindowChange = useCallback((window: TelegramWindow) => {
-        void fetchBroadcasts({ pg: 1, window, force: true });
-    }, [fetchBroadcasts]);
+        setSelectedWindow(window);
+    }, []);
+
+    const retryMutation = useMutation({
+        mutationFn: (id: string) => telegramsApi.retry(id),
+        onSuccess: () => {
+            toast.success('Retried', 'Broadcast retry queued.');
+            void refetch();
+        },
+        onError: (error: unknown) => {
+            const message = (error as { message?: string })?.message || 'Failed';
+            toast.error('Retry failed', message);
+        }
+    });
 
     const retryBroadcast = useCallback((id: string) => {
         Alert.alert('Retry Broadcast?', 'Re-send the failed Telegram broadcast.', [
             { text: 'Cancel', style: 'cancel' },
             {
                 text: 'Retry',
-                onPress: async () => {
+                onPress: () => {
                     setRetryingId(id);
-                    try {
-                        await telegramsApi.retry(id);
-                        toast.success('Retried', 'Broadcast retry queued.');
-                        void fetchBroadcasts({ pg: 1, force: true });
-                    } catch (error: unknown) {
-                        const message = (error as { message?: string })?.message || 'Failed';
-                        toast.error('Retry failed', message);
-                    } finally {
-                        setRetryingId(null);
-                    }
+                    retryMutation.mutate(id, {
+                        onSettled: () => setRetryingId(null)
+                    });
                 },
             },
         ]);
-    }, [fetchBroadcasts]);
+    }, [retryMutation]);
 
     return {
         broadcasts,
         statusFilter,
         selectedWindow,
         total,
-        loading,
-        loadingMore,
-        refreshing,
+        loading: status === 'pending',
+        loadingMore: isFetchingNextPage,
+        refreshing: isFetching && !isFetchingNextPage,
         retryingId,
         stats: {
             sent: summary.sent,
             failed: summary.failed,
             skipped: summary.skipped,
         },
-        fetchBroadcasts,
+        fetchBroadcasts: refetch,
         onRefresh,
         onLoadMore,
         onFilter,

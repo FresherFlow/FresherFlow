@@ -1,32 +1,108 @@
-import { RefreshControlProps, ScrollView, StyleProp, StyleSheet, Text, View, ViewStyle } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import React from 'react';
+import { 
+    StyleSheet, 
+    View, 
+    StatusBar, 
+    ViewStyle, 
+    Text, 
+    ScrollView, 
+    RefreshControlProps,
+    StyleProp,
+    ViewProps
+} from 'react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { SPACING, mScale } from '../../../theme/dimensions';
 import { alpha } from '../../../theme';
-import { mScale, SPACING } from '../../../theme/dimensions';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export const Screen = ({ children, style, insetTop = false }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; insetTop?: boolean }) => {
-    const { colors } = useTheme();
-    const Container = insetTop ? SafeAreaView : View;
+
+export interface ScreenProps extends ViewProps {
+    safe?: boolean;
+    bg?: string;
+    insetTop?: boolean; // Legacy prop support
+}
+
+export const Screen: React.FC<ScreenProps> = ({ children, style, safe = true, bg, insetTop, ...props }) => {
+    const { currentTheme } = useTheme();
+    const insets = useSafeAreaInsets();
+    const isSafe = safe || insetTop;
+
     return (
-        <Container style={[styles.screen, { backgroundColor: colors.background }, style]}>
+        <View 
+            style={[
+                styles.screen, 
+                { 
+                    backgroundColor: bg || currentTheme.colors.background,
+                    paddingTop: isSafe ? insets.top : 0
+                },
+                style
+            ]} 
+            {...props}
+        >
+            <StatusBar 
+                barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} 
+                backgroundColor="transparent" 
+                translucent 
+            />
             {children}
-        </Container>
+        </View>
     );
 };
 
-export const ScrollScreen = ({ children, style, contentContainerStyle, refreshControl, insetTop = false }: { children: React.ReactNode; style?: StyleProp<ViewStyle>; contentContainerStyle?: StyleProp<ViewStyle>; refreshControl?: React.ReactElement<RefreshControlProps>; insetTop?: boolean }) => {
+export const ScrollScreen = ({ 
+    children, 
+    style, 
+    contentContainerStyle, 
+    refreshControl, 
+    safe = true,
+    bg
+}: { 
+    children: React.ReactNode; 
+    style?: StyleProp<ViewStyle>; 
+    contentContainerStyle?: StyleProp<ViewStyle>; 
+    refreshControl?: React.ReactElement<RefreshControlProps>; 
+    safe?: boolean;
+    bg?: string;
+}) => {
     return (
-        <Screen style={style} insetTop={insetTop}>
+        <Screen style={style} safe={safe} bg={bg}>
             <ScrollView
                 style={styles.screen}
-                contentContainerStyle={[{ paddingHorizontal: SPACING.md, paddingBottom: SPACING.xxl }, contentContainerStyle]}
+                contentContainerStyle={[
+                    { paddingHorizontal: SPACING.lg, paddingBottom: 140 }, 
+                    contentContainerStyle
+                ]}
                 showsVerticalScrollIndicator={false}
                 refreshControl={refreshControl}
             >
                 {children}
             </ScrollView>
         </Screen>
+    );
+};
+
+export interface SectionProps {
+    title?: string;
+    children: React.ReactNode;
+    style?: ViewStyle;
+    action?: React.ReactNode; // Extra for admin
+}
+
+export const Section: React.FC<SectionProps> = ({ title, children, style, action }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <View style={[styles.section, style]}>
+            {title && (
+                <View style={styles.sectionHeader}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, gap: SPACING.md }}>
+                        <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>{title}</Text>
+                        <View style={[styles.sectionLine, { backgroundColor: alpha(currentTheme.colors.border, 0.2) }]} />
+                    </View>
+                    {action && <View>{action}</View>}
+                </View>
+            )}
+            {children}
+        </View>
     );
 };
 
@@ -41,90 +117,68 @@ export const PageIntro = ({
     description?: string;
     action?: React.ReactNode;
 }) => {
-    const { colors, typography } = useTheme();
+    const { currentTheme } = useTheme();
     return (
         <View style={styles.introContainer}>
-            {eyebrow ? <Text style={[typography.eyebrow, { color: colors.primary, marginBottom: 4 }]}>{eyebrow}</Text> : null}
+            {eyebrow ? <Text style={[styles.eyebrowText, { color: currentTheme.colors.primary }]}>{eyebrow}</Text> : null}
             <View style={styles.titleRow}>
                 <View style={{ flex: 1 }}>
-                    <Text style={[typography.title1, styles.introTitle, { color: colors.text }]}>{title}</Text>
-                    {description ? <Text style={[typography.body, styles.introDesc, { color: colors.textMuted }]}>{description}</Text> : null}
+                    <Text style={[styles.introTitle, { color: currentTheme.colors.text }]}>{title}</Text>
+                    {description ? <Text style={[styles.introDesc, { color: currentTheme.colors.textMuted }]}>{description}</Text> : null}
                 </View>
                 {action}
             </View>
-        </View>
-    );
-};
-
-export const PremiumHeader = ({
-    title,
-    subtitle,
-    rightSlot,
-}: {
-    title: string;
-    subtitle?: string;
-    rightSlot?: React.ReactNode;
-}) => {
-    const { colors } = useTheme();
-    return (
-        <View style={styles.header}>
-            <View style={styles.headerContent}>
-                <View style={{ flex: 1 }}>
-                    <Text style={[styles.headerTitle, { color: colors.text }]}>{title}</Text>
-                    {subtitle ? (
-                        <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>{subtitle}</Text>
-                    ) : null}
-                </View>
-                {rightSlot ? <View>{rightSlot}</View> : null}
-            </View>
-            <LinearGradient
-                colors={[colors.primary, alpha(colors.primary, 0)]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.headerUnderline}
-            />
-        </View>
-    );
-};
-
-export const Section = ({
-    title,
-    action,
-    children,
-}: {
-    title: string;
-    action?: React.ReactNode;
-    children: React.ReactNode;
-}) => {
-    const { colors, typography } = useTheme();
-    return (
-        <View style={styles.sectionContainer}>
-            <View style={styles.sectionHeader}>
-                <View style={styles.sectionTitleRow}>
-                    <View style={[styles.sectionIndicator, { backgroundColor: colors.primary }]} />
-                    <Text style={[typography.eyebrow, styles.sectionTitleText, { color: colors.textMuted }]}>{title}</Text>
-                </View>
-                {action}
-            </View>
-            {children}
         </View>
     );
 };
 
 const styles = StyleSheet.create({
-    screen: { flex: 1 },
-    sectionContainer: { marginTop: SPACING.lg },
-    sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.sm, marginBottom: SPACING.md },
-    sectionTitleRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-    sectionTitleText: { fontSize: mScale(11), letterSpacing: 1.2 },
-    sectionIndicator: { width: 3, height: mScale(12), borderRadius: 2, opacity: 0.7 },
-    header: { paddingHorizontal: SPACING.md, paddingTop: SPACING.md, paddingBottom: SPACING.sm },
-    headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: SPACING.sm },
-    headerTitle: { fontSize: mScale(30), fontWeight: '800', letterSpacing: -0.5 },
-    headerSubtitle: { fontSize: mScale(10), fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1.8, marginTop: 4, opacity: 0.8 },
-    headerUnderline: { height: 3, width: mScale(40), borderRadius: 2, opacity: 0.8 },
-    introContainer: { marginTop: SPACING.md, marginBottom: SPACING.md },
-    introTitle: { fontSize: mScale(24) },
-    introDesc: { marginTop: SPACING.xs, fontSize: mScale(14) },
-    titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md },
+    screen: {
+        flex: 1,
+    },
+    section: {
+        marginTop: SPACING.lg,
+        marginBottom: SPACING.sm,
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: SPACING.md,
+        gap: SPACING.md,
+    },
+    sectionTitle: {
+        fontSize: mScale(11),
+        fontWeight: '900',
+        letterSpacing: 1.5,
+    },
+    sectionLine: {
+        flex: 1,
+        height: 1,
+    },
+    introContainer: { 
+        marginTop: SPACING.md, 
+        marginBottom: SPACING.md 
+    },
+    eyebrowText: {
+        fontSize: mScale(10),
+        fontWeight: '900',
+        letterSpacing: 1.2,
+        marginBottom: 4,
+    },
+    introTitle: { 
+        fontSize: mScale(32),
+        fontWeight: '900',
+        letterSpacing: -1,
+    },
+    introDesc: { 
+        marginTop: SPACING.xs, 
+        fontSize: mScale(15),
+        lineHeight: mScale(22),
+    },
+    titleRow: { 
+        flexDirection: 'row', 
+        alignItems: 'flex-start', 
+        gap: SPACING.md 
+    },
 });

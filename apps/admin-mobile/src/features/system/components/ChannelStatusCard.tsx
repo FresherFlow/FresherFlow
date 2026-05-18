@@ -1,9 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Megaphone, MessageSquareWarning, Send, Share2 } from 'lucide-react-native';
-
+import { MessageSquareWarning, Send, Share2 } from 'lucide-react-native';
 import type { FeedbackAlerts, SocialPostSummary, TelegramBroadcastSummary } from '@fresherflow/api-client';
 import { useTheme } from '../../../theme/ThemeProvider';
+import { alpha } from '../../../theme';
+import { mScale, SPACING } from '../../../theme/dimensions';
+import { SurfaceCard } from '../../system/components/PremiumPrimitives';
 
 type Props = {
     feedbackAlerts: FeedbackAlerts | null;
@@ -22,91 +24,93 @@ export const ChannelStatusCard = ({
     onOpenTelegram,
     onOpenSocial,
 }: Props) => {
-    const { colors } = useTheme();
+    const { currentTheme } = useTheme();
 
     return (
-        <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-                <Megaphone size={16} color={colors.primary} />
-                <Text style={[styles.sectionTitle, { color: colors.text }]}>Channel Status</Text>
+        <SurfaceCard style={styles.card}>
+            <StatusRow 
+                icon={<MessageSquareWarning size={16} color={currentTheme.colors.error} />}
+                label="Feedback Queue"
+                onPress={onOpenFeedback}
+                meta={feedbackAlerts
+                    ? `${feedbackAlerts.total} fresh · ${feedbackAlerts.listingCount} listings`
+                    : 'No feedback snapshot'}
+                accent={currentTheme.colors.error}
+            />
+
+            <View style={[styles.divider, { backgroundColor: currentTheme.colors.border }]} />
+
+            <StatusRow 
+                icon={<Send size={16} color={currentTheme.colors.secondary} />}
+                label="Telegram Broadcast"
+                onPress={onOpenTelegram}
+                meta={telegramSummary
+                    ? `${telegramSummary.sent} sent · ${telegramSummary.failed} failed`
+                    : 'No Telegram summary'}
+                accent={currentTheme.colors.secondary}
+            />
+
+            <View style={[styles.divider, { backgroundColor: currentTheme.colors.border }]} />
+
+            <StatusRow 
+                icon={<Share2 size={16} color={currentTheme.colors.primary} />}
+                label="Social Distribution"
+                onPress={onOpenSocial}
+                meta={socialSummary
+                    ? `${socialSummary.published} published · ${socialSummary.pending} pending`
+                    : 'No social summary'}
+                accent={currentTheme.colors.primary}
+            />
+        </SurfaceCard>
+    );
+};
+
+const StatusRow = ({ icon, label, meta, onPress, accent }: { icon: React.ReactNode, label: string, meta: string, onPress: () => void, accent: string }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <TouchableOpacity style={styles.row} onPress={onPress} activeOpacity={0.7}>
+            <View style={[styles.iconWrap, { backgroundColor: alpha(accent, 0.1) }]}>
+                {icon}
             </View>
-
-            <View style={[
-                styles.card, 
-                { 
-                    backgroundColor: colors.surface, 
-                    borderColor: colors.border 
-                }
-            ]}>
-                <TouchableOpacity style={styles.row} onPress={onOpenFeedback}>
-                    <View style={[styles.iconWrap, { backgroundColor: colors.error + '14' }]}>
-                        <MessageSquareWarning size={16} color={colors.error} />
-                    </View>
-                    <View style={styles.body}>
-                        <Text style={[styles.label, { color: colors.text }]}>Feedback Queue</Text>
-                        <Text style={[styles.meta, { color: colors.textMuted }]}>
-                            {feedbackAlerts
-                                ? `${feedbackAlerts.total} fresh items · ${feedbackAlerts.listingCount} listing · ${feedbackAlerts.appCount} app`
-                                : 'No feedback snapshot available'}
-                        </Text>
-                    </View>
-                </TouchableOpacity>
-
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                <TouchableOpacity style={styles.row} onPress={onOpenTelegram}>
-                    <View style={[styles.iconWrap, { backgroundColor: colors.secondary + '14' }]}>
-                        <Send size={16} color={colors.secondary} />
-                    </View>
-                    <View style={styles.body}>
-                        <Text style={[styles.label, { color: colors.text }]}>Telegram</Text>
-                        <Text style={[styles.meta, { color: colors.textMuted }]}>
-                            {telegramSummary
-                                ? `${telegramSummary.sent} sent · ${telegramSummary.failed} failed · ${telegramSummary.skipped} skipped`
-                                : 'No Telegram summary available'}
-                        </Text>
-                    </View>
-                </TouchableOpacity>
-
-                <View style={[styles.divider, { backgroundColor: colors.border }]} />
-
-                <TouchableOpacity style={styles.row} onPress={onOpenSocial}>
-                    <View style={[styles.iconWrap, { backgroundColor: colors.accent + '14' }]}>
-                        <Share2 size={16} color={colors.accent} />
-                    </View>
-                    <View style={styles.body}>
-                        <Text style={[styles.label, { color: colors.text }]}>Social Posting</Text>
-                        <Text style={[styles.meta, { color: colors.textMuted }]}>
-                            {socialSummary
-                                ? `${socialSummary.published} published · ${socialSummary.failed} failed · ${socialSummary.pending} pending`
-                                : 'No social posting summary available'}
-                        </Text>
-                    </View>
-                </TouchableOpacity>
+            <View style={styles.body}>
+                <Text style={[styles.label, { color: currentTheme.colors.text }]}>{label}</Text>
+                <Text style={[styles.meta, { color: currentTheme.colors.textMuted }]}>{meta}</Text>
             </View>
-        </View>
+        </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
-    section: { marginBottom: 8 },
-    sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 10 },
-    sectionTitle: { fontSize: 16, fontWeight: '700' },
     card: {
-        borderRadius: 14,
-        paddingHorizontal: 16,
-        borderWidth: 1,
+        padding: 0,
+        overflow: 'hidden',
     },
-    row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14 },
+    row: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        gap: SPACING.md, 
+        padding: SPACING.lg 
+    },
     iconWrap: {
-        width: 34,
-        height: 34,
-        borderRadius: 10,
+        width: mScale(38),
+        height: mScale(38),
+        borderRadius: 12,
         alignItems: 'center',
         justifyContent: 'center',
     },
     body: { flex: 1 },
-    label: { fontSize: 14, fontWeight: '700' },
-    meta: { fontSize: 12, marginTop: 2, lineHeight: 17 },
-    divider: { height: 1 },
+    label: { 
+        fontSize: mScale(14), 
+        fontWeight: '800',
+        letterSpacing: -0.3,
+    },
+    meta: { 
+        fontSize: mScale(11), 
+        fontWeight: '600',
+        marginTop: 2, 
+    },
+    divider: { 
+        height: 1, 
+        marginHorizontal: SPACING.lg,
+    },
 });

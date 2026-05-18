@@ -5,7 +5,8 @@ import {
     Text,
     View,
 } from 'react-native';
-import { useUITheme, alpha } from '../../../theme';
+import { useTheme } from '../../../theme/ThemeProvider';
+import { alpha } from '../../../theme';
 import { mScale, SPACING, RADIUS } from '../../../theme/dimensions';
 
 export const SegmentedControl = <T extends string>({
@@ -17,15 +18,17 @@ export const SegmentedControl = <T extends string>({
     selectedValue: T;
     onChange: (value: T) => void;
 }) => {
-    const { colors } = useUITheme();
+    const { currentTheme } = useTheme();
+    const { colors } = currentTheme;
+    
     return (
         <View
             style={[
                 styles.segmentedControl,
                 {
-                    backgroundColor: alpha(colors.text, 0.05),
-                    borderColor: colors.border,
-                    borderRadius: RADIUS.lg,
+                    backgroundColor: alpha(colors.text, 0.03),
+                    borderColor: alpha(colors.text, 0.08),
+                    borderRadius: 14,
                     padding: 4,
                 },
             ]}
@@ -40,11 +43,14 @@ export const SegmentedControl = <T extends string>({
                             styles.segment,
                             {
                                 backgroundColor: active ? colors.primary : 'transparent',
-                                borderRadius: RADIUS.md,
+                                borderRadius: 10,
                             },
                         ]}
                     >
-                        <Text style={[styles.segmentLabel, { color: active ? '#FFFFFF' : colors.textMuted }]}>
+                        <Text style={[
+                            styles.segmentLabel, 
+                            { color: active ? colors.background : colors.textMuted }
+                        ]}>
                             {option.label}
                         </Text>
                     </Pressable>
@@ -65,7 +71,9 @@ export const FilterChip = ({
     onPress: () => void;
     tone?: 'primary' | 'secondary' | 'accent';
 }) => {
-    const { colors } = useUITheme();
+    const { currentTheme } = useTheme();
+    const { colors } = currentTheme;
+    
     const activeColor = tone === 'accent' ? colors.accent : tone === 'secondary' ? colors.secondary : colors.primary;
     return (
         <Pressable
@@ -73,29 +81,64 @@ export const FilterChip = ({
             style={[
                 styles.chip,
                 {
-                    borderRadius: RADIUS.xl,
+                    borderRadius: RADIUS.full,
                     paddingHorizontal: SPACING.lg,
-                    height: mScale(42),
-                    borderColor: active ? activeColor : colors.border,
+                    height: mScale(40),
+                    borderColor: active ? activeColor : alpha(colors.text, 0.1),
                     backgroundColor: active ? activeColor : alpha(colors.text, 0.03),
                 },
             ]}
         >
-            <Text style={[styles.chipLabel, { color: active ? '#ffffff' : colors.textMuted }]}>{label}</Text>
+            <Text style={[styles.chipLabel, { color: active ? colors.background : colors.textMuted }]}>
+                {label}
+            </Text>
         </Pressable>
     );
 };
 
 export const FieldLabel = ({ children }: { children: React.ReactNode }) => {
-    const { colors } = useUITheme();
-    return <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>{children}</Text>;
+    const { colors } = useTheme();
+    return (
+        <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>
+            {children}
+        </Text>
+    );
 };
 
 const styles = StyleSheet.create({
-    segmentedControl: { flexDirection: 'row', borderWidth: 0.5, gap: 6 },
-    segment: { flex: 1, minHeight: mScale(44), alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.md },
-    segmentLabel: { fontSize: mScale(13), fontWeight: '600' },
-    chip: { alignItems: 'center', justifyContent: 'center', borderWidth: 0.5 },
-    chipLabel: { fontSize: mScale(14), fontWeight: '700' },
-    fieldLabel: { fontSize: mScale(11), fontWeight: '800', letterSpacing: 1.5, marginBottom: SPACING.sm, textTransform: 'uppercase', opacity: 0.8 },
+    segmentedControl: { 
+        flexDirection: 'row', 
+        borderWidth: 1, 
+        gap: 4 
+    },
+    segment: { 
+        flex: 1, 
+        height: mScale(38), 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        paddingHorizontal: SPACING.md 
+    },
+    segmentLabel: { 
+        fontSize: mScale(13), 
+        fontWeight: '800',
+        letterSpacing: -0.3,
+    },
+    chip: { 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        borderWidth: 1 
+    },
+    chipLabel: { 
+        fontSize: mScale(12), 
+        fontWeight: '900',
+        letterSpacing: 0.5,
+    },
+    fieldLabel: { 
+        fontSize: mScale(10), 
+        fontWeight: '900', 
+        letterSpacing: 1.5, 
+        marginBottom: SPACING.sm, 
+        textTransform: 'uppercase', 
+        opacity: 0.7 
+    },
 });
