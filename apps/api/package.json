@@ -14,7 +14,7 @@
         "db:push": "prisma db push --schema=../../packages/database/prisma/schema.prisma",
         "db:studio": "prisma studio --schema=../../packages/database/prisma/schema.prisma",
         "db:generate": "prisma generate --schema=../../packages/database/prisma/schema.prisma",
-        "prisma:migrate": "prisma migrate deploy --schema=../../packages/database/prisma/schema.prisma",
+        "prisma:migrate": "prisma migrate resolve --rolled-back 20260518130000_sync_core_auth_schema --schema=../../packages/database/prisma/schema.prisma || true && prisma migrate deploy --schema=../../packages/database/prisma/schema.prisma",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:ui": "vitest --ui",

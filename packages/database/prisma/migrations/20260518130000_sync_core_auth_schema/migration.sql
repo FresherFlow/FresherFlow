@@ -67,12 +67,6 @@ CREATE INDEX "OpportunityComment_opportunityId_createdAt_idx" ON "OpportunityCom
 CREATE INDEX "OpportunityComment_userId_idx" ON "OpportunityComment"("userId");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "RefreshToken_tokenHash_key" ON "RefreshToken"("tokenHash");
-
--- CreateIndex
-CREATE INDEX "RefreshToken_tokenHash_idx" ON "RefreshToken"("tokenHash");
-
--- CreateIndex
 CREATE INDEX "SocialPost_opportunityId_platform_status_idx" ON "SocialPost"("opportunityId", "platform", "status");
 
 -- CreateIndex
