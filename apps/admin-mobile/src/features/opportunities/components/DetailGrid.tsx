@@ -1,16 +1,20 @@
 import React from 'react';
-import { Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { ExternalLink } from 'lucide-react-native';
+import { StyleSheet, Text, View, TextStyle } from 'react-native';
+import { Globe, MapPin, ShieldCheck, Activity } from 'lucide-react-native';
+import { useTheme } from '../../../theme/ThemeProvider';
+import { theme, alpha } from '../../../theme';
+import { mScale, SPACING, RADIUS } from '../../../theme/dimensions';
+import { SurfaceCard } from '../../system/components/PremiumPrimitives';
 
-import { theme, alpha } from '@/theme';
-
-import { type Opportunity } from '@/lib/api';
+import { type Opportunity } from '@fresherflow/types';
 
 interface DetailGridProps {
     opp: Opportunity;
 }
 
 export const DetailGrid = ({ opp }: DetailGridProps) => {
+    const { currentTheme } = useTheme();
+    
     type SocialPost = { status: string };
     const socialPosts = (Array.isArray(opp.socialPosts) ? opp.socialPosts : []) as SocialPost[];
     const socialSummary = {
@@ -20,189 +24,267 @@ export const DetailGrid = ({ opp }: DetailGridProps) => {
     };
 
     return (
-        <View style={styles.detailsGrid}>
-            <DetailRow label="Type" value={String(opp.type)} />
-            <DetailRow label="Work Mode" value={String(opp.workMode ?? '-')} />
-            <DetailRow label="Locations" value={Array.isArray(opp.locations) ? opp.locations.join(', ') : '-'} />
-            {opp.salaryRange ? (
-                <DetailRow label="Salary" value={`${String(opp.salaryRange)} (${String(opp.salaryPeriod ?? 'YEARLY')})`} />
-            ) : null}
-            {(opp.experienceMin != null || opp.experienceMax != null) ? (
-                <DetailRow label="Experience" value={`${opp.experienceMin ?? 0}-${opp.experienceMax ?? '?'} yrs`} />
-            ) : null}
-            {Array.isArray(opp.requiredSkills) && opp.requiredSkills.length > 0 ? (
-                <DetailRow label="Skills" value={opp.requiredSkills.join(', ')} />
-            ) : null}
-            {Array.isArray(opp.allowedDegrees) && opp.allowedDegrees.length > 0 ? (
-                <DetailRow label="Degrees" value={opp.allowedDegrees.join(', ')} />
-            ) : null}
-            {Array.isArray(opp.allowedCourses) && opp.allowedCourses.length > 0 ? (
-                <DetailRow label="Courses" value={opp.allowedCourses.join(', ')} />
-            ) : null}
-            {Array.isArray(opp.allowedSpecializations) && opp.allowedSpecializations.length > 0 ? (
-                <DetailRow label="Specializations" value={opp.allowedSpecializations.join(', ')} />
-            ) : null}
-            {Array.isArray(opp.allowedPassoutYears) && opp.allowedPassoutYears.length > 0 ? (
-                <DetailRow label="Passout Years" value={opp.allowedPassoutYears.join(', ')} />
-            ) : null}
-            {opp.jobFunction ? <DetailRow label="Function" value={String(opp.jobFunction)} /> : null}
-            {opp.employmentType ? <DetailRow label="Employment" value={String(opp.employmentType)} /> : null}
-
-            {socialPosts.length > 0 ? (
-                <View style={styles.socialCard}>
-                    <Text style={styles.sectionHeader}>Social Status</Text>
-                    <View style={styles.socialRow}>
-                        <SocialPill label="Published" value={socialSummary.published} color={theme.colors.success} />
-                        <SocialPill label="Failed" value={socialSummary.failed} color={theme.colors.error} />
-                        <SocialPill label="Pending" value={socialSummary.pending} color={theme.colors.accent} />
-                    </View>
-                </View>
-            ) : null}
-
-            {opp.sourceLink ? (
-                <TouchableOpacity style={styles.linkRow} onPress={() => Linking.openURL(String(opp.sourceLink))}>
-                    <ExternalLink size={14} color={theme.colors.primary} />
-                    <Text style={styles.linkText} numberOfLines={1}>Source Link</Text>
-                </TouchableOpacity>
-            ) : null}
-
-            {opp.applyLink ? (
-                <TouchableOpacity style={styles.linkRow} onPress={() => Linking.openURL(String(opp.applyLink))}>
-                    <ExternalLink size={14} color={theme.colors.secondary} />
-                    <Text style={[styles.linkText, { color: theme.colors.secondary }]} numberOfLines={1}>Apply Link</Text>
-                </TouchableOpacity>
-            ) : null}
-
-            {opp.expiresAt ? (
-                <DetailRow label="Expires" value={new Date(String(opp.expiresAt)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} />
-            ) : null}
-            <DetailRow label="Created" value={opp.postedAt ? new Date(opp.postedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'} />
-
-            <View
-                style={[
-                    styles.detailRow,
-                    {
-                        borderLeftWidth: 4,
-                        borderLeftColor:
-                            opp.linkHealth === 'HEALTHY'
-                                ? theme.colors.success
-                                : opp.linkHealth === 'BROKEN'
-                                    ? theme.colors.error
-                                    : theme.colors.warning,
-                    },
-                ]}
-            >
-                <Text style={styles.fieldLabel}>Link Health</Text>
-                <View style={{ alignItems: 'flex-end' }}>
-                    <Text
-                        style={[
-                            styles.fieldValue,
-                            {
-                                color:
-                                    opp.linkHealth === 'HEALTHY'
-                                        ? theme.colors.success
-                                        : opp.linkHealth === 'BROKEN'
-                                            ? theme.colors.error
-                                            : theme.colors.warning,
-                            },
-                        ]}
-                    >
-                        {String(opp.linkHealth)}
-                    </Text>
-                    {opp.verificationFailures > 0 ? (
-                        <Text style={styles.failureText}>{opp.verificationFailures} failures</Text>
-                    ) : null}
-                </View>
+        <View style={styles.grid}>
+            <SectionHeader title="Core Details" icon={<Activity size={16} color={currentTheme.colors.primary} />} />
+            
+            <View style={styles.row}>
+                <GridItem label="TYPE" value={String(opp.type)} icon={<Activity size={14} color={currentTheme.colors.primary} />} />
+                <GridItem label="MODE" value={String(opp.workMode ?? '-')} icon={<MapPin size={14} color={currentTheme.colors.primary} />} />
             </View>
 
-            {opp.lastVerifiedAt ? (
-                <DetailRow
-                    label="Last Verified"
-                    value={new Date(opp.lastVerifiedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+            <SurfaceCard style={styles.fullWidthCard}>
+                <DetailRow label="LOCATIONS" value={Array.isArray(opp.locations) ? opp.locations.join(', ') : '-'} />
+                {opp.salaryRange && (
+                    <DetailRow label="SALARY" value={`${String(opp.salaryRange)} (${String(opp.salaryPeriod ?? 'YEARLY')})`} />
+                )}
+                {(opp.experienceMin != null || opp.experienceMax != null) && (
+                    <DetailRow label="EXPERIENCE" value={`${opp.experienceMin ?? 0}-${opp.experienceMax ?? '?'} yrs`} />
+                )}
+            </SurfaceCard>
+
+            <SectionHeader title="Requirements" icon={<ShieldCheck size={16} color={currentTheme.colors.primary} />} />
+            
+            <SurfaceCard style={styles.fullWidthCard}>
+                {Array.isArray(opp.requiredSkills) && opp.requiredSkills.length > 0 && (
+                    <DetailRow label="SKILLS" value={opp.requiredSkills.join(', ')} />
+                )}
+                {Array.isArray(opp.allowedDegrees) && opp.allowedDegrees.length > 0 && (
+                    <DetailRow label="DEGREES" value={opp.allowedDegrees.join(', ')} />
+                )}
+                {Array.isArray(opp.allowedPassoutYears) && opp.allowedPassoutYears.length > 0 && (
+                    <DetailRow label="PASSOUTS" value={opp.allowedPassoutYears.join(', ')} />
+                )}
+            </SurfaceCard>
+
+            {socialPosts.length > 0 && (
+                <>
+                    <SectionHeader title="Social Distribution" icon={<Globe size={16} color={currentTheme.colors.primary} />} />
+                    <View style={styles.socialGrid}>
+                        <SocialPill label="Published" value={socialSummary.published} color={currentTheme.colors.success} />
+                        <SocialPill label="Failed" value={socialSummary.failed} color={currentTheme.colors.error} />
+                        <SocialPill label="Pending" value={socialSummary.pending} color={currentTheme.colors.secondary} />
+                    </View>
+                </>
+            )}
+
+            <SectionHeader title="System Insights" icon={<Activity size={16} color={currentTheme.colors.primary} />} />
+            
+            <SurfaceCard 
+                style={[
+                    styles.fullWidthCard, 
+                    { 
+                        borderLeftWidth: 4, 
+                        borderLeftColor: opp.linkHealth === 'HEALTHY' ? currentTheme.colors.success : opp.linkHealth === 'BROKEN' ? currentTheme.colors.error : currentTheme.colors.warning 
+                    }
+                ]}
+            >
+                <DetailRow 
+                    label="LINK HEALTH" 
+                    value={String(opp.linkHealth)} 
+                    valueStyle={{ 
+                        color: opp.linkHealth === 'HEALTHY' ? currentTheme.colors.success : opp.linkHealth === 'BROKEN' ? currentTheme.colors.error : currentTheme.colors.warning 
+                    }} 
                 />
-            ) : null}
+                {opp.verificationFailures > 0 && (
+                    <Text style={[styles.failureText, { color: currentTheme.colors.error }]}>
+                        {opp.verificationFailures} recent failures detected
+                    </Text>
+                )}
+                {opp.lastVerifiedAt && (
+                    <DetailRow 
+                        label="VERIFIED" 
+                        value={new Date(opp.lastVerifiedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} 
+                    />
+                )}
+                <DetailRow label="SLUG" value={String(opp.slug)} />
+            </SurfaceCard>
 
-            <DetailRow label="Slug" value={String(opp.slug)} />
+            <SectionHeader title="Full Context" icon={<Activity size={16} color={currentTheme.colors.primary} />} />
+            
+            {opp.description && <DescSection label="DESCRIPTION" value={String(opp.description)} />}
+            {opp.notesHighlights && <DescSection label="NOTES & HIGHLIGHTS" value={String(opp.notesHighlights)} />}
+            {opp.incentives && <DescSection label="INCENTIVES" value={String(opp.incentives)} />}
 
-            {opp.type === 'WALKIN' && opp.walkInDetails ? (
-                <View style={styles.walkInCard}>
-                    <Text style={styles.sectionHeader}>Walk-in Details</Text>
-                    {opp.walkInDetails.venueAddress ? <DetailRow label="Venue" value={String(opp.walkInDetails.venueAddress)} /> : null}
-                    {opp.walkInDetails.timeRange ? <DetailRow label="Time" value={String(opp.walkInDetails.timeRange)} /> : null}
-                    {opp.walkInDetails.contactPerson ? (
-                        <DetailRow
-                            label="Contact"
-                            value={`${opp.walkInDetails.contactPerson}${opp.walkInDetails.contactPhone ? ` · ${opp.walkInDetails.contactPhone}` : ''}`}
-                        />
-                    ) : null}
-                    {Array.isArray(opp.walkInDetails.requiredDocuments) && opp.walkInDetails.requiredDocuments.length > 0 ? (
-                        <DetailRow label="Docs" value={opp.walkInDetails.requiredDocuments.join(', ')} />
-                    ) : null}
-                    {opp.walkInDetails?.venueLink ? (
-                        <TouchableOpacity style={styles.linkRow} onPress={() => opp.walkInDetails?.venueLink && Linking.openURL(String(opp.walkInDetails.venueLink))}>
-                            <ExternalLink size={14} color={theme.colors.primary} />
-                            <Text style={styles.linkText}>Maps Link</Text>
-                        </TouchableOpacity>
-                    ) : null}
+            <View style={styles.footerRow}>
+                <View style={styles.half}>
+                    <Text style={[styles.footerLabel, { color: currentTheme.colors.textMuted }]}>CREATED</Text>
+                    <Text style={[styles.footerValue, { color: currentTheme.colors.text }]}>
+                        {opp.postedAt ? new Date(opp.postedAt).toLocaleDateString() : '-'}
+                    </Text>
                 </View>
-            ) : null}
-
-            {opp.incentives ? <DescCard label="Incentives / Perks" value={String(opp.incentives)} /> : null}
-            {opp.selectionProcess ? <DescCard label="Selection Process" value={String(opp.selectionProcess)} /> : null}
-            {opp.notesHighlights ? <DescCard label="Notes / Highlights" value={String(opp.notesHighlights)} /> : null}
-            {opp.description ? <DescCard label="Description" value={String(opp.description)} /> : null}
+                <View style={styles.half}>
+                    <Text style={[styles.footerLabel, { color: currentTheme.colors.textMuted }]}>EXPIRES</Text>
+                    <Text style={[styles.footerValue, { color: currentTheme.colors.text }]}>
+                        {opp.expiresAt ? new Date(String(opp.expiresAt)).toLocaleDateString() : 'Never'}
+                    </Text>
+                </View>
+            </View>
         </View>
     );
 };
 
-const DetailRow = ({ label, value }: { label: string; value: string }) => (
-    <View style={styles.detailRow}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <Text style={styles.fieldValue}>{value}</Text>
-    </View>
-);
+const SectionHeader = ({ title, icon }: { title: string; icon: React.ReactNode }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <View style={styles.sectionHeader}>
+            {icon}
+            <Text style={[styles.sectionHeaderText, { color: currentTheme.colors.textMuted }]}>
+                {title.toUpperCase()}
+            </Text>
+        </View>
+    );
+};
 
-const DescCard = ({ label, value }: { label: string; value: string }) => (
-    <View style={styles.descCard}>
-        <Text style={styles.fieldLabel}>{label}</Text>
-        <Text style={styles.descText}>{value}</Text>
-    </View>
-);
+const GridItem = ({ label, value, icon }: { label: string; value: string; icon: React.ReactNode }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <SurfaceCard style={styles.gridItem}>
+            <View style={styles.gridItemHeader}>
+                {icon}
+                <Text style={[styles.gridItemLabel, { color: currentTheme.colors.textMuted }]}>{label}</Text>
+            </View>
+            <Text style={[styles.gridItemValue, { color: currentTheme.colors.text }]} numberOfLines={1}>{value}</Text>
+        </SurfaceCard>
+    );
+};
+
+const DetailRow = ({ label, value, valueStyle }: { label: string; value: string; valueStyle?: TextStyle }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <View style={styles.detailRow}>
+            <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>{label}</Text>
+            <Text style={[styles.detailValue, { color: currentTheme.colors.text }, valueStyle]} numberOfLines={2}>{value}</Text>
+        </View>
+    );
+};
+
+const DescSection = ({ label, value }: { label: string; value: string }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <SurfaceCard style={styles.descSection}>
+            <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted, marginBottom: 8 }]}>{label}</Text>
+            <Text style={[styles.descText, { color: currentTheme.colors.text }]}>{value}</Text>
+        </SurfaceCard>
+    );
+};
 
 const SocialPill = ({ label, value, color }: { label: string; value: number; color: string }) => (
-    <View style={[styles.socialPill, { backgroundColor: color + '14' }]}>
+    <View style={[styles.socialPill, { backgroundColor: alpha(color, 0.1) }]}>
         <Text style={[styles.socialValue, { color }]}>{value}</Text>
-        <Text style={[styles.socialLabel, { color }]}>{label}</Text>
+        <Text style={[styles.socialLabel, { color }]}>{label.toUpperCase()}</Text>
     </View>
 );
 
 const styles = StyleSheet.create({
-    detailsGrid: { paddingHorizontal: 20, paddingVertical: 16, gap: 12 },
+    grid: { 
+        gap: SPACING.md 
+    },
+    sectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginTop: SPACING.sm,
+        marginBottom: 4,
+    },
+    sectionHeaderText: {
+        fontSize: mScale(10),
+        fontWeight: '900',
+        letterSpacing: 1.5,
+    },
+    row: {
+        flexDirection: 'row',
+        gap: SPACING.md,
+    },
+    gridItem: {
+        flex: 1,
+        padding: SPACING.md,
+    },
+    gridItemHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginBottom: 8,
+    },
+    gridItemLabel: {
+        fontSize: mScale(9),
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    gridItemValue: {
+        fontSize: mScale(16),
+        fontWeight: '800',
+    },
+    fullWidthCard: {
+        padding: 0,
+    },
     detailRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'center',
-        backgroundColor: theme.colors.surface,
-        borderRadius: 14,
-        paddingHorizontal: 16,
-        paddingVertical: 16,
-        borderWidth: 0.5,
-        borderColor: alpha(theme.colors.border, 0.4),
+        padding: SPACING.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.surfaceMuted,
     },
-    fieldLabel: { fontSize: 11, fontWeight: '700', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 1, opacity: 0.8 },
-    fieldValue: { fontSize: 14, fontWeight: '600', color: theme.colors.text, flex: 1, textAlign: 'right' },
-    descCard: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 18, borderWidth: 0.5, borderColor: alpha(theme.colors.border, 0.4), gap: 10 },
-    descText: { fontSize: 14, color: theme.colors.text, lineHeight: 22, opacity: 0.9 },
-    walkInCard: { backgroundColor: alpha(theme.colors.surface, 0.5), borderRadius: 16, padding: 16, borderWidth: 0.5, borderColor: alpha(theme.colors.border, 0.4), gap: 12 },
-    socialCard: { backgroundColor: theme.colors.surface, borderRadius: 16, padding: 16, borderWidth: 0.5, borderColor: alpha(theme.colors.border, 0.4), gap: 12 },
-    socialRow: { flexDirection: 'row', gap: 10 },
-    socialPill: { flex: 1, borderRadius: 14, paddingVertical: 12, paddingHorizontal: 10, alignItems: 'center' },
-    socialValue: { fontSize: 20, fontWeight: '800' },
-    socialLabel: { fontSize: 10, fontWeight: '700', marginTop: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
-    sectionHeader: { fontSize: 11, fontWeight: '800', color: theme.colors.primary, textTransform: 'uppercase', letterSpacing: 1.2, opacity: 0.9 },
-    linkRow: { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: theme.colors.surface, borderRadius: 14, padding: 16, borderWidth: 0.5, borderColor: alpha(theme.colors.border, 0.4) },
-    linkText: { fontSize: 14, fontWeight: '600', color: theme.colors.primary, flex: 1 },
-    failureText: { fontSize: 10, color: theme.colors.error, fontWeight: '700', marginTop: 2 },
+    detailLabel: {
+        fontSize: mScale(10),
+        fontWeight: '900',
+        letterSpacing: 1,
+    },
+    detailValue: {
+        fontSize: mScale(14),
+        fontWeight: '700',
+        flex: 1,
+        textAlign: 'right',
+        marginLeft: SPACING.lg,
+    },
+    descSection: {
+        padding: SPACING.lg,
+    },
+    descText: {
+        fontSize: mScale(14),
+        lineHeight: mScale(22),
+        fontWeight: '500',
+    },
+    socialGrid: {
+        flexDirection: 'row',
+        gap: SPACING.sm,
+    },
+    socialPill: {
+        flex: 1,
+        padding: SPACING.md,
+        borderRadius: RADIUS.md,
+        alignItems: 'center',
+    },
+    socialValue: {
+        fontSize: mScale(20),
+        fontWeight: '900',
+    },
+    socialLabel: {
+        fontSize: mScale(9),
+        fontWeight: '900',
+        marginTop: 2,
+    },
+    failureText: {
+        fontSize: mScale(11),
+        fontWeight: '700',
+        paddingHorizontal: SPACING.md,
+        paddingBottom: SPACING.md,
+    },
+    footerRow: {
+        flexDirection: 'row',
+        marginTop: SPACING.lg,
+        paddingHorizontal: SPACING.xs,
+    },
+    half: {
+        flex: 1,
+    },
+    footerLabel: {
+        fontSize: mScale(9),
+        fontWeight: '900',
+        letterSpacing: 1.5,
+    },
+    footerValue: {
+        fontSize: mScale(13),
+        fontWeight: '700',
+        marginTop: 2,
+    }
 });
-
-

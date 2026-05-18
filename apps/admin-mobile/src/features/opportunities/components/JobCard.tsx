@@ -1,11 +1,15 @@
 import React from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View, StyleProp, ViewStyle } from 'react-native';
 import { CheckCircle2, Clock, Edit3, RotateCcw, Trash2 } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 
 import { type Opportunity } from '@/lib/api';
 
 import { useTheme } from '@/theme/ThemeProvider';
+import { alpha } from '@/theme';
+import { mScale, SPACING, RADIUS } from '@/theme/dimensions';
 import { CompanyLogo } from '@repo/ui';
+import { SurfaceCard } from '../../system/components/PremiumPrimitives';
 
 interface JobCardProps {
     item: Opportunity;
@@ -15,6 +19,7 @@ interface JobCardProps {
     handleExpire: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
     handleDelete: (id: string, title: string) => void;
+    style?: StyleProp<ViewStyle>;
 }
 
 export const JobCard = ({
@@ -24,24 +29,25 @@ export const JobCard = ({
     handleExpire,
     handleRestore,
     handleDelete,
+    style,
 }: JobCardProps) => {
     const { colors } = useTheme();
     const dense = false;
     const statusPalette: Record<string, { bg: string; text: string }> = {
-        PUBLISHED: { bg: colors.success + '16', text: colors.success },
-        DRAFT: { bg: colors.warning + '18', text: colors.warning },
+        PUBLISHED: { bg: alpha(colors.success, 0.08), text: colors.success },
+        DRAFT: { bg: alpha(colors.warning, 0.1), text: colors.warning },
         ARCHIVED: { bg: colors.muted, text: colors.textMuted },
-        EXPIRED: { bg: colors.error + '16', text: colors.error },
+        EXPIRED: { bg: alpha(colors.error, 0.08), text: colors.error },
     };
     const statusColors = statusPalette[item.status] ?? statusPalette.ARCHIVED;
     const isExpired = item.status === 'EXPIRED' || item.status === 'ARCHIVED';
 
     return (
-        <View
+        <SurfaceCard
             style={[
                 styles.jobCard,
                 dense && styles.jobCardDense,
-                { backgroundColor: colors.surface, borderColor: colors.border },
+                style
             ]}
         >
             <View style={[styles.jobHeader, dense && styles.jobHeaderDense]}>
@@ -50,7 +56,7 @@ export const JobCard = ({
                     logoUrl={item.companyLogoUrl}
                     applyLink={item.applyLink}
                     name={String(item.company)} 
-                    size={38} 
+                    size={mScale(40)} 
                 />
                 <TouchableOpacity
                     style={styles.titleWrap}
@@ -67,8 +73,8 @@ export const JobCard = ({
                     style={[
                         styles.statusBadge,
                         {
-                            backgroundColor: statusColors.bg,
-                            borderColor: statusColors.text + '22',
+                            backgroundColor: alpha(statusColors.text, 0.08),
+                            borderColor: alpha(statusColors.text, 0.1),
                         },
                     ]}
                 >
@@ -76,47 +82,47 @@ export const JobCard = ({
                 </View>
             </View>
 
-            <View style={[styles.jobFooter, dense && styles.jobFooterDense, { borderTopColor: colors.border }]}>
+            <View style={[styles.jobFooter, dense && styles.jobFooterDense, { borderTopColor: alpha(colors.border, 0.5) }]}>
                 <Text style={[styles.jobDate, dense && styles.jobDateDense, { color: colors.textMuted }]}>
-                    {item.postedAt ? new Date(String(item.postedAt)).toLocaleDateString('en-IN') : '-'}
+                    {item.postedAt ? new Date(String(item.postedAt)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '-'}
                     {' · '}
                     {String(item.type)}
                 </Text>
                 <View style={styles.actionRow}>
                     {item.status === 'DRAFT' ? (
                         <ActionBtn
-                            icon={<CheckCircle2 size={15} color={colors.success} />}
+                            icon={<CheckCircle2 size={mScale(15)} color={colors.success} />}
                             onPress={() => handlePublish(String(item.id))}
-                            backgroundColor={colors.background}
+                            backgroundColor={alpha(colors.success, 0.05)}
                         />
                     ) : null}
                     {item.status === 'PUBLISHED' ? (
                         <ActionBtn
-                            icon={<Clock size={15} color={colors.warning} />}
+                            icon={<Clock size={mScale(15)} color={colors.warning} />}
                             onPress={() => handleExpire(String(item.id), String(item.title))}
-                            backgroundColor={colors.background}
+                            backgroundColor={alpha(colors.warning, 0.05)}
                         />
                     ) : null}
                     {isExpired ? (
                         <ActionBtn
-                            icon={<RotateCcw size={15} color={colors.primary} />}
+                            icon={<RotateCcw size={mScale(15)} color={colors.primary} />}
                             onPress={() => handleRestore(String(item.id))}
-                            backgroundColor={colors.background}
+                            backgroundColor={alpha(colors.primary, 0.05)}
                         />
                     ) : null}
                     <ActionBtn
-                        icon={<Edit3 size={15} color={colors.primary} />}
+                        icon={<Edit3 size={mScale(15)} color={colors.primary} />}
                         onPress={() => navigation.navigate('PostOpportunity', { opportunityId: item.id })}
-                        backgroundColor={colors.background}
+                        backgroundColor={alpha(colors.primary, 0.05)}
                     />
                     <ActionBtn
-                        icon={<Trash2 size={15} color={colors.error} />}
+                        icon={<Trash2 size={mScale(15)} color={colors.error} />}
                         onPress={() => handleDelete(String(item.id), String(item.title))}
-                        backgroundColor={colors.background}
+                        backgroundColor={alpha(colors.error, 0.05)}
                     />
                 </View>
             </View>
-        </View>
+        </SurfaceCard>
     );
 };
 
@@ -129,85 +135,90 @@ const ActionBtn = ({
     onPress: () => void;
     backgroundColor: string;
 }) => (
-    <TouchableOpacity style={[styles.actionBtn, { backgroundColor }]} onPress={onPress}>
+    <TouchableOpacity 
+        style={[styles.actionBtn, { backgroundColor }]} 
+        onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            onPress();
+        }}
+    >
         {icon}
     </TouchableOpacity>
 );
 
 const styles = StyleSheet.create({
     jobCard: {
-        borderRadius: 12,
-        borderWidth: 1,
-        padding: 14,
+        marginBottom: SPACING.md,
     },
     jobCardDense: {
-        padding: 12,
-        borderRadius: 10,
+        marginBottom: SPACING.sm,
     },
     jobHeader: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: 10,
+        alignItems: 'center',
+        marginBottom: SPACING.md,
+        gap: SPACING.md,
     },
     jobHeaderDense: {
-        marginBottom: 8,
+        marginBottom: SPACING.sm,
     },
     titleWrap: {
         flex: 1,
-        paddingRight: 8,
-        marginLeft: 4,
     },
     jobTitle: {
-        fontSize: 15,
-        fontWeight: '700',
-        marginBottom: 3,
-    },
-    jobTitleDense: {
-        fontSize: 14,
+        fontSize: mScale(16),
+        fontWeight: '900',
+        letterSpacing: -0.5,
         marginBottom: 2,
     },
+    jobTitleDense: {
+        fontSize: mScale(14),
+    },
     jobCompany: {
-        fontSize: 13,
+        fontSize: mScale(13),
+        fontWeight: '500',
     },
     jobCompanyDense: {
-        fontSize: 12,
+        fontSize: mScale(12),
     },
     statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: 999,
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: RADIUS.lg,
         borderWidth: 1,
     },
     statusText: {
-        fontSize: 10,
-        fontWeight: '800',
-        letterSpacing: 0.3,
+        fontSize: mScale(9),
+        fontWeight: '900',
+        letterSpacing: 0.5,
     },
     jobFooter: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
         borderTopWidth: 1,
-        paddingTop: 10,
+        paddingTop: SPACING.md,
+        marginTop: SPACING.xs,
     },
     jobFooterDense: {
-        paddingTop: 8,
+        paddingTop: SPACING.sm,
     },
     jobDate: {
-        fontSize: 12,
+        fontSize: mScale(11),
+        fontWeight: '700',
         flex: 1,
     },
     jobDateDense: {
-        fontSize: 11,
+        fontSize: mScale(10),
     },
     actionRow: {
         flexDirection: 'row',
-        gap: 4,
+        gap: 8,
     },
     actionBtn: {
-        padding: 7,
-        borderRadius: 8,
+        padding: 8,
+        borderRadius: 10,
     },
 });
 

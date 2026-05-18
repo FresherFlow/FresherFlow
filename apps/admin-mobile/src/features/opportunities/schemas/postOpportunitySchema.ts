@@ -1,0 +1,40 @@
+import { z } from 'zod';
+import { OpportunityType } from '@fresherflow/api-client';
+
+export const postOpportunitySchema = z.object({
+  type: z.nativeEnum(OpportunityType),
+  status: z.string(),
+  title: z.string().min(1, 'Title is required'),
+  company: z.string().min(1, 'Company is required'),
+  companyWebsite: z.string(),
+  description: z.string(),
+  sourceLink: z.string(),
+  applyLink: z.string(),
+  locationInput: z.string(),
+  workMode: z.string(),
+  selectedDegrees: z.array(z.string()),
+  allowedCourses: z.string(),
+  allowedSpecializations: z.string(),
+  selectedYears: z.array(z.number()),
+  skills: z.string(),
+  salaryRange: z.string(),
+  salaryPeriod: z.enum(['YEARLY', 'MONTHLY']),
+  expMin: z.string(),
+  expMax: z.string(),
+  jobFunction: z.string(),
+  employmentType: z.string(),
+  incentives: z.string(),
+  selectionProcess: z.string(),
+  notesHighlights: z.string(),
+  expiresAt: z.string(),
+  venueAddress: z.string(),
+  venueLink: z.string(),
+  walkInDate: z.string(),
+  walkInEndDate: z.string(),
+  walkInTime: z.string(),
+  requiredDocuments: z.string(),
+  contactPerson: z.string(),
+  contactPhone: z.string(),
+});
+
+export type PostOpportunityFormValues = z.infer<typeof postOpportunitySchema>;

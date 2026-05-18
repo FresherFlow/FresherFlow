@@ -1,5 +1,6 @@
-import { useCallback, useState } from 'react';
-import { adminSystemApi, adminAnalyticsApi, type MetricsV2, type RecentActivity } from '@fresherflow/api-client';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { adminSystemApi, adminAnalyticsApi } from '@fresherflow/api-client';
 
 export const DASHBOARD_WINDOW_OPTIONS = [
     { label: '1D', value: '24h' },
@@ -11,47 +12,45 @@ export const DASHBOARD_WINDOW_OPTIONS = [
 export type DashboardWindow = typeof DASHBOARD_WINDOW_OPTIONS[number]['value'];
 
 export const useDashboard = () => {
-    const [metrics, setMetrics] = useState<MetricsV2 | null>(null);
-    const [recentActivity, setRecentActivity] = useState<RecentActivity['items']>([]);
     const [selectedWindow, setSelectedWindow] = useState<DashboardWindow>('7d');
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [error, setError] = useState<string | null>(null);
 
-    const fetchDashboard = useCallback(async (window: DashboardWindow) => {
-        setError(null);
-        try {
-            const [metricsResult, activityResult] = await Promise.allSettled([
-                adminSystemApi.metricsV2(window),
-                adminAnalyticsApi.recentActivity(8),
-            ]);
+    const { 
+        data: metrics, 
+        isLoading: metricsLoading, 
+        isRefetching: metricsRefetching,
+        error: metricsError,
+        refetch: refetchMetrics
+    } = useQuery({
+        queryKey: ['admin', 'metrics', selectedWindow],
+        queryFn: () => adminSystemApi.metricsV2(selectedWindow),
+        staleTime: 1000 * 60 * 10, // Cache metrics for 10 minutes
+    });
 
-            if (metricsResult.status === 'fulfilled') {
-                setMetrics(metricsResult.value);
-            } else {
-                const message = (metricsResult.reason as { message?: string })?.message || String(metricsResult.reason);
-                setError(message);
-            }
+    const { 
+        data: activityData, 
+        isLoading: activityLoading,
+        refetch: refetchActivity
+    } = useQuery({
+        queryKey: ['admin', 'recent-activity'],
+        queryFn: () => adminAnalyticsApi.recentActivity(8),
+        staleTime: 1000 * 60 * 2, // Cache activity for 2 minutes
+    });
 
-            if (activityResult.status === 'fulfilled') {
-                setRecentActivity(activityResult.value.items?.slice(0, 8) ?? []);
-            }
+    const recentActivity = activityData?.items?.slice(0, 8) ?? [];
 
-            setSelectedWindow(window);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, []);
+    const fetchDashboard = async (window?: DashboardWindow) => {
+        if (window) setSelectedWindow(window);
+        await Promise.all([refetchMetrics(), refetchActivity()]);
+    };
 
     return {
-        metrics,
+        metrics: metrics || null,
         recentActivity,
         selectedWindow,
-        loading,
-        refreshing,
-        error,
-        setRefreshing,
+        loading: metricsLoading || activityLoading,
+        refreshing: metricsRefetching,
+        error: metricsError ? (metricsError as Error).message : null,
+        setSelectedWindow,
         fetchDashboard,
     };
 };

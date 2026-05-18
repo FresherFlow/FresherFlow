@@ -1,101 +1,92 @@
-import { useState, useCallback, useRef } from 'react';
-import { adminOpportunitiesApi, type Opportunity } from '@fresherflow/api-client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ADMIN_OPPORTUNITIES_CACHE_KEY, ADMIN_OPPORTUNITIES_PAGE_SIZE } from '../../../lib/constants';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import debounce from 'lodash.debounce';
+import { adminOpportunitiesApi } from '@fresherflow/api-client';
+import { ADMIN_OPPORTUNITIES_PAGE_SIZE } from '../../../lib/constants';
 
 export const useAdminFeed = () => {
-  const [jobs, setJobs] = useState<Opportunity[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
   const [searchInput, setSearchInput] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const fetchingRef = useRef(false);
 
-  const fetchJobs = useCallback(async (opts: { pg?: number; force?: boolean; query?: string } = {}) => {
-    const { pg = 1, query = activeQuery } = opts;
-    if (fetchingRef.current) return;
-    fetchingRef.current = true;
-    try {
-      if (pg === 1) {
-        setLoading(true);
-        setHasMore(true);
-      } else {
-        setLoadingMore(true);
-      }
-      setError(null);
-      const params = {
-        page: pg,
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    status,
+    error,
+    refetch,
+  } = useInfiniteQuery({
+    queryKey: ['admin', 'opportunities', activeQuery],
+    queryFn: ({ pageParam = 1 }) => 
+      adminOpportunitiesApi.list({
+        page: pageParam,
         limit: ADMIN_OPPORTUNITIES_PAGE_SIZE,
-        status: 'PUBLISHED' as const,
-        ...(query.trim() ? { search: query.trim() } : {}),
-      };
-      
-      const data = await adminOpportunitiesApi.list(params as Parameters<typeof adminOpportunitiesApi.list>[0]) as { opportunities: Opportunity[], total: number };
-      const rows = data.opportunities ?? [];
-      const currentTotal = data.total ?? 0;
-      
-      if (pg === 1) {
-        setJobs(rows);
-        setTotal(currentTotal);
-        setActiveQuery(query.trim());
-        setHasMore(rows.length > 0 && rows.length < currentTotal);
-        await AsyncStorage.setItem(
-          ADMIN_OPPORTUNITIES_CACHE_KEY,
-          JSON.stringify({ cachedAt: Date.now(), opportunities: rows, query: query.trim() }),
-        );
-      } else {
-        const seen = new Set(jobs.map((j: Opportunity) => j.id));
-        const newJobs = rows.filter((r: Opportunity) => !seen.has(r.id));
-        if (newJobs.length > 0) {
-          setJobs(prev => [...prev, ...newJobs]);
-        }
-        setHasMore(rows.length > 0 && (jobs.length + newJobs.length) < currentTotal && newJobs.length > 0);
+        status: 'PUBLISHED',
+        ...(activeQuery.trim() ? { search: activeQuery.trim() } : {}),
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, allPages) => {
+      const totalLoaded = allPages.reduce((acc, p) => acc + (p.opportunities?.length || 0), 0);
+      if (totalLoaded < lastPage.total) {
+        return allPages.length + 1;
       }
-      setPage(pg);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'Failed to fetch opportunities');
-      setHasMore(false);
-    } finally {
-      setLoading(false);
-      setLoadingMore(false);
-      setRefreshing(false);
-      fetchingRef.current = false;
-    }
-  }, [activeQuery, jobs]);
+      return undefined;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+
+  const { data: summaryData } = useQuery({
+    queryKey: ['admin', 'opportunities', 'summary'],
+    queryFn: () => adminOpportunitiesApi.summary(),
+    staleTime: 1000 * 60 * 10, // 10 minutes
+  });
+
+  const jobs = useMemo(() => 
+    data?.pages.flatMap(p => p.opportunities || []) ?? [], 
+    [data]
+  );
 
   const loadMore = useCallback(() => {
-    if (!loading && !loadingMore && hasMore) {
-      void fetchJobs({ pg: page + 1 });
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
     }
-  }, [loading, loadingMore, hasMore, page, fetchJobs]);
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const onRefresh = useCallback(() => {
-    setRefreshing(true);
-    void fetchJobs({ pg: 1, force: true });
-  }, [fetchJobs]);
+  const onRefresh = useCallback(async () => {
+    await refetch();
+  }, [refetch]);
+
+  const debouncedSearch = useMemo(
+    () => debounce((val: string) => setActiveQuery(val), 500),
+    []
+  );
+
+  useEffect(() => {
+    debouncedSearch(searchInput);
+    return () => debouncedSearch.cancel();
+  }, [searchInput, debouncedSearch]);
 
   const handleSearch = useCallback(() => {
-    void fetchJobs({ pg: 1, query: searchInput });
-  }, [fetchJobs, searchInput]);
+    setActiveQuery(searchInput);
+    debouncedSearch.cancel(); // Stop any pending debounce if user clicks Search button
+  }, [searchInput, debouncedSearch]);
 
   return {
     jobs,
-    total,
-    loading,
-    loadingMore,
-    refreshing,
+    total: data?.pages[0]?.total ?? 0,
+    loading: status === 'pending',
+    loadingMore: isFetchingNextPage,
+    refreshing: isFetching && !isFetchingNextPage,
     searchInput,
     setSearchInput,
     activeQuery,
-    error,
-    fetchJobs,
+    error: error ? (error as Error).message : null,
+    fetchJobs: refetch,
     loadMore,
     onRefresh,
     handleSearch,
+    summary: summaryData?.summary || {},
   };
 };

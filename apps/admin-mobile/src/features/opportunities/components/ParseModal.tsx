@@ -2,10 +2,11 @@
  * ParseModal — auto-fill form from URL / JSON / text.
  * Extracted from PostOpportunityScreen to keep the screen render manageable.
  */
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
-    Modal, View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Alert,
+    View, Text, TextInput, TouchableOpacity, ActivityIndicator, StyleSheet, Alert,
 } from 'react-native';
+import { BottomSheetModal, BottomSheetBackdrop, BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
 import { adminOpportunitiesApi } from '@fresherflow/api-client';
 import { theme } from '@/theme';
 import { toast } from '@/lib/toast';
@@ -14,16 +15,45 @@ import { type Opportunity } from '@/lib/api';
 
 interface ParseModalProps {
     visible: boolean;
+    initialUrl?: string;
     onClose: () => void;
     onFilled: (data: Partial<Opportunity>) => void;
 }
 
 type ParseMode = 'url' | 'json' | 'text';
 
-export const ParseModal: React.FC<ParseModalProps> = ({ visible, onClose, onFilled }) => {
+export const ParseModal: React.FC<ParseModalProps> = ({ visible, initialUrl, onClose, onFilled }) => {
     const [parseMode, setParseMode] = useState<ParseMode>('url');
     const [parseInput, setParseInput] = useState('');
     const [parsing, setParsing] = useState(false);
+
+    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const snapPoints = useMemo(() => ['70%'], []);
+
+    useEffect(() => {
+        if (visible) {
+            if (initialUrl && !parseInput) {
+                setParseInput(initialUrl);
+                setParseMode('url');
+            }
+            bottomSheetModalRef.current?.present();
+        } else {
+            bottomSheetModalRef.current?.dismiss();
+        }
+    }, [visible, initialUrl]);
+
+    const handleSheetChanges = useCallback((index: number) => {
+        if (index === -1 && visible) {
+            onClose();
+        }
+    }, [visible, onClose]);
+
+    const renderBackdrop = useCallback(
+        (props: BottomSheetBackdropProps) => (
+            <BottomSheetBackdrop {...props} disappearsOnIndex={-1} appearsOnIndex={0} opacity={0.5} />
+        ),
+        []
+    );
 
     const handleParse = async () => {
         const val = parseInput.trim();
@@ -54,13 +84,20 @@ export const ParseModal: React.FC<ParseModalProps> = ({ visible, onClose, onFill
         }
     };
 
-    const dismiss = () => { onClose(); setParseInput(''); };
+    const dismiss = () => { bottomSheetModalRef.current?.dismiss(); onClose(); setParseInput(''); };
 
     return (
-        <Modal visible={visible} transparent animationType="slide" onRequestClose={dismiss}>
-            <View style={styles.overlay}>
-                <View style={styles.sheet}>
-                    <Text style={styles.title}>Auto-fill Form</Text>
+        <BottomSheetModal
+            ref={bottomSheetModalRef}
+            index={0}
+            snapPoints={snapPoints}
+            onChange={handleSheetChanges}
+            backdropComponent={renderBackdrop}
+            backgroundStyle={{ backgroundColor: theme.colors.surface }}
+            handleIndicatorStyle={{ backgroundColor: theme.colors.border }}
+        >
+            <View style={styles.sheet}>
+                <Text style={styles.title}>Auto-fill Form</Text>
 
                     <View style={styles.modeRow}>
                         {(['url', 'json', 'text'] as ParseMode[]).map(m => (
@@ -69,7 +106,7 @@ export const ParseModal: React.FC<ParseModalProps> = ({ visible, onClose, onFill
                                 style={[styles.modeBtn, parseMode === m && styles.modeBtnActive]}
                                 onPress={() => { setParseMode(m); setParseInput(''); }}
                             >
-                                <Text style={[styles.modeBtnText, parseMode === m && { color: '#fff' }]}>
+                                <Text style={[styles.modeBtnText, parseMode === m && { color: theme.colors.white }]}>
                                     {m === 'url' ? '🔗 URL' : m === 'json' ? '{ } JSON' : '📝 Text'}
                                 </Text>
                             </TouchableOpacity>
@@ -106,18 +143,16 @@ export const ParseModal: React.FC<ParseModalProps> = ({ visible, onClose, onFill
                             <Text style={styles.cancelText}>Cancel</Text>
                         </TouchableOpacity>
                         <TouchableOpacity style={[styles.applyBtn, parsing && { opacity: 0.6 }]} onPress={handleParse} disabled={parsing}>
-                            {parsing ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.applyText}>Apply</Text>}
+                            {parsing ? <ActivityIndicator size="small" color={theme.colors.inverseText} /> : <Text style={styles.applyText}>Apply</Text>}
                         </TouchableOpacity>
                     </View>
                 </View>
-            </View>
-        </Modal>
+        </BottomSheetModal>
     );
 };
 
 const styles = StyleSheet.create({
-    overlay: { flex: 1, backgroundColor: '#00000088', justifyContent: 'flex-end' },
-    sheet: { backgroundColor: theme.colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 40 },
+    sheet: { flex: 1, padding: 20, paddingBottom: 40 },
     title: { fontSize: 17, fontWeight: '800', color: theme.colors.text, marginBottom: 12 },
     modeRow: { flexDirection: 'row', gap: 8, marginBottom: 12 },
     modeBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: theme.colors.border, alignItems: 'center' },
@@ -129,7 +164,7 @@ const styles = StyleSheet.create({
     cancelBtn: { flex: 1, backgroundColor: theme.colors.background, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, padding: 13, alignItems: 'center' },
     cancelText: { fontWeight: '700', color: theme.colors.textMuted },
     applyBtn: { flex: 2, backgroundColor: theme.colors.primary, borderRadius: 10, padding: 13, alignItems: 'center' },
-    applyText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    applyText: { color: theme.colors.inverseText, fontWeight: '800', fontSize: 15 },
 });
 
 

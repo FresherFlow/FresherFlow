@@ -1,109 +1,114 @@
-import { useState, useCallback } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Alert } from 'react-native';
-import { socialPostsApi, type SocialPost, type SocialPostSummary } from '@fresherflow/api-client';
+import { useInfiniteQuery, useMutation } from '@tanstack/react-query';
+import { socialPostsApi } from '@fresherflow/api-client';
 import { toast } from '../../../lib/toast';
 import { type SocialStatusFilter } from '../components/SocialPostFilters';
 
+const PAGE_SIZE = 30;
+
+/**
+ * Hook for managing social media post distribution.
+ * Uses useInfiniteQuery for standardized caching and pagination.
+ */
 export const useSocial = () => {
-    const [posts, setPosts] = useState<SocialPost[]>([]);
     const [statusFilter, setStatusFilter] = useState<SocialStatusFilter>('ALL');
-    const [page, setPage] = useState(1);
-    const [total, setTotal] = useState(0);
-    const [summary, setSummary] = useState<SocialPostSummary>({
-        pending: 0,
-        published: 0,
-        failed: 0,
-        disabled: 0,
-        dryRun: 0,
-    });
-    const [loading, setLoading] = useState(true);
-    const [loadingMore, setLoadingMore] = useState(false);
-    const [refreshing, setRefreshing] = useState(false);
     const [retryingId, setRetryingId] = useState<string | null>(null);
 
-    const fetchPosts = useCallback(async (opts: { pg?: number; status?: SocialStatusFilter; force?: boolean } = {}) => {
-        const { pg = 1, status = statusFilter } = opts;
-        try {
-            if (pg === 1) setLoading(true); else setLoadingMore(true);
+    const {
+        data,
+        fetchNextPage,
+        hasNextPage,
+        isFetching,
+        isFetchingNextPage,
+        status,
+        refetch,
+    } = useInfiniteQuery({
+        queryKey: ['admin', 'social', 'posts', statusFilter],
+        queryFn: ({ pageParam = 1 }) => {
             const params: Record<string, unknown> = {
-                page: pg,
+                page: pageParam,
+                limit: PAGE_SIZE,
             };
-            if (status !== 'ALL') params.status = status;
-            
-            const data = await socialPostsApi.list(params);
-            const rows = data.posts ?? [];
-            setTotal(data.total ?? rows.length);
-            setSummary(data.summary ?? {
-                pending: 0,
-                published: 0,
-                failed: 0,
-                disabled: 0,
-                dryRun: 0,
-            });
-            
-            if (pg === 1) setPosts(rows); else setPosts((prev) => [...prev, ...rows]);
-            setPage(pg);
-        } catch (e: unknown) {
-            toast.error('Social posts failed', e instanceof Error ? e.message : 'Failed to load');
-        } finally {
-            setLoading(false);
-            setLoadingMore(false);
-            setRefreshing(false);
-        }
-    }, [statusFilter]);
+            if (statusFilter !== 'ALL') params.status = statusFilter;
+            return socialPostsApi.list(params);
+        },
+        initialPageParam: 1,
+        getNextPageParam: (lastPage, allPages) => {
+            const totalLoaded = allPages.reduce((acc, p) => acc + (p.posts?.length || 0), 0);
+            if (totalLoaded < (lastPage.total || 0)) {
+                return allPages.length + 1;
+            }
+            return undefined;
+        },
+        staleTime: 1000 * 60 * 5,
+    });
+
+    const posts = useMemo(() => 
+        data?.pages.flatMap(p => p.posts || []) ?? [], 
+        [data]
+    );
+
+    const summary = useMemo(() => 
+        data?.pages[0]?.summary ?? { pending: 0, published: 0, failed: 0, disabled: 0, dryRun: 0 }, 
+        [data]
+    );
+
+    const total = data?.pages[0]?.total ?? 0;
 
     const onRefresh = useCallback(() => { 
-        setRefreshing(true); 
-        void fetchPosts({ pg: 1, force: true }); 
-    }, [fetchPosts]);
+        void refetch(); 
+    }, [refetch]);
 
     const onLoadMore = useCallback(() => { 
-        if (!loadingMore && posts.length < total) {
-            void fetchPosts({ pg: page + 1 }); 
+        if (hasNextPage && !isFetchingNextPage) {
+            void fetchNextPage(); 
         }
-    }, [fetchPosts, loadingMore, posts.length, total, page]);
+    }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
     const onFilter = useCallback((s: SocialStatusFilter) => { 
         setStatusFilter(s); 
-        void fetchPosts({ pg: 1, status: s, force: true }); 
-    }, [fetchPosts]);
+    }, []);
+
+    const retryMutation = useMutation({
+        mutationFn: (id: string) => socialPostsApi.retry(id),
+        onSuccess: () => {
+            toast.success('Retried', 'Social post retry queued.');
+            void refetch();
+        },
+        onError: (e: unknown) => {
+            toast.error('Retry failed', e instanceof Error ? e.message : 'Failed');
+        }
+    });
 
     const retryPost = useCallback((id: string) => {
         Alert.alert('Retry social post?', 'Retry the failed social post on this platform.', [
             { text: 'Cancel', style: 'cancel' },
             {
-                text: 'Retry', onPress: async () => {
+                text: 'Retry', onPress: () => {
                     setRetryingId(id);
-                    try {
-                        await socialPostsApi.retry(id);
-                        toast.success('Retried', 'Social post retry queued.');
-                        void fetchPosts({ pg: 1, force: true });
-                    } catch (e: unknown) {
-                        toast.error('Retry failed', e instanceof Error ? e.message : 'Failed');
-                    } finally {
-                        setRetryingId(null);
-                    }
+                    retryMutation.mutate(id, {
+                        onSettled: () => setRetryingId(null)
+                    });
                 }
             }
         ]);
-    }, [fetchPosts]);
-
-    const stats = {
-        published: summary.published,
-        failed: summary.failed,
-        pending: summary.pending,
-    };
+    }, [retryMutation]);
 
     return {
         posts,
         statusFilter,
         total,
-        loading,
-        loadingMore,
-        refreshing,
+        loading: status === 'pending',
+        loadingMore: isFetchingNextPage,
+        refreshing: isFetching && !isFetchingNextPage,
         retryingId,
-        stats,
-        fetchPosts,
+        stats: {
+            published: summary.published,
+            failed: summary.failed,
+            pending: summary.pending,
+        },
+        fetchPosts: refetch,
         onRefresh,
         onLoadMore,
         onFilter,

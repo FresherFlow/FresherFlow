@@ -1,16 +1,17 @@
 import React, { useCallback } from 'react';
 import {
     StyleSheet, Text, View, 
-    ActivityIndicator, RefreshControl, Alert
+    ActivityIndicator, RefreshControl, Alert, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { OpportunitiesStackParamList } from '@/navigation/OpportunitiesNavigator';
-import { OpportunityTimeline } from './components/OpportunityTimeline';
-import { theme } from '../../theme';
+import { OpportunitiesStackParamList } from '../../navigation/OpportunitiesNavigator';
+import { OpportunityTimeline, type Event } from './components/OpportunityTimeline';
 import { adminOpportunitiesApi } from '@fresherflow/api-client';
 import { toast } from '../../lib/toast';
+import { useTheme } from '../../theme/ThemeProvider';
+import { mScale, SPACING } from '../../theme/dimensions';
 
 // Hooks
 import { useOpportunityDetail } from './hooks/useOpportunityDetail';
@@ -19,16 +20,17 @@ import { Screen, ScrollScreen } from '../system/layout/Layout';
 import { SegmentedControl } from '../system/components/Controls';
 import { DetailHeader } from './components/DetailHeader';
 import { DetailGrid } from './components/DetailGrid';
+import { PremiumHeader } from '../system/components/PremiumPrimitives';
 
-const STATUS_COLOR: Record<string, string> = {
-    PUBLISHED: '#10b981',
-    DRAFT: '#6366f1',
-    ARCHIVED: '#94a3b8',
-    EXPIRED: '#ef4444',
-};
-
-export const OpportunityDetailScreen = ({ route, navigation }: { route: RouteProp<OpportunitiesStackParamList, 'OpportunityDetail'>; navigation: NativeStackNavigationProp<OpportunitiesStackParamList> }) => {
-    const { opportunityId } = route.params as { opportunityId: string };
+export const OpportunityDetailScreen = ({ 
+    route, 
+    navigation 
+}: { 
+    route: RouteProp<OpportunitiesStackParamList, 'OpportunityDetail'>; 
+    navigation: NativeStackNavigationProp<OpportunitiesStackParamList> 
+}) => {
+    const { opportunityId } = route.params;
+    const { currentTheme } = useTheme();
     
     const {
         opp,
@@ -41,20 +43,42 @@ export const OpportunityDetailScreen = ({ route, navigation }: { route: RoutePro
         onRefresh
     } = useOpportunityDetail(opportunityId);
 
+    const STATUS_COLOR: Record<string, string> = {
+        PUBLISHED: currentTheme.colors.success,
+        DRAFT: currentTheme.colors.secondary,
+        ARCHIVED: currentTheme.colors.muted,
+        EXPIRED: currentTheme.colors.error,
+    };
+
     useFocusEffect(useCallback(() => { void fetchAll(); }, [fetchAll]));
 
     if (loading) {
-        return <View style={styles.loader}><ActivityIndicator size="large" color={theme.colors.primary} /></View>;
+        return (
+            <Screen safe={false}>
+                <View style={[styles.loader, { paddingTop: Platform.OS === 'ios' ? mScale(50) : mScale(20) }]}>
+                    <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+                </View>
+            </Screen>
+        );
     }
 
     if (!opp) {
-        return <View style={styles.loader}><Text style={{ color: theme.colors.textMuted }}>Opportunity not found.</Text></View>;
+        return (
+            <Screen safe={false}>
+                <View style={{ paddingTop: Platform.OS === 'ios' ? mScale(50) : mScale(20) }}>
+                    <PremiumHeader title="Not Found" showBack />
+                </View>
+                <View style={styles.loader}>
+                    <Text style={{ color: currentTheme.colors.textMuted }}>Opportunity not found.</Text>
+                </View>
+            </Screen>
+        );
     }
 
-    const sc = STATUS_COLOR[opp.status] ?? theme.colors.textMuted;
+    const sc = STATUS_COLOR[opp.status] || currentTheme.colors.muted;
 
     const publishOpportunity = () => {
-        Alert.alert('Publish Opportunity?', 'This will make the opportunity live.', [
+        Alert.alert('Publish Opportunity?', 'This will make the opportunity live for all users.', [
             { text: 'Cancel', style: 'cancel' },
             {
                 text: 'Publish',
@@ -128,16 +152,14 @@ export const OpportunityDetailScreen = ({ route, navigation }: { route: RoutePro
     };
 
     return (
-        <Screen>
-            <DetailHeader
-                opp={opp}
-                navigation={navigation}
-                statusColor={sc}
-                onPublish={opp.status === 'DRAFT' ? publishOpportunity : undefined}
-                onExpire={opp.status === 'PUBLISHED' ? expireOpportunity : undefined}
-                onRestore={opp.status === 'EXPIRED' || opp.status === 'ARCHIVED' ? restoreOpportunity : undefined}
-                onDelete={deleteOpportunity}
-            />
+        <Screen safe={false}>
+            <View style={{ paddingTop: Platform.OS === 'ios' ? mScale(50) : mScale(20) }}>
+                <PremiumHeader 
+                    title="Signal Detail" 
+                    subtitle={opp.company}
+                    showBack 
+                />
+            </View>
 
             <View style={styles.tabContainer}>
                 <SegmentedControl
@@ -151,14 +173,36 @@ export const OpportunityDetailScreen = ({ route, navigation }: { route: RoutePro
             </View>
 
             <ScrollScreen
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
+                refreshControl={
+                    <RefreshControl 
+                        refreshing={refreshing} 
+                        onRefresh={onRefresh} 
+                        tintColor={currentTheme.colors.primary} 
+                    />
+                }
                 contentContainerStyle={styles.scrollContent}
-                style={{ backgroundColor: theme.colors.background }}
             >
                 {tab === 'details' ? (
-                    <DetailGrid opp={opp} />
+                    <>
+                        <DetailHeader
+                            opp={opp}
+                            navigation={navigation}
+                            statusColor={sc}
+                            onPublish={opp.status === 'DRAFT' ? publishOpportunity : undefined}
+                            onExpire={opp.status === 'PUBLISHED' ? expireOpportunity : undefined}
+                            onRestore={opp.status === 'EXPIRED' || opp.status === 'ARCHIVED' ? restoreOpportunity : undefined}
+                            onDelete={deleteOpportunity}
+                        />
+                        <View style={styles.gridWrapper}>
+                            <DetailGrid opp={opp} />
+                        </View>
+                    </>
                 ) : (
-                    <OpportunityTimeline opportunityId={opportunityId} events={events as never[]} onEventChange={fetchAll} />
+                    <OpportunityTimeline 
+                        opportunityId={opportunityId} 
+                        events={events as Event[]} 
+                        onEventChange={fetchAll} 
+                    />
                 )}
             </ScrollScreen>
         </Screen>
@@ -166,13 +210,21 @@ export const OpportunityDetailScreen = ({ route, navigation }: { route: RoutePro
 };
 
 const styles = StyleSheet.create({
-    loader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
-    tabContainer: {
-        paddingHorizontal: 20,
-        paddingVertical: 12,
-        backgroundColor: theme.colors.background,
+    loader: { 
+        flex: 1, 
+        justifyContent: 'center', 
+        alignItems: 'center' 
     },
-    scrollContent: { paddingBottom: 40, paddingHorizontal: 0 },
+    tabContainer: {
+        paddingHorizontal: SPACING.lg,
+        paddingBottom: SPACING.md,
+        marginTop: SPACING.xs,
+    },
+    scrollContent: { 
+        paddingBottom: 60, 
+        paddingHorizontal: SPACING.lg 
+    },
+    gridWrapper: {
+        marginTop: SPACING.lg,
+    }
 });
-
-

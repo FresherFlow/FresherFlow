@@ -4,6 +4,8 @@ import {
     ActivityIndicator, RefreshControl, Linking,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+import * as Clipboard from 'expo-clipboard';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ExternalLink, XCircle, CheckCircle2, User } from 'lucide-react-native';
@@ -11,12 +13,12 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { alpha } from '../../theme';
 import { mScale, SPACING, RADIUS } from '../../theme/dimensions';
 import { Screen } from '../system/layout/Layout';
-import { AdminHeader } from '../system/components/AdminHeader';
 import { SurfaceCard } from '../system/components/PremiumPrimitives';
 import { OpportunitiesStackParamList } from '../../navigation/OpportunitiesNavigator';
 import { useSubmissions } from './hooks/useSubmissions';
 import { RawOpportunity } from '@fresherflow/types';
 import * as Haptics from 'expo-haptics';
+import { toast } from '../../lib/toast';
 
 interface SubmissionPayload {
     url?: string;
@@ -39,13 +41,14 @@ export const SubmissionsScreen = () => {
         rejectSubmission,
     } = useSubmissions();
 
-    const renderItem = ({ item }: { item: RawOpportunity }) => {
+    const renderItem = ({ item, index }: { item: RawOpportunity; index: number }) => {
         const rawPayload = (item.rawPayload as SubmissionPayload) || {};
         const submitter = item.createdBy?.fullName || 'Anonymous';
         const url = item.sourceLink || rawPayload.url;
 
         return (
-            <SurfaceCard style={styles.card}>
+            <Animated.View entering={FadeInDown.delay(Math.min(index * 50, 600)).springify()}>
+                <SurfaceCard style={styles.card}>
                 <View style={styles.cardHeader}>
                     <View style={[styles.userIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
                         <User size={16} color={currentTheme.colors.primary} />
@@ -65,6 +68,13 @@ export const SubmissionsScreen = () => {
                 <TouchableOpacity 
                     style={[styles.urlContainer, { backgroundColor: alpha(currentTheme.colors.primary, 0.03) }]}
                     onPress={() => url && Linking.openURL(url)}
+                    onLongPress={async () => {
+                        if (url) {
+                            await Clipboard.setStringAsync(url);
+                            toast.info('Copied', 'URL copied to clipboard');
+                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        }
+                    }}
                 >
                     <Text style={[styles.urlText, { color: currentTheme.colors.primary }]} numberOfLines={1}>
                         {url}
@@ -110,12 +120,12 @@ export const SubmissionsScreen = () => {
                     </TouchableOpacity>
                 </View>
             </SurfaceCard>
+            </Animated.View>
         );
     };
 
     return (
         <Screen safe>
-            <AdminHeader />
 
             <FlashList
                 data={submissions}

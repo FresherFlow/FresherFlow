@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { adminAnalyticsApi } from '@fresherflow/api-client';
 
 export type AnalyticsData = {
@@ -36,33 +37,45 @@ export type RecentActivityData = {
 
 export const ANALYTICS_DAY_OPTIONS = [1, 7, 14, 30] as const;
 
+/**
+ * Hook for fetching platform analytics.
+ * Uses useQuery for standardized caching and local-first data availability.
+ */
 export function useAnalytics() {
     const [selectedDays, setSelectedDays] = useState<number>(30);
-    const [data, setData] = useState<AnalyticsData | null>(null);
-    const [activity, setActivity] = useState<RecentActivityData | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
+
+    const { 
+        data: overview, 
+        isLoading: overviewLoading, 
+        isRefetching: overviewRefetching,
+        refetch: refetchOverview 
+    } = useQuery({
+        queryKey: ['admin', 'analytics', 'overview', selectedDays],
+        queryFn: () => adminAnalyticsApi.overview(selectedDays) as Promise<AnalyticsData>,
+        staleTime: 1000 * 60 * 10, // 10 minutes
+    });
+
+    const { 
+        data: activity, 
+        isLoading: activityLoading,
+        isRefetching: activityRefetching,
+        refetch: refetchActivity
+    } = useQuery({
+        queryKey: ['admin', 'recent-activity'],
+        queryFn: () => adminAnalyticsApi.recentActivity(8) as Promise<RecentActivityData>,
+        staleTime: 1000 * 60 * 2, // 2 minutes
+    });
 
     const fetchAll = useCallback(async (days: number) => {
-        try {
-            const [overview, recent] = await Promise.all([
-                adminAnalyticsApi.overview(days) as Promise<AnalyticsData>,
-                adminAnalyticsApi.recentActivity(8) as Promise<RecentActivityData>,
-            ]);
-            setData(overview);
-            setActivity(recent);
-            setSelectedDays(days);
-        } finally {
-            setLoading(false);
-            setRefreshing(false);
-        }
-    }, []);
+        setSelectedDays(days);
+        await Promise.all([refetchOverview(), refetchActivity()]);
+    }, [refetchOverview, refetchActivity]);
 
     const totalChannel = useMemo(() => {
-        if (!data?.channelAttribution) return 0;
-        const c = data.channelAttribution;
+        if (!overview?.channelAttribution) return 0;
+        const c = overview.channelAttribution;
         return (c.telegram ?? 0) + (c.whatsapp ?? 0) + (c.linkedin ?? 0) + (c.others ?? 0);
-    }, [data]);
+    }, [overview]);
 
     const getPct = useCallback(
         (count: number) => (totalChannel > 0 ? Math.round((count / totalChannel) * 100) : 0),
@@ -70,12 +83,11 @@ export function useAnalytics() {
     );
 
     return {
-        data,
-        activity,
-        loading,
-        refreshing,
+        data: overview || null,
+        activity: activity || null,
+        loading: overviewLoading || activityLoading,
+        refreshing: overviewRefetching || activityRefetching,
         selectedDays,
-        setRefreshing,
         setSelectedDays,
         fetchAll,
         totalChannel,

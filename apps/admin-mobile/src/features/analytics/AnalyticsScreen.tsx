@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View, Platform } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import {
     BarChart3,
@@ -12,10 +12,14 @@ import {
 } from 'lucide-react-native';
 import { ANALYTICS_DAY_OPTIONS, useAnalytics } from './hooks/useAnalytics';
 import { useTheme } from '../../theme/ThemeProvider';
+import { mScale } from '../../theme/dimensions';
 import { 
     MetricCard, 
-    SurfaceCard 
 } from '../system/components/SpecializedCards';
+import {
+    SurfaceCard,
+    PremiumHeader,
+} from '../system/components/PremiumPrimitives';
 import { 
     DetailRow, 
     MetricGrid 
@@ -26,7 +30,6 @@ import {
 import { 
     ScrollScreen, 
     Section,
-    PremiumHeader,
 } from '../system/layout/Layout';
 import { SegmentedControl } from '../system/components/Controls';
 
@@ -45,7 +48,7 @@ const ChannelBar = ({ label, value, pct, color }: { label: string; value: number
     );
 };
 
-export const AnalyticsScreen = () => {
+export const IdentityScreen = () => {
     const { colors, spacing } = useTheme();
     const {
         data,
@@ -60,11 +63,9 @@ export const AnalyticsScreen = () => {
         void fetchAll(selectedDays);
     }, [fetchAll, selectedDays]));
 
-
-
     if (loading) {
         return (
-            <View style={[styles.loader, { backgroundColor: colors.background }]}>
+            <View style={[styles.loader, { backgroundColor: colors.background, paddingTop: Platform.OS === 'ios' ? mScale(50) : mScale(20) }]}>
                 <ActivityIndicator size="large" color={colors.primary} />
             </View>
         );
@@ -73,7 +74,7 @@ export const AnalyticsScreen = () => {
     if (!data) {
         return (
             <ScrollScreen style={{ backgroundColor: colors.background }}>
-                <EmptyState title="No analytics yet" message="Once events start flowing, this redesigned analytics view will populate automatically." />
+                <EmptyState title="No Identity Metrics Yet" message="Once events start flowing, this redesigned identity view will populate automatically." />
             </ScrollScreen>
         );
     }
@@ -84,10 +85,11 @@ export const AnalyticsScreen = () => {
 
     return (
         <ScrollScreen
+            safe={false}
             style={{ backgroundColor: colors.background }}
-            contentContainerStyle={{ paddingTop: spacing.sm, paddingBottom: spacing.xxl }}
+            contentContainerStyle={{ paddingTop: (Platform.OS === 'ios' ? mScale(50) : mScale(20)) + spacing.sm, paddingBottom: spacing.xxl }}
         >
-            <PremiumHeader title="Analytics" subtitle="Platform metrics" />
+            <PremiumHeader title="Identity" subtitle="Platform Metrics" />
 
             <View style={styles.topBar}>
                 <View style={{ flex: 1 }}>
@@ -100,35 +102,35 @@ export const AnalyticsScreen = () => {
                 <Text style={[styles.windowText, { color: colors.textMuted }]}>{windowDays}d</Text>
             </View>
 
-            <Section title="User activity">
+            <Section title="User Activity">
                 <MetricGrid>
-                    <MetricCard label="New users" value={activityMetrics?.newUsers30d ?? 0} icon={<Users size={16} color={colors.primary} />} />
-                    <MetricCard label="Apply clicks" value={data.clicks?.applyClicks30d ?? 0} icon={<MousePointerClick size={16} color={colors.accent} />} accent={colors.accent} />
+                    <MetricCard label="New Users" value={activityMetrics?.newUsers30d ?? 0} icon={<Users size={16} color={colors.primary} />} />
+                    <MetricCard label="Apply Clicks" value={data.clicks?.applyClicks30d ?? 0} icon={<MousePointerClick size={16} color={colors.accent} />} accent={colors.accent} />
                     <MetricCard label="Bookmarks" value={activityMetrics?.bookmarks7d ?? 0} icon={<TrendingUp size={16} color={colors.success} />} accent={colors.success} />
                     <MetricCard label="Signups" value={activityMetrics?.signupSuccess30d ?? 0} icon={<Zap size={16} color={colors.warning} />} accent={colors.warning} />
                 </MetricGrid>
             </Section>
 
-            <Section title="Retention and conversion">
+            <Section title="Retention And Conversion">
                 <SurfaceCard>
-                    <DetailRow label="Daily active users" value={activityMetrics?.dau ?? 0} />
-                    <DetailRow label="Active users in selected window" value={activityMetrics?.wau ?? 0} />
-                    <DetailRow label="Returning users" value={activityMetrics?.returningUsers7d ?? 0} tone="positive" />
-                    <DetailRow label="Returning rate" value={`${activityMetrics?.returningRate7d ?? 0}%`} />
-                    <DetailRow label="Signup conversion" value={`${activityMetrics?.signupConversionRate30d ?? 0}%`} tone="positive" />
+                    <DetailRow label="Daily Active Users" value={activityMetrics?.dau ?? 0} />
+                    <DetailRow label="Active Users In Selected Window" value={activityMetrics?.wau ?? 0} />
+                    <DetailRow label="Returning Users" value={activityMetrics?.returningUsers7d ?? 0} tone="positive" />
+                    <DetailRow label="Returning Rate" value={`${activityMetrics?.returningRate7d ?? 0}%`} />
+                    <DetailRow label="Signup Conversion" value={`${activityMetrics?.signupConversionRate30d ?? 0}%`} tone="positive" />
                 </SurfaceCard>
             </Section>
 
-            <Section title="Traffic sources">
+            <Section title="Traffic Sources">
                 <SurfaceCard>
-                    <ChannelBar label="Telegram" value={channel?.telegram ?? 0} pct={getPct(channel?.telegram ?? 0)} color="#229ED9" />
-                    <ChannelBar label="WhatsApp" value={channel?.whatsapp ?? 0} pct={getPct(channel?.whatsapp ?? 0)} color="#25D366" />
-                    <ChannelBar label="LinkedIn" value={channel?.linkedin ?? 0} pct={getPct(channel?.linkedin ?? 0)} color="#0A66C2" />
+                    <ChannelBar label="Telegram" value={channel?.telegram ?? 0} pct={getPct(channel?.telegram ?? 0)} color={colors.brands.telegram} />
+                    <ChannelBar label="WhatsApp" value={channel?.whatsapp ?? 0} pct={getPct(channel?.whatsapp ?? 0)} color={colors.brands.whatsapp} />
+                    <ChannelBar label="LinkedIn" value={channel?.linkedin ?? 0} pct={getPct(channel?.linkedin ?? 0)} color={colors.brands.linkedin} />
                     <ChannelBar label="Others" value={channel?.others ?? 0} pct={getPct(channel?.others ?? 0)} color={colors.textMuted} />
                 </SurfaceCard>
             </Section>
 
-            <Section title="Top clicked opportunities">
+            <Section title="Top Clicked Opportunities">
                 {data.clicks?.topClickedOpportunities?.length ? (
                     <SurfaceCard style={{ paddingVertical: 0 }}>
                         {data.clicks.topClickedOpportunities.slice(0, 6).map((job, index) => (
@@ -152,11 +154,11 @@ export const AnalyticsScreen = () => {
                         ))}
                     </SurfaceCard>
                 ) : (
-                    <EmptyState title="No click leaders yet" message="Top opportunities will appear here when the selected window has enough click data." />
+                    <EmptyState title="No Click Leaders Yet" message="Top opportunities will appear here when the selected window has enough click data." />
                 )}
             </Section>
 
-            <Section title="Feedback signals">
+            <Section title="Feedback Signals">
                 {Object.keys(data.feedback ?? {}).length ? (
                     <SurfaceCard style={{ paddingVertical: 0 }}>
                         {Object.entries(data.feedback ?? {})
@@ -177,11 +179,11 @@ export const AnalyticsScreen = () => {
                             ))}
                     </SurfaceCard>
                 ) : (
-                    <EmptyState title="No feedback trends" message="Listing feedback counts will show up here when users start reporting issues." />
+                    <EmptyState title="No Feedback Trends" message="Listing feedback counts will show up here when users start reporting issues." />
                 )}
             </Section>
 
-            <Section title="Recent registrations">
+            <Section title="Recent Registrations">
                 {activity?.users?.length ? (
                     <SurfaceCard style={{ paddingVertical: 0 }}>
                         {activity.users.map((user, index) => (
@@ -209,19 +211,21 @@ export const AnalyticsScreen = () => {
                         ))}
                     </SurfaceCard>
                 ) : (
-                    <EmptyState title="No recent registrations" message="Newly created users will appear here." />
+                    <EmptyState title="No Recent Registrations" message="Newly created users will appear here." />
                 )}
             </Section>
 
-            <Section title="Urgent watchlist">
+            <Section title="Urgent Watchlist">
                 <MetricGrid>
-                    <MetricCard label="Closing in 48h" value={data.urgent?.closingSoon48h ?? 0} icon={<BarChart3 size={16} color={colors.warning} />} accent={colors.warning} />
-                    <MetricCard label="Broken links" value={data.urgent?.brokenLinks ?? 0} icon={<TrendingUp size={16} color={colors.error} />} accent={colors.error} />
+                    <MetricCard label="Closing In 48h" value={data.urgent?.closingSoon48h ?? 0} icon={<BarChart3 size={16} color={colors.warning} />} accent={colors.warning} />
+                    <MetricCard label="Broken Links" value={data.urgent?.brokenLinks ?? 0} icon={<TrendingUp size={16} color={colors.error} />} accent={colors.error} />
                 </MetricGrid>
             </Section>
         </ScrollScreen>
     );
 };
+
+export const AnalyticsScreen = IdentityScreen;
 
 const styles = StyleSheet.create({
     loader: {

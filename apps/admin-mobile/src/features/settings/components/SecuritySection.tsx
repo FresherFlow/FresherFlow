@@ -63,7 +63,7 @@ export const SecuritySection = React.memo(({
             return (
                 <View style={styles.totpSetupArea}>
                     {totpState.qrUrl ? (
-                        <View style={[styles.qrContainer, { backgroundColor: '#fff', borderColor: c.border }]}>
+                        <View style={[styles.qrContainer, { backgroundColor: c.white, borderColor: c.border }]}>
                             <Image source={{ uri: `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(totpState.qrUrl)}` }} style={styles.qrImage} />
                         </View>
                     ) : (
@@ -107,9 +107,9 @@ export const SecuritySection = React.memo(({
                             disabled={totpState.status === 'verifying'}
                         >
                             {totpState.status === 'verifying' ? (
-                                <ActivityIndicator size="small" color="#fff" />
+                                <ActivityIndicator size="small" color={c.white} />
                             ) : (
-                                <Text style={styles.verifyBtnText}>Verify to Enable</Text>
+                                <Text style={[styles.verifyBtnText, { color: c.white }]}>Verify to Enable</Text>
                             )}
                         </TouchableOpacity>
                     </View>
@@ -321,7 +321,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     verifyBtnText: {
-        color: '#ffffff',
         fontWeight: '600',
     },
 });

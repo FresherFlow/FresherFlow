@@ -2,34 +2,36 @@ import React, { useEffect } from 'react';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NavigationProp } from '@react-navigation/native';
-import { Shield, Palette, Info, MessageSquare, Server, RefreshCw } from 'lucide-react-native';
+import { Shield, Palette, Info, MessageSquare, Server, RefreshCw, TrendingUp } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
 import { mScale, SPACING } from '../../theme/dimensions';
 import { useSettings } from './hooks/useSettings';
 import { useTotpManager } from '../security/hooks/useTotpManager';
 import { useOtaManager } from '../system/hooks';
-import { ProfileCard } from './components/ProfileCard';
 import { SettingsCard, SettingItem, ChevronRight } from './components/SettingsComponents';
-import { Screen, ScrollScreen, PremiumHeader } from '../system/layout/Layout';
+import { ScrollScreen, Section } from '../system/layout/Layout';
 
 type SettingsRouteName =
     | 'AppearanceSettings'
+    | 'Dashboard'
     | 'Security'
     | 'Feedback'
     | 'AppInfo'
     | 'OTAUpdates'
-    | 'SystemOverview';
+    | 'TelegramBroadcasts'
+    | 'SocialPosts'
+    | 'SystemOverview'
+    | 'ThemeSettings';
 
 const SettingsScreen = () => {
     const navigation = useNavigation<NavigationProp<Record<string, unknown>>>();
-    const { colors, currentTheme } = useTheme();
+    const { currentTheme } = useTheme();
     const {
         admin,
         loading,
         refreshing,
         setRefreshing,
         fetchStatus,
-        handleLogout,
     } = useSettings();
     const { state: otaState } = useOtaManager();
     const { state: totpState, init: initTotp } = useTotpManager();
@@ -51,101 +53,115 @@ const SettingsScreen = () => {
         navigation.navigate(routeName);
     };
 
-    const totpSummary = totpState.isEnabled ? 'Enabled' : 'Not enabled';
-    const updateSummary = otaState.statusText || `Version ${otaState.appVersion}`;
+    const totpSummary = totpState.isEnabled ? 'Enabled' : 'Disabled';
+    const updateSummary = otaState.statusText || `v${otaState.appVersion}`;
 
     return (
-        <Screen>
-            <ScrollScreen
-                style={{ backgroundColor: colors.background }}
-                contentContainerStyle={{ paddingBottom: 100 }}
+        <ScrollScreen
+                contentContainerStyle={styles.scrollContent}
                 refreshControl={
                     <RefreshControl
                         refreshing={refreshing || loading}
                         onRefresh={() => {
                             void handleRefresh();
                         }}
-                        tintColor={colors.primary}
+                        tintColor={currentTheme.colors.primary}
                     />
                 }
             >
-                <PremiumHeader title="Settings" subtitle="Admin configuration" />
+                <Section title="Account & Security">
+                    <SettingsCard>
+                        <SettingItem
+                            title="Security"
+                            description={`Two-factor authentication is ${totpSummary.toLowerCase()}`}
+                            customIcon={<Shield size={18} color={currentTheme.colors.primary} />}
+                            renderControl={() => <ChevronRight />}
+                            onPress={() => navigateTo('Security')}
+                        />
+                        <SettingItem
+                            title="Appearance"
+                            description={currentTheme.name}
+                            customIcon={<Palette size={18} color={currentTheme.colors.secondary} />}
+                            renderControl={() => <ChevronRight />}
+                            onPress={() => navigateTo('ThemeSettings')}
+                            isLast
+                        />
+                    </SettingsCard>
+                </Section>
 
-                <ProfileCard admin={admin} colors={colors} onLogout={handleLogout} />
+                <Section title="Operations">
+                    <SettingsCard>
+                        <SettingItem
+                            title="Dashboard Metrics"
+                            description="Operational overview and signals"
+                            customIcon={<TrendingUp size={18} color={currentTheme.colors.primary} />}
+                            renderControl={() => <ChevronRight />}
+                            onPress={() => navigateTo('Dashboard')}
+                            isLast
+                        />
+                    </SettingsCard>
+                </Section>
 
-                <SettingsCard title="Account">
-                    <SettingItem
-                        title="Security"
-                        description={`Two-factor auth: ${totpSummary}`}
-                        customIcon={<Shield size={18} color={colors.primary} />}
-                        renderControl={() => <ChevronRight />}
-                        onPress={() => navigateTo('Security')}
-                    />
-                    <SettingItem
-                        title="Appearance"
-                        description={currentTheme.name}
-                        customIcon={<Palette size={18} color={colors.accent} />}
-                        renderControl={() => <ChevronRight />}
-                        onPress={() => navigateTo('AppearanceSettings')}
-                        isLast
-                    />
-                </SettingsCard>
-
-                <SettingsCard title="Operations">
-                    <SettingItem
-                        title="System Health"
-                        description="Queue health, config readiness, and alert controls"
-                        customIcon={<Server size={18} color={colors.secondary} />}
-                        renderControl={() => <ChevronRight />}
-                        onPress={() => navigateTo('SystemOverview')}
-                    />
-                    <SettingItem
-                        title="Feedback Inbox"
-                        description="Review listing and app feedback"
-                        customIcon={<MessageSquare size={18} color={colors.primary} />}
-                        renderControl={() => <ChevronRight />}
-                        onPress={() => navigateTo('Feedback')}
-                    />
-                    <SettingItem
-                        title="OTA Updates"
-                        description={updateSummary}
-                        customIcon={<RefreshCw size={18} color={colors.warning} />}
-                        renderControl={() => <ChevronRight />}
-                        onPress={() => navigateTo('OTAUpdates')}
-                    />
-                    <SettingItem
-                        title="App Information"
-                        description={`Runtime ${otaState.runtimeVersion}`}
-                        customIcon={<Info size={18} color={colors.textMuted} />}
-                        renderControl={() => <ChevronRight />}
-                        onPress={() => navigateTo('AppInfo')}
-                        isLast
-                    />
-                </SettingsCard>
+                <Section title="System & Infrastructure">
+                    <SettingsCard>
+                        <SettingItem
+                            title="System Health"
+                            description="Infrastructure monitoring and alerts"
+                            customIcon={<Server size={18} color={currentTheme.colors.primary} />}
+                            renderControl={() => <ChevronRight />}
+                            onPress={() => navigateTo('SystemOverview')}
+                        />
+                        <SettingItem
+                            title="Feedback Queue"
+                            description="Review platform signal accuracy"
+                            customIcon={<MessageSquare size={18} color={currentTheme.colors.secondary} />}
+                            renderControl={() => <ChevronRight />}
+                            onPress={() => navigateTo('Feedback')}
+                        />
+                        <SettingItem
+                            title="OTA Updates"
+                            description={updateSummary}
+                            customIcon={<RefreshCw size={18} color={currentTheme.colors.warning} />}
+                            renderControl={() => <ChevronRight />}
+                            onPress={() => navigateTo('OTAUpdates')}
+                        />
+                        <SettingItem
+                            title="App Information"
+                            description={`Runtime version ${otaState.runtimeVersion}`}
+                            customIcon={<Info size={18} color={currentTheme.colors.textMuted} />}
+                            renderControl={() => <ChevronRight />}
+                            onPress={() => navigateTo('AppInfo')}
+                            isLast
+                        />
+                    </SettingsCard>
+                </Section>
 
                 <View style={styles.footer}>
-                    <Text style={[styles.footerText, { color: colors.textMuted }]}>
-                        Admin mobile settings are organized as focused flows for operational efficiency.
+                    <Text style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
+                        Administrative operations are high-signal. Use caution when modifying system states.
                     </Text>
                 </View>
             </ScrollScreen>
-        </Screen>
     );
 };
 
 export { SettingsScreen };
 
 const styles = StyleSheet.create({
-    footer: {
+    scrollContent: { 
         paddingHorizontal: SPACING.lg,
-        paddingTop: SPACING.sm,
+        paddingBottom: 100,
+        paddingTop: SPACING.md,
+    },
+    footer: {
+        marginTop: SPACING.lg,
+        paddingHorizontal: SPACING.xl,
     },
     footerText: {
         fontSize: mScale(11),
+        fontWeight: '600',
         lineHeight: mScale(16),
         textAlign: 'center',
-        opacity: 0.6,
+        opacity: 0.5,
     },
 });
-
-

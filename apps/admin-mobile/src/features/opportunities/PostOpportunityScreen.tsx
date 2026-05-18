@@ -1,23 +1,24 @@
-/**
- * PostOpportunityScreen — thin render container.
- *
- * State & save logic: usePostOpportunityForm (./post-opportunity/usePostOpportunityForm)
- * Auto-fill modal:    ParseModal             (./post-opportunity/ParseModal)
- */
 import React, { useState } from 'react';
 import {
     StyleSheet, Text, View, TextInput, ScrollView,
-    TouchableOpacity, ActivityIndicator,
+    TouchableOpacity, ActivityIndicator, Platform, KeyboardAvoidingView
 } from 'react-native';
 import type { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { OpportunitiesStackParamList } from '@/navigation/OpportunitiesNavigator';
-import { theme } from '../../theme';
+import { OpportunitiesStackParamList } from '../../navigation/OpportunitiesNavigator';
 import { usePostOpportunity } from './hooks/usePostOpportunity';
 import { ParseModal } from './components/ParseModal';
+import { OpportunityType } from '@fresherflow/api-client';
+import { useTheme } from '../../theme/ThemeProvider';
+import { alpha } from '../../theme';
+import { mScale, SPACING } from '../../theme/dimensions';
+import { Screen, Section } from '../system/layout/Layout';
+import { SurfaceCard } from '../system/components/PremiumPrimitives';
+import { AppButton } from '@repo/ui';
+import { Sparkles, Check } from 'lucide-react-native';
 
 // ── Constants ─────────────────────────────────────────────────────────────────
-const OPPORTUNITY_TYPES = ['JOB', 'INTERNSHIP', 'WALKIN'] as const;
+const OPPORTUNITY_TYPES = [OpportunityType.JOB, OpportunityType.INTERNSHIP, OpportunityType.WALKIN] as const;
 const WORK_MODES        = ['ONSITE', 'HYBRID', 'REMOTE'] as const;
 const SALARY_PERIODS    = ['YEARLY', 'MONTHLY'] as const;
 const STATUSES          = ['DRAFT', 'PUBLISHED', 'ARCHIVED'] as const;
@@ -25,295 +26,373 @@ const PASS_YEARS        = [2022, 2023, 2024, 2025, 2026, 2027, 2028];
 const DEGREES           = ['DIPLOMA', 'DEGREE', 'PG'];
 const QUICK_LOCATIONS   = ['Remote', 'Bengaluru', 'Mumbai', 'Hyderabad', 'Chennai', 'Delhi', 'Pune', 'Kolkata', 'Pan India'];
 
-// ── Screen ────────────────────────────────────────────────────────────────────
-export const PostOpportunityScreen = ({ route, navigation }: { route: RouteProp<OpportunitiesStackParamList, 'PostOpportunity'>; navigation: NativeStackNavigationProp<OpportunitiesStackParamList> }) => {
+export const PostOpportunityScreen = ({ 
+    route, 
+    navigation 
+}: { 
+    route: RouteProp<OpportunitiesStackParamList, 'PostOpportunity'>; 
+    navigation: NativeStackNavigationProp<OpportunitiesStackParamList> 
+}) => {
     const opportunityId = route.params?.opportunityId;
     const isEditing = !!opportunityId;
+    const { currentTheme } = useTheme();
 
-    const { form, set, toggle, fillForm, loading, saving, handleSave } =
+    const { form, set, toggle, fillForm, loading, saving, handleSave, errors } =
         usePostOpportunity(opportunityId, navigation);
 
     const [showParseModal, setShowParseModal] = useState(false);
 
     if (loading) {
         return (
-            <View style={styles.loader}>
-                <ActivityIndicator size="large" color={theme.colors.primary} />
-            </View>
+            <Screen safe>
+                <View style={styles.loader}>
+                    <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+                </View>
+            </Screen>
         );
     }
 
     return (
-        <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
-            <ScrollView style={styles.container} contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+        <Screen safe>
+            
+            <KeyboardAvoidingView 
+                behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+                style={styles.flex}
+            >
+                <ScrollView 
+                    style={styles.flex} 
+                    contentContainerStyle={styles.scrollContent} 
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
+                    {/* No banner, using FAB instead */}
 
-                {/* Auto-fill banner */}
-                {!isEditing && (
-                    <TouchableOpacity style={styles.parseBanner} onPress={() => setShowParseModal(true)}>
-                        <Text style={styles.parseBannerIcon}>⚡</Text>
-                        <View style={{ flex: 1 }}>
-                            <Text style={styles.parseBannerTitle}>Auto-fill from URL / JSON / Text</Text>
-                            <Text style={styles.parseBannerSub}>AI extracts and pre-fills the form instantly</Text>
-                        </View>
-                        <Text style={styles.parseBannerArrow}>›</Text>
-                    </TouchableOpacity>
-                )}
+                    <Section title="Signal Configuration">
+                        <SurfaceCard style={styles.formCard}>
+                            <Label>Status</Label>
+                            <ChipRow wrap>
+                                {STATUSES.map(s => (
+                                    <Chip 
+                                        key={s} 
+                                        label={s} 
+                                        active={form.status === s}
+                                        onPress={() => set('status', s)}
+                                        activeColor={s === 'PUBLISHED' ? currentTheme.colors.success : s === 'ARCHIVED' ? currentTheme.colors.muted : currentTheme.colors.secondary} 
+                                    />
+                                ))}
+                            </ChipRow>
 
-                {/* Status */}
-                <Label>Status</Label>
-                <ChipRow>
-                    {STATUSES.map(s => (
-                        <Chip key={s} label={s} active={form.status === s}
-                            onPress={() => set('status', s)}
-                            activeColor={s === 'PUBLISHED' ? theme.colors.success : s === 'ARCHIVED' ? theme.colors.textMuted : theme.colors.accent} />
-                    ))}
-                </ChipRow>
+                            <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
-                {/* Type */}
-                <Label>Opportunity Type</Label>
-                <ChipRow>
-                    {OPPORTUNITY_TYPES.map(t => (
-                        <Chip key={t} label={t} active={form.type === t} onPress={() => set('type', t)} />
-                    ))}
-                </ChipRow>
+                            <Label>Signal Type</Label>
+                            <ChipRow>
+                                {OPPORTUNITY_TYPES.map(t => (
+                                    <Chip 
+                                        key={t} 
+                                        label={t} 
+                                        active={form.type === t} 
+                                        onPress={() => set('type', t)} 
+                                    />
+                                ))}
+                            </ChipRow>
+                        </SurfaceCard>
+                    </Section>
 
-                {/* Core */}
-                <Label>Job Title *</Label>
-                <Input placeholder="e.g. Software Engineer" value={form.title} onChangeText={v => set('title', v)} />
+                    <Section title="Entity Details">
+                        <SurfaceCard style={styles.formCard}>
+                            <Label>Job Title *</Label>
+                            <FormInput 
+                                placeholder="e.g. Software Engineer" 
+                                value={form.title} 
+                                onChangeText={v => set('title', v)} 
+                                error={errors.title?.message}
+                            />
 
-                <Label>Company *</Label>
-                <Input placeholder="e.g. Google" value={form.company} onChangeText={v => set('company', v)} />
+                            <Label>Company *</Label>
+                            <FormInput 
+                                placeholder="e.g. Google" 
+                                value={form.company} 
+                                onChangeText={v => set('company', v)} 
+                                error={errors.company?.message}
+                            />
 
-                <Label>Company Website</Label>
-                <Input placeholder="https://company.com" value={form.companyWebsite} onChangeText={v => set('companyWebsite', v)} url />
+                            <Label>Website</Label>
+                            <FormInput 
+                                placeholder="https://company.com" 
+                                value={form.companyWebsite} 
+                                onChangeText={v => set('companyWebsite', v)} 
+                                error={errors.companyWebsite?.message}
+                                url 
+                            />
+                        </SurfaceCard>
+                    </Section>
 
-                {/* Links */}
-                <Label>Source Link (job listing page)</Label>
-                <Input placeholder="https://company.com/jobs/engineer" value={form.sourceLink} onChangeText={v => set('sourceLink', v)} url />
+                    <Section title="Fulfillment Links">
+                        <SurfaceCard style={styles.formCard}>
+                            <Label>Source Page</Label>
+                            <FormInput 
+                                placeholder="Link to listing page" 
+                                value={form.sourceLink} 
+                                onChangeText={v => set('sourceLink', v)} 
+                                url 
+                            />
 
-                <Label>Apply Link (direct apply URL)</Label>
-                <Input placeholder="https://company.com/apply/…" value={form.applyLink} onChangeText={v => set('applyLink', v)} url />
+                            <Label>Apply Direct</Label>
+                            <FormInput 
+                                placeholder="Direct application URL" 
+                                value={form.applyLink} 
+                                onChangeText={v => set('applyLink', v)} 
+                                url 
+                            />
+                        </SurfaceCard>
+                    </Section>
 
-                {/* Location */}
-                <Label>Locations (comma separated)</Label>
-                <Input placeholder="Remote, Bengaluru, Mumbai" value={form.locationInput} onChangeText={v => set('locationInput', v)} />
-                <View style={styles.quickLocRow}>
-                    {QUICK_LOCATIONS.map(l => (
-                        <TouchableOpacity key={l} style={styles.quickLoc}
-                            onPress={() => {
-                                if (form.locationInput.toLowerCase().includes(l.toLowerCase())) return;
-                                set('locationInput', form.locationInput ? `${form.locationInput}, ${l}` : l);
-                            }}>
-                            <Text style={styles.quickLocText}>{l}</Text>
-                        </TouchableOpacity>
-                    ))}
-                </View>
+                    <Section title="Logistics">
+                        <SurfaceCard style={styles.formCard}>
+                            <Label>Work Mode</Label>
+                            <ChipRow>
+                                {WORK_MODES.map(m => (
+                                    <Chip key={m} label={m} active={form.workMode === m} onPress={() => set('workMode', m)} />
+                                ))}
+                            </ChipRow>
 
-                {/* Work mode */}
-                <Label>Work Mode</Label>
-                <ChipRow>
-                    {WORK_MODES.map(m => (
-                        <Chip key={m} label={m} active={form.workMode === m} onPress={() => set('workMode', m)} />
-                    ))}
-                </ChipRow>
+                            <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
-                {/* Education */}
-                <Label>Eligible Degrees</Label>
-                <ChipRow wrap>
-                    {DEGREES.map(d => (
-                        <Chip key={d} label={d} active={form.selectedDegrees.includes(d)} onPress={() => toggle('selectedDegrees', d)} />
-                    ))}
-                </ChipRow>
-
-                <Label>Eligible Courses (comma separated)</Label>
-                <Input placeholder="e.g. B.Tech, B.E., MCA" value={form.allowedCourses} onChangeText={v => set('allowedCourses', v)} />
-
-                <Label>Eligible Specializations (comma separated)</Label>
-                <Input placeholder="e.g. CSE, IT, ECE" value={form.allowedSpecializations} onChangeText={v => set('allowedSpecializations', v)} />
-
-                <Label>Eligible Passout Years</Label>
-                <ChipRow wrap>
-                    {PASS_YEARS.map(y => (
-                        <Chip key={y} label={String(y)} active={form.selectedYears.includes(y)} onPress={() => toggle('selectedYears', y)} />
-                    ))}
-                </ChipRow>
-
-                {/* Skills */}
-                <Label>Required Skills (comma separated)</Label>
-                <Input placeholder="React, Node.js, SQL" value={form.skills} onChangeText={v => set('skills', v)} />
-
-                {/* Salary */}
-                <Label>Salary / CTC Range</Label>
-                <Input
-                    placeholder={form.salaryPeriod === 'YEARLY' ? 'e.g. 4-8 LPA' : 'e.g. 25000-50000 /month'}
-                    value={form.salaryRange} onChangeText={v => set('salaryRange', v)} />
-                <Label>Salary Period</Label>
-                <ChipRow>
-                    {SALARY_PERIODS.map(p => (
-                        <Chip key={p} label={p} active={form.salaryPeriod === p} onPress={() => set('salaryPeriod', p)} />
-                    ))}
-                </ChipRow>
-
-                {/* Experience */}
-                <View style={styles.row}>
-                    <View style={{ flex: 1 }}>
-                        <Label>Exp Min (yrs)</Label>
-                        <Input placeholder="0" value={form.expMin} onChangeText={v => set('expMin', v)} numeric />
-                    </View>
-                    <View style={{ width: 12 }} />
-                    <View style={{ flex: 1 }}>
-                        <Label>Exp Max (yrs)</Label>
-                        <Input placeholder="3" value={form.expMax} onChangeText={v => set('expMax', v)} numeric />
-                    </View>
-                </View>
-
-                {/* Job specifics */}
-                <Label>Job Function</Label>
-                <Input placeholder="e.g. Engineering, Finance" value={form.jobFunction} onChangeText={v => set('jobFunction', v)} />
-
-                <Label>Employment Type</Label>
-                <Input placeholder="Full-time, Contract, Part-time" value={form.employmentType} onChangeText={v => set('employmentType', v)} />
-
-                <Label>Incentives / Perks</Label>
-                <Input placeholder="Health insurance, ESOPs…" value={form.incentives} onChangeText={v => set('incentives', v)} />
-
-                <Label>Selection Process</Label>
-                <Input placeholder="Online test → Interview → HR round" value={form.selectionProcess} onChangeText={v => set('selectionProcess', v)} />
-
-                <Label>Notes / Highlights</Label>
-                <Input placeholder="Important notes for freshers…" value={form.notesHighlights} onChangeText={v => set('notesHighlights', v)} multiline />
-
-                {/* Walk-in section */}
-                {form.type === 'WALKIN' && (
-                    <>
-                        <SectionHeader>Walk-in Details</SectionHeader>
-
-                        <Label>Venue Address *</Label>
-                        <Input placeholder="Building, Street, City" value={form.venueAddress} onChangeText={v => set('venueAddress', v)} multiline />
-
-                        <Label>Venue / Maps Link</Label>
-                        <Input placeholder="https://maps.google.com/…" value={form.venueLink} onChangeText={v => set('venueLink', v)} url />
-
-                        <View style={styles.row}>
-                            <View style={{ flex: 1 }}>
-                                <Label>Start Date</Label>
-                                <Input placeholder="YYYY-MM-DD" value={form.walkInDate} onChangeText={v => set('walkInDate', v)} />
+                            <Label>Locations</Label>
+                            <FormInput 
+                                placeholder="Remote, Bengaluru, Mumbai" 
+                                value={form.locationInput} 
+                                onChangeText={v => set('locationInput', v)} 
+                            />
+                            <View style={styles.quickLocRow}>
+                                {QUICK_LOCATIONS.map(l => (
+                                    <TouchableOpacity 
+                                        key={l} 
+                                        style={[styles.quickLoc, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}
+                                        onPress={() => {
+                                            if (form.locationInput.toLowerCase().includes(l.toLowerCase())) return;
+                                            set('locationInput', form.locationInput ? `${form.locationInput}, ${l}` : l);
+                                        }}
+                                    >
+                                        <Text style={[styles.quickLocText, { color: currentTheme.colors.text }]}>{l}</Text>
+                                    </TouchableOpacity>
+                                ))}
                             </View>
-                            <View style={{ width: 12 }} />
-                            <View style={{ flex: 1 }}>
-                                <Label>End Date</Label>
-                                <Input placeholder="YYYY-MM-DD" value={form.walkInEndDate} onChangeText={v => set('walkInEndDate', v)} />
+                        </SurfaceCard>
+                    </Section>
+
+                    <Section title="Candidate Profile">
+                        <SurfaceCard style={styles.formCard}>
+                            <Label>Degrees</Label>
+                            <ChipRow wrap>
+                                {DEGREES.map(d => (
+                                    <Chip key={d} label={d} active={form.selectedDegrees.includes(d)} onPress={() => toggle('selectedDegrees', d)} />
+                                ))}
+                            </ChipRow>
+
+                            <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
+
+                            <Label>Passout Years</Label>
+                            <ChipRow wrap>
+                                {PASS_YEARS.map(y => (
+                                    <Chip key={y} label={String(y)} active={form.selectedYears.includes(y)} onPress={() => toggle('selectedYears', y)} />
+                                ))}
+                            </ChipRow>
+
+                            <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
+
+                            <Label>Courses</Label>
+                            <FormInput placeholder="e.g. B.Tech, MCA" value={form.allowedCourses} onChangeText={v => set('allowedCourses', v)} />
+
+                            <Label>Skills</Label>
+                            <FormInput placeholder="React, Python, SQL" value={form.skills} onChangeText={v => set('skills', v)} />
+                        </SurfaceCard>
+                    </Section>
+
+                    <Section title="Compensation & Context">
+                        <SurfaceCard style={styles.formCard}>
+                            <Label>Salary Range</Label>
+                            <FormInput
+                                placeholder={form.salaryPeriod === 'YEARLY' ? 'e.g. 6-12 LPA' : 'e.g. 40k-60k /month'}
+                                value={form.salaryRange} onChangeText={v => set('salaryRange', v)} />
+                            
+                            <Label>Period</Label>
+                            <ChipRow>
+                                {SALARY_PERIODS.map(p => (
+                                    <Chip key={p} label={p} active={form.salaryPeriod === p} onPress={() => set('salaryPeriod', p)} />
+                                ))}
+                            </ChipRow>
+
+                            <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
+
+                            <View style={styles.row}>
+                                <View style={styles.flex}>
+                                    <Label>Exp Min</Label>
+                                    <FormInput placeholder="0" value={form.expMin} onChangeText={v => set('expMin', v)} numeric />
+                                </View>
+                                <View style={{ width: SPACING.md }} />
+                                <View style={styles.flex}>
+                                    <Label>Exp Max</Label>
+                                    <FormInput placeholder="3" value={form.expMax} onChangeText={v => set('expMax', v)} numeric />
+                                </View>
                             </View>
-                        </View>
+                        </SurfaceCard>
+                    </Section>
 
-                        <Label>Time Range</Label>
-                        <Input placeholder="10:00 AM – 1:00 PM" value={form.walkInTime} onChangeText={v => set('walkInTime', v)} />
+                    <Section title="Signal Depth">
+                        <SurfaceCard style={styles.formCard}>
+                            <Label>Description</Label>
+                            <FormInput 
+                                placeholder="Full job details..." 
+                                value={form.description} 
+                                onChangeText={v => set('description', v)} 
+                                multiline 
+                            />
 
-                        <Label>Required Documents (comma separated)</Label>
-                        <Input placeholder="Resume, Aadhar, Offer letter" value={form.requiredDocuments} onChangeText={v => set('requiredDocuments', v)} />
+                            <Label>Notes / Highlights</Label>
+                            <FormInput 
+                                placeholder="Admin notes..." 
+                                value={form.notesHighlights} 
+                                onChangeText={v => set('notesHighlights', v)} 
+                                multiline 
+                            />
+                        </SurfaceCard>
+                    </Section>
 
-                        <Label>Contact Person</Label>
-                        <Input placeholder="HR Name" value={form.contactPerson} onChangeText={v => set('contactPerson', v)} />
+                    <AppButton
+                        label={isEditing ? 'Save Signal Changes' : 'Publish Opportunity Signal'}
+                        onPress={handleSave}
+                        loading={saving}
+                        style={styles.saveBtn}
+                    />
+                    <View style={styles.footerSpace} />
+                </ScrollView>
+            </KeyboardAvoidingView>
 
-                        <Label>Contact Phone</Label>
-                        <Input placeholder="+91 98765 43210" value={form.contactPhone} onChangeText={v => set('contactPhone', v)} numeric />
-                    </>
-                )}
-
-                {/* Expiry */}
-                <Label>Expires On (YYYY-MM-DD)</Label>
-                <Input placeholder="e.g. 2025-06-30" value={form.expiresAt} onChangeText={v => set('expiresAt', v)} />
-
-                {/* Description */}
-                <Label>Description / JD</Label>
-                <TextInput
-                    style={[styles.input, { height: 160 }]}
-                    placeholder="Full job description…"
-                    placeholderTextColor={theme.colors.textMuted}
-                    multiline textAlignVertical="top"
-                    value={form.description}
-                    onChangeText={v => set('description', v)}
-                />
-
-                {/* Save */}
-                <TouchableOpacity style={[styles.saveBtn, saving && { opacity: 0.65 }]} onPress={handleSave} disabled={saving}>
-                    {saving
-                        ? <ActivityIndicator color="#fff" />
-                        : <Text style={styles.saveBtnText}>{isEditing ? 'Save Changes' : 'Post Opportunity'}</Text>}
+            {!isEditing && (
+                <TouchableOpacity
+                    style={[styles.fab, { backgroundColor: currentTheme.colors.primary }]}
+                    onPress={() => setShowParseModal(true)}
+                    activeOpacity={0.8}
+                >
+                    <Sparkles size={24} color={currentTheme.colors.background} />
                 </TouchableOpacity>
-                <View style={{ height: 40 }} />
-            </ScrollView>
+            )}
 
             <ParseModal
                 visible={showParseModal}
+                initialUrl={form.sourceLink}
                 onClose={() => setShowParseModal(false)}
                 onFilled={(data) => { fillForm(data); }}
             />
+        </Screen>
+    );
+};
+
+const Label = ({ children }: { children: React.ReactNode }) => {
+    const { currentTheme } = useTheme();
+    return <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>{children}</Text>;
+};
+
+const ChipRow = ({ children, wrap }: { children: React.ReactNode; wrap?: boolean }) => (
+    <View style={[styles.chipRow, wrap && styles.chipRowWrap]}>{children}</View>
+);
+
+const Chip = ({ label, active, onPress, activeColor }: { label: string; active: boolean; onPress: () => void; activeColor?: string }) => {
+    const { currentTheme } = useTheme();
+    const bg = active ? (activeColor ?? currentTheme.colors.primary) : alpha(currentTheme.colors.primary, 0.05);
+    const borderColor = active ? bg : alpha(currentTheme.colors.border, 0.1);
+    
+    return (
+        <TouchableOpacity 
+            style={[styles.chip, { backgroundColor: bg, borderColor }]} 
+            onPress={onPress}
+            activeOpacity={0.7}
+        >
+            <Text style={[styles.chipText, { color: active ? currentTheme.colors.background : currentTheme.colors.text }]}>
+                {label}
+            </Text>
+            {active && <Check size={10} color={currentTheme.colors.background} style={{ marginLeft: 4 }} />}
+        </TouchableOpacity>
+    );
+};
+
+const FormInput = ({
+    placeholder, value, onChangeText, url, numeric, multiline, error
+}: {
+    placeholder?: string; value: string; onChangeText: (v: string) => void;
+    url?: boolean; numeric?: boolean; multiline?: boolean; error?: string;
+}) => {
+    const { currentTheme } = useTheme();
+    return (
+        <View style={{ marginBottom: SPACING.md }}>
+            <TextInput
+                style={[
+                    styles.input, 
+                    { 
+                        color: currentTheme.colors.text, 
+                        borderBottomColor: error ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1),
+                        marginBottom: 0
+                    },
+                    multiline && { height: 100, textAlignVertical: 'top' }
+                ]}
+                placeholder={placeholder}
+                placeholderTextColor={alpha(currentTheme.colors.text, 0.3)}
+                value={value}
+                onChangeText={onChangeText}
+                autoCapitalize={url ? 'none' : 'sentences'}
+                keyboardType={url ? 'url' : numeric ? 'numeric' : 'default'}
+                multiline={multiline}
+            />
+            {error && <Text style={{ color: currentTheme.colors.error, fontSize: 10, marginTop: 4, fontWeight: '700' }}>{error}</Text>}
         </View>
     );
 };
 
-// ── Primitives ────────────────────────────────────────────────────────────────
-
-const Label = ({ children }: { children: React.ReactNode }) => (
-    <Text style={styles.label}>{children}</Text>
-);
-const SectionHeader = ({ children }: { children: React.ReactNode }) => (
-    <Text style={styles.sectionHeader}>{children}</Text>
-);
-const ChipRow = ({ children, wrap }: { children: React.ReactNode; wrap?: boolean }) => (
-    <View style={[styles.chipRow, wrap && styles.chipRowWrap]}>{children}</View>
-);
-const Chip = ({ label, active, onPress, activeColor }: { label: string; active: boolean; onPress: () => void; activeColor?: string }) => {
-    const bg = active ? (activeColor ?? theme.colors.primary) : theme.colors.surface;
-    return (
-        <TouchableOpacity style={[styles.chip, { backgroundColor: bg, borderColor: active ? bg : theme.colors.border }]} onPress={onPress}>
-            <Text style={[styles.chipText, { color: active ? '#fff' : theme.colors.textMuted }]}>{label}</Text>
-        </TouchableOpacity>
-    );
-};
-const Input = ({
-    placeholder, value, onChangeText, url, numeric, multiline,
-}: {
-    placeholder?: string; value: string; onChangeText: (v: string) => void;
-    url?: boolean; numeric?: boolean; multiline?: boolean;
-}) => (
-    <TextInput
-        style={[styles.input, multiline && { height: 100 }]}
-        placeholder={placeholder}
-        placeholderTextColor={theme.colors.textMuted}
-        value={value}
-        onChangeText={onChangeText}
-        autoCapitalize={url ? 'none' : 'sentences'}
-        keyboardType={url ? 'url' : numeric ? 'numeric' : 'default'}
-        multiline={multiline}
-        textAlignVertical={multiline ? 'top' : 'center'}
-    />
-);
-
-// ── Styles ────────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-    loader: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: theme.colors.background },
-    container: { flex: 1, backgroundColor: theme.colors.background },
-    form: { padding: 20, paddingBottom: 40 },
-    label: { fontSize: 12, fontWeight: '700', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6, marginTop: 16 },
-    sectionHeader: { fontSize: 15, fontWeight: '800', color: theme.colors.primary, marginTop: 24, marginBottom: 4, borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 16 },
-    input: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 10, padding: 13, fontSize: 15, color: theme.colors.text },
-    chipRow: { flexDirection: 'row', gap: 8, marginBottom: 4, flexWrap: 'nowrap' },
+    flex: { flex: 1 },
+    loader: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+    scrollContent: { paddingHorizontal: SPACING.lg, paddingBottom: 140 },
+    fab: {
+        position: 'absolute',
+        right: SPACING.lg,
+        bottom: 100,
+        width: mScale(56),
+        height: mScale(56),
+        borderRadius: mScale(28),
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+    },
+    formCard: { padding: SPACING.lg },
+    label: { fontSize: mScale(10), fontWeight: '900', letterSpacing: 1.5, marginBottom: 8 },
+    divider: { height: 1, marginVertical: SPACING.lg },
+    input: { 
+        fontSize: mScale(15), 
+        fontWeight: '600', 
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        marginBottom: SPACING.lg,
+    },
+    chipRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
     chipRowWrap: { flexWrap: 'wrap' },
-    chip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 20, borderWidth: 1 },
-    chipText: { fontSize: 12, fontWeight: '600' },
+    chip: { 
+        paddingHorizontal: 12, 
+        paddingVertical: 8, 
+        borderRadius: 12, 
+        borderWidth: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    chipText: { fontSize: mScale(11), fontWeight: '800', letterSpacing: 0.5 },
     row: { flexDirection: 'row' },
-    quickLocRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 8 },
-    quickLoc: { backgroundColor: theme.colors.surface, borderWidth: 1, borderColor: theme.colors.border, borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5 },
-    quickLocText: { fontSize: 12, color: theme.colors.textMuted },
-    saveBtn: { backgroundColor: theme.colors.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 28 },
-    saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
-    parseBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: theme.colors.primary + '15', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: theme.colors.primary + '30', marginBottom: 4 },
-    parseBannerIcon: { fontSize: 20 },
-    parseBannerTitle: { fontSize: 14, fontWeight: '700', color: theme.colors.primary },
-    parseBannerSub: { fontSize: 12, color: theme.colors.textMuted, marginTop: 1 },
-    parseBannerArrow: { fontSize: 22, color: theme.colors.primary },
+    quickLocRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+    quickLoc: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+    quickLocText: { fontSize: mScale(11), fontWeight: '700' },
+    saveBtn: { marginTop: SPACING.xl, height: mScale(56), borderRadius: 16 },
+    footerSpace: { height: 40 },
 });
-
-

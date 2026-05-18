@@ -1,7 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import {
     ActivityIndicator,
-    FlatList,
     Linking,
     RefreshControl,
     StyleSheet,
@@ -9,6 +8,7 @@ import {
     TouchableOpacity,
     View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useFocusEffect, useRoute } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
 import { OpportunitiesStackParamList } from '@/navigation/OpportunitiesNavigator';
@@ -32,8 +32,8 @@ const StarRow = ({ rating }: { rating: number }) => (
             <Star
                 key={index}
                 size={12}
-                color={index <= rating ? '#FBBF24' : theme.colors.border}
-                fill={index <= rating ? '#FBBF24' : 'none'}
+                color={index <= rating ? theme.colors.warning : theme.colors.border}
+                fill={index <= rating ? theme.colors.warning : 'none'}
             />
         ))}
     </View>
@@ -164,10 +164,12 @@ export const OpportunityFeedbackScreen = () => {
             {loading ? (
                 <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 60 }} />
             ) : (
-                <FlatList
+                <FlashList
                     data={feedback}
                     keyExtractor={(item) => item.id}
                     renderItem={renderItem}
+                    // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                    estimatedItemSize={mScale(150)}
                     contentContainerStyle={styles.list}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
                     ListEmptyComponent={
@@ -195,9 +197,9 @@ const styles = StyleSheet.create({
     headerBody: { flex: 1, marginLeft: 10 },
     oppTitle: { fontSize: 14, fontWeight: '700', color: theme.colors.text },
     oppCompany: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
-    ratingBadge: { alignItems: 'center', padding: 8, backgroundColor: '#FEF9C3', borderRadius: 10 },
-    ratingText: { fontSize: 16, fontWeight: '800', color: '#92400E' },
-    ratingCount: { fontSize: 10, color: '#92400E', marginTop: 1 },
+    ratingBadge: { alignItems: 'center', padding: 8, backgroundColor: theme.colors.rating.background, borderRadius: 10 },
+    ratingText: { fontSize: 16, fontWeight: '800', color: theme.colors.rating.text },
+    ratingCount: { fontSize: 10, color: theme.colors.rating.text, marginTop: 1 },
     countBar: { paddingHorizontal: 16, paddingVertical: 8 },
     countText: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600' },
     list: { padding: 14, gap: 12, paddingBottom: 40 },

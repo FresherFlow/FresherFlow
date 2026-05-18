@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import {
     ActivityIndicator,
-    FlatList,
     Pressable,
     RefreshControl,
     ScrollView,
@@ -9,6 +8,7 @@ import {
     Text,
     View,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useNavigation } from '@react-navigation/native';
 import { AlertTriangle, ChartNoAxesColumn, MessageSquare, Smartphone } from 'lucide-react-native';
 import { useTheme } from '../../theme/ThemeProvider';
@@ -17,6 +17,7 @@ import { SettingsCard } from '../settings/components/SettingsComponents';
 import { MetricCard } from '../system/components/SpecializedCards';
 import { Screen } from '../system/layout/Layout';
 import { AppButton } from '@repo/ui';
+import { SimpleHeader } from '../system/components/SimpleHeader';
 
 const tabs: Array<{ key: FeedbackTab; label: string; icon: typeof ChartNoAxesColumn }> = [
     { key: 'overview', label: 'Overview', icon: ChartNoAxesColumn },
@@ -150,7 +151,9 @@ const FeedbackScreen = () => {
     );
 
     return (
-        <Screen>
+        <Screen safe={true}>
+            <SimpleHeader title="Feedback" />
+
             <View style={[styles.tabs, { backgroundColor: colors.surface, borderBottomColor: colors.border }]}>
                 {tabs.map(({ key, label, icon: Icon }) => {
                     const active = tab === key;
@@ -176,10 +179,12 @@ const FeedbackScreen = () => {
             {!loading && tab === 'overview' ? renderOverview() : null}
 
             {!loading && tab === 'listing' ? (
-                <FlatList
+                <FlashList
                     data={listingGroups}
                     keyExtractor={(item, index) => item.opportunity?.id ?? `listing-${index}`}
                     renderItem={renderListingItem}
+                    // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                    estimatedItemSize={mScale(100)}
                     contentContainerStyle={styles.list}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} />}
                     ListEmptyComponent={<EmptyState text="No listing feedback yet." />}
@@ -188,10 +193,12 @@ const FeedbackScreen = () => {
             ) : null}
 
             {!loading && tab === 'app' ? (
-                <FlatList
+                <FlashList
                     data={appFeedback}
                     keyExtractor={(item) => item.id}
                     renderItem={renderAppItem}
+                    // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                    estimatedItemSize={mScale(120)}
                     contentContainerStyle={styles.list}
                     refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void onRefresh()} tintColor={colors.primary} />}
                     ListEmptyComponent={<EmptyState text="No app feedback submitted." />}

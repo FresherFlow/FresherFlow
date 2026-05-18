@@ -4,7 +4,7 @@ import {
     Text,
     View,
 } from 'react-native';
-import { useUITheme } from '../../../theme';
+import { useTheme } from '../../../theme';
 import { mScale, SPACING } from '../../../theme/dimensions';
 
 export const MetricGrid = ({ children }: { children: React.ReactNode }) => (
@@ -20,7 +20,8 @@ export const DetailRow = ({
     value: string | number;
     tone?: 'default' | 'positive' | 'negative';
 }) => {
-    const { colors } = useUITheme();
+    const { colors } = useTheme();
+    
     const valueColor = tone === 'positive' ? colors.success : tone === 'negative' ? colors.error : colors.text;
     return (
         <View style={styles.detailRow}>
@@ -31,8 +32,26 @@ export const DetailRow = ({
 };
 
 const styles = StyleSheet.create({
-    metricGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
-    detailRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: SPACING.md, paddingVertical: SPACING.md },
-    detailLabel: { fontSize: mScale(14), fontWeight: '500' },
-    detailValue: { fontSize: mScale(15), fontWeight: '700' },
+    metricGrid: { 
+        flexDirection: 'row', 
+        flexWrap: 'wrap', 
+        gap: SPACING.md 
+    },
+    detailRow: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        justifyContent: 'space-between', 
+        gap: SPACING.md, 
+        paddingVertical: SPACING.md 
+    },
+    detailLabel: { 
+        fontSize: mScale(14), 
+        fontWeight: '600',
+        letterSpacing: -0.2,
+    },
+    detailValue: { 
+        fontSize: mScale(15), 
+        fontWeight: '800',
+        letterSpacing: -0.3,
+    },
 });

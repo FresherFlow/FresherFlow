@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, FlatList, RefreshControl, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, View } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useFocusEffect } from '@react-navigation/native';
 import { Share2 } from 'lucide-react-native';
 import { SocialPostCard } from './components/SocialPostCard';
@@ -9,7 +10,6 @@ import { useTheme } from '../../theme/ThemeProvider';
 import { 
     Screen,
     Section,
-    PageIntro 
 } from '../system/layout/Layout';
 import { 
     MetricCard
@@ -20,15 +20,17 @@ import {
 import { 
     EmptyState 
 } from '../feedback/components/Feedback';
+import { SimpleHeader } from '../system/components/SimpleHeader';
+import { mScale, SPACING } from '../../theme/dimensions';
 
 export const SocialPostsScreen = () => {
-    const { colors, spacing } = useTheme();
+    const { currentTheme } = useTheme();
+    const { colors } = currentTheme;
     const {
         posts,
         statusFilter,
         total,
         loading,
-        loadingMore,
         refreshing,
         retryingId,
         stats,
@@ -40,14 +42,18 @@ export const SocialPostsScreen = () => {
     } = useSocial();
 
     useFocusEffect(useCallback(() => {
-        void fetchPosts({ force: true });
+        void fetchPosts();
     }, [fetchPosts]));
 
     return (
-        <Screen>
-            <FlatList
+        <Screen safe={true}>
+            <SimpleHeader title="Social Ops" />
+            
+            <FlashList
                 data={posts}
                 keyExtractor={(item) => item.id}
+                // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                estimatedItemSize={mScale(120)}
                 renderItem={({ item }) => (
                     <SocialPostCard
                         item={item}
@@ -56,36 +62,46 @@ export const SocialPostsScreen = () => {
                     />
                 )}
                 ListHeaderComponent={
-                    <View style={{ paddingHorizontal: spacing.md, paddingTop: spacing.sm }}>
-                        <PageIntro eyebrow="Social" title="Queue" />
-                        <Section title="Queue status">
+                    <View style={{ gap: SPACING.lg, marginTop: SPACING.sm }}>
+                        <Section title="Queue Status">
                             <MetricGrid>
                                 <MetricCard label="Published" value={stats.published} accent={colors.success} />
                                 <MetricCard label="Failed" value={stats.failed} accent={colors.error} />
                                 <MetricCard label="Pending" value={stats.pending} accent={colors.warning} />
-                                <MetricCard label="Visible total" value={total} accent={colors.primary} />
+                                <MetricCard label="Total" value={total} accent={colors.primary} />
                             </MetricGrid>
                         </Section>
-                        <Section title="Status filter">
+                        <Section title="Status Filter">
                             <SocialPostFilters currentFilter={statusFilter} onFilterChange={onFilter} />
                         </Section>
                     </View>
                 }
-                contentContainerStyle={{ padding: spacing.md, gap: 10, paddingBottom: spacing.xxl }}
-                refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+                contentContainerStyle={{ 
+                    paddingHorizontal: SPACING.lg, 
+                    paddingBottom: 100,
+                    paddingTop: SPACING.md,
+                }}
+                refreshControl={
+                    <RefreshControl 
+                        refreshing={refreshing} 
+                        onRefresh={onRefresh} 
+                        tintColor={colors.primary} 
+                    />
+                }
                 onEndReached={onLoadMore}
                 onEndReachedThreshold={0.3}
-                ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primary} style={{ padding: 16 }} /> : null}
                 ListEmptyComponent={
                     loading ? (
                         <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: 60 }} />
                     ) : (
-                        <EmptyState title="No social posts" message="Change the filter or wait for the publishing queue to populate." icon={<Share2 size={36} color={colors.border} />} />
+                        <EmptyState 
+                            title="No social posts" 
+                            message="Change filter or wait for queue." 
+                            icon={<Share2 size={36} color={colors.border} />} 
+                        />
                     )
                 }
             />
         </Screen>
     );
 };
-
-
