@@ -25,7 +25,12 @@ export const usePersonalizedFeed = (
         return initialOpportunities.filter(opp => {
             if (filters.remoteOnly && opp.workMode !== 'REMOTE') return false;
             if (filters.type && opp.type !== filters.type) return false;
-            if (filters.batchYear && !opp.allowedPassoutYears?.includes(filters.batchYear)) return false;
+            if (filters.batchYear) {
+                const hasYears = opp.allowedPassoutYears && opp.allowedPassoutYears.length > 0;
+                if (hasYears && !opp.allowedPassoutYears.includes(filters.batchYear)) {
+                    return false;
+                }
+            }
             return true;
         });
     }, [initialOpportunities, filters]);

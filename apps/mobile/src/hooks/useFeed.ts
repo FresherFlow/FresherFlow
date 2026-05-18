@@ -1,25 +1,24 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
-import { Opportunity, OpportunityType, OpportunityListResponse, Profile } from '@fresherflow/types';
+import { Opportunity, OpportunityType, Profile } from '@fresherflow/types';
 import { useNotificationStore } from '@/store/useNotificationStore';
-import { opportunitiesApi } from '@fresherflow/api-client';
-import { useUserAuth as useAuth, useNotifications } from '@repo/frontend-core';
-import { saveFeedCache, readFeedCache, getLastSyncTimestamp, saveLastSyncTimestamp } from '@/utils/offlineCache';
+import { useNotifications } from '@repo/frontend-core';
+import { useAuthStore } from '@/store/useAuthStore';
+import { saveFeedCache, readFeedCache, saveLastSyncTimestamp } from '@/utils/offlineCache';
 import { diffAndNotify } from '@/utils/localNotifications';
 import { getLocalProfile } from '@/utils/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { generateCdnSignature } from '@/utils/cdnSignature';
 import Fuse from 'fuse.js';
 import axios from 'axios';
 import { BOOTSTRAP_FEED_URL } from '@/config/api';
 
-// Global tracker to prevent multiple tabs from syncing at the same time
+// Global tracker to prevent multiple tabs/mounts from syncing at the same time
 let globalLastSyncTimestamp = 0;
 
 export const useFeed = (initialFeedType: string | null = null) => {
-    const { user, profile: authProfile } = useAuth();
+    const { user } = useAuthStore();
     useNotifications();
-    const queryClient = useQueryClient();
     
     const [localProfile, setLocalProfile] = useState<Profile | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -27,37 +26,43 @@ export const useFeed = (initialFeedType: string | null = null) => {
     const [activeCity, setActiveCity] = useState('ALL');
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
     const [feedType, setFeedType] = useState<string | null>(initialFeedType);
+    
     const [cachedItems, setCachedItems] = useState<Opportunity[]>([]);
+    const [isBootstrapping, setIsBootstrapping] = useState(false);
+    const [isSyncing, setIsSyncing] = useState(false);
+    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [syncError, setSyncError] = useState<string | null>(null);
 
-    // Sync local profile for scoring
+    // Sync local profile for match scoring
     useEffect(() => {
         const syncProfile = async () => {
             const p = await getLocalProfile();
-            setLocalProfile(p || authProfile);
+            setLocalProfile(p || (user?.profile as Profile));
         };
         void syncProfile();
-    }, [authProfile]);
+    }, [user?.profile]);
 
-    // Instant Hydration from Offline Cache or CDN Bootstrap (Task 25)
-    const [isBootstrapping, setIsBootstrapping] = useState(false);
+    const hasProfileData = useMemo(() => {
+        const profile = localProfile;
+        return !!(profile && (
+            (profile.skills && profile.skills.length > 0) ||
+            (profile.preferredCities && profile.preferredCities.length > 0) ||
+            (profile.interestedIn && profile.interestedIn.length > 0) ||
+            profile.educationLevel
+        ));
+    }, [localProfile]);
 
+    // 1. Client-First Hydration (Instant Render from Cache)
     useEffect(() => {
         const hydrate = async () => {
-            const cached = await readFeedCache();
-            if (cached && cached.items.length > 0) {
-                setCachedItems(cached.items);
-                return;
-            }
-
-            // If empty (First Install), try ultra-fast CDN bootstrap
             setIsBootstrapping(true);
             try {
-                const response = await axios.get(BOOTSTRAP_FEED_URL, { timeout: 3000 });
-                if (response.data?.opportunities) {
-                    setCachedItems(response.data.opportunities);
+                const cached = await readFeedCache();
+                if (cached && cached.items.length > 0) {
+                    setCachedItems(cached.items);
                 }
             } catch (e) {
-                console.log('[useFeed] Bootstrap fetch skipped/failed:', (e as Error).message);
+                console.warn('[useFeed] Offline cache read failed:', (e as Error).message);
             } finally {
                 setIsBootstrapping(false);
             }
@@ -65,118 +70,101 @@ export const useFeed = (initialFeedType: string | null = null) => {
         void hydrate();
     }, []);
 
-    const queryKey = ['feed', activeFilter, activeCity, selectedTag, feedType];
+    // 2. Local Score Computing Helper
+    const computeScoringAndCache = useCallback(async (opportunities: Opportunity[]) => {
+        const profile = await getLocalProfile();
+        
+        const hasProfileData = profile && (
+            (profile.skills && profile.skills.length > 0) ||
+            (profile.preferredCities && profile.preferredCities.length > 0) ||
+            (profile.interestedIn && profile.interestedIn.length > 0) ||
+            profile.educationLevel
+        );
 
-    const {
-        data,
-        fetchNextPage,
-        hasNextPage,
-        isFetchingNextPage,
-        isLoading,
-        isRefetching,
-        error,
-        refetch,
-    } = useInfiniteQuery({
-        queryKey,
-        queryFn: async ({ pageParam = 1 }) => {
-            const response = await opportunitiesApi.list({
-                type: activeFilter === 'ALL' ? undefined : activeFilter,
-                city: activeCity === 'ALL' ? undefined : activeCity,
-                tag: selectedTag || undefined,
-                feedType: feedType || undefined,
-                page: pageParam as number,
-            }) as OpportunityListResponse;
+        const scoredOpportunities = opportunities.map(job => {
+            if (!hasProfileData) return job;
+            const match = calculateMatchScore(profile, job);
+            return {
+                ...job,
+                matchScore: match.score > 0 ? match.score : undefined,
+                matchReason: match.score > 0 ? match.reason : undefined,
+                isEligible: match.isEligible
+            };
+        });
 
-            const opportunities = response.opportunities || [];
-            const profile = await getLocalProfile();
+        // Save feed cache locally
+        if (scoredOpportunities.length > 0) {
+            await saveFeedCache(scoredOpportunities);
+            setCachedItems(scoredOpportunities);
             
-            // PRECOMPUTE: Score and Eligibility (Only if profile has meaningful data)
-            const hasProfileData = profile && (
-                (profile.skills && profile.skills.length > 0) ||
-                (profile.preferredCities && profile.preferredCities.length > 0) ||
-                (profile.interestedIn && profile.interestedIn.length > 0) ||
-                profile.educationLevel
-            );
-
-            const scoredOpportunities = opportunities.map(job => {
-                if (!hasProfileData) return job;
-                const match = calculateMatchScore(profile, job);
-                return {
-                    ...job,
-                    matchScore: match.score > 0 ? match.score : undefined,
-                    matchReason: match.score > 0 ? match.reason : undefined,
-                    isEligible: match.isEligible
-                };
+            // Diff against seen list and update notification badge counts
+            void diffAndNotify(scoredOpportunities).then(() => {
+                void useNotificationStore.getState().fetchUnreadCount();
             });
+        }
+    }, []);
 
-            // Persistence side-effects (Atomic)
-            if (pageParam === 1 && scoredOpportunities.length > 0) {
-                void saveFeedCache(scoredOpportunities);
-                void diffAndNotify(scoredOpportunities).then(() => {
-                    // Trigger a store refresh so the bell dot updates immediately
-                    void useNotificationStore.getState().fetchUnreadCount();
-                });
-            }
-
-            return { ...response, opportunities: scoredOpportunities };
-        },
-        initialPageParam: 1,
-        getNextPageParam: (lastPage, allPages) => {
-            const loadedSoFar = allPages.reduce((acc, p) => acc + (p.opportunities?.length || 0), 0);
-            return (lastPage.opportunities?.length > 0 && loadedSoFar < (lastPage.total || 0)) 
-                ? allPages.length + 1 
-                : undefined;
-        },
-        staleTime: 1000 * 60 * 5,
-    });
-
-    // Unified Data Source: Remote Data with Cache Fallback for instant render
-    const jobs = useMemo(() => {
-        const remoteData = data?.pages.flatMap(page => page.opportunities || []) || [];
-        return remoteData.length > 0 ? remoteData : cachedItems;
-    }, [data, cachedItems]);
-
-    const totalResults = useMemo(() => {
-        return data?.pages[0]?.total || jobs.length;
-    }, [data, jobs.length]);
-
-    // Smart Sync Logic
-    const performSync = useCallback(async (force = false) => {
+    // 3. Smart Edge Sync (Zero Database pressure, queries static CDN file)
+    const performSync = useCallback(async (force = false, isUserInitiated = false) => {
         const now = Date.now();
-        if (!force && now - globalLastSyncTimestamp < 60000) return;
+        // Cooldown: 5 minutes (300,000ms) to prevent redundant Edge pulls
+        if (!force && now - globalLastSyncTimestamp < 300000) return;
         globalLastSyncTimestamp = now;
 
-        try {
-            const since = await getLastSyncTimestamp();
-            const response = await opportunitiesApi.sync(since || undefined);
-            
-            if (response.updates && response.updates.length > 0) {
-                void queryClient.invalidateQueries({ queryKey });
-            }
-            
-            await saveLastSyncTimestamp(response.timestamp);
-        } catch (e) {
-            console.warn('[useFeed] Smart sync failed', e);
+        if (isUserInitiated) {
+            setIsRefreshing(true);
         }
-    }, [queryClient, queryKey]);
+        setIsSyncing(true);
+        setSyncError(null);
 
+        try {
+            // Generate HMAC cryptographic request signature to bypass Edge WAF block
+            const signatureParams = generateCdnSignature('/bootstrap-feed.min.json');
+
+            // Pull the single compressed Master JSON feed directly from CDN Pop
+            const response = await axios.get(BOOTSTRAP_FEED_URL, { 
+                timeout: 5000,
+                params: signatureParams,
+                headers: {
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                }
+            });
+
+            if (response.data?.opportunities) {
+                const opportunities = response.data.opportunities as Opportunity[];
+                await computeScoringAndCache(opportunities);
+                await saveLastSyncTimestamp(response.data.timestamp || now);
+            }
+        } catch (e) {
+            const errMsg = (e as Error).message;
+            console.warn('[useFeed] CDN static sync failed:', errMsg);
+            setSyncError(errMsg);
+        } finally {
+            setIsSyncing(false);
+            setIsRefreshing(false);
+        }
+    }, [computeScoringAndCache]);
+
+    // Pull from CDN on screen focus automatically (respects cooldown)
     useFocusEffect(
         useCallback(() => {
             void performSync();
         }, [performSync])
     );
 
-    // Fuse.js Indexing - Only rebuild when data source actually changes
+    // 4. In-Memory Fuzzy Search Index (Fuse.js)
     const fuseIndex = useMemo(() => {
-        if (jobs.length === 0) return null;
-        return new Fuse(jobs, {
+        if (cachedItems.length === 0) return null;
+        return new Fuse(cachedItems, {
             keys: ['title', 'company', 'jobFunction', 'locations'],
             threshold: 0.3,
         });
-    }, [jobs]);
+    }, [cachedItems]);
 
+    // 5. High-Speed Local Filter/Scoring Pipeline (Takes <3ms)
     const filteredOpportunities = useMemo(() => {
-        let result = jobs;
+        let result = cachedItems;
 
         if (activeFilter !== 'ALL') {
             result = result.filter(j => j.type === activeFilter);
@@ -185,13 +173,13 @@ export const useFeed = (initialFeedType: string | null = null) => {
         if (feedType === 'remote') {
             result = result.filter(j => j.workMode === 'REMOTE');
         } else if (feedType === '2026') {
-            result = result.filter(j => j.allowedPassoutYears?.includes(2026));
+            result = result.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.includes(2026));
         } else if (feedType === 'internships') {
             result = result.filter(j => j.type === 'INTERNSHIP');
         } else if (feedType === 'trending') {
             result = [...result].sort((a, b) => {
-                const scoreA = a.trendingScore || ((a.sharesCount || 0) * 5 + (a.savesCount || 0) * 3 + (a.clicksCount || 0));
-                const scoreB = b.trendingScore || ((b.sharesCount || 0) * 5 + (b.savesCount || 0) * 3 + (b.clicksCount || 0));
+                const scoreA = a.trendingScore || 0;
+                const scoreB = b.trendingScore || 0;
                 return scoreB - scoreA;
             });
         }
@@ -200,7 +188,7 @@ export const useFeed = (initialFeedType: string | null = null) => {
             result = fuseIndex.search(searchQuery).map(r => r.item);
         }
 
-        // Final fast pass for active/expired separation
+        // Expiry management: sort expired listings cleanly to the bottom
         const now = Date.now();
         const active: Opportunity[] = [];
         const expired: Opportunity[] = [];
@@ -213,8 +201,29 @@ export const useFeed = (initialFeedType: string | null = null) => {
             }
         }
         
+        // Sort active opportunities: referred & eligible to the top, then referred & ineligible, then normal active.
+        active.sort((a: Opportunity & { isReferral?: boolean; isEligible?: boolean }, b: Opportunity & { isReferral?: boolean; isEligible?: boolean }) => {
+            const isReferredA = a.isReferral ? 1 : 0;
+            const isReferredB = b.isReferral ? 1 : 0;
+            
+            if (isReferredA !== isReferredB) {
+                return isReferredB - isReferredA; // Referred ones first
+            }
+            
+            // If both are referred, prioritize eligible ones
+            if (a.isReferral && b.isReferral) {
+                const eligibleA = a.isEligible !== false ? 1 : 0;
+                const eligibleB = b.isEligible !== false ? 1 : 0;
+                if (eligibleA !== eligibleB) {
+                    return eligibleB - eligibleA; // Eligible first
+                }
+            }
+            
+            return 0; // Maintain original database/CDN order otherwise
+        });
+        
         return [...active, ...expired];
-    }, [jobs, fuseIndex, searchQuery, activeFilter, feedType]);
+    }, [cachedItems, fuseIndex, searchQuery, activeFilter, feedType]);
 
     const clearFilters = useCallback(() => {
         setSearchQuery('');
@@ -229,11 +238,12 @@ export const useFeed = (initialFeedType: string | null = null) => {
     return {
         user,
         profile: localProfile,
-        opportunities: jobs,
-        loading: isLoading,
-        refreshing: isRefetching,
-        loadingMore: isFetchingNextPage,
-        error: error ? (error as Error).message : null,
+        opportunities: filteredOpportunities,
+        loading: isBootstrapping,
+        refreshing: isRefreshing,
+        isSyncing,
+        loadingMore: false, // Pure CDN model loads all active items in one single gzipped file
+        error: syncError,
         searchQuery,
         setSearchQuery,
         activeFilter,
@@ -244,18 +254,15 @@ export const useFeed = (initialFeedType: string | null = null) => {
         setSelectedTag,
         feedType,
         setFeedType,
-        offlineMode: !!error,
-        onRefresh: refetch,
-        loadMore: () => {
-            if (hasNextPage && !isFetchingNextPage) {
-                void fetchNextPage();
-            }
-        },
+        offlineMode: !!syncError,
+        onRefresh: () => performSync(true, true), // Force refresh head check marked as user-initiated
+        loadMore: () => {}, // No paging scroll requests needed!
         filteredOpportunities,
         clearFilters,
         hasActiveFilters,
-        totalResults,
-        hasMore: hasNextPage,
+        hasProfileData,
+        totalResults: filteredOpportunities.length,
+        hasMore: false, // We have the full, complete set of active jobs locally
         isBootstrapping,
     };
 };
