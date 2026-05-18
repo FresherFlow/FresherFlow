@@ -2,13 +2,8 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { _registerToastProvider, type ToastItem } from '../lib/toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-const CONFIGS = {
-    error: { bg: '#B91C1C', border: '#FECACA', icon: '✕', label: 'Error' },
-    warning: { bg: '#B45309', border: '#FDE68A', icon: '⚠', label: 'Warning' },
-    success: { bg: '#047857', border: '#A7F3D0', icon: '✓', label: 'Success' },
-    info: { bg: '#1D4ED8', border: '#BFDBFE', icon: 'ℹ', label: 'Info' },
-};
+import { useTheme } from '../theme/ThemeProvider';
+import { alpha } from '../theme';
 
 interface InternalToast extends ToastItem {
     anim: Animated.Value;
@@ -20,6 +15,15 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     const [queue, setQueue] = useState<InternalToast[]>([]);
     const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
     const insets = useSafeAreaInsets();
+    const { currentTheme } = useTheme();
+    const { colors } = currentTheme;
+
+    const CONFIGS = {
+        error: { bg: colors.error, border: alpha(colors.error, 0.3), icon: '✕' },
+        warning: { bg: colors.warning, border: alpha(colors.warning, 0.3), icon: '⚠' },
+        success: { bg: colors.success, border: alpha(colors.success, 0.3), icon: '✓' },
+        info: { bg: colors.primary, border: alpha(colors.primary, 0.3), icon: 'ℹ' },
+    };
 
     const dismiss = useCallback((id: string) => {
         clearTimeout(timers.current[id]);
@@ -67,31 +71,35 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     return (
         <>
             {children}
-            <View style={[styles.container, { paddingBottom: Math.max(insets.bottom, 16) + 8 }]} pointerEvents="box-none">
+            <View style={[styles.container, { paddingTop: Math.max(insets.top, 16) + 8 }]} pointerEvents="box-none">
                 {queue.map(t => {
                     const cfg = CONFIGS[t.type];
                     const translateY = t.anim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [80, 0],
+                        outputRange: [-100, 0],
                     });
                     const opacity = t.anim;
 
                     return (
                         <Animated.View
                             key={t.id}
-                            style={[styles.toast, { borderLeftColor: cfg.border, backgroundColor: cfg.bg }, { opacity, transform: [{ translateY }] }]}
+                            style={[
+                                styles.toast, 
+                                { borderLeftColor: cfg.border, backgroundColor: cfg.bg }, 
+                                { opacity, transform: [{ translateY }] }
+                            ]}
                         >
-                            <View style={styles.iconBox}>
-                                <Text style={styles.icon}>{cfg.icon}</Text>
+                            <View style={[styles.iconBox, { backgroundColor: alpha(colors.white, 0.2) }]}>
+                                <Text style={[styles.icon, { color: colors.white }]}>{cfg.icon}</Text>
                             </View>
                             <View style={styles.body}>
-                                <Text style={styles.title} numberOfLines={1}>{t.title}</Text>
+                                <Text style={[styles.title, { color: colors.white }]} numberOfLines={1}>{t.title}</Text>
                                 {t.detail ? (
-                                    <Text style={styles.detail} numberOfLines={2}>{t.detail}</Text>
+                                    <Text style={[styles.detail, { color: alpha(colors.white, 0.8) }]} numberOfLines={2}>{t.detail}</Text>
                                 ) : null}
                             </View>
                             <TouchableOpacity onPress={() => dismiss(t.id)} style={styles.closeBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-                                <Text style={styles.closeIcon}>✕</Text>
+                                <Text style={[styles.closeIcon, { color: alpha(colors.white, 0.7) }]}>✕</Text>
                             </TouchableOpacity>
                         </Animated.View>
                     );
@@ -104,7 +112,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 const styles = StyleSheet.create({
     container: {
         position: 'absolute',
-        bottom: 0,
+        top: 0,
         left: 0,
         right: 0,
         zIndex: 9999,
@@ -119,7 +127,6 @@ const styles = StyleSheet.create({
         paddingVertical: 10,
         paddingHorizontal: 12,
         gap: 10,
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.35,
         shadowRadius: 8,
@@ -129,14 +136,13 @@ const styles = StyleSheet.create({
         width: 28,
         height: 28,
         borderRadius: 14,
-        backgroundColor: 'rgba(255,255,255,0.2)',
         alignItems: 'center',
         justifyContent: 'center',
     },
-    icon: { fontSize: 13, color: '#fff', fontWeight: '900' },
+    icon: { fontSize: 13, fontWeight: '900' },
     body: { flex: 1 },
-    title: { fontSize: 13, fontWeight: '700', color: '#fff' },
-    detail: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2, lineHeight: 15 },
+    title: { fontSize: 13, fontWeight: '700' },
+    detail: { fontSize: 11, marginTop: 2, lineHeight: 15 },
     closeBtn: { padding: 4 },
-    closeIcon: { fontSize: 11, color: 'rgba(255,255,255,0.7)', fontWeight: '700' },
+    closeIcon: { fontSize: 11, fontWeight: '700' },
 });

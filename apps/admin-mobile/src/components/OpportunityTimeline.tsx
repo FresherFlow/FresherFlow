@@ -1,20 +1,13 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, TextInput, Modal, ActivityIndicator, Alert, StyleSheet } from 'react-native';
 import { Plus, Clock, X } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { Opportunities } from '../lib/api';
-import { theme } from '../theme';
+import { useTheme } from '../theme/ThemeProvider';
+import { alpha } from '../theme';
 import { toast } from '../lib/toast';
 
 export type Event = { id: string; type: string; note?: string | null; createdAt: string; adminEmail?: string | null };
-
-const EVENT_TYPES = ['NOTE', 'REVIEW', 'APPROVED', 'FLAGGED', 'EXPIRED_MANUAL', 'RESTORED', 'DELETED'];
-
-function eventColor(type: string) {
-    if (type.includes('DELETE') || type.includes('FLAG') || type.includes('EXPIRED')) return theme.colors.error;
-    if (type.includes('APPROVED') || type.includes('RESTORED')) return theme.colors.success;
-    if (type === 'REVIEW') return theme.colors.accent;
-    return theme.colors.primary;
-}
 
 interface OpportunityTimelineProps {
     opportunityId: string;
@@ -22,13 +15,25 @@ interface OpportunityTimelineProps {
     onEventChange: () => void;
 }
 
+const EVENT_TYPES = ['NOTE', 'REVIEW', 'APPROVED', 'FLAGGED', 'EXPIRED_MANUAL', 'RESTORED', 'DELETED'];
+
 export const OpportunityTimeline = ({ opportunityId, events, onEventChange }: OpportunityTimelineProps) => {
     const [addingEvent, setAddingEvent] = useState(false);
     const [eventType, setEventType] = useState('NOTE');
     const [eventNote, setEventNote] = useState('');
     const [savingEvent, setSavingEvent] = useState(false);
+    const { currentTheme } = useTheme();
+    const { colors } = currentTheme;
+
+    function eventColor(type: string) {
+        if (type.includes('DELETE') || type.includes('FLAG') || type.includes('EXPIRED')) return colors.error;
+        if (type.includes('APPROVED') || type.includes('RESTORED')) return colors.success;
+        if (type === 'REVIEW') return colors.accent;
+        return colors.primary;
+    }
 
     const handleAddEvent = async () => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setSavingEvent(true);
         try {
             await Opportunities.addEvent(opportunityId, { type: eventType, note: eventNote.trim() || undefined });
@@ -44,6 +49,7 @@ export const OpportunityTimeline = ({ opportunityId, events, onEventChange }: Op
     };
 
     const handleDeleteEvent = (eventId: string) => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         Alert.alert('Delete Event?', 'Remove this timeline entry?', [
             { text: 'Cancel', style: 'cancel' },
             {
@@ -61,37 +67,43 @@ export const OpportunityTimeline = ({ opportunityId, events, onEventChange }: Op
 
     return (
         <View style={{ padding: 16 }}>
-            <TouchableOpacity style={styles.addEventBtn} onPress={() => setAddingEvent(true)}>
-                <Plus size={16} color={theme.colors.primary} />
-                <Text style={styles.addEventText}>Add Timeline Event</Text>
+            <TouchableOpacity 
+                style={[styles.addEventBtn, { borderColor: colors.primary }]} 
+                onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    setAddingEvent(true);
+                }}
+            >
+                <Plus size={16} color={colors.primary} />
+                <Text style={[styles.addEventText, { color: colors.primary }]}>Add Timeline Event</Text>
             </TouchableOpacity>
 
             {events.length === 0 ? (
                 <View style={styles.empty}>
-                    <Clock size={36} color={theme.colors.border} />
-                    <Text style={styles.emptyText}>No events yet</Text>
+                    <Clock size={36} color={colors.border} />
+                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>No events yet</Text>
                 </View>
             ) : (
                 <View style={styles.timeline}>
-                    {events.map((ev, idx) => (
+                    {events.map((ev: Event, idx: number) => (
                         <View key={ev.id} style={styles.timelineItem}>
                             <View style={styles.timelineLine}>
                                 <View style={[styles.timelineDot, { backgroundColor: eventColor(ev.type) }]} />
-                                {idx < events.length - 1 && <View style={styles.timelineConnector} />}
+                                {idx < events.length - 1 && <View style={[styles.timelineConnector, { backgroundColor: colors.border }]} />}
                             </View>
                             <View style={styles.timelineBody}>
                                 <View style={styles.timelineHeader}>
-                                    <View style={[styles.eventTypeBadge, { backgroundColor: eventColor(ev.type) + '20' }]}>
+                                    <View style={[styles.eventTypeBadge, { backgroundColor: alpha(eventColor(ev.type), 0.1) }]}>
                                         <Text style={[styles.eventTypeText, { color: eventColor(ev.type) }]}>
                                             {ev.type.replace(/_/g, ' ')}
                                         </Text>
                                     </View>
                                     <TouchableOpacity onPress={() => handleDeleteEvent(ev.id)} style={{ padding: 4 }}>
-                                        <X size={13} color={theme.colors.textMuted} />
+                                        <X size={13} color={colors.textMuted} />
                                     </TouchableOpacity>
                                 </View>
-                                {ev.note && <Text style={styles.eventNote}>{ev.note}</Text>}
-                                <Text style={styles.eventMeta}>
+                                {ev.note && <Text style={[styles.eventNote, { color: colors.text }]}>{ev.note}</Text>}
+                                <Text style={[styles.eventMeta, { color: colors.textMuted }]}>
                                     {ev.adminEmail ?? 'Admin'} · {new Date(ev.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                                 </Text>
                             </View>
@@ -100,30 +112,32 @@ export const OpportunityTimeline = ({ opportunityId, events, onEventChange }: Op
                 </View>
             )}
 
-            {/* Add Event Modal */}
             <Modal visible={addingEvent} transparent animationType="slide" onRequestClose={() => setAddingEvent(false)}>
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modal}>
-                        <Text style={styles.modalTitle}>Add Timeline Event</Text>
-                        <Text style={styles.fieldLabel}>Event Type</Text>
+                <View style={[styles.modalOverlay, { backgroundColor: colors.blackTranslucent }]}>
+                    <View style={[styles.modal, { backgroundColor: colors.surface }]}>
+                        <Text style={[styles.modalTitle, { color: colors.text }]}>Add Timeline Event</Text>
+                        <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Event Type</Text>
                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
                             <View style={{ flexDirection: 'row', gap: 8 }}>
                                 {EVENT_TYPES.map(t => (
                                     <TouchableOpacity key={t}
-                                        style={[styles.eventChip, eventType === t && { backgroundColor: theme.colors.primary }]}
-                                        onPress={() => setEventType(t)}>
-                                        <Text style={[styles.eventChipText, eventType === t && { color: '#fff' }]}>
+                                        style={[styles.eventChip, { borderColor: colors.border, backgroundColor: colors.background }, eventType === t && { backgroundColor: colors.primary, borderColor: colors.primary }]}
+                                        onPress={() => {
+                                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            setEventType(t);
+                                        }}>
+                                        <Text style={[styles.eventChipText, { color: colors.textMuted }, eventType === t && { color: colors.white }]}>
                                             {t.replace(/_/g, ' ')}
                                         </Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         </ScrollView>
-                        <Text style={styles.fieldLabel}>Note (optional)</Text>
+                        <Text style={[styles.fieldLabel, { color: colors.textMuted }]}>Note (optional)</Text>
                         <TextInput
-                            style={styles.modalInput}
+                            style={[styles.modalInput, { backgroundColor: colors.background, borderColor: colors.border, color: colors.text }]}
                             placeholder="Add a note…"
-                            placeholderTextColor={theme.colors.textMuted}
+                            placeholderTextColor={colors.textMuted}
                             value={eventNote}
                             onChangeText={setEventNote}
                             multiline
@@ -131,11 +145,11 @@ export const OpportunityTimeline = ({ opportunityId, events, onEventChange }: Op
                             textAlignVertical="top"
                         />
                         <View style={styles.modalActions}>
-                            <TouchableOpacity style={styles.cancelBtn} onPress={() => setAddingEvent(false)}>
-                                <Text style={styles.cancelBtnText}>Cancel</Text>
+                            <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: colors.background, borderColor: colors.border }]} onPress={() => setAddingEvent(false)}>
+                                <Text style={[styles.cancelBtnText, { color: colors.textMuted }]}>Cancel</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={[styles.saveBtn, savingEvent && { opacity: 0.6 }]} onPress={handleAddEvent} disabled={savingEvent}>
-                                {savingEvent ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.saveBtnText}>Save</Text>}
+                            <TouchableOpacity style={[styles.saveBtn, { backgroundColor: colors.primary }, savingEvent && { opacity: 0.6 }]} onPress={handleAddEvent} disabled={savingEvent}>
+                                {savingEvent ? <ActivityIndicator size="small" color={colors.white} /> : <Text style={[styles.saveBtnText, { color: colors.white }]}>Save</Text>}
                             </TouchableOpacity>
                         </View>
                     </View>
@@ -148,42 +162,42 @@ export const OpportunityTimeline = ({ opportunityId, events, onEventChange }: Op
 const styles = StyleSheet.create({
     addEventBtn: {
         flexDirection: 'row', alignItems: 'center', gap: 8,
-        borderWidth: 1.5, borderColor: theme.colors.primary, borderStyle: 'dashed',
+        borderWidth: 1.5, borderStyle: 'dashed',
         borderRadius: 10, padding: 12, justifyContent: 'center', marginBottom: 16,
     },
-    addEventText: { fontSize: 14, fontWeight: '700', color: theme.colors.primary },
+    addEventText: { fontSize: 14, fontWeight: '700' },
     empty: { paddingTop: 60, alignItems: 'center', gap: 12 },
-    emptyText: { fontSize: 14, color: theme.colors.textMuted },
+    emptyText: { fontSize: 14 },
     timeline: { gap: 0 },
     timelineItem: { flexDirection: 'row', gap: 12 },
     timelineLine: { alignItems: 'center', width: 20 },
     timelineDot: { width: 12, height: 12, borderRadius: 6, marginTop: 4 },
-    timelineConnector: { width: 2, flex: 1, backgroundColor: theme.colors.border, marginVertical: 4, minHeight: 20 },
+    timelineConnector: { width: 2, flex: 1, marginVertical: 4, minHeight: 20 },
     timelineBody: { flex: 1, paddingBottom: 18 },
     timelineHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 },
     eventTypeBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
     eventTypeText: { fontSize: 11, fontWeight: '700', textTransform: 'capitalize' },
-    eventNote: { fontSize: 14, color: theme.colors.text, lineHeight: 19, marginBottom: 4 },
-    eventMeta: { fontSize: 11, color: theme.colors.textMuted },
-    modalOverlay: { flex: 1, backgroundColor: '#00000080', justifyContent: 'flex-end' },
+    eventNote: { fontSize: 14, lineHeight: 19, marginBottom: 4 },
+    eventMeta: { fontSize: 11 },
+    modalOverlay: { flex: 1, justifyContent: 'flex-end' },
     modal: {
-        backgroundColor: theme.colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20,
+        borderTopLeftRadius: 20, borderTopRightRadius: 20,
         padding: 20, paddingBottom: 40,
     },
-    modalTitle: { fontSize: 17, fontWeight: '800', color: theme.colors.text, marginBottom: 16 },
+    modalTitle: { fontSize: 17, fontWeight: '800', marginBottom: 16 },
     modalInput: {
-        backgroundColor: theme.colors.background, borderWidth: 1, borderColor: theme.colors.border,
-        borderRadius: 10, padding: 12, fontSize: 14, color: theme.colors.text, marginBottom: 16, minHeight: 80,
+        borderWidth: 1,
+        borderRadius: 10, padding: 12, fontSize: 14, marginBottom: 16, minHeight: 80,
     },
     modalActions: { flexDirection: 'row', gap: 10 },
-    cancelBtn: { flex: 1, backgroundColor: theme.colors.background, borderRadius: 10, borderWidth: 1, borderColor: theme.colors.border, padding: 13, alignItems: 'center' },
-    cancelBtnText: { fontWeight: '700', color: theme.colors.textMuted },
-    saveBtn: { flex: 2, backgroundColor: theme.colors.primary, borderRadius: 10, padding: 13, alignItems: 'center' },
-    saveBtnText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+    cancelBtn: { flex: 1, borderRadius: 10, borderWidth: 1, padding: 13, alignItems: 'center' },
+    cancelBtnText: { fontWeight: '700' },
+    saveBtn: { flex: 2, borderRadius: 10, padding: 13, alignItems: 'center' },
+    saveBtnText: { fontWeight: '800', fontSize: 15 },
     eventChip: {
         paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20,
-        borderWidth: 1, borderColor: theme.colors.border, backgroundColor: theme.colors.background,
+        borderWidth: 1,
     },
-    eventChipText: { fontSize: 12, fontWeight: '600', color: theme.colors.textMuted },
-    fieldLabel: { fontSize: 12, fontWeight: '700', color: theme.colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.4 },
+    eventChipText: { fontSize: 12, fontWeight: '600' },
+    fieldLabel: { fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
 });

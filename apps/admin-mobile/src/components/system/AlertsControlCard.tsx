@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Zap, Play } from 'lucide-react-native';
-import { theme } from '../../theme';
+import * as Haptics from 'expo-haptics';
+import { useTheme } from '../../theme/ThemeProvider';
 
 interface AlertsControlCardProps {
     runningAlerts: boolean;
@@ -17,51 +18,62 @@ export const AlertsControlCard = ({
     runningBackfill, onRunBackfill,
     runningRefresh, onRefreshMetrics
 }: AlertsControlCardProps) => {
+    const { currentTheme } = useTheme();
+    const { colors } = currentTheme;
+
     return (
         <View style={styles.section}>
             <View style={styles.sectionHeader}>
-                <Zap size={16} color={theme.colors.primary} />
-                <Text style={styles.sectionTitle}>Alerts</Text>
+                <Zap size={16} color={colors.primary} />
+                <Text style={[styles.sectionTitle, { color: colors.text }]}>Alerts</Text>
             </View>
-            <View style={styles.card}>
-                <Text style={styles.cardDesc}>Manually trigger the alerts dispatch cycle for scheduled jobs.</Text>
+            <View style={[styles.card, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Text style={[styles.cardDesc, { color: colors.textMuted }]}>Manually trigger the alerts dispatch cycle for scheduled jobs.</Text>
                 
-                <RunBtn loading={runningAlerts} onPress={onRunAlerts} label="Run Alerts Cycle" color={theme.colors.secondary} />
+                <RunBtn loading={runningAlerts} onPress={onRunAlerts} label="Run Alerts Cycle" color={colors.secondary} />
                 <View style={{ height: 8 }} />
-                <RunBtn loading={runningBackfill} onPress={onRunBackfill} label="Backfill New-Job Alerts (72h)" color={theme.colors.accent} />
+                <RunBtn loading={runningBackfill} onPress={onRunBackfill} label="Backfill New-Job Alerts (72h)" color={colors.accent} />
                 <View style={{ height: 8 }} />
-                <RunBtn loading={runningRefresh} onPress={onRefreshMetrics} label="Refresh Metrics Cache" color={theme.colors.textMuted} />
+                <RunBtn loading={runningRefresh} onPress={onRefreshMetrics} label="Refresh Metrics Cache" color={colors.textMuted} />
             </View>
         </View>
     );
 };
 
-const RunBtn = ({ loading, onPress, label, color }: { loading: boolean; onPress: () => void; label: string; color?: string }) => (
-    <TouchableOpacity 
-        style={[styles.runBtn, { backgroundColor: color ?? theme.colors.primary }, loading && { opacity: 0.6 }]} 
-        onPress={onPress} 
-        disabled={loading}
-    >
-        {loading ? (
-            <ActivityIndicator size="small" color="#fff" />
-        ) : (
-            <>
-                <Play size={16} color="#fff" />
-                <Text style={styles.runBtnText}>{label}</Text>
-            </>
-        )}
-    </TouchableOpacity>
-);
+const RunBtn = ({ loading, onPress, label, color }: { loading: boolean; onPress: () => void; label: string; color?: string }) => {
+    const { currentTheme } = useTheme();
+    const { colors } = currentTheme;
+    
+    return (
+        <TouchableOpacity 
+            style={[styles.runBtn, { backgroundColor: color ?? colors.primary }, loading && { opacity: 0.6 }]} 
+            onPress={() => {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                onPress();
+            }} 
+            disabled={loading}
+        >
+            {loading ? (
+                <ActivityIndicator size="small" color={colors.white} />
+            ) : (
+                <>
+                    <Play size={16} color={colors.white} />
+                    <Text style={[styles.runBtnText, { color: colors.white }]}>{label}</Text>
+                </>
+            )}
+        </TouchableOpacity>
+    );
+};
 
 const styles = StyleSheet.create({
     section: { marginBottom: 8 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 12, marginBottom: 10 },
-    sectionTitle: { fontSize: 16, fontWeight: '700', color: theme.colors.text },
-    card: { backgroundColor: theme.colors.surface, borderRadius: 14, padding: 16, borderWidth: 1, borderColor: theme.colors.border },
-    cardDesc: { fontSize: 13, color: theme.colors.textMuted, marginBottom: 14, lineHeight: 18 },
+    sectionTitle: { fontSize: 16, fontWeight: '700' },
+    card: { borderRadius: 14, padding: 16, borderWidth: 1 },
+    cardDesc: { fontSize: 13, marginBottom: 14, lineHeight: 18 },
     runBtn: {
         flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
         gap: 8, paddingVertical: 12, borderRadius: 10,
     },
-    runBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+    runBtnText: { fontWeight: '700', fontSize: 14 },
 });
