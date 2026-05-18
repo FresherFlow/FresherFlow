@@ -39,3 +39,8 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# dynamic feeds
+public/bootstrap-feed.min.json
+public/taken-usernames.min.json
+
