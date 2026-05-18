@@ -3,7 +3,26 @@ import { PrismaClient } from '@prisma/client';
 export * from '@prisma/client';
 
 const prismaClientSingleton = () => {
-    return new PrismaClient();
+    const shouldLog = process.env.LOG_DATABASE_QUERIES === 'true';
+    const client = new PrismaClient(
+        shouldLog
+            ? {
+                  log: [
+                      { emit: 'event', level: 'query' },
+                      { emit: 'stdout', level: 'error' },
+                      { emit: 'stdout', level: 'warn' },
+                  ],
+              }
+            : undefined
+    );
+
+    if (shouldLog) {
+        (client as any).$on('query', (e: any) => {
+            console.log(`[Prisma Query] [${new Date().toISOString()}] ${e.query} | Params: ${e.params} | Duration: ${e.duration}ms`);
+        });
+    }
+
+    return client;
 };
 
 type PrismaClientSingleton = ReturnType<typeof prismaClientSingleton>;
