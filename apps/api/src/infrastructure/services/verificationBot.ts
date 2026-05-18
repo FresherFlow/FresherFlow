@@ -17,8 +17,8 @@ const VERIFICATION_BOT_CONTACT_URL =
     process.env.FRONTEND_URL ||
     'http://localhost:3000';
 const VERIFICATION_BOT_USER_AGENT = `FresherFlow-VerificationBot/1.0 (+${VERIFICATION_BOT_CONTACT_URL})`;
-const DEFAULT_VERIFICATION_LOOKBACK_HOURS = process.env.NODE_ENV === 'production' ? 72 : 12;
-const DEFAULT_VERIFICATION_BATCH_SIZE = process.env.NODE_ENV === 'production' ? 20 : 50;
+const DEFAULT_VERIFICATION_LOOKBACK_HOURS = 72;
+const DEFAULT_VERIFICATION_BATCH_SIZE = 20;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type LinkCheckResult = 'HEALTHY' | 'SOFT_FAIL' | 'HARD_FAIL';

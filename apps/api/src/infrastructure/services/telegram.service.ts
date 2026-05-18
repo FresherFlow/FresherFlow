@@ -4,6 +4,7 @@ import { OpportunityType } from '@fresherflow/types';
 import { enqueueTelegramBroadcast } from '@fresherflow/queue';
 import { buildSocialOpportunityUrl } from '../../utils/share';
 import { logger } from '@fresherflow/logger';
+
 import { getCanonicalShareOrigin, getPublicSiteUrl, getRootDomainHost } from '../../utils/runtimeConfig';
 
 class TelegramService {

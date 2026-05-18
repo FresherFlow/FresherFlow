@@ -37,9 +37,7 @@ export class EmailService {
      */
     static async sendOtp(email: string, code: string): Promise<void> {
         if (process.env.NODE_ENV !== 'production') {
-            console.log('\n' + '='.repeat(40));
-            console.log(`🔑 DEV OTP for ${email}: ${code}`);
-            console.log('='.repeat(40) + '\n');
+            logger.info(`\n${'='.repeat(40)}\n🔑 DEV OTP for ${email}: ${code}\n${'='.repeat(40)}\n`);
         }
 
         const html = `

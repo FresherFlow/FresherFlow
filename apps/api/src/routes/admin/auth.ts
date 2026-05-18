@@ -185,7 +185,6 @@ async function getAdminUser(email: string) {
                     email,
                     role: 'ADMIN',
                     fullName: 'System Admin',
-                    provider: 'passkey'
                 }
             });
         }

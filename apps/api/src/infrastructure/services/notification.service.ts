@@ -323,10 +323,10 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                 },
             ];
 
-        // Send email if enabled
-        if (deliveryControls.userEmailNotificationsEnabled && preference.emailEnabled) {
+        // Send email if enabled and user has an email address
+        if (deliveryControls.userEmailNotificationsEnabled && preference.emailEnabled && user.email) {
             try {
-                await EmailService.sendNewJobAlert(user.email, user.fullName, {
+                await EmailService.sendNewJobAlert(user.email, user.fullName || 'User', {
                     title: opportunity.title,
                     company: opportunity.company,
                     location: opportunity.locations?.[0] || null,

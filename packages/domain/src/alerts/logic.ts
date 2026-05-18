@@ -1,6 +1,6 @@
 import { Opportunity } from '@fresherflow/types';
 
-export const CLOSING_SOON_WINDOW_HOURS = 48;
+export const CLOSING_SOON_WINDOW_HOURS = Number(process.env.CLOSING_SOON_WINDOW_HOURS || 48);
 
 export type TzParts = { dateKey: string; hour: number };
 

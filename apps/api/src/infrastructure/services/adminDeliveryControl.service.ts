@@ -1,4 +1,5 @@
 import prisma from '../database/prisma';
+import { env } from '@fresherflow/config';
 
 export interface AdminDeliveryControls {
     socialAutoPostingEnabled: boolean;
@@ -9,9 +10,9 @@ export interface AdminDeliveryControls {
 const GLOBAL_CONTROL_ID = 'global';
 
 const DEFAULT_CONTROLS: AdminDeliveryControls = {
-    socialAutoPostingEnabled: true,
-    userAlertsEnabled: true,
-    userEmailNotificationsEnabled: true,
+    socialAutoPostingEnabled: env.ENABLE_SOCIAL_POSTING !== false,
+    userAlertsEnabled: env.ENABLE_CRON_TASKS !== false,
+    userEmailNotificationsEnabled: env.ENABLE_EMAIL_SENDING !== false,
 };
 
 export async function getAdminDeliveryControls(): Promise<AdminDeliveryControls> {

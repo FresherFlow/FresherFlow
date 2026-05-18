@@ -298,9 +298,9 @@ export async function runAlertsCycle() {
 
     const now = new Date();
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-    const maxUsers = Number(process.env.ALERTS_MAX_USERS || (process.env.NODE_ENV === 'production' ? 250 : 1000));
-    const maxOpportunities = Number(process.env.ALERTS_MAX_OPPORTUNITIES || (process.env.NODE_ENV === 'production' ? 120 : 300));
-    const maxEvents = Number(process.env.ALERTS_MAX_EVENTS || (process.env.NODE_ENV === 'production' ? 80 : 200));
+    const maxUsers = Number(process.env.ALERTS_MAX_USERS || 250);
+    const maxOpportunities = Number(process.env.ALERTS_MAX_OPPORTUNITIES || 120);
+    const maxEvents = Number(process.env.ALERTS_MAX_EVENTS || 80);
     const deliveryControls = await getAdminDeliveryControls();
 
     if (!deliveryControls.userAlertsEnabled) {
