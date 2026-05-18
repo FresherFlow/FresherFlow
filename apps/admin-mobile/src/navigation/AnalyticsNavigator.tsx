@@ -15,26 +15,27 @@ export type AnalyticsStackParamList = {
 const Stack = createNativeStackNavigator<AnalyticsStackParamList>();
 
 export const AnalyticsNavigator = () => {
-    const { colors } = useTheme();
+    const { currentTheme } = useTheme();
     return (
-        <Stack.Navigator screenOptions={createStackScreenOptions(colors)}>
+        <Stack.Navigator screenOptions={createStackScreenOptions(currentTheme.colors)}>
             <Stack.Screen
                 name="AnalyticsOverview"
                 component={AnalyticsScreen}
-                options={{ title: 'Analytics', headerShown: true }}
+                options={{ title: 'Platform Insights', headerShown: true }}
             />
             <Stack.Screen
                 name="Feedback"
                 component={FeedbackScreen}
-                options={{ title: 'Feedback', headerShown: true }}
+                options={{ title: 'General Feedback', headerShown: true }}
             />
             <Stack.Screen
                 name="OpportunityFeedback"
                 component={OpportunityFeedbackScreen}
-                options={({ route }) => ({ title: route.params?.title ?? 'Opportunity Feedback', headerShown: true })}
+                options={({ route }) => ({ 
+                    title: route.params?.title || 'Job Verification', 
+                    headerShown: true 
+                })}
             />
         </Stack.Navigator>
     );
 };
-
-

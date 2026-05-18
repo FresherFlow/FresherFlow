@@ -8,12 +8,12 @@ import { useTheme } from '../theme/ThemeProvider';
 export const AppNavigator = () => {
     const { admin, isLoading } = useAuth();
     const isInitialLoad = React.useRef(true);
-    const { colors } = useTheme();
+    const { currentTheme } = useTheme();
 
     if (isLoading && isInitialLoad.current) {
         return (
-            <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-                <ActivityIndicator size="large" color={colors.primary} />
+            <View style={[styles.loadingContainer, { backgroundColor: currentTheme.colors.background }]}>
+                <ActivityIndicator size="large" color={currentTheme.colors.primary} />
             </View>
         );
     }
@@ -22,7 +22,9 @@ export const AppNavigator = () => {
         isInitialLoad.current = false;
     }
 
-    return admin ? <AdminNavigator /> : <AuthNavigator />;
+    const hasAdminAccess = admin && admin.role === 'ADMIN';
+
+    return hasAdminAccess ? <AdminNavigator /> : <AuthNavigator />;
 };
 
 const styles = StyleSheet.create({
@@ -32,5 +34,3 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
 });
-
-

@@ -1,13 +1,20 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
+import { OpportunitiesStackParamList } from './OpportunitiesNavigator';
+import { AnalyticsStackParamList } from './AnalyticsNavigator';
+import { OpsStackParamList } from './OpsNavigator';
+import { SettingsStackParamList } from './SettingsNavigator';
 
 export type AdminTabParamList = {
-    Dashboard: undefined;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Opportunities: NavigatorScreenParams<any> | undefined;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Analytics: NavigatorScreenParams<any> | undefined;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Ops: NavigatorScreenParams<any> | undefined;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    Settings: NavigatorScreenParams<any> | undefined;
+    Home: undefined;
+    Signals: NavigatorScreenParams<OpportunitiesStackParamList> | undefined;
+    Submissions: undefined;
+    Identity: undefined;
+    Post: undefined;
+    Settings: NavigatorScreenParams<SettingsStackParamList> | undefined;
+};
+
+export type AdminStackParamList = {
+    MainTabs: NavigatorScreenParams<AdminTabParamList>;
+    Moderation: NavigatorScreenParams<OpsStackParamList>;
+    Insights: NavigatorScreenParams<AnalyticsStackParamList>;
 };

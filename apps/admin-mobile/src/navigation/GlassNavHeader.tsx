@@ -3,21 +3,22 @@ import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../theme/ThemeProvider';
+import { alpha } from '../theme';
 import { ChevronLeft } from 'lucide-react-native';
 import type { NavigationProp } from '@react-navigation/native';
 import type { NativeStackHeaderProps } from '@react-navigation/native-stack';
 
 export const GlassNavHeader = ({ options, back, navigation }: { options: NativeStackHeaderProps['options']; back?: { title?: string }; navigation: NavigationProp<Record<string, unknown>> }) => {
-    const { colors } = useTheme();
+    const { currentTheme } = useTheme();
     const insets = useSafeAreaInsets();
+    const { colors } = currentTheme;
 
     const bgColor = colors.background;
     
-    // Strict tuple typing for the LinearGradient component to satisfy TypeScript overloads
     const gradientColors: [string, string, string, string] = [
         bgColor,
-        `${bgColor}E6`, // 90%
-        `${bgColor}99`, // 60%
+        alpha(bgColor, 0.9), 
+        alpha(bgColor, 0.6), 
         'transparent'
     ];
 
@@ -42,8 +43,8 @@ export const GlassNavHeader = ({ options, back, navigation }: { options: NativeS
                             <View style={[
                                 styles.iconWrapper, 
                                 { 
-                                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-                                    borderColor: 'rgba(255, 255, 255, 0.12)' 
+                                    backgroundColor: colors.glassSubtle,
+                                    borderColor: colors.dividerSubtle 
                                 }
                             ]}>
                                 <ChevronLeft size={22} color={colors.text} />
@@ -101,10 +102,10 @@ const styles = StyleSheet.create({
     },
     title: {
         fontSize: 18,
-        fontWeight: '800',
+        fontWeight: '900',
         flex: 1,
         textAlign: 'center',
-        letterSpacing: 0.3,
+        letterSpacing: -0.3,
     },
     placeholder: {
         width: 42,
@@ -115,5 +116,3 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
 });
-
-

@@ -7,64 +7,47 @@ export const createStackScreenOptions = (colors: ThemeColors): NativeStackNaviga
     headerStyle: { backgroundColor: colors.background },
     headerTintColor: colors.text,
     headerTitleStyle: { 
-        fontWeight: '800',
+        fontWeight: '900',
         fontSize: 17,
     },
     headerShadowVisible: false,
     contentStyle: { backgroundColor: colors.background },
     headerBackVisible: true,
     headerBackButtonMenuEnabled: false,
+    animation: 'fade_from_bottom',
 });
 
 export const createTabScreenOptions = (colors: ThemeColors): BottomTabNavigationOptions => ({
-    headerShown: true,
-    headerStyle: { backgroundColor: colors.background },
-    headerTintColor: colors.text,
-    headerTitleStyle: { 
-        fontWeight: '800',
-        fontSize: 17,
-    },
-    headerShadowVisible: false,
+    headerShown: false,
     tabBarStyle: {
-        backgroundColor: colors.background, 
-        borderTopColor: alpha(colors.text, 0.08),
+        backgroundColor: colors.background,
         borderTopWidth: 1,
-        height: Platform.OS === 'ios' ? 100 : Platform.OS === 'android' ? 84 : 68,
-        paddingBottom: Platform.OS === 'ios' ? 34 : Platform.OS === 'android' ? 16 : 10,
-        paddingTop: 10,
-        elevation: 0,
-        shadowOpacity: 0,
+        borderTopColor: alpha(colors.text, 0.05),
+        height: Platform.OS === 'ios' ? 90 : 70,
+        paddingBottom: Platform.OS === 'ios' ? 30 : 12,
+        paddingTop: 12,
     },
     tabBarActiveTintColor: colors.primary,
-    tabBarInactiveTintColor: alpha(colors.text, 0.4),
+    tabBarInactiveTintColor: alpha(colors.text, 0.3),
     tabBarLabelStyle: {
-        fontSize: 11,
-        fontWeight: '800',
+        fontSize: 10,
+        fontWeight: '900',
         marginTop: 4,
     },
-    tabBarItemStyle: {
-        marginHorizontal: 0,
-    },
-    tabBarBackground: undefined,
-    sceneStyle: {
-        backgroundColor: colors.background,
-    },
+    tabBarHideOnKeyboard: true,
 });
 
 export const createHeaderActionTextStyle = (colors: ThemeColors) => ({
     color: colors.primary,
-    fontWeight: '800' as const,
-    fontSize: 14,
-    paddingVertical: 4,
+    fontWeight: '900' as const,
+    fontSize: 13,
 });
 
 export const createOutlinedChipStyle = (colors: ThemeColors) => ({
     borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: alpha(colors.surface, 0.9),
+    borderColor: alpha(colors.text, 0.1),
+    backgroundColor: alpha(colors.surface, 0.8),
     borderRadius: 999,
     paddingHorizontal: 16,
     paddingVertical: 10,
 });
-
-
