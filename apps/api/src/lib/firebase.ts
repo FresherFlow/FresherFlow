@@ -20,9 +20,17 @@ if (!admin.apps.length) {
             logger.error('Firebase Admin initialization failed:', error);
         }
     } else {
-        // Fallback to default credentials (useful for local dev with GOOGLE_APPLICATION_CREDENTIALS)
-        admin.initializeApp();
-        logger.info('Firebase Admin initialized with default credentials.');
+        // Explicit fallback for local development
+        const pid = project_id || 'fresherflow-3604b';
+        if (!process.env.GCLOUD_PROJECT) process.env.GCLOUD_PROJECT = pid;
+        try {
+            admin.initializeApp({
+                projectId: pid,
+            });
+            logger.info(`[Firebase] Admin initialized with Project ID: ${pid} (Fallback Mode)`);
+        } catch (error) {
+            logger.error('[Firebase] Admin initialization failed in fallback mode:', error);
+        }
     }
 }
 

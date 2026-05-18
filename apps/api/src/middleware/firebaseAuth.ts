@@ -35,7 +35,9 @@ export async function verifyFirebaseToken(req: Request, res: Response, next: Nex
         req.firebaseUser = decodedToken;
         next();
     } catch (error) {
-        logger.error('[Firebase] Token verification failed:', error);
+        const err = error as { code?: string; message?: string; stack?: string };
+        logger.error(`[Firebase] Token verification failed. Error Code: ${err?.code}. Message: ${err?.message}`);
+        if (err?.stack) logger.error(`[Firebase] Stack: ${err.stack}`);
         return next(new AppError('Invalid or expired Firebase token', 401));
     }
 }

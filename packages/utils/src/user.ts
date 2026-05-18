@@ -11,18 +11,16 @@ import { User } from '@fresherflow/types';
  * @param user The user object (partial allowed as long as required fields exist)
  */
 export function getDisplayHandle(user: { username?: string | null; isAnonymous?: boolean; anon_id?: string | null; id?: string | null } | null | undefined): string {
-    if (!user) return '@anonymous';
+    if (!user) return 'Guest';
 
     if (user.username) {
         return `@${user.username}`;
     }
 
-    if (user.isAnonymous && user.anon_id) {
-        const suffix = user.anon_id.slice(-4).toLowerCase();
-        return `@user_${suffix}`;
+    if (user.isAnonymous) {
+        return 'Guest';
     }
 
-    // Ultimate fallback for registered users without username
-    const idSuffix = user.id ? user.id.slice(-4).toLowerCase() : 'xxxx';
-    return `@user_${idSuffix}`;
+    // Fallback for registered users who haven't set a username yet
+    return 'User';
 }

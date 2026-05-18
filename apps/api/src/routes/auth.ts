@@ -2,7 +2,6 @@ import prisma from '../infrastructure/database/prisma';
 import { User } from '@fresherflow/types';
 import express, { Router, Request, Response, NextFunction } from 'express';
 
-import bcrypt from 'bcrypt';
 import {
     generateAccessToken,
     generateRefreshToken,
@@ -10,16 +9,18 @@ import {
     hashRefreshToken
 } from '@fresherflow/auth';
 import { validate } from '../middleware/validate';
-import { loginSchema, sendOtpSchema, verifyOtpSchema } from '../utils/validation';
+import { sendOtpSchema, verifyOtpSchema, googleAuthSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
 import { requireAuth } from '../middleware/auth';
 import { AuthService } from '../infrastructure/services/auth.service';
 import { EmailService } from '../infrastructure/services/email.service';
-import { recordAuthSuccess } from '../infrastructure/services/growthFunnel.service';
+import { eventService } from '../infrastructure/services/event.service';
 import { createRateLimiter } from '../middleware/rateLimit';
 import { getCookieDomain } from '../utils/runtimeConfig';
 import { calculateCompletion } from '@fresherflow/domain';
 import { Profile } from '@fresherflow/types';
+import { verifyFirebaseToken } from '../middleware/firebaseAuth';
+import { auth as firebaseAdminAuth } from '../lib/firebase';
 
 // Rate Limiters
 const otpSendLimiter = createRateLimiter({
@@ -136,6 +137,53 @@ async function hydrateProfileCompletion(userId: string, profile: Profile | null)
     return updatedProfile as unknown as Profile;
 }
 
+/**
+ * Common logic to handle merging of anonymous activity into a signed-in account.
+ * (Deprecated: Now handled via Firebase Linkage)
+ */
+async function tryMergeAnonymousIdentity(_req: Request, _userId: string) {
+    // Legacy support or internal tracking if needed
+}
+
+// ─── HANDSHAKE ────────────────────────────────────────────────────────────────
+
+/**
+ * POST /api/auth/handshake
+ * Migrates/links a Firebase-authenticated user to our local Prisma DB.
+ * Used by mobile app to initialize session after Firebase sign-in.
+ */
+router.post('/handshake', verifyFirebaseToken, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const firebaseUser = req.firebaseUser;
+        if (!firebaseUser) return next(new AppError('Firebase user not found in request', 401));
+
+        const { ref } = req.body;
+        const { uid, email, name } = firebaseUser;
+
+        // 1. Handshake with identity mapping (Supports Anonymous users)
+        const { user, isNewUser } = await AuthService.handshake(uid, email || undefined, name || undefined, ref);
+
+        // 2. Set standard session cookies
+        const tokens = await setAuthCookies(user as unknown as User, res);
+
+        // 3. Record success
+        await eventService.track({
+            type: 'AUTH_STEP',
+            source: 'mobile',
+            userId: user.id,
+            metadata: { isNewUser, method: 'handshake' }
+        });
+
+        res.json({
+            user: { id: user.id, email: user.email || null, fullName: user.fullName || null, username: (user as User).username || null },
+            profile: (user as User).profile || null,
+            ...tokens,
+        });
+    } catch (error) {
+        next(toAuthRouteError(error, 'Handshake failed', 500));
+    }
+});
+
 // POST /api/auth/otp/send
 router.post('/otp/send', otpSendLimiter, validate(sendOtpSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -151,15 +199,33 @@ router.post('/otp/send', otpSendLimiter, validate(sendOtpSchema), async (req: Re
 // POST /api/auth/otp/verify
 router.post('/otp/verify', authVerifyLimiter, validate(verifyOtpSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { email, code, source, ref } = req.body;
-        const { user, isNewUser } = await AuthService.verifyOtp(email, code, ref);
+        const { email, code, source, ref, firebaseUid } = req.body;
+        const { user, isNewUser } = await AuthService.verifyOtp(email, code, ref, firebaseUid);
 
         const tokens = await setAuthCookies(user as User, res);
-        await recordAuthSuccess(source, isNewUser);
+        await eventService.track({
+            type: 'AUTH_STEP',
+            source: source || 'unknown',
+            userId: user.id,
+            metadata: { isNewUser, method: 'otp' }
+        });
+
+        // Merge guest data if x-fresherflow-anon-id is present
+        await tryMergeAnonymousIdentity(req, user.id);
+
+        // Generate Firebase Custom Token
+        const uidForToken = user.firebase_uid || user.id;
+        const firebaseCustomToken = await firebaseAdminAuth.createCustomToken(uidForToken);
 
         res.json({
-            user: { id: user.id, email: user.email, fullName: user.fullName },
+            user: {
+                id: user.id,
+                email: user.email || null,
+                fullName: user.fullName || null,
+                username: user.username || null
+            },
             profile: (user as User).profile || null,
+            firebaseCustomToken,
             ...tokens,
         });
     } catch (error) {
@@ -168,52 +234,29 @@ router.post('/otp/verify', authVerifyLimiter, validate(verifyOtpSchema), async (
 });
 
 // POST /api/auth/google
-router.post('/google', authVerifyLimiter, async (req: Request, res: Response, next: NextFunction) => {
+router.post('/google', authVerifyLimiter, validate(googleAuthSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { token, source, ref } = req.body;
-        if (!token) return next(new AppError('Google token is required', 400));
-
-        const { user, isNewUser } = await AuthService.verifyGoogleIdToken(token, ref);
+        const { token, source, ref, firebaseUid } = req.body;
+        const { user, isNewUser } = await AuthService.verifyGoogleIdToken(token, ref, firebaseUid);
 
         const tokens = await setAuthCookies(user as User, res);
-        await recordAuthSuccess(source, isNewUser);
+        await eventService.track({
+            type: 'AUTH_STEP',
+            source: source || 'unknown',
+            userId: user.id,
+            metadata: { isNewUser, method: 'google' }
+        });
+
+        // Merge guest data if x-fresherflow-anon-id is present
+        await tryMergeAnonymousIdentity(req, user.id);
 
         res.json({
-            user: { id: user.id, email: user.email, fullName: user.fullName },
+            user: { id: user.id, email: user.email || null, fullName: user.fullName || null, username: (user as User).username || null },
             profile: (user as User).profile || null,
             ...tokens,
         });
     } catch (error) {
         next(toAuthRouteError(error, 'Google authentication failed'));
-    }
-});
-
-// POST /api/auth/login (Legacy/Admin Support)
-router.post('/login', authVerifyLimiter, validate(loginSchema), async (req: Request, res: Response, next: NextFunction) => {
-    try {
-        const { email, password } = req.body;
-
-        const user = await prisma.user.findUnique({
-            where: { email },
-            include: { profile: true }
-        });
-
-        if (!user) return next(new AppError('Invalid email or password', 401));
-        if (!user.passwordHash) return next(new AppError('Account setup incomplete. Use Google or Email OTP to login.', 401));
-
-        const passwordHash = user.passwordHash as string;
-        const isValid = await bcrypt.compare(password, passwordHash);
-        if (!isValid) return next(new AppError('Invalid email or password', 401));
-
-        const tokens = await setAuthCookies(user as unknown as User, res);
-
-        res.json({
-            user: { id: user.id, email: user.email, fullName: user.fullName },
-            profile: user.profile || null,
-            ...tokens,
-        });
-    } catch (error) {
-        next(error);
     }
 });
 
@@ -285,7 +328,7 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
         );
 
         res.json({
-            user: { id: user.id, email: user.email, fullName: user.fullName },
+            user: { id: user.id, email: user.email, fullName: user.fullName, username: user.username || null },
             profile
         });
     } catch (error) {

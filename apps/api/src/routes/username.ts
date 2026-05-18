@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { claimUsernameSchema } from '@fresherflow/schemas';
 import { AppError } from '../middleware/errorHandler';
+import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
 
 const router = Router();
 
@@ -49,6 +50,10 @@ router.post('/claim', requireAuth, validate(claimUsernameSchema), async (req: Re
         const { username } = req.body;
         const userId = req.userId as string;
 
+        if (req.isAnonymous) {
+            throw new AppError('Guests cannot claim a username. Please sign in first.', 403);
+        }
+
         // Check uniqueness first (fail fast)
         const existing = await prisma.user.findUnique({
             where: { username },
@@ -59,7 +64,8 @@ router.post('/claim', requireAuth, validate(claimUsernameSchema), async (req: Re
             throw new AppError('Username is already taken', 409);
         }
 
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const cooldownDays = Number(process.env.USERNAME_COOLDOWN_DAYS || 30);
+        const cooldownThreshold = new Date(Date.now() - cooldownDays * 24 * 60 * 60 * 1000);
 
         // Atomic update with cooldown check
         const result = await prisma.user.updateMany({
@@ -67,7 +73,7 @@ router.post('/claim', requireAuth, validate(claimUsernameSchema), async (req: Re
                 id: userId,
                 OR: [
                     { usernameUpdatedAt: null },
-                    { usernameUpdatedAt: { lt: thirtyDaysAgo } }
+                    { usernameUpdatedAt: { lt: cooldownThreshold } }
                 ]
             },
             data: {
@@ -83,12 +89,15 @@ router.post('/claim', requireAuth, validate(claimUsernameSchema), async (req: Re
                 select: { usernameUpdatedAt: true }
             });
 
-            if (user?.usernameUpdatedAt && user.usernameUpdatedAt >= thirtyDaysAgo) {
-                throw new AppError('You can only change your username once every 30 days', 429);
+            if (user?.usernameUpdatedAt && user.usernameUpdatedAt >= cooldownThreshold) {
+                throw new AppError(`You can only change your username once every ${cooldownDays} days`, 429);
             }
             
             throw new AppError('Failed to update username', 500);
         }
+
+        // Regenerate static usernames index instantly
+        void StaticFeedService.refreshUsernames();
 
         res.json({ success: true, message: 'Username claimed successfully', username });
     } catch (error) {

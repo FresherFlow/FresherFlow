@@ -41,24 +41,13 @@ async function bindReferral(newUserId: string, refCode: string | undefined | nul
         where: { id: newUserId },
         data: { referredByUserId: referrer.id, referredAt: new Date() },
     });
-    // Mark the most-recent visit from this code as converted
-    const visit = await prisma.referralVisit.findFirst({
-        where: { referralCode: refCode.toUpperCase(), visitorUserId: null },
-        orderBy: { createdAt: 'desc' },
-    });
-    if (visit) {
-        await prisma.referralVisit.update({
-            where: { id: visit.id as string },
-            data: { visitorUserId: newUserId },
-        });
-    }
 }
 
 export class AuthService {
     /**
      * Verify Google ID Token and return/create user
      */
-    static async verifyGoogleIdToken(idToken: string, refCode?: string): Promise<{ user: User; isNewUser: boolean }> {
+    static async verifyGoogleIdToken(idToken: string, refCode?: string, firebaseUid?: string): Promise<{ user: User; isNewUser: boolean }> {
         const ticket = await googleClient.verifyIdToken({
             idToken,
             audience: process.env.GOOGLE_CLIENT_ID
@@ -71,7 +60,7 @@ export class AuthService {
 
         const email = payload.email.toLowerCase();
         const fullName = payload.name;
-        const providerId = payload.sub;
+        // const providerId = payload.sub;
 
         const existingUser = await prisma.user.findUnique({ where: { email } });
 
@@ -80,13 +69,14 @@ export class AuthService {
         // Upsert User
         const user = await prisma.user.upsert({
             where: { email },
-            update: { provider: 'google', providerId },
+            update: {
+                ...(firebaseUid ? { firebase_uid: firebaseUid } : {})
+            },
             create: {
                 email,
                 fullName: fullName || email.split('@')[0],
-                provider: 'google',
-                providerId,
                 referralCode,
+                ...(firebaseUid ? { firebase_uid: firebaseUid } : {}),
                 profile: { create: { completionPercentage: 0 } },
             },
             include: { profile: true },
@@ -113,7 +103,7 @@ export class AuthService {
     /**
      * Verify OTP and return/create user
      */
-    static async verifyOtp(email: string, code: string, refCode?: string): Promise<{ user: User; isNewUser: boolean }> {
+    static async verifyOtp(email: string, code: string, refCode?: string, firebaseUid?: string): Promise<{ user: User; isNewUser: boolean }> {
         const stored = otpStore.get(email.toLowerCase());
 
         if (!stored) {
@@ -140,12 +130,14 @@ export class AuthService {
         // Upsert User
         const user = await prisma.user.upsert({
             where: { email: normalizedEmail },
-            update: { provider: 'email' },
+            update: {
+                ...(firebaseUid ? { firebase_uid: firebaseUid } : {})
+            },
             create: {
                 email: normalizedEmail,
                 fullName: email.split('@')[0],
-                provider: 'email',
                 referralCode,
+                ...(firebaseUid ? { firebase_uid: firebaseUid } : {}),
                 profile: { create: { completionPercentage: 0 } },
             },
             include: { profile: true },
@@ -155,5 +147,78 @@ export class AuthService {
         if (isNewUser) await bindReferral(user.id as string, refCode);
 
         return { user: user as unknown as User, isNewUser };
+    }
+
+    /**
+     * Handshake logic for Firebase identity mapping.
+     * Idempotent: returns existing user if firebase_uid matches,
+     * links existing email-based account if found,
+     * or creates a new user (Guest or Registered).
+     */
+    static async handshake(uid: string, email?: string, name?: string, refCode?: string): Promise<{ user: User; isNewUser: boolean }> {
+        const normalizedEmail = email?.toLowerCase();
+
+        // 1. Check for existing user by firebase_uid
+        const existingByFirebase = await prisma.user.findUnique({
+            where: { firebase_uid: uid },
+            include: { profile: true }
+        });
+
+        if (existingByFirebase) {
+            // If the user was anonymous but now we have an email, PROMOTE them
+            if (existingByFirebase.isAnonymous && normalizedEmail) {
+                const promotedUser = await prisma.user.update({
+                    where: { id: existingByFirebase.id as string },
+                    data: {
+                        email: normalizedEmail,
+                        fullName: (name || existingByFirebase.fullName || normalizedEmail.split('@')[0]) as string,
+                        isAnonymous: false,
+                    },
+                    include: { profile: true }
+                });
+                return { user: promotedUser as unknown as User, isNewUser: false };
+            }
+            return { user: existingByFirebase as unknown as User, isNewUser: false };
+        }
+
+        // 2. Check for existing account by email (Linking)
+        // Only if we actually have an email in this handshake
+        if (normalizedEmail) {
+            const existingByEmail = await prisma.user.findUnique({
+                where: { email: normalizedEmail },
+                include: { profile: true }
+            });
+
+            if (existingByEmail) {
+                const linkedUser = await prisma.user.update({
+                    where: { id: existingByEmail.id as string },
+                    data: {
+                        firebase_uid: uid,
+                    },
+                    include: { profile: true }
+                });
+
+                return { user: linkedUser as unknown as User, isNewUser: false };
+            }
+        }
+
+        // 3. Create new user (Guest or Registered)
+        const referralCode = await uniqueReferralCode();
+        const newUser = await prisma.user.create({
+            data: {
+                firebase_uid: uid,
+                email: normalizedEmail,
+                fullName: (name || normalizedEmail?.split('@')[0] || 'Guest') as string,
+                isAnonymous: !normalizedEmail, // If no email, it's a guest
+                referralCode,
+                profile: { create: { completionPercentage: 0 } },
+            },
+            include: { profile: true }
+        });
+
+        const isNewUser = true;
+        if (isNewUser) await bindReferral(newUser.id as string, refCode);
+
+        return { user: newUser as unknown as User, isNewUser };
     }
 }

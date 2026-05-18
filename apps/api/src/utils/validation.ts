@@ -69,7 +69,17 @@ export const sendOtpSchema = z.object({
 
 export const verifyOtpSchema = z.object({
     email: z.string().email('Invalid email format'),
-    code: z.string().length(6, 'Verification code must be 6 digits')
+    code: z.string().length(6, 'Verification code must be 6 digits'),
+    firebaseUid: z.string().optional(),
+    source: z.string().optional(),
+    ref: z.string().optional()
+});
+
+export const googleAuthSchema = z.object({
+    token: z.string().min(1, 'Token is required'),
+    firebaseUid: z.string().optional(),
+    source: z.string().optional(),
+    ref: z.string().optional()
 });
 
 // Profile Schemas
@@ -228,6 +238,11 @@ export const pushSubscriptionSchema = z.object({
         }),
     }),
 });
+
+export const usernameSchema = z.string()
+    .min(3, 'Username must be at least 3 characters')
+    .max(20, 'Username must be at most 20 characters')
+    .regex(/^[a-z0-9_]+$/, 'Usernames can only contain lowercase letters, numbers, and underscores');
 
 export const contributionSchema = z.object({
     url: z.string().url('Valid URL is required').optional(),

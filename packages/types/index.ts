@@ -64,6 +64,9 @@ export enum ActionType {
     SELECTED = 'SELECTED',
     VIEWED = 'VIEWED',
     SHARED = 'SHARED',
+    OA = 'OA',
+    REJECTED = 'REJECTED',
+    REPORTED = 'REPORTED',
     // Backward-compatible legacy values
     PLANNING = 'PLANNING',
     ATTENDED = 'ATTENDED',
@@ -144,6 +147,7 @@ export interface User {
     username: string | null;
     usernameUpdatedAt?: Date | string | null;
     lastLogin?: Date | string;
+    isOptimistic?: boolean;
 }
 
 export interface Profile {
@@ -263,6 +267,8 @@ export interface Opportunity {
     clicksCount: number;
     commentsCount: number;
     trendingScore: number;
+    appliedCount?: number;
+    selectedCount?: number;
 
     postedByUserId: string;
     adminId: string;
@@ -274,6 +280,8 @@ export interface Opportunity {
     events?: OpportunityEvent[];
     socialPosts?: SocialPost[];
     shareCount?: number;
+    isReferral?: boolean;
+    referredByUsername?: string;
     rawIngestions?: Array<{
         creator?: {
             id: string;
