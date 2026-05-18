@@ -9,22 +9,24 @@ import {
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Send, Trash2, MessageSquare, ShieldCheck } from 'lucide-react-native';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
 import { useNotifications } from '@repo/frontend-core';
+import { useAuthStore } from '@/store/useAuthStore';
 import { useComments } from '@/hooks/useComments';
 import { Section } from '@/system/layout/Layout';
 import { SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { SPACING, RADIUS, mScale } from '@/system/constants/dimensions';
 import { getDisplayHandle } from '@fresherflow/utils';
+import type { RootStackParamList } from '@/navigation/types';
 
 interface CommentSectionProps {
     opportunityId: string;
 }
 
-
-
 export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId }) => {
+    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
     const { currentTheme } = useTheme();
     const { 
         comments, 
@@ -34,6 +36,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
         deleteComment 
     } = useComments(opportunityId);
     
+    const { user, isAnonymous } = useAuthStore();
     const { showToast } = useNotifications();
     const [inputText, setInputText] = useState('');
 
@@ -67,34 +70,46 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
         <Section title="Community Discussion">
             <View style={styles.container}>
                 {/* Input Area */}
-                <SurfaceCard style={styles.inputContainer}>
-                    <TextInput
-                        style={[styles.input, { color: currentTheme.colors.text }]}
-                        placeholder="Add a helpful comment..."
-                        placeholderTextColor={currentTheme.colors.textMuted}
-                        value={inputText}
-                        onChangeText={setInputText}
-                        multiline
-                        maxLength={500}
-                        editable={!posting}
-                    />
+                {!isAnonymous ? (
+                    <SurfaceCard style={styles.inputContainer}>
+                        <TextInput
+                            style={[styles.input, { color: currentTheme.colors.text }]}
+                            placeholder="Add a helpful comment..."
+                            placeholderTextColor={currentTheme.colors.textMuted}
+                            value={inputText}
+                            onChangeText={setInputText}
+                            multiline
+                            maxLength={500}
+                            editable={!posting}
+                        />
+                        <TouchableOpacity 
+                            style={[
+                                styles.sendBtn, 
+                                { 
+                                    backgroundColor: inputText.trim() ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05) 
+                                }
+                            ]}
+                            onPress={handleSubmit}
+                            disabled={!inputText.trim() || posting}
+                        >
+                            {posting ? (
+                                <ActivityIndicator size="small" color={currentTheme.colors.background} />
+                            ) : (
+                                <Send size={18} color={inputText.trim() ? currentTheme.colors.background : currentTheme.colors.textMuted} />
+                            )}
+                        </TouchableOpacity>
+                    </SurfaceCard>
+                ) : (
                     <TouchableOpacity 
-                        style={[
-                            styles.sendBtn, 
-                            { 
-                                backgroundColor: inputText.trim() ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05) 
-                            }
-                        ]}
-                        onPress={handleSubmit}
-                        disabled={!inputText.trim() || posting}
+                        style={[styles.guestPrompt, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                        activeOpacity={0.8}
                     >
-                        {posting ? (
-                            <ActivityIndicator size="small" color={currentTheme.colors.background} />
-                        ) : (
-                            <Send size={18} color={inputText.trim() ? currentTheme.colors.background : currentTheme.colors.textMuted} />
-                        )}
+                        <MessageSquare size={16} color={currentTheme.colors.primary} />
+                        <Text style={[styles.guestPromptText, { color: currentTheme.colors.primary }]}>
+                            Sign in to join the discussion
+                        </Text>
                     </TouchableOpacity>
-                </SurfaceCard>
+                )}
 
                 {/* Comments List */}
                 {loading ? (
@@ -107,20 +122,38 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
                             <View key={comment.id} style={[styles.commentItem, { borderBottomColor: alpha(currentTheme.colors.border, 0.1) }]}>
                                 <View style={styles.commentHeader}>
                                     <View style={styles.userBadge}>
-                                        <Text style={[styles.userName, { color: currentTheme.colors.text }]}>
-                                            {getDisplayHandle(comment.user)}
-                                        </Text>
-                                        <View style={[styles.verifiedTag, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
-                                            <ShieldCheck size={10} color={currentTheme.colors.success} />
+                                        <View style={[styles.avatarCircle, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                            <Text style={[styles.avatarText, { color: currentTheme.colors.primary }]}>
+                                                {getDisplayHandle(comment.user).replace('@', '').substring(0, 2).toUpperCase()}
+                                            </Text>
                                         </View>
+                                        <TouchableOpacity
+                                            disabled={!comment.user.username}
+                                            activeOpacity={0.7}
+                                            onPress={() => {
+                                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                navigation.navigate('ContributorProfile', { userId: comment.user.id });
+                                            }}
+                                        >
+                                            <Text style={[styles.userName, { color: currentTheme.colors.text }]}>
+                                                {getDisplayHandle(comment.user)}
+                                            </Text>
+                                        </TouchableOpacity>
+                                        {comment.user.username && (
+                                            <View style={[styles.verifiedTag, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
+                                                <ShieldCheck size={10} color={currentTheme.colors.success} />
+                                            </View>
+                                        )}
                                     </View>
                                     <View style={styles.headerRight}>
                                         <Text style={[styles.timeText, { color: currentTheme.colors.textMuted }]}>
                                             {new Date(comment.createdAt).toLocaleDateString()}
                                         </Text>
-                                        <TouchableOpacity onPress={() => handleDelete(comment.id)} style={styles.deleteBtn}>
-                                            <Trash2 size={14} color={currentTheme.colors.error} />
-                                        </TouchableOpacity>
+                                        {(!isAnonymous && user?.id === comment.user.id) && (
+                                            <TouchableOpacity onPress={() => handleDelete(comment.id)} style={styles.deleteBtn}>
+                                                <Trash2 size={14} color={currentTheme.colors.error} />
+                                            </TouchableOpacity>
+                                        )}
                                     </View>
                                 </View>
                                 <Text style={[styles.commentText, { color: alpha(currentTheme.colors.text, 0.8) }]}>
@@ -161,6 +194,20 @@ const styles = StyleSheet.create({
         minHeight: 40,
         maxHeight: 100,
     },
+    guestPrompt: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 16,
+        borderRadius: RADIUS.lg,
+        borderWidth: 1,
+        gap: 10,
+        borderStyle: 'dashed',
+    },
+    guestPromptText: {
+        fontSize: mScale(13),
+        fontWeight: '700',
+    },
     sendBtn: {
         width: 40,
         height: 40,
@@ -175,7 +222,6 @@ const styles = StyleSheet.create({
     commentItem: {
         paddingVertical: SPACING.sm,
         borderBottomWidth: 0.5,
-        borderBottomColor: '#000', // Static fallback
     },
     commentHeader: {
         flexDirection: 'row',
@@ -191,6 +237,17 @@ const styles = StyleSheet.create({
     userName: {
         fontSize: mScale(13),
         fontWeight: '700',
+    },
+    avatarCircle: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    avatarText: {
+        fontSize: mScale(10),
+        fontWeight: '800',
     },
     verifiedTag: {
         padding: 2,

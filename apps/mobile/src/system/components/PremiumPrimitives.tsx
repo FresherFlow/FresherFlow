@@ -7,8 +7,48 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
+import { TYPOGRAPHY } from '../constants/typography';
 
+interface AppTextProps {
+    variant?: 'h2' | 'body' | 'label' | 'sectionTitle' | 'value' | 'badge';
+    muted?: boolean;
+    primary?: boolean;
+    style?: StyleProp<TextStyle>;
+    children: React.ReactNode;
+    numberOfLines?: number;
+}
 
+export const AppText: React.FC<AppTextProps> = ({ 
+    variant = 'body', 
+    muted, 
+    primary, 
+    style, 
+    children, 
+    numberOfLines 
+}) => {
+    const { currentTheme } = useTheme();
+    const typoStyle = TYPOGRAPHY[variant];
+    
+    let color = currentTheme.colors.text;
+    if (muted) {
+        color = currentTheme.colors.textMuted;
+    } else if (primary) {
+        color = currentTheme.colors.primary;
+    }
+    
+    return (
+        <Text 
+            numberOfLines={numberOfLines}
+            style={[
+                typoStyle,
+                { color },
+                style
+            ]}
+        >
+            {children}
+        </Text>
+    );
+};
 
 interface SurfaceProps {
     children: React.ReactNode;
@@ -83,7 +123,7 @@ export const PremiumHeader: React.FC<{
     compact?: boolean;
     numberOfLines?: number;
     style?: StyleProp<ViewStyle>;
-}> = ({ title, rightSlot, leftSlot, showBack, onBack, titleStyle, compact, numberOfLines, style }) => {
+}> = ({ title, subtitle, rightSlot, leftSlot, showBack, onBack, titleStyle, compact, numberOfLines, style }) => {
     const { currentTheme } = useTheme();
     const navigation = useNavigation();
 
@@ -103,13 +143,13 @@ export const PremiumHeader: React.FC<{
             style
         ]}>
             <View style={[styles.headerContent, compact && { alignItems: 'center', marginBottom: 0 }]}>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: compact ? 'center' : 'flex-end', gap: SPACING.sm }}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm }}>
                     {showBack && (
                         <TouchableOpacity onPress={handleBack} style={styles.backBtnHeader}>
                             <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
                         </TouchableOpacity>
                     )}
-                    {leftSlot && <View style={{ marginBottom: compact ? 0 : 4 }}>{leftSlot}</View>}
+                    {leftSlot && <View style={{ marginTop: compact ? 0 : 4 }}>{leftSlot}</View>}
                     <View style={{ flex: 1 }}>
                         <Text
                             style={[styles.headerTitle, { color: currentTheme.colors.text }, titleStyle]}
@@ -119,9 +159,22 @@ export const PremiumHeader: React.FC<{
                         >
                             {title}
                         </Text>
+                        {subtitle && !compact && (
+                            <Text style={[styles.headerSubtitle, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                                {subtitle}
+                            </Text>
+                        )}
                     </View>
                 </View>
-                {rightSlot && <View style={compact ? { alignItems: 'center' } : {}}>{rightSlot}</View>}
+                {rightSlot && (
+                    <View style={{ 
+                        height: mScale(44), 
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}>
+                        {rightSlot}
+                    </View>
+                )}
             </View>
         </View>
     );
@@ -211,7 +264,7 @@ export const PremiumToggle: React.FC<{
                 <Animated.View style={[
                     styles.switchThumb,
                     {
-                        backgroundColor: value ? currentTheme.colors.background : (currentTheme.mode === 'dark' ? '#FFFFFF' : '#FFFFFF'), // Standard white thumb
+                        backgroundColor: value ? currentTheme.colors.background : currentTheme.colors.inverseText, // Use themed inverse text for thumb
                         shadowColor: currentTheme.colors.text,
                         transform: [{ translateX }],
                     }
@@ -227,7 +280,7 @@ export const PremiumRefreshControl: React.FC<RefreshControlProps> = (props) => {
         <RefreshControl
             tintColor={currentTheme.colors.primary}
             colors={[currentTheme.colors.primary]}
-            progressBackgroundColor={currentTheme.mode === 'dark' ? currentTheme.colors.surface : '#FFFFFF'}
+            progressBackgroundColor={currentTheme.mode === 'dark' ? currentTheme.colors.surface : currentTheme.colors.background}
             {...props}
         />
     );
@@ -266,8 +319,7 @@ const styles = StyleSheet.create({
     headerContent: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        alignItems: 'flex-end',
-        paddingBottom: 4,
+        alignItems: 'flex-start',
     },
     headerTitle: {
         fontSize: mScale(38),
@@ -350,7 +402,6 @@ const styles = StyleSheet.create({
         width: 12,
         height: 12,
         borderRadius: 6,
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
         shadowOpacity: 0.1,
         shadowRadius: 1,

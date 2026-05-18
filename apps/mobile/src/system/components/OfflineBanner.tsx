@@ -41,7 +41,7 @@ export const OfflineBanner = () => {
           <BlurView 
             intensity={Platform.OS === 'ios' ? 40 : 100} 
             tint={currentTheme.mode === 'dark' ? 'dark' : 'light'} 
-            style={styles.blur}
+            style={[styles.blur, { borderColor: alpha(currentTheme.colors.border, 0.1), shadowColor: currentTheme.colors.text }]}
           >
             <View style={[
                 styles.content, 
@@ -51,7 +51,9 @@ export const OfflineBanner = () => {
                 }
             ]}>
               <WifiOff size={mScale(14)} color={currentTheme.colors.error} />
-              <Text style={[styles.text, { color: currentTheme.colors.text }]}>Offline Mode</Text>
+              <Text style={[styles.text, { color: currentTheme.colors.text }]}>
+                Offline Mode
+              </Text>
               <View style={[styles.dot, { backgroundColor: currentTheme.colors.error }]} />
             </View>
           </BlurView>
@@ -75,9 +77,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    elevation: 5,
-    shadowColor: '#000',
+    // borderColor and shadowColor removed as they are overridden dynamically
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,

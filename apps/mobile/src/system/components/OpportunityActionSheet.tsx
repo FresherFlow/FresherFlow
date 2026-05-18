@@ -21,12 +21,18 @@ import {
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, FeedbackReason, ActionType } from '@fresherflow/types';
 import { useTheme } from '@/contexts/ThemeContext';
 import { theme } from '@/theme';
-import { useSaved } from '@repo/frontend-core';
+import { useSaved, enqueueOfflineReport } from '@repo/frontend-core';
+import { Analytics, EventNames } from '@/utils/analytics';
 import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
+import { feedbackApi, actionsApi } from '@fresherflow/api-client';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useToast } from '@/contexts/ToastContext';
+import { Alert, ActivityIndicator } from 'react-native';
+import { ChevronLeft, Ban, Info, Link, AlertTriangle, Trash2, ChevronRight } from 'lucide-react-native';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -70,88 +76,177 @@ export const OpportunityActionSheetContent: React.FC<{
         onClose();
     };
 
+    const { user } = useAuthStore();
+    const { showSuccess } = useToast();
+    const [step, setStep] = React.useState(0); // 0: Actions, 1: Report Reasons
+    const [loading, setLoading] = React.useState(false);
+
     const handleSave = () => {
         toggleSave(activeOpportunity);
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         onClose();
     };
 
+    const handleReport = async (reason: FeedbackReason) => {
+        if (!user) {
+            Alert.alert('Sign in required', 'Please sign in to report this opportunity.');
+            onClose();
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await feedbackApi.submit(activeOpportunity.id, reason);
+            void actionsApi.track(activeOpportunity.id, ActionType.REPORTED);
+            Analytics.trackEvent(EventNames.REPORT_SUBMITTED, {
+                opportunityId: activeOpportunity.id,
+                reason: reason
+            });
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            showSuccess('Opportunity reported. Thank you for your feedback!');
+            onClose();
+        } catch (err: unknown) {
+            const error = err as Error & { status?: number };
+            const msg = (error.message || '').toLowerCase();
+            const isNetworkError = !error.status || error.status >= 500 || msg.includes('network') || msg.includes('timeout') || msg.includes('failed to fetch');
+
+            if (isNetworkError) {
+                // API is sleeping - save offline
+                await enqueueOfflineReport(activeOpportunity.id, reason, undefined, user.id);
+                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                showSuccess('Offline: Report saved. It will sync automatically when online.');
+                onClose();
+            } else if (msg.includes('already submitted')) {
+                Alert.alert('Already Reported', 'You have already reported this opportunity.');
+                onClose();
+            } else {
+                Alert.alert('Report Failed', error.message || 'Could not submit report');
+                onClose();
+            }
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const reportReasons = [
+        { id: 'expired', label: 'Expired / Closed Opportunity', icon: Ban, reason: FeedbackReason.EXPIRED },
+        { id: 'inaccurate', label: 'Inaccurate Information', icon: Info, reason: FeedbackReason.INACCURATE },
+        { id: 'broken_link', label: 'Broken or Suspicious Link', icon: Link, reason: FeedbackReason.LINK_BROKEN },
+        { id: 'scam', label: 'Spam or Scam Post', icon: AlertTriangle, reason: FeedbackReason.SPAM, destructive: true },
+        { id: 'duplicate', label: 'Duplicate Entry', icon: Trash2, reason: FeedbackReason.DUPLICATE },
+    ];
+
     return (
         <View style={styles.contentContainer}>
-            <View style={styles.header}>
-                <CompanyLogo
-                    name={activeOpportunity.company}
-                    website={activeOpportunity.companyWebsite}
-                    applyLink={activeOpportunity.applyLink}
-                    logoUrl={activeOpportunity.companyLogoUrl}
-                    size={mScale(52)}
-                />
-                <View style={styles.headerText}>
-                    <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                        {activeOpportunity.title}
-                    </Text>
-                    <Text style={[styles.company, { color: currentTheme.colors.textMuted }]}>
-                        {activeOpportunity.company}
-                    </Text>
+            {step === 0 ? (
+                <>
+                    <View style={styles.header}>
+                        <CompanyLogo
+                            name={activeOpportunity.company}
+                            website={activeOpportunity.companyWebsite}
+                            applyLink={activeOpportunity.applyLink}
+                            logoUrl={activeOpportunity.companyLogoUrl}
+                            size={mScale(52)}
+                        />
+                        <View style={styles.headerText}>
+                            <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={1}>
+                                {activeOpportunity.title}
+                            </Text>
+                            <Text style={[styles.company, { color: currentTheme.colors.textMuted }]}>
+                                {activeOpportunity.company}
+                            </Text>
+                        </View>
+                        <TouchableOpacity
+                            onPress={onClose}
+                            style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
+                        >
+                            <X size={20} color={currentTheme.colors.text} />
+                        </TouchableOpacity>
+                    </View>
+
+                    {activeOpportunity.applyLink && (
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={handleCopy}
+                            style={[styles.linkPreview, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
+                        >
+                            <View style={styles.linkIconBox}>
+                                <Copy size={16} color={currentTheme.colors.primary} />
+                            </View>
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.linkLabel, { color: currentTheme.colors.textMuted }]}>APPLY LINK</Text>
+                                <Text style={[styles.linkText, { color: currentTheme.colors.primary }]} numberOfLines={3}>
+                                    {activeOpportunity.applyLink}
+                                </Text>
+                            </View>
+                        </TouchableOpacity>
+                    )}
+
+                    <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
+
+                    <View style={styles.actions}>
+                        <ActionRow
+                            icon={Bookmark}
+                            label={isSaved ? "Remove from Saved" : "Save Opportunity"}
+                            onPress={handleSave}
+                            color={isSaved ? currentTheme.colors.primary : currentTheme.colors.text}
+                            isSaved={isSaved}
+                        />
+                        <ActionRow
+                            icon={Share2}
+                            label="Share Opportunity"
+                            onPress={handleShare}
+                        />
+                        {activeOpportunity.applyLink && activeOpportunity.applyLink.trim().length > 0 && (
+                            <ActionRow
+                                icon={Copy}
+                                label="Copy Apply Link"
+                                onPress={handleCopy}
+                            />
+                        )}
+                        <ActionRow
+                            icon={Flag}
+                            label="Report Inaccurate Info"
+                            onPress={() => {
+                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                setStep(1);
+                            }}
+                            destructive
+                        />
+                    </View>
+                </>
+            ) : (
+                <View style={{ paddingVertical: 10 }}>
+                    <View style={styles.reportHeader}>
+                        <TouchableOpacity 
+                            onPress={() => setStep(0)}
+                            style={[styles.backBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
+                        >
+                            <ChevronLeft size={20} color={currentTheme.colors.text} />
+                        </TouchableOpacity>
+                        <Text style={[styles.reportTitle, { color: currentTheme.colors.text }]}>Why report this?</Text>
+                    </View>
+                    
+                    <View style={styles.reasonsList}>
+                        {reportReasons.map((item) => (
+                            <TouchableOpacity
+                                key={item.id}
+                                disabled={loading}
+                                style={[styles.reasonItem, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}
+                                onPress={() => handleReport(item.reason)}
+                            >
+                                <View style={[styles.reasonIcon, { backgroundColor: alpha(item.destructive ? currentTheme.colors.error : currentTheme.colors.primary, 0.1) }]}>
+                                    <item.icon size={18} color={item.destructive ? currentTheme.colors.error : currentTheme.colors.primary} />
+                                </View>
+                                <Text style={[styles.reasonLabel, { color: item.destructive ? currentTheme.colors.error : currentTheme.colors.text }]}>
+                                    {item.label}
+                                </Text>
+                                {loading ? <ActivityIndicator size="small" color={currentTheme.colors.textMuted} /> : <ChevronRight size={16} color={currentTheme.colors.textMuted} />}
+                            </TouchableOpacity>
+                        ))}
+                    </View>
                 </View>
-                <TouchableOpacity
-                    onPress={onClose}
-                    style={[styles.closeBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
-                >
-                    <X size={20} color={currentTheme.colors.text} />
-                </TouchableOpacity>
-            </View>
-
-            {activeOpportunity.applyLink && (
-                <TouchableOpacity
-                    activeOpacity={0.7}
-                    onPress={handleCopy}
-                    style={[styles.linkPreview, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
-                >
-                    <View style={styles.linkIconBox}>
-                        <Copy size={16} color={currentTheme.colors.primary} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <Text style={[styles.linkLabel, { color: currentTheme.colors.textMuted }]}>APPLY LINK</Text>
-                        <Text style={[styles.linkText, { color: currentTheme.colors.primary }]} numberOfLines={3}>
-                            {activeOpportunity.applyLink}
-                        </Text>
-                    </View>
-                </TouchableOpacity>
             )}
-
-            <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
-
-            <View style={styles.actions}>
-                <ActionRow
-                    icon={Bookmark}
-                    label={isSaved ? "Remove from Saved" : "Save Opportunity"}
-                    onPress={handleSave}
-                    color={isSaved ? currentTheme.colors.primary : currentTheme.colors.text}
-                    isSaved={isSaved}
-                />
-                <ActionRow
-                    icon={Share2}
-                    label="Share Opportunity"
-                    onPress={handleShare}
-                />
-                {activeOpportunity.applyLink && activeOpportunity.applyLink.trim().length > 0 && (
-                    <ActionRow
-                        icon={Copy}
-                        label="Copy Apply Link"
-                        onPress={handleCopy}
-                    />
-                )}
-                <ActionRow
-                    icon={Flag}
-                    label="Report Inaccurate Info"
-                    onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        onClose();
-                    }}
-                    destructive
-                />
-            </View>
         </View>
     );
 };
@@ -450,4 +545,43 @@ const styles = StyleSheet.create({
         fontSize: 15,
         fontWeight: '600',
     },
+    reportHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        marginBottom: 20,
+    },
+    backBtn: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    reportTitle: {
+        fontSize: 18,
+        fontWeight: '800',
+    },
+    reasonsList: {
+        gap: 8,
+    },
+    reasonItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 12,
+        borderRadius: 14,
+        gap: 12,
+    },
+    reasonIcon: {
+        width: 32,
+        height: 32,
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    reasonLabel: {
+        flex: 1,
+        fontSize: 14,
+        fontWeight: '700',
+    }
 });

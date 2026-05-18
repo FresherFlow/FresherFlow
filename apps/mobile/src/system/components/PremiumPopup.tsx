@@ -91,6 +91,7 @@ export const PremiumPopup: React.FC<PremiumPopupProps> = ({
                             borderColor: alpha(currentTheme.colors.border, 0.5),
                             opacity: opacityAnim,
                             transform: [{ scale: scaleAnim }],
+                            shadowColor: currentTheme.colors.text,
                         },
                     ]}
                 >
@@ -166,7 +167,7 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
         ...Platform.select({
             ios: {
-                shadowColor: '#000',
+                // shadowColor removed as it is overridden dynamically
                 shadowOffset: { width: 0, height: 12 },
                 shadowOpacity: 0.25,
                 shadowRadius: 24,

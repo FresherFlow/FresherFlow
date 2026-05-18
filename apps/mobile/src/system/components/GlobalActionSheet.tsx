@@ -69,7 +69,7 @@ export const GlobalActionSheet = () => {
                 backgroundColor: currentTheme.colors.surface,
                 borderTopLeftRadius: RADIUS.xl * 1.5,
                 borderTopRightRadius: RADIUS.xl * 1.5,
-                shadowColor: '#000',
+                shadowColor: currentTheme.colors.text,
                 shadowOffset: { width: 0, height: -4 },
                 shadowOpacity: 0.1,
                 shadowRadius: 12,

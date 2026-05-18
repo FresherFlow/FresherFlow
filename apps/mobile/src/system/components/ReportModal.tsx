@@ -116,7 +116,6 @@ export const ReportModal: React.FC<ReportModalProps> = ({ visible, onClose, onSe
 const styles = StyleSheet.create({
     overlay: {
         flex: 1,
-        backgroundColor: '#000', // Static fallback
         justifyContent: 'flex-end',
     },
     content: {

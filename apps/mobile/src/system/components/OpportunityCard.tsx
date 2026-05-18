@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { CircleDollarSign, MapPin, Users, Clock, Bookmark, ChevronRight, MessageSquare, Briefcase } from 'lucide-react-native';
+import { CircleDollarSign, MapPin, Users, Clock, Bookmark, ChevronRight, Briefcase, Eye, Trophy } from 'lucide-react-native';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
@@ -104,7 +104,12 @@ export const OpportunityCard = memo(({
             onLongPress={handleLongPress}
             style={[
                 styles.container,
-                opportunity.isEligible === false && { opacity: 0.75 }
+                opportunity.isEligible === false && { opacity: 0.75 },
+                opportunity.isReferral && {
+                    borderColor: alpha(currentTheme.colors.warning, 0.4),
+                    borderWidth: 1.5,
+                    backgroundColor: alpha(currentTheme.colors.warning, 0.03)
+                }
             ]}
         >
       <View style={styles.header}>
@@ -113,6 +118,12 @@ export const OpportunityCard = memo(({
                 <View style={[styles.typeBadge, { backgroundColor: config.bg }]}>
                     <Text style={[styles.typeText, { color: config.color }]}>{config.label}</Text>
                 </View>
+                {opportunity.isReferral && (
+                    <View style={[styles.referralBadge, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
+                        <Users size={10} color={currentTheme.colors.warning} style={{ marginRight: 3 }} />
+                        <Text style={[styles.referralText, { color: currentTheme.colors.warning }]}>COMMUNITY REFERRAL</Text>
+                    </View>
+                )}
                 {(() => {
                   const postedAt = opportunity.postedAt ? new Date(opportunity.postedAt) : null;
                   if (!postedAt || isNaN(postedAt.getTime())) return null;
@@ -226,19 +237,27 @@ export const OpportunityCard = memo(({
 
       <View style={[styles.footer, { borderTopColor: alpha(currentTheme.colors.border, 0.3) }]}>
           <View style={styles.footerInfo}>
-              {(opportunity.sharesCount ?? 0) > 0 && (
+              {(opportunity.clicksCount ?? 0) > 0 && (
                   <View style={styles.stat}>
-                      <Users size={mScale(12)} color={currentTheme.colors.textMuted} />
+                      <Eye size={mScale(12)} color={currentTheme.colors.textMuted} />
                       <Text style={[styles.statText, { color: currentTheme.colors.textMuted }]}>
-                          {opportunity.sharesCount}
+                          {opportunity.clicksCount}
                       </Text>
                   </View>
               )}
-              {(opportunity.commentsCount ?? 0) > 0 && (
+              {(opportunity.appliedCount ?? 0) > 0 && (
                   <View style={styles.stat}>
-                      <MessageSquare size={mScale(12)} color={currentTheme.colors.textMuted} />
+                      <Briefcase size={mScale(12)} color={currentTheme.colors.success} />
                       <Text style={[styles.statText, { color: currentTheme.colors.textMuted }]}>
-                          {opportunity.commentsCount}
+                          {opportunity.appliedCount}
+                      </Text>
+                  </View>
+              )}
+              {(opportunity.selectedCount ?? 0) > 0 && (
+                  <View style={styles.stat}>
+                      <Trophy size={mScale(12)} color={currentTheme.colors.warning} />
+                      <Text style={[styles.statText, { color: currentTheme.colors.textMuted }]}>
+                          {opportunity.selectedCount}
                       </Text>
                   </View>
               )}
@@ -253,7 +272,11 @@ export const OpportunityCard = memo(({
                       <Text style={[styles.expiryText, { color: expiryInfo.color }]}>{expiryInfo.label}</Text>
                   </View>
               )}
-              {opportunity.rawIngestions?.[0]?.creator && (
+              {opportunity.isReferral ? (
+                  <Text style={[styles.contributorText, { color: currentTheme.colors.warning, fontWeight: '700' }]}>
+                      Referred by {opportunity.referredByUsername ? `@${opportunity.referredByUsername}` : (opportunity.rawIngestions?.[0]?.creator ? getDisplayHandle(opportunity.rawIngestions[0].creator) : 'user from community')}
+                  </Text>
+              ) : opportunity.rawIngestions?.[0]?.creator && (
                   <Text style={[styles.contributorText, { color: currentTheme.colors.textMuted }]}>
                       Shared by {getDisplayHandle(opportunity.rawIngestions[0].creator)}
                   </Text>
@@ -433,5 +456,17 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginLeft: SPACING.xs,
         opacity: 0.7,
+    },
+    referralBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: 4,
+        borderRadius: RADIUS.xs,
+    },
+    referralText: {
+        fontSize: mScale(9),
+        fontWeight: '900',
+        letterSpacing: 0.5,
     }
 });
