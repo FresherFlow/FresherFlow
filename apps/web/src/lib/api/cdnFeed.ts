@@ -80,7 +80,7 @@ export async function fetchFeedVersion(): Promise<string> {
     }
     try {
         const res = await fetch(FEED_VERSION_URL, {
-            cache: 'no-store', // Always fetch fresh version
+            next: { revalidate: 60 },
         });
         if (res.ok) {
             const data = await res.json() as { version?: string };
