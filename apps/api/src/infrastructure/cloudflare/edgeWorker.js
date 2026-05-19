@@ -130,9 +130,18 @@ async function handleRequest(request) {
             .join('');
 
         // Constant-Time Comparison
+        console.log({
+          message: message,
+          expectedSignature: expectedSignature,
+          receivedSignature: signature,
+          timeDrift: timeDrift
+        });
+
         if (!safeCompare(signature, expectedSignature)) {
             return new Response(JSON.stringify({ 
-                error: 'Forbidden: Invalid Cryptographic Signature match' 
+                expectedSignature: expectedSignature,
+                receivedSignature: signature,
+                message: message
             }), {
                 status: 403,
                 headers: { 'Content-Type': 'application/json' }

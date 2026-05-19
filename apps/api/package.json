@@ -31,6 +31,7 @@
     "author": "",
     "license": "MIT",
     "dependencies": {
+        "@aws-sdk/client-s3": "^3.1049.0",
         "@bull-board/api": "^6.20.5",
         "@bull-board/express": "^6.20.5",
         "@fresherflow/auth": "*",

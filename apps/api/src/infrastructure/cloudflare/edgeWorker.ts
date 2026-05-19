@@ -126,9 +126,18 @@ export default {
                 .join('');
 
             // Constant-Time Comparison
+            console.log({
+              message,
+              expectedSignature,
+              receivedSignature: signature,
+              timeDrift
+            });
+
             if (!safeCompare(signature, expectedSignature)) {
                 return new Response(JSON.stringify({ 
-                    error: 'Forbidden: Invalid Cryptographic Signature match' 
+                    expectedSignature,
+                    receivedSignature: signature,
+                    message
                 }), {
                     status: 403,
                     headers: { 'Content-Type': 'application/json' }

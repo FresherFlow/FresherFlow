@@ -4,6 +4,7 @@ import prisma from '../database/prisma';
 import { Prisma } from '@prisma/client';
 import { OpportunityStatus } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 /**
  * Service to generate "Distributed Static Data Shards" for discovery.
@@ -17,6 +18,7 @@ export class StaticFeedService {
     private static readonly STATS_PATH = path.join(this.PUBLIC_ROOT, 'stats.json');
     private static readonly SITEMAP_PATH = path.join(this.PUBLIC_ROOT, 'sitemap.xml');
     private static readonly USERNAMES_PATH = path.join(this.PUBLIC_ROOT, 'taken-usernames.min.json');
+    private static readonly SITEMAP_DATA_PATH = path.join(this.PUBLIC_ROOT, 'sitemap-data.json');
 
     /**
      * Slugify a string for use as a filename/path.
@@ -205,6 +207,47 @@ export class StaticFeedService {
     }
 
     /**
+     * 4b. SITEMAP JSON DATA
+     */
+    static async generateSitemapData() {
+        return this.withDbRetry(async () => {
+            const companies = await prisma.opportunity.findMany({
+                where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
+                distinct: ['company'],
+                select: { company: true }
+            });
+
+            const opportunities = await prisma.opportunity.findMany({
+                where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
+                orderBy: { postedAt: 'desc' },
+                take: 1000,
+                select: {
+                    id: true,
+                    slug: true,
+                    type: true,
+                    postedAt: true,
+                    updatedAt: true
+                }
+            });
+
+            return {
+                companies: companies.map(c => ({
+                    name: c.company,
+                    slug: this.slugify(c.company)
+                })),
+                opportunities: opportunities.map(opp => ({
+                    id: opp.id,
+                    slug: opp.slug,
+                    type: opp.type,
+                    postedAt: opp.postedAt,
+                    updatedAt: opp.updatedAt
+                })),
+                timestamp: Date.now()
+            };
+        });
+    }
+
+    /**
      * 5. LANDING PAGE STATS (LPS)
      */
     static async generateStats() {
@@ -238,6 +281,44 @@ export class StaticFeedService {
     }
 
     /**
+     * Upload regenerated content directly to Cloudflare R2 bucket.
+     */
+    private static async uploadToR2(key: string, body: string, contentType: string) {
+        const endpoint = process.env.R2_ENDPOINT;
+        const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+        const bucketName = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+
+        if (!endpoint || !accessKeyId || !secretAccessKey) {
+            logger.warn(`[StaticFeedService] Skipping R2 upload for ${key} - R2 credentials not fully configured in environment.`);
+            return;
+        }
+
+        try {
+            const s3 = new S3Client({
+                region: 'auto',
+                endpoint,
+                credentials: {
+                    accessKeyId,
+                    secretAccessKey,
+                },
+            });
+
+            await s3.send(
+                new PutObjectCommand({
+                    Bucket: bucketName,
+                    Key: key,
+                    Body: body,
+                    ContentType: contentType,
+                })
+            );
+            logger.info(`[StaticFeedService] Successfully uploaded to R2: ${key}`);
+        } catch (error) {
+            logger.error(`[StaticFeedService] Failed to upload ${key} to R2`, error);
+        }
+    }
+
+    /**
      * REFRESH USERNAMES ALONE
      */
     static async refreshUsernames() {
@@ -246,8 +327,12 @@ export class StaticFeedService {
                 fs.mkdirSync(this.PUBLIC_ROOT, { recursive: true });
             }
             const usernames = await this.generateTakenUsernames();
-            fs.writeFileSync(this.USERNAMES_PATH, JSON.stringify(usernames));
+            const body = JSON.stringify(usernames);
+            fs.writeFileSync(this.USERNAMES_PATH, body);
             logger.info('[StaticFeedService] Occupied usernames list updated', { count: usernames.length });
+
+            // Upload to Cloudflare R2
+            await this.uploadToR2('taken-usernames.min.json', body, 'application/json');
         } catch (error) {
             logger.error('[StaticFeedService] Failed to regenerate occupied usernames', error);
         }
@@ -271,21 +356,40 @@ export class StaticFeedService {
             const categoryShards = await this.generateCategoryShards();
             const stats = await this.generateStats();
             const sitemap = await this.generateSitemap();
+            const sitemapData = await this.generateSitemapData();
             const usernames = await this.generateTakenUsernames();
 
-            // 3. Write files
-            fs.writeFileSync(this.BOOTSTRAP_PATH, JSON.stringify(bootstrap));
-            fs.writeFileSync(this.STATS_PATH, JSON.stringify(stats));
+            // 3. Write files & upload to R2
+            const bootstrapBody = JSON.stringify(bootstrap);
+            fs.writeFileSync(this.BOOTSTRAP_PATH, bootstrapBody);
+            await this.uploadToR2('bootstrap-feed.min.json', bootstrapBody, 'application/json');
+
+            const statsBody = JSON.stringify(stats);
+            fs.writeFileSync(this.STATS_PATH, statsBody);
+            await this.uploadToR2('stats.json', statsBody, 'application/json');
+
             fs.writeFileSync(this.SITEMAP_PATH, sitemap);
-            fs.writeFileSync(this.USERNAMES_PATH, JSON.stringify(usernames));
+            await this.uploadToR2('sitemap.xml', sitemap, 'application/xml');
 
-            companyShards.forEach(s => {
-                fs.writeFileSync(path.join(this.COMPANIES_DIR, `${s.slug}.json`), JSON.stringify(s.data));
-            });
+            const sitemapDataBody = JSON.stringify(sitemapData);
+            fs.writeFileSync(this.SITEMAP_DATA_PATH, sitemapDataBody);
+            await this.uploadToR2('sitemap-data.json', sitemapDataBody, 'application/json');
 
-            categoryShards.forEach(s => {
-                fs.writeFileSync(path.join(this.CATEGORIES_DIR, `${s.id}.json`), JSON.stringify(s.data));
-            });
+            const usernamesBody = JSON.stringify(usernames);
+            fs.writeFileSync(this.USERNAMES_PATH, usernamesBody);
+            await this.uploadToR2('taken-usernames.min.json', usernamesBody, 'application/json');
+
+            for (const s of companyShards) {
+                const body = JSON.stringify(s.data);
+                fs.writeFileSync(path.join(this.COMPANIES_DIR, `${s.slug}.json`), body);
+                await this.uploadToR2(`companies/${s.slug}.json`, body, 'application/json');
+            }
+
+            for (const s of categoryShards) {
+                const body = JSON.stringify(s.data);
+                fs.writeFileSync(path.join(this.CATEGORIES_DIR, `${s.id}.json`), body);
+                await this.uploadToR2(`categories/${s.id}.json`, body, 'application/json');
+            }
 
             logger.info('Static shards regenerated successfully', {
                 companies: companyShards.length,
