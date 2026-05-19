@@ -41,11 +41,20 @@ function resolveApiUrl(): string {
 
 export const API_URL = resolveApiUrl();
 
-// Dynamically point to the same machine as the API for the bootstrap feed
-export const BOOTSTRAP_FEED_URL = `${API_URL}/bootstrap-feed.min.json`;
-export const TAKEN_USERNAMES_URL = `${API_URL}/taken-usernames.min.json`;
-export const GET_CATEGORY_SHARD_URL = (id: string) => `${API_URL}/categories/${id}.json`;
-export const EDUCATION_METADATA_URL = `${API_URL}/education.json`;
-export const SKILLS_METADATA_URL = `${API_URL}/skills.json`;
-export const CITIES_METADATA_URL = `${API_URL}/cities.json`;
+const PROD_CDN_URL = 'https://cdn.fresherflow.in';
+
+function resolveCdnUrl(): string {
+    return PROD_CDN_URL;
+}
+
+export const CDN_URL = resolveCdnUrl();
+
+// Dynamically point to the CDN (Cloudflare R2 + Worker in prod, local Express in dev)
+export const BOOTSTRAP_FEED_URL = `${CDN_URL}/bootstrap-feed.min.json`;
+export const FEED_VERSION_URL = `${CDN_URL}/feed-version.json`;
+export const TAKEN_USERNAMES_URL = `${CDN_URL}/taken-usernames.min.json`;
+export const GET_CATEGORY_SHARD_URL = (id: string) => `${CDN_URL}/categories/${id}.json`;
+export const EDUCATION_METADATA_URL = `${CDN_URL}/education.json`;
+export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;
+export const CITIES_METADATA_URL = `${CDN_URL}/cities.json`;
 

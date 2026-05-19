@@ -11,10 +11,9 @@ import { calculateMatchScore } from '@/utils/matchScoring';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import Fuse from 'fuse.js';
 import axios from 'axios';
-import { BOOTSTRAP_FEED_URL } from '@/config/api';
+import { BOOTSTRAP_FEED_URL, FEED_VERSION_URL } from '@/config/api';
 
-// Global tracker to prevent multiple tabs/mounts from syncing at the same time
-let globalLastSyncTimestamp = 0;
+import { getString, setString } from '@/utils/storage';
 
 export const useFeed = (initialFeedType: string | null = null) => {
     const { user } = useAuthStore();
@@ -106,10 +105,12 @@ export const useFeed = (initialFeedType: string | null = null) => {
 
     // 3. Smart Edge Sync (Zero Database pressure, queries static CDN file)
     const performSync = useCallback(async (force = false, isUserInitiated = false) => {
+        const lastSyncStr = getString('fresherflow_last_sync_timestamp');
+        const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
         const now = Date.now();
         // Cooldown: 5 minutes (300,000ms) to prevent redundant Edge pulls
-        if (!force && now - globalLastSyncTimestamp < 300000) return;
-        globalLastSyncTimestamp = now;
+        if (!force && now - lastSync < 300000) return;
+        setString('fresherflow_last_sync_timestamp', now.toString());
 
         if (isUserInitiated) {
             setIsRefreshing(true);
@@ -118,13 +119,30 @@ export const useFeed = (initialFeedType: string | null = null) => {
         setSyncError(null);
 
         try {
+            // Fetch the centrally uploaded feed version to bypass stale CDN edge caches
+            let feedVersion = '';
+            try {
+                const versionRes = await axios.get(FEED_VERSION_URL, {
+                    timeout: 3000,
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                if (versionRes.data?.version) {
+                    feedVersion = versionRes.data.version;
+                }
+            } catch (e) {
+                console.warn('[mobile] Failed to fetch feed version, using timestamp:', e);
+                feedVersion = Math.floor(Date.now() / 300000).toString();
+            }
+
             // Generate HMAC cryptographic request signature to bypass Edge WAF block
             const signatureParams = generateCdnSignature('/bootstrap-feed.min.json');
+            const signedUrl = `${BOOTSTRAP_FEED_URL}?v=${feedVersion}&t=${signatureParams.t}&sig=${signatureParams.sig}`;
+
+            console.log('Fetching signed URL:', signedUrl);
 
             // Pull the single compressed Master JSON feed directly from CDN Pop
-            const response = await axios.get(BOOTSTRAP_FEED_URL, { 
+            const response = await axios.get(signedUrl, { 
                 timeout: 5000,
-                params: signatureParams,
                 headers: {
                     'Cache-Control': 'no-cache',
                     'Pragma': 'no-cache'
