@@ -9,15 +9,15 @@ import { StaticFeedService } from '../services/staticFeed.service';
  */
 class DiscoveryEmitter extends EventEmitter {
     private refreshTimeout: NodeJS.Timeout | null = null;
-    private readonly DEBOUNCE_MS = 5000; // Wait 5s of quiet time before regenerating
 
     constructor() {
         super();
         this.on('refresh', this.handleRefresh.bind(this));
-        logger.info('[DiscoveryEmitter] Initialized with 5s debounce');
+        logger.info('[DiscoveryEmitter] Initialized — debounce set by FEED_REFRESH_DEBOUNCE_MS env var');
     }
 
     private handleRefresh() {
+        const debounceMs = parseInt(process.env.FEED_REFRESH_DEBOUNCE_MS || '5000', 10);
         if (this.refreshTimeout) {
             clearTimeout(this.refreshTimeout);
         }
@@ -29,7 +29,7 @@ class DiscoveryEmitter extends EventEmitter {
             } catch (err) {
                 logger.error('[DiscoveryEmitter] Refresh failed', err);
             }
-        }, this.DEBOUNCE_MS) as unknown as NodeJS.Timeout;
+        }, debounceMs) as unknown as NodeJS.Timeout;
     }
 
     public trigger() {

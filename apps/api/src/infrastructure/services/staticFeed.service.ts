@@ -8,9 +8,29 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 
 /**
  * Service to generate "Distributed Static Data Shards" for discovery.
- * decoupled from live API for high performance and low infrastructure cost.
+ * Decoupled from live API for high performance and low infrastructure cost.
+ *
+ * DEBOUNCE: scheduleRefresh() collapses rapid admin actions (bulk publish,
+ * delete, expire) into a single DB query + R2 upload, saving Neon compute hours.
+ * Tune via FEED_REFRESH_DEBOUNCE_MS env var (default: 5000ms).
  */
 export class StaticFeedService {
+    private static refreshTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /**
+     * Schedules a debounced feed refresh.
+     * Multiple calls within the debounce window collapse into one refresh.
+     * Use this from all admin action routes (publish/delete/expire/reject/spam/bulk).
+     * Direct refresh() is reserved for cron/manual triggers.
+     */
+    static scheduleRefresh() {
+        const debounceMs = parseInt(process.env.FEED_REFRESH_DEBOUNCE_MS || '5000', 10);
+        if (this.refreshTimer) clearTimeout(this.refreshTimer);
+        this.refreshTimer = setTimeout(() => {
+            this.refreshTimer = null;
+            void this.refresh();
+        }, debounceMs);
+    }
     private static readonly PUBLIC_ROOT = path.join(process.cwd(), 'public');
     private static readonly BOOTSTRAP_PATH = path.join(this.PUBLIC_ROOT, 'bootstrap-feed.min.json');
     private static readonly COMPANIES_DIR = path.join(this.PUBLIC_ROOT, 'companies');

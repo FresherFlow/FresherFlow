@@ -75,7 +75,7 @@ router.post(
             if (action === 'PUBLISH' && idsNeedingAlerts.length > 0) {
                 idsNeedingAlerts.forEach(id => queueNewJobAlerts(id));
             }
-            void StaticFeedService.refresh();
+            StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
         }

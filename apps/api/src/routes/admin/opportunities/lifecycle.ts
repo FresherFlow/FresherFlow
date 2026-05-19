@@ -44,7 +44,7 @@ router.post(
             adminCache.invalidateLists();
 
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
-            void StaticFeedService.refresh();
+            void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
         }
@@ -83,7 +83,7 @@ router.post(
                 idsOrSlugs: [existing.id as string, existing.slug as string, opportunity.id as string, opportunity.slug as string],
                 purgeFeed: true,
             });
-            void StaticFeedService.refresh();
+            void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
         }
@@ -126,7 +126,7 @@ router.delete(
             adminCache.invalidateLists();
 
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
-            void StaticFeedService.refresh();
+            void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
         }
@@ -161,7 +161,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void StaticFeedService.refresh();
+            void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
         }
@@ -199,7 +199,7 @@ router.post(
             adminCache.invalidateLists();
 
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
-            void StaticFeedService.refresh();
+            void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
         }
@@ -237,7 +237,7 @@ router.post(
             adminCache.invalidateLists();
 
             void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
-            void StaticFeedService.refresh();
+            void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
         }
