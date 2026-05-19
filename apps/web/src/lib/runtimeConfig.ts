@@ -97,6 +97,11 @@ export const BOOTSTRAP_FEED_URL =
         ? `${process.env.NEXT_PUBLIC_CDN_URL}/bootstrap-feed.min.json`
         : `${DEFAULT_CDN_HOST}/bootstrap-feed.min.json`);
 
+export const FEED_VERSION_URL =
+    process.env.NEXT_PUBLIC_CDN_URL
+        ? `${process.env.NEXT_PUBLIC_CDN_URL}/feed-version.json`
+        : `${DEFAULT_CDN_HOST}/feed-version.json`;
+
 export const SITEMAP_DATA_URL =
     process.env.NEXT_PUBLIC_SITEMAP_DATA_URL ||
     process.env.SITEMAP_DATA_URL ||

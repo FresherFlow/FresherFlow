@@ -1,6 +1,7 @@
 import { Opportunity } from '@fresherflow/types';
 import { 
     BOOTSTRAP_FEED_URL, 
+    FEED_VERSION_URL,
     GET_CATEGORY_SHARD_URL, 
     SITE_URL, 
     EDUCATION_METADATA_URL, 
@@ -65,13 +66,46 @@ function getCDNFetchOptions(options: RequestInit = {}): RequestInit {
     };
 }
 
+let cachedVersion: string | null = null;
+let lastVersionFetch = 0;
+
+/**
+ * Fetches the centrally stored R2 feed version without caching.
+ */
+export async function fetchFeedVersion(): Promise<string> {
+    const now = Date.now();
+    // Cache the version in-memory for 1 minute to avoid redundant fetches in the same render loop
+    if (cachedVersion && (now - lastVersionFetch < 60000)) {
+        return cachedVersion;
+    }
+    try {
+        const res = await fetch(FEED_VERSION_URL, {
+            cache: 'no-store', // Always fetch fresh version
+        });
+        if (res.ok) {
+            const data = await res.json() as { version?: string };
+            if (data && data.version) {
+                cachedVersion = data.version;
+                lastVersionFetch = now;
+                return data.version;
+            }
+        }
+    } catch (err) {
+        console.warn('Failed to fetch feed version, using timestamp:', err instanceof Error ? err.message : err);
+    }
+    // Fallback to a rounded 5-minute timestamp if R2 is down or unpopulated
+    return Math.floor(now / 300000).toString();
+}
+
 /**
  * Fetches the static bootstrap feed from the CDN.
  * This is used for "Zero-Spinner" instant discovery and SEO.
  */
 export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null> {
     try {
-        const url = signUrlIfServer(BOOTSTRAP_FEED_URL);
+        const version = await fetchFeedVersion();
+        const urlWithBuster = `${BOOTSTRAP_FEED_URL}?v=${version}`;
+        const url = signUrlIfServer(urlWithBuster);
 
         const controller = new AbortController();
         // 15s timeout to comfortably tolerate sleeping Render cold starts on unprimed caches
