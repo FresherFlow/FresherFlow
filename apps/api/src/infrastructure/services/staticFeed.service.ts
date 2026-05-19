@@ -310,6 +310,7 @@ export class StaticFeedService {
                     Key: key,
                     Body: body,
                     ContentType: contentType,
+                    CacheControl: key === 'feed-version.json' ? 'no-cache, no-store, must-revalidate' : undefined,
                 })
             );
             logger.info(`[StaticFeedService] Successfully uploaded to R2: ${key}`);
@@ -363,6 +364,12 @@ export class StaticFeedService {
             const bootstrapBody = JSON.stringify(bootstrap);
             fs.writeFileSync(this.BOOTSTRAP_PATH, bootstrapBody);
             await this.uploadToR2('bootstrap-feed.min.json', bootstrapBody, 'application/json');
+
+            // Generate and upload dynamic feed-version.json cache buster
+            const feedVersion = Date.now().toString();
+            const versionBody = JSON.stringify({ version: feedVersion });
+            fs.writeFileSync(path.join(this.PUBLIC_ROOT, 'feed-version.json'), versionBody);
+            await this.uploadToR2('feed-version.json', versionBody, 'application/json');
 
             const statsBody = JSON.stringify(stats);
             fs.writeFileSync(this.STATS_PATH, statsBody);
