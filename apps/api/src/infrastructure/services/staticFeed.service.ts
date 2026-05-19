@@ -62,6 +62,8 @@ export class StaticFeedService {
 
     /**
      * 1. MASTER DISCOVERY FEED (All active unexpired opportunities)
+     * Select includes all fields needed by web (SEO/display) and mobile (match scoring, filtering).
+     * Internal-only fields (adminId, postedByUserId, verificationFailures, etc.) are excluded.
      */
     static async generateBootstrapFeed() {
         return this.withDbRetry(async () => {
@@ -75,10 +77,66 @@ export class StaticFeedService {
                     ]
                 },
                 orderBy: { postedAt: 'desc' },
-                include: {
+                select: {
+                    // Identity
+                    id: true,
+                    slug: true,
+                    type: true,
+                    status: true,
+
+                    // Display
+                    title: true,
+                    company: true,
+                    companyWebsite: true,
+                    companyLogoUrl: true,
+                    description: true,
+                    jobFunction: true,
+                    employmentType: true,
+                    notesHighlights: true,
+                    selectionProcess: true,
+                    tags: true,
+
+                    // Eligibility (mobile match scoring)
+                    allowedDegrees: true,
+                    allowedCourses: true,
+                    allowedSpecializations: true,
+                    allowedPassoutYears: true,
+                    requiredSkills: true,
+                    experienceMin: true,
+                    experienceMax: true,
+
+                    // Location
+                    locations: true,
+                    workMode: true,
+
+                    // Compensation
+                    salaryMin: true,
+                    salaryMax: true,
+                    salaryRange: true,
+                    salaryPeriod: true,
+                    stipend: true,
+                    incentives: true,
+
+                    // Application
+                    applyLink: true,
+                    sourceLink: true,
+
+                    // Timestamps
+                    postedAt: true,
+                    publishedAt: true,
+                    expiresAt: true,
+
+                    // Engagement stats (public)
+                    trendingScore: true,
+                    sharesCount: true,
+                    savesCount: true,
+                    clicksCount: true,
+                    commentsCount: true,
+
+                    // Relations
                     walkInDetails: true,
                     governmentJobDetails: true,
-                    events: true
+                    events: true,
                 },
             });
 
