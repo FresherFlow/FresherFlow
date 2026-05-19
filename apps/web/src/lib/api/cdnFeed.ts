@@ -31,13 +31,21 @@ function signUrlIfServer(url: string): string {
     if (!IS_SERVER) return url;
 
     const secret = process.env.CDN_SIGNATURE_SECRET;
-    if (secret && (url.includes('cdn.fresherflow.in') || url.includes('fresherflow.pages.dev'))) {
+    if (secret) {
         try {
-            const parsedUrl = new URL(url);
-            const { t, sig } = signPathname(parsedUrl.pathname, secret);
-            parsedUrl.searchParams.set('t', t.toString());
-            parsedUrl.searchParams.set('sig', sig);
-            return parsedUrl.toString();
+            const parsedUrl = new URL(url, 'https://cdn.fresherflow.in');
+            const pathname = parsedUrl.pathname;
+            const isProtected = pathname === '/bootstrap-feed.min.json' ||
+                                pathname === '/taken-usernames.min.json' ||
+                                pathname === '/companies-directory.min.json' ||
+                                pathname.startsWith('/categories/');
+
+            if (isProtected) {
+                const { t, sig } = signPathname(pathname, secret);
+                parsedUrl.searchParams.set('t', t.toString());
+                parsedUrl.searchParams.set('sig', sig);
+                return parsedUrl.toString();
+            }
         } catch (err) {
             console.error('Failed to sign CDN url on server:', err);
         }
