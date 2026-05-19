@@ -22,7 +22,7 @@ const getCachedFollows = (): Follows => {
                 contributors: cached.contributors || [],
             };
         }
-    } catch (e) {
+    } catch {
         // ignore
     }
     return { tags: [], companies: [], contributors: [] };
@@ -75,8 +75,9 @@ export function useFollows() {
             updateState();
             await followsApi.follow({ type, value });
             return true;
-        } catch (error: any) {
-            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
+        } catch (error) {
+            const err = error as { name?: string; message?: string };
+            const isOffline = err?.name === 'OfflineError' || err?.message?.toLowerCase().includes('offline') || err?.message?.toLowerCase().includes('network error');
             if (isOffline) {
                 console.log('[Follows] Offline detected. Enqueueing follow action in offline queue...', { type, value });
                 void enqueueOfflineFollowAdd(type, value, user.id);
@@ -111,8 +112,9 @@ export function useFollows() {
             updateState();
             await followsApi.unfollow({ type, value });
             return true;
-        } catch (error: any) {
-            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
+        } catch (error) {
+            const err = error as { name?: string; message?: string };
+            const isOffline = err?.name === 'OfflineError' || err?.message?.toLowerCase().includes('offline') || err?.message?.toLowerCase().includes('network error');
             if (isOffline) {
                 console.log('[Follows] Offline detected. Enqueueing unfollow action in offline queue...', { type, value });
                 void enqueueOfflineFollowRemove(type, value, user.id);

@@ -11,7 +11,7 @@ export const useAuthHandshake = () => {
     const lastHandshakeTime = useRef(0); // <-- Ref to track last handshake timestamp for rate limiting
 
     useEffect(() => {
-        const performHandshake = async (isRetry = false) => {
+        const performHandshake = async () => {
             if (!firebaseUser || isHandshaking.current) return;
             
             const now = Date.now();
@@ -48,7 +48,7 @@ export const useAuthHandshake = () => {
                     retryCount.current += 1;
                     console.log('[Auth] Scheduling silent retry in 15 seconds...');
                     setTimeout(() => {
-                        void performHandshake(true);
+                        void performHandshake();
                     }, 15000);
                 }
             } finally {

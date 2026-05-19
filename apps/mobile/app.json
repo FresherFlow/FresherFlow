@@ -80,8 +80,9 @@
     "extra": {
       "apiUrl": "https://api.fresherflow.in",
       "eas": {
-        "projectId": "73c68383-7b6a-4934-8b65-e97517c5b161"
+        "projectId": "f44bb950-d1e0-4575-b499-b1a019e1e049"
       }
-    }
+    },
+    "owner": "mukesh.cheekatla"
   }
 }

@@ -2,8 +2,9 @@ import { useCallback, useEffect, useState } from 'react';
 import { Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sharing from 'expo-sharing';
+import axios from 'axios';
 import { Opportunity, OpportunityType, ActionType, FeedbackReason } from '@fresherflow/types';
-import { opportunitiesApi, opportunityClicksApi, actionsApi, feedbackApi } from '@fresherflow/api-client';
+import { opportunityClicksApi, actionsApi, feedbackApi } from '@fresherflow/api-client';
 import { useNotifications, useSaved } from '@repo/frontend-core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Analytics, EventNames } from '@/utils/analytics';
@@ -11,6 +12,8 @@ import { useSettingsStore } from '@/store/useSettingsStore';
 import { useTracker } from '@/hooks/useTracker';
 import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache } from '@/utils/offlineCache';
 import { getLocalProfile } from '@/utils/localProfile';
+import { generateCdnSignature } from '@/utils/cdnSignature';
+import { BOOTSTRAP_FEED_URL } from '@/config/api';
 import { calculateMatchScore } from '@/utils/matchScoring';
 import { MOBILE_SITE_URL } from '@/config/runtime';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -81,18 +84,50 @@ export const useOpportunityDetail = (
             }
 
             try {
-                const data = await opportunitiesApi.getById(opportunityId) as { opportunity: Opportunity; isEligible?: boolean; eligibilityReason?: string };
+                let foundOpportunity: Opportunity | null = null;
+
+                // 1. Try resolving from local offline feed cache first
+                const feedCache = await readFeedCache();
+                if (feedCache && feedCache.items.length > 0) {
+                    foundOpportunity = feedCache.items.find(
+                        (opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId
+                    ) || null;
+                }
+
+                // 2. If not found locally, fetch signed master bootstrap feed from CDN Pop
+                if (!foundOpportunity) {
+                    const signatureParams = generateCdnSignature('/bootstrap-feed.min.json');
+
+                    const signedUrl = `${BOOTSTRAP_FEED_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
+
+                    const response = await axios.get(signedUrl, { 
+                        timeout: 5000
+                    });
+
+                    if (response.data?.opportunities) {
+                        const ops = response.data.opportunities as Opportunity[];
+                        foundOpportunity = ops.find(
+                            (opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId
+                        ) || null;
+                    }
+                }
+
+                // 3. Fail-safe fallback: let it throw if not resolved via local cache or CDN
+                if (!foundOpportunity) {
+                    throw new Error('Opportunity details not found.');
+                }
+
                 if (cancelled) return;
 
                 const profile = await getLocalProfile();
-                const match = calculateMatchScore(profile, data.opportunity);
+                const match = calculateMatchScore(profile, foundOpportunity);
 
-                // Robust Check: If API returns partial data (e.g. unauthenticated) but we have a better cached version, use cache
-                const hasFullData = !!data.opportunity.description;
+                // Robust Check: If API/CDN returns partial data but we have a better cached version, use cache
+                const hasFullData = !!foundOpportunity.description;
                 const cachedHasFullData = !!cached?.description;
 
                 const fullOpportunity = {
-                    ...(hasFullData ? data.opportunity : (cachedHasFullData ? cached : data.opportunity)),
+                    ...(hasFullData ? foundOpportunity : (cachedHasFullData ? cached : foundOpportunity)),
                     matchScore: initialOpportunity?.matchScore ?? match.score,
                     matchReason: initialOpportunity?.matchReason ?? match.reason,
                     isEligible: initialOpportunity?.isEligible ?? match.isEligible

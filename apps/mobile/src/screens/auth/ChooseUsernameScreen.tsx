@@ -24,6 +24,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import axios from 'axios';
 import { TAKEN_USERNAMES_URL } from '@/config/api';
+import { generateCdnSignature } from '@/utils/cdnSignature';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChooseUsername'>;
 
@@ -43,7 +44,11 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
     useEffect(() => {
         const loadTakenUsernames = async () => {
             try {
-                const res = await axios.get(TAKEN_USERNAMES_URL, { timeout: 4000 });
+                const signatureParams = generateCdnSignature('/taken-usernames.min.json');
+                const signedUrl = `${TAKEN_USERNAMES_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
+                const res = await axios.get(signedUrl, { 
+                    timeout: 4000
+                });
                 if (Array.isArray(res.data)) {
                     setTakenUsernames(res.data.map((u: string) => u.toLowerCase()));
                 }

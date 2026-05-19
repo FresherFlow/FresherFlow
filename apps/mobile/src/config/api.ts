@@ -1,17 +1,26 @@
 import { Platform } from 'react-native';
-
 import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
 
 const PROD_API_URL = 'https://api.fresherflow.in';
+const STAGING_API_URL = 'https://api-staging.fresherflow.in';
 const DEV_LOCAL_URL = 'http://localhost:5000';
 
 function resolveApiUrl(): string {
-    // In production builds, use the real API
-    if (!__DEV__) return PROD_API_URL;
-
-    // Override via env var (e.g. for CI or custom setups)
+    // Override via env var (e.g. for custom builds)
     const envUrl = process.env.EXPO_PUBLIC_API_URL;
-    let baseUrl = (envUrl || DEV_LOCAL_URL).replace(/\/+$/, '');
+    if (envUrl) return envUrl.replace(/\/+$/, '');
+
+    // In production standalone builds, resolve API dynamically based on EAS channel
+    if (!__DEV__) {
+        const channel = Updates.channel;
+        if (channel === 'staging') {
+            return STAGING_API_URL;
+        }
+        return PROD_API_URL;
+    }
+
+    let baseUrl = DEV_LOCAL_URL;
 
     // Physical Device Fallback: In development, if using localhost,
     // try to resolve the machine's local IP via expo-constants.
@@ -42,8 +51,16 @@ function resolveApiUrl(): string {
 export const API_URL = resolveApiUrl();
 
 const PROD_CDN_URL = 'https://cdn.fresherflow.in';
+const STAGING_CDN_URL = 'https://cdn-staging.fresherflow.in';
 
 function resolveCdnUrl(): string {
+    if (!__DEV__) {
+        const channel = Updates.channel;
+        if (channel === 'staging') {
+            return STAGING_CDN_URL;
+        }
+        return PROD_CDN_URL;
+    }
     return PROD_CDN_URL;
 }
 

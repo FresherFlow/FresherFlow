@@ -50,11 +50,11 @@ export function useExplore() {
             } else {
                 // Generate secure signatures to bypass Cloudflare Worker block
                 const sigParams = generateCdnSignature('/bootstrap-feed.min.json');
+                const signedUrl = `${BOOTSTRAP_FEED_URL}?t=${sigParams.t}&sig=${sigParams.sig}`;
 
                 // If cache is empty, bootstrap directly from CDN
-                const response = await axios.get(BOOTSTRAP_FEED_URL, { 
-                    timeout: 4000,
-                    params: sigParams
+                const response = await axios.get(signedUrl, { 
+                    timeout: 4000
                 });
                 if (response.data?.opportunities) {
                     const ops = response.data.opportunities as Opportunity[];
@@ -79,10 +79,10 @@ export function useExplore() {
         setSyncError(null);
         try {
             const sigParams = generateCdnSignature('/bootstrap-feed.min.json');
+            const signedUrl = `${BOOTSTRAP_FEED_URL}?t=${sigParams.t}&sig=${sigParams.sig}`;
 
-            const response = await axios.get(BOOTSTRAP_FEED_URL, { 
+            const response = await axios.get(signedUrl, { 
                 timeout: 5000,
-                params: sigParams,
                 headers: {
                     'Cache-Control': 'no-cache',
                     'Pragma': 'no-cache'

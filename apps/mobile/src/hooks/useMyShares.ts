@@ -59,13 +59,11 @@ export function useMyShares() {
     useEffect(() => {
         const loadCacheAndFetch = async () => {
             const cached = await readSharesCache();
-            let hasCached = false;
             if (cached && cached.items.length > 0) {
                 setShares(cached.items as Share[]);
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 setStats(cached.stats as any);
                 setLoading(false);
-                hasCached = true;
             } else {
                 setLoading(true);
             }

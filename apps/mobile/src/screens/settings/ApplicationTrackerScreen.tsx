@@ -70,7 +70,16 @@ interface TrackerTabContentProps {
     actionsLength: number;
     refresh: () => void;
     refreshing: boolean;
-    currentTheme: any;
+    currentTheme: {
+        colors: {
+            primary: string;
+            text: string;
+            textMuted: string;
+            background: string;
+            border: string;
+            error: string;
+        };
+    };
 }
 
 const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLength, refresh, refreshing, currentTheme }: TrackerTabContentProps) => {

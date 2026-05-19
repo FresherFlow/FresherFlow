@@ -63,14 +63,17 @@ export const useTracker = () => {
             actionsApi.track(opportunityId, status),
         onMutate: async ({ opportunityId, status, opportunity }) => {
             await queryClient.cancelQueries({ queryKey: ['tracker'] });
-            const previousActions = queryClient.getQueryData<any[]>(['tracker']) || [];
+            const previousActions = queryClient.getQueryData<unknown[]>(['tracker']) || [];
 
-            let updatedActions = [...previousActions];
-            const index = updatedActions.findIndex(item => item.opportunityId === opportunityId || item.opportunity?.id === opportunityId);
+            const updatedActions = [...previousActions];
+            const index = updatedActions.findIndex(item => {
+                const tItem = item as { opportunityId?: string; opportunity?: { id?: string } };
+                return tItem.opportunityId === opportunityId || tItem.opportunity?.id === opportunityId;
+            });
 
             if (index > -1) {
                 updatedActions[index] = {
-                    ...updatedActions[index],
+                    ...(updatedActions[index] as Record<string, unknown>),
                     actionType: status,
                 };
             } else {
@@ -88,8 +91,9 @@ export const useTracker = () => {
 
             return { previousActions };
         },
-        onError: (err: any, variables, context) => {
-            const isOffline = err?.name === 'OfflineError' || err?.message?.toLowerCase().includes('offline') || err?.message?.toLowerCase().includes('network error');
+        onError: (err: unknown, variables, context) => {
+            const error = err as { name?: string; message?: string };
+            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
             if (isOffline && user) {
                 console.log('[Tracker] Offline detected during track status. Enqueueing offline action track...', variables);
                 void enqueueOfflineActionTrack(variables.opportunityId, variables.status, user.id);
@@ -103,7 +107,8 @@ export const useTracker = () => {
             }
         },
         onSettled: (data, err) => {
-            const isOffline = err?.name === 'OfflineError' || err?.message?.toLowerCase().includes('offline') || err?.message?.toLowerCase().includes('network error');
+            const error = err as { name?: string; message?: string } | null;
+            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
             if (!isOffline) {
                 void queryClient.invalidateQueries({ queryKey: ['tracker'] });
             }
@@ -114,19 +119,21 @@ export const useTracker = () => {
         mutationFn: (opportunityId: string) => actionsApi.remove(opportunityId),
         onMutate: async (opportunityId) => {
             await queryClient.cancelQueries({ queryKey: ['tracker'] });
-            const previousActions = queryClient.getQueryData<any[]>(['tracker']) || [];
+            const previousActions = queryClient.getQueryData<unknown[]>(['tracker']) || [];
 
-            const updatedActions = previousActions.filter(
-                item => item.opportunityId !== opportunityId && item.opportunity?.id !== opportunityId
-            );
+            const updatedActions = previousActions.filter(item => {
+                const tItem = item as { opportunityId?: string; opportunity?: { id?: string } };
+                return tItem.opportunityId !== opportunityId && tItem.opportunity?.id !== opportunityId;
+            });
 
             queryClient.setQueryData(['tracker'], updatedActions);
             void saveTrackerCache(updatedActions);
 
             return { previousActions };
         },
-        onError: (err: any, opportunityId, context) => {
-            const isOffline = err?.name === 'OfflineError' || err?.message?.toLowerCase().includes('offline') || err?.message?.toLowerCase().includes('network error');
+        onError: (err: unknown, opportunityId, context) => {
+            const error = err as { name?: string; message?: string };
+            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
             if (isOffline && user) {
                 console.log('[Tracker] Offline detected during remove action. Enqueueing offline action remove...', opportunityId);
                 void enqueueOfflineActionRemove(opportunityId, user.id);
@@ -140,7 +147,8 @@ export const useTracker = () => {
             }
         },
         onSettled: (data, err) => {
-            const isOffline = err?.name === 'OfflineError' || err?.message?.toLowerCase().includes('offline') || err?.message?.toLowerCase().includes('network error');
+            const error = err as { name?: string; message?: string } | null;
+            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
             if (!isOffline) {
                 void queryClient.invalidateQueries({ queryKey: ['tracker'] });
             }

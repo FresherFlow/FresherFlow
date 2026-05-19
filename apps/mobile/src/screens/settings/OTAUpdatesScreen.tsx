@@ -121,9 +121,9 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
             if (check.isAvailable) {
                 setStatus('available');
                 setUpdateMetadata({
-                    version: (check.manifest as any)?.version || '1.0.4-ota',
-                    createdAt: (check.manifest as any)?.createdAt 
-                        ? new Date((check.manifest as any).createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
+                    version: (check.manifest as { version?: string })?.version || '1.0.4-ota',
+                    createdAt: (check.manifest as { createdAt?: string })?.createdAt 
+                        ? new Date((check.manifest as { createdAt?: string }).createdAt!).toLocaleDateString(undefined, { dateStyle: 'medium' })
                         : new Date().toLocaleDateString(undefined, { dateStyle: 'medium' }),
                     changelog: [
                         '⚡ Optimized React Query persist caches.',
@@ -299,7 +299,7 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
                             <View style={[styles.sparkleIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
                                 <Sparkles size={20} color={currentTheme.colors.primary} />
                             </View>
-                            <View style={otaTitleBoxStyle(currentTheme).otaTitleBox}>
+                            <View style={styles.otaTitleBox}>
                                 <View style={styles.rowInline}>
                                     <Text style={[styles.otaTitle, { color: currentTheme.colors.text }]}>Update Available</Text>
                                     <View style={[styles.newBadge, { backgroundColor: currentTheme.colors.primary }]}>
@@ -380,14 +380,10 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
     );
 });
 
-// Helper for dynamic style resolution
-const otaTitleBoxStyle = (theme: any) => StyleSheet.create({
+const styles = StyleSheet.create({
     otaTitleBox: {
         flex: 1,
-    }
-});
-
-const styles = StyleSheet.create({
+    },
     content: {
         padding: 20,
         gap: 20,

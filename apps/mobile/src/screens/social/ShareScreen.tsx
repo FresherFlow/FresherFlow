@@ -13,7 +13,6 @@ import {
   StatusBar,
   Animated,
   FlatList,
-  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -185,18 +184,7 @@ const ShareScreen: React.FC = () => {
       }
   });
 
-  const handleNativeShare = useCallback(async () => {
-      if (!shareResult || !shareResult.id) return;
-      try {
-          await Share.share({
-              message: `Check out this verified opportunity on FresherFlow! Join and view it here: https://fresherflow.com/opportunities/${shareResult.id}`,
-              url: `https://fresherflow.com/opportunities/${shareResult.id}`,
-          });
-          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      } catch (error) {
-          console.error('Failed to launch device share sheet:', error);
-      }
-  }, [shareResult]);
+
 
   const resetShare = () => {
       setShareResult(null);

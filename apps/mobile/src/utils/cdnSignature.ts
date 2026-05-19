@@ -49,15 +49,20 @@ function sha256(ascii: string): string {
     while (paddedMessage.length % 64 !== 56) {
         paddedMessage += String.fromCharCode(0);
     }
+    
+    // Correctly split the 64-bit integer length suffix to avoid JavaScript bitwise overflow
+    const lowBits = asciiLength;
+    const highBits = Math.floor(asciiLength / 0x100000000);
+    
     const fullMessage = paddedMessage + String.fromCharCode(
-        (asciiLength >>> 56) & 0xff,
-        (asciiLength >>> 48) & 0xff,
-        (asciiLength >>> 40) & 0xff,
-        (asciiLength >>> 32) & 0xff,
-        (asciiLength >>> 24) & 0xff,
-        (asciiLength >>> 16) & 0xff,
-        (asciiLength >>> 8) & 0xff,
-        asciiLength & 0xff
+        (highBits >>> 24) & 0xff,
+        (highBits >>> 16) & 0xff,
+        (highBits >>> 8) & 0xff,
+        highBits & 0xff,
+        (lowBits >>> 24) & 0xff,
+        (lowBits >>> 16) & 0xff,
+        (lowBits >>> 8) & 0xff,
+        lowBits & 0xff
     );
 
     for (let i = 0; i < fullMessage.length; i += 64) {
