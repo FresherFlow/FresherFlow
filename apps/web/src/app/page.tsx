@@ -111,30 +111,40 @@ export default async function LandingPage() {
                                 <p className="text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed">
                                     Before you apply, we verify. FresherFlow replaces noisy job boards with a clean, 100% verified stream of off-campus jobs, internships, and walk-ins. Checked by hand, proven by logic.
                                 </p>
-                                <div className="flex flex-wrap items-center gap-3.5 pt-2">
-                                    <Link href="/opportunities" className="premium-button px-7 text-[12px] uppercase tracking-widest shadow-md">
-                                        Open Live Feed
+                                
+                                {/* Mobile-only Image (Option 2 placement: Main Text -> Image -> Buttons -> Cards) */}
+                                <div className="block lg:hidden relative rounded-2xl overflow-hidden shadow-md border border-border bg-card/40 backdrop-blur p-1.5 transition-all duration-300">
+                                    <img 
+                                        alt="FresherFlow Interface Demonstration Mobile"
+                                        className="w-full h-[200px] object-cover rounded-xl grayscale-[0.05]"
+                                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3tZJKvyI6tc96EkTndqlfFMEk4KqIdS2q0HKEDeAG3JExuSOyfTY_Df5ThvVRWlpwTfFeK5PPFA-gNhJvDGD80MbMvIMKAq_dvMc5ERdu9GFzynplovygxGg1Jwvaw89hUjtQa-ooCRA5soLZa3Cykp41b3AI7AgTKbPaTIupk13KMl_EGzcWZQfmIQ4UutVy278nvm7hKh4UHSgju6JmA0PDUT57o91tGcwYAao2dirY_UmttpRATIhoaTrbr_fDhalmVNfoAkv-" 
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3 sm:flex sm:flex-wrap sm:items-center sm:gap-3.5 pt-2">
+                                    <Link href="/opportunities" className="premium-button w-full sm:w-auto px-7 py-3 text-[12px] uppercase tracking-widest shadow-md text-center justify-center flex items-center">
+                                        Open Feed
                                         <ArrowRightIcon className="w-4 h-4 ml-1" />
                                     </Link>
-                                    <Link href="/download" className="premium-button-outline px-7 text-[12px] uppercase tracking-widest shadow-sm">
-                                        Get the App
+                                    <Link href="/download" className="premium-button-outline w-full sm:w-auto px-7 py-3 text-[12px] uppercase tracking-widest shadow-sm text-center justify-center flex items-center">
+                                        Get App
                                     </Link>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6">
+                                <div className="grid grid-cols-3 gap-2.5 sm:gap-4 pt-6">
                                     {[
                                         { label: 'Links Checked', value: '100%' },
                                         { label: 'Verified Roles', value: countLabel },
-                                        { label: 'Commercial Spam', value: 'Zero' },
+                                        { label: 'Spam Filtered', value: '100%' },
                                     ].map((stat) => (
-                                        <div key={stat.label} className="rounded-2xl border border-border bg-card/65 backdrop-blur p-4.5 shadow-sm">
-                                          <div className="text-xl md:text-2xl font-bold tracking-tight text-foreground">{stat.value}</div>
-                                          <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-semibold mt-1">{stat.label}</div>
+                                        <div key={stat.label} className="rounded-xl sm:rounded-2xl border border-border bg-card/65 backdrop-blur p-2.5 sm:p-4.5 shadow-sm text-center flex flex-col justify-center">
+                                          <div className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight text-foreground">{stat.value}</div>
+                                          <div className="text-[8px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mt-0.5 sm:mt-1 truncate">{stat.label}</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="relative rounded-3xl overflow-hidden shadow-xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20">
+                            <div className="hidden lg:block relative rounded-3xl overflow-hidden shadow-xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20">
                                 <img 
                                     alt="FresherFlow Interface Demonstration"
                                     className="w-full h-[240px] sm:h-[320px] md:h-[480px] object-cover rounded-2xl grayscale-[0.05] transition-transform duration-700 group-hover:scale-[1.02]"
@@ -148,12 +158,9 @@ export default async function LandingPage() {
 
 
                     {/* Pillar 2: Smart Fit Dynamic Sandbox */}
-                    <section className="py-14 md:py-20 px-6 border-t border-border/40">
+                    <section className="hidden md:block py-14 md:py-20 px-6 border-t border-border/40">
                         <div className="max-w-6xl mx-auto space-y-10">
                             <div className="max-w-2xl mx-auto text-center space-y-3">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                                    Operational Pillar 02
-                                </span>
                                 <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
                                     Instant eligibility verification.
                                 </h2>
@@ -173,9 +180,6 @@ export default async function LandingPage() {
                     <section className="py-14 md:py-20 px-6 border-t border-border/40 bg-muted/10">
                         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[0.45fr_1fr] gap-10 items-start">
                             <div className="space-y-4">
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                                    Operational Pillar 03
-                                </span>
                                 <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
                                     Pristine redirection integrity.
                                 </h2>

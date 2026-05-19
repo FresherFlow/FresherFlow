@@ -7,6 +7,12 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import { OpportunityDeadlineBadge } from './OpportunityDeadlineBadge';
 import { DriveMetadata } from '@/shared/utils/driveTimeline';
 
+function formatEmploymentText(text: string | null | undefined): string {
+    if (!text) return 'Not specified';
+    const formatted = text.replace(/_/g, ' ');
+    return formatted.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+}
+
 interface DetailHeroSectionProps {
     opp: Opportunity;
     isCampusDrive: boolean;
@@ -183,25 +189,25 @@ export function DetailHeroSection({
                 <div className={cn("pt-3 grid grid-cols-2 gap-2.5", displaySalary ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
                     {displaySalary && (
                         <div className="space-y-0.5">
-                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Package</p>
-                            <p className="font-bold text-base md:text-lg text-foreground truncate">{displaySalary}</p>
+                            <p className="text-sm font-bold text-foreground/80">Package</p>
+                            <p className="text-[15px] md:text-base font-semibold text-foreground truncate">{displaySalary}</p>
                         </div>
                     )}
                     <div className="space-y-0.5">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Employment</p>
-                        <p className="font-semibold text-sm md:text-base text-foreground truncate">{opp.employmentType || 'Not specified'}</p>
+                        <p className="text-sm font-bold text-foreground/80">Employment</p>
+                        <p className="text-[15px] md:text-base font-semibold text-foreground truncate">{formatEmploymentText(opp.employmentType)}</p>
                     </div>
                     <div className="space-y-0.5">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Batch (YEAR)</p>
-                        <p className="font-semibold text-sm md:text-base text-foreground leading-snug whitespace-normal">
+                        <p className="text-sm font-bold text-foreground/80">Batch (Year)</p>
+                        <p className="text-[15px] md:text-base font-semibold text-foreground leading-snug whitespace-normal">
                             {opp.allowedPassoutYears && opp.allowedPassoutYears.length > 0
                                 ? [...opp.allowedPassoutYears].sort((a, b) => (Number(a) - Number(b))).join(', ')
                                 : 'Any'}
                         </p>
                     </div>
                     <div className="space-y-0.5">
-                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Experience</p>
-                        <p className="font-semibold text-sm md:text-base text-foreground truncate">{opp.experienceMax ? `${opp.experienceMin || 0}-${opp.experienceMax}y` : 'Fresher'}</p>
+                        <p className="text-sm font-bold text-foreground/80">Experience</p>
+                        <p className="text-[15px] md:text-base font-semibold text-foreground truncate">{opp.experienceMax ? `${opp.experienceMin || 0}-${opp.experienceMax}y` : 'Fresher'}</p>
                     </div>
                 </div>
                 {opp.expiresAt && (

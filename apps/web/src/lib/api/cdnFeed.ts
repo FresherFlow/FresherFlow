@@ -103,6 +103,11 @@ export async function fetchFeedVersion(): Promise<string> {
  */
 export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null> {
     try {
+        if (process.env.NODE_ENV === 'development') {
+            const res = await fetch(`${SITE_URL || 'http://localhost:3000'}/dummy-feed.json`, { cache: 'no-store' });
+            return await res.json() as BootstrapFeedResponse;
+        }
+
         const version = await fetchFeedVersion();
         const urlWithBuster = `${BOOTSTRAP_FEED_URL}?v=${version}`;
         const url = signUrlIfServer(urlWithBuster);

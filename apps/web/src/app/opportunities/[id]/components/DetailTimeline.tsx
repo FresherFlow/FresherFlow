@@ -15,7 +15,7 @@ export function DetailTimeline({ timelineEvents, upcomingTimelineEvents }: Detai
     return (
         <div id="drive-timeline" className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
             <div className="flex items-center justify-between gap-2 pb-2">
-                <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground">Drive timeline</h3>
+                <h3 className="text-sm md:text-base font-bold text-foreground/80 tracking-tight">Drive timeline</h3>
                 {upcomingTimelineEvents.length > 0 && (
                     <span className="text-xs font-semibold text-primary">
                         {upcomingTimelineEvents.length} upcoming
@@ -39,9 +39,9 @@ export function DetailTimeline({ timelineEvents, upcomingTimelineEvents }: Detai
                                     {event._dt.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </span>
                             </div>
-                            <p className="mt-1 text-sm text-muted-foreground uppercase tracking-wide">{event.eventType.replace('_', ' ')}</p>
+                            <p className="mt-1 text-[13px] font-bold text-foreground/70">{event.eventType.replace('_', ' ')}</p>
                             {event.notes ? (
-                                <p className="mt-1 text-sm md:text-base text-foreground/80 leading-relaxed whitespace-pre-wrap">{event.notes}</p>
+                                <p className="mt-1 text-[15px] md:text-base text-foreground leading-relaxed whitespace-pre-wrap font-medium">{event.notes}</p>
                             ) : null}
                             {event.sourceLink ? (
                                 <a

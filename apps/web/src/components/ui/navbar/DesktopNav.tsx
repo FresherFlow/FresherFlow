@@ -29,18 +29,21 @@ export function DesktopNav() {
     const desktopRoutes = getNavRoutes(mode).filter(r => r.showInDesktop);
 
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 8);
+        const onScroll = () => setScrolled(window.scrollY > 60);
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
     return (
-        <header className="fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pt-2 px-4 pointer-events-none">
+        <header className={cn(
+            "fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pointer-events-none transition-all duration-500 ease-in-out",
+            scrolled ? "pt-4 px-4" : "pt-2 px-4"
+        )}>
             <nav className={cn(
-                'pointer-events-auto w-full max-w-7xl flex items-center justify-between gap-4 rounded-2xl px-5 h-[60px] transition-all duration-300',
+                'pointer-events-auto w-full flex items-center justify-between gap-4 transition-all duration-500 ease-in-out px-6 shadow-none',
                 scrolled
-                    ? 'border border-[hsl(var(--border))] bg-[hsl(var(--card)/0.97)] shadow-sm'
-                    : 'border border-transparent bg-transparent shadow-none'
+                    ? 'max-w-3xl h-[52px] rounded-2xl border border-border/80 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
+                    : 'max-w-7xl h-[64px] rounded-2xl border border-transparent bg-transparent'
             )}>
 
                 {/* Brand */}

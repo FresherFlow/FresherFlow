@@ -16,7 +16,7 @@ export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: 
         <div className="space-y-3 md:space-y-4">
             {driveMeta.isTcsNqt && (
                 <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-4">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">About the Drive</h3>
+                    <h3 className="text-sm md:text-base font-bold text-foreground/80 tracking-tight pb-2">About the Drive</h3>
                     <ul className="space-y-1.5 text-sm md:text-base text-foreground/90 font-medium">
                         {driveMeta.overviewPoints.map((point: string) => (
                             <li key={point} className="flex items-start gap-2">
@@ -30,11 +30,11 @@ export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: 
 
             {driveMeta.salaryRows.length > 0 && (
                 <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground pb-2">Salary Breakdown</h3>
+                    <h3 className="text-sm md:text-base font-bold text-foreground/80 tracking-tight pb-2">Salary Breakdown</h3>
                     <div className="hidden md:block overflow-x-auto">
                         <table className="w-full min-w-130 text-sm">
                             <thead>
-                                <tr className="text-muted-foreground uppercase tracking-wider">
+                                <tr className="text-foreground/80 font-bold border-b border-border/60">
                                     <th className="text-left py-2">Cadre</th>
                                     <th className="text-left py-2">Experience</th>
                                     <th className="text-left py-2">UG CTC (LPA)</th>
@@ -59,11 +59,11 @@ export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: 
                             if (rows.length === 0) return null;
                             return (
                                 <div key={cadre} className="rounded-lg border border-border bg-muted/20 px-3 py-2.5">
-                                    <p className="text-xs md:text-sm font-bold text-primary uppercase tracking-wider">{cadre} Cadre</p>
+                                    <p className="text-sm font-bold text-primary">{cadre} Cadre</p>
                                     <div className="mt-2 space-y-1.5">
                                         {rows.map((row: DriveSalaryRow) => (
                                             <div key={`${row.cadre}-${row.experience}`} className="rounded-md border border-border/70 bg-background/30 px-2 py-1.5">
-                                                <p className="text-xs md:text-sm font-bold text-muted-foreground uppercase">{row.experience}</p>
+                                                <p className="text-[13px] font-bold text-foreground/70">{row.experience}</p>
                                                 <div className="mt-0.5 flex items-center justify-between gap-2 text-sm font-semibold text-foreground">
                                                     <span>UG: {formatLpaValue(row.ug)}</span>
                                                     <span>PG: {formatLpaValue(row.pg)}</span>
@@ -81,7 +81,7 @@ export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: 
 
             {driveMeta.selectionSteps.length > 0 && (
                 <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                    <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">Selection Process</h3>
+                    <h3 className="text-sm md:text-base font-bold text-foreground/80 tracking-tight pb-2">Selection Process</h3>
                     <div className="flex flex-wrap items-center gap-2">
                         {driveMeta.selectionSteps.map((step: string, index: number) => (
                             <span key={step} className="inline-flex items-center rounded-md border border-border bg-muted/20 px-2.5 py-1.5 text-[12px] font-semibold text-foreground">
@@ -94,7 +94,7 @@ export function DetailCampusDriveInfo({ driveMeta, hasApplyLink, handleApply }: 
 
             {driveMeta.applySteps.length > 0 && (
                 <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
-                    <h3 className="text-xs md:text-sm font-bold uppercase tracking-wider text-muted-foreground pb-2">How to Apply</h3>
+                    <h3 className="text-sm md:text-base font-bold text-foreground/80 tracking-tight pb-2">How to Apply</h3>
                     <ol className="space-y-2 text-sm text-foreground/90 font-medium list-decimal pl-5">
                         {driveMeta.applySteps.map((step: string) => (
                             <li key={step}>{step}</li>

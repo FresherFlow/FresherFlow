@@ -83,32 +83,36 @@
   .dark {
     color-scheme: dark;
 
-    /* Deeper base for real contrast */
-    --background: 222 20% 7%;
-    --foreground: 210 15% 88%;
+    /* OLED-style deep black background like Mobile app (#020404) */
+    --background: 180 33% 1.2%;
+    --foreground: 200 23% 97%; /* #F5F7F8 */
 
-    /* Card clearly lifts from page */
-    --card: 220 16% 14%;
-    --card-foreground: 210 15% 88%;
+    /* Card clearly lifts from page with 5% white equivalent */
+    --card: 195 10% 6%;
+    --card-foreground: 200 23% 97%;
 
-    --primary: 210 15% 88%;
-    --primary-foreground: 222 20% 7%;
+    --primary: 200 23% 97%;
+    --primary-foreground: 180 33% 1.2%;
 
-    --secondary: 220 14% 18%;
-    --secondary-foreground: 210 15% 85%;
+    --secondary: 195 10% 12%;
+    --secondary-foreground: 200 23% 97%;
 
     /* Brand accent */
-    --accent: 222 65% 58%;
-    --accent-foreground: 220 16% 9%;
+    --accent: 200 23% 97%;
+    --accent-foreground: 180 33% 1.2%;
 
-    /* Nearly invisible borders — depth from color, not lines */
-    --border: 220 14% 20%;
-    --input: 220 14% 18%;
-    --muted: 220 14% 17%;
-    --muted-foreground: 215 12% 70%;
+    /* Crisp borders equivalent to 12% white */
+    --border: 195 10% 14%;
+    --input: 195 10% 14%;
+    
+    /* Muted backgrounds equivalent to 3% white */
+    --muted: 195 10% 4%;
+    
+    /* Muted text equivalent to 70% opacity white */
+    --muted-foreground: 200 15% 65%;
 
-    --ring: 222 65% 58%;
-    --icon: 210 15% 80%;
+    --ring: 200 23% 97%;
+    --icon: 200 23% 97%;
 
     --success: 150 50% 45%;
     --warning: 40 80% 60%;

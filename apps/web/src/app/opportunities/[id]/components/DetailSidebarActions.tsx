@@ -3,7 +3,8 @@ import { cn } from '@/shared/ui/cn';
 import { Button } from '@/components/ui/Button';
 // removed bookmark icons
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
-// removed unused ClockIcon import
+import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
+import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
 import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import Link from 'next/link';
@@ -21,6 +22,8 @@ interface DetailSidebarActionsProps {
     jumpToTimeline: () => void;
     handleApply: () => void;
     handleToggleSave: () => void;
+    handleShare: () => void;
+    handleCopyLink: () => void;
     loginFromDetailHref: string;
     listingState: string;
     formatDeadline: (opp: Opportunity) => string | null;
@@ -39,6 +42,8 @@ export function DetailSidebarActions({
     jumpToTimeline,
     handleApply,
     handleToggleSave,
+    handleShare,
+    handleCopyLink,
     loginFromDetailHref,
     listingState,
     formatDeadline
@@ -65,11 +70,60 @@ export function DetailSidebarActions({
 
             {/* Eligibility Card is usually handled outside this but could be inside */}
             
+            <div className="hidden lg:block bg-card p-5 rounded-xl border border-border shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Listing Status</h4>
+                    {listingState === 'EXPIRED' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-destructive/20 bg-destructive/5 text-destructive text-xs font-bold uppercase tracking-wide">
+                            <span className="w-2 h-2 rounded-full bg-destructive" />
+                            Expired
+                        </span>
+                    ) : listingState === 'CLOSING_SOON' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-300 bg-amber-50 text-amber-700 text-xs font-bold uppercase tracking-wide">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            Closing Soon
+                        </span>
+                    ) : listingState === 'ACTIVE' ? (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-primary/20 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            Active
+                        </span>
+                    ) : (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wide">
+                            <span className="w-2 h-2 rounded-full bg-muted-foreground/70" />
+                            {listingState}
+                        </span>
+                    )}
+                </div>
+                <div className="space-y-2.5">
+                    <p className="text-sm font-medium text-foreground leading-relaxed">
+                        {listingState === 'EXPIRED'
+                            ? 'This listing is expired. You can review details, but new applications are usually closed.'
+                            : listingState !== 'ACTIVE' && listingState !== 'CLOSING_SOON'
+                                ? `This listing is marked as ${listingState.toLowerCase()}. Check status updates from the source before applying.`
+                                : 'This listing is currently active and accepting applications.'}
+                    </p>
+
+                    {opp.expiresAt && (
+                        <p className="text-sm text-muted-foreground">
+                            Deadline: <span className="font-semibold text-foreground">{formatDeadline(opp)}</span>
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            <div className="hidden lg:flex p-3.5 items-start gap-3 bg-muted/10 border border-border border-dashed rounded-xl">
+                <InformationCircleIcon className="w-4 h-4 text-primary/60 shrink-0 mt-0.5" />
+                <p className="text-[13px] font-medium text-foreground/80 leading-relaxed">
+                    Fraud protection: We never charge for placement. Report suspicious activity.
+                </p>
+            </div>
+
             <div className="bg-card p-4 md:p-5 rounded-xl border border-border shadow-sm space-y-3">
                 <div className="space-y-3">
                     {user && (
                         <div className="space-y-2">
-                            <h4 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                            <h4 className="text-sm font-bold text-foreground/80 flex items-center gap-2">
                                 Track your progress
                             </h4>
                             <div className="grid grid-cols-2 gap-2">
@@ -115,68 +169,29 @@ export function DetailSidebarActions({
                             </Button>
                         </div>
                     )}
-
-                    {/* Save button and track note hidden */}
+                    {/* Share & Copy Link row */}
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-border/40">
+                        <button
+                            onClick={handleShare}
+                            className="flex items-center justify-center gap-2 h-10 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
+                        >
+                            <ShareIcon className="w-4 h-4" />
+                            Share
+                        </button>
+                        <button
+                            onClick={handleCopyLink}
+                            className="flex items-center justify-center gap-2 h-10 rounded-lg border border-border bg-muted/30 text-muted-foreground hover:bg-muted/50 hover:text-primary transition-all text-xs font-bold uppercase tracking-wide"
+                        >
+                            <LinkIcon className="w-4 h-4" />
+                            Copy Link
+                        </button>
+                    </div>
                 </div>
-
-                <div className="pt-3 flex items-center justify-between">
-                    <span className="text-xs font-semibold text-muted-foreground/90 uppercase">Listing Verified</span>
-                    <ShieldCheckIcon className="w-3.5 h-3.5 text-primary/40" />
-                </div>
-            </div>
-
-            <div className="hidden lg:block bg-card p-5 rounded-xl border border-border shadow-sm space-y-4">
-                <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-bold uppercase tracking-wider text-primary">Listing Status</h4>
-                    {listingState === 'EXPIRED' ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-destructive/20 bg-destructive/5 text-destructive text-xs font-bold uppercase tracking-wide">
-                            <span className="w-2 h-2 rounded-full bg-destructive" />
-                            Expired
-                        </span>
-                    ) : listingState === 'CLOSING_SOON' ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-amber-300 bg-amber-50 text-amber-700 text-xs font-bold uppercase tracking-wide">
-                            <span className="w-2 h-2 rounded-full bg-amber-500" />
-                            Closing Soon
-                        </span>
-                    ) : listingState === 'ACTIVE' ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-primary/20 bg-primary/10 text-primary text-xs font-bold uppercase tracking-wide">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            Active
-                        </span>
-                    ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border border-border bg-muted text-muted-foreground text-xs font-bold uppercase tracking-wide">
-                            <span className="w-2 h-2 rounded-full bg-muted-foreground/70" />
-                            {listingState}
-                        </span>
-                    )}
-                </div>
-                <div className="space-y-2.5">
-                    <p className="text-sm font-medium text-foreground leading-relaxed">
-                        {listingState === 'EXPIRED'
-                            ? 'This listing is expired. You can review details, but new applications are usually closed.'
-                            : listingState !== 'ACTIVE' && listingState !== 'CLOSING_SOON'
-                                ? `This listing is marked as ${listingState.toLowerCase()}. Check status updates from the source before applying.`
-                                : 'This listing is currently active and accepting applications.'}
-                    </p>
-
-                    {opp.expiresAt && (
-                        <p className="text-sm text-muted-foreground">
-                            Deadline: <span className="font-semibold text-foreground">{formatDeadline(opp)}</span>
-                        </p>
-                    )}
-                </div>
-            </div>
-
-            <div className="hidden lg:flex p-3.5 items-start gap-3 bg-muted/10 border border-border border-dashed rounded-xl">
-                <InformationCircleIcon className="w-4 h-4 text-primary/40 shrink-0 mt-0.5" />
-                <p className="text-sm font-medium text-muted-foreground leading-relaxed uppercase tracking-tight">
-                    Fraud protection: We never charge for placement. Report suspicious activity.
-                </p>
             </div>
 
             {user?.role === 'ADMIN' && (
                 <div className="bg-card p-4 border border-primary/20 rounded-xl space-y-2">
-                    <h4 className="text-xs font-bold uppercase tracking-tight text-primary">Admin Control</h4>
+                    <h4 className="text-sm font-bold text-primary">Admin Control</h4>
                     <Link href={`/opportunities/edit/${opp.id}`} className="block">
                         <Button variant="outline" className="w-full text-xs font-bold uppercase h-8 hover:bg-primary/5">
                             Edit Opportunity

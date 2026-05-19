@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/Button';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
 // removed unused feedbackApi import
 
-// EligibilitySnapshotCard hidden
+// EligibilitySnapshotCard removed
 import { WalkInDetailsCard } from './components/WalkInDetailsCard';
 import { RelatedOpportunities } from './components/RelatedOpportunities';
 import { DetailRequirements } from './components/DetailRequirements';
@@ -20,12 +20,9 @@ import { DetailTimeline } from './components/DetailTimeline';
 import { DetailCampusDriveInfo } from './components/DetailCampusDriveInfo';
 import { DetailHeroSection } from './components/DetailHeroSection';
 import { DetailActionHeader } from './components/DetailActionHeader';
-import { DetailActionMobile } from './components/DetailActionMobile';
 import { DetailSidebarActions } from './components/DetailSidebarActions';
 import { ExpiredWarning } from './components/ExpiredWarning';
 import { DescriptionSection } from './components/DescriptionSection';
-import { QuickActionsMobile } from './components/QuickActionsMobile';
-import { MobileGuestCTA } from './components/MobileGuestCTA';
 import { GovernmentDetailsCard } from './components/GovernmentDetailsCard';
 import { GovernmentOpportunityOverview } from './components/GovernmentOpportunityOverview';
 import { GovernmentStickyActionBar } from './components/GovernmentStickyActionBar';
@@ -104,6 +101,12 @@ export default function OpportunityDetailClient({
                 <Link href="/opportunities">
                     <Button variant="ghost">Browse other jobs</Button>
                 </Link>
+                
+                {relatedForMode.length > 0 && (
+                    <div className="w-full max-w-4xl mt-12 pt-8 border-t border-border text-left">
+                        <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />
+                    </div>
+                )}
             </div>
         );
     }
@@ -202,10 +205,10 @@ export default function OpportunityDetailClient({
                         />
                     </div>
                 ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 items-start">
 
-                    {/* Left Column */}
-                    <div className="space-y-4 md:space-y-6">
+                    {/* Left Column (60%) */}
+                    <div className="space-y-4 md:space-y-6 lg:col-span-3">
 
                         {opp.expiresAt && ds.isExpired(opp) && <ExpiredWarning />}
 
@@ -222,21 +225,6 @@ export default function OpportunityDetailClient({
                             isClosingSoon={ds.isClosingSoon}
                         />
 
-                        <DetailActionMobile
-                            user={user}
-                            opp={opp}
-                            isCampusDrive={ds.isCampusDrive}
-                            timelineEvents={ds.timelineEvents}
-                            hasApplyLink={ds.hasApplyLink}
-                            handleApply={handleApply}
-                            handleToggleSave={handleToggleSave}
-                            handleShare={handleShare}
-                            handleCopyLink={handleCopyLink}
-                            jumpToTimeline={jumpToTimeline}
-                            loginFromDetailHref={ds.loginFromDetailHref}
-                            router={router}
-                        />
-
                         <DescriptionSection
                             description={opp.description}
                             title={isGovernmentJob ? 'Notification Summary' : 'Description'}
@@ -250,45 +238,6 @@ export default function OpportunityDetailClient({
                                     tags={opp.tags}
                                 />
                             </>
-                        )}
-
-                        {!user && (
-                            <QuickActionsMobile
-                                onReportClick={() => {
-                                    setShowReports(true);
-                                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                                }}
-                            />
-                        )}
-                    </div>
-
-                    {/* Right Column */}
-                    <aside className="space-y-4 md:space-y-6 lg:sticky lg:top-24">
-                        {/* Eligibility Snapshot Hidden */}
-
-                        <DetailSidebarActions
-                            user={user}
-                            opp={opp}
-                            currentAction={ds.currentAction}
-                            trackerOptions={ds.trackerOptions}
-                            isUpdatingAction={isUpdatingAction}
-                            handleSetAction={handleSetAction}
-                            hasApplyLink={ds.hasApplyLink}
-                            isCampusDrive={ds.isCampusDrive}
-                            timelineEvents={ds.timelineEvents}
-                            jumpToTimeline={jumpToTimeline}
-                            handleApply={handleApply}
-                            handleToggleSave={handleToggleSave}
-                            loginFromDetailHref={ds.loginFromDetailHref}
-                            listingState={ds.listingState}
-                            formatDeadline={ds.formatDeadline}
-                        />
-
-                        {!isGovernmentJob && (
-                            <DetailRequirements
-                                opp={opp}
-                                educationDetails={ds.educationDetails}
-                            />
                         )}
 
                         {opp.type === 'WALKIN' && opp.walkInDetails && (
@@ -307,6 +256,62 @@ export default function OpportunityDetailClient({
                             timelineEvents={ds.timelineEvents}
                             upcomingTimelineEvents={ds.upcomingTimelineEvents}
                         />
+                        
+                        <div className="lg:hidden">
+                            <DetailSidebarActions
+                                user={user}
+                                opp={opp}
+                                currentAction={ds.currentAction}
+                                trackerOptions={ds.trackerOptions}
+                                isUpdatingAction={isUpdatingAction}
+                                handleSetAction={handleSetAction}
+                                hasApplyLink={ds.hasApplyLink}
+                                isCampusDrive={ds.isCampusDrive}
+                                timelineEvents={ds.timelineEvents}
+                                jumpToTimeline={jumpToTimeline}
+                                handleApply={handleApply}
+                                handleToggleSave={handleToggleSave}
+                                handleShare={handleShare}
+                                handleCopyLink={handleCopyLink}
+                                loginFromDetailHref={ds.loginFromDetailHref}
+                                listingState={ds.listingState}
+                                formatDeadline={ds.formatDeadline}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Right Column (40%) */}
+                    <aside className="space-y-4 md:space-y-6 lg:sticky lg:top-24 lg:col-span-2">
+                        <div className="hidden lg:block">
+                            <DetailSidebarActions
+                                user={user}
+                                opp={opp}
+                                currentAction={ds.currentAction}
+                                trackerOptions={ds.trackerOptions}
+                                isUpdatingAction={isUpdatingAction}
+                                handleSetAction={handleSetAction}
+                                hasApplyLink={ds.hasApplyLink}
+                                isCampusDrive={ds.isCampusDrive}
+                                timelineEvents={ds.timelineEvents}
+                                jumpToTimeline={jumpToTimeline}
+                                handleApply={handleApply}
+                                handleToggleSave={handleToggleSave}
+                                handleShare={handleShare}
+                                handleCopyLink={handleCopyLink}
+                                loginFromDetailHref={ds.loginFromDetailHref}
+                                listingState={ds.listingState}
+                                formatDeadline={ds.formatDeadline}
+                            />
+                        </div>
+
+                        {!isGovernmentJob && (
+                            <DetailRequirements
+                                opp={opp}
+                                educationDetails={ds.educationDetails}
+                            />
+                        )}
+
+
                     </aside>
                 </div>
                 )}
@@ -314,7 +319,7 @@ export default function OpportunityDetailClient({
                 {!isGovernmentJob && <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />}
             </main>
 
-            {!user && <MobileGuestCTA loginFromDetailHref={ds.loginFromDetailHref} />}
+            
         </div>
     );
 }

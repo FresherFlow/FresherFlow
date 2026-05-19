@@ -40,6 +40,42 @@ export function EligibilityMatcher({
   const [selectedGradYear, setSelectedGradYear] = useState<number>(gradYearsOptions[1] || 2026);
   const [selectedSkill, setSelectedSkill] = useState(skillsOptions[0] || "React");
 
+  const expectedLevel = selectedDegree === "M.Tech" ? "PG" : "DEGREE";
+  
+  const processedOpps = React.useMemo(() => {
+    if (!opportunities) return [];
+    
+    const mapped = opportunities.map(opp => {
+      const degreeMatch =
+        !opp.allowedDegrees ||
+        opp.allowedDegrees.length === 0 ||
+        opp.allowedDegrees.includes(expectedLevel as EducationLevel) ||
+        opp.allowedCourses?.some(c => c.toLowerCase().includes(selectedDegree.toLowerCase()));
+
+      const gradMatch =
+        !opp.allowedPassoutYears ||
+        opp.allowedPassoutYears.length === 0 ||
+        opp.allowedPassoutYears.includes(selectedGradYear);
+
+      const skillMatch =
+        !opp.requiredSkills ||
+        opp.requiredSkills.length === 0 ||
+        opp.requiredSkills.some(s => s.toLowerCase().includes(selectedSkill.toLowerCase())) ||
+        opp.title.toLowerCase().includes(selectedSkill.toLowerCase());
+
+      const isFullyEligible = !!(degreeMatch && gradMatch && skillMatch);
+      
+      let matchScore = 0;
+      if (degreeMatch) matchScore += 1;
+      if (gradMatch) matchScore += 1;
+      if (skillMatch) matchScore += 1;
+
+      return { opp, degreeMatch: !!degreeMatch, gradMatch: !!gradMatch, skillMatch: !!skillMatch, isFullyEligible, matchScore };
+    });
+
+    return mapped.sort((a, b) => b.matchScore - a.matchScore);
+  }, [opportunities, selectedDegree, selectedGradYear, selectedSkill, expectedLevel]);
+
   return (
     <div className="w-full rounded-3xl border border-border bg-card/60 backdrop-blur-md p-5 sm:p-6 md:p-8 shadow-xl relative overflow-hidden">
       <div className="max-w-5xl mx-auto space-y-8 relative z-10">
@@ -131,31 +167,10 @@ export function EligibilityMatcher({
 
           {/* Interactive Match Feed */}
           <div className="space-y-4">
-            {opportunities && opportunities.length > 0 ? (
-              opportunities.slice(0, 3).map((opp) => {
-                // Calculate match dynamically using real CDN parameters
-                const expectedLevel = selectedDegree === "M.Tech" ? "PG" : "DEGREE";
-                const degreeMatch =
-                  !opp.allowedDegrees ||
-                  opp.allowedDegrees.length === 0 ||
-                  opp.allowedDegrees.includes(expectedLevel as EducationLevel) ||
-                  opp.allowedCourses?.some(c => c.toLowerCase().includes(selectedDegree.toLowerCase()));
-
-                const gradMatch =
-                  !opp.allowedPassoutYears ||
-                  opp.allowedPassoutYears.length === 0 ||
-                  opp.allowedPassoutYears.includes(selectedGradYear);
-
-                const skillMatch =
-                  !opp.requiredSkills ||
-                  opp.requiredSkills.length === 0 ||
-                  opp.requiredSkills.some(s => s.toLowerCase().includes(selectedSkill.toLowerCase())) ||
-                  opp.title.toLowerCase().includes(selectedSkill.toLowerCase());
-
-                const isFullyEligible = degreeMatch && gradMatch && skillMatch;
-
+            {processedOpps && processedOpps.length > 0 ? (
+              processedOpps.slice(0, 3).map(({ opp, degreeMatch, gradMatch, skillMatch, isFullyEligible }) => {
                 // Format salary beautifully from CDN fields
-                let salaryText = "Competitive";
+                let salaryText = "";
                 if (opp.salaryRange) {
                   salaryText = opp.salaryRange;
                 } else if (opp.salaryMin && opp.salaryMax) {
@@ -184,9 +199,11 @@ export function EligibilityMatcher({
                             {opp.title}
                           </h4>
                         </div>
-                        <span className="text-xs font-bold text-foreground bg-muted px-2.5 py-1 rounded-md border border-border/40 whitespace-nowrap">
-                          {salaryText}
-                        </span>
+                        {salaryText && (
+                          <span className="text-xs font-bold text-foreground bg-muted px-2.5 py-1 rounded-md border border-border/40 whitespace-nowrap">
+                            {salaryText}
+                          </span>
+                        )}
                       </div>
 
                       {/* Eligibility details */}

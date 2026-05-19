@@ -70,6 +70,11 @@ export function useOpportunityDetail(
             );
 
             if (!opportunity) {
+                // Set fallback related jobs for the 404 page
+                if (!initialRelatedData || initialRelatedData.length === 0) {
+                    setRelatedOpps(feed.opportunities.slice(0, 6));
+                }
+                
                 // Fallback to recent viewed in case of offline / local cache
                 const cachedOpportunity = getRecentViewedByIdOrSlug(id);
                 if (cachedOpportunity) {
