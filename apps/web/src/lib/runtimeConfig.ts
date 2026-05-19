@@ -97,6 +97,13 @@ export const BOOTSTRAP_FEED_URL =
         ? `${process.env.NEXT_PUBLIC_CDN_URL}/bootstrap-feed.min.json`
         : `${DEFAULT_CDN_HOST}/bootstrap-feed.min.json`);
 
+export const SITEMAP_DATA_URL =
+    process.env.NEXT_PUBLIC_SITEMAP_DATA_URL ||
+    process.env.SITEMAP_DATA_URL ||
+    (process.env.NEXT_PUBLIC_CDN_URL
+        ? `${process.env.NEXT_PUBLIC_CDN_URL}/sitemap-data.json`
+        : `${DEFAULT_CDN_HOST}/sitemap-data.json`);
+
 export const GET_CATEGORY_SHARD_URL = (id: string) =>
     process.env.NEXT_PUBLIC_CDN_URL
         ? `${process.env.NEXT_PUBLIC_CDN_URL}/categories/${id}.json`

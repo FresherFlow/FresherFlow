@@ -4,7 +4,8 @@ import {
     GET_CATEGORY_SHARD_URL, 
     SITE_URL, 
     EDUCATION_METADATA_URL, 
-    SKILLS_METADATA_URL 
+    SKILLS_METADATA_URL,
+    SITEMAP_DATA_URL
 } from '../runtimeConfig';
 import crypto from 'node:crypto';
 
@@ -150,6 +151,54 @@ export async function fetchSkillsMetadata(): Promise<string[] | null> {
         return await res.json() as string[];
     } catch (err) {
         console.warn('Failed to fetch skills metadata from CDN:', err);
+        return null;
+    }
+}
+
+export interface SitemapDataResponse {
+    companies: Array<{ name: string; slug: string }>;
+    opportunities: Array<{
+        id: string;
+        slug: string | null;
+        type: 'JOB' | 'INTERNSHIP' | 'WALKIN';
+        postedAt: string;
+        updatedAt?: string;
+    }>;
+    timestamp: number;
+}
+
+/**
+ * Fetches sitemap raw data (companies + up to 1000 opportunities) from the CDN.
+ */
+export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
+    try {
+        const url = signUrlIfServer(SITEMAP_DATA_URL);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); 
+
+        const res = await fetch(url, getCDNFetchOptions({
+            next: { revalidate: 3600 },
+            signal: controller.signal,
+        }));
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            console.error(`Failed to fetch sitemap data: ${res.status} ${res.statusText}`);
+            return null;
+        }
+
+        const data = await res.json() as SitemapDataResponse;
+        
+        if (!data || !Array.isArray(data.opportunities) || !Array.isArray(data.companies)) {
+            console.error('Invalid sitemap data format');
+            return null;
+        }
+
+        return data;
+    } catch (err) {
+        console.warn('Sitemap CDN fetch failed:', err instanceof Error ? err.message : err);
         return null;
     }
 }

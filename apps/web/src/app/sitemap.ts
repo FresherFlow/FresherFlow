@@ -1,6 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { PUBLIC_WEB_HOST, SITE_URL } from '@/lib/runtimeConfig';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed, fetchSitemapData } from '@/lib/api/cdnFeed';
 
 export const revalidate = 86400; // 24 hours; daily sitemap refresh is enough.
 
@@ -38,15 +38,34 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   try {
-    // WEB PIVOT: sitemap uses CDN/static JSON, not API.
-    const feed = await fetchBootstrapFeed();
-    const allItems: SitemapOpportunity[] = (feed?.opportunities || []).map((item) => ({
-      id: item.id,
-      slug: item.slug ?? null,
-      type: item.type as SitemapOpportunity['type'],
-      postedAt: String(item.postedAt || feed?.generatedAt || new Date().toISOString()),
-      updatedAt: item.publishedAt ? String(item.publishedAt) : undefined,
-    }));
+    const sitemapData = await fetchSitemapData();
+    let allItems: SitemapOpportunity[] = [];
+    let companyEntries: MetadataRoute.Sitemap = [];
+
+    if (sitemapData) {
+      allItems = (sitemapData.opportunities || []).map((item) => ({
+        id: item.id,
+        slug: item.slug ?? null,
+        type: item.type as SitemapOpportunity['type'],
+        postedAt: String(item.postedAt || new Date().toISOString()),
+        updatedAt: item.updatedAt ? String(item.updatedAt) : undefined,
+      }));
+
+      companyEntries = (sitemapData.companies || []).map((c) => ({
+        url: `${BASE_URL}/companies/${encodeURIComponent(c.slug)}`,
+        lastModified: new Date(),
+      }));
+    } else {
+      console.warn('Sitemap data fetch returned null, falling back to bootstrap feed.');
+      const feed = await fetchBootstrapFeed();
+      allItems = (feed?.opportunities || []).map((item) => ({
+        id: item.id,
+        slug: item.slug ?? null,
+        type: item.type as SitemapOpportunity['type'],
+        postedAt: String(item.postedAt || feed?.generatedAt || new Date().toISOString()),
+        updatedAt: item.publishedAt ? String(item.publishedAt) : undefined,
+      }));
+    }
 
     const seenEntries = new Set<string>();
     const opportunityEntries: MetadataRoute.Sitemap = [];
@@ -68,7 +87,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       });
     }
 
-    return [...staticEntries, ...opportunityEntries];
+    return [...staticEntries, ...companyEntries, ...opportunityEntries];
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error('Sitemap generation failed.', error);
@@ -76,8 +95,3 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     return staticEntries;
   }
 }
-
-
-
-
-

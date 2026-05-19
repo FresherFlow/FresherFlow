@@ -56,6 +56,7 @@ async function getSignedUrl(url: string): Promise<string> {
 
 type OpportunityDto = {
   id: string;
+  slug?: string | null;
   title: string;
   company: string;
   type?: "JOB" | "INTERNSHIP" | "WALKIN";
@@ -130,7 +131,6 @@ const fetchWithTimeout = async (
       signal: typeof CustomAbortSignal.any === 'function' ? CustomAbortSignal.any(signals) : controller.signal,
       headers: {
         "Origin": process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.com",
-        ...(process.env.CDN_BUILD_TOKEN ? { "X-CDN-Build-Token": process.env.CDN_BUILD_TOKEN } : {})
       },
     };
 
@@ -384,29 +384,10 @@ export async function GET(
     if (cdnResponse && cdnResponse.ok) {
       const payload = await cdnResponse.json();
       const allOpportunities = (payload?.opportunities || []) as OpportunityDto[];
-      opportunity = allOpportunities.find((o) => o.id === id) || null;
+      opportunity = allOpportunities.find((o) => o.id === id || o.slug === id) || null;
     }
   } catch (cdnError) {
-    console.warn("CDN preview fetch failed, trying Render API:", cdnError);
-  }
-
-  // 2. Fail-safe fallback: If CDN failed or didn't have the job, try Render API
-  if (!opportunity) {
-    try {
-      const response = await fetchWithTimeout(
-        `${apiBase}/api/opportunities/${encodeURIComponent(id)}`,
-        3500,
-        undefined,
-        { cacheMode: "force-cache", revalidateSeconds: 300 }
-      );
-
-      if (response && response.ok) {
-        const payload = await response.json();
-        opportunity = payload?.opportunity || null;
-      }
-    } catch (apiError) {
-      console.error("Render API preview fetch failed:", apiError);
-    }
+    console.warn("CDN preview fetch failed:", cdnError);
   }
 
   if (!opportunity) {

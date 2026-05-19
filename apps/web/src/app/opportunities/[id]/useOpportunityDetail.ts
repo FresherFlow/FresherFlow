@@ -15,7 +15,12 @@ import { getRelatedOpportunities } from './detailUtils';
 
 const WEB_STATIC_DISCOVERY = true;
 
-export function useOpportunityDetail(id: string, initialData?: Opportunity | null, user?: User | null) {
+export function useOpportunityDetail(
+    id: string, 
+    initialData?: Opportunity | null, 
+    user?: User | null,
+    initialRelatedData: Opportunity[] = []
+) {
     const router = useRouter();
     const searchParams = useSearchParams();
     
@@ -37,7 +42,7 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
         return true;
     });
 
-    const [relatedOpps, setRelatedOpps] = useState<Opportunity[]>([]);
+    const [relatedOpps, setRelatedOpps] = useState<Opportunity[]>(initialRelatedData);
     const [isLoadingRelated, setIsLoadingRelated] = useState(false);
     const [isUpdatingAction, setIsUpdatingAction] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -143,6 +148,10 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
     }, [opp, user]);
 
     useEffect(() => {
+        if (initialRelatedData && initialRelatedData.length > 0) {
+            setRelatedOpps(initialRelatedData);
+            return;
+        }
         if (!opp) return;
 
         const loadRelated = async () => {
@@ -163,7 +172,7 @@ export function useOpportunityDetail(id: string, initialData?: Opportunity | nul
         };
 
         void loadRelated();
-    }, [opp?.id, opp?.type, opp?.requiredSkills, opp?.locations, opp?.company, opp?.workMode]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [opp?.id, opp?.type, opp?.requiredSkills, opp?.locations, opp?.company, opp?.workMode, initialRelatedData]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleToggleSave = async () => {
         if (!opp) return;

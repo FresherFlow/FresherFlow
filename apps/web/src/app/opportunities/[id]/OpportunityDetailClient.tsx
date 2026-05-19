@@ -37,7 +37,15 @@ import { useOpportunityDetail } from './useOpportunityDetail';
 import { useOpportunityDerivedState } from './useOpportunityDerivedState';
 import { useOpportunityReport } from './useOpportunityReport';
 
-export default function OpportunityDetailClient({ id, initialData }: { id: string; initialData?: Opportunity | null }) {
+export default function OpportunityDetailClient({ 
+    id, 
+    initialData,
+    initialRelatedData = []
+}: { 
+    id: string; 
+    initialData?: Opportunity | null;
+    initialRelatedData?: Opportunity[];
+}) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const { user, profile } = useAuth();
@@ -57,7 +65,7 @@ export default function OpportunityDetailClient({ id, initialData }: { id: strin
         handleApply,
         handleShare,
         handleCopyLink
-    } = useOpportunityDetail(id, initialData, user);
+    } = useOpportunityDetail(id, initialData, user, initialRelatedData);
 
     const reportMenuRef = useRef<HTMLDivElement | null>(null);
     const ds = useOpportunityDerivedState(opp as Opportunity, profile, searchParams);

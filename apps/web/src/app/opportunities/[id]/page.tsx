@@ -61,6 +61,8 @@ export default async function OpportunityDetailPage({ params }: Props) {
     const siteMode = await getSiteMode();
     let opportunityData: ExtendedOpportunity | null = null;
 
+    let relatedOpportunitiesData: Opportunity[] = [];
+
     try {
         opportunityData = await fetchOpportunityForPage(slugOrId, siteMode);
         if (!opportunityData) throw new Error('Opportunity not found');
@@ -76,6 +78,14 @@ export default async function OpportunityDetailPage({ params }: Props) {
         if (expiry.pastGrace) {
             permanentRedirect(getTypeHubPath(opportunityData.type));
         }
+
+        // Server-Side Related Opportunities Resolution
+        const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+        const feed = await fetchBootstrapFeed();
+        if (feed?.opportunities) {
+            const { getRelatedOpportunities } = await import('./detailUtils');
+            relatedOpportunitiesData = getRelatedOpportunities(opportunityData, feed.opportunities);
+        }
     } catch {
         // Fallback handled by client component (loading/404)
     }
@@ -89,7 +99,11 @@ export default async function OpportunityDetailPage({ params }: Props) {
                 />
             )}
             <Suspense fallback={<OpportunityDetailSkeleton />}>
-                <OpportunityDetailClient id={slugOrId} initialData={opportunityData as Opportunity} />
+                <OpportunityDetailClient 
+                    id={slugOrId} 
+                    initialData={opportunityData as Opportunity} 
+                    initialRelatedData={relatedOpportunitiesData}
+                />
             </Suspense>
         </>
     );
