@@ -75,20 +75,10 @@ export class StaticFeedService {
                     ]
                 },
                 orderBy: { postedAt: 'desc' },
-                select: {
-                    id: true,
-                    slug: true,
-                    title: true,
-                    company: true,
-                    companyLogoUrl: true,
-                    locations: true,
-                    type: true,
-                    workMode: true,
-                    postedAt: true,
-                    tags: true,
-                    allowedPassoutYears: true,
-                    trendingScore: true,
-                    expiresAt: true
+                include: {
+                    walkInDetails: true,
+                    governmentJobDetails: true,
+                    events: true
                 },
             });
 
