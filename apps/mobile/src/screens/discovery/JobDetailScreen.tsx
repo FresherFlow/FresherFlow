@@ -34,6 +34,7 @@ import {
   Flag,
   LayoutDashboard,
   Eye,
+  MoreVertical,
 } from 'lucide-react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -62,7 +63,7 @@ import { TYPOGRAPHY } from '@/system/constants/typography';
 // Premium System
 import { toTitleCase, formatListToTitleCase } from '@/utils/text';
 import { Screen, Section } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard, GlassCard } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { ReportActionSheet, ReportActionSheetRef } from '@/system/components/ReportActionSheet';
 import { FeedbackReason } from '@fresherflow/types';
 import { MatchScoreGauge } from '@/system/components/MatchScoreGauge';
@@ -70,7 +71,7 @@ import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING } from '../../system/constants/dimensions';
 import { CommentSection } from '@/system/components/CommentSection';
 import { TrackerStatusSheet } from '@/system/components/TrackerStatusSheet';
-import { getDisplayHandle } from '@fresherflow/utils';
+import { PremiumActionSheet } from '@/system/components/PremiumActionSheet';
 import { ActionType } from '@fresherflow/types';
 import { SuccessModal } from '@/system/components/SuccessModal';
 
@@ -110,6 +111,10 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     navigation
   );
 
+  const isFollowingCompany = useMemo(() => {
+    if (!opportunity?.company) return false;
+    return isFollowing('COMPANY', opportunity.company);
+  }, [isFollowing, opportunity?.company]);
 
   const { showSuccess } = useToast();
   const { showToast } = useNotifications();
@@ -226,6 +231,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     }, [opportunity, isTracking, updateStatus, toggleTracking, showSuccess]);
 
     const [successModalVisible, setSuccessModalVisible] = React.useState(false);
+    const [menuVisible, setMenuVisible] = React.useState(false);
 
     const openTrackerSheet = useCallback(() => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -288,15 +294,6 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             onBack={() => navigation.goBack()}
             rightSlot={
                 <View style={{ flexDirection: 'row', gap: mScale(4), alignItems: 'center' }}>
-                    <TouchableOpacity onPress={handleReport} style={styles.iconBtn}>
-                        <Flag size={mScale(20)} color={currentTheme.colors.text} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={openTrackerSheet} style={styles.iconBtn}>
-                        <LayoutDashboard
-                            size={mScale(20)}
-                            color={isTracking(opportunity.id) ? currentTheme.colors.success : currentTheme.colors.text}
-                        />
-                    </TouchableOpacity>
                     <TouchableOpacity onPress={handleToggleSave} style={styles.iconBtn}>
                         <Bookmark
                             size={mScale(20)}
@@ -306,6 +303,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     </TouchableOpacity>
                     <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
                         <Share2 size={mScale(20)} color={currentTheme.colors.text} />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.iconBtn}>
+                        <MoreVertical size={mScale(20)} color={currentTheme.colors.text} />
                     </TouchableOpacity>
                 </View>
             }
@@ -318,15 +318,6 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             <ChevronLeft size={24} color={currentTheme.colors.text} />
          </TouchableOpacity>
          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity onPress={handleReport} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
-                <Flag size={20} color={currentTheme.colors.text} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={openTrackerSheet} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
-                <LayoutDashboard
-                    size={20}
-                    color={isTracking(opportunity.id) ? currentTheme.colors.success : currentTheme.colors.text}
-                />
-            </TouchableOpacity>
             <TouchableOpacity onPress={handleToggleSave} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
                 <Bookmark
                     size={20}
@@ -336,6 +327,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             </TouchableOpacity>
             <TouchableOpacity onPress={handleShare} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
                 <Share2 size={20} color={currentTheme.colors.text} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setMenuVisible(true)} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+                <MoreVertical size={20} color={currentTheme.colors.text} />
             </TouchableOpacity>
          </View>
       </View>
@@ -416,7 +410,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <Text style={[styles.companyName, { color: currentTheme.colors.text }]}>{opportunity.company}</Text>
                             <View style={styles.badgeRow}>
                                 <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{opportunity.type.charAt(0) + opportunity.type.slice(1).toLowerCase()}</Text>
+                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{toTitleCase(opportunity.type || 'Job')}</Text>
                                 </View>
                                 {(() => {
                                   const postedAt = opportunity.postedAt ? new Date(opportunity.postedAt) : null;
@@ -769,48 +763,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </Animated.View>
             )}
 
-            <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-                <Section title="Hiring Proof">
-                <GlassCard style={styles.trustCard}>
-                    <View style={styles.trustRow}>
-                        <ShieldCheck size={18} color={currentTheme.colors.success} />
-                        <View>
-                            <Text style={[styles.trustTitle, { color: currentTheme.colors.text }]}>Official Portal Verified</Text>
-                            <Text style={[styles.trustDesc, { color: currentTheme.colors.textMuted }]}>This link points directly to {opportunity.company}'s official careers site.</Text>
-                        </View>
-                    </View>
-                    <View style={[styles.trustRow, { marginTop: 16 }]}>
-                        <Users size={18} color={currentTheme.colors.primary} />
-                        <View>
-                            <Text style={[styles.trustTitle, { color: currentTheme.colors.text }]}>Community Backed</Text>
-                            <Text style={[styles.trustDesc, { color: currentTheme.colors.textMuted }]}>This opportunity has been shared {opportunity.sharesCount || 0} times by verified users.</Text>
-                        </View>
-                    </View>
-                    {opportunity.rawIngestions?.[0]?.creator && (
-                        <View style={[styles.trustRow, { marginTop: 16, borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.1), paddingTop: 16 }]}>
-                            <Share2 size={18} color={currentTheme.colors.warning} />
-                            <View>
-                                <Text style={[styles.trustTitle, { color: currentTheme.colors.text }]}>Contributor</Text>
-                                <Text style={[styles.trustDesc, { color: currentTheme.colors.textMuted }]}>
-                                    First shared by{' '}
-                                    <Text
-                                        style={{ color: currentTheme.colors.primary, fontWeight: '700' }}
-                                        onPress={() => {
-                                            const creatorId = opportunity.rawIngestions?.[0]?.creator?.id;
-                                            if (creatorId) {
-                                                navigation.push('ContributorProfile', { userId: creatorId });
-                                            }
-                                        }}
-                                    >
-                                        {getDisplayHandle(opportunity.rawIngestions[0].creator)}
-                                    </Text>
-                                </Text>
-                            </View>
-                        </View>
-                    )}
-                </GlassCard>
-            </Section>
-            </Animated.View>
+
             {similarOpportunities.length > 0 && (
                 <Animated.View style={{ opacity: fadeAnim5, transform: [{ translateY: fadeAnim5.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
                     <Section title="Discover More Like This">
@@ -856,13 +809,51 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                 <Text style={[styles.notifyDesc, { color: currentTheme.colors.textMuted }]}>Get instant pings when roles at {opportunity.company} or similar match your profile.</Text>
                             </View>
                             <TouchableOpacity
-                                style={[styles.notifyBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
-                                onPress={() => {
-                                    showToast('Alerts enabled for similar roles!');
-                                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                style={[
+                                    styles.notifyBtn,
+                                    {
+                                        backgroundColor: isFollowingCompany
+                                            ? currentTheme.colors.primary
+                                            : alpha(currentTheme.colors.primary, 0.1)
+                                    }
+                                ]}
+                                onPress={async () => {
+                                    if (isAnonymous) {
+                                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                                        showToast('Please sign in to follow companies and get alerts', 'info');
+                                        navigation.navigate('Auth');
+                                        return;
+                                    }
+                                    try {
+                                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                        if (isFollowingCompany) {
+                                            const success = await unfollow('COMPANY', opportunity.company);
+                                            if (success) {
+                                                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                                showToast(`Alerts disabled for ${opportunity.company}`, 'success');
+                                            } else {
+                                                showToast('Failed to disable alerts', 'error');
+                                            }
+                                        } else {
+                                            const success = await follow('COMPANY', opportunity.company);
+                                            if (success) {
+                                                await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                                                showToast(`Alerts enabled for ${opportunity.company}!`, 'success');
+                                            } else {
+                                                showToast('Failed to enable alerts', 'error');
+                                            }
+                                        }
+                                    } catch (err) {
+                                        console.error('Failed to toggle company follow:', err);
+                                        showToast('Failed to toggle company alerts', 'error');
+                                    }
                                 }}
                             >
-                                <Bell size={18} color={currentTheme.colors.primary} />
+                                <Bell
+                                    size={18}
+                                    color={isFollowingCompany ? currentTheme.colors.background : currentTheme.colors.primary}
+                                    fill={isFollowingCompany ? currentTheme.colors.background : 'none'}
+                                />
                             </TouchableOpacity>
                         </View>
                     </SurfaceCard>
@@ -967,6 +958,40 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
           title="Application Started!"
           subtitle={`We've redirected you to ${opportunity.company}'s portal. Good luck with your application!`}
       />
+
+      <PremiumActionSheet visible={menuVisible} onClose={() => setMenuVisible(false)}>
+        <View style={styles.menuContainer}>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => {
+              setMenuVisible(false);
+              setTimeout(() => {
+                openTrackerSheet();
+              }, 250);
+            }}
+          >
+            <LayoutDashboard size={mScale(20)} color={isTracking(opportunity.id) ? currentTheme.colors.success : currentTheme.colors.text} />
+            <Text style={[styles.menuItemText, { color: currentTheme.colors.text }]}>
+              {isTracking(opportunity.id) ? 'Track Application Status' : 'Add to Job Tracker'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.05) }]}
+            onPress={() => {
+              setMenuVisible(false);
+              setTimeout(() => {
+                handleReport();
+              }, 250);
+            }}
+          >
+            <Flag size={mScale(20)} color={currentTheme.colors.error} />
+            <Text style={[styles.menuItemText, { color: currentTheme.colors.error }]}>
+              Report Job Listing
+            </Text>
+          </TouchableOpacity>
+        </View>
+      </PremiumActionSheet>
     </Screen>
   );
 });
@@ -1542,6 +1567,20 @@ const styles = StyleSheet.create({
         fontSize: 9,
         fontWeight: '900',
         letterSpacing: 0.5,
+    },
+    menuContainer: {
+        paddingVertical: 8,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 8,
+        gap: 12,
+    },
+    menuItemText: {
+        fontSize: 16,
+        fontWeight: '600',
     },
 });
 

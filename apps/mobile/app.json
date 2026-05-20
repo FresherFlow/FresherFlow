@@ -80,9 +80,7 @@
     "updates": {
       "url": "https://u.expo.dev/f44bb950-d1e0-4575-b499-b1a019e1e049"
     },
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
+    "runtimeVersion": "1.0.0",
     "extra": {
       "apiUrl": "https://api.fresherflow.in",
       "eas": {

@@ -14,6 +14,7 @@ import {
   ToastAndroid,
   ViewToken,
   TextInput,
+  AppState,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -24,8 +25,10 @@ import {
     Sparkles,
     Search,
     X,
+    Link as LinkIcon,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import { useSaved } from '@repo/frontend-core';
 
 import { useFeed } from '@/hooks/useFeed';
@@ -316,6 +319,47 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
+  // Clipboard detection logic
+  const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
+  const lastProcessedUrl = useRef<string | null>(null);
+
+  const checkClipboard = useCallback(async () => {
+    try {
+      const content = await Clipboard.getStringAsync();
+      if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
+        const isJobUrl = content.includes('linkedin.com/jobs') || 
+                          content.includes('greenhouse.io') || 
+                          content.includes('myworkdayjobs.com') ||
+                          content.includes('lever.co') ||
+                          content.includes('careers') ||
+                          content.includes('fresherflow.com');
+        
+        if (isJobUrl && content !== lastProcessedUrl.current) {
+          setDetectedUrl(content);
+        }
+      }
+    } catch (e) {
+      console.warn('Clipboard check failed', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        void checkClipboard();
+      }
+    });
+    return () => {
+      subscription.remove();
+    };
+  }, [checkClipboard]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void checkClipboard();
+    }, [checkClipboard])
+  );
+
   useEffect(() => {
     if (searchQuery.length >= 3) {
         const timer = setTimeout(() => {
@@ -584,6 +628,53 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             />
         )}
       />
+
+      {detectedUrl && (
+        <MotiView
+          from={{ translateY: 100, opacity: 0 }}
+          animate={{ translateY: 0, opacity: 1 }}
+          exit={{ translateY: 100, opacity: 0 }}
+          transition={{ type: 'spring', damping: 15 }}
+          style={[
+            styles.clipboardCard,
+            {
+              backgroundColor: currentTheme.colors.surface,
+              borderColor: alpha(currentTheme.colors.primary, 0.2),
+              shadowColor: currentTheme.colors.text,
+            },
+          ]}
+        >
+          <View style={styles.clipboardContent}>
+            <LinkIcon size={16} color={currentTheme.colors.primary} style={{ marginRight: 8 }} />
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.clipboardTitle, { color: currentTheme.colors.text }]}>Copied Job Link Detected</Text>
+              <Text style={[styles.clipboardSub, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                {detectedUrl}
+              </Text>
+            </View>
+            <TouchableOpacity
+              style={[styles.clipboardShareBtn, { backgroundColor: currentTheme.colors.primary }]}
+              onPress={() => {
+                const urlToShare = detectedUrl;
+                lastProcessedUrl.current = urlToShare;
+                setDetectedUrl(null);
+                navigation.navigate('Share', { url: urlToShare });
+              }}
+            >
+              <Text style={[styles.clipboardShareBtnText, { color: currentTheme.colors.background }]}>Share</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.clipboardCloseBtn}
+              onPress={() => {
+                lastProcessedUrl.current = detectedUrl;
+                setDetectedUrl(null);
+              }}
+            >
+              <X size={16} color={currentTheme.colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        </MotiView>
+      )}
     </Screen>
   );
 });
@@ -744,6 +835,46 @@ const styles = StyleSheet.create({
         fontSize: mScale(14),
         fontWeight: '800',
         letterSpacing: 0.5,
+    },
+    clipboardCard: {
+        position: 'absolute',
+        bottom: mScale(90),
+        left: 16,
+        right: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        padding: 12,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        elevation: 8,
+        zIndex: 9999,
+    },
+    clipboardContent: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    },
+    clipboardTitle: {
+        fontSize: mScale(13),
+        fontWeight: '800',
+    },
+    clipboardSub: {
+        fontSize: mScale(11),
+        marginTop: 2,
+    },
+    clipboardShareBtn: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        marginLeft: 8,
+    },
+    clipboardShareBtnText: {
+        fontSize: mScale(12),
+        fontWeight: '800',
+    },
+    clipboardCloseBtn: {
+        padding: 8,
+        marginLeft: 4,
     }
 });
 

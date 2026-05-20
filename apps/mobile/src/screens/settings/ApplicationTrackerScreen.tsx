@@ -26,7 +26,7 @@ import { RootStackParamList } from '@/navigation/types';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { SecondaryHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, SurfaceCard, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { CompanyLogo } from '@repo/ui';
 import { SCREEN_WIDTH } from '@/system/constants/dimensions';
 
@@ -108,8 +108,9 @@ const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLen
                             </Text>
                         </View>
                     }
-                    onRefresh={refresh}
-                    refreshing={refreshing}
+                    refreshControl={
+                        <PremiumRefreshControl refreshing={refreshing} onRefresh={refresh} />
+                    }
                     removeClippedSubviews={Platform.OS === 'android'}
                 />
             )}

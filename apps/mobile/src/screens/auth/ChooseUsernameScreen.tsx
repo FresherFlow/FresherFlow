@@ -8,6 +8,8 @@ import {
     ActivityIndicator,
     KeyboardAvoidingView,
     Platform,
+    Keyboard,
+    ScrollView,
 } from 'react-native';
 import { MotiView, AnimatePresence } from 'moti';
 import debounce from 'lodash.debounce';
@@ -38,7 +40,19 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
     const [error, setError] = useState<string | null>(null);
     const [isClaiming, setIsClaiming] = useState(false);
     const [isSkipping, setIsSkipping] = useState(false);
-    const [takenUsernames, setTakenUsernames] = useState<string[]>([]);
+    const [takenUsernames, setTakenUsernames] = useState<string[] | null>(null);
+    const [isKeyboardVisible, setKeyboardVisible] = useState(false);
+
+    useEffect(() => {
+        const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+        const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+        const showSub = Keyboard.addListener(showEvent, () => setKeyboardVisible(true));
+        const hideSub = Keyboard.addListener(hideEvent, () => setKeyboardVisible(false));
+        return () => {
+            showSub.remove();
+            hideSub.remove();
+        };
+    }, []);
 
     // Pre-fetch the list of occupied usernames from CDN edge on mount for zero-latency local checks
     useEffect(() => {
@@ -46,10 +60,12 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
             try {
                 const signatureParams = generateCdnSignature('/taken-usernames.min.json');
                 const signedUrl = `${TAKEN_USERNAMES_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
+                console.log('[ChooseUsername] Fetching taken usernames from CDN:', signedUrl);
                 const res = await axios.get(signedUrl, { 
                     timeout: 4000
                 });
                 if (Array.isArray(res.data)) {
+                    console.log('[ChooseUsername] Pre-fetched taken usernames successfully. Total count:', res.data.length);
                     setTakenUsernames(res.data.map((u: string) => u.toLowerCase()));
                 }
             } catch (e) {
@@ -68,7 +84,7 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
             }
 
             // 1. Try Zero-Latency local in-memory lookup first
-            if (takenUsernames.length > 0) {
+            if (takenUsernames !== null) {
                 const isTaken = takenUsernames.includes(val);
                 setIsAvailable(!isTaken);
                 if (isTaken) {
@@ -91,6 +107,9 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
                 }
             } catch (err) {
                 console.error('Failed to check username:', err);
+                // Offline Optimistic Fallback: If API is down and CDN wasn't loaded, assume available
+                setIsAvailable(true);
+                setError(null);
             } finally {
                 setIsChecking(false);
             }
@@ -119,18 +138,26 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
         setError(null);
         try {
             haptic.success();
-            // AWAIT the backend claim first to avoid race conditions and silent 401 failures
-            await usernameApi.claim(username);
-            
-            const canGoBack = navigation.canGoBack();
+            // 1. Update user profile optimistically in local store/MMKV immediately
             updateUser({ username, isOptimistic: false });
             
+            // 2. Fire the claim request in the background (tolerating sleeping Render cold start)
+            void usernameApi.claim(username)
+                .then(() => {
+                    console.log('[ChooseUsername] Background username claim succeeded on server:', username);
+                })
+                .catch((err) => {
+                    console.error('[ChooseUsername] Background username claim failed on server:', err.message || err);
+                });
+            
+            // 3. Dismiss the screen instantly
+            const canGoBack = navigation.canGoBack();
             if (canGoBack) {
                 navigation.goBack();
             }
         } catch (err: unknown) {
             haptic.error();
-            setError((err as Error).message || 'Failed to claim username. Please verify your connection or sign in again.');
+            setError((err as Error).message || 'Failed to claim username.');
         } finally {
             setIsClaiming(false);
         }
@@ -152,15 +179,22 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
                     />
                 </View>
 
-                <View style={styles.content}>
+                <ScrollView 
+                    style={styles.flex} 
+                    contentContainerStyle={styles.scrollContent}
+                    keyboardShouldPersistTaps="handled"
+                    showsVerticalScrollIndicator={false}
+                >
                     <MotiView
                         from={{ opacity: 0, translateY: 20 }}
                         animate={{ opacity: 1, translateY: 0 }}
                         transition={{ delay: 200 }}
                     >
-                        <Text style={[styles.instruction, { color: currentTheme.colors.textMuted }]}>
-                            This is how others will see you in comments and shares. You can change it once every 30 days.
-                        </Text>
+                        {!isKeyboardVisible && (
+                            <Text style={[styles.instruction, { color: currentTheme.colors.textMuted }]}>
+                                This is how others will see you in comments and shares. You can change it once every 30 days.
+                            </Text>
+                        )}
 
                         <SurfaceCard style={styles.inputCard}>
                             <View style={styles.inputWrapper}>
@@ -203,7 +237,7 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
                             )}
                         </AnimatePresence>
 
-                        <View style={styles.requirements}>
+                        <View style={[styles.requirements, isKeyboardVisible && { marginTop: SPACING.md }]}>
                             <RequirementItem 
                                 label="3-20 characters" 
                                 met={username.length >= 3 && username.length <= 20} 
@@ -221,7 +255,7 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
                             />
                         </View>
                     </MotiView>
-                </View>
+                </ScrollView>
 
                 <View style={styles.footer}>
                     <TouchableOpacity
@@ -248,9 +282,10 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
                         )}
                     </TouchableOpacity>
 
-                    <TouchableOpacity
-                        style={styles.skipBtn}
-                        onPress={() => {
+                    {!isKeyboardVisible && (
+                        <TouchableOpacity
+                            style={styles.skipBtn}
+                            onPress={() => {
                             if (isSkipping) return;
                             setIsSkipping(true);
                             haptic.medium();
@@ -270,6 +305,7 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
                             </Text>
                         )}
                     </TouchableOpacity>
+                    )}
                 </View>
             </KeyboardAvoidingView>
         </Screen>
@@ -302,6 +338,11 @@ const styles = StyleSheet.create({
         flex: 1,
         paddingHorizontal: SPACING.lg,
         paddingTop: SPACING.xl,
+    },
+    scrollContent: {
+        paddingHorizontal: SPACING.lg,
+        paddingTop: SPACING.xl,
+        paddingBottom: SPACING.xl,
     },
     instruction: {
         fontSize: mScale(14),

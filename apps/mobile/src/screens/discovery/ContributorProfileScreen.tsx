@@ -5,7 +5,6 @@ import {
     Text,
     StyleSheet,
     ActivityIndicator,
-    RefreshControl,
     TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +13,7 @@ import { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useContributor } from '@/hooks/useContributor';
 import { Screen, Section } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { SPACING, mScale } from '@/system/constants/dimensions';
 import { TYPOGRAPHY } from '@/system/constants/typography';
@@ -205,7 +204,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                 onEndReached={loadMore}
                 onEndReachedThreshold={0.5}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={currentTheme.colors.primary} />
+                    <PremiumRefreshControl refreshing={refreshing} onRefresh={refresh} />
                 }
                 ListEmptyComponent={
                     !loading ? (

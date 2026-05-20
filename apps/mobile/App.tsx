@@ -15,8 +15,8 @@ import { BrandIntroLoader } from './src/components/BrandIntroLoader';
 import { OfflineBanner } from './src/system/components/OfflineBanner';
 import * as Notifications from 'expo-notifications';
 import * as Linking from 'expo-linking';
-import { markLocalAlertAsRead } from './src/utils/localNotifications';
 import { getOpportunityAtomic, readDetailCache } from './src/utils/offlineCache';
+import { useNotificationStore } from './src/store/useNotificationStore';
 
 // Register global cache reader for frontend-core offline action queue
 (global as any).readJobDetailsFromCache = async (id: string) => {
@@ -124,7 +124,7 @@ const AppContent = () => {
       // Navigate based on structured data
       if (navigationRef.isReady()) {
           if (data?.jobId) {
-            void markLocalAlertAsRead(data.jobId as string);
+            void useNotificationStore.getState().markRead(data.jobId as string);
             navigationRef.navigate('JobDetail', { opportunityId: data.jobId as string });
           } else if (data?.userId) {
             navigationRef.navigate('ContributorProfile', { userId: data.userId as string });
@@ -174,10 +174,10 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#0D0D0D' }}>
-      <SafeAreaProvider>
-        <ThemeProvider>
-          <ThemedRoot>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <ThemedRoot>
+          <GestureHandlerRootView style={{ flex: 1, backgroundColor: 'transparent' }}>
             <UIProvider>
               <ErrorBoundary>
                 <QueryClientProvider client={queryClient}>
@@ -193,10 +193,10 @@ export default function App() {
                 </QueryClientProvider>
               </ErrorBoundary>
             </UIProvider>
-          </ThemedRoot>
-        </ThemeProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+          </GestureHandlerRootView>
+        </ThemedRoot>
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 

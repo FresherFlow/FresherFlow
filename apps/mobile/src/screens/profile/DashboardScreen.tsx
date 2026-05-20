@@ -28,7 +28,7 @@ import { RootStackParamList } from '@/navigation/types';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -39,11 +39,20 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Dashboard'>;
 
 
 import { useUI } from '@/contexts/UIContext';
+import { useProfile } from '@/hooks/useProfile';
 
 import { useDashboard } from '@/hooks/useDashboard';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { saveDetailCache } from '@/utils/offlineCache';
 import { useSaved } from '@repo/frontend-core';
+
+const getContributorRank = (sharesCount: number) => {
+    if (sharesCount === 0) return 'Newbie';
+    if (sharesCount < 5) return 'Seed';
+    if (sharesCount < 10) return 'Active';
+    if (sharesCount < 25) return 'Star';
+    return 'Champion';
+};
 
 const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
@@ -51,6 +60,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { hideTabBar, showTabBar } = useUI();
     const { highlights, recentActivity, latestJobs, appliedJobs, loading, refresh } = useDashboard();
     const { isSaved, toggleSave } = useSaved();
+    const { shareStats } = useProfile();
     const [activeTab, setActiveTab] = React.useState<'featured' | 'latest' | 'expiring' | 'applied'>('featured');
 
     // Track scroll position for hide/show tab bar
@@ -114,8 +124,10 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
                             <Trophy size={16} color={currentTheme.colors.warning} />
                         </View>
-                        <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>0</Text>
-                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Offers</Text>
+                        <Text style={[styles.statValue, { color: currentTheme.colors.text }]} numberOfLines={1}>
+                            {getContributorRank(shareStats.totalShared)}
+                        </Text>
+                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Rank</Text>
                     </View>
                 </View>
 
@@ -308,8 +320,9 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 ListEmptyComponent={renderEmpty}
                 contentContainerStyle={[styles.scrollContent, { paddingTop: paddingTopOs + 20 }]}
                 showsVerticalScrollIndicator={false}
-                onRefresh={refresh}
-                refreshing={loading}
+                refreshControl={
+                    <PremiumRefreshControl refreshing={loading} onRefresh={refresh} />
+                }
             />
         </Screen>
     );

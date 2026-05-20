@@ -11,6 +11,7 @@ import {
     StatusBar,
     ScrollView,
     Image,
+    Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Controller } from 'react-hook-form';
@@ -24,6 +25,7 @@ import { RootStackParamList } from '@/navigation/types';
 // Premium System
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { mScale } from '@/system/constants/dimensions';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
@@ -180,7 +182,7 @@ const AuthScreen: React.FC<Props> = memo(({ route }: Props) => {
                                                         source={{ uri: 'https://developers.google.com/identity/images/g-logo.png' }} 
                                                         style={{ width: 24, height: 24, marginRight: 4 }} 
                                                     />
-                                                    <Text style={[styles.socialText, { color: currentTheme.colors.background, fontSize: 16 }]}>
+                                                    <Text style={[styles.socialText, { color: currentTheme.colors.background, fontSize: mScale(16) }]}>
                                                         Continue with Google
                                                     </Text>
                                                 </>
@@ -199,7 +201,7 @@ const AuthScreen: React.FC<Props> = memo(({ route }: Props) => {
                                                 ) : (
                                                     <>
                                                         <Apple size={22} color={currentTheme.colors.text} />
-                                                        <Text style={[styles.socialText, { color: currentTheme.colors.text, fontSize: 16 }]}>
+                                                        <Text style={[styles.socialText, { color: currentTheme.colors.text, fontSize: mScale(16) }]}>
                                                             Continue with Apple
                                                         </Text>
                                                     </>
@@ -257,7 +259,20 @@ const AuthScreen: React.FC<Props> = memo(({ route }: Props) => {
 
                         <View style={styles.legalSection}>
                             <Text style={[styles.legalText, { color: currentTheme.colors.textMuted }]}>
-                                By continuing, you agree to our Terms and Privacy Policy.
+                                By continuing, you agree to our{' '}
+                                <Text
+                                    style={{ color: currentTheme.colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}
+                                    onPress={() => Linking.openURL('https://fresherflow.in/terms')}
+                                >
+                                    Terms
+                                </Text>{' '}
+                                and{' '}
+                                <Text
+                                    style={{ color: currentTheme.colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}
+                                    onPress={() => Linking.openURL('https://fresherflow.in/privacy')}
+                                >
+                                    Privacy Policy
+                                </Text>.
                             </Text>
                         </View>
                     </View>
@@ -272,65 +287,65 @@ const styles = StyleSheet.create({
         zIndex: 10,
     },
     backBtn: {
-        width: 44,
-        height: 44,
+        width: mScale(44),
+        height: mScale(44),
         alignItems: 'center',
         justifyContent: 'center',
         marginLeft: -10,
     },
     scrollContent: {
         flexGrow: 1,
-        paddingBottom: 40,
-        paddingTop: 12,
+        paddingBottom: mScale(40),
+        paddingTop: mScale(12),
     },
     content: {
         flex: 1,
-        paddingHorizontal: 24,
+        paddingHorizontal: mScale(24),
         justifyContent: 'center',
     },
     headerSection: {
-        marginBottom: 48,
-        marginTop: 20,
+        marginBottom: mScale(48),
+        marginTop: mScale(20),
     },
     title: {
-        fontSize: 32,
+        fontSize: mScale(32),
         fontWeight: '900',
         letterSpacing: -1.5,
-        lineHeight: 38,
+        lineHeight: mScale(38),
     },
     subtitle: {
-        fontSize: 16,
+        fontSize: mScale(16),
         fontWeight: '500',
-        marginTop: 12,
-        lineHeight: 24,
+        marginTop: mScale(12),
+        lineHeight: mScale(24),
         opacity: 0.8,
     },
     form: {
-        gap: 20,
+        gap: mScale(20),
     },
     socialBtn: {
-        height: 60,
-        borderRadius: 20,
+        height: mScale(60),
+        borderRadius: mScale(20),
         borderWidth: 1,
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: 12,
+        gap: mScale(12),
     },
     socialText: {
-        fontSize: 15,
+        fontSize: mScale(15),
         fontWeight: '700',
         letterSpacing: -0.3,
     },
     socialRow: {
         flexDirection: 'row',
-        gap: 12,
+        gap: mScale(12),
     },
     dividerContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 16,
-        paddingVertical: 12,
+        gap: mScale(16),
+        paddingVertical: mScale(12),
     },
     divider: {
         flex: 1,
@@ -338,7 +353,7 @@ const styles = StyleSheet.create({
         opacity: 0.5,
     },
     dividerText: {
-        fontSize: 10,
+        fontSize: mScale(10),
         fontWeight: '900',
         letterSpacing: 0.5,
         opacity: 0.4,
@@ -346,107 +361,107 @@ const styles = StyleSheet.create({
     inputGroup: {
         flexDirection: 'row',
         alignItems: 'center',
-        height: 60,
+        height: mScale(60),
         borderBottomWidth: 1,
-        gap: 12,
-        paddingHorizontal: 4,
+        gap: mScale(12),
+        paddingHorizontal: mScale(4),
     },
     cleanInput: {
         flex: 1,
-        fontSize: 18,
+        fontSize: mScale(18),
         fontWeight: '600',
     },
     actionBtn: {
-        height: 60,
-        borderRadius: 20,
+        height: mScale(60),
+        borderRadius: mScale(20),
         alignItems: 'center',
         justifyContent: 'center',
-        marginTop: 12,
+        marginTop: mScale(12),
     },
     btnInner: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
+        gap: mScale(8),
     },
     actionText: {
-        fontSize: 14,
+        fontSize: mScale(14),
         fontWeight: '900',
         letterSpacing: 0.5,
     },
     errorText: {
-        fontSize: 12,
+        fontSize: mScale(12),
         fontWeight: '700',
-        marginTop: 8,
-        marginLeft: 4,
+        marginTop: mScale(8),
+        marginLeft: mScale(4),
     },
     guestBtn: {
         alignItems: 'center',
-        paddingVertical: 16,
+        paddingVertical: mScale(16),
     },
     guestText: {
-        fontSize: 14,
+        fontSize: mScale(14),
         fontWeight: '700',
         textDecorationLine: 'underline',
     },
     resendContainer: {
         alignItems: 'center',
-        gap: 16,
-        marginTop: 24,
+        gap: mScale(16),
+        marginTop: mScale(24),
     },
     timerRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 4,
+        gap: mScale(4),
     },
     otpWrapper: {
-        paddingVertical: 30,
+        paddingVertical: mScale(30),
         alignItems: 'center',
     },
     emailSentIconContainer: {
-        width: 120,
-        height: 120,
-        borderRadius: 60,
+        width: mScale(120),
+        height: mScale(120),
+        borderRadius: mScale(60),
         backgroundColor: 'rgba(0,0,0,0.05)',
         alignItems: 'center',
         justifyContent: 'center',
-        marginBottom: 24,
+        marginBottom: mScale(24),
     },
     timerText: {
-        fontSize: 13,
+        fontSize: mScale(13),
         fontWeight: '600',
     },
     resendLink: {
-        fontSize: 14,
+        fontSize: mScale(14),
         fontWeight: '800',
     },
     changeEmailBtn: {
-        paddingVertical: 4,
+        paddingVertical: mScale(4),
     },
     changeEmailText: {
-        fontSize: 13,
+        fontSize: mScale(13),
         fontWeight: '600',
     },
     legalSection: {
-        marginTop: 48,
+        marginTop: mScale(48),
         alignItems: 'center',
     },
     legalText: {
-        fontSize: 12,
+        fontSize: mScale(12),
         textAlign: 'center',
-        lineHeight: 18,
+        lineHeight: mScale(18),
         fontWeight: '500',
     },
     otpInputGroup: {
         width: '80%',
-        height: 60,
+        height: mScale(60),
         borderBottomWidth: 2,
         alignItems: 'center',
         justifyContent: 'center',
-        marginVertical: 12,
+        marginVertical: mScale(12),
         alignSelf: 'center',
     },
     otpCleanInput: {
-        fontSize: 32,
+        fontSize: mScale(32),
         fontWeight: '900',
         letterSpacing: 10,
         textAlign: 'center',

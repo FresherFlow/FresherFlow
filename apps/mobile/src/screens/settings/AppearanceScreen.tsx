@@ -109,7 +109,7 @@ const AppearanceScreen = ({ navigation }: Props) => {
           <View style={{ gap: 16 }}>
             <PremiumToggle 
                 title="In-App Browser"
-                description="Use integrated portal view"
+                description="Open job applications and career pages inside the app instead of your default browser."
                 value={useInAppBrowser}
                 onValueChange={toggleInAppBrowser}
                 icon={Globe}

@@ -19,7 +19,6 @@ import {
   Palette,
   Settings,
   Bell,
-  HelpCircle,
   Users,
   History,
   Info,
@@ -77,11 +76,6 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const onNavigate = (screen: keyof RootStackParamList) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     navigation.navigate(isAnonymous ? ('Auth' as never) : (screen as never));
-  };
-
-  const onSupportPress = () => {
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    navigation.navigate('Feedback');
   };
 
   return (
@@ -244,12 +238,6 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         icon={Palette}
                         label="Theme & Browser Settings"
                         onPress={() => navigation.navigate('Appearance')}
-                        currentTheme={currentTheme}
-                      />
-                      <MenuRow
-                        icon={HelpCircle}
-                        label="Contact Support"
-                        onPress={onSupportPress}
                         currentTheme={currentTheme}
                       />
                       <MenuRow

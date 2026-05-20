@@ -26,7 +26,7 @@ import { CommonActions } from '@react-navigation/native';
 import { Screen } from '@/system/layout/Layout';
 import { SPACING, mScale } from '@/system/constants/dimensions';
 import { useCompany } from '@/hooks/useCompany';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
 
@@ -92,8 +92,9 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                 keyExtractor={(item) => item.id}
                 // @ts-expect-error - estimatedItemSize exists but typing is bugged in this setup
                 estimatedItemSize={180}
-                onRefresh={onRefresh}
-                refreshing={refreshing}
+                refreshControl={
+                    <PremiumRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                }
                 showsVerticalScrollIndicator={false}
                 ListHeaderComponent={
                     <View style={styles.companyHero}>

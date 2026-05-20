@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
-import { ShieldCheck, Github, Twitter, Linkedin, Instagram, ExternalLink, Facebook, Send } from 'lucide-react-native';
+import { ShieldCheck, Github, Twitter, Linkedin, Instagram, ExternalLink, Facebook, Send, MessageSquare } from 'lucide-react-native';
 import { MenuRow } from '../profile/SettingsScreen';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
@@ -160,6 +160,13 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 </View>
 
                 <SurfaceCard style={styles.groupCard}>
+                    <MenuRow
+                        icon={MessageSquare}
+                        label="Share Feedback & Support"
+                        subtitle="Report a bug, suggest features or share love"
+                        onPress={() => navigation.navigate('Feedback')}
+                        currentTheme={currentTheme}
+                    />
                     <MenuRow
                         icon={ShieldCheck}
                         label="Privacy & Terms"
