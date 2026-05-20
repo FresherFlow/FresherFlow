@@ -2,11 +2,9 @@
     "name":  "@fresherflow/schemas",
     "version":  "1.0.0",
     "description":  "Shared Zod validation schemas for Job Platform",
-    "main": "index.ts",
-    "types": "index.ts",
-    "exports": {
-        ".": "./index.ts"
-    },
+    "main": "./dist/index.js",
+    "types": "./src/index.ts",
+
     "scripts":  {
                     "build":  "tsc",
                     "dev":  "tsc --watch",

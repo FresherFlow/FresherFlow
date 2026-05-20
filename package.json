@@ -8,6 +8,7 @@
     "packages/*"
   ],
   "scripts": {
+    "postinstall": "npx prisma generate --schema=packages/database/prisma/schema.prisma && turbo run build",
     "prune:api": "turbo prune fresherflow-api --docker",
     "prune:web": "turbo prune fresherflow-web --docker",
     "kill:port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 5000 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 5000 is free' }\"",

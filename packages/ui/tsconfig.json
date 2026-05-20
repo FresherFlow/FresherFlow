@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "module": "commonjs",
-    "moduleResolution": "node",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -10,11 +10,7 @@
     "declaration": true,
     "jsx": "react-jsx",
     "outDir": "./dist",
-    "baseUrl": ".",
-    "paths": {
-      "@repo/frontend-core": ["../frontend-core/src/index.tsx"],
-      "@repo/frontend-core/*": ["../frontend-core/src/*"]
-    }
+    "baseUrl": "."
   },
   "include": [
     "src/index.tsx",

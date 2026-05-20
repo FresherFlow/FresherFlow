@@ -3,14 +3,32 @@ import Link from 'next/link';
 import { SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = 3600;
+export const dynamicParams = true;
+
+const COMMON_ROLES = [
+    'software-engineer',
+    'frontend-engineer',
+    'backend-engineer',
+    'fullstack-engineer',
+    'data-analyst',
+    'qa-engineer',
+    'devops-engineer',
+    'system-engineer',
+    'graduate-engineer-trainee'
+];
+
+export async function generateStaticParams() {
+    return COMMON_ROLES.map((role) => ({ role }));
+}
 
 const formatLabel = (value: string) =>
     value
         .replace(/-/g, ' ')
         .replace(/\b\w/g, (char) => char.toUpperCase());
 
-export function generateMetadata({ params }: { params: { role: string } }): Metadata {
-    const roleLabel = formatLabel(params.role);
+export async function generateMetadata({ params }: { params: Promise<{ role: string }> }): Promise<Metadata> {
+    const { role } = await params;
+    const roleLabel = formatLabel(role);
     const title = `${roleLabel} Jobs for Freshers`;
     const description = `Verified ${roleLabel} jobs for freshers and entry-level candidates. Every listing is checked and includes direct apply links.`;
 
@@ -42,9 +60,10 @@ export function generateMetadata({ params }: { params: { role: string } }): Meta
     };
 }
 
-export default function RoleLandingPage({ params }: { params: { role: string } }) {
-    const roleLabel = formatLabel(params.role);
-    const pageUrl = `${SITE_URL}/jobs/role/${params.role}`;
+export default async function RoleLandingPage({ params }: { params: Promise<{ role: string }> }) {
+    const { role } = await params;
+    const roleLabel = formatLabel(role);
+    const pageUrl = `${SITE_URL}/jobs/role/${role}`;
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',

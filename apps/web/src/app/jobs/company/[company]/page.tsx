@@ -3,14 +3,27 @@ import Link from 'next/link';
 import { SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = 3600;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+    try {
+        const { fetchSitemapData } = await import('@/lib/api/cdnFeed');
+        const sitemapData = await fetchSitemapData();
+        if (!sitemapData?.companies) return [];
+        return sitemapData.companies.map((c) => ({ company: c.slug }));
+    } catch {
+        return [];
+    }
+}
 
 const formatLabel = (value: string) =>
     value
         .replace(/-/g, ' ')
         .replace(/\b\w/g, (char) => char.toUpperCase());
 
-export function generateMetadata({ params }: { params: { company: string } }): Metadata {
-    const companyLabel = formatLabel(params.company);
+export async function generateMetadata({ params }: { params: Promise<{ company: string }> }): Promise<Metadata> {
+    const { company } = await params;
+    const companyLabel = formatLabel(company);
     const title = `${companyLabel} Jobs for Freshers`;
     const description = `Verified ${companyLabel} opportunities for freshers. Every listing is checked with direct apply links.`;
 
@@ -42,9 +55,10 @@ export function generateMetadata({ params }: { params: { company: string } }): M
     };
 }
 
-export default function CompanyLandingPage({ params }: { params: { company: string } }) {
-    const companyLabel = formatLabel(params.company);
-    const pageUrl = `${SITE_URL}/jobs/company/${params.company}`;
+export default async function CompanyLandingPage({ params }: { params: Promise<{ company: string }> }) {
+    const { company } = await params;
+    const companyLabel = formatLabel(company);
+    const pageUrl = `${SITE_URL}/jobs/company/${company}`;
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',

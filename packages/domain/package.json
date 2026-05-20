@@ -3,8 +3,16 @@
     "version": "1.0.0",
     "description": "Core business domain logic for FresherFlow",
     "type": "module",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.js",
+            "default": "./dist/index.js"
+        }
+    },
     "scripts": {
         "build": "tsc && node ../../scripts/fix-esm-imports.mjs dist",
         "dev": "tsc -w",

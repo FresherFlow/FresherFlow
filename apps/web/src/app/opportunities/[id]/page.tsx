@@ -2,7 +2,6 @@ import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
 import { permanentRedirect } from 'next/navigation';
 import { Suspense } from 'react';
-import { getSiteMode } from '@/lib/siteModeServer';
 import OpportunityDetailClient from './OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
 import { getOpportunityPath } from '@/lib/opportunityPath';
@@ -43,7 +42,7 @@ export async function generateStaticParams() {
 // Generate dynamic SEO metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { id: slugOrId } = await params;
-    const siteMode = await getSiteMode();
+    const siteMode = 'private';
     try {
         const opportunity = await fetchOpportunityForPage(slugOrId, siteMode);
         if (!opportunity) throw new Error('Opportunity not found');
@@ -58,7 +57,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function OpportunityDetailPage({ params }: Props) {
     const { id: slugOrId } = await params;
-    const siteMode = await getSiteMode();
+    const siteMode = 'private';
     let opportunityData: ExtendedOpportunity | null = null;
 
     let relatedOpportunitiesData: Opportunity[] = [];

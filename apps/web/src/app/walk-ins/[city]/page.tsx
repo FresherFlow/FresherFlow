@@ -3,14 +3,30 @@ import Link from 'next/link';
 import { SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = 3600;
+export const dynamicParams = true;
+
+const COMMON_CITIES = [
+    'ahmedabad', 'bengaluru', 'bangalore', 'bhopal', 'bhubaneswar',
+    'chandigarh', 'chennai', 'coimbatore', 'delhi', 'faridabad',
+    'gandhinagar', 'ghaziabad', 'gurgaon', 'gurugram', 'guwahati',
+    'hyderabad', 'indore', 'jaipur', 'kanpur', 'kochi', 'kolkata',
+    'lucknow', 'mumbai', 'mysuru', 'nagpur', 'noida', 'patna',
+    'pune', 'ranchi', 'surat', 'thane', 'trivandrum', 'thiruvananthapuram',
+    'vadodara', 'visakhapatnam'
+];
+
+export async function generateStaticParams() {
+    return COMMON_CITIES.map((city) => ({ city }));
+}
 
 const formatLabel = (value: string) =>
     value
         .replace(/-/g, ' ')
         .replace(/\b\w/g, (char) => char.toUpperCase());
 
-export function generateMetadata({ params }: { params: { city: string } }): Metadata {
-    const cityLabel = formatLabel(params.city);
+export async function generateMetadata({ params }: { params: Promise<{ city: string }> }): Promise<Metadata> {
+    const { city } = await params;
+    const cityLabel = formatLabel(city);
     const title = `Walk-ins in ${cityLabel}`;
     const description = `Verified walk-in drives and fresher opportunities in ${cityLabel}. Direct apply and venue details included.`;
 
@@ -42,9 +58,10 @@ export function generateMetadata({ params }: { params: { city: string } }): Meta
     };
 }
 
-export default function WalkInsCityLandingPage({ params }: { params: { city: string } }) {
-    const cityLabel = formatLabel(params.city);
-    const pageUrl = `${SITE_URL}/walk-ins/${params.city}`;
+export default async function WalkInsCityLandingPage({ params }: { params: Promise<{ city: string }> }) {
+    const { city } = await params;
+    const cityLabel = formatLabel(city);
+    const pageUrl = `${SITE_URL}/walk-ins/${city}`;
     const jsonLd = {
         '@context': 'https://schema.org',
         '@type': 'CollectionPage',

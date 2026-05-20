@@ -187,6 +187,11 @@ export default function OpenGraphImage() {
                 </div>
             </div>
         ),
-        size
+        {
+            ...size,
+            headers: {
+                'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
+            },
+        }
     );
 }

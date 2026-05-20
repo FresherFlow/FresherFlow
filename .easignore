@@ -1,0 +1,42 @@
+# Ignored directories and files for EAS Cloud uploads at the monorepo root
+# This zips and uploads ONLY your source code, bringing package size under 2MB!
+
+# Node Packages (Cloud installs them fresh)
+node_modules/
+apps/*/node_modules/
+packages/*/node_modules/
+
+# Local Dev Caches
+.expo/
+.turbo/
+.idea/
+.vscode/
+
+# Native Builds (Both Mobile apps)
+apps/mobile/android/build/
+apps/mobile/android/app/build/
+apps/mobile/android/.gradle/
+apps/mobile/ios/build/
+apps/mobile/ios/Pods/
+apps/mobile/ios/.xcode.env.local
+
+apps/admin-mobile/android/build/
+apps/admin-mobile/android/app/build/
+apps/admin-mobile/android/.gradle/
+apps/admin-mobile/ios/build/
+apps/admin-mobile/ios/Pods/
+
+# Shared Build Outputs (Cloud compiles them via postinstall)
+packages/*/dist/
+packages/*/build/
+packages/*/out/
+
+# Other heavy web/api folders (EAS only compiles mobile)
+apps/api/dist/
+apps/web/.next/
+apps/web/out/
+
+# Local mock/scratch spaces
+.artifacts/
+scratch/
+tmp/

@@ -1,0 +1,30 @@
+# Ignored directories and files for Expo EAS Cloud uploads
+# This keeps your upload size under 2MB and makes uploads instant!
+
+# Dependencies
+node_modules/
+
+# Local Dev Caches
+.expo/
+.turbo/
+.idea/
+.vscode/
+
+# Local Native Builds
+android/build/
+android/app/build/
+android/.gradle/
+ios/build/
+ios/Pods/
+ios/.xcode.env.local
+
+# Local Build Output Directories
+dist/
+build/
+out/
+
+# Assets and media that are loaded remotely
+.artifacts/
+assets/mock-data/
+scratch/
+tmp/

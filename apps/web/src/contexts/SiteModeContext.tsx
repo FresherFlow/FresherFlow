@@ -22,10 +22,10 @@ const FALLBACK_SITE_MODE_CONTEXT: SiteModeContextType = {
 
 export function SiteModeProvider({
   children,
-  initialMode,
+  initialMode = "private",
 }: {
   children: React.ReactNode;
-  initialMode: SiteMode;
+  initialMode?: SiteMode;
 }) {
   const [mode, setModeState] = useState<SiteMode>(() => {
     if (typeof window === "undefined") return initialMode;

@@ -20,6 +20,7 @@ out/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
 **/.env
 **/.env.local
 
@@ -65,3 +66,17 @@ docs/
 
 tmp/
 apps/ingestion
+
+# Sensitive database configs
+packages/database/db.config
+
+# Local testing and scratch scripts
+packages/parser/scratch_test*.js
+scratch/
+apps/web/public/dummy-feed.json
+
+# Types package build outputs
+packages/types/index.d.ts
+packages/types/*.map
+
+

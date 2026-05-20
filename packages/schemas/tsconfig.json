@@ -1,20 +1,15 @@
 {
     "compilerOptions": {
         "target": "ES2020",
-        "module": "commonjs",
+        "module": "NodeNext",
         "declaration": true,
         "outDir": "./dist",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node",
-        "baseUrl": ".",
-        "paths": {
-            "@fresherflow/types": [
-                "../types/index.ts"
-            ]
-        }
+        "moduleResolution": "NodeNext",
+        "baseUrl": "."
     },
     "include": [
         "index.ts"

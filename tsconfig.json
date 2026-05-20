@@ -8,54 +8,7 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react-jsx",
-    "baseUrl": ".",
-    "paths": {
-      "@repo/domain": [
-        "packages/domain/src"
-      ],
-      "@repo/domain/*": [
-        "packages/domain/src/*"
-      ],
-      "@repo/api-client": [
-        "packages/api-client/src"
-      ],
-      "@repo/api-client/*": [
-        "packages/api-client/src/*"
-      ],
-      "@repo/utils": [
-        "packages/utils/src"
-      ],
-      "@repo/utils/*": [
-        "packages/utils/src/*"
-      ],
-      "@repo/schemas": [
-        "packages/schemas"
-      ],
-      "@repo/schemas/*": [
-        "packages/schemas/*"
-      ],
-      "@repo/frontend-core": [
-        "packages/frontend-core/src"
-      ],
-      "@repo/frontend-core/*": [
-        "packages/frontend-core/src/*"
-      ],
-      "@repo/ui": [
-        "packages/ui/src"
-      ],
-      "@repo/ui/*": [
-        "packages/ui/src/*"
-      ],
-      "@fresherflow/types": [
-        "packages/types/index.ts"
-      ],
-      "@fresherflow/parser": [
-        "packages/parser/src/index.ts"
-      ],
-      "@fresherflow/parser/*": [
-        "packages/parser/src/*"
-      ]
-    }
+    "baseUrl": "."
   },
   "exclude": [
     "**/node_modules",

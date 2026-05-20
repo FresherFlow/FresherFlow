@@ -2,8 +2,18 @@
     "name": "@fresherflow/utils",
     "version": "1.0.0",
     "description": "Shared utilities for FresherFlow",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./src/index.ts",
+    "exports": {
+        ".": {
+            "types": "./src/index.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.js",
+            "default": "./dist/index.js"
+        }
+    },
+
     "files": [
         "dist"
     ],
@@ -15,6 +25,7 @@
     },
     "dependencies": {
         "@fresherflow/types": "*",
+        "@fresherflow/constants": "*",
         "compromise": "^14.14.5",
         "country-state-city": "^3.2.1",
         "natural": "^8.1.0"

@@ -3,8 +3,16 @@
     "version": "1.0.0",
     "description": "Shared job parsing logic for FresherFlow",
     "type": "module",
-    "main": "dist/index.js",
-    "types": "dist/index.d.ts",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js",
+            "require": "./dist/index.js",
+            "default": "./dist/index.js"
+        }
+    },
     "files": [
         "dist"
     ],

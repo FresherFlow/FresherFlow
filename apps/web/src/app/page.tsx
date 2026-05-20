@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
-import { getSiteMode } from '@/lib/siteModeServer';
 import { GovtLandingPage } from '@/features/landing/GovtLandingPage';
 import { fetchBootstrapFeed, fetchEducationMetadata, fetchSkillsMetadata, EducationMetadata } from '@/lib/api/cdnFeed';
 import { SiteMode } from '@/lib/siteMode';
@@ -55,23 +54,21 @@ export default async function LandingPage() {
 
     try {
         const feedPromise = fetchBootstrapFeed();
-        const modePromise = getSiteMode();
         const eduPromise = fetchEducationMetadata();
         const skillsPromise = fetchSkillsMetadata();
 
         const dataPromise = Promise.all([
             feedPromise,
-            modePromise,
             eduPromise,
             skillsPromise
         ]);
 
-        const timeoutPromise = new Promise<[null, SiteMode, null, null]>((resolve) =>
-            setTimeout(() => resolve([null, 'private', null, null]), 500)
+        const timeoutPromise = new Promise<[null, null, null]>((resolve) =>
+            setTimeout(() => resolve([null, null, null]), 500)
         );
 
-        const [resolvedFeed, resolvedMode, resolvedEdu, resolvedSkills] = await Promise.race([dataPromise, timeoutPromise]);
-        mode = resolvedMode;
+        const [resolvedFeed, resolvedEdu, resolvedSkills] = await Promise.race([dataPromise, timeoutPromise]);
+        mode = 'private';
         if (resolvedFeed) {
             opportunities = resolvedFeed.opportunities || [];
             liveCount = resolvedFeed.count || opportunities.length || 0;
@@ -85,7 +82,7 @@ export default async function LandingPage() {
     // eslint-disable-next-line react-hooks/purity
     console.log(`[Landing] Page data resolved in ${Date.now() - start}ms (mode: ${mode}, count: ${liveCount}, opportunities: ${opportunities.length})`);
 
-    if (mode === 'govt') {
+    if ((mode as string) === 'govt') {
         return <GovtLandingPage liveCount={liveCount} />;
     }
 

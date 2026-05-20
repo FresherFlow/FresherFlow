@@ -64,7 +64,7 @@ export class UrlParserService {
             title: fromJsonLd.title || fromMeta.title || semantic.title,
             company: fromJsonLd.company || fromMeta.company || semantic.company,
             companyWebsite: fromJsonLd.companyWebsite || fromMeta.companyWebsite || this.origin(finalUrl),
-            type: this.inferType(fromJsonLd.type, fromMeta.title, rawText, semantic.type),
+            type: this.inferType(fromJsonLd.type, fromMeta.title, rawText, semantic.type as any),
             locations: this.unique([...(fromJsonLd.locations || []), ...(fromMeta.locations || []), ...(semantic.locations || [])]),
             requiredSkills: this.unique([...(semantic.skills || [])]).slice(0, 20),
             experienceMin: semantic.experienceMin,

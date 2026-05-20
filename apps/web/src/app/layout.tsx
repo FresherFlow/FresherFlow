@@ -12,7 +12,6 @@ import { NavigationWrapper } from "@/components/providers/NavigationWrapper";
 // import OfflineNotification from "@/components/ui/OfflineNotification";
 import InstallAppBanner from "@/components/ui/InstallAppBanner";
 import { SiteModeProvider } from "@/contexts/SiteModeContext";
-import { getSiteMode } from "@/lib/siteModeServer";
 import { PageTransitionWrapper } from "@/components/providers/PageTransitionWrapper";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -84,15 +83,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  // Race site mode resolution against a 500ms timeout to prevent layout hangs
-  let initialSiteMode: SiteMode = 'private';
-  try {
-    const modePromise = getSiteMode();
-    const timeoutPromise = new Promise<SiteMode>((resolve) => setTimeout(() => resolve('private'), 500));
-    initialSiteMode = await Promise.race([modePromise, timeoutPromise]);
-  } catch (err) {
-    console.warn('[Layout] Site mode resolution failed, falling back to private', err);
-  }
+  const initialSiteMode: SiteMode = 'private';
   const gaId = process.env.NEXT_PUBLIC_GA_ID || '';
   const enableVercelAnalytics = process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
   const enableSpeedInsights = process.env.NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS === 'true';
