@@ -7,6 +7,9 @@ import { ADMIN_OPPORTUNITIES_PAGE_SIZE } from '../../../lib/constants';
 export const useAdminFeed = () => {
   const [searchInput, setSearchInput] = useState('');
   const [activeQuery, setActiveQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [sort, setSort] = useState('postedAt_desc');
 
   const {
     data,
@@ -18,13 +21,15 @@ export const useAdminFeed = () => {
     error,
     refetch,
   } = useInfiniteQuery({
-    queryKey: ['admin', 'opportunities', activeQuery],
+    queryKey: ['admin', 'opportunities', activeQuery, statusFilter, typeFilter, sort],
     queryFn: ({ pageParam = 1 }) => 
       adminOpportunitiesApi.list({
         page: pageParam,
         limit: ADMIN_OPPORTUNITIES_PAGE_SIZE,
-        status: 'PUBLISHED',
-        ...(activeQuery.trim() ? { search: activeQuery.trim() } : {}),
+        status: statusFilter || undefined,
+        type: typeFilter || undefined,
+        sort: sort || undefined,
+        q: activeQuery.trim() || undefined,
       }),
     initialPageParam: 1,
     getNextPageParam: (lastPage, allPages) => {
@@ -73,6 +78,14 @@ export const useAdminFeed = () => {
     debouncedSearch.cancel(); // Stop any pending debounce if user clicks Search button
   }, [searchInput, debouncedSearch]);
 
+  const clearFilters = useCallback(() => {
+    setSearchInput('');
+    setActiveQuery('');
+    setStatusFilter('');
+    setTypeFilter('');
+    setSort('postedAt_desc');
+  }, []);
+
   return {
     jobs,
     total: data?.pages[0]?.total ?? 0,
@@ -82,6 +95,13 @@ export const useAdminFeed = () => {
     searchInput,
     setSearchInput,
     activeQuery,
+    statusFilter,
+    setStatusFilter,
+    typeFilter,
+    setTypeFilter,
+    sort,
+    setSort,
+    clearFilters,
     error: error ? (error as Error).message : null,
     fetchJobs: refetch,
     loadMore,
@@ -90,3 +110,4 @@ export const useAdminFeed = () => {
     summary: summaryData?.summary || {},
   };
 };
+

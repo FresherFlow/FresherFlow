@@ -1,7 +1,7 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
     StyleSheet, Text, View, 
-    ActivityIndicator, RefreshControl, Alert, Platform,
+    ActivityIndicator, RefreshControl, Platform,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import type { RouteProp } from '@react-navigation/native';
@@ -12,6 +12,8 @@ import { adminOpportunitiesApi } from '@fresherflow/api-client';
 import { toast } from '../../lib/toast';
 import { useTheme } from '../../theme/ThemeProvider';
 import { mScale, SPACING } from '../../theme/dimensions';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
 
 // Hooks
 import { useOpportunityDetail } from './hooks/useOpportunityDetail';
@@ -21,6 +23,8 @@ import { SegmentedControl } from '../system/components/Controls';
 import { DetailHeader } from './components/DetailHeader';
 import { DetailGrid } from './components/DetailGrid';
 import { PremiumHeader } from '../system/components/PremiumPrimitives';
+import { getStatusLabel, getOpportunityStatusColor, buildSocialCaption } from './utils/opportunityUtils';
+import { AdminActionSheet, type AdminActionSheetRef, type AdminActionType } from './components/AdminActionSheet';
 
 export const OpportunityDetailScreen = ({ 
     route, 
@@ -31,6 +35,7 @@ export const OpportunityDetailScreen = ({
 }) => {
     const { opportunityId } = route.params;
     const { currentTheme } = useTheme();
+    const adminActionSheetRef = useRef<AdminActionSheetRef>(null);
     
     const {
         opp,
@@ -42,13 +47,6 @@ export const OpportunityDetailScreen = ({
         fetchAll,
         onRefresh
     } = useOpportunityDetail(opportunityId);
-
-    const STATUS_COLOR: Record<string, string> = {
-        PUBLISHED: currentTheme.colors.success,
-        DRAFT: currentTheme.colors.secondary,
-        ARCHIVED: currentTheme.colors.muted,
-        EXPIRED: currentTheme.colors.error,
-    };
 
     useFocusEffect(useCallback(() => { void fetchAll(); }, [fetchAll]));
 
@@ -75,80 +73,63 @@ export const OpportunityDetailScreen = ({
         );
     }
 
-    const sc = STATUS_COLOR[opp.status] || currentTheme.colors.muted;
+    const statusLabel = getStatusLabel(opp);
+    const { text: sc } = getOpportunityStatusColor(statusLabel);
+
+    const handleAdminAction = async (action: AdminActionType, reason?: string) => {
+        try {
+            switch (action) {
+                case 'PUBLISH':
+                    await adminOpportunitiesApi.update(opportunityId, { status: 'PUBLISHED' });
+                    toast.success('Published', 'Opportunity is now live.');
+                    break;
+                case 'EXPIRE':
+                    await adminOpportunitiesApi.expire(opportunityId, reason);
+                    toast.success('Expired', 'Opportunity moved out of the live feed.');
+                    break;
+                case 'RESTORE':
+                    await adminOpportunitiesApi.restore(opportunityId);
+                    toast.success('Restored', 'Opportunity restored successfully.');
+                    break;
+                case 'DELETE':
+                    await adminOpportunitiesApi.delete(opportunityId, reason);
+                    toast.success('Deleted', 'Opportunity removed.');
+                    navigation.goBack();
+                    return; // Avoid updating state after going back
+            }
+            void fetchAll();
+        } catch (error) {
+            const label = action.charAt(0) + action.slice(1).toLowerCase();
+            toast.error(`${label} failed`, error instanceof Error ? error.message : `Failed to ${action.toLowerCase()}`);
+            throw error;
+        }
+    };
 
     const publishOpportunity = () => {
-        Alert.alert('Publish Opportunity?', 'This will make the opportunity live for all users.', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Publish',
-                onPress: async () => {
-                    try {
-                        await adminOpportunitiesApi.update(opportunityId, { status: 'PUBLISHED' });
-                        toast.success('Published', 'Opportunity is now live.');
-                        void fetchAll();
-                    } catch (error) {
-                        toast.error('Publish failed', error instanceof Error ? error.message : 'Failed to publish');
-                    }
-                },
-            },
-        ]);
+        adminActionSheetRef.current?.show('PUBLISH', opp.title);
     };
 
     const expireOpportunity = () => {
-        Alert.prompt('Expire Opportunity', `Reason for expiring "${opp.title}" (optional):`, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Expire',
-                style: 'destructive',
-                onPress: async (reason?: string) => {
-                    try {
-                        await adminOpportunitiesApi.expire(opportunityId, reason);
-                        toast.success('Expired', 'Opportunity moved out of the live feed.');
-                        void fetchAll();
-                    } catch (error) {
-                        toast.error('Expire failed', error instanceof Error ? error.message : 'Failed to expire');
-                    }
-                },
-            },
-        ], 'plain-text');
+        adminActionSheetRef.current?.show('EXPIRE', opp.title);
     };
 
     const restoreOpportunity = () => {
-        Alert.alert('Restore Opportunity?', 'This will restore the opportunity back to the active set.', [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Restore',
-                onPress: async () => {
-                    try {
-                        await adminOpportunitiesApi.restore(opportunityId);
-                        toast.success('Restored', 'Opportunity restored successfully.');
-                        void fetchAll();
-                    } catch (error) {
-                        toast.error('Restore failed', error instanceof Error ? error.message : 'Failed to restore');
-                    }
-                },
-            },
-        ]);
+        adminActionSheetRef.current?.show('RESTORE', opp.title);
     };
 
     const deleteOpportunity = () => {
-        Alert.prompt('Delete Opportunity', `Add a reason for deleting "${opp.title}":`, [
-            { text: 'Cancel', style: 'cancel' },
-            {
-                text: 'Delete',
-                style: 'destructive',
-                onPress: async (reason?: string) => {
-                    try {
-                        await adminOpportunitiesApi.delete(opportunityId, reason);
-                        toast.success('Deleted', 'Opportunity removed.');
-                        navigation.goBack();
-                    } catch (error) {
-                        toast.error('Delete failed', error instanceof Error ? error.message : 'Failed to delete');
-                    }
-                },
-            },
-        ], 'plain-text');
+        adminActionSheetRef.current?.show('DELETE', opp.title);
+    };
+
+    const copySocialCaption = async () => {
+        try {
+            const caption = buildSocialCaption(opp);
+            await Clipboard.setStringAsync(caption);
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+            toast.success('Copied', 'Social caption copied to clipboard!');
+        } catch (error) {
+            toast.error('Copy failed', error instanceof Error ? error.message : 'Failed to copy');
+        }
     };
 
     return (
@@ -160,7 +141,7 @@ export const OpportunityDetailScreen = ({
                     showBack 
                 />
             </View>
-
+            
             <View style={styles.tabContainer}>
                 <SegmentedControl
                     options={[
@@ -188,10 +169,12 @@ export const OpportunityDetailScreen = ({
                             opp={opp}
                             navigation={navigation}
                             statusColor={sc}
-                            onPublish={opp.status === 'DRAFT' ? publishOpportunity : undefined}
-                            onExpire={opp.status === 'PUBLISHED' ? expireOpportunity : undefined}
-                            onRestore={opp.status === 'EXPIRED' || opp.status === 'ARCHIVED' ? restoreOpportunity : undefined}
+                            dynamicStatus={statusLabel}
+                            onPublish={statusLabel === 'DRAFT' ? publishOpportunity : undefined}
+                            onExpire={statusLabel === 'LIVE' ? expireOpportunity : undefined}
+                            onRestore={statusLabel === 'EXPIRED' || statusLabel === 'ARCHIVED' ? restoreOpportunity : undefined}
                             onDelete={deleteOpportunity}
+                            onCopySocial={copySocialCaption}
                         />
                         <View style={styles.gridWrapper}>
                             <DetailGrid opp={opp} />
@@ -205,6 +188,10 @@ export const OpportunityDetailScreen = ({
                     />
                 )}
             </ScrollScreen>
+            <AdminActionSheet
+                ref={adminActionSheetRef}
+                onConfirm={handleAdminAction}
+            />
         </Screen>
     );
 };

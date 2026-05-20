@@ -25,6 +25,7 @@ const INITIAL: PostOpportunityFormValues = {
 
 export const usePostOpportunity = (opportunityId: string | undefined, navigation: NavigationProp<Record<string, unknown>>) => {
   const isEditing = !!opportunityId;
+  const rawOpportunityId = (navigation.getState().routes.find(r => r.name === 'PostOpportunity')?.params as Record<string, unknown> | undefined)?.rawOpportunityId as string | undefined;
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const { addToQueue } = usePostSyncStore();
@@ -140,6 +141,10 @@ export const usePostOpportunity = (opportunityId: string | undefined, navigation
       allowedPassoutYears: f.selectedYears,
       requiredSkills: f.skills.split(',').map(s => s.trim()).filter(Boolean),
     };
+
+    if (rawOpportunityId) {
+      payload.rawOpportunityId = rawOpportunityId;
+    }
 
     setSaving(true);
     try {

@@ -1,6 +1,6 @@
 import React from 'react';
-import { StyleSheet, Text, View, TextStyle } from 'react-native';
-import { Globe, MapPin, ShieldCheck, Activity } from 'lucide-react-native';
+import { StyleSheet, Text, View, TextStyle, Linking, TouchableOpacity } from 'react-native';
+import { Globe, MapPin, ShieldCheck, Activity, Calendar, ExternalLink } from 'lucide-react-native';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { theme, alpha } from '../../../theme';
 import { mScale, SPACING, RADIUS } from '../../../theme/dimensions';
@@ -41,6 +41,77 @@ export const DetailGrid = ({ opp }: DetailGridProps) => {
                     <DetailRow label="EXPERIENCE" value={`${opp.experienceMin ?? 0}-${opp.experienceMax ?? '?'} yrs`} />
                 )}
             </SurfaceCard>
+
+            {opp.type === 'WALKIN' && opp.walkInDetails && (() => {
+                const wd = opp.walkInDetails;
+                return (
+                    <>
+                        <SectionHeader title="Walk-in Event Details" icon={<Calendar size={16} color={currentTheme.colors.primary} />} />
+                        <SurfaceCard style={styles.fullWidthCard}>
+                            {wd.venueAddress && (
+                                <DetailRow 
+                                    label="VENUE" 
+                                    value={String(wd.venueAddress)} 
+                                />
+                            )}
+                            {wd.venueLink && (
+                                <View style={styles.detailRow}>
+                                    <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>LOCATION LINK</Text>
+                                    <TouchableOpacity 
+                                        style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+                                        onPress={() => Linking.openURL(String(wd.venueLink))}
+                                    >
+                                        <Text style={{ color: currentTheme.colors.primary, fontSize: mScale(14), fontWeight: '700' }}>View on Maps</Text>
+                                        <ExternalLink size={12} color={currentTheme.colors.primary} />
+                                    </TouchableOpacity>
+                                </View>
+                            )}
+                            {wd.reportingTime && (
+                                <DetailRow 
+                                    label="REPORTING TIME" 
+                                    value={String(wd.reportingTime)} 
+                                />
+                            )}
+                            {wd.timeRange && (
+                                <DetailRow 
+                                    label="TIME RANGE" 
+                                    value={String(wd.timeRange)} 
+                                />
+                            )}
+                            {Array.isArray(wd.dates) && wd.dates.length > 0 && (
+                                <DetailRow 
+                                    label="DATES" 
+                                    value={wd.dates.map(d => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })).join(', ')} 
+                                />
+                            )}
+                            {wd.dateRange && (
+                                <DetailRow 
+                                    label="DATE RANGE" 
+                                    value={String(wd.dateRange)} 
+                                />
+                            )}
+                            {wd.contactPerson && (
+                                <DetailRow 
+                                    label="CONTACT PERSON" 
+                                    value={String(wd.contactPerson)} 
+                                />
+                            )}
+                            {wd.contactPhone && (
+                                <DetailRow 
+                                    label="CONTACT PHONE" 
+                                    value={String(wd.contactPhone)} 
+                                />
+                            )}
+                            {Array.isArray(wd.requiredDocuments) && wd.requiredDocuments.length > 0 && (
+                                <DetailRow 
+                                    label="REQUIRED DOCUMENTS" 
+                                    value={wd.requiredDocuments.join(', ')} 
+                                />
+                            )}
+                        </SurfaceCard>
+                    </>
+                );
+            })()}
 
             <SectionHeader title="Requirements" icon={<ShieldCheck size={16} color={currentTheme.colors.primary} />} />
             

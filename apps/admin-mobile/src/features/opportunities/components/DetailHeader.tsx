@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { CheckCircle2, Clock, Edit3, ExternalLink, MessageSquare, RotateCcw, Trash2 } from 'lucide-react-native';
+import { CheckCircle2, Clock, Edit3, ExternalLink, MessageSquare, RotateCcw, Trash2, Copy } from 'lucide-react-native';
 import { CompanyLogo } from '@repo/ui';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { alpha } from '../../../theme';
@@ -15,13 +15,25 @@ interface DetailHeaderProps {
     opp: Opportunity;
     navigation: NativeStackNavigationProp<OpportunitiesStackParamList>;
     statusColor: string;
+    dynamicStatus: string;
     onPublish?: () => void;
     onExpire?: () => void;
     onRestore?: () => void;
     onDelete?: () => void;
+    onCopySocial?: () => void;
 }
 
-export const DetailHeader = ({ opp, navigation, statusColor, onPublish, onExpire, onRestore, onDelete }: DetailHeaderProps) => {
+export const DetailHeader = ({ 
+    opp, 
+    navigation, 
+    statusColor, 
+    dynamicStatus, 
+    onPublish, 
+    onExpire, 
+    onRestore, 
+    onDelete, 
+    onCopySocial 
+}: DetailHeaderProps) => {
     const { currentTheme } = useTheme();
 
     return (
@@ -39,8 +51,8 @@ export const DetailHeader = ({ opp, navigation, statusColor, onPublish, onExpire
                         <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={2}>
                             {opp.title}
                         </Text>
-                        <View style={[styles.statusBadge, { backgroundColor: alpha(statusColor, 0.1) }]}>
-                            <Text style={[styles.statusText, { color: statusColor }]}>{opp.status}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: alpha(statusColor, 0.1), borderColor: alpha(statusColor, 0.3), borderWidth: 1 }]}>
+                            <Text style={[styles.statusText, { color: statusColor }]}>{dynamicStatus}</Text>
                         </View>
                     </View>
                     <Text style={[styles.company, { color: currentTheme.colors.textMuted }]}>{String(opp.company)}</Text>
@@ -53,14 +65,17 @@ export const DetailHeader = ({ opp, navigation, statusColor, onPublish, onExpire
                     label="Edit"
                     onPress={() => navigation.navigate('PostOpportunity', { opportunityId: opp.id })} 
                 />
-                {opp.status === 'DRAFT' && onPublish && (
+                {dynamicStatus === 'DRAFT' && onPublish && (
                     <ActionBtn icon={<CheckCircle2 size={14} color={currentTheme.colors.success} />} label="Publish" onPress={onPublish} />
                 )}
-                {opp.status === 'PUBLISHED' && onExpire && (
+                {dynamicStatus === 'LIVE' && onExpire && (
                     <ActionBtn icon={<Clock size={14} color={currentTheme.colors.warning} />} label="Expire" onPress={onExpire} />
                 )}
-                {(opp.status === 'EXPIRED' || opp.status === 'ARCHIVED') && onRestore && (
+                {(dynamicStatus === 'EXPIRED' || dynamicStatus === 'ARCHIVED') && onRestore && (
                     <ActionBtn icon={<RotateCcw size={14} color={currentTheme.colors.primary} />} label="Restore" onPress={onRestore} />
+                )}
+                {onCopySocial && (
+                    <ActionBtn icon={<Copy size={14} color={currentTheme.colors.primary} />} label="Copy Social" onPress={onCopySocial} />
                 )}
                 <ActionBtn icon={<MessageSquare size={14} color={currentTheme.colors.textMuted} />} label="Feedback"
                     onPress={() => navigation.navigate('OpportunityFeedback', {

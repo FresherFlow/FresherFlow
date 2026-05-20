@@ -111,7 +111,8 @@ export const SubmissionsScreen = () => {
                         onPress={() => {
                             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                             navigation.navigate('PostOpportunity', { 
-                                sourceLink: url 
+                                sourceLink: url,
+                                rawOpportunityId: item.id
                             });
                         }}
                     >

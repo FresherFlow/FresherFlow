@@ -11,7 +11,7 @@ import { createStackScreenOptions } from './options';
 export type OpportunitiesStackParamList = {
     OpportunitiesList: undefined;
     Submissions: undefined;
-    PostOpportunity: { opportunityId?: string; sourceLink?: string };
+    PostOpportunity: { opportunityId?: string; sourceLink?: string; rawOpportunityId?: string };
     OpportunityDetail: { opportunityId: string };
     OpportunityFeedback: { opportunityId: string; title: string; company?: string | null; website?: string | null };
 };

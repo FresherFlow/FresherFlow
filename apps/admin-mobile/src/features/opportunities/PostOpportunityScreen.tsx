@@ -178,8 +178,101 @@ export const PostOpportunityScreen = ({
                                     </TouchableOpacity>
                                 ))}
                             </View>
+
+                            <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
+
+                            <Label>Expiration Date (YYYY-MM-DD)</Label>
+                            <FormInput 
+                                placeholder="e.g. 2026-12-31" 
+                                value={form.expiresAt} 
+                                onChangeText={v => set('expiresAt', v)} 
+                                error={errors.expiresAt?.message}
+                            />
                         </SurfaceCard>
                     </Section>
+
+                    {form.type === OpportunityType.WALKIN && (
+                        <Section title="Walk-in Details">
+                            <SurfaceCard style={styles.formCard}>
+                                <Label>Venue Address *</Label>
+                                <FormInput 
+                                    placeholder="Full address of the walk-in drive" 
+                                    value={form.venueAddress} 
+                                    onChangeText={v => set('venueAddress', v)} 
+                                    error={errors.venueAddress?.message}
+                                />
+
+                                <Label>Maps Location Link</Label>
+                                <FormInput 
+                                    placeholder="https://maps.google.com/..." 
+                                    value={form.venueLink} 
+                                    onChangeText={v => set('venueLink', v)} 
+                                    error={errors.venueLink?.message}
+                                    url
+                                />
+
+                                <View style={styles.row}>
+                                    <View style={styles.flex}>
+                                        <Label>Start Date *</Label>
+                                        <FormInput 
+                                            placeholder="YYYY-MM-DD" 
+                                            value={form.walkInDate} 
+                                            onChangeText={v => set('walkInDate', v)} 
+                                            error={errors.walkInDate?.message}
+                                        />
+                                    </View>
+                                    <View style={{ width: SPACING.md }} />
+                                    <View style={styles.flex}>
+                                        <Label>End Date</Label>
+                                        <FormInput 
+                                            placeholder="YYYY-MM-DD" 
+                                            value={form.walkInEndDate} 
+                                            onChangeText={v => set('walkInEndDate', v)} 
+                                            error={errors.walkInEndDate?.message}
+                                        />
+                                    </View>
+                                </View>
+
+                                <Label>Reporting / Interview Time</Label>
+                                <FormInput 
+                                    placeholder="e.g. 9:00 AM - 1:00 PM" 
+                                    value={form.walkInTime} 
+                                    onChangeText={v => set('walkInTime', v)} 
+                                    error={errors.walkInTime?.message}
+                                />
+
+                                <Label>Required Documents</Label>
+                                <FormInput 
+                                    placeholder="Resume, Govt ID, Degree Certificates" 
+                                    value={form.requiredDocuments} 
+                                    onChangeText={v => set('requiredDocuments', v)} 
+                                    error={errors.requiredDocuments?.message}
+                                />
+
+                                <View style={styles.row}>
+                                    <View style={styles.flex}>
+                                        <Label>Contact Person</Label>
+                                        <FormInput 
+                                            placeholder="HR Manager Name" 
+                                            value={form.contactPerson} 
+                                            onChangeText={v => set('contactPerson', v)} 
+                                            error={errors.contactPerson?.message}
+                                        />
+                                    </View>
+                                    <View style={{ width: SPACING.md }} />
+                                    <View style={styles.flex}>
+                                        <Label>Contact Phone</Label>
+                                        <FormInput 
+                                            placeholder="+91 XXXXX XXXXX" 
+                                            value={form.contactPhone} 
+                                            onChangeText={v => set('contactPhone', v)} 
+                                            error={errors.contactPhone?.message}
+                                        />
+                                    </View>
+                                </View>
+                            </SurfaceCard>
+                        </Section>
+                    )}
 
                     <Section title="Candidate Profile">
                         <SurfaceCard style={styles.formCard}>
