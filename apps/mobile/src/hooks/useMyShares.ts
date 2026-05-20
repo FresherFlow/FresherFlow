@@ -2,10 +2,12 @@ import { useState, useCallback, useEffect } from 'react';
 import { profileApi } from '@fresherflow/api-client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { saveSharesCache, readSharesCache } from '@/utils/offlineCache';
+import { getShareQueue, QueuedShare, syncShareQueue } from '@/utils/shareQueue';
 
 export interface Share {
     id: string;
     createdAt: string;
+    sourceLink?: string;
     mappedOpportunity?: {
         id: string;
         title: string;
@@ -17,6 +19,42 @@ export interface Share {
         savesCount: number;
     } | null;
 }
+
+const mapQueuedShareToShare = (q: QueuedShare): Share => {
+    if (q.type === 'LINK') {
+        return {
+            id: q.tempId,
+            createdAt: new Date(q.timestamp).toISOString(),
+            sourceLink: q.url,
+            mappedOpportunity: {
+                id: q.tempId,
+                title: q.url || 'Shared Link',
+                company: '',
+                status: 'OFFLINE',
+                publishedAt: '',
+                expiredAt: '',
+                clicksCount: 0,
+                savesCount: 0,
+            }
+        };
+    } else {
+        return {
+            id: q.tempId,
+            createdAt: new Date(q.timestamp).toISOString(),
+            sourceLink: q.referral?.companyUrl,
+            mappedOpportunity: {
+                id: q.tempId,
+                title: q.referral?.title || 'Referral Request',
+                company: q.referral?.company || '',
+                status: 'OFFLINE',
+                publishedAt: '',
+                expiredAt: '',
+                clicksCount: 0,
+                savesCount: 0,
+            }
+        };
+    }
+};
 
 export function useMyShares() {
     const { user } = useAuthStore();
@@ -36,13 +74,21 @@ export function useMyShares() {
             const newShares = res.shares as Share[];
 
             if (pageNum === 1) {
-                setShares(newShares);
+                const queue = await getShareQueue();
+                const offlineShares = queue.map(mapQueuedShareToShare);
+                const mergedShares = [...offlineShares, ...newShares];
+                
+                setShares(mergedShares);
                 void saveSharesCache(newShares, res.stats);
+                setStats({
+                    ...res.stats,
+                    totalShared: res.stats.totalShared + queue.length,
+                });
             } else {
                 setShares(prev => [...prev, ...newShares]);
+                setStats(res.stats);
             }
 
-            setStats(res.stats);
             setHasMore(res.hasMore);
             setPage(pageNum);
         } catch (err: unknown) {
@@ -50,7 +96,7 @@ export function useMyShares() {
                 console.error('Failed to fetch shares:', err);
             }
         }
-    }, [user]);
+    }, [user, isAnonymous]);
 
     const loadMore = useCallback(() => {
         if (!loading && hasMore) {
@@ -61,13 +107,30 @@ export function useMyShares() {
     useEffect(() => {
         const loadCacheAndFetch = async () => {
             const cached = await readSharesCache();
+            const queue = await getShareQueue();
+            const offlineShares = queue.map(mapQueuedShareToShare);
+
             if (cached && cached.items.length > 0) {
-                setShares(cached.items as Share[]);
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                setStats(cached.stats as any);
+                const mergedShares = [...offlineShares, ...(cached.items as Share[])];
+                setShares(mergedShares);
+                const cachedStats = cached.stats as typeof stats;
+                setStats({
+                    ...cachedStats,
+                    totalShared: cachedStats.totalShared + queue.length,
+                });
                 setLoading(false);
             } else {
-                setLoading(true);
+                if (offlineShares.length > 0) {
+                    setShares(offlineShares);
+                    setStats({
+                        totalShared: offlineShares.length,
+                        totalPublished: 0,
+                        approvalRate: 0,
+                    });
+                    setLoading(false);
+                } else {
+                    setLoading(true);
+                }
             }
 
             try {
@@ -75,11 +138,19 @@ export function useMyShares() {
                     setLoading(false);
                     return;
                 }
+                await syncShareQueue();
                 const res = await profileApi.getShares(1);
                 const newShares = res.shares as Share[];
-                setShares(newShares);
+                const queueAfterSync = await getShareQueue();
+                const offlineSharesAfterSync = queueAfterSync.map(mapQueuedShareToShare);
+                const mergedShares = [...offlineSharesAfterSync, ...newShares];
+                
+                setShares(mergedShares);
                 void saveSharesCache(newShares, res.stats);
-                setStats(res.stats);
+                setStats({
+                    ...res.stats,
+                    totalShared: res.stats.totalShared + queueAfterSync.length,
+                });
                 setHasMore(res.hasMore);
                 setPage(1);
             } catch (err: unknown) {
@@ -91,7 +162,7 @@ export function useMyShares() {
             }
         };
         void loadCacheAndFetch();
-    }, [user]);
+    }, [user, isAnonymous]);
 
     return {
         shares,
@@ -101,6 +172,7 @@ export function useMyShares() {
         loadMore,
         refresh: async () => {
             setRefreshing(true);
+            await syncShareQueue();
             await fetchShares(1);
             setRefreshing(false);
         },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StyleSheet, Text, View, Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -7,6 +7,10 @@ import { WifiOff } from 'lucide-react-native';
 import { MotiView, AnimatePresence } from 'moti';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { flushOfflineActions } from '@repo/frontend-core';
+import { syncCommentQueue } from '@/utils/commentQueue';
+import { syncShareQueue } from '@/utils/shareQueue';
+import { useAuthStore } from '@/store/useAuthStore';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -15,6 +19,7 @@ const alpha = (color: string, opacity: number) => {
 
 export const OfflineBanner = () => {
   const [isOffline, setIsOffline] = useState(false);
+  const wasOfflineRef = useRef(false);
   const { currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
 
@@ -23,6 +28,18 @@ export const OfflineBanner = () => {
       // Small delay to prevent flickering on quick reconnects
       const offline = state.isConnected === false;
       setIsOffline(offline);
+
+      if (!offline && wasOfflineRef.current) {
+        console.log('[OfflineBanner] Network reconnected! Syncing offline queues...');
+        const user = useAuthStore.getState().user;
+        void syncCommentQueue();
+        void syncShareQueue();
+        if (user && !user.isAnonymous) {
+          void flushOfflineActions(user.id);
+        }
+      }
+
+      wasOfflineRef.current = offline;
     });
 
     return () => removeNetInfoSubscription();

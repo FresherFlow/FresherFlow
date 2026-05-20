@@ -1,4 +1,5 @@
 import { Opportunity } from '@fresherflow/types';
+import { getCompanyDomain } from '@fresherflow/utils';
 import { getJSON, getString, setJSON, setString, remove, storage } from './storage';
 
 const FEED_INDEX_KEY = 'fresherflow_feed_index';
@@ -167,9 +168,13 @@ export const readSimilarCache = async (opportunityId: string): Promise<SimilarCa
 
 /**
  * Searches across all primary job caches (Feed, Explore, etc.) to find jobs matching a company.
- * This follows the "Global Sync + Local Filtering" architecture.
+ * Matches by canonical domain first (so "Wipro Ltd" and "Wipro" both show the same jobs),
+ * then falls back to name equality for companies without link data.
  */
-export const findJobsByCompanyLocally = async (companyName: string): Promise<Opportunity[]> => {
+export const findJobsByCompanyLocally = async (
+    companyName: string,
+    companyDomain?: string | null,
+): Promise<Opportunity[]> => {
     try {
         const feedCache = await readFeedCache();
         const exploreData = getString('fresherflow_explore_cache');
@@ -192,6 +197,19 @@ export const findJobsByCompanyLocally = async (companyName: string): Promise<Opp
             }
         }
 
+        if (companyDomain) {
+            // Domain-first: group all jobs that resolve to the same root domain
+            return allJobs.filter(job => {
+                const jobDomain = getCompanyDomain({
+                    companyWebsite: job.companyWebsite,
+                    applyLink: job.applyLink,
+                    sourceLink: job.sourceLink,
+                });
+                return jobDomain === companyDomain;
+            });
+        }
+
+        // Fallback: name match (for jobs with no link data)
         const target = companyName.toLowerCase().trim();
         return allJobs.filter(job => job.company.toLowerCase().trim() === target);
     } catch (error) {

@@ -58,6 +58,13 @@ export const ContributionPreviewCard = memo(({ share, onPress }: Props) => {
                     label: 'Closed',
                     description: 'Opportunity has reached its deadline'
                 };
+            case 'OFFLINE':
+                return {
+                    icon: Clock,
+                    color: currentTheme.colors.warning,
+                    label: 'Reviewing',
+                    description: 'In verification queue by community mods'
+                };
             default:
                 return {
                     icon: Clock,
@@ -160,7 +167,7 @@ export const ContributionPreviewCard = memo(({ share, onPress }: Props) => {
                         <View style={styles.linkRow}>
                             <LinkIcon size={mScale(13)} color={currentTheme.colors.textMuted} />
                             <Text style={[styles.linkText, { color: currentTheme.colors.text }]} numberOfLines={2}>
-                                {share.sourceLink || 'Referral Request Submitted'}
+                                {share.sourceLink || (opp?.company ? `Referral at ${opp.company}` : 'Referral Request Submitted')}
                             </Text>
                         </View>
                         <Text style={[styles.descriptionText, { color: currentTheme.colors.textMuted }]}>

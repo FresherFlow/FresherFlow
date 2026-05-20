@@ -3,7 +3,6 @@ import {
     View,
     Text,
     StyleSheet,
-    RefreshControl,
     Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,7 +13,7 @@ import { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useMyShares } from '@/hooks/useMyShares';
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { ContributionPreviewCard } from '@/system/components/ContributionPreviewCard';
 import { saveDetailCache } from '@/utils/offlineCache';
 import { SPACING, mScale } from '@/system/constants/dimensions';
@@ -91,7 +90,7 @@ const MySharesScreen: React.FC<Props> = ({ navigation }) => {
                 onEndReached={loadMore}
                 onEndReachedThreshold={0.5}
                 refreshControl={
-                    <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={currentTheme.colors.primary} />
+                    <PremiumRefreshControl refreshing={refreshing} onRefresh={refresh} />
                 }
                 ListEmptyComponent={
                     !loading ? (

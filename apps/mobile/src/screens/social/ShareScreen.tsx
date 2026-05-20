@@ -17,7 +17,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { Clock, Link as LinkIcon, AlertCircle, Info, Sparkles, Briefcase, GraduationCap, X } from 'lucide-react-native';
+import { Clock, Link as LinkIcon, AlertCircle, Info, Sparkles, Briefcase, GraduationCap, X, Trophy } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { theme } from '@/theme';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -40,6 +40,14 @@ import { ContributionPreviewCard } from '@/system/components/ContributionPreview
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+};
+
+const getContributorRankTitle = (sharesCount: number) => {
+    if (sharesCount === 0) return 'Newbie';
+    if (sharesCount < 5) return 'Seed Contributor';
+    if (sharesCount < 10) return 'Active Contributor';
+    if (sharesCount < 25) return 'Star Sharer';
+    return 'Community Champion';
 };
 
 const ShareScreen: React.FC = () => {
@@ -289,6 +297,24 @@ const ShareScreen: React.FC = () => {
                   </View>
 
                   <Text style={[styles.successTitle, { color: currentTheme.colors.text }]}>{title}</Text>
+                  
+                  <View style={{
+                      backgroundColor: alpha(currentTheme.colors.warning, 0.08),
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      borderRadius: 20,
+                      marginBottom: 20,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 8,
+                      alignSelf: 'center'
+                  }}>
+                      <Trophy size={14} color={currentTheme.colors.warning} />
+                      <Text style={{ color: currentTheme.colors.warning, fontWeight: '800', fontSize: mScale(12) }}>
+                          Contributor Rank: {getContributorRankTitle(shareStats.totalShared)}
+                      </Text>
+                  </View>
+
                   <View style={styles.statsRow}>
                       <View style={styles.statBox}>
                           <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{shareStats.totalShared}</Text>

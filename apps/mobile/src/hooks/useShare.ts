@@ -7,6 +7,7 @@ import { ParsedJob, Opportunity } from '@fresherflow/types';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
 import { readFeedCache } from '@/utils/offlineCache';
 import { getJSON, setJSON } from '@/utils/storage';
+import { queueShare } from '../utils/shareQueue';
 
 const shareSchema = z.object({
     url: z.string().optional(),
@@ -25,6 +26,7 @@ export type ShareResult = {
     id: string;
     existing?: boolean;
     pending?: boolean;
+    offline?: boolean;
 };
 
 export const useShare = () => {
@@ -147,6 +149,17 @@ export const useShare = () => {
             };
         } catch (err: unknown) {
             const error = err as { status?: number; message?: string };
+            const isNetworkError = !error.status || error.status === 0 || error.message === 'Network Error';
+            if (isNetworkError) {
+                const tempId = await queueShare('LINK', { url: watchedUrl });
+                return {
+                    success: true,
+                    id: tempId,
+                    pending: true,
+                    offline: true
+                };
+            }
+
             if (error.status === 401) {
                 setError('Your session has expired. Please sign in again.');
             } else if (error.status === 409) {
@@ -189,6 +202,26 @@ export const useShare = () => {
         } catch (err: unknown) {
             const error = err as { status?: number; message?: string };
             console.error('Failed to submit referral:', err);
+
+            const isNetworkError = !error.status || error.status === 0 || error.message === 'Network Error';
+            if (isNetworkError) {
+                const tempId = await queueShare('REFERRAL', {
+                    referral: {
+                        title: data.title || '',
+                        company: data.company || '',
+                        contact: data.contact || '',
+                        description: data.description || '',
+                        companyUrl: data.companyUrl,
+                        eligibleBatches: data.eligibleBatches
+                    }
+                });
+                return {
+                    success: true,
+                    id: tempId,
+                    pending: true,
+                    offline: true
+                };
+            }
 
             setError(error.message || 'Failed to submit referral. Please try again.');
             return undefined;
