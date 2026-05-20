@@ -175,7 +175,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                 {/* Page header */}
                 <div className="flex flex-col gap-4 pb-4">
                     {/* Top Row: Title on Left, Online/results on Right */}
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
                         <div className="space-y-0.5 shrink-0">
                             <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">Browse the live feed</h1>
                             <p className="text-[11px] text-muted-foreground font-semibold flex items-center gap-1.5" aria-live="polite">
@@ -189,26 +189,39 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
 
                     {/* Filter buttons on left row + Search Bar right next to them */}
                     <div className="flex gap-2.5 items-center justify-between flex-wrap pt-1">
-                        <div className="flex items-center gap-3 flex-wrap">
-                            {/* Search box right next to the dropdown filters */}
-                            <div className="relative w-full sm:w-72 group">
-                                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                <Input
-                                    type="text"
-                                    placeholder="Search roles, skills, or companies..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
-                                    aria-label="Search job opportunities"
-                                />
-                                {search && (
-                                    <button
-                                        onClick={() => setSearch('')}
-                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                    >
-                                        <XMarkIcon className="w-4 h-4" />
-                                    </button>
-                                )}
+                        <div className="flex items-center gap-3 flex-wrap w-full lg:w-auto">
+                            <div className="flex items-center gap-2 w-full lg:w-auto flex-1 lg:flex-none">
+                                {/* Search box right next to the dropdown filters */}
+                                <div className="relative flex-1 lg:w-96 group">
+                                    <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                    <Input
+                                        type="text"
+                                        placeholder="Search roles, skills, or companies..."
+                                        value={search}
+                                        onChange={(e) => setSearch(e.target.value)}
+                                        className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
+                                        aria-label="Search job opportunities"
+                                    />
+                                    {search && (
+                                        <button
+                                            onClick={() => setSearch('')}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            <XMarkIcon className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Mobile filter button next to search */}
+                                <button
+                                    onClick={openMobileFilters}
+                                    aria-haspopup="dialog"
+                                    aria-expanded={isMobileFilterOpen}
+                                    className="lg:hidden h-10 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0"
+                                >
+                                    <FunnelIcon className="w-4 h-4" />
+                                    {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
+                                </button>
                             </div>
 
                             {/* Desktop filter chips */}
@@ -220,17 +233,6 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                 onTypeChange={updateType}
                             />
                         </div>
-
-                        {/* Mobile filter button */}
-                        <button
-                            onClick={openMobileFilters}
-                            aria-haspopup="dialog"
-                            aria-expanded={isMobileFilterOpen}
-                            className="lg:hidden h-10 w-full sm:w-auto flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest"
-                        >
-                            <FunnelIcon className="w-4 h-4" />
-                            {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
-                        </button>
                     </div>
                 </div>
 

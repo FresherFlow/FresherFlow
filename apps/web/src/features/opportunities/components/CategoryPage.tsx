@@ -157,7 +157,7 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
             {/* Header / Title & Search row */}
             <div className="flex flex-col gap-4 pb-4">
                 {/* Top Row: Icon + Title left-aligned, results on Right */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
                     <div className="flex items-center gap-2 shrink-0">
                         <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted/60 border border-border">
                             <IconComponent className="w-4 h-4 text-foreground" />
@@ -180,22 +180,33 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
 
                 {/* Filter buttons on left row + Search Bar right next to them */}
                 <div className="flex gap-2.5 items-center justify-between flex-wrap pt-1">
-                    <div className="flex items-center gap-3 flex-wrap">
-                        {/* Search box right next to the dropdown filters */}
-                        <div className="relative w-full sm:w-72 group">
-                            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                            <Input
-                                type="text"
-                                placeholder="Search by role or company..."
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
-                            />
-                            {search && (
-                                <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                                    <XMarkIcon className="w-4 h-4" />
-                                </button>
-                            )}
+                    <div className="flex items-center gap-3 flex-wrap w-full lg:w-auto">
+                        <div className="flex items-center gap-2 w-full lg:w-auto flex-1 lg:flex-none">
+                            {/* Search box right next to the dropdown filters */}
+                            <div className="relative flex-1 lg:w-96 group">
+                                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search by role or company..."
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
+                                />
+                                {search && (
+                                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                        <XMarkIcon className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+
+                            {/* Mobile filter button next to search */}
+                            <button
+                                onClick={openMobileFilters}
+                                className="lg:hidden h-10 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0"
+                            >
+                                <FunnelIcon className="w-4 h-4" />
+                                {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
+                            </button>
                         </div>
 
                         {/* Desktop filter chips */}
@@ -205,15 +216,6 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                             isLoggedIn={!!user}
                         />
                     </div>
-
-                    {/* Mobile filter button */}
-                    <button
-                        onClick={openMobileFilters}
-                        className="lg:hidden h-10 w-full sm:w-auto flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest"
-                    >
-                        <FunnelIcon className="w-4 h-4" />
-                        {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
-                    </button>
                 </div>
             </div>
 
