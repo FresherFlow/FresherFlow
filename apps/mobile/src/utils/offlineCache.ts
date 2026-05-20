@@ -287,3 +287,18 @@ export const saveInvitesCache = async (invites: unknown[], stats: unknown, metad
 export const readInvitesCache = async (): Promise<{ items: unknown[], stats: unknown, timestamp: number } | null> => {
     return getJSON(INVITES_CACHE_KEY);
 };
+
+const REPORTED_JOBS_KEY = 'fresherflow_reported_jobs';
+
+export const saveReportedJobLocally = (opportunityId: string) => {
+    const reported = getJSON<string[]>(REPORTED_JOBS_KEY) || [];
+    if (!reported.includes(opportunityId)) {
+        reported.push(opportunityId);
+        setJSON(REPORTED_JOBS_KEY, reported);
+    }
+};
+
+export const isJobReportedLocally = (opportunityId: string): boolean => {
+    const reported = getJSON<string[]>(REPORTED_JOBS_KEY) || [];
+    return reported.includes(opportunityId);
+};

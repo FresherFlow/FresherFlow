@@ -5,11 +5,11 @@ import * as Sharing from 'expo-sharing';
 import axios from 'axios';
 import { Opportunity, OpportunityType, ActionType, FeedbackReason } from '@fresherflow/types';
 import { opportunityClicksApi, actionsApi, feedbackApi } from '@fresherflow/api-client';
-import { useNotifications, useSaved } from '@repo/frontend-core';
+import { useNotifications, useSaved, enqueueOfflineReport } from '@repo/frontend-core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Analytics, EventNames } from '@/utils/analytics';
 import { useTracker } from '@/hooks/useTracker';
-import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache } from '@/utils/offlineCache';
+import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache, isJobReportedLocally, saveReportedJobLocally } from '@/utils/offlineCache';
 import { getLocalProfile } from '@/utils/localProfile';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import { BOOTSTRAP_FEED_URL } from '@/config/api';
@@ -283,23 +283,53 @@ export const useOpportunityDetail = (
             return false;
         }
 
+        // 1. Local-first check
+        if (isJobReportedLocally(opportunityId)) {
+            showToast('You have already reported this opportunity', 'info');
+            return false;
+        }
+
         try {
             await feedbackApi.submit(opportunityId, reason);
+            
+            // Mark locally on success
+            saveReportedJobLocally(opportunityId);
+
             if (user && !user.isAnonymous) {
                 void actionsApi.track(opportunityId, ActionType.REPORTED);
             }
             return true;
         } catch (err: unknown) {
+            const errorObj = err as { name?: string; message?: string };
+            const isOffline = errorObj?.name === 'OfflineError' || 
+                              errorObj?.message?.toLowerCase().includes('offline') || 
+                              errorObj?.message?.toLowerCase().includes('network error') ||
+                              errorObj?.message?.toLowerCase().includes('timeout');
+
+            if (isOffline) {
+                // Local-first: take the report locally if API is down
+                await enqueueOfflineReport(opportunityId, reason, undefined, user.id);
+                saveReportedJobLocally(opportunityId);
+                
+                showToast('Opportunity reported. Thank you for helping the community!', 'success');
+                
+                if (user && !user.isAnonymous) {
+                    void actionsApi.track(opportunityId, ActionType.REPORTED);
+                }
+                return true;
+            }
+
             const msg = err instanceof Error ? err.message : 'Could not submit report';
             // Specific handling for already reported (P2002 translated by backend)
-            if (msg.includes('already submitted')) {
-                Alert.alert('Already Reported', 'You have already reported this opportunity.');
+            if (msg.includes('already submitted') || msg.includes('already reported')) {
+                saveReportedJobLocally(opportunityId);
+                showToast('You have already reported this opportunity', 'info');
             } else {
                 Alert.alert('Report Failed', msg);
             }
             return false;
         }
-    }, [opportunityId, user]);
+    }, [opportunityId, user, showToast]);
 
     const handleApply = useCallback(async () => {
         if (!opportunity?.applyLink) {

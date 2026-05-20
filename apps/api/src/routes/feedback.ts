@@ -25,6 +25,23 @@ router.post('/:id/feedback', requireAuth, validate(feedbackSchema), async (req: 
             return next(new AppError('Opportunity not found', 404));
         }
 
+        // Check if user has already submitted feedback for this opportunity
+        const existingFeedback = await prisma.listingFeedback.findUnique({
+            where: {
+                userId_opportunityId: {
+                    userId: req.userId!,
+                    opportunityId
+                }
+            }
+        });
+
+        if (existingFeedback) {
+            return res.status(200).json({
+                feedback: existingFeedback,
+                message: 'Feedback submitted successfully'
+            });
+        }
+
         // Create feedback (unique constraint prevents spam)
         const feedback = await prisma.listingFeedback.create({
             data: {

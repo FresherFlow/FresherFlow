@@ -80,37 +80,42 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
         ? new Date(Updates.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
         : 'Running Locally';
 
+    // True simulation only in Expo Go / metro dev mode, NOT in standalone APKs
+    const isSimulated = __DEV__ && !Updates.isEnabled;
+
     const handleCheckForUpdates = async () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         setStatus('checking');
         startSpinner();
         setErrorMsg(null);
 
-        // Simulation Block for local development / Expo Go where Updates are disabled
-        if (!Updates.isEnabled) {
-            console.log('[OTA] Running inside developer or simulator mode. Mocking update check...');
+        // Simulation Block — only in true Expo Go / metro __DEV__ mode, NOT standalone APKs
+        if (isSimulated) {
+            console.log('[OTA] Dev mode detected. Mocking update check...');
             setTimeout(() => {
                 stopSpinner();
-                const isMockUpdateAvailable = true; 
-                
-                if (isMockUpdateAvailable) {
-                    setStatus('available');
-                    setUpdateMetadata({
-                        version: '1.0.4-ota',
-                        createdAt: new Date().toLocaleDateString(undefined, { dateStyle: 'medium' }),
-                        changelog: [
-                            '⚡ High-Performance profile MMKV initialization.',
-                            '🚀 Absolute 0ms local auth gate transition logic.',
-                            '📦 Persistent offline Job Tracker status queuing.',
-                            '🎨 Refined ultra-compact claimed handles badge card.',
-                        ]
-                    });
-                    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                } else {
-                    setStatus('no-update');
-                    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                }
+                setStatus('available');
+                setUpdateMetadata({
+                    version: '1.0.4-ota (simulated)',
+                    createdAt: new Date().toLocaleDateString(undefined, { dateStyle: 'medium' }),
+                    changelog: [
+                        '⚡ High-Performance profile MMKV initialization.',
+                        '🚀 Absolute 0ms local auth gate transition logic.',
+                        '📦 Persistent offline Job Tracker status queuing.',
+                        '🎨 Refined ultra-compact claimed handles badge card.',
+                    ]
+                });
+                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }, 2000);
+            return;
+        }
+
+        // Standalone APK without EAS Update configured
+        if (!Updates.isEnabled) {
+            stopSpinner();
+            setStatus('error');
+            setErrorMsg('OTA updates are not configured for this build. Use an EAS production build to receive updates.');
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
             return;
         }
 
@@ -150,8 +155,8 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
         setStatus('downloading');
         setProgress(0);
 
-        if (!Updates.isEnabled) {
-            // Simulated download progression
+        if (isSimulated) {
+            // Simulated download progression (dev mode only)
             let currentProg = 0;
             const interval = setInterval(() => {
                 currentProg += 20;
@@ -243,10 +248,10 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
                             <Text style={[styles.metaValue, { color: currentTheme.colors.text }]}>{currentCreatedAt}</Text>
                         </View>
                         <View style={styles.metaItem}>
-                            <Text style={[styles.metaLabel, { color: currentTheme.colors.textMuted }]}>UPDATE TYPE</Text>
-                            <Text style={[styles.metaValue, { color: currentTheme.colors.text }]}>
-                                {Updates.isEnabled ? 'PRODUCTION' : 'SIMULATED'}
-                            </Text>
+                             <Text style={[styles.metaLabel, { color: currentTheme.colors.textMuted }]}>UPDATE TYPE</Text>
+                             <Text style={[styles.metaValue, { color: currentTheme.colors.text }]}>
+                                 {Updates.isEnabled ? 'PRODUCTION' : isSimulated ? 'SIMULATED' : 'STANDALONE'}
+                             </Text>
                         </View>
                     </View>
                 </SurfaceCard>

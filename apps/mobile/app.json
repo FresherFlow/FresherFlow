@@ -78,7 +78,8 @@
       "expo-web-browser"
     ],
     "updates": {
-      "url": "https://u.expo.dev/f44bb950-d1e0-4575-b499-b1a019e1e049"
+      "url": "https://u.expo.dev/f44bb950-d1e0-4575-b499-b1a019e1e049",
+      "enabled": true
     },
     "runtimeVersion": "1.0.0",
     "extra": {
