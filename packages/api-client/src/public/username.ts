@@ -13,6 +13,7 @@ export const usernameApi = {
     claim: (username: string) =>
         apiClient<{ success: boolean; username: string; message: string }>('/api/profile/username/claim', {
             method: 'POST',
-            body: JSON.stringify({ username })
+            body: JSON.stringify({ username }),
+            timeoutMs: 60000, // Tolerance for sleeping Render cold starts
         }),
 };

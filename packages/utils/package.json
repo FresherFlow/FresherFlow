@@ -18,7 +18,7 @@
         "dist"
     ],
     "scripts": {
-        "build": "tsc -p tsconfig.build.json",
+        "build": "tsc -p tsconfig.build.json && node ../../scripts/fix-esm-imports.mjs dist",
         "dev": "tsc -w",
         "lint": "eslint .",
         "test": "vitest run"
