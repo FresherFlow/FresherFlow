@@ -7,7 +7,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { saveDetailCache } from '@/utils/offlineCache';
 import { LocalAlert } from '@/utils/localNotifications';
 import { useTheme } from '@/contexts/ThemeContext';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { Screen } from '@/system/layout/Layout';
 import { BellOff, ArrowRight, Trash2, Settings } from 'lucide-react-native';
 import { CompanyLogo } from '@repo/ui';
@@ -92,6 +92,9 @@ const AlertRow = memo(({
                             website={alert.opportunity.companyWebsite}
                             size={44}
                         />
+                        {isUnread && (
+                            <View style={[styles.unreadBadge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.surface }]} />
+                        )}
                     </View>
 
                     <View style={styles.textContainer}>
@@ -111,13 +114,10 @@ const AlertRow = memo(({
                             style={[styles.alertSub, { color: currentTheme.colors.textMuted }]}
                             numberOfLines={1}
                         >
-                            {alert.opportunity.company} · {toTitleCase(alert.opportunity.locations[0])}
+                            {alert.opportunity.company} · {toTitleCase(alert.opportunity.locations?.[0] || 'Remote')} · Posted {getRelativeTime(alert.opportunity.postedAt || alert.sentAt)}
                         </Text>
                     </View>
 
-                    {isUnread && (
-                        <View style={[styles.unreadDot, { backgroundColor: currentTheme.colors.primary }]} />
-                    )}
                 </View>
 
                 <TouchableOpacity
@@ -258,8 +258,9 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                 drawDistance={500}
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={renderEmpty}
-                onRefresh={refresh}
-                refreshing={refreshing}
+                refreshControl={
+                    <PremiumRefreshControl refreshing={refreshing} onRefresh={refresh} />
+                }
                 showsVerticalScrollIndicator={false}
                 removeClippedSubviews={Platform.OS === 'android'}
             />
@@ -328,11 +329,14 @@ const styles = StyleSheet.create({
         fontWeight: '500',
         marginTop: 2,
     },
-    unreadDot: {
-        width: 8,
-        height: 8,
-        borderRadius: 4,
-        marginLeft: SPACING.sm,
+    unreadBadge: {
+        position: 'absolute',
+        top: -2,
+        right: -2,
+        width: 12,
+        height: 12,
+        borderRadius: 6,
+        borderWidth: 2,
     },
     deleteBtn: {
         padding: SPACING.sm,

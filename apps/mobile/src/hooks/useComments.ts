@@ -24,19 +24,34 @@ export function useComments(opportunityId: string) {
         const CACHE_TTL = 15 * 60 * 1000;
 
         try {
+            let hasCachedData = false;
+            let isCacheFresh = false;
+
             if (!forceRefresh) {
                 const cached = await AsyncStorage.getItem(CACHE_KEY);
                 if (cached) {
-                    const parsed = JSON.parse(cached);
-                    if (Date.now() - parsed.timestamp < CACHE_TTL) {
+                    try {
+                        const parsed = JSON.parse(cached);
                         setComments(parsed.data);
-                        setLoading(false);
-                        return;
+                        hasCachedData = true;
+                        isCacheFresh = (Date.now() - parsed.timestamp < CACHE_TTL);
+                        
+                        // If the cache is fresh and we aren't forcing refresh, we can stop here
+                        if (isCacheFresh) {
+                            setLoading(false);
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('[useComments] Failed to parse comments cache:', e);
                     }
                 }
             }
 
-            setLoading(true);
+            // Only show a blocking loading spinner if we don't have any cached comments to show
+            if (!hasCachedData) {
+                setLoading(true);
+            }
+
             const data = await commentsApi.list(opportunityId);
             
             // Merge with local queued comments for this opportunity
@@ -47,7 +62,7 @@ export function useComments(opportunityId: string) {
                     id: q.tempId,
                     text: q.text,
                     createdAt: new Date(q.timestamp).toISOString(),
-                    user: { id: 'me', username: 'You (Queued)' }
+                    user: { id: user?.id || 'me', username: user?.username || 'You' }
                 } as Comment));
 
             const combined = [...localForThisJob, ...data];
@@ -63,7 +78,7 @@ export function useComments(opportunityId: string) {
         } finally {
             setLoading(false);
         }
-    }, [opportunityId]);
+    }, [opportunityId, isAnonymous]);
 
     const postComment = useCallback(async (text: string) => {
         if (isAnonymous) return false;
@@ -73,8 +88,8 @@ export function useComments(opportunityId: string) {
             text: text.trim(),
             createdAt: new Date().toISOString(),
             user: {
-                id: 'me',
-                username: 'You (Syncing...)'
+                id: user?.id || 'me',
+                username: user?.username || 'You'
             }
         };
 
@@ -107,7 +122,7 @@ export function useComments(opportunityId: string) {
             // Update UI to show it's queued
             setComments(prev => prev.map(c => 
                 c.id === tempId 
-                    ? { ...c, user: { ...c.user, username: 'You (Offline)' } } 
+                    ? { ...c, user: { ...c.user, username: user?.username || 'You' } } 
                     : c
             ));
 

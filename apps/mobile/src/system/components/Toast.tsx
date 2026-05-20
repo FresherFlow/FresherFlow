@@ -138,7 +138,6 @@ export const Toast: React.FC<ToastProps> = ({
           opacity,
           backgroundColor: currentTheme.colors.surface,
           borderColor: currentTheme.colors.border,
-          shadowColor: currentTheme.colors.text,
         },
       ]}
     >
@@ -172,11 +171,6 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH - 40,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    // shadowColor removed as it is overridden dynamically
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 8,
     zIndex: 10000,
   },
   content: {
