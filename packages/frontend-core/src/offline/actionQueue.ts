@@ -1,4 +1,4 @@
-import { ActionType, FeedbackReason } from '@fresherflow/types';
+import { ActionType, FeedbackReason, Opportunity } from '@fresherflow/types';
 import { actionsApi, savedApi, feedbackApi, followsApi } from '@fresherflow/api-client';
 import { storage } from '../lib/storage';
 
@@ -161,10 +161,10 @@ export async function enqueueOfflineReport(opportunityId: string, reason: Feedba
 
 export async function enqueueOfflineFollowAdd(type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string, ownerId?: string) {
     const queue = await readQueue();
-    const exists = queue.some(item => item.type === 'FOLLOW_ADD' && (item as any).followType === type && (item as any).value === value && item.ownerId === ownerId);
+    const exists = queue.some(item => item.type === 'FOLLOW_ADD' && (item as FollowAddAction).followType === type && (item as FollowAddAction).value === value && item.ownerId === ownerId);
     if (exists) return;
 
-    const unfollowIdx = queue.findIndex(item => item.type === 'FOLLOW_REMOVE' && (item as any).followType === type && (item as any).value === value && item.ownerId === ownerId);
+    const unfollowIdx = queue.findIndex(item => item.type === 'FOLLOW_REMOVE' && (item as FollowRemoveAction).followType === type && (item as FollowRemoveAction).value === value && item.ownerId === ownerId);
     if (unfollowIdx >= 0) {
         queue.splice(unfollowIdx, 1);
         await writeQueue(queue);
@@ -180,16 +180,16 @@ export async function enqueueOfflineFollowAdd(type: 'TAG' | 'COMPANY' | 'CONTRIB
         value,
         createdAt: Date.now(),
         attempts: 0,
-    } as any);
+    } as FollowAddAction);
     await writeQueue(queue);
 }
 
 export async function enqueueOfflineFollowRemove(type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string, ownerId?: string) {
     const queue = await readQueue();
-    const exists = queue.some(item => item.type === 'FOLLOW_REMOVE' && (item as any).followType === type && (item as any).value === value && item.ownerId === ownerId);
+    const exists = queue.some(item => item.type === 'FOLLOW_REMOVE' && (item as FollowRemoveAction).followType === type && (item as FollowRemoveAction).value === value && item.ownerId === ownerId);
     if (exists) return;
 
-    const followIdx = queue.findIndex(item => item.type === 'FOLLOW_ADD' && (item as any).followType === type && (item as any).value === value && item.ownerId === ownerId);
+    const followIdx = queue.findIndex(item => item.type === 'FOLLOW_ADD' && (item as FollowAddAction).followType === type && (item as FollowAddAction).value === value && item.ownerId === ownerId);
     if (followIdx >= 0) {
         queue.splice(followIdx, 1);
         await writeQueue(queue);
@@ -205,7 +205,7 @@ export async function enqueueOfflineFollowRemove(type: 'TAG' | 'COMPANY' | 'CONT
         value,
         createdAt: Date.now(),
         attempts: 0,
-    } as any);
+    } as FollowRemoveAction);
     await writeQueue(queue);
 }
 
@@ -221,12 +221,17 @@ export function subscribeOfflineActionQueue(listener: () => void) {
     };
 }
 
+interface GlobalWithCacheReader {
+    readJobDetailsFromCache?: (id: string) => Promise<Opportunity | null>;
+}
+
 async function runOfflineAction(action: OfflineAction) {
     if (action.type === 'SAVE_TOGGLE') {
-        let details: any = null;
+        let details: Opportunity | null = null;
         try {
-            if (typeof (global as any).readJobDetailsFromCache === 'function') {
-                details = await (global as any).readJobDetailsFromCache(action.opportunityId);
+            const globalReader = (global as unknown as GlobalWithCacheReader).readJobDetailsFromCache;
+            if (typeof globalReader === 'function') {
+                details = await globalReader(action.opportunityId);
             }
         } catch (e) {
             console.error('[ActionQueue] Global cache reader failed:', e);
@@ -234,11 +239,11 @@ async function runOfflineAction(action: OfflineAction) {
 
         if (!details) {
             try {
-                const { readDetailCache, readSavedJobs } = require('./native');
-                details = await readDetailCache(action.opportunityId);
+                const native = await import('./native.js');
+                details = await native.readDetailCache(action.opportunityId);
                 if (!details) {
-                    const saved = await readSavedJobs();
-                    details = saved.find((j: any) => j.id === action.opportunityId) || null;
+                    const saved = await native.readSavedJobs();
+                    details = saved.find((j: Opportunity) => j.id === action.opportunityId) || null;
                 }
             } catch {
                 // Silently fallback if not available
@@ -260,12 +265,12 @@ async function runOfflineAction(action: OfflineAction) {
         return;
     }
     if (action.type === 'FOLLOW_ADD') {
-        const act = action as any;
+        const act = action as FollowAddAction;
         await followsApi.follow({ type: act.followType, value: act.value });
         return;
     }
     if (action.type === 'FOLLOW_REMOVE') {
-        const act = action as any;
+        const act = action as FollowRemoveAction;
         await followsApi.unfollow({ type: act.followType, value: act.value });
         return;
     }

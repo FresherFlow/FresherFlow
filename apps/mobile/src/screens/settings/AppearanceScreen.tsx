@@ -8,14 +8,13 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Palette, Moon, Sun, Smartphone, Zap, Globe, Compass } from 'lucide-react-native';
+import { Check, Palette, Moon, Sun, Smartphone, Zap, Globe } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { getBoolean, setBoolean } from '@/utils/storage';
-import { useSettingsStore } from '@/store/useSettingsStore';
 
 // Premium System
 import { mScale } from '@/system/constants/dimensions';
@@ -39,13 +38,6 @@ const AppearanceScreen = ({ navigation }: Props) => {
   const toggleInAppBrowser = (value: boolean) => {
       setUseInAppBrowser(value);
       setBoolean('use_in_app_browser', value);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
-
-  const { openInAppWebView, setOpenInAppWebView } = useSettingsStore();
-
-  const toggleInAppWebView = (value: boolean) => {
-      setOpenInAppWebView(value);
       void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   };
 
@@ -121,13 +113,6 @@ const AppearanceScreen = ({ navigation }: Props) => {
                 value={useInAppBrowser}
                 onValueChange={toggleInAppBrowser}
                 icon={Globe}
-            />
-            <PremiumToggle 
-                title="In-App Portal (Beta)"
-                description="Open links inside app. Early access feature."
-                value={openInAppWebView}
-                onValueChange={toggleInAppWebView}
-                icon={Compass}
             />
           </View>
         </View>

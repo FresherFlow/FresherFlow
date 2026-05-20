@@ -76,6 +76,9 @@ export const SavedProvider: React.FC<{
     void saveSavedJobs(updated);
 
     // Backend sync
+    const token = await secureStorage.getItemAsync('ff_auth_token_v1');
+    if (!token && !anonSessionId) return;
+
     try {
         await savedApi.toggle(job.id, job);
     } catch (err) {

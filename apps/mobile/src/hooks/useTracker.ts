@@ -12,6 +12,8 @@ export const useTracker = () => {
     const { user } = useAuthStore();
     const [isManualRefreshing, setIsManualRefreshing] = useState(false);
 
+    const isAnonymous = !user || user.isAnonymous;
+
     // Dynamic cache-first query matching
     const {
         data: items = [],
@@ -21,6 +23,10 @@ export const useTracker = () => {
     } = useQuery({
         queryKey: ['tracker'],
         queryFn: async () => {
+            if (isAnonymous) {
+                const cached = readTrackerCacheSync();
+                return cached?.items || [];
+            }
             const response = await actionsApi.list() as { actions: unknown[] };
             const actions = response.actions || [];
             
@@ -59,8 +65,10 @@ export const useTracker = () => {
 
     // Optimistic mutation tracking
     const trackMutation = useMutation({
-        mutationFn: ({ opportunityId, status }: { opportunityId: string, status: ActionType, opportunity?: import('@fresherflow/types').Opportunity }) => 
-            actionsApi.track(opportunityId, status),
+        mutationFn: ({ opportunityId, status }: { opportunityId: string, status: ActionType, opportunity?: import('@fresherflow/types').Opportunity }) => {
+            if (isAnonymous) return Promise.resolve(null);
+            return actionsApi.track(opportunityId, status);
+        },
         onMutate: async ({ opportunityId, status, opportunity }) => {
             await queryClient.cancelQueries({ queryKey: ['tracker'] });
             const previousActions = queryClient.getQueryData<unknown[]>(['tracker']) || [];
@@ -116,7 +124,10 @@ export const useTracker = () => {
     });
 
     const removeMutation = useMutation({
-        mutationFn: (opportunityId: string) => actionsApi.remove(opportunityId),
+        mutationFn: (opportunityId: string) => {
+            if (isAnonymous) return Promise.resolve(null);
+            return actionsApi.remove(opportunityId);
+        },
         onMutate: async (opportunityId) => {
             await queryClient.cancelQueries({ queryKey: ['tracker'] });
             const previousActions = queryClient.getQueryData<unknown[]>(['tracker']) || [];

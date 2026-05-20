@@ -8,7 +8,6 @@ import { opportunityClicksApi, actionsApi, feedbackApi } from '@fresherflow/api-
 import { useNotifications, useSaved } from '@repo/frontend-core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Analytics, EventNames } from '@/utils/analytics';
-import { useSettingsStore } from '@/store/useSettingsStore';
 import { useTracker } from '@/hooks/useTracker';
 import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache } from '@/utils/offlineCache';
 import { getLocalProfile } from '@/utils/localProfile';
@@ -143,7 +142,7 @@ export const useOpportunityDetail = (
                 }
 
                 // Track VIEW action
-                if (user) {
+                if (user && !user.isAnonymous) {
                     void actionsApi.track(opportunityId, ActionType.VIEWED);
                 }
             } catch (remoteError: unknown) {
@@ -269,7 +268,7 @@ export const useOpportunityDetail = (
                 console.log('Sharing not available');
             }
 
-            if (user) {
+            if (user && !user.isAnonymous) {
                 void actionsApi.track(opportunity.id, ActionType.SHARED);
             }
         } catch (shareError) {
@@ -279,14 +278,14 @@ export const useOpportunityDetail = (
 
     const handleReport = useCallback(async (reason: FeedbackReason) => {
         if (!opportunityId) return false;
-        if (!user) {
+        if (!user || user.isAnonymous) {
             Alert.alert('Sign in required', 'Please sign in to report this opportunity.');
             return false;
         }
 
         try {
             await feedbackApi.submit(opportunityId, reason);
-            if (user) {
+            if (user && !user.isAnonymous) {
                 void actionsApi.track(opportunityId, ActionType.REPORTED);
             }
             return true;
@@ -302,8 +301,6 @@ export const useOpportunityDetail = (
         }
     }, [opportunityId, user]);
 
-    const { openInAppWebView } = useSettingsStore();
-
     const handleApply = useCallback(async () => {
         if (!opportunity?.applyLink) {
             Alert.alert('Apply link unavailable', 'This opportunity does not have an application link yet.');
@@ -315,46 +312,38 @@ export const useOpportunityDetail = (
             void toggleTracking(opportunity);
         }
 
-        try {
-            await opportunityClicksApi.trackApplyClick(opportunity.id, 'mobile_app');
-        } catch (trackError) {
-            console.warn('Failed to track application action', trackError);
+        if (user && !user.isAnonymous) {
+            try {
+                await opportunityClicksApi.trackApplyClick(opportunity.id, 'mobile_app');
+            } catch (trackError) {
+                console.warn('Failed to track application action', trackError);
+            }
         }
         
         try {
-            void actionsApi.track(opportunity.id, ActionType.APPLIED);
+            if (user && !user.isAnonymous) {
+                void actionsApi.track(opportunity.id, ActionType.APPLIED);
+            }
             Analytics.trackEvent(EventNames.JOB_APPLY_CLICKED, {
                 opportunityId: opportunity.id,
                 company: opportunity.company,
-                useWebView: openInAppWebView
+                useWebView: false
             });
 
-            if (openInAppWebView) {
-                Analytics.trackEvent(EventNames.WEBVIEW_OPENED, {
-                    url: opportunity.applyLink,
-                    opportunityId: opportunity.id
-                });
-                // BETA: Open in pure WebView
-                navigation.navigate('JobWebView', { 
-                    url: opportunity.applyLink, 
-                    title: opportunity.title 
-                });
-            } else {
-                // STANDARD: Open in OS in-app browser (Safe)
-                await WebBrowser.openBrowserAsync(opportunity.applyLink, {
-                    readerMode: false,
-                    dismissButtonStyle: 'close',
-                    toolbarColor: currentTheme.colors.background,
-                    controlsColor: currentTheme.colors.primary,
-                });
-            }
+            // STANDARD: Open in OS in-app browser (Safe)
+            await WebBrowser.openBrowserAsync(opportunity.applyLink, {
+                readerMode: false,
+                dismissButtonStyle: 'close',
+                toolbarColor: currentTheme.colors.background,
+                controlsColor: currentTheme.colors.primary,
+            });
             return true; // Indicate success for UI-side effects like StoreReview
         } catch (err) {
             console.error('Apply link opening failed:', err);
             Alert.alert('Could not open link', 'Please try again later.');
             return false;
         }
-    }, [opportunity, isTracking, toggleTracking, openInAppWebView, navigation]);
+    }, [opportunity, isTracking, toggleTracking, navigation]);
 
     return {
         opportunity,

@@ -35,6 +35,5 @@ export type RootStackParamList = {
   Feedback: undefined;
   Legal: undefined;
   ChooseUsername: undefined;
-  JobWebView: { url: string; title: string };
   OTAUpdates: undefined;
 };

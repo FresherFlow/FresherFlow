@@ -27,8 +27,10 @@ export function useMyShares() {
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
 
+    const isAnonymous = !user || user.isAnonymous;
+
     const fetchShares = useCallback(async (pageNum = 1) => {
-        if (!user) return;
+        if (isAnonymous) return;
         try {
             const res = await profileApi.getShares(pageNum);
             const newShares = res.shares as Share[];
@@ -69,7 +71,7 @@ export function useMyShares() {
             }
 
             try {
-                if (!user) {
+                if (isAnonymous) {
                     setLoading(false);
                     return;
                 }

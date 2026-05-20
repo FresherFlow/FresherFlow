@@ -50,6 +50,7 @@ import { formatSalary } from '@/utils/formatters';
 
 import { useNotifications } from '@repo/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
+import { useAuthStore } from '@/store/useAuthStore';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { differenceInDays, isBefore, isToday } from 'date-fns';
@@ -79,6 +80,8 @@ type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
 const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
   const { currentTheme } = useTheme();
+  const { user } = useAuthStore();
+  const isAnonymous = !user || user.isAnonymous;
 
   const { isFollowing, follow, unfollow } = useFollows();
   const insets = useSafeAreaInsets();
@@ -429,21 +432,23 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             </View>
                         </View>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                        onPress={() => isFollowing('COMPANY', opportunity.company) ? unfollow('COMPANY', opportunity.company) : follow('COMPANY', opportunity.company)}
-                        style={[
-                            styles.followButton,
-                            {
-                                backgroundColor: isFollowing('COMPANY', opportunity.company) ? 'transparent' : alpha(currentTheme.colors.primary, 0.1),
-                                borderColor: currentTheme.colors.primary,
-                                borderWidth: isFollowing('COMPANY', opportunity.company) ? 1 : 0
-                            }
-                        ]}
-                    >
-                        <Text style={[styles.followButtonText, { color: currentTheme.colors.primary }]}>
-                            {isFollowing('COMPANY', opportunity.company) ? 'Following' : 'Follow'}
-                        </Text>
-                    </TouchableOpacity>
+                    {!isAnonymous && (
+                        <TouchableOpacity
+                            onPress={() => isFollowing('COMPANY', opportunity.company) ? unfollow('COMPANY', opportunity.company) : follow('COMPANY', opportunity.company)}
+                            style={[
+                                styles.followButton,
+                                {
+                                    backgroundColor: isFollowing('COMPANY', opportunity.company) ? 'transparent' : alpha(currentTheme.colors.primary, 0.1),
+                                    borderColor: currentTheme.colors.primary,
+                                    borderWidth: isFollowing('COMPANY', opportunity.company) ? 1 : 0
+                                }
+                            ]}
+                        >
+                            <Text style={[styles.followButtonText, { color: currentTheme.colors.primary }]}>
+                                {isFollowing('COMPANY', opportunity.company) ? 'Following' : 'Follow'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
             </Animated.View>
 

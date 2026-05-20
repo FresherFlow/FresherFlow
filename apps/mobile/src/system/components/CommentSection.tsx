@@ -66,6 +66,30 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
             .catch(() => showToast('Failed to delete comment', 'error'));
     };
 
+    if (isAnonymous) {
+        return (
+            <Section title="Community Discussion">
+                <SurfaceCard style={[styles.premiumCtaCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.03), borderColor: alpha(currentTheme.colors.primary, 0.15) }]}>
+                    <MessageSquare size={36} color={currentTheme.colors.primary} style={{ marginBottom: 12 }} />
+                    <Text style={[styles.premiumCtaTitle, { color: currentTheme.colors.text }]}>
+                        Join the Scout Community
+                    </Text>
+                    <Text style={[styles.premiumCtaDesc, { color: currentTheme.colors.textMuted }]}>
+                        Sign in to view verified comments, passout batch requirements, and hiring discussions for this opportunity.
+                    </Text>
+                    <TouchableOpacity
+                        style={[styles.premiumCtaBtn, { backgroundColor: currentTheme.colors.primary }]}
+                        onPress={() => navigation.navigate('Auth')}
+                    >
+                        <Text style={[styles.premiumCtaBtnText, { color: currentTheme.colors.background }]}>
+                            Sign In / Sign Up
+                        </Text>
+                    </TouchableOpacity>
+                </SurfaceCard>
+            </Section>
+        );
+    }
+
     return (
         <Section title="Community Discussion">
             <View style={styles.container}>
@@ -282,5 +306,35 @@ const styles = StyleSheet.create({
         fontSize: mScale(12),
         textAlign: 'center',
         lineHeight: 18,
-    }
+    },
+    premiumCtaCard: {
+        padding: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderRadius: RADIUS.lg,
+        borderWidth: 1,
+        borderStyle: 'dashed',
+        gap: 8,
+    },
+    premiumCtaTitle: {
+        fontSize: mScale(16),
+        fontWeight: '800',
+        textAlign: 'center',
+    },
+    premiumCtaDesc: {
+        fontSize: mScale(13),
+        textAlign: 'center',
+        lineHeight: 18,
+        paddingHorizontal: 20,
+        marginBottom: 8,
+    },
+    premiumCtaBtn: {
+        paddingHorizontal: 24,
+        paddingVertical: 12,
+        borderRadius: RADIUS.md,
+    },
+    premiumCtaBtnText: {
+        fontSize: mScale(13),
+        fontWeight: '800',
+    },
 });

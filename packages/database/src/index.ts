@@ -17,6 +17,7 @@ const prismaClientSingleton = () => {
     );
 
     if (shouldLog) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         (client as any).$on('query', (e: any) => {
             console.log(`[Prisma Query] [${new Date().toISOString()}] ${e.query} | Params: ${e.params} | Duration: ${e.duration}ms`);
         });

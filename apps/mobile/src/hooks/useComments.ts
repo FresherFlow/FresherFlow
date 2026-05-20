@@ -2,8 +2,11 @@ import { useState, useCallback, useEffect } from 'react';
 import { commentsApi, Comment } from '@fresherflow/api-client';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { queueComment, removeFromQueue, syncCommentQueue, getCommentQueue } from '../utils/commentQueue';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export function useComments(opportunityId: string) {
+    const { user } = useAuthStore();
+    const isAnonymous = !user || user.isAnonymous;
     const [comments, setComments] = useState<Comment[]>([]);
     const [loading, setLoading] = useState(true);
     const [posting, setPosting] = useState(false);
@@ -11,6 +14,11 @@ export function useComments(opportunityId: string) {
 
     const fetchComments = useCallback(async (forceRefresh = false) => {
         if (!opportunityId) return;
+        if (isAnonymous) {
+            setComments([]);
+            setLoading(false);
+            return;
+        }
 
         const CACHE_KEY = `ff_comments_cache_${opportunityId}`;
         const CACHE_TTL = 15 * 60 * 1000;
@@ -58,6 +66,7 @@ export function useComments(opportunityId: string) {
     }, [opportunityId]);
 
     const postComment = useCallback(async (text: string) => {
+        if (isAnonymous) return false;
         const tempId = `temp_${Date.now()}`;
         const mockComment: Comment = {
             id: tempId,
@@ -109,6 +118,7 @@ export function useComments(opportunityId: string) {
     }, [opportunityId]);
 
     const deleteComment = useCallback(async (commentId: string) => {
+        if (isAnonymous) return;
         try {
             if (!commentId.startsWith('temp_')) {
                 await commentsApi.delete(opportunityId, commentId);
@@ -134,12 +144,17 @@ export function useComments(opportunityId: string) {
     }, [opportunityId]);
 
     useEffect(() => {
+        if (isAnonymous) {
+            setComments([]);
+            setLoading(false);
+            return;
+        }
         void fetchComments();
         // Background sync on mount
         void syncCommentQueue().then(synced => {
             if (synced > 0) void fetchComments(true);
         });
-    }, [fetchComments]);
+    }, [fetchComments, isAnonymous]);
 
     return {
         comments,

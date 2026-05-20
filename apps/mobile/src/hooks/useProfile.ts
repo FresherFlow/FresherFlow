@@ -41,8 +41,10 @@ export const useProfile = () => {
     const [appliedCount, setAppliedCount] = useState(0);
     const [shareStats, setShareStats] = useState({ totalShared: 0, totalPublished: 0, approvalRate: 0 });
 
+    const isAnonymous = !user || user.isAnonymous;
+
     const fetchStats = useCallback(async () => {
-        if (!user) return;
+        if (!user || user.isAnonymous) return;
 
         // 1. If stats were fetched in the last 10 seconds, serve from cache
         if (Date.now() - lastStatsFetchTime < 10000) {
@@ -92,7 +94,7 @@ export const useProfile = () => {
     }, [user]);
 
     const fetchProfile = useCallback(async () => {
-        if (!user) return;
+        if (!user || user.isAnonymous) return;
 
         // 1. If profile was fetched in the last 10 seconds, serve from cache
         if (Date.now() - lastProfileFetchTime < 10000 && cachedProfile) {
@@ -161,6 +163,7 @@ export const useProfile = () => {
         await saveLocalProfile(merged);
         // Invalidate profile cache to force fresh reload
         lastProfileFetchTime = 0;
+        if (isAnonymous) return;
         // Background API sync — silent fail is fine, local save is source of truth
         try {
             await profileApi.updateEducation(data);
@@ -180,6 +183,7 @@ export const useProfile = () => {
         await saveLocalProfile(merged);
         // Invalidate profile cache
         lastProfileFetchTime = 0;
+        if (isAnonymous) return;
         try {
             await profileApi.updatePreferences(data);
             await Promise.all([fetchProfile(), refreshMe()]);
@@ -194,6 +198,7 @@ export const useProfile = () => {
         await saveLocalProfile(merged);
         // Invalidate profile cache
         lastProfileFetchTime = 0;
+        if (isAnonymous) return;
         try {
             await profileApi.updateReadiness(data);
             await Promise.all([fetchProfile(), refreshMe()]);
@@ -203,7 +208,7 @@ export const useProfile = () => {
     }, [fullProfile, fetchProfile, refreshMe]);
 
     useEffect(() => {
-        if (user) {
+        if (user && !user.isAnonymous) {
             void fetchStats();
             void fetchProfile();
         }

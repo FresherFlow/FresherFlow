@@ -22,6 +22,7 @@ import { ShieldCheck, Award, UserPlus, UserCheck } from 'lucide-react-native';
 import { useFollows } from '@/hooks/useFollows';
 import * as Haptics from 'expo-haptics';
 import { getDisplayHandle } from '@fresherflow/utils';
+import { useAuthStore } from '@/store/useAuthStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ContributorProfile'>;
 
@@ -35,6 +36,8 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
     const { userId } = route.params;
     const { currentTheme } = useTheme();
     const { user, opportunities, loading, refreshing, loadMore, refresh } = useContributor(userId);
+    const { user: currentUser } = useAuthStore();
+    const isAnonymous = !currentUser || currentUser.isAnonymous;
     const { isFollowing, follow, unfollow } = useFollows();
     const followingContributor = isFollowing('CONTRIBUTOR', userId);
 
@@ -112,29 +115,31 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                             </Text>
                         </View>
                     </View>
-                    <TouchableOpacity
-                        activeOpacity={0.7}
-                        onPress={toggleFollow}
-                        style={[
-                            styles.followBtn,
-                            {
-                                backgroundColor: followingContributor ? alpha(currentTheme.colors.primary, 0.1) : currentTheme.colors.primary,
-                                borderColor: followingContributor ? currentTheme.colors.primary : 'transparent'
-                            }
-                        ]}
-                    >
-                        {followingContributor ? (
-                            <UserCheck size={18} color={currentTheme.colors.primary} />
-                        ) : (
-                            <UserPlus size={18} color={currentTheme.colors.background} />
-                        )}
-                        <Text style={[
-                            styles.followText,
-                            { color: followingContributor ? currentTheme.colors.primary : currentTheme.colors.background }
-                        ]}>
-                            {followingContributor ? 'Following' : 'Follow'}
-                        </Text>
-                    </TouchableOpacity>
+                    {!isAnonymous && (
+                        <TouchableOpacity
+                            activeOpacity={0.7}
+                            onPress={toggleFollow}
+                            style={[
+                                styles.followBtn,
+                                {
+                                    backgroundColor: followingContributor ? alpha(currentTheme.colors.primary, 0.1) : currentTheme.colors.primary,
+                                    borderColor: followingContributor ? currentTheme.colors.primary : 'transparent'
+                                }
+                            ]}
+                        >
+                            {followingContributor ? (
+                                <UserCheck size={18} color={currentTheme.colors.primary} />
+                            ) : (
+                                <UserPlus size={18} color={currentTheme.colors.background} />
+                            )}
+                            <Text style={[
+                                styles.followText,
+                                { color: followingContributor ? currentTheme.colors.primary : currentTheme.colors.background }
+                            ]}>
+                                {followingContributor ? 'Following' : 'Follow'}
+                            </Text>
+                        </TouchableOpacity>
+                    )}
                 </View>
 
                 <SurfaceCard style={styles.statsCard}>

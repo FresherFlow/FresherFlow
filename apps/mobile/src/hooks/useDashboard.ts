@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { dashboardApi, savedApi, opportunitiesApi, actionsApi } from '@fresherflow/api-client';
 import { Opportunity } from '@fresherflow/types';
 import { readFeedCache } from '@/utils/offlineCache';
+import { useAuthStore } from '@/store/useAuthStore';
 
 interface Highlights {
     urgent?: {
@@ -22,6 +23,8 @@ interface Highlights {
 }
 
 export function useDashboard() {
+    const { user } = useAuthStore();
+    const isAnonymous = !user || user.isAnonymous;
     const [highlights, setHighlights] = useState<Highlights | null>(null);
     const [recentActivity, setRecentActivity] = useState<Opportunity[]>([]);
     const [latestJobs, setLatestJobs] = useState<Opportunity[]>([]);
@@ -29,6 +32,7 @@ export function useDashboard() {
     const [loading, setLoading] = useState(false);
 
     const fetchDashboardData = useCallback(async () => {
+        if (isAnonymous) return;
         setLoading(true);
         try {
             const [highlightsData, savedData, latestData, actionsData] = await Promise.all([
@@ -59,8 +63,10 @@ export function useDashboard() {
             }
         };
         void loadCache();
-        void fetchDashboardData();
-    }, [fetchDashboardData]);
+        if (!isAnonymous) {
+            void fetchDashboardData();
+        }
+    }, [fetchDashboardData, isAnonymous]);
 
     return {
         highlights,

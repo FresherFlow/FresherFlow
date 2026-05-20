@@ -33,8 +33,10 @@ export function useFollows() {
     const [follows, setFollows] = useState<Follows>(getCachedFollows);
     const [loading, setLoading] = useState(false);
 
+    const isAnonymous = !user || user.isAnonymous;
+
     const fetchFollows = useCallback(async () => {
-        if (!user) return;
+        if (isAnonymous) return;
         setLoading(true);
         try {
             const data = await followsApi.get();
@@ -53,7 +55,7 @@ export function useFollows() {
     }, [user]);
 
     const follow = useCallback(async (type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
-        if (!user) return false;
+        if (isAnonymous) return false;
         
         // Optimistic UI updates
         const updateState = () => {
@@ -92,7 +94,7 @@ export function useFollows() {
     }, [user, fetchFollows]);
 
     const unfollow = useCallback(async (type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
-        if (!user) return false;
+        if (isAnonymous) return false;
 
         const updateState = () => {
             setFollows(prev => {
@@ -133,8 +135,8 @@ export function useFollows() {
     }, [follows]);
 
     useEffect(() => {
-        if (user) fetchFollows();
-    }, [user, fetchFollows]);
+        if (!isAnonymous) fetchFollows();
+    }, [isAnonymous, fetchFollows]);
 
     return {
         follows,

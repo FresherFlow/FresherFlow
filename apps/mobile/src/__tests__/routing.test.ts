@@ -1,3 +1,7 @@
+jest.mock('expo-linking', () => ({
+  createURL: jest.fn(() => 'fresherflow://'),
+}));
+
 import { linking } from '@/config/linking';
 
 describe('App Navigation Linking', () => {

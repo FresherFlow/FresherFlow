@@ -30,7 +30,6 @@ import FeedbackScreen from '@/screens/settings/FeedbackScreen';
 import LegalScreen from '@/screens/settings/LegalScreen';
 import ChooseUsernameScreen from '@/screens/auth/ChooseUsernameScreen';
 import AboutScreen from '@/screens/settings/AboutScreen';
-import JobWebViewScreen from '@/screens/discovery/JobWebViewScreen';
 import OTAUpdatesScreen from '@/screens/settings/OTAUpdatesScreen';
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -247,7 +246,6 @@ const AppStack = () => (
     <Stack.Screen name="ApplicationTracker" component={ApplicationTrackerScreen} />
     <Stack.Screen name="Feedback" component={FeedbackScreen} />
     <Stack.Screen name="Legal" component={LegalScreen} />
-    <Stack.Screen name="JobWebView" component={JobWebViewScreen} />
     <Stack.Screen name="ChooseUsername" component={ChooseUsernameScreen} />
     <Stack.Screen name="OTAUpdates" component={OTAUpdatesScreen} />
     {/* Auth is a contextual modal — anonymous users land here when they try an auth-gated action */}
