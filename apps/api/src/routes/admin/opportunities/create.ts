@@ -259,11 +259,20 @@ router.put(
             if (!existing) return res.status(404).json({ message: 'Opportunity not found' });
 
             const type = data.type as OpportunityType;
+
+            // Safe deletions of related 1-to-1 records to prevent strict Prisma P2025 nested delete crashes
+            if (type !== OpportunityType.WALKIN) {
+                await prisma.walkInDetails.deleteMany({ where: { opportunityId: existing.id } });
+            }
+            if (data.governmentJobDetails === null) {
+                await prisma.governmentJobDetails.deleteMany({ where: { opportunityId: existing.id } });
+            }
+
             const walkInUpdate = type === OpportunityType.WALKIN && data.walkInDetails
                 ? { upsert: (() => { const b = buildWalkInCreate(data); return b ? { create: b.create, update: b.create } : undefined; })() }
-                : (existing.walkInDetails ? { delete: true } : {});
+                : undefined;
             const governmentJobUpdate = data.governmentJobDetails === null
-                ? (existing.governmentJobDetails ? { delete: true } : undefined)
+                ? undefined
                 : buildGovernmentJobDetailsUpsert(data);
 
             const education = normalizeEducationRequirements(data);
@@ -292,7 +301,7 @@ router.put(
                 expiresAt: deriveOpportunityExpiryDate(data, type),
                 lastVerified: new Date(),
                 ...(data.status === OpportunityStatus.PUBLISHED ? { expiredAt: null, deletedAt: null } : {}),
-                ...(type === OpportunityType.WALKIN && { walkInDetails: walkInUpdate }),
+                ...(type === OpportunityType.WALKIN && walkInUpdate && { walkInDetails: walkInUpdate }),
                 ...(governmentJobUpdate && { governmentJobDetails: governmentJobUpdate }),
             };
 
