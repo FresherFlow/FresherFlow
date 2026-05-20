@@ -81,3 +81,26 @@ export const getRootDomain = (urlOrDomain: string): string | null => {
         return null;
     }
 };
+
+/**
+ * Returns the canonical root domain for a company by checking its website,
+ * apply link, and source link in order. Used to group jobs across variant
+ * company names (e.g. "Wipro Ltd" and "Wipro" both resolve to "wipro.com").
+ */
+export const getCompanyDomain = ({
+    companyWebsite,
+    applyLink,
+    sourceLink,
+}: {
+    companyWebsite?: string | null;
+    applyLink?: string | null;
+    sourceLink?: string | null;
+}): string | null => {
+    for (const url of [companyWebsite, applyLink, sourceLink]) {
+        if (url) {
+            const domain = getRootDomain(url);
+            if (domain) return domain;
+        }
+    }
+    return null;
+};

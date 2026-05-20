@@ -1,5 +1,6 @@
 import { Suspense } from 'react';
 import { Opportunity } from '@fresherflow/types';
+import { getCompanyDomain } from '@fresherflow/utils';
 import JobCard from '@/features/opportunities/components/JobCard';
 import { SkeletonJobCard } from '@/components/ui/Skeleton';
 import { ArrowLeftIcon, GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
@@ -15,32 +16,48 @@ export async function generateStaticParams() {
     
     if (!feed?.opportunities) return [];
     
-    const companyNames = new Set<string>();
+    // One page per unique company domain — handles all name variants ("Wipro", "Wipro Ltd", etc.)
+    const domains = new Set<string>();
     feed.opportunities.forEach(opp => {
-        if (opp.company) companyNames.add(encodeURIComponent(opp.company));
+        const domain = getCompanyDomain({
+            companyWebsite: opp.companyWebsite,
+            applyLink: opp.applyLink,
+            sourceLink: opp.sourceLink,
+        });
+        if (domain) domains.add(domain);
+        else if (opp.company) domains.add(encodeURIComponent(opp.company)); // fallback for no-link jobs
     });
     
-    return Array.from(companyNames).map(name => ({ name }));
+    return Array.from(domains).map(name => ({ name }));
 }
 
 export default async function CompanyProfilePage({ params }: { params: Promise<{ name: string }> }) {
     const { name: encodedName } = await params;
-    const companyName = decodeURIComponent(encodedName);
+    const slug = decodeURIComponent(encodedName); // could be a domain (wipro.com) or fallback name
 
     const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
     const feed = await fetchBootstrapFeed();
     
     const allOpportunities = feed?.opportunities || [];
-    const companyJobs = allOpportunities.filter(
-        (opp) => opp.company?.toLowerCase() === companyName.toLowerCase()
-    );
+
+    // Match by domain first — groups "Wipro", "Wipro Ltd", "Wipro Pvt Ltd" under wipro.com
+    const companyJobs = allOpportunities.filter(opp => {
+        const domain = getCompanyDomain({
+            companyWebsite: opp.companyWebsite,
+            applyLink: opp.applyLink,
+            sourceLink: opp.sourceLink,
+        });
+        if (domain) return domain === slug;
+        // Fallback: slug is an encoded company name (no-link job)
+        return opp.company?.toLowerCase() === slug.toLowerCase();
+    });
 
     if (companyJobs.length === 0) {
         return (
             <div className="min-h-screen flex items-center justify-center p-6">
                 <div className="text-center space-y-4">
                     <h1 className="text-2xl font-bold">Company not found</h1>
-                    <p className="text-muted-foreground">No active job listings found for {companyName}.</p>
+                    <p className="text-muted-foreground">No active job listings found for {slug}.</p>
                     <Link href="/jobs" className="premium-button !w-fit px-6 inline-block">Browse all jobs</Link>
                 </div>
             </div>
