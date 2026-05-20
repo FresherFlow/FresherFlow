@@ -16,8 +16,10 @@ export const normalizeOpportunityUrl = (url: string): string => {
 
         const urlObj = new URL(clean);
 
-        // Remove fragments (item 44 in plan)
-        urlObj.hash = '';
+        // Only strip tracking/anchor fragments — preserve SPA hash routes (e.g. #/signup/...)
+        if (urlObj.hash && !urlObj.hash.startsWith('#/')) {
+            urlObj.hash = '';
+        }
 
         // Parameters to strip (UTM, tracking, referrals)
         const stripParams = [
