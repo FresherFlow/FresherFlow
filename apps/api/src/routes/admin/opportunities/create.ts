@@ -54,6 +54,17 @@ router.post(
             const slug = generateSlug(data.title, data.company, tempId);
             const education = normalizeEducationRequirements(data);
 
+            let contributorId: string | undefined = undefined;
+            if (data.rawOpportunityId) {
+                const rawOpp = await prisma.rawOpportunity.findUnique({
+                    where: { id: data.rawOpportunityId as string },
+                    select: { createdByUserId: true }
+                });
+                if (rawOpp?.createdByUserId) {
+                    contributorId = rawOpp.createdByUserId;
+                }
+            }
+
             const opportunity = await prisma.opportunity.create({
                 data: {
                     id: tempId, slug, type: type as unknown as DbOpportunityType,
@@ -77,7 +88,7 @@ router.post(
                     tags: buildGovernmentTags(data),
                     sourceLink, applyLink,
                     expiresAt: deriveOpportunityExpiryDate(data, type),
-                    postedByUserId: req.adminId as string,
+                    postedByUserId: contributorId || (req.adminId as string),
                     status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus,
                     ...(walkInCreate && { walkInDetails: walkInCreate }),
                     ...(governmentJobCreate && { governmentJobDetails: governmentJobCreate }),
@@ -162,6 +173,17 @@ router.post(
             const slug = generateSlug(data.title, data.company, tempId);
             const education = normalizeEducationRequirements(data);
 
+            let contributorId: string | undefined = undefined;
+            if (data.rawOpportunityId) {
+                const rawOpp = await prisma.rawOpportunity.findUnique({
+                    where: { id: data.rawOpportunityId as string },
+                    select: { createdByUserId: true }
+                });
+                if (rawOpp?.createdByUserId) {
+                    contributorId = rawOpp.createdByUserId;
+                }
+            }
+
             const opportunity = await prisma.opportunity.create({
                 data: {
                     id: tempId, slug, type: type as unknown as DbOpportunityType,
@@ -185,7 +207,7 @@ router.post(
                     tags: buildGovernmentTags(data),
                     sourceLink, applyLink,
                     expiresAt: deriveOpportunityExpiryDate(data, type),
-                    postedByUserId: req.adminId as string,
+                    postedByUserId: contributorId || (req.adminId as string),
                     status: OpportunityStatus.DRAFT as unknown as DbOpportunityStatus,
                     ...(walkInCreate && { walkInDetails: walkInCreate }),
                     ...(governmentJobCreate && { governmentJobDetails: governmentJobCreate }),

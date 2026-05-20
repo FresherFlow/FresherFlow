@@ -119,6 +119,7 @@ export const opportunitySchema = z.object({
     type: z.nativeEnum(OpportunityType).optional(), // Backend
     status: z.nativeEnum(OpportunityStatus).optional(),
     category: z.enum(['job', 'internship', 'walk-in']).optional(), // Frontend alias
+    rawOpportunityId: z.string().optional(),
 
     title: z.string().min(1, 'Title is required'),
     company: z.string().min(1, 'Company is required'),
