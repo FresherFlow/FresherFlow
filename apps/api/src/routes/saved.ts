@@ -42,6 +42,7 @@ router.post('/:id', requireAuth, async (req: Request, res: Response, next: NextF
                 }
 
                 // Parse type safely from details
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const oppType = (['JOB', 'INTERNSHIP', 'WALKIN'].includes(details.type) ? details.type : 'JOB') as any;
 
                 opportunity = await prisma.opportunity.create({
@@ -52,7 +53,9 @@ router.post('/:id', requireAuth, async (req: Request, res: Response, next: NextF
                         title: typeof details.title === 'string' ? details.title : 'Cached Opportunity',
                         company: typeof details.company === 'string' ? details.company : 'Unknown Company',
                         companyLogoUrl: typeof details.companyLogoUrl === 'string' ? details.companyLogoUrl : null,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         locations: Array.isArray(details.locations) ? details.locations.map((l: any) => String(l)) : [],
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
                         tags: Array.isArray(details.tags) ? details.tags.map((t: any) => String(t)) : [],
                         status: 'PUBLISHED',
                         postedByUserId: postedByUserId

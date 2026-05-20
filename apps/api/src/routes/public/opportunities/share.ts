@@ -66,6 +66,7 @@ router.post('/share', async (req: Request, res: Response, next: NextFunction) =>
                         source: 'mobile_share',
                         note: 'Immediate URL match'
                     }
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 } as any
             });
 
@@ -106,6 +107,7 @@ router.post('/share', async (req: Request, res: Response, next: NextFunction) =>
                     originalUrl: url,
                     source: 'mobile_share'
                 }
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any
         });
 

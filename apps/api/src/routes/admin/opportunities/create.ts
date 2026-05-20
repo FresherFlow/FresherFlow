@@ -232,15 +232,16 @@ router.put(
 
             const existing = await prisma.opportunity.findFirst({
                 where: { OR: [{ id: idParam }, { slug: idParam }] },
+                include: { governmentJobDetails: true, walkInDetails: true },
             });
             if (!existing) return res.status(404).json({ message: 'Opportunity not found' });
 
             const type = data.type as OpportunityType;
             const walkInUpdate = type === OpportunityType.WALKIN && data.walkInDetails
                 ? { upsert: (() => { const b = buildWalkInCreate(data); return b ? { create: b.create, update: b.create } : undefined; })() }
-                : {};
+                : (existing.walkInDetails ? { delete: true } : {});
             const governmentJobUpdate = data.governmentJobDetails === null
-                ? { delete: true }
+                ? (existing.governmentJobDetails ? { delete: true } : undefined)
                 : buildGovernmentJobDetailsUpsert(data);
 
             const education = normalizeEducationRequirements(data);
