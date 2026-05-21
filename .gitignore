@@ -23,6 +23,8 @@ out/
 .env.production
 **/.env
 **/.env.local
+config.staging.env
+config.production.env
 
 # IDE
 .vscode/

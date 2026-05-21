@@ -1,7 +1,6 @@
 import { Opportunity } from '@fresherflow/types';
 import TelegramService from './telegram.service';
 import { sendNewJobAlerts } from './notification.service';
-import { enqueueSocialPosts } from './social/socialPost.service';
 import { invalidatePublicOpportunityCache } from './publicOpportunityCache.service';
 import { logger } from '@fresherflow/logger';
 import { discoveryEmitter } from '../events/DiscoveryEmitter';
@@ -61,13 +60,15 @@ export async function handleOpportunityPublished(
     });
   });
 
-  // 4. Social Posting (X, LinkedIn, Facebook)
+  // 4. Social Posting (X, LinkedIn, Facebook) - Temporarily Disabled
+  /*
   enqueueSocialPosts(opportunity).catch((err) => {
     logger.error('[publish] Social posting enqueue failed', { 
       opportunityId: opportunity.id, 
       error: err instanceof Error ? err.message : String(err) 
     });
   });
+  */
 
   // 5. Cache Invalidation
   const invalidationIds = [opportunity.id, opportunity.slug];

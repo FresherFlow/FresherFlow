@@ -112,7 +112,7 @@ router.post(
             // Clear cache on write
             adminCache.invalidateLists();
 
-            res.status(201).json({ opportunity, message: 'Opportunity created successfully. Social posting queued.' });
+            res.status(201).json({ opportunity, message: 'Opportunity created successfully.' });
         } catch (error) {
             next(error);
         }
@@ -329,7 +329,7 @@ router.put(
             let responseMessage = 'Opportunity updated successfully';
             if (existing.status !== OpportunityStatus.PUBLISHED && opportunity.status === OpportunityStatus.PUBLISHED) {
                 await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
-                responseMessage = 'Opportunity published successfully. Social posting queued.';
+                responseMessage = 'Opportunity published successfully.';
             } else if (opportunity.status === OpportunityStatus.PUBLISHED) {
                 // Already published, just update cache and notify update
                 await handleOpportunityPublished(opportunity as unknown as Opportunity, {
