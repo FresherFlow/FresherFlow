@@ -33,6 +33,15 @@ export function ExpirationSection({ expiresAt, setExpiresAt, onToggleAmPm }: Exp
                 >
                     Force PM
                 </button>
+                {expiresAt && (
+                    <button
+                        type="button"
+                        onClick={() => setExpiresAt('')}
+                        className="px-2 py-1 rounded bg-destructive/10 hover:bg-destructive/20 text-destructive text-[10px] font-bold capitalize transition-colors ml-auto"
+                    >
+                        Clear Date
+                    </button>
+                )}
             </div>
         </div>
     );

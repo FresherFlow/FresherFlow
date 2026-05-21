@@ -19,6 +19,7 @@ interface ParserSectionProps {
     internshipTemplate: string;
     walkinTemplate: string;
     governmentTemplate?: string;
+    clearAllFields?: () => void;
 }
 
 export function ParserSection({
@@ -26,6 +27,7 @@ export function ParserSection({
     handleAutoFill, isParsing,
     pastedJson, setPastedJson,
     applyJsonToForm, jsonReport,
+    clearAllFields,
     closeParser,
     jobTemplate, internshipTemplate, walkinTemplate, governmentTemplate
 }: ParserSectionProps) {
@@ -104,14 +106,25 @@ export function ParserSection({
                                 </button>
                             )}
                         </div>
-                        <button
-                            type="button"
-                            onClick={applyJsonToForm}
-                            disabled={!pastedJson.trim()}
-                            className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-md transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            Apply JSON
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                type="button"
+                                onClick={applyJsonToForm}
+                                disabled={!pastedJson.trim()}
+                                className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-md transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                Apply JSON
+                            </button>
+                            {clearAllFields && (
+                                <button
+                                    type="button"
+                                    onClick={clearAllFields}
+                                    className="px-4 h-10 bg-destructive/10 hover:bg-destructive/20 text-destructive font-bold text-sm rounded-md transition-all shadow-sm active:scale-[0.98] flex items-center justify-center gap-2"
+                                >
+                                    Clear Form
+                                </button>
+                            )}
+                        </div>
                         {jsonReport && (
                             <div className={`rounded-md border p-3 text-[10px] space-y-2 ${jsonReport.valid ? 'border-border bg-muted/40' : 'border-destructive/30 bg-destructive/5 text-destructive'}`}>
                                 {!jsonReport.valid ? (

@@ -295,6 +295,11 @@ export function useOpportunitiesFeed({
         };
 
         return enriched.sort((a, b) => {
+            // Expired opportunities always go to the absolute bottom
+            const isExpiredA = a.expiresAt ? new Date(a.expiresAt) < new Date() : false;
+            const isExpiredB = b.expiresAt ? new Date(b.expiresAt) < new Date() : false;
+            if (isExpiredA !== isExpiredB) return isExpiredA ? 1 : -1;
+
             // Not-eligible jobs always go to the bottom
             if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
 

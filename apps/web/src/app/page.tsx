@@ -10,12 +10,12 @@ import { Opportunity } from '@fresherflow/types';
 
 export const metadata: Metadata = {
     title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
-    description: 'Verified fresher jobs, internships, and walk-ins in India. Every listing is checked. Every link is real.',
+    description: 'Discover manually verified off-campus jobs, internships, and walk-ins for freshers across India. No fake listings. Direct official apply links.',
     keywords: ['verified off campus jobs', 'fresher jobs', 'internships', 'walk-ins', 'off campus drives', 'entry level jobs'],
     openGraph: {
         siteName: 'FresherFlow',
         title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
-        description: 'Verified fresher jobs, internships, and walk-ins in India. Every listing is checked. Every link is real.',
+        description: 'Discover manually verified off-campus jobs, internships, and walk-ins for freshers across India. No fake listings. Direct official apply links.',
         type: 'website',
         images: [
             {
@@ -29,7 +29,7 @@ export const metadata: Metadata = {
     twitter: {
         card: 'summary_large_image',
         title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
-        description: 'Verified fresher jobs, internships, and walk-ins in India. Every listing is checked. Every link is real.',
+        description: 'Discover manually verified off-campus jobs, internships, and walk-ins for freshers across India. No fake listings. Direct official apply links.',
         images: ['/twitter-image'],
     },
 };
@@ -99,14 +99,14 @@ export default async function LandingPage() {
                                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card/60 backdrop-blur shadow-sm">
                                     <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                                        Flow Protocol Live & Verified
+                                        Every Job Verified Before You Apply
                                     </span>
                                 </div>
                                 <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.1] text-foreground">
-                                    The verified career feed for graduates.
+                                    Only Real Off-Campus Jobs & Internships.
                                 </h1>
                                 <p className="text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-                                    Before you apply, we verify. FresherFlow replaces noisy job boards with a clean, 100% verified stream of off-campus jobs, internships, and walk-ins. Checked by hand, proven by logic.
+                                    Freshers deserve better than fake listings and broken redirects. We manually verify internships, jobs, and walk-ins from official career pages for students and graduates across India.
                                 </p>
                                 
                                 {/* Mobile-only Image (Option 2 placement: Main Text -> Image -> Buttons -> Cards) */}
@@ -129,9 +129,9 @@ export default async function LandingPage() {
                                 </div>
                                 <div className="grid grid-cols-3 gap-2.5 sm:gap-4 pt-6">
                                     {[
-                                        { label: 'Links Checked', value: '100%' },
-                                        { label: 'Verified Roles', value: countLabel },
-                                        { label: 'Spam Filtered', value: '100%' },
+                                        { label: 'Verified Apply Links', value: 'Manual' },
+                                        { label: 'Opportunities Updated', value: 'Daily' },
+                                        { label: 'Fake Listings', value: 'Filtered' },
                                     ].map((stat) => (
                                         <div key={stat.label} className="rounded-xl sm:rounded-2xl border border-border bg-card/65 backdrop-blur p-2.5 sm:p-4.5 shadow-sm text-center flex flex-col justify-center">
                                           <div className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight text-foreground">{stat.value}</div>
@@ -159,10 +159,10 @@ export default async function LandingPage() {
                         <div className="max-w-6xl mx-auto space-y-10">
                             <div className="max-w-2xl mx-auto text-center space-y-3">
                                 <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-                                    Instant eligibility verification.
+                                    Check eligibility instantly.
                                 </h2>
                                 <p className="text-sm md:text-base text-muted-foreground">
-                                    Stop reading endless text blocks to check if your graduation year or degree qualifies. The Smart Fit Engine calculates your suitability in real-time.
+                                    Stop reading endless text blocks to check if your graduation year or degree qualifies. Instantly check if you are eligible based on your batch, degree, and skills.
                                 </p>
                             </div>
                             <EligibilityMatcher 
@@ -178,18 +178,18 @@ export default async function LandingPage() {
                         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[0.45fr_1fr] gap-10 items-start">
                             <div className="space-y-4">
                                 <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
-                                    Pristine redirection integrity.
+                                    Built for a better job search.
                                 </h2>
                                 <p className="text-sm text-muted-foreground leading-relaxed">
-                                    No intermediate tracking networks, no affiliate redirects, and no ad blocks. We route you directly to verified applicant tracking systems (Greenhouse, Workday, Lever) or official careers.
+                                    Most job boards are flooded with expired postings, affiliate redirects, and fake company profiles. We built FresherFlow to give students a reliable, clean, and direct application experience.
                                 </p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {[
-                                    { title: 'Verified Links', text: 'Daily crawler checkups prevent dead redirect or 404 links.' },
-                                    { title: 'Deduplicated Feeds', text: 'Smart clustering algorithm joins matching multi-source postings.' },
-                                    { title: 'Direct to ATS', text: 'Routes to official application portals without middle-man routing.' },
-                                    { title: 'Expiry Auditing', text: 'Opportunities automatically archive the minute the deadline is met.' },
+                                    { title: 'Direct to Official Apply', text: 'Skip ad shorteners, middlemen, and tracking links. Apply directly on official Greenhouse, Lever, or company career portals.' },
+                                    { title: 'Works on Weak Networks', text: 'No infinite loading spinners. The app is optimized to load feeds instantly and work even on spotty college Wi-Fi.' },
+                                    { title: 'Offline Saves & Reminders', text: 'Save interesting roles for offline access immediately and apply later when you have time, without losing track.' },
+                                    { title: 'Deadline Monitoring', text: 'Active tracking of application deadlines. Expired listings are removed automatically, so you do not waste time on dead roles.' },
                                 ].map((item) => (
                                     <div key={item.title} className="premium-card p-5 space-y-2 border border-border/80 bg-card/65 shadow-sm">
                                         <h3 className="text-sm md:text-base font-bold text-foreground tracking-tight">{item.title}</h3>
@@ -205,13 +205,13 @@ export default async function LandingPage() {
                         <div className="max-w-6xl mx-auto space-y-10">
                             <div className="text-center space-y-3 max-w-2xl mx-auto">
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                                    Curated Feeds
+                                    Browse Opportunities
                                 </span>
                                 <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-                                    Wander into tailored collections.
+                                    Find jobs by category.
                                 </h2>
                                 <p className="text-muted-foreground text-sm md:text-base">
-                                    We group opportunities by style and energy, not just generic parameters.
+                                    Verified opportunities grouped cleanly by career path to save you time.
                                 </p>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

@@ -87,7 +87,7 @@ export function EligibilityMatcher({
             Stop Reading Long Job Specs - Fit Instantly
           </h3>
           <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-            Traditional job boards make you scroll through 2,000 words of legalese to find eligibility rules. Toggle your profile variables below to see the math matching live roles.
+            Traditional job boards make you scroll through long job descriptions just to check eligibility. Select your degree, batch, and skills to instantly see matching opportunities.
           </p>
         </div>
 
@@ -238,7 +238,7 @@ export function EligibilityMatcher({
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
-                            Matched: 100% Eligible
+                            Eligibility Confirmed
                           </div>
                         ) : (
                           <div className="flex items-center gap-1.5 text-error font-semibold tracking-tight">
@@ -255,7 +255,7 @@ export function EligibilityMatcher({
 
                         {isFullyEligible && (
                           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors">
-                            Direct Apply Ready {"->"}
+                            Apply Directly
                           </span>
                         )}
                       </div>

@@ -98,14 +98,14 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                 </div>
             )}
 
-            {isEditMode && form.socialPosts?.length > 0 && (
+            {/* {isEditMode && form.socialPosts?.length > 0 && (
                 <div className="mb-8 animate-in zoom-in-95 duration-200">
                     <SocialStatusSection
                         socialPosts={form.socialPosts}
                         onRefresh={form.fetchOpportunityForEdit}
                     />
                 </div>
-            )}
+            )} */}
 
             {form.showParser && (
                 <div className="mb-8 animate-in zoom-in-95 duration-200">
@@ -123,6 +123,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                         internshipTemplate={INTERNSHIP_TEMPLATE}
                         walkinTemplate={WALKIN_TEMPLATE}
                         governmentTemplate={GOVERNMENT_JOB_TEMPLATE}
+                        clearAllFields={form.clearAllFields}
                     />
                 </div>
             )}
