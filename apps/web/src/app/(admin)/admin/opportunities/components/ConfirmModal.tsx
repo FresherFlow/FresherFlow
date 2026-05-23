@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface ConfirmModalProps {
     show: boolean;
     title: string;
     message: string;
-    onConfirm: () => void;
+    onConfirm: (reason?: string) => void;
     onCancel: () => void;
     type: 'danger' | 'warning';
     confirmText: string;
+    requireReason?: boolean;
+    reasonPlaceholder?: string;
 }
 
 export const ConfirmModal = ({
@@ -17,9 +19,20 @@ export const ConfirmModal = ({
     onConfirm,
     onCancel,
     type,
-    confirmText
+    confirmText,
+    requireReason = false,
+    reasonPlaceholder = 'Enter reason...',
 }: ConfirmModalProps) => {
+    const [reason, setReason] = useState('');
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (!show) setReason('');
+    }, [show]);
+
     if (!show) return null;
+
+    const canConfirm = !requireReason || reason.trim().length > 0;
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
@@ -28,7 +41,16 @@ export const ConfirmModal = ({
                     <ExclamationTriangleIcon className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
-                <p className="text-sm text-muted-foreground mb-6 leading-relaxed">{message}</p>
+                <p className="text-sm text-muted-foreground mb-4 leading-relaxed">{message}</p>
+                {requireReason && (
+                    <textarea
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        placeholder={reasonPlaceholder}
+                        rows={3}
+                        className="w-full mb-4 px-3 py-2 text-sm rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                )}
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onCancel}
@@ -37,8 +59,9 @@ export const ConfirmModal = ({
                         Cancel
                     </button>
                     <button
-                        onClick={onConfirm}
-                        className={`flex-1 h-10 px-4 rounded-md text-sm font-medium transition-opacity hover:opacity-90 ${type === 'danger' ? 'bg-rose-600 text-white shadow-rose-200' : 'bg-primary text-primary-foreground shadow-primary/20 shadow-lg'}`}
+                        onClick={() => onConfirm(requireReason ? reason.trim() : undefined)}
+                        disabled={!canConfirm}
+                        className={`flex-1 h-10 px-4 rounded-md text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed ${type === 'danger' ? 'bg-rose-600 text-white' : 'bg-primary text-primary-foreground'}`}
                     >
                         {confirmText}
                     </button>

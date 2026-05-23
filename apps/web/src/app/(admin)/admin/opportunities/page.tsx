@@ -55,6 +55,7 @@ function OpportunitiesListPage() {
         handleExpire,
         handleStatusUpdate,
         handleDelete,
+        handleRejectDraft,
         handleBulkAction,
         handleRestore,
         handleCopySocialCaption
@@ -115,6 +116,7 @@ function OpportunitiesListPage() {
                         handleExpire={handleExpire}
                         handleStatusUpdate={handleStatusUpdate}
                         handleDelete={handleDelete}
+                        handleRejectDraft={handleRejectDraft}
                         handleRestore={handleRestore}
                         copySocialCaption={handleCopySocialCaption}
                         getPublicOpportunityHref={getPublicOpportunityHref}
@@ -129,6 +131,7 @@ function OpportunitiesListPage() {
                         handleExpire={handleExpire}
                         handleStatusUpdate={handleStatusUpdate}
                         handleDelete={handleDelete}
+                        handleRejectDraft={handleRejectDraft}
                         handleRestore={handleRestore}
                         copySocialCaption={handleCopySocialCaption}
                         getPublicOpportunityHref={getPublicOpportunityHref}
@@ -149,6 +152,8 @@ function OpportunitiesListPage() {
                 onCancel={() => setConfirmModal(prev => ({ ...prev, show: false }))}
                 type={confirmModal.type}
                 confirmText={confirmModal.confirmText}
+                requireReason={confirmModal.requireReason}
+                reasonPlaceholder={confirmModal.reasonPlaceholder}
             />
         </div>
     );

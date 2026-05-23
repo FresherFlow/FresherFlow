@@ -10,6 +10,7 @@ import {
     TrashIcon,
     ClockIcon,
     CheckCircleIcon,
+    XCircleIcon,
     ArrowPathIcon,
     EyeIcon,
     DocumentDuplicateIcon,
@@ -30,6 +31,7 @@ interface AdminOpportunitiesMobileListProps {
     handleExpire: (id: string, title: string) => void;
     handleStatusUpdate: (id: string, status: string) => void;
     handleDelete: (id: string, title: string) => void;
+    handleRejectDraft: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
     copySocialCaption: (opp: SocialOpportunity) => void;
     getPublicOpportunityHref: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
@@ -42,6 +44,7 @@ export const AdminOpportunitiesMobileList = ({
     handleExpire,
     handleStatusUpdate,
     handleDelete,
+    handleRejectDraft,
     handleRestore,
     copySocialCaption,
     getPublicOpportunityHref
@@ -143,14 +146,24 @@ export const AdminOpportunitiesMobileList = ({
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                             {opp.status === 'DRAFT' && (
-                                <button
-                                    onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')}
-                                    className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
-                                    title="Publish Now"
-                                >
-                                    <CheckCircleIcon className="w-4 h-4 mr-1.5" />
-                                    Publish
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')}
+                                        className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-emerald-200 bg-emerald-50 text-xs font-medium text-emerald-700 hover:bg-emerald-100"
+                                        title="Publish Now"
+                                    >
+                                        <CheckCircleIcon className="w-4 h-4 mr-1.5" />
+                                        Publish
+                                    </button>
+                                    <button
+                                        onClick={() => handleRejectDraft(opp.id, opp.title)}
+                                        className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-rose-200 bg-rose-50 text-xs font-medium text-rose-600 hover:bg-rose-100"
+                                        title="Reject Draft"
+                                    >
+                                        <XCircleIcon className="w-4 h-4 mr-1.5" />
+                                        Reject
+                                    </button>
+                                </>
                             )}
                             {opp.status === 'PUBLISHED' && (
                                 <button

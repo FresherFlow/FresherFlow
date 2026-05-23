@@ -10,40 +10,52 @@ import {
     buildExportUrl
 } from '@/features/admin/opportunities/listUtils';
 
+interface Filters {
+    typeFilter: string;
+    statusFilter: string;
+    linkHealthFilter: '' | 'HEALTHY' | 'RETRYING' | 'BROKEN';
+    activeOnly: boolean;
+    search: string;
+    sort: string;
+}
+
 export function useAdminOpportunities(pageSize: number = 20) {
     const router = useRouter();
     const searchParams = useSearchParams();
     const searchParamsKey = searchParams.toString();
     const pathname = usePathname();
-    
+
+    const [filters, setFilters] = useState<Filters>({
+        typeFilter: '',
+        statusFilter: '',
+        linkHealthFilter: '',
+        activeOnly: false,
+        search: '',
+        sort: 'postedAt_desc',
+    });
+
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
-    const [typeFilter, setTypeFilter] = useState('');
-    const [statusFilter, setStatusFilter] = useState('');
-    const [linkHealthFilter, setLinkHealthFilter] = useState<'HEALTHY' | 'RETRYING' | 'BROKEN' | ''>('');
-    const [activeOnly, setActiveOnly] = useState(false);
-    const [search, setSearch] = useState('');
-    const [sort, setSort] = useState('postedAt_desc');
     const [page, setPage] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [totalPages, setTotalPages] = useState(1);
-    
-    const debouncedSearch = useDebounce(search, 300);
+
+    const debouncedSearch = useDebounce(filters.search, 300);
     const isInternalUrlSyncRef = useRef(false);
 
-    const exportUrl = useMemo(() => buildExportUrl(typeFilter, statusFilter), [typeFilter, statusFilter]);
+    const exportUrl = useMemo(() => buildExportUrl(filters.typeFilter, filters.statusFilter), [filters.typeFilter, filters.statusFilter]);
 
     const loadOpportunities = useCallback(async () => {
         setIsLoading(true);
         try {
             const data = (await adminApi.getOpportunities({
-                type: typeFilter || undefined,
-                status: statusFilter || undefined,
-                linkHealth: linkHealthFilter || undefined,
-                activeOnly: activeOnly || undefined,
+                type: filters.typeFilter || undefined,
+                status: filters.statusFilter || undefined,
+                linkHealth: filters.linkHealthFilter || undefined,
+                activeOnly: filters.activeOnly || undefined,
                 q: debouncedSearch || undefined,
-                sort,
+                sort: filters.sort,
                 limit: pageSize,
                 offset: (page - 1) * pageSize
             })) as { opportunities: Opportunity[]; total: number; totalPages: number };
@@ -60,9 +72,10 @@ export function useAdminOpportunities(pageSize: number = 20) {
         } finally {
             setIsLoading(false);
         }
-    }, [typeFilter, statusFilter, linkHealthFilter, activeOnly, debouncedSearch, sort, page, pageSize, router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [filters.typeFilter, filters.statusFilter, filters.linkHealthFilter, filters.activeOnly, debouncedSearch, filters.sort, page, pageSize]);
 
-    // Sync from Search Params
+    // Sync from URL params — one batched setState, no extra renders
     useEffect(() => {
         if (isInternalUrlSyncRef.current) {
             isInternalUrlSyncRef.current = false;
@@ -75,49 +88,59 @@ export function useAdminOpportunities(pageSize: number = 20) {
         const qParam = searchParams.get('q');
         const sortParam = searchParams.get('sort');
 
-        const nextType = typeParam ? typeParamToEnum(typeParam) : '';
-        const nextStatus = statusParam ? statusParam.toUpperCase() : '';
         const nextLinkHealth = (linkHealthParam === 'HEALTHY' || linkHealthParam === 'RETRYING' || linkHealthParam === 'BROKEN') ? linkHealthParam : '';
-        const nextActiveOnly = activeOnlyParam === 'true';
-        const nextSearch = qParam ?? '';
-        const nextSort = sortParam || 'postedAt_desc';
 
-        setTypeFilter(prev => prev === nextType ? prev : nextType);
-        setStatusFilter(prev => prev === nextStatus ? prev : nextStatus);
-        setLinkHealthFilter(prev => prev === nextLinkHealth ? prev : nextLinkHealth);
-        setActiveOnly(prev => prev === nextActiveOnly ? prev : nextActiveOnly);
-        setSearch(prev => prev === nextSearch ? prev : nextSearch);
-        setSort(prev => prev === nextSort ? prev : nextSort);
+        setFilters(prev => {
+            const next: Filters = {
+                typeFilter: typeParam ? typeParamToEnum(typeParam) : '',
+                statusFilter: statusParam ? statusParam.toUpperCase() : '',
+                linkHealthFilter: nextLinkHealth,
+                activeOnly: activeOnlyParam === 'true',
+                search: qParam ?? '',
+                sort: sortParam || 'postedAt_desc',
+            };
+            // Only update if something actually changed
+            if (JSON.stringify(prev) === JSON.stringify(next)) return prev;
+            return next;
+        });
         setPage(1);
     }, [searchParamsKey, searchParams]);
 
-    // Update Search Params
+    // Sync filters back to URL
     useEffect(() => {
         const params = new URLSearchParams(searchParams.toString());
-        if (typeFilter) params.set('type', enumToTypeParam(typeFilter)); else params.delete('type');
-        if (statusFilter) params.set('status', statusFilter); else params.delete('status');
-        if (linkHealthFilter) params.set('linkHealth', linkHealthFilter); else params.delete('linkHealth');
-        if (activeOnly) params.set('activeOnly', 'true'); else params.delete('activeOnly');
+        if (filters.typeFilter) params.set('type', enumToTypeParam(filters.typeFilter)); else params.delete('type');
+        if (filters.statusFilter) params.set('status', filters.statusFilter); else params.delete('status');
+        if (filters.linkHealthFilter) params.set('linkHealth', filters.linkHealthFilter); else params.delete('linkHealth');
+        if (filters.activeOnly) params.set('activeOnly', 'true'); else params.delete('activeOnly');
         if (debouncedSearch.trim()) params.set('q', debouncedSearch.trim()); else params.delete('q');
-        if (sort) params.set('sort', sort); else params.delete('sort');
+        if (filters.sort) params.set('sort', filters.sort); else params.delete('sort');
 
         const next = params.toString();
         if (next !== searchParamsKey) {
             isInternalUrlSyncRef.current = true;
             router.replace(`${pathname}?${next}`);
         }
-    }, [typeFilter, statusFilter, linkHealthFilter, activeOnly, debouncedSearch, sort, searchParamsKey, searchParams, pathname, router]);
+    }, [filters, debouncedSearch, searchParamsKey, searchParams, pathname, router]);
+
+    // Convenience setters that keep backward compat with the page component
+    const setTypeFilter = (v: string) => setFilters(f => ({ ...f, typeFilter: v }));
+    const setStatusFilter = (v: string) => setFilters(f => ({ ...f, statusFilter: v }));
+    const setLinkHealthFilter = (v: '' | 'HEALTHY' | 'RETRYING' | 'BROKEN') => setFilters(f => ({ ...f, linkHealthFilter: v }));
+    const setActiveOnly = (v: boolean) => setFilters(f => ({ ...f, activeOnly: v }));
+    const setSearch = (v: string) => setFilters(f => ({ ...f, search: v }));
+    const setSort = (v: string) => setFilters(f => ({ ...f, sort: v }));
 
     return {
         opportunities,
         isLoading,
         hasLoadedOnce,
-        typeFilter, setTypeFilter,
-        statusFilter, setStatusFilter,
-        linkHealthFilter, setLinkHealthFilter,
-        activeOnly, setActiveOnly,
-        search, setSearch,
-        sort, setSort,
+        typeFilter: filters.typeFilter, setTypeFilter,
+        statusFilter: filters.statusFilter, setStatusFilter,
+        linkHealthFilter: filters.linkHealthFilter, setLinkHealthFilter,
+        activeOnly: filters.activeOnly, setActiveOnly,
+        search: filters.search, setSearch,
+        sort: filters.sort, setSort,
         page, setPage,
         totalCount,
         totalPages,

@@ -12,6 +12,7 @@ import { Profile } from '@fresherflow/types';
 import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/domain';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
+import { FirebaseDbService } from '../infrastructure/services/firebaseDb.service';
 
 const router: Router = express.Router();
 
@@ -95,6 +96,18 @@ router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunct
             data: { completionPercentage: newCompletion }
         });
 
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            select: { firebase_uid: true, fullName: true }
+        });
+        
+        if (user?.firebase_uid) {
+            void FirebaseDbService.updateOnboardingRecord(user.firebase_uid, {
+                fullName: user.fullName,
+                profileCompleted: newCompletion === 100
+            });
+        }
+
         res.json({
             profile,
             message: `Profile synchronized. Completion: ${newCompletion}%`
@@ -148,6 +161,18 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
             where: { userId: req.userId },
             data: { completionPercentage: newCompletion }
         });
+
+        const user = await prisma.user.findUnique({
+            where: { id: req.userId },
+            select: { firebase_uid: true, fullName: true }
+        });
+
+        if (user?.firebase_uid) {
+            void FirebaseDbService.updateOnboardingRecord(user.firebase_uid, {
+                fullName: user.fullName,
+                profileCompleted: newCompletion === 100
+            });
+        }
 
         res.json({
             profile,
@@ -293,6 +318,8 @@ router.get('/shares', requireAuth, async (req: Request, res: Response, next: Nex
                         status: true,
                         publishedAt: true,
                         expiredAt: true,
+                        deletedAt: true,
+                        deletionReason: true,
                         clicksCount: true,
                         savesCount: true,
                     }
@@ -329,7 +356,7 @@ router.get('/shares', requireAuth, async (req: Request, res: Response, next: Nex
 });
 
 // POST /api/profile/shares
-router.post('/shares', optionalAuth, validate(contributionSchema), async (req: Request, res: Response, next: NextFunction) => {
+router.post('/shares', requireAuth, validate(contributionSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { url: rawUrl, referral } = req.body;
         const userId = req.userId;
@@ -415,7 +442,7 @@ router.post('/shares', optionalAuth, validate(contributionSchema), async (req: R
                 sourceLink: url,
                 status: 'FETCHED',
                 reasonFlags: referral ? ['USER_REFERRAL'] : ['USER_CONTRIBUTED'],
-                createdByUserId: userId,
+                createdByUserId: userId as string,
                 rawPayload: {
                     url: url,
                     originalUrl: rawUrl,
@@ -424,6 +451,38 @@ router.post('/shares', optionalAuth, validate(contributionSchema), async (req: R
                 }
             }
         });
+
+        // If it's a referral, create a DRAFT Opportunity synchronously so it shows up in Admin Review Queue
+        if (referral) {
+            const title = referral.title || 'New Referral';
+            const companyName = referral.company || 'Unknown Company';
+            const baseSlug = `${title.toLowerCase().replace(/\s+/g, '-')}-at-${companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+            const uniqueSlug = `${baseSlug}-${share.id.slice(-6)}`;
+
+            const opportunity = await prisma.opportunity.create({
+                data: {
+                    slug: uniqueSlug,
+                    title,
+                    company: companyName,
+                    type: 'JOB',
+                    status: 'DRAFT',
+                    description: referral.description || null,
+                    applyLink: referral.contact || null,
+                    sourceLink: referral.companyUrl || null,
+                    postedByUserId: userId as string,
+                    sharesCount: 1,
+                    notesHighlights: referral.eligibleBatches ? `Eligible Batches: ${referral.eligibleBatches}` : null,
+                }
+            });
+
+            await prisma.rawOpportunity.update({
+                where: { id: share.id },
+                data: {
+                    status: 'DRAFT_CREATED',
+                    mappedOpportunityId: opportunity.id
+                }
+            });
+        }
 
         // Notify via Telegram (async)
         if (url) {
@@ -479,7 +538,7 @@ router.post('/username/claim', requireAuth, async (req: Request, res: Response, 
         const cooldownDays = Number(process.env.USERNAME_COOLDOWN_DAYS || 30);
         const user = await prisma.user.findUnique({
             where: { id: req.userId },
-            select: { username: true, usernameUpdatedAt: true }
+            select: { username: true, usernameUpdatedAt: true, firebase_uid: true }
         });
 
         if (user?.usernameUpdatedAt) {
@@ -509,6 +568,14 @@ router.post('/username/claim', requireAuth, async (req: Request, res: Response, 
                 usernameUpdatedAt: new Date()
             }
         });
+
+        // Sync to Firebase RTDB for cold-start caching
+        if (user?.firebase_uid) {
+            void FirebaseDbService.updateOnboardingRecord(user.firebase_uid, {
+                username: updatedUser.username,
+                skipUsernameSetup: true
+            });
+        }
 
         // Regenerate static usernames index instantly
         void StaticFeedService.refreshUsernames();

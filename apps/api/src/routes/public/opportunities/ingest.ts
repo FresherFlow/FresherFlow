@@ -26,50 +26,20 @@ router.post('/ingest', async (req: Request, res: Response, next: NextFunction) =
 
         const normalizedUrl = normalizeOpportunityUrl(url);
 
-        // Check for existing opportunity
-        const existing = await prisma.opportunity.findFirst({
-            where: {
-                OR: [
-                    { sourceLink: normalizedUrl },
-                    { applyLink: normalizedUrl }
-                ],
-                deletedAt: null
-            },
-            select: { id: true }
-        });
-
-        // Check for existing pending/review opportunity
-        const existingRaw = await prisma.rawOpportunity.findFirst({
-            where: {
-                sourceLink: normalizedUrl,
-                status: { in: ['FETCHED', 'DRAFT_CREATED'] }
-            },
-            select: { id: true }
-        });
-
-        if (existingRaw) {
-            return res.status(409).json({
-                message: 'This link is already under review!'
-            });
-        }
+        // We no longer perform server-side duplicate checks during ingest, 
+        // as the mobile app relies on its local CDN cache for duplicate prevention.
 
         const result = await UrlParser.parseUrl(normalizedUrl).catch((err: Error) => {
             throw new AppError(`Parsing failed: ${err.message}`, 500);
         });
 
-        if (!result.parsed.title) {
-            return res.status(422).json({
-                message: 'Could not extract opportunity details from this link.',
-                meta: result.meta
-            });
-        }
-
         res.json({
             success: true,
             data: {
                 ...result.parsed,
-                isDuplicate: !!existing,
-                existingId: existing?.id || null
+                title: result.parsed.title || 'New Opportunity',
+                isDuplicate: false,
+                existingId: null
             },
             meta: result.meta
         });

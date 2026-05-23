@@ -114,6 +114,12 @@ export function buildGuestOpportunitySelect() {
                 title: true,
                 sourceLink: true,
             }
+        },
+        user: {
+            select: {
+                username: true,
+                fullName: true,
+            }
         }
     } as const;
 }
@@ -240,6 +246,12 @@ export function buildPublicOpportunitySelect(userId?: string) {
                         trustLevel: true,
                     }
                 }
+            }
+        },
+        user: {
+            select: {
+                username: true,
+                fullName: true,
             }
         }
     } as const;

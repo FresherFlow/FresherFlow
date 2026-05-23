@@ -232,7 +232,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                     </div>
                 </div>
 
-                <div className="flex flex-col items-end shrink-0 w-[76px]">
+                <div className="flex flex-col items-end shrink-0">
                     <div className="flex items-center gap-1">
                         <button
                             onClick={handleShareClick}
@@ -242,7 +242,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         >
                             <ShareIcon className="w-5 h-5" aria-hidden="true" />
                         </button>
-                        <button
+                        {/* <button
                             onClick={handleSaveClick}
                             className={cn(
                                 "relative z-20 h-9 w-9 rounded-lg transition-all border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
@@ -253,7 +253,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                             aria-label={isSaved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}
                         >
                             {isSaved ? <BookmarkSolidIcon className="w-5 h-5" aria-hidden="true" /> : <BookmarkIcon className="w-5 h-5" aria-hidden="true" />}
-                        </button>
+                        </button> */}
                     </div>
 
                 </div>

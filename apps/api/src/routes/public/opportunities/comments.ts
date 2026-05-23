@@ -10,29 +10,9 @@ const router = Router();
  * @desc    Fetch comments for an opportunity (public)
  */
 router.get('/:id/comments', async (req, res) => {
-    const id = req.params.id as string;
-    const comments = await prisma.opportunityComment.findMany({
-        where: {
-            opportunityId: id,
-            deletedAt: null,
-        },
-        select: {
-            id: true,
-            text: true,
-            createdAt: true,
-            user: {
-                select: {
-                    id: true,
-                    username: true,
-                }
-            }
-        },
-        orderBy: {
-            createdAt: 'desc',
-        },
-        take: 50,
-    });
-    res.json(comments);
+    // Disabled & Commented Out - Bypassed to save API & DB free tier resources.
+    // Live Comments are now handled fully in real-time on Firebase RTDB.
+    res.json([]);
 });
 
 /**
@@ -51,45 +31,16 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
         throw new AppError('Comment text must be between 1 and 500 characters.', 400);
     }
 
-    // Rate limiting: 3 comments per user per opportunity
-    const existingCount = await prisma.opportunityComment.count({
-        where: {
-            opportunityId: id,
-            userId,
-            deletedAt: null,
+    // Immediately return success with mock response for backward compatibility
+    res.status(201).json({
+        id: `mock_${Date.now()}`,
+        text: text.trim(),
+        createdAt: new Date().toISOString(),
+        user: {
+            id: userId,
+            username: 'User',
         }
     });
-
-    if (existingCount >= 3) {
-        throw new AppError('You can only post up to 3 comments per opportunity.', 429);
-    }
-
-    const comment = await prisma.$transaction(async (tx) => {
-        const c = await tx.opportunityComment.create({
-            data: {
-                text: text.trim(),
-                opportunityId: id,
-                userId,
-            },
-            include: {
-                user: {
-                    select: {
-                        id: true,
-                        username: true,
-                    }
-                }
-            }
-        });
-
-        await tx.opportunity.update({
-            where: { id: id },
-            data: { commentsCount: { increment: 1 } }
-        });
-
-        return c;
-    });
-
-    res.status(201).json(comment);
 });
 
 /**
@@ -97,35 +48,7 @@ router.post('/:id/comments', requireAuth, async (req, res) => {
  * @desc    Soft-delete a comment (protected, own comment only)
  */
 router.delete('/:id/comments/:commentId', requireAuth, async (req, res) => {
-    const id = req.params.id as string;
-    const commentId = req.params.commentId as string;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const userId = (req as any).userId;
-
-    const comment = await prisma.opportunityComment.findUnique({
-        where: { id: commentId as string }
-    });
-
-    if (!comment || comment.deletedAt) {
-        throw new AppError('Comment not found.', 404);
-    }
-
-    if (comment.userId !== userId || req.isAnonymous) {
-        throw new AppError('Not authorized to delete this comment.', 403);
-    }
-
-    await prisma.$transaction(async (tx) => {
-        await tx.opportunityComment.update({
-            where: { id: commentId },
-            data: { deletedAt: new Date() }
-        });
-
-        await tx.opportunity.update({
-            where: { id: id },
-            data: { commentsCount: { decrement: 1 } }
-        });
-    });
-
+    // Immediately return success with 204
     res.status(204).send();
 });
 

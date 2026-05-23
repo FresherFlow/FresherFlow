@@ -7,7 +7,6 @@ import { updateOpportunityEngagement } from '../../application/opportunity/engag
 
 const router = express.Router();
 
-
 // IP hashing removed for privacy-first tracking
 
 function normalize(input: unknown, max = 200): string | null {
@@ -19,6 +18,11 @@ function normalize(input: unknown, max = 200): string | null {
 
 router.post('/opportunities/:id/click', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
+        // Disabled & Commented Out Temporarily - Bypassed to save API & DB free tier resources
+        // Job views/clicks are now fully handled in real-time on Firebase RTDB.
+        return res.status(202).json({ ok: true });
+
+        /*
         const opportunityId = String(req.params.id || '').trim();
         if (!opportunityId) {
             return res.status(400).json({ message: 'Opportunity ID is required' });
@@ -83,6 +87,7 @@ router.post('/opportunities/:id/click', optionalAuth, async (req: Request, res: 
         }
 
         return res.status(202).json({ ok: true });
+        */
     } catch (error) {
         return next(error);
     }

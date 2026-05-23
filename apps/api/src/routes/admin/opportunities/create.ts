@@ -350,4 +350,51 @@ router.put(
     },
 );
 
+
+/**
+ * PATCH /api/admin/opportunities/:id/status
+ * Lightweight status-only update (used by quick Publish / quick Expire buttons).
+ * Does NOT require the full opportunitySchema — just { status }.
+ */
+router.patch(
+    '/:id/status',
+    adminRateLimit,
+    withAdminAudit('UPDATE'),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const idParam = req.params.id as string;
+            const { status } = req.body as { status: string };
+
+            if (!status) return res.status(400).json({ message: 'status is required' });
+
+            const existing = await prisma.opportunity.findFirst({
+                where: { OR: [{ id: idParam }, { slug: idParam }] },
+            });
+            if (!existing) return res.status(404).json({ message: 'Opportunity not found' });
+
+            const opportunity = await prisma.opportunity.update({
+                where: { id: existing.id as string },
+                data: {
+                    status: status as unknown as DbOpportunityStatus,
+                    ...(status === OpportunityStatus.PUBLISHED ? { expiredAt: null, deletedAt: null, deletionReason: null } : {}),
+                },
+                include: { walkInDetails: true, governmentJobDetails: true },
+            });
+
+            // Fire publish pipeline if transitioning to PUBLISHED
+            if (existing.status !== OpportunityStatus.PUBLISHED && status === OpportunityStatus.PUBLISHED) {
+                await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
+            }
+
+            adminCache.invalidate(existing.id as string);
+            if (existing.slug) adminCache.invalidate(existing.slug as string);
+            adminCache.invalidateLists();
+
+            res.json({ opportunity, message: `Status updated to ${status}` });
+        } catch (error) {
+            next(error);
+        }
+    },
+);
+
 export default router;

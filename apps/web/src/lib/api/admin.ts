@@ -62,12 +62,19 @@ export const adminApi = {
             method: 'DELETE'
         }),
 
-    // Update opportunity
+    // Update opportunity (full edit form)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     updateOpportunity: (id: string, data: any) =>
         apiClient(`/api/admin/opportunities/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data)
+        }),
+
+    // Lightweight status-only update (quick Publish / Expire from table)
+    updateOpportunityStatus: (id: string, status: string) =>
+        apiClient(`/api/admin/opportunities/${id}/status`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status })
         }),
 
     // Expire opportunity
@@ -76,7 +83,7 @@ export const adminApi = {
             method: 'POST'
         }),
 
-    // Delete opportunity
+    // Delete opportunity (soft delete with reason)
     deleteOpportunity: (id: string, reason?: string) =>
         apiClient(`/api/admin/opportunities/${id}`, {
             method: 'DELETE',
@@ -86,6 +93,13 @@ export const adminApi = {
     restoreOpportunity: (id: string) =>
         apiClient(`/api/admin/opportunities/${id}/restore`, {
             method: 'POST'
+        }),
+
+    // Reject a draft — sets deletionReason so contributor sees it in "My Shares"
+    rejectOpportunity: (id: string, reason: string) =>
+        apiClient(`/api/admin/opportunities/${id}/reject`, {
+            method: 'POST',
+            body: JSON.stringify({ reason })
         }),
 
     // Get all feedback

@@ -44,15 +44,18 @@ export async function rejectOpportunity(opportunityId: string, adminId: string, 
       });
     }
 
-    // 3. Create Audit Log
-    await tx.adminAudit.create({
-      data: {
-        userId: adminId,
-        action: isSpam ? 'SPAM' : 'REJECT',
-        targetId: opportunityId,
-        reason: reason || (isSpam ? 'SPAM' : 'REJECTED')
-      }
-    });
+    // 3. Create Audit Log (only when a real UUID adminId is available; withAdminAudit middleware handles it otherwise)
+    const isRealAdmin = adminId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(adminId);
+    if (isRealAdmin) {
+      await tx.adminAudit.create({
+        data: {
+          userId: adminId,
+          action: isSpam ? 'SPAM' : 'REJECT',
+          targetId: opportunityId,
+          reason: reason || (isSpam ? 'SPAM' : 'REJECTED')
+        }
+      });
+    }
 
     return updated;
   });

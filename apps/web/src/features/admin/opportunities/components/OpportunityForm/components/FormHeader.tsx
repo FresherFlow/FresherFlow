@@ -23,8 +23,7 @@ export function FormHeader({ isEditMode, showParser, setShowParser }: FormHeader
                         {isEditMode ? 'Update and republish a verified listing.' : 'Create and publish a verified listing.'}
                     </p>
                 </div>
-                {!isEditMode && (
-                    <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
+                <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
                         <button
                             type="button"
                             onClick={() => setShowParser(!showParser)}
@@ -39,8 +38,7 @@ export function FormHeader({ isEditMode, showParser, setShowParser }: FormHeader
                         >
                             Govt Job Editor
                         </Link>
-                    </div>
-                )}
+                </div>
             </div>
         </div>
     );

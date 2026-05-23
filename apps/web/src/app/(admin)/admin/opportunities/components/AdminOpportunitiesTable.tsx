@@ -10,6 +10,7 @@ import {
     TrashIcon,
     ClockIcon,
     CheckCircleIcon,
+    XCircleIcon,
     ArrowPathIcon,
     EyeIcon,
     DocumentDuplicateIcon,
@@ -32,6 +33,7 @@ interface AdminOpportunitiesTableProps {
     handleExpire: (id: string, title: string) => void;
     handleStatusUpdate: (id: string, status: string) => void;
     handleDelete: (id: string, title: string) => void;
+    handleRejectDraft: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
     copySocialCaption: (opp: SocialOpportunity) => void;
     getPublicOpportunityHref: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
@@ -51,6 +53,7 @@ export const AdminOpportunitiesTable = ({
     handleExpire,
     handleStatusUpdate,
     handleDelete,
+    handleRejectDraft,
     handleRestore,
     copySocialCaption,
     getPublicOpportunityHref,
@@ -186,13 +189,22 @@ export const AdminOpportunitiesTable = ({
                                         <PencilSquareIcon className="w-4 h-4" />
                                     </Link>
                                     {opp.status === 'DRAFT' && (
-                                        <button
-                                            onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')}
-                                            className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md transition-all"
-                                            title="Publish Now"
-                                        >
-                                            <CheckCircleIcon className="w-4 h-4" />
-                                        </button>
+                                        <>
+                                            <button
+                                                onClick={() => handleStatusUpdate(opp.id, 'PUBLISHED')}
+                                                className="p-2 text-emerald-700 hover:bg-emerald-50 rounded-md transition-all"
+                                                title="Publish Now"
+                                            >
+                                                <CheckCircleIcon className="w-4 h-4" />
+                                            </button>
+                                            <button
+                                                onClick={() => handleRejectDraft(opp.id, opp.title)}
+                                                className="p-2 text-rose-600 hover:bg-rose-50 rounded-md transition-all"
+                                                title="Reject Draft"
+                                            >
+                                                <XCircleIcon className="w-4 h-4" />
+                                            </button>
+                                        </>
                                     )}
                                     {opp.status === 'PUBLISHED' && (
                                         <button

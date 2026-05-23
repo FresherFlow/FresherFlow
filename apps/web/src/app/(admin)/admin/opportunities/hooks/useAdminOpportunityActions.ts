@@ -4,7 +4,6 @@ import { adminApi } from '@/lib/api/admin';
 import { buildSocialCaption } from '@/features/admin/opportunities/listUtils';
 
 import { SocialOpportunity } from '@/features/admin/opportunities/listUtils';
-import { OpportunityStatus } from '@fresherflow/types';
 
 export function useAdminOpportunityActions(loadOpportunities: () => Promise<void>) {
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -22,16 +21,19 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
         show: boolean;
         title: string;
         message: string;
-        action: () => void;
+        action: (reason?: string) => void;
         type: 'danger' | 'warning';
         confirmText: string;
+        requireReason?: boolean;
+        reasonPlaceholder?: string;
     }>({
         show: false,
         title: '',
         message: '',
         action: () => { },
         type: 'warning',
-        confirmText: 'Confirm'
+        confirmText: 'Confirm',
+        requireReason: false,
     });
 
     const handleExpire = (id: string, title: string) => {
@@ -58,7 +60,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
     const handleStatusUpdate = async (id: string, newStatus: string) => {
         const tid = toast.loading(`Updating to ${newStatus}...`);
         try {
-            await adminApi.updateOpportunity(id, { status: newStatus as OpportunityStatus });
+            await adminApi.updateOpportunityStatus(id, newStatus);
             toast.success('Listing updated', { id: tid });
             loadOpportunities();
         } catch (err: unknown) {
@@ -70,15 +72,39 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
         setConfirmModal({
             show: true,
             title: 'Remove Opportunity',
-            message: `DANGER: Are you sure you want to REMOVE "${title}"?`,
+            message: `Remove "${title}"? The reason you type will be shown to the user who shared it.`,
             type: 'danger',
             confirmText: 'Remove listing',
-            action: async () => {
+            requireReason: true,
+            reasonPlaceholder: 'e.g. Job listing is expired, Duplicate entry...',
+            action: async (reason?: string) => {
                 const tid = toast.loading('Removing listing...');
                 try {
-                    // Note: deleteOpportunity payload accepts body with reason
-                    await adminApi.deleteOpportunity(id, 'Removed by admin');
+                    await adminApi.deleteOpportunity(id, reason || 'Removed by admin');
                     toast.success('Opportunity removed', { id: tid });
+                    loadOpportunities();
+                    setConfirmModal(prev => ({ ...prev, show: false }));
+                } catch (err: unknown) {
+                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
+                }
+            }
+        });
+    };
+
+    const handleRejectDraft = (id: string, title: string) => {
+        setConfirmModal({
+            show: true,
+            title: 'Reject Draft',
+            message: `Reject "${title}"? The reason will be shown to the contributor.`,
+            type: 'danger',
+            confirmText: 'Reject',
+            requireReason: true,
+            reasonPlaceholder: 'e.g. Job listing is expired, Not relevant for freshers...',
+            action: async (reason?: string) => {
+                const tid = toast.loading('Rejecting...');
+                try {
+                    await adminApi.rejectOpportunity(id, reason || 'Rejected by admin');
+                    toast.success('Draft rejected', { id: tid });
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
                 } catch (err: unknown) {
@@ -152,6 +178,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
         handleExpire,
         handleStatusUpdate,
         handleDelete,
+        handleRejectDraft,
         handleBulkAction,
         handleRestore,
         handleCopySocialCaption

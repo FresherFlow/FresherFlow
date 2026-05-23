@@ -3,7 +3,9 @@ import prisma from '../../../infrastructure/database/prisma';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
 import { ingestionQueue } from '@fresherflow/queue';
 import { tryResolveUserIdFromCookie } from './_helpers';
+import { requireAuth } from '../../../middleware/auth';
 import { updateOpportunityEngagement } from '../../../application/opportunity/engagement';
+import { adminCache } from '../../../infrastructure/cache/adminCache';
 
 const router = Router();
 
@@ -11,10 +13,10 @@ const router = Router();
  * POST /api/opportunities/share
  * Lightweight endpoint to share a link for background processing.
  */
-router.post('/share', async (req: Request, res: Response, next: NextFunction) => {
+router.post('/share', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { url } = req.body;
-        const userId = tryResolveUserIdFromCookie(req);
+        const userId = req.userId as string;
 
         if (!url || typeof url !== 'string') {
             return res.status(400).json({ message: 'URL is required' });
@@ -111,16 +113,47 @@ router.post('/share', async (req: Request, res: Response, next: NextFunction) =>
             } as any
         });
 
-        // 3. Enqueue background parsing
-        await ingestionQueue.add('process-user-share', {
-            rawOpportunityId: rawOpportunity.id,
-            url: normalizedUrl,
-            userId
+        // 3. Synchronous DRAFT creation (Bypassing ingestion queue)
+        let companyName = 'Unknown Company';
+        try {
+            const urlObj = new URL(normalizedUrl);
+            companyName = urlObj.hostname.replace(/^www\./, '');
+        } catch (e) {
+            // ignore
+        }
+
+        const title = 'New Opportunity';
+        const baseSlug = `${title.toLowerCase().replace(/\s+/g, '-')}-at-${companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+        const uniqueSlug = `${baseSlug}-${rawOpportunity.id.slice(-6)}`;
+
+        const opportunity = await prisma.opportunity.create({
+            data: {
+                slug: uniqueSlug,
+                title,
+                company: companyName,
+                type: 'JOB',
+                status: 'DRAFT',
+                sourceLink: normalizedUrl,
+                applyLink: normalizedUrl,
+                postedByUserId: userId,
+                sharesCount: 1,
+            }
         });
+
+        await prisma.rawOpportunity.update({
+            where: { id: rawOpportunity.id },
+            data: {
+                status: 'DRAFT_CREATED',
+                mappedOpportunityId: opportunity.id
+            }
+        });
+
+        // Invalidate admin cache so the new draft appears immediately in the Admin Web Drafts tab
+        adminCache.invalidateLists();
 
         res.status(202).json({
             success: true,
-            message: 'Link shared successfully! It will be processed shortly.',
+            message: 'Link shared successfully! It has been saved as a draft for review.',
             id: rawOpportunity.id
         });
     } catch (error) {
