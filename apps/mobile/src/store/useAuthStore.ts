@@ -5,6 +5,15 @@ import { secureStorage } from '@repo/frontend-core';
 import auth, { FirebaseAuthTypes, initializeAuth, isFirebaseAuthAvailable } from '@/config/firebase';
 import { Analytics } from '@/utils/analytics';
 import { getString, setString, remove } from '@/utils/storage';
+import {
+  readOnboardingSnapshot,
+  saveOnboardingUser,
+  writeOnboardingSnapshot,
+} from '@/utils/onboardingState';
+import {
+  readFirebaseOnboardingRecord,
+  writeFirebaseOnboardingRecord,
+} from '@/utils/firebaseOnboardingDb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface AuthState {
@@ -52,8 +61,8 @@ export const useAuthStore = create<AuthState>()(
   immer((set, get) => ({
     user: initialCachedUser,
     firebaseUser: null,
-    isAuthenticated: initialCachedUser !== null,
-    isAnonymous: false,
+    isAuthenticated: Boolean(initialCachedUser && !initialCachedUser.isAnonymous),
+    isAnonymous: initialCachedUser?.isAnonymous ?? false,
     isSyncing: true,
     token: null,
     referralCode: null,
@@ -67,15 +76,35 @@ export const useAuthStore = create<AuthState>()(
     },
     setAuth: (user, token) => {
       console.log('[Auth] setAuth called. Saving to MMKV...', user);
+      const currentState = get();
+      const canKeepLocalUsername =
+        currentState.user?.id === user.id &&
+        !currentState.user?.isAnonymous &&
+        Boolean(currentState.user?.username);
+      const isAnonymous = user.isAnonymous ?? currentState.firebaseUser?.isAnonymous ?? false;
+
+      const mergedUser = {
+        ...user,
+        username: user.username || (canKeepLocalUsername ? currentState.user?.username ?? null : null),
+        isOptimistic: false,
+        isAnonymous,
+      };
       void secureStorage.setItem('ff_auth_token_v1', token);
-      setString('ff_cached_user_profile_v3', JSON.stringify(user));
-      Analytics.identify(user);
+      setString('ff_cached_user_profile_v3', JSON.stringify(mergedUser));
+      saveOnboardingUser(mergedUser, get().skipUsernameSetup);
+      void writeFirebaseOnboardingRecord(currentState.firebaseUser, {
+        username: mergedUser.username,
+        fullName: mergedUser.fullName,
+        skipUsernameSetup: get().skipUsernameSetup || Boolean(mergedUser.username),
+      });
+      Analytics.identify(mergedUser);
       set((state) => {
-        state.user = { ...user, isOptimistic: false, isAnonymous: false };
+        state.user = mergedUser;
         state.token = token;
-        state.isAuthenticated = true;
-        state.isAnonymous = false;
+        state.isAuthenticated = !isAnonymous;
+        state.isAnonymous = isAnonymous;
         state.isSyncing = false;
+        // Never let a backend response reset skipUsernameSetup — user already acted on it
       });
     },
     setReferralCode: (code) => {
@@ -105,23 +134,86 @@ export const useAuthStore = create<AuthState>()(
             } else {
                 console.log('[Auth] Offline/boot transient null. Preserving active cached session:', state.user.username);
             }
-        } else if (!state.user || (state.user.isOptimistic && state.user.id !== fbUser.uid)) {
-            console.log('[Auth] Overwriting empty or optimistic session with fresh Firebase identity:', fbUser.uid);
-            // Optimistic UX: If we have a Firebase user but no Render user yet (or identity changed),
-            // create a partial "optimistic" user object to unblock the UI.
-            state.user = {
+        } else if (fbUser.isAnonymous) {
+            if (!state.user || state.user.id !== fbUser.uid || !state.user.isAnonymous) {
+                console.log('[Auth] Active Firebase session is anonymous. Using guest session:', fbUser.uid);
+                if (state.user && !state.user.isAnonymous) {
+                    state.token = null;
+                    remove('ff_cached_user_profile_v3');
+                    void secureStorage.deleteItemAsync('ff_auth_token_v1');
+                }
+                state.user = {
+                    id: fbUser.uid,
+                    email: undefined,
+                    fullName: 'Guest Explorer',
+                    role: Role.USER,
+                    username: null,
+                    isAnonymous: true,
+                    createdAt: new Date().toISOString(),
+                    isOptimistic: true,
+                };
+            }
+            state.isAuthenticated = false;
+        } else if (!state.user || state.user.id !== fbUser.uid || state.user.isOptimistic || state.user.isAnonymous) {
+            const cached = readOnboardingSnapshot(fbUser.uid);
+            const fallbackUser: User = {
                 id: fbUser.uid,
                 email: fbUser.email || undefined,
-                fullName: fbUser.isAnonymous ? 'Guest Explorer' : (fbUser.displayName || 'User'),
+                fullName: fbUser.displayName || 'User',
                 role: Role.USER,
                 username: null,
-                isAnonymous: fbUser.isAnonymous,
+                isAnonymous: false,
                 createdAt: new Date().toISOString(),
                 isOptimistic: true,
             };
-            // Anonymous users are technically authenticated in Firebase,
-            // but we treat them as guests in our app logic.
-            state.isAuthenticated = !fbUser.isAnonymous;
+            const cachedUser = cached?.user
+                ? {
+                    ...fallbackUser,
+                    ...cached.user,
+                    id: fbUser.uid,
+                    email: cached.user.email || fbUser.email || undefined,
+                    fullName: cached.user.fullName || fbUser.displayName || 'User',
+                    isAnonymous: false,
+                    isOptimistic: cached.user.isOptimistic ?? !cached.user.username,
+                }
+                : fallbackUser;
+            console.log('[Auth] Hydrating real Firebase user from onboarding cache:', cachedUser.username || 'no-handle');
+            state.user = cachedUser;
+            state.isAuthenticated = true;
+            if (cached?.skipUsernameSetup) {
+                state.skipUsernameSetup = true;
+                state.isSkipLoaded = true;
+            }
+            if (!cached?.user?.username) {
+                state.isSyncing = true;
+                void readFirebaseOnboardingRecord(fbUser)
+                    .then((record) => {
+                        useAuthStore.setState((current) => {
+                            if (!current.user || current.user.id !== fbUser.uid || current.user.isAnonymous) {
+                                current.isSyncing = false;
+                                return;
+                            }
+                            if (!record) {
+                                current.isSyncing = false;
+                                return;
+                            }
+                            const nextUser = {
+                                ...current.user,
+                                username: record.username || current.user.username,
+                                fullName: record.fullName || current.user.fullName,
+                                isOptimistic: !record.username,
+                            };
+                            saveOnboardingUser(nextUser, record.skipUsernameSetup || Boolean(record.username));
+                            current.user = nextUser;
+                            current.skipUsernameSetup = current.skipUsernameSetup || Boolean(record.skipUsernameSetup || record.username);
+                            current.isSkipLoaded = true;
+                            current.isSyncing = false;
+                        });
+                    })
+                    .catch(() => {
+                        useAuthStore.setState({ isSyncing: false });
+                    });
+            }
         } else {
             console.log('[Auth] Preserving fully-hydrated cached user profile:', state.user.username);
         }
@@ -170,19 +262,43 @@ export const useAuthStore = create<AuthState>()(
         state.isSyncing = false;
       });
     },
-    updateUser: (updatedFields) =>
+    updateUser: (updatedFields) => {
+      console.log('[AuthStore] updateUser called with:', updatedFields);
       set((state) => {
         if (state.user) {
-          console.log('[Auth] updateUser called. Merging fields & saving to MMKV:', updatedFields);
-          Object.assign(state.user, updatedFields);
+          state.user = { ...state.user, ...updatedFields };
           Analytics.identify(state.user);
           setString('ff_cached_user_profile_v3', JSON.stringify(state.user));
+          if (!state.user.isAnonymous) {
+            saveOnboardingUser(state.user, state.skipUsernameSetup);
+            void writeFirebaseOnboardingRecord(state.firebaseUser, {
+              username: state.user.username,
+              fullName: state.user.fullName,
+              skipUsernameSetup: state.skipUsernameSetup || Boolean(state.user.username),
+            });
+          }
         }
-      }),
+      });
+    },
     skipUsername: () => {
+      console.log('[AuthStore] skipUsername called');
       void secureStorage.setItem('ff_skip_username_setup_v1', 'true');
       set((state) => {
+        console.log('[AuthStore] Setting skipUsernameSetup to true in Zustand state');
         state.skipUsernameSetup = true;
+        state.isSkipLoaded = true; // Prevents startup async read from overwriting this
+        if (state.user && !state.user.isAnonymous) {
+          writeOnboardingSnapshot(state.user.id, {
+            user: state.user,
+            profile: state.user.profile || readOnboardingSnapshot(state.user.id)?.profile || null,
+            skipUsernameSetup: true,
+          });
+          void writeFirebaseOnboardingRecord(state.firebaseUser, {
+            username: state.user.username,
+            fullName: state.user.fullName,
+            skipUsernameSetup: true,
+          });
+        }
       });
     },
   }))
@@ -190,10 +306,28 @@ export const useAuthStore = create<AuthState>()(
 
 export const AuthManager = {
   initialize: async () => {
+    // Hard startup timeout — if ANYTHING hangs (Firebase, storage, network),
+    // force-unblock the app after 8 seconds so users never see infinite loading.
+    const startupTimeout = setTimeout(() => {
+      const state = useAuthStore.getState();
+      if (state.isSyncing || !state.isSkipLoaded) {
+        console.warn('[Auth] Startup timeout fired. Force-unblocking app.');
+        useAuthStore.setState({ isSyncing: false, isSkipLoaded: true });
+      }
+    }, 8000);
+
     // Initialize Google Sign-In & native modules
     initializeAuth();
 
-    // 1. Asynchronous Hybrid Hydration Fallback (supports both synchronous native MMKV and asynchronous mock MMKV)
+    // 0. Load the JWT token locally so the app can start making API calls immediately without a backend handshake
+    void secureStorage.getItem('ff_auth_token_v1').then(token => {
+      if (token) {
+        console.log('[Auth] Restored JWT token from secureStorage');
+        useAuthStore.setState({ token });
+      }
+    });
+
+    // 1. Asynchronous Hybrid Hydration Fallback
     try {
       const currentStoreUser = useAuthStore.getState().user;
       if (!currentStoreUser || currentStoreUser.isOptimistic) {
@@ -202,21 +336,19 @@ export const AuthManager = {
         const targetKey = keys.find((k: string) => k.endsWith('ff_cached_user_profile_v3'));
         if (targetKey) {
           const raw = await AsyncStorage.getItem(targetKey);
-          console.log('[Auth] Hybrid Hydration fallback raw payload:', raw);
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed && parsed.id) {
               console.log('[Auth] Hybrid Hydration fallback successful:', parsed.username);
               useAuthStore.setState({
                 user: parsed,
-                isAuthenticated: true,
+                isAuthenticated: !parsed.isAnonymous,
+                isAnonymous: parsed.isAnonymous ?? false,
                 isSyncing: false,
               });
             }
           }
         }
-      } else {
-        console.log('[Auth] Synchronous profile already hydrated:', currentStoreUser.username);
       }
     } catch (err) {
       console.warn('[Auth] Hybrid Hydration fallback failed:', err);
@@ -229,21 +361,29 @@ export const AuthManager = {
 
     // 3. Load skip username setup state
     void secureStorage.getItem('ff_skip_username_setup_v1').then(skipped => {
-      useAuthStore.setState({
-        skipUsernameSetup: skipped === 'true',
-        isSkipLoaded: true
+      useAuthStore.setState((current) => {
+        const snapshotSkipped = current.user && !current.user.isAnonymous
+          ? readOnboardingSnapshot(current.user.id)?.skipUsernameSetup
+          : false;
+        const legacyCompletedUser = Boolean(current.user?.username && skipped === 'true');
+        return {
+          skipUsernameSetup: current.skipUsernameSetup || Boolean(snapshotSkipped) || legacyCompletedUser,
+          isSkipLoaded: true,
+        };
       });
     });
 
     if (!isFirebaseAuthAvailable()) {
       console.warn('[Auth] Firebase native auth unavailable. Skipping Firebase listeners.');
-      useAuthStore.setState({ isSyncing: false });
+      useAuthStore.setState({ isSyncing: false, isSkipLoaded: true });
+      clearTimeout(startupTimeout);
       return;
     }
 
-    // 4. Initialize Firebase auth listeners only AFTER profile cache is hydrated
+    // 4. Initialize Firebase auth listeners
     auth().onAuthStateChanged((fbUser) => {
       useAuthStore.getState().setFirebaseUser(fbUser);
+      clearTimeout(startupTimeout);
     });
 
     // 5. Initialize session (Anonymous login if needed)

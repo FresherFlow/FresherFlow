@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
-import { Alert } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as Sharing from 'expo-sharing';
+import { useCallback, useEffect, useState, useRef } from 'react';
+import { Alert, Share } from 'react-native';
+import { openExternalURL } from '@/utils/browser';
 import axios from 'axios';
 import { Opportunity, OpportunityType, ActionType, FeedbackReason } from '@fresherflow/types';
-import { opportunityClicksApi, actionsApi, feedbackApi } from '@fresherflow/api-client';
-import { useNotifications, useSaved, enqueueOfflineReport } from '@repo/frontend-core';
+import { /* opportunityClicksApi, */ actionsApi, feedbackApi, opportunitiesApi } from '@fresherflow/api-client';
+import { useNotifications, useSaved, enqueueOfflineReport, enqueueOfflineClickTrack } from '@repo/frontend-core';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Analytics, EventNames } from '@/utils/analytics';
 import { useTracker } from '@/hooks/useTracker';
 import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache, isJobReportedLocally, saveReportedJobLocally } from '@/utils/offlineCache';
+import { markJobAsSeen, isJobOpened, markJobAsOpened } from '@/utils/seenJobs';
 import { getLocalProfile } from '@/utils/localProfile';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import { BOOTSTRAP_FEED_URL } from '@/config/api';
@@ -18,6 +18,8 @@ import { MOBILE_SITE_URL } from '@/config/runtime';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/contexts/ThemeContext';
+import { incrementFirebaseJobView, incrementFirebaseJobClick, subscribeToFirebaseJobStats } from '@/utils/firebaseViewsDb';
+import { submitFirebaseOpportunityFeedback } from '@/utils/firebaseFeedbackDb';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -59,6 +61,7 @@ export const useOpportunityDetail = (
             // Cache-First: If we have a version in cache, use it immediately
             // even if it's stale (>1 hour), especially if current opportunity is partial
             const cached = await readDetailCache(opportunityId);
+
             const CACHE_TTL = 60 * 60 * 1000; // 1 hour
 
             const isCurrentPartial = !opportunity?.description;
@@ -85,33 +88,52 @@ export const useOpportunityDetail = (
             try {
                 let foundOpportunity: Opportunity | null = null;
 
-                // 1. Try resolving from local offline feed cache first
-                const feedCache = await readFeedCache();
-                if (feedCache && feedCache.items.length > 0) {
-                    foundOpportunity = feedCache.items.find(
-                        (opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId
-                    ) || null;
+                // 1. Try resolving from public opportunities API first to get live, dynamic data (like views count)
+                try {
+                    const res = await opportunitiesApi.get(opportunityId);
+                    if (res) {
+                        const resObj = res as unknown as Record<string, unknown>;
+                        if (resObj && typeof resObj === 'object' && 'opportunity' in resObj) {
+                            foundOpportunity = resObj.opportunity as unknown as Opportunity;
+                        } else {
+                            foundOpportunity = res as unknown as Opportunity;
+                        }
+                    }
+                } catch (apiErr) {
+                    console.warn('[useOpportunityDetail] Direct API load failed, trying local feed/CDN fallbacks:', apiErr);
                 }
 
-                // 2. If not found locally, fetch signed master bootstrap feed from CDN Pop
+                // 2. Fallback: Try resolving from local offline feed cache
                 if (!foundOpportunity) {
-                    const signatureParams = generateCdnSignature('/bootstrap-feed.min.json');
-
-                    const signedUrl = `${BOOTSTRAP_FEED_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
-
-                    const response = await axios.get(signedUrl, { 
-                        timeout: 5000
-                    });
-
-                    if (response.data?.opportunities) {
-                        const ops = response.data.opportunities as Opportunity[];
-                        foundOpportunity = ops.find(
+                    const feedCache = await readFeedCache();
+                    if (feedCache && feedCache.items.length > 0) {
+                        foundOpportunity = feedCache.items.find(
                             (opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId
                         ) || null;
                     }
                 }
 
-                // 3. Fail-safe fallback: let it throw if not resolved via local cache or CDN
+                // 3. Fallback: Fetch signed master bootstrap feed from CDN Pop
+                if (!foundOpportunity) {
+                    try {
+                        const signatureParams = generateCdnSignature('/bootstrap-feed.min.json');
+                        const signedUrl = `${BOOTSTRAP_FEED_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
+                        const response = await axios.get(signedUrl, { 
+                             timeout: 5000
+                        });
+
+                        if (response.data?.opportunities) {
+                            const ops = response.data.opportunities as Opportunity[];
+                            foundOpportunity = ops.find(
+                                (opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId
+                            ) || null;
+                        }
+                    } catch (cdnErr) {
+                        console.warn('[useOpportunityDetail] CDN fallback failed:', cdnErr);
+                    }
+                }
+
+                // 4. Fail-safe fallback: let it throw if not resolved via local cache, CDN, or API
                 if (!foundOpportunity) {
                     throw new Error('Opportunity details not found.');
                 }
@@ -120,16 +142,22 @@ export const useOpportunityDetail = (
 
                 const profile = await getLocalProfile();
                 const match = calculateMatchScore(profile, foundOpportunity);
-
                 // Robust Check: If API/CDN returns partial data but we have a better cached version, use cache
                 const hasFullData = !!foundOpportunity.description;
                 const cachedHasFullData = !!cached?.description;
 
+                const baseOpp = hasFullData ? foundOpportunity : (cachedHasFullData ? cached : foundOpportunity);
                 const fullOpportunity = {
-                    ...(hasFullData ? foundOpportunity : (cachedHasFullData ? cached : foundOpportunity)),
-                    matchScore: initialOpportunity?.matchScore ?? match.score,
-                    matchReason: initialOpportunity?.matchReason ?? match.reason,
-                    isEligible: initialOpportunity?.isEligible ?? match.isEligible
+                    ...baseOpp,
+                    clicksCount: Math.max(
+                        foundOpportunity?.clicksCount || 0,
+                        baseOpp?.clicksCount || 0,
+                        cached?.clicksCount || 0,
+                        1
+                    ),
+                    matchScore: match.score,
+                    matchReason: match.reason,
+                    isEligible: match.isEligible
                 };
 
                 setOpportunity(fullOpportunity as ExtendedOpportunity);
@@ -145,12 +173,16 @@ export const useOpportunityDetail = (
                 if (user && !user.isAnonymous) {
                     void actionsApi.track(opportunityId, ActionType.VIEWED);
                 }
+                
+                // Trigger similar load now that we have the object
+                void loadSimilar(fullOpportunity as Opportunity);
             } catch (remoteError: unknown) {
                 if (cancelled) return;
                 if (cached) {
                     setOpportunity(cached);
                     setError(null);
                     showToast('Offline mode: showing cached details');
+                    void loadSimilar(cached as Opportunity);
                 } else {
                     const message = (remoteError as Error).message || 'Could not load opportunity';
                     setError(message);
@@ -161,8 +193,8 @@ export const useOpportunityDetail = (
             }
         };
 
-        const loadSimilar = async () => {
-            if (!opportunityId) return;
+        const loadSimilar = async (currentOpp: Opportunity) => {
+            if (!opportunityId || !currentOpp) return;
 
             // Check specific similarity cache first
             const cached = await readSimilarCache(opportunityId);
@@ -176,9 +208,8 @@ export const useOpportunityDetail = (
             try {
                 // Client-side similarity logic: Use the broad feed cache as a pool
                 const feedCache = await readFeedCache();
-                const currentOpp = opportunity || initialOpportunity;
 
-                if (feedCache && feedCache.items.length > 0 && currentOpp) {
+                if (feedCache && feedCache.items.length > 0) {
                     const pool = feedCache.items;
                     const similar = pool
                         .filter((opp: Opportunity) => opp.id !== opportunityId)
@@ -229,9 +260,72 @@ export const useOpportunityDetail = (
         };
 
         void loadOpportunity();
-        void loadSimilar();
         return () => { cancelled = true; };
     }, [opportunityId, showToast]);
+
+    const viewTrackedRef = useRef<string | null>(null);
+
+    // Subscribe to real-time views and applied counts from Firebase RTDB
+    useEffect(() => {
+        if (!opportunityId) return;
+
+        const unsubscribe = subscribeToFirebaseJobStats(opportunityId, (realtimeStats) => {
+            setOpportunity(prev => {
+                if (!prev) return null;
+                return {
+                    ...prev,
+                    clicksCount: realtimeStats.views,
+                    appliedCount: realtimeStats.applied
+                };
+            });
+        });
+
+        return unsubscribe;
+    }, [opportunityId]);
+
+    useEffect(() => {
+        if (!opportunity || !opportunity.id || viewTrackedRef.current === opportunity.id) return;
+        viewTrackedRef.current = opportunity.id;
+
+        const recordView = async () => {
+            try {
+                const alreadyOpened = await isJobOpened(opportunity.id);
+                if (!alreadyOpened) {
+                    // 1. Increment clicksCount locally
+                    const updatedOpp = {
+                        ...opportunity,
+                        clicksCount: (opportunity.clicksCount || 0) + 1
+                    };
+                    
+                    // 2. Set the state
+                    setOpportunity(updatedOpp);
+                    
+                    // 3. Save to cache ONLY if we have full data, to avoid overwriting rich cache with partial list-item
+                    const isPartial = !opportunity?.description;
+                    if (!isPartial) {
+                        await saveDetailCache(updatedOpp as Opportunity);
+                    }
+                    
+                    // 4. Mark job as opened and seen locally
+                    await markJobAsOpened(opportunity.id);
+                    await markJobAsSeen(opportunity.id);
+                    
+                    // 5. Track/Sync view count increment on Firebase RTDB
+                    try {
+                        await incrementFirebaseJobView(opportunity.id);
+                    } catch (trackError: unknown) {
+                        console.warn('[useOpportunityDetail] Failed to increment view in Firebase:', trackError);
+                        // Fallback to local offline cache if Firebase fails (highly unlikely as Firebase has its own robust offline queueing)
+                        await enqueueOfflineClickTrack(opportunity.id, 'detail_view', user?.id);
+                    }
+                }
+            } catch (err) {
+                console.error('[useOpportunityDetail] Failed to record view:', err);
+            }
+        };
+
+        void recordView();
+    }, [opportunity?.id, user?.id]);
 
     const handleToggleSave = useCallback(async (opp: Opportunity) => {
         const wasSaved = isSaved(opp.id);
@@ -256,23 +350,17 @@ export const useOpportunityDetail = (
         try {
             const shareUrl = `${MOBILE_SITE_URL}${getPublicOpportunityPath(opportunity)}`;
 
-            // Use expo-sharing for better native experience
-            if (await Sharing.isAvailableAsync()) {
-                await Sharing.shareAsync(shareUrl, {
-                    dialogTitle: 'Share Opportunity',
-                    mimeType: 'text/plain',
-                    UTI: 'public.plain-text',
-                });
-            } else {
-                // Fallback or handle appropriately
-                console.log('Sharing not available');
-            }
+            await Share.share({
+                message: `Check out this opportunity: ${shareUrl}`,
+                url: shareUrl,
+                title: `Share ${opportunity.title || 'Opportunity'}`,
+            });
 
             if (user && !user.isAnonymous) {
                 void actionsApi.track(opportunity.id, ActionType.SHARED);
             }
         } catch (shareError) {
-            console.log('Share action failed', shareError);
+            console.warn('[useOpportunityDetail] Share action failed:', shareError);
         }
     }, [opportunity, user]);
 
@@ -289,52 +377,46 @@ export const useOpportunityDetail = (
             return false;
         }
 
-        try {
-            await feedbackApi.submit(opportunityId, reason);
-            
-            // Mark locally on success
-            saveReportedJobLocally(opportunityId);
+        // 2. Submit to Firebase RTDB instantly (non-blocking)
+        void submitFirebaseOpportunityFeedback(user.id, opportunityId, reason);
 
-            if (user && !user.isAnonymous) {
+        // 3. Mark locally instantly to prevent double-submitting
+        saveReportedJobLocally(opportunityId);
+
+        // 4. Fire-and-forget backend sync in background for Telegram & Admin panel
+        void feedbackApi.submit(opportunityId, reason)
+            .then(() => {
                 void actionsApi.track(opportunityId, ActionType.REPORTED);
-            }
-            return true;
-        } catch (err: unknown) {
-            const errorObj = err as { name?: string; message?: string };
-            const isOffline = errorObj?.name === 'OfflineError' || 
-                              errorObj?.message?.toLowerCase().includes('offline') || 
-                              errorObj?.message?.toLowerCase().includes('network error') ||
-                              errorObj?.message?.toLowerCase().includes('timeout');
+            })
+            .catch(async (err: unknown) => {
+                const errorObj = err as { name?: string; message?: string; status?: number };
+                const isOffline = errorObj?.name === 'OfflineError' || 
+                                  errorObj?.message?.toLowerCase().includes('offline') || 
+                                  errorObj?.message?.toLowerCase().includes('network error') ||
+                                  errorObj?.message?.toLowerCase().includes('timeout') ||
+                                  (errorObj?.status && errorObj.status >= 500);
 
-            if (isOffline) {
-                // Local-first: take the report locally if API is down
-                await enqueueOfflineReport(opportunityId, reason, undefined, user.id);
-                saveReportedJobLocally(opportunityId);
-                
-                showToast('Opportunity reported. Thank you for helping the community!', 'success');
-                
-                if (user && !user.isAnonymous) {
-                    void actionsApi.track(opportunityId, ActionType.REPORTED);
+                if (isOffline) {
+                    // API is offline or sleeping - queue offline as backup
+                    await enqueueOfflineReport(opportunityId, reason, undefined, user.id);
                 }
-                return true;
-            }
+            });
 
-            const msg = err instanceof Error ? err.message : 'Could not submit report';
-            // Specific handling for already reported (P2002 translated by backend)
-            if (msg.includes('already submitted') || msg.includes('already reported')) {
-                saveReportedJobLocally(opportunityId);
-                showToast('You have already reported this opportunity', 'info');
-            } else {
-                Alert.alert('Report Failed', msg);
-            }
-            return false;
-        }
+        // 5. Instantly notify success
+        showToast('Opportunity reported. Thank you for helping the community!', 'success');
+        return true;
     }, [opportunityId, user, showToast]);
 
     const handleApply = useCallback(async () => {
         if (!opportunity?.applyLink) {
             Alert.alert('Apply link unavailable', 'This opportunity does not have an application link yet.');
             return;
+        }
+
+        // Clean and validate link scheme defensively
+        let applyUrl = opportunity.applyLink.trim();
+        if (!/^https?:\/\//i.test(applyUrl)) {
+            applyUrl = `https://${applyUrl}`;
         }
 
         // Automatically add to tracker if not already there
@@ -344,9 +426,9 @@ export const useOpportunityDetail = (
 
         if (user && !user.isAnonymous) {
             try {
-                await opportunityClicksApi.trackApplyClick(opportunity.id, 'mobile_app');
+                await incrementFirebaseJobClick(opportunity.id);
             } catch (trackError) {
-                console.warn('Failed to track application action', trackError);
+                console.warn('Failed to track application action in Firebase', trackError);
             }
         }
         
@@ -360,20 +442,15 @@ export const useOpportunityDetail = (
                 useWebView: false
             });
 
-            // STANDARD: Open in OS in-app browser (Safe)
-            await WebBrowser.openBrowserAsync(opportunity.applyLink, {
-                readerMode: false,
-                dismissButtonStyle: 'close',
-                toolbarColor: currentTheme.colors.background,
-                controlsColor: currentTheme.colors.primary,
-            });
+            // STANDARD: Open in OS in-app browser (Safe) or external browser according to setting
+            await openExternalURL(applyUrl, currentTheme.colors);
             return true; // Indicate success for UI-side effects like StoreReview
         } catch (err) {
             console.error('Apply link opening failed:', err);
             Alert.alert('Could not open link', 'Please try again later.');
             return false;
         }
-    }, [opportunity, isTracking, toggleTracking, navigation]);
+    }, [opportunity, isTracking, toggleTracking, navigation, user, currentTheme.id]);
 
     return {
         opportunity,

@@ -1,6 +1,8 @@
 import type { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
+import Constants from 'expo-constants';
+
 type NativeFirebaseAuthModule = {
   default?: () => FirebaseAuthTypes.Module;
   GoogleAuthProvider?: {
@@ -31,9 +33,31 @@ export function isFirebaseAuthAvailable(): boolean {
   return Boolean(loadNativeAuthModule()?.default);
 }
 
+const getGoogleWebClientId = () => {
+  const appEnv = Constants.expoConfig?.extra?.appEnv || 'development';
+  if (appEnv === 'production') {
+    return '346180935352-mr0jnrbqo9382vg987mb8ms4otfgmh1j.apps.googleusercontent.com';
+  }
+  // Dev & Staging share the fresherflow-dev-staging project
+  return '162796656158-p6776o53i5efnse8i6bjujptms4at6fj.apps.googleusercontent.com';
+};
+
+export const getFirebaseDatabaseUrl = (): string => {
+  // Prefer env-injected URL (set per environment in .env → app.config.js → extra)
+  const fromEnv = Constants.expoConfig?.extra?.firebaseRtdbUrl as string | undefined;
+  if (fromEnv) return fromEnv;
+
+  // Fallback by appEnv in case env var is missing (both DBs are in Singapore)
+  const appEnv = Constants.expoConfig?.extra?.appEnv || 'development';
+  if (appEnv === 'production') {
+    return 'https://fresherflow-3604b-default-rtdb.asia-southeast1.firebasedatabase.app';
+  }
+  return 'https://fresherflow-dev-staging-default-rtdb.asia-southeast1.firebasedatabase.app';
+};
+
 export const initializeAuth = () => {
   GoogleSignin.configure({
-    webClientId: '346180935352-mr0jnrbqo9382vg987mb8ms4otfgmh1j.apps.googleusercontent.com',
+    webClientId: getGoogleWebClientId(),
     offlineAccess: true,
   });
   loadNativeAuthModule();

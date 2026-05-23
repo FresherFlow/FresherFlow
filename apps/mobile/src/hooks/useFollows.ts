@@ -1,8 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
-import { followsApi } from '@fresherflow/api-client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { getJSON, setJSON } from '@/utils/storage';
-import { enqueueOfflineFollowAdd, enqueueOfflineFollowRemove } from '@repo/frontend-core';
+import { subscribeToFirebaseFollows, writeFirebaseFollows } from '@/utils/firebaseFollowsDb';
 
 interface Follows {
     tags: string[];
@@ -35,108 +34,86 @@ export function useFollows() {
 
     const isAnonymous = !user || user.isAnonymous;
 
-    const fetchFollows = useCallback(async () => {
-        if (isAnonymous) return;
+    // Real-time synchronization with Firebase RTDB
+    useEffect(() => {
+        if (isAnonymous || !user?.id) {
+            setFollows({ tags: [], companies: [], contributors: [] });
+            return;
+        }
+
         setLoading(true);
-        try {
-            const data = await followsApi.get();
-            const sanitized = {
-                tags: data?.tags || [],
-                companies: data?.companies || [],
-                contributors: data?.contributors || [],
+        const unsubscribe = subscribeToFirebaseFollows(user.id, (record) => {
+            const sanitized: Follows = {
+                tags: record.tags || [],
+                companies: record.companies || [],
+                contributors: record.contributors || [],
             };
             setFollows(sanitized);
             setJSON(FOLLOWS_CACHE_KEY, sanitized);
-        } catch (error) {
-            console.error('Failed to fetch follows', error);
-        } finally {
             setLoading(false);
-        }
-    }, [user]);
+        });
+
+        return unsubscribe;
+    }, [isAnonymous, user?.id]);
 
     const follow = useCallback(async (type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
-        if (isAnonymous) return false;
+        if (isAnonymous || !user?.id) return false;
         
-        // Optimistic UI updates
-        const updateState = () => {
-            setFollows(prev => {
-                const key = type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors';
-                const currentList = prev[key as keyof Follows] || [];
-                if (currentList.includes(value)) return prev;
-                const next = {
-                    ...prev,
-                    [key]: [...currentList, value]
-                };
-                setJSON(FOLLOWS_CACHE_KEY, next);
-                return next;
-            });
-        };
-
-        try {
-            // Apply optimistic UI state immediately to prevent lag
-            updateState();
-            await followsApi.follow({ type, value });
-            return true;
-        } catch (error) {
-            const err = error as { name?: string; message?: string };
-            const isOffline = err?.name === 'OfflineError' || err?.message?.toLowerCase().includes('offline') || err?.message?.toLowerCase().includes('network error');
-            if (isOffline) {
-                console.log('[Follows] Offline detected. Enqueueing follow action in offline queue...', { type, value });
-                void enqueueOfflineFollowAdd(type, value, user.id);
-                return true;
-            }
+        const key = type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors';
+        
+        let updated = false;
+        setFollows(prev => {
+            const currentList = prev[key as keyof Follows] || [];
+            if (currentList.includes(value)) return prev;
             
-            // Revert on real server failure
-            console.error('Follow failed', error);
-            if (user) void fetchFollows();
-            return false;
-        }
-    }, [user, fetchFollows]);
+            const next = {
+                ...prev,
+                [key]: [...currentList, value]
+            };
+            setJSON(FOLLOWS_CACHE_KEY, next);
+            
+            // Fire-and-forget write to Firebase (native caching handles offline queuing)
+            void writeFirebaseFollows(user.id, next);
+            updated = true;
+            return next;
+        });
+
+        return updated;
+    }, [isAnonymous, user?.id]);
 
     const unfollow = useCallback(async (type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
-        if (isAnonymous) return false;
+        if (isAnonymous || !user?.id) return false;
 
-        const updateState = () => {
-            setFollows(prev => {
-                const key = type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors';
-                const currentList = prev[key as keyof Follows] || [];
-                if (!currentList.includes(value)) return prev;
-                const next = {
-                    ...prev,
-                    [key]: currentList.filter(v => v !== value)
-                };
-                setJSON(FOLLOWS_CACHE_KEY, next);
-                return next;
-            });
-        };
+        const key = type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors';
+        
+        let updated = false;
+        setFollows(prev => {
+            const currentList = prev[key as keyof Follows] || [];
+            if (!currentList.includes(value)) return prev;
+            
+            const next = {
+                ...prev,
+                [key]: currentList.filter(v => v !== value)
+            };
+            setJSON(FOLLOWS_CACHE_KEY, next);
+            
+            // Fire-and-forget write to Firebase (native caching handles offline queuing)
+            void writeFirebaseFollows(user.id, next);
+            updated = true;
+            return next;
+        });
 
-        try {
-            updateState();
-            await followsApi.unfollow({ type, value });
-            return true;
-        } catch (error) {
-            const err = error as { name?: string; message?: string };
-            const isOffline = err?.name === 'OfflineError' || err?.message?.toLowerCase().includes('offline') || err?.message?.toLowerCase().includes('network error');
-            if (isOffline) {
-                console.log('[Follows] Offline detected. Enqueueing unfollow action in offline queue...', { type, value });
-                void enqueueOfflineFollowRemove(type, value, user.id);
-                return true;
-            }
-
-            console.error('Unfollow failed', error);
-            if (user) void fetchFollows();
-            return false;
-        }
-    }, [user, fetchFollows]);
+        return updated;
+    }, [isAnonymous, user?.id]);
 
     const isFollowing = useCallback((type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
         const list = type === 'TAG' ? follows.tags : type === 'COMPANY' ? follows.companies : follows.contributors;
         return Array.isArray(list) && list.includes(value);
     }, [follows]);
 
-    useEffect(() => {
-        if (!isAnonymous) fetchFollows();
-    }, [isAnonymous, fetchFollows]);
+    const refresh = useCallback(async () => {
+        // No-op because Firebase subscription synchronizes automatically in real-time
+    }, []);
 
     return {
         follows,
@@ -144,6 +121,7 @@ export function useFollows() {
         follow,
         unfollow,
         isFollowing,
-        refresh: fetchFollows
+        refresh
     };
 }
+

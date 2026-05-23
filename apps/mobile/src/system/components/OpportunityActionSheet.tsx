@@ -31,6 +31,7 @@ import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import { feedbackApi, actionsApi } from '@fresherflow/api-client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/contexts/ToastContext';
+import { submitFirebaseOpportunityFeedback } from '@/utils/firebaseFeedbackDb';
 import { Alert, ActivityIndicator } from 'react-native';
 import { ChevronLeft, Ban, Info, Link, AlertTriangle, Trash2, ChevronRight } from 'lucide-react-native';
 
@@ -94,38 +95,32 @@ export const OpportunityActionSheetContent: React.FC<{
             return;
         }
 
-        setLoading(true);
-        try {
-            await feedbackApi.submit(activeOpportunity.id, reason);
-            void actionsApi.track(activeOpportunity.id, ActionType.REPORTED);
-            Analytics.trackEvent(EventNames.REPORT_SUBMITTED, {
-                opportunityId: activeOpportunity.id,
-                reason: reason
-            });
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            showSuccess('Opportunity reported. Thank you for your feedback!');
-            onClose();
-        } catch (err: unknown) {
-            const error = err as Error & { status?: number };
-            const msg = (error.message || '').toLowerCase();
-            const isNetworkError = !error.status || error.status >= 500 || msg.includes('network') || msg.includes('timeout') || msg.includes('failed to fetch');
+        // 1. Submit to Firebase RTDB instantly (non-blocking)
+        void submitFirebaseOpportunityFeedback(user.id, activeOpportunity.id, reason);
 
-            if (isNetworkError) {
-                // API is sleeping - save offline
-                await enqueueOfflineReport(activeOpportunity.id, reason, undefined, user.id);
-                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                showSuccess('Offline: Report saved. It will sync automatically when online.');
-                onClose();
-            } else if (msg.includes('already submitted')) {
-                Alert.alert('Already Reported', 'You have already reported this opportunity.');
-                onClose();
-            } else {
-                Alert.alert('Report Failed', error.message || 'Could not submit report');
-                onClose();
-            }
-        } finally {
-            setLoading(false);
-        }
+        // 2. Fire-and-forget backend sync in background for Telegram & Admin panel
+        void feedbackApi.submit(activeOpportunity.id, reason)
+            .then(() => {
+                void actionsApi.track(activeOpportunity.id, ActionType.REPORTED);
+            })
+            .catch(async (err: unknown) => {
+                const error = err as Error & { status?: number };
+                const msg = (error.message || '').toLowerCase();
+                const isNetworkError = !error.status || error.status >= 500 || msg.includes('network') || msg.includes('timeout') || msg.includes('failed to fetch');
+                if (isNetworkError) {
+                    // API is sleeping or offline - save offline queue as backup
+                    await enqueueOfflineReport(activeOpportunity.id, reason, undefined, user.id);
+                }
+            });
+
+        // 3. Immediately transition the UI and notify success
+        Analytics.trackEvent(EventNames.REPORT_SUBMITTED, {
+            opportunityId: activeOpportunity.id,
+            reason: reason
+        });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showSuccess('Opportunity reported. Thank you for your feedback!');
+        onClose();
     };
 
     const reportReasons = [

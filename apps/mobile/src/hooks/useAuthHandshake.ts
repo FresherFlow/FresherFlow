@@ -3,6 +3,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { authApi } from '@fresherflow/api-client';
 import { AuthResponse } from '@fresherflow/types';
 import { flushOfflineActions } from '@repo/frontend-core';
+import { flushOnboardingSyncQueue } from '@/utils/onboardingState';
 
 export const useAuthHandshake = () => {
     const { firebaseUser, user, setAuth, setSyncing, handshakeTrigger } = useAuthStore();
@@ -12,7 +13,7 @@ export const useAuthHandshake = () => {
 
     useEffect(() => {
         const performHandshake = async () => {
-            if (!firebaseUser || isHandshaking.current) return;
+            if (!firebaseUser || firebaseUser.isAnonymous || isHandshaking.current) return;
             
             const now = Date.now();
             if (now - lastHandshakeTime.current < 5000) {
@@ -23,11 +24,14 @@ export const useAuthHandshake = () => {
             
             const isDifferentUser = user && user.id !== firebaseUser.uid;
             const isForced = handshakeTrigger > 0;
-            if (user && user.isOptimistic === false && !isDifferentUser && !isForced) return;
+            const hasAccessToken = Boolean(useAuthStore.getState().token);
+            if (user && user.isOptimistic != true && !isDifferentUser && !isForced && hasAccessToken) return;
 
             isHandshaking.current = true;
 
             try {
+                // The backend requires a fresh token to verify auth_time, otherwise it throws 403.
+                // Since this runs in the background, forcing a refresh is safe.
                 const idToken = await firebaseUser.getIdToken(true);
                 const { referralCode, setReferralCode } = useAuthStore.getState();
                 
@@ -38,18 +42,20 @@ export const useAuthHandshake = () => {
                     setAuth(response.user, response.accessToken);
                     
                     if (referralCode) setReferralCode(null);
+                    await flushOnboardingSyncQueue(response.user.id as string);
                     await flushOfflineActions(response.user.id as string);
                 }
             } catch (error) {
                 console.error('[Auth] Handshake failed:', error);
                 
-                // Silently retry exactly once after 15 seconds
-                if (retryCount.current < 1) {
+                const retryDelays = [15000, 30000, 60000];
+                if (retryCount.current < retryDelays.length) {
+                    const delay = retryDelays[retryCount.current];
                     retryCount.current += 1;
-                    console.log('[Auth] Scheduling silent retry in 15 seconds...');
+                    console.log(`[Auth] Scheduling silent retry in ${Math.round(delay / 1000)} seconds...`);
                     setTimeout(() => {
                         void performHandshake();
-                    }, 15000);
+                    }, delay);
                 }
             } finally {
                 isHandshaking.current = false;

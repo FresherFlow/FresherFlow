@@ -14,6 +14,7 @@ if (!admin.apps.length) {
                     clientEmail: client_email,
                     privateKey: private_key,
                 }),
+                databaseURL: `https://${project_id}-default-rtdb.firebaseio.com`
             });
             logger.info('Firebase Admin initialized with service account.');
         } catch (error) {
@@ -26,6 +27,7 @@ if (!admin.apps.length) {
         try {
             admin.initializeApp({
                 projectId: pid,
+                databaseURL: `https://${pid}-default-rtdb.firebaseio.com`
             });
             logger.info(`[Firebase] Admin initialized with Project ID: ${pid} (Fallback Mode)`);
         } catch (error) {

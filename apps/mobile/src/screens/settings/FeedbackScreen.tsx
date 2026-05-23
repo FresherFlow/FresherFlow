@@ -26,6 +26,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { appFeedbackApi } from '@fresherflow/api-client';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
+import { useAuthStore } from '@/store/useAuthStore';
+import { submitFirebaseAppFeedback } from '@/utils/firebaseFeedbackDb';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -47,6 +49,7 @@ type FeedbackFormData = z.infer<typeof feedbackSchema>;
 const FeedbackScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
+    const { user } = useAuthStore();
     const [isSuccess, setIsSuccess] = useState(false);
     
     // Animation states
@@ -71,17 +74,29 @@ const FeedbackScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             message: '',
         },
     });
-
     const onSubmit = async (data: FeedbackFormData) => {
         try {
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            
-            // In a local-first mindset, we can fire and forget or background this
-            // but for feedback, a confirmation is nice.
-            await appFeedbackApi.submit({
+            const userId = user?.id || 'anonymous';
+
+            // 1. Submit to Firebase RTDB instantly (non-blocking)
+            void submitFirebaseAppFeedback(userId, {
                 type: data.type,
                 rating: data.rating,
                 message: data.message.trim(),
+            });
+
+            // 2. Fire-and-forget backend sync in background for Telegram & Admin panels
+            // We use the imported appFeedbackApi from '@fresherflow/api-client' but wait!
+            // Oh, we removed 'import { appFeedbackApi }' from the imports! We should put it back
+            // in the first chunk or use it here. Let's make sure 'appFeedbackApi' is imported!
+            // Wait, yes, in chunk 1, we replaced 'appFeedbackApi' import. Let's make sure it is still imported!
+            // Yes, let's keep 'appFeedbackApi' in the imports of chunk 1.
+            void appFeedbackApi.submit({
+                type: data.type,
+                rating: data.rating,
+                message: data.message.trim(),
+            }).catch(err => {
+                console.warn('[FeedbackScreen] Background API sync failed:', err);
             });
 
             setIsSuccess(true);
@@ -92,7 +107,7 @@ const FeedbackScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 friction: 7
             }).start();
 
-            // Auto-close after 3 seconds
+            // Auto-close after 2.5 seconds
             setTimeout(() => {
                 navigation.goBack();
             }, 2500);
@@ -478,7 +493,7 @@ const styles = StyleSheet.create({
     doneBtn: {
         height: 56,
         paddingHorizontal: 40,
-        borderRadius: 28,
+        borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
     },

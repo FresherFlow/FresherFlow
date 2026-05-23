@@ -11,7 +11,6 @@ import {
   Animated,
   Easing,
   Dimensions,
-  Linking,
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -35,6 +34,7 @@ import {
   LayoutDashboard,
   Eye,
   MoreVertical,
+  Award,
 } from 'lucide-react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -48,13 +48,14 @@ import { useOpportunityDetail } from '@/hooks/useOpportunityDetail';
 import { renderFormattedDescription } from '@/system/components/DescriptionParser';
 import { markJobAsSeen } from '@/utils/seenJobs';
 import { formatSalary } from '@/utils/formatters';
+import { openExternalURL } from '@/utils/browser';
 
 import { useNotifications } from '@repo/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuthStore } from '@/store/useAuthStore';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { differenceInDays, isBefore, isToday } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import * as StoreReview from 'expo-store-review';
 
 
@@ -76,7 +77,6 @@ import { ActionType } from '@fresherflow/types';
 import { SuccessModal } from '@/system/components/SuccessModal';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
-
 
 
 const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
@@ -238,6 +238,35 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         setTrackerSheetVisible(true);
     }, []);
 
+    const expiryInfo = useMemo(() => {
+        if (!opportunity?.expiresAt) return null;
+        const expiryDate = new Date(opportunity.expiresAt);
+        const now = new Date();
+        if (isNaN(expiryDate.getTime())) return null;
+
+        const expiryDateStart = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate());
+        const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        const diffTime = expiryDateStart.getTime() - nowStart.getTime();
+        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+        if (diffDays < 0) {
+            return { label: 'expired', color: currentTheme.colors.error, type: 'EXPIRED' };
+        }
+        if (diffDays === 0) {
+            return { label: 'expires today', color: currentTheme.colors.warning, type: 'URGENT' };
+        }
+        if (diffDays === 1) {
+            return { label: 'expires tomorrow', color: currentTheme.colors.warning, type: 'URGENT' };
+        }
+
+        return {
+            label: `expires in ${diffDays} days`,
+            color: diffDays <= 3 ? currentTheme.colors.warning : currentTheme.colors.textMuted,
+            type: diffDays <= 3 ? 'URGENT' : 'NORMAL'
+        };
+    }, [opportunity?.expiresAt, currentTheme]);
+
   if (loading) {
     return (
       <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
@@ -253,22 +282,6 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
       </View>
     );
   }
-
-    const expiryInfo = useMemo(() => {
-        if (!opportunity?.expiresAt) return null;
-        const expiryDate = new Date(opportunity.expiresAt);
-        const now = new Date();
-        if (isNaN(expiryDate.getTime())) return null;
-
-        const isExpired = isBefore(expiryDate, now);
-        if (isExpired) return { label: 'Expired', color: currentTheme.colors.error, type: 'EXPIRED' };
-        if (isToday(expiryDate)) return { label: 'Closing Today', color: currentTheme.colors.warning, type: 'URGENT' };
-
-        const daysLeft = differenceInDays(expiryDate, now);
-        if (daysLeft <= 3) return { label: `${daysLeft}d Left`, color: currentTheme.colors.warning, type: 'URGENT' };
-
-        return null;
-    }, [opportunity?.expiresAt, currentTheme]);
 
     return (
     <Screen safe={false}>
@@ -357,7 +370,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     ]}>
                         <Clock size={14} color={expiryInfo.color} />
                         <Text style={[styles.statusBannerText, { color: expiryInfo.color }]}>
-                            This opportunity is {expiryInfo.label.toLowerCase()}
+                            {expiryInfo.type === 'EXPIRED' ? 'This opportunity is expired' : `This opportunity ${expiryInfo.label}`}
                         </Text>
                     </View>
                 )}
@@ -412,6 +425,11 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                 <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
                                     <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{toTitleCase(opportunity.type || 'Job')}</Text>
                                 </View>
+                                {(opportunity.clicksCount || 0) > 200 && (
+                                    <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.error, 0.1), borderColor: alpha(currentTheme.colors.error, 0.2), borderWidth: 1 }]}>
+                                        <Text style={[styles.typeText, { color: currentTheme.colors.error }]}>🔥 Trending</Text>
+                                    </View>
+                                )}
                                 {(() => {
                                   const postedAt = opportunity.postedAt ? new Date(opportunity.postedAt) : null;
                                   if (!postedAt || isNaN(postedAt.getTime())) return null;
@@ -422,6 +440,15 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                         <Text style={[styles.typeText, { color: currentTheme.colors.primary, fontSize: 9 }]}>{label}</Text>
                                     </View>
                                   );
+                                })()}
+                                {(() => {
+                                    const sharedBy = opportunity.user?.username || opportunity.referredByUsername;
+                                    if (!sharedBy) return null;
+                                    return (
+                                        <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.warning, 0.1), borderColor: alpha(currentTheme.colors.warning, 0.2), borderWidth: 1 }]}>
+                                            <Text style={[styles.typeText, { color: currentTheme.colors.warning, fontSize: 9 }]}>Shared by @{sharedBy}</Text>
+                                        </View>
+                                    );
                                 })()}
                             </View>
                         </View>
@@ -517,7 +544,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <View style={styles.detailContent}>
                                 <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Employment</Text>
                                 <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
-                                    {toTitleCase(opportunity.employmentType) || (opportunity.type === 'INTERNSHIP' ? 'Internship' : 'Full-time')}
+                                    {toTitleCase(opportunity.employmentType?.replace(/_/g, ' ')) || (opportunity.type === 'INTERNSHIP' ? 'Internship' : 'Full Time')}
                                 </Text>
                             </View>
                         </View>
@@ -608,17 +635,35 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             </View>
                         </View>
 
+                        {/* Allowed Courses */}
                         <View style={[styles.reqRow, { marginTop: 16 }]}>
                             <View style={[styles.reqIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
                                 <GraduationCap size={18} color={currentTheme.colors.primary} />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>Eligibility</Text>
+                                <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>Allowed Courses</Text>
                                 <Text style={[styles.reqValue, { color: currentTheme.colors.text }]}>
-                                    {formatListToTitleCase([...(opportunity.allowedDegrees || []), ...(opportunity.allowedCourses || [])]) || 'Open Eligibility'}
+                                    {opportunity.allowedCourses && opportunity.allowedCourses.length > 0
+                                        ? Array.from(new Set(opportunity.allowedCourses.map(c => c.trim()).filter(Boolean))).join(', ')
+                                        : 'All Courses'}
                                 </Text>
                             </View>
                         </View>
+
+                        {/* Specializations */}
+                        {opportunity.allowedSpecializations && opportunity.allowedSpecializations.length > 0 && (
+                            <View style={[styles.reqRow, { marginTop: 16 }]}>
+                                <View style={[styles.reqIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                                    <Award size={18} color={currentTheme.colors.primary} />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted }]}>Specializations</Text>
+                                    <Text style={[styles.reqValue, { color: currentTheme.colors.text }]}>
+                                        {Array.from(new Set(opportunity.allowedSpecializations.map(s => s.trim()).filter(Boolean))).join(', ')}
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
 
                         {opportunity.requiredSkills && opportunity.requiredSkills.length > 0 && (
                             <View style={[styles.skillSection, { borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.1) }]}>
@@ -742,7 +787,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             {opportunity.governmentJobDetails.officialNotificationUrl && (
                                 <TouchableOpacity
                                     style={[styles.govtLink, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]}
-                                    onPress={() => Linking.openURL(opportunity.governmentJobDetails!.officialNotificationUrl!)}
+                                    onPress={() => openExternalURL(opportunity.governmentJobDetails!.officialNotificationUrl!, currentTheme.colors)}
                                 >
                                     <Text style={[styles.govtLinkText, { color: currentTheme.colors.primary }]}>Read Official Notification</Text>
                                     <ExternalLink size={14} color={currentTheme.colors.primary} />
@@ -871,7 +916,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     bottom: insets.bottom + 20,
                     width: fabAnim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [56, SCREEN_WIDTH * 0.5]
+                        outputRange: [56, expiryInfo?.type === 'EXPIRED' ? SCREEN_WIDTH * 0.54 : SCREEN_WIDTH * 0.44]
                     }),
                     opacity: expiryInfo?.type === 'EXPIRED' ? 0.8 : 1
                 }
@@ -894,28 +939,22 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     }
                 }}
             >
-                <View style={{
-                    flexDirection: 'row',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '100%',
+                <Animated.View style={{
+                    overflow: 'hidden',
+                    width: fabAnim.interpolate({
+                        inputRange: [0, 0.2, 1],
+                        outputRange: [0, 0, expiryInfo?.type === 'EXPIRED' ? 140 : 100]
+                    }),
+                    opacity: fabAnim.interpolate({
+                        inputRange: [0, 0.2, 1],
+                        outputRange: [0, 0, 1]
+                    }),
                 }}>
-                    <Animated.View style={{
-                        overflow: 'hidden',
-                        width: fabAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, expiryInfo?.type === 'EXPIRED' ? 140 : 100] // More width for "Opportunity Expired"
-                        }),
-                        opacity: fabAnim,
-                        marginRight: fabAnim.interpolate({
-                            inputRange: [0, 1],
-                            outputRange: [0, 8]
-                        })
-                    }}>
-                        <Text style={[styles.applyFabText, { color: currentTheme.colors.background }]} numberOfLines={1}>
-                            {expiryInfo?.type === 'EXPIRED' ? 'Opportunity Expired' : 'Apply Now'}
-                        </Text>
-                    </Animated.View>
+                    <Text style={[styles.applyFabText, { color: currentTheme.colors.background }]} numberOfLines={1}>
+                        {expiryInfo?.type === 'EXPIRED' ? 'Opportunity Expired' : 'Apply Now'}
+                    </Text>
+                </Animated.View>
+                <View style={styles.fabIconWrapper}>
                     <ExternalLink size={20} color={currentTheme.colors.background} />
                 </View>
             </TouchableOpacity>
@@ -1043,6 +1082,7 @@ const styles = StyleSheet.create({
     badgeRow: {
         flexDirection: 'row',
         alignItems: 'center',
+        flexWrap: 'wrap',
         gap: 8,
     },
     typeBadge: {
@@ -1149,7 +1189,7 @@ const styles = StyleSheet.create({
         opacity: 0.1,
     },
     detailCard: {
-        borderRadius: 28,
+        borderRadius: 16,
         padding: 4,
         marginBottom: 24,
     },
@@ -1224,16 +1264,21 @@ const styles = StyleSheet.create({
     applyFab: {
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
         height: 56,
-        paddingHorizontal: 16,
+        paddingLeft: 20,
         borderRadius: 28,
-        gap: 12,
+        width: '100%',
     },
     applyFabText: {
-        fontSize: 14,
+        fontSize: 16,
         fontWeight: '900',
         letterSpacing: 0.5,
+    },
+    fabIconWrapper: {
+        position: 'absolute',
+        right: 18,
+        top: 18,
     },
     similarList: {
         gap: 12,
@@ -1262,7 +1307,7 @@ const styles = StyleSheet.create({
     },
     notifyCard: {
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 16,
     },
     notifyContent: {
         flexDirection: 'row',
@@ -1291,7 +1336,7 @@ const styles = StyleSheet.create({
     },
     requirementCard: {
         padding: 24,
-        borderRadius: 28,
+        borderRadius: 16,
     },
     reqRow: {
         flexDirection: 'row',
@@ -1334,7 +1379,7 @@ const styles = StyleSheet.create({
     },
     walkInCard: {
         padding: 24,
-        borderRadius: 28,
+        borderRadius: 16,
         borderWidth: 1.5,
     },
     walkInHeader: {
@@ -1382,7 +1427,7 @@ const styles = StyleSheet.create({
 
     govtCard: {
         padding: 24,
-        borderRadius: 28,
+        borderRadius: 16,
     },
     govtHeader: {
         flexDirection: 'row',
@@ -1477,7 +1522,7 @@ const styles = StyleSheet.create({
     },
     timelineCard: {
         padding: 24,
-        borderRadius: 28,
+        borderRadius: 16,
     },
     timelineItem: {
         flexDirection: 'row',
@@ -1520,7 +1565,7 @@ const styles = StyleSheet.create({
     },
     selectionCard: {
         padding: 24,
-        borderRadius: 28,
+        borderRadius: 16,
     },
     selectionText: {
         fontSize: 14,

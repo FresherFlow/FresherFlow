@@ -197,21 +197,21 @@ export const findJobsByCompanyLocally = async (
             }
         }
 
-        if (companyDomain) {
-            // Domain-first: group all jobs that resolve to the same root domain
-            return allJobs.filter(job => {
+        const target = companyName.toLowerCase().trim();
+        return allJobs.filter(job => {
+            const nameMatch = job.company.toLowerCase().trim() === target;
+            if (nameMatch) return true;
+            
+            if (companyDomain) {
                 const jobDomain = getCompanyDomain({
                     companyWebsite: job.companyWebsite,
                     applyLink: job.applyLink,
                     sourceLink: job.sourceLink,
                 });
-                return jobDomain === companyDomain;
-            });
-        }
-
-        // Fallback: name match (for jobs with no link data)
-        const target = companyName.toLowerCase().trim();
-        return allJobs.filter(job => job.company.toLowerCase().trim() === target);
+                if (jobDomain === companyDomain) return true;
+            }
+            return false;
+        });
     } catch (error) {
         console.warn('Local company job search failed', error);
         return [];

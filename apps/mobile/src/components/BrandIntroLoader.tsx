@@ -1,18 +1,10 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Text, View, Dimensions, Image } from 'react-native';
-import { Briefcase, Zap, Users } from 'lucide-react-native';
+import React, { useEffect, useCallback } from 'react';
+import { StyleSheet, Text, View, Image } from 'react-native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import LogoImage from '@/assets/logo.png';
 import LogoWhiteImage from '@/assets/logo-white.png';
-import { MotiView, AnimatePresence } from 'moti';
-
-const { width } = Dimensions.get('window');
-
-const MESSAGES = [
-  { text: 'Shared by Scouts. Verified by Us.', icon: Zap },
-  { text: 'Collaborative Opportunity Discovery.', icon: Briefcase },
-  { text: 'Join the contributor network.', icon: Users },
-];
+import { MotiView } from 'moti';
+import * as SplashScreen from 'expo-splash-screen';
 
 const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
@@ -57,77 +49,48 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
-  messageRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: alpha(theme.colors.text, 0.03),
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-  },
-  messageText: {
-    fontSize: 14,
-    color: theme.colors.text,
-    fontWeight: '600',
-  },
-  footer: {
-    position: 'absolute',
-    bottom: 60,
-    width: '100%',
-    alignItems: 'center',
-  },
-  progressBar: {
-    width: width * 0.4,
-    height: 3,
-    backgroundColor: theme.colors.border,
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: theme.colors.primary,
-  },
 });
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
-};
-
-export const BrandIntroLoader: React.FC<{ onComplete: () => void }> = ({ onComplete }) => {
+export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () => void }> = ({ isLoading = true, onComplete }) => {
   const { currentTheme } = useTheme();
   const styles = createStyles(currentTheme);
-  const [msgIndex, setMsgIndex] = React.useState(0);
   const [exiting, setExiting] = React.useState(false);
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setMsgIndex((prev) => (prev + 1) % MESSAGES.length);
-    }, 1500);
-
-    const timeout = setTimeout(() => {
-      setExiting(true);
-      setTimeout(() => {
-        onComplete();
-      }, 300);
-    }, 3000);
-
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
+  const onLayoutRootView = useCallback(async () => {
+    // This is the exact moment the handoff happens
+    try {
+      await SplashScreen.hideAsync();
+    } catch (e) {
+      console.warn('Failed to hide splash screen', e);
+    }
   }, []);
 
-  const CurrentIcon = MESSAGES[msgIndex].icon;
+  // Handle dynamic exiting based on loading state
+  const hasTriggeredExit = React.useRef(false);
+  const onCompleteRef = React.useRef(onComplete);
+
+  // Keep ref up to date without triggering effects
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+  
+  useEffect(() => {
+    if (!isLoading && !hasTriggeredExit.current) {
+      hasTriggeredExit.current = true;
+      setExiting(true);
+      
+      setTimeout(() => {
+        onCompleteRef.current();
+      }, 300);
+    }
+  }, [isLoading]);
 
   return (
     <MotiView 
       animate={{ opacity: exiting ? 0 : 1 }}
       transition={{ type: 'timing', duration: 300 }}
       style={styles.container}
+      onLayout={onLayoutRootView}
     >
       <View style={styles.content}>
         <MotiView 
@@ -151,31 +114,6 @@ export const BrandIntroLoader: React.FC<{ onComplete: () => void }> = ({ onCompl
           <Text style={styles.brandName}>FresherFlow</Text>
           <Text style={styles.tagline}>Opportunity Discovery Network</Text>
         </MotiView>
-
-        <AnimatePresence exitBeforeEnter>
-            <MotiView 
-                key={`msg-${msgIndex}`}
-                from={{ opacity: 0, translateY: 5 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                exit={{ opacity: 0, translateY: -5 }}
-                transition={{ type: 'timing', duration: 300 }}
-                style={styles.messageRow}
-            >
-                <CurrentIcon size={16} color={currentTheme.colors.primary} />
-                <Text style={styles.messageText}>{MESSAGES[msgIndex].text}</Text>
-            </MotiView>
-        </AnimatePresence>
-      </View>
-
-      <View style={styles.footer}>
-        <View style={styles.progressBar}>
-          <MotiView
-            from={{ width: 0 }}
-            animate={{ width: width * 0.4 }}
-            transition={{ type: 'timing', duration: 3500 }}
-            style={styles.progressFill}
-          />
-        </View>
       </View>
     </MotiView>
   );
