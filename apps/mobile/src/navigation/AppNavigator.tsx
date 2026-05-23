@@ -35,7 +35,7 @@ import OTAUpdatesScreen from '@/screens/settings/OTAUpdatesScreen';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUI } from '@/contexts/UIContext';
 import { useNotifications } from '@/hooks/useNotifications';
-import { AuthGate } from './AuthGate';
+import { useAuthStore } from '@/store/useAuthStore';
 
 import { RootStackParamList } from './types';
 export type { RootStackParamList };
@@ -240,12 +240,14 @@ const AppStack = () => (
     <Stack.Screen name="CareerProfile" component={CareerProfileScreen} />
     <Stack.Screen name="MyShares" component={MySharesScreen} />
     <Stack.Screen name="ContributorProfile" component={ContributorProfileScreen} />
+
     <Stack.Screen name="About" component={AboutScreen} />
     <Stack.Screen name="CompanyDetail" component={CompanyScreen} />
     <Stack.Screen name="AlertSettings" component={AlertSettingsScreen} />
     <Stack.Screen name="ApplicationTracker" component={ApplicationTrackerScreen} />
     <Stack.Screen name="Feedback" component={FeedbackScreen} />
     <Stack.Screen name="Legal" component={LegalScreen} />
+    <Stack.Screen name="ProfileChooseUsername" component={ChooseUsernameScreen} />
     <Stack.Screen name="ChooseUsername" component={ChooseUsernameScreen} />
     <Stack.Screen name="OTAUpdates" component={OTAUpdatesScreen} />
     {/* Auth is a contextual modal — anonymous users land here when they try an auth-gated action */}
@@ -253,16 +255,10 @@ const AppStack = () => (
   </Stack.Navigator>
 );
 
-// --- Username required stack (real user logged in but no @handle yet) ---
-const UsernameStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-    <Stack.Screen name="ChooseUsername" component={ChooseUsernameScreen} />
-  </Stack.Navigator>
-);
-
 /**
- * AppNavigator delegates ALL routing decisions to AuthGate.
- * No auth logic lives here — add rules in AuthGate.tsx.
+ * AppNavigator replaces the old AuthGate logic.
+ * It uses a unified AppStack, allowing contextually pushed screens (like Auth/ChooseUsername)
+ * to coexist peacefully with the navigation history.
  */
 const AppLoading = () => {
   const { currentTheme } = useTheme();
@@ -273,10 +269,12 @@ const AppLoading = () => {
   );
 };
 
-export const AppNavigator = () => (
-  <AuthGate
-    loading={<AppLoading />}
-    needsUsername={<UsernameStack />}
-    app={<AppStack />}
-  />
-);
+export const AppNavigator = () => {
+  const { isSyncing, isSkipLoaded } = useAuthStore();
+
+  if (isSyncing || !isSkipLoaded) {
+    return <AppLoading />;
+  }
+
+  return <AppStack />;
+};

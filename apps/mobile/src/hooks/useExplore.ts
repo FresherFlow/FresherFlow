@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { Opportunity, OpportunityType, WorkMode } from '@fresherflow/types';
-import { readFeedCache, saveFeedCache, saveLastSyncTimestamp } from '@/utils/offlineCache';
+import { Opportunity, OpportunityType, WorkMode, Profile, ActionType } from '@fresherflow/types';
+import { readFeedCache, saveFeedCache, saveLastSyncTimestamp, readTrackerCacheSync } from '@/utils/offlineCache';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import debounce from 'lodash.debounce';
 import Fuse from 'fuse.js';
@@ -8,13 +8,18 @@ import axios from 'axios';
 import { BOOTSTRAP_FEED_URL } from '@/config/api';
 import { normalizeQuery } from '@/utils/text';
 import { useUIStore } from '@/store/useUIStore';
+import { useSaved } from '@repo/frontend-core';
+import { getRecentSearchKeywords, saveRecentSearchKeyword } from '@/utils/userBehavior';
+import { getLocalProfile } from '@/utils/localProfile';
+import { calculateMatchScore } from '@/utils/matchScoring';
+import { getOpenedIds } from '@/utils/seenJobs';
 
 export interface ExploreFilters {
     type: OpportunityType | null;
     workMode: WorkMode | null;
     batchYear: number | null;
     tag: string | null;
-    sort: 'latest' | 'trending' | 'closing_soon';
+    sort: 'recommended' | 'latest' | 'trending' | 'closing_soon';
 }
 
 export function useExplore() {
@@ -29,6 +34,52 @@ export function useExplore() {
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
 
+    // Personalized relevance states
+    const { savedJobs } = useSaved();
+    const [localProfile, setLocalProfile] = useState<Profile | null>(null);
+    const [openedIds, setOpenedIds] = useState<Set<string>>(new Set());
+    const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+    const [recentKeywords, setRecentKeywords] = useState<string[]>([]);
+
+    const loadOpenedIds = useCallback(async () => {
+        const ids = await getOpenedIds();
+        setOpenedIds(ids);
+    }, []);
+
+    const loadAppliedIds = useCallback(() => {
+        const set = new Set<string>();
+        try {
+            const trackerCache = readTrackerCacheSync();
+            if (trackerCache?.items) {
+                (trackerCache.items as Array<{ actionType: ActionType; opportunityId?: string; opportunity?: { id?: string } }>).forEach((item) => {
+                    if (item?.actionType === ActionType.APPLIED) {
+                        const id = item?.opportunityId || item?.opportunity?.id;
+                        if (id) set.add(id);
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn('[useExplore] Failed to parse tracker cache for applied IDs:', e);
+        }
+        setAppliedIds(set);
+    }, []);
+
+    const loadRecentKeywords = useCallback(() => {
+        const keywords = getRecentSearchKeywords();
+        setRecentKeywords(keywords);
+    }, []);
+
+    // Sync local profile for match scoring
+    useEffect(() => {
+        const syncProfile = async () => {
+            const p = await getLocalProfile();
+            setLocalProfile(p);
+        };
+        void syncProfile();
+    }, []);
+
+
+
     // Debounce search query to prevent rebuilding index on every keystroke
     const updateDebouncedQuery = useMemo(
         () => debounce((q: string) => setDebouncedSearchQuery(q), 300),
@@ -39,6 +90,14 @@ export function useExplore() {
         updateDebouncedQuery(searchQuery);
         return () => updateDebouncedQuery.cancel();
     }, [searchQuery, updateDebouncedQuery]);
+
+    // Save debounced search keywords to behavior history
+    useEffect(() => {
+        if (debouncedSearchQuery.trim().length >= 3) {
+            saveRecentSearchKeyword(debouncedSearchQuery.trim());
+            loadRecentKeywords();
+        }
+    }, [debouncedSearchQuery, loadRecentKeywords]);
 
     // 1. Client-First Hydration (Instant Render from Cache)
     const hydrate = useCallback(async () => {
@@ -62,12 +121,16 @@ export function useExplore() {
                     await saveFeedCache(ops);
                 }
             }
+            // Load user behavior records on mount
+            void loadOpenedIds();
+            loadAppliedIds();
+            loadRecentKeywords();
         } catch (e) {
             console.warn('[useExplore] Cache hydration failed:', (e as Error).message);
         } finally {
             setIsBootstrapping(false);
         }
-    }, []);
+    }, [loadOpenedIds, loadAppliedIds, loadRecentKeywords]);
 
     useEffect(() => {
         void hydrate();
@@ -78,6 +141,11 @@ export function useExplore() {
         setIsSyncing(true);
         setSyncError(null);
         try {
+            // Reload user behavior records on manual refresh
+            void loadOpenedIds();
+            loadAppliedIds();
+            loadRecentKeywords();
+
             const sigParams = generateCdnSignature('/bootstrap-feed.min.json');
             const signedUrl = `${BOOTSTRAP_FEED_URL}?t=${sigParams.t}&sig=${sigParams.sig}`;
 
@@ -102,7 +170,37 @@ export function useExplore() {
         } finally {
             setIsSyncing(false);
         }
-    }, []);
+    }, [loadOpenedIds, loadAppliedIds, loadRecentKeywords]);
+
+    const savedJobsData = useMemo(() => {
+        const skills = new Set<string>();
+        const functions = new Set<string>();
+        savedJobs.forEach(job => {
+            if (job.requiredSkills) {
+                job.requiredSkills.forEach(s => skills.add(s.toLowerCase().trim()));
+            }
+            if (job.jobFunction) {
+                functions.add(job.jobFunction.toLowerCase().trim());
+            }
+        });
+        return { skills, functions };
+    }, [savedJobs]);
+
+    const openedJobsData = useMemo(() => {
+        const skills = new Set<string>();
+        const functions = new Set<string>();
+        cachedItems.forEach(job => {
+            if (openedIds.has(job.id)) {
+                if (job.requiredSkills) {
+                    job.requiredSkills.forEach(s => skills.add(s.toLowerCase().trim()));
+                }
+                if (job.jobFunction) {
+                    functions.add(job.jobFunction.toLowerCase().trim());
+                }
+            }
+        });
+        return { skills, functions };
+    }, [cachedItems, openedIds]);
 
     // 3. High-Speed Local Filter & Sort Pipeline (Parsed in <3ms)
     const rawResults = useMemo(() => {
@@ -136,17 +234,120 @@ export function useExplore() {
             items = items.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.includes(filters.batchYear!));
         }
 
+        // Map and compute relevance scores for all items in result
+        const scored = items.map(job => {
+            let baseScore = 0;
+            if (localProfile) {
+                const match = calculateMatchScore(localProfile, job);
+                baseScore = match.score > 0 ? match.score : 0;
+            }
+
+            let score = baseScore;
+
+            // 1. Saved Job Boost (max +30)
+            let savedBoost = 0;
+            if (job.jobFunction && savedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
+                savedBoost += 15;
+            }
+            if (job.requiredSkills) {
+                let skillMatches = 0;
+                job.requiredSkills.forEach(s => {
+                    if (savedJobsData.skills.has(s.toLowerCase().trim())) {
+                        skillMatches++;
+                    }
+                });
+                savedBoost += Math.min(skillMatches * 3, 15);
+            }
+            score += savedBoost;
+
+            // 2. Recent Search Keyword Boost (max +25)
+            let searchBoost = 0;
+            if (recentKeywords.length > 0) {
+                const titleLower = (job.title || '').toLowerCase();
+                const compLower = (job.company || '').toLowerCase();
+                const funcLower = (job.jobFunction || '').toLowerCase();
+                const locsLower = (job.locations || []).map(l => l.toLowerCase());
+
+                recentKeywords.forEach(kw => {
+                    if (
+                        titleLower.includes(kw) ||
+                        compLower.includes(kw) ||
+                        funcLower.includes(kw) ||
+                        locsLower.some(l => l.includes(kw))
+                    ) {
+                        searchBoost += 10;
+                    }
+                });
+                searchBoost = Math.min(searchBoost, 25);
+            }
+            score += searchBoost;
+
+            // 3. Viewed/Opened Job Similarity Boost (max +15)
+            let openedBoost = 0;
+            if (job.jobFunction && openedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
+                openedBoost += 5;
+            }
+            if (job.requiredSkills) {
+                let skillMatches = 0;
+                job.requiredSkills.forEach(s => {
+                    if (openedJobsData.skills.has(s.toLowerCase().trim())) {
+                        skillMatches++;
+                    }
+                });
+                openedBoost += Math.min(skillMatches * 2, 10);
+            }
+            score += openedBoost;
+
+            // 4. Trending scaling boost (max +10)
+            const trendBoost = Math.min(job.trendingScore || 0, 100) * 0.1;
+            score += trendBoost;
+
+            // 5. Referral Boost (if referral, add +10)
+            if (job.isReferral) {
+                score += 10;
+            }
+
+            return {
+                ...job,
+                clicksCount: openedIds.has(job.id) ? Math.max(job.clicksCount || 0, 1) : (job.clicksCount || 0),
+                relevanceScore: Math.round(score),
+                matchScore: baseScore > 0 ? baseScore : undefined
+            };
+        });
+
         // Apply Sorting Locally
         if (filters.sort === 'trending') {
-            items = [...items].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
+            items = [...scored].sort((a, b) => (b.trendingScore || 0) - (a.trendingScore || 0));
         } else if (filters.sort === 'closing_soon') {
-            items = items.filter(j => j.expiresAt).sort((a, b) => new Date(a.expiresAt!).getTime() - new Date(b.expiresAt!).getTime());
+            items = scored.filter(j => j.expiresAt).sort((a, b) => new Date(a.expiresAt!).getTime() - new Date(b.expiresAt!).getTime());
+        } else if (filters.sort === 'latest') {
+            items = [...scored].sort((a, b) => new Date(b.postedAt || 0).getTime() - new Date(a.postedAt || 0).getTime());
         } else {
-            items = [...items].sort((a, b) => new Date(b.postedAt || 0).getTime() - new Date(a.postedAt || 0).getTime());
+            // 'recommended' is the default personalized relevance sorting with applied/expired demotion
+            const active: typeof scored = [];
+            const applied: typeof scored = [];
+            const expired: typeof scored = [];
+            const now = Date.now();
+
+            for (const j of scored) {
+                if (j.expiresAt && new Date(j.expiresAt).getTime() <= now) {
+                    expired.push(j);
+                } else if (appliedIds.has(j.id)) {
+                    applied.push(j);
+                } else {
+                    active.push(j);
+                }
+            }
+
+            active.sort((a, b) => b.relevanceScore - a.relevanceScore);
+            applied.sort((a, b) => b.relevanceScore - a.relevanceScore);
+            expired.sort((a, b) => new Date(b.expiresAt || 0).getTime() - new Date(a.expiresAt || 0).getTime());
+
+            items = [...active, ...applied, ...expired];
         }
 
         return items;
-    }, [cachedItems, filters]);
+    }, [cachedItems, filters, localProfile, savedJobsData, openedJobsData, recentKeywords, appliedIds]);
 
     // 4. Fuse.js Fuzzy Search Index
     const fuseIndex = useMemo(() => {

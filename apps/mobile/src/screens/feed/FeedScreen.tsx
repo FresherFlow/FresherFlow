@@ -14,7 +14,7 @@ import {
   ToastAndroid,
   ViewToken,
   TextInput,
-  AppState,
+  Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
@@ -22,13 +22,10 @@ import {
     TrendingUp,
     Compass,
     Bell,
-    Sparkles,
     Search,
     X,
-    Link as LinkIcon,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import * as Clipboard from 'expo-clipboard';
 import { useSaved } from '@repo/frontend-core';
 
 import { useFeed } from '@/hooks/useFeed';
@@ -72,7 +69,8 @@ interface FeedTabContentProps {
     currentTheme: AppTheme;
     isSaved: (id: string) => boolean;
     toggleSave: (opportunity: Opportunity) => void;
-    handleScroll: (event: { nativeEvent: { contentOffset: { y: number } } }) => void;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    handleScroll?: any;
     searchQuery: string;
 }
 
@@ -190,39 +188,6 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
             </MotiView>
         );
       case 'empty':
-        if (!tabFeedType) {
-            const emptyTitle = !hasProfileData ? "Make It Yours" : "Refine Your Feed";
-            const emptyBody = !hasProfileData
-                ? "We need to know your graduation year and interests to personalize your feed."
-                : "No opportunities match your current interests or batch. Try adjusting your preferences to see more.";
-            const emptyCtaLabel = !hasProfileData ? "Set Preferences →" : "Update Preferences →";
-
-            return (
-                <View style={styles.emptyContainer}>
-                    <MotiView 
-                        from={{ scale: 0.5, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        style={[styles.emptyIconBox, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
-                    >
-                        <Sparkles size={mScale(40)} color={currentTheme.colors.primary} />
-                    </MotiView>
-                    <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>{emptyTitle}</Text>
-                    <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
-                        {emptyBody}
-                    </Text>
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.ctaBtn, { backgroundColor: currentTheme.colors.primary }]}
-                        onPress={() => {
-                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            navigation.navigate('EditPreferences');
-                        }}
-                    >
-                        <Text style={[styles.ctaText, { color: currentTheme.colors.background }]}>{emptyCtaLabel}</Text>
-                    </TouchableOpacity>
-                </View>
-            );
-        }
         return (
             <View style={styles.emptyContainer}>
                 <Compass size={mScale(48)} color={currentTheme.colors.textMuted} />
@@ -269,7 +234,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
       default:
         return null;
     }
-  }, [currentTheme, navigation, isSaved, toggleSave]);
+  }, [currentTheme, navigation, isSaved, toggleSave, isBootstrapping, searchQuery, tabFeedType, hasProfileData]);
 
   
   return (
@@ -277,12 +242,14 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
         <FlashList<FeedItem>
             data={listData}
             renderItem={renderItem}
+            extraData={{ isBootstrapping, searchQuery, tabFeedType, hasProfileData }}
             keyExtractor={(item) => item.key}
             // @ts-expect-error - FlashList typing bug with estimatedItemSize
-            estimatedItemSize={160}
+            estimatedItemSize={180}
+            drawDistance={2500}
             showsVerticalScrollIndicator={false}
             onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
+                        viewabilityConfig={viewabilityConfig}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + mScale(60) }]}
             onEndReached={loadMore}
             onScroll={handleScroll}
@@ -312,53 +279,14 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const [activeTab, setActiveTab] = useState(0);
   const pagerRef = useRef<FlatList>(null);
   const tabListRef = useRef<ScrollView>(null);
-  const isManualScrolling = useRef(false);
+  // Indicator position — springs to new tab after swipe lands (no per-frame JS bridge cost)
+  const indicatorLeft = useRef(new Animated.Value(0)).current;
+  const indicatorWidth = useRef(new Animated.Value(0)).current;
 
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
-
-  // Clipboard detection logic
-  const [detectedUrl, setDetectedUrl] = useState<string | null>(null);
-  const lastProcessedUrl = useRef<string | null>(null);
-
-  const checkClipboard = useCallback(async () => {
-    try {
-      const content = await Clipboard.getStringAsync();
-      if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
-        const isJobUrl = content.includes('linkedin.com/jobs') || 
-                          content.includes('greenhouse.io') || 
-                          content.includes('myworkdayjobs.com') ||
-                          content.includes('lever.co') ||
-                          content.includes('careers') ||
-                          content.includes('fresherflow.com');
-        
-        if (isJobUrl && content !== lastProcessedUrl.current) {
-          setDetectedUrl(content);
-        }
-      }
-    } catch (e) {
-      console.warn('Clipboard check failed', e);
-    }
-  }, []);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', (nextAppState) => {
-      if (nextAppState === 'active') {
-        void checkClipboard();
-      }
-    });
-    return () => {
-      subscription.remove();
-    };
-  }, [checkClipboard]);
-
-  useFocusEffect(
-    useCallback(() => {
-      void checkClipboard();
-    }, [checkClipboard])
-  );
 
   useEffect(() => {
     if (searchQuery.length >= 3) {
@@ -418,28 +346,27 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   ];
 
 
-  // Update indicator position and ensure tab bar is visible when switching tabs
+  // Initialize indicator position on first layout
+  useEffect(() => {
+    if (tabLayouts[activeTab] && (indicatorWidth as unknown as number) !== 0) {
+      indicatorLeft.setValue(tabLayouts[activeTab].x);
+      indicatorWidth.setValue(tabLayouts[activeTab].width);
+    }
+  }, [tabLayouts, activeTab]);
+
+  // Ensure tab bar is visible when switching tabs
   useEffect(() => {
     showTabBar();
     Analytics.trackEvent(EventNames.FILTER_CHANGED, { tab: feeds[activeTab].label });
   }, [activeTab]);
 
-  // Track scroll position for hide/show tab bar
-  // Track scroll position and visibility state for performance
   const scrollOffset = useRef(0);
   const isTabBarVisible = useRef(true);
 
-  const handleToggleSave = useCallback((opportunity: Opportunity) => {
-    const wasSaved = isSaved(opportunity.id);
-    toggleSave(opportunity);
-    showSuccess(wasSaved ? 'Opportunity removed from saves' : 'Opportunity saved successfully!');
-  }, [isSaved, toggleSave, showSuccess]);
-
-  const handleScroll = useCallback((event: { nativeEvent: { contentOffset: { y: number } } }) => {
+  const handleScroll = useCallback((event: any) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
     const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
-    
-    // Minimal threshold to avoid jitter
+
     if (Math.abs(currentOffset - scrollOffset.current) > 30) {
         if (direction === 'down' && currentOffset > 100 && isTabBarVisible.current) {
             isTabBarVisible.current = false;
@@ -452,148 +379,153 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     }
   }, [hideTabBar, showTabBar]);
 
-    const onPagerScroll = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {
-        if (isManualScrolling.current) return;
-        const offset = event.nativeEvent.contentOffset.x;
-        const index = Math.round(offset / SCREEN_WIDTH);
-        if (index !== activeTab && index >= 0 && index < feeds.length) {
-            setActiveTab(index);
-            if (tabLayouts[index]) {
-                const centerOffset = tabLayouts[index].x - (SCREEN_WIDTH / 2) + (tabLayouts[index].width / 2);
-                tabListRef.current?.scrollTo({ x: Math.max(0, centerOffset), animated: true });
-            }
-        }
-    }, [activeTab, tabLayouts, feeds.length]);
+  const handleToggleSave = useCallback((opportunity: Opportunity) => {
+    const wasSaved = isSaved(opportunity.id);
+    toggleSave(opportunity);
+    showSuccess(wasSaved ? 'Opportunity removed from saves' : 'Opportunity saved successfully!');
+  }, [isSaved, toggleSave, showSuccess]);
 
-    const onMomentumScrollEnd = (event: { nativeEvent: { contentOffset: { x: number } } }) => {
-        isManualScrolling.current = false;
-        const index = Math.round(event.nativeEvent.contentOffset.x / SCREEN_WIDTH);
-        if (index !== activeTab) {
-            setActiveTab(index);
-            if (tabLayouts[index]) {
-                const centerOffset = tabLayouts[index].x - (SCREEN_WIDTH / 2) + (tabLayouts[index].width / 2);
-                tabListRef.current?.scrollTo({ x: Math.max(0, centerOffset), animated: true });
-            }
-        }
-    };
+  const onPagerScroll = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {
+    const offsetX = event.nativeEvent.contentOffset.x;
+    const progress = offsetX / SCREEN_WIDTH;
+    
+    // 1. Sync indicator perfectly with scroll
+    const lowerIndex = Math.floor(progress);
+    const upperIndex = Math.ceil(progress);
+    const fraction = progress - lowerIndex;
 
-  const handleTabPress = (index: number) => {
-    if (index === activeTab) return;
-    isManualScrolling.current = true;
-    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-
-    // Update indicator immediately for better perceived performance
-    if (tabLayouts[index]) {
-        const centerOffset = tabLayouts[index].x - (SCREEN_WIDTH / 2) + (tabLayouts[index].width / 2);
-        tabListRef.current?.scrollTo({ x: Math.max(0, centerOffset), animated: true });
+    if (tabLayouts[lowerIndex] && tabLayouts[upperIndex]) {
+        const lowerLayout = tabLayouts[lowerIndex];
+        const upperLayout = tabLayouts[upperIndex];
+        
+        const currentLeft = lowerLayout.x + (upperLayout.x - lowerLayout.x) * fraction;
+        const currentWidth = lowerLayout.width + (upperLayout.width - lowerLayout.width) * fraction;
+        
+        indicatorLeft.setValue(currentLeft);
+        indicatorWidth.setValue(currentWidth);
     }
 
+    // 2. Update active tab text when halfway across
+    const index = Math.round(progress);
+    if (index >= 0 && index < feeds.length && index !== activeTab) {
+        setActiveTab(index);
+        
+        // Scroll the tab list itself to keep the active tab visible
+        if (tabLayouts[index] && tabListRef.current) {
+            const centerOffset = tabLayouts[index].x - (SCREEN_WIDTH / 2) + (tabLayouts[index].width / 2);
+            tabListRef.current.scrollTo({ x: Math.max(0, centerOffset), animated: true });
+        }
+    }
+  }, [tabLayouts, activeTab]);
+
+  const handleTabPress = useCallback((index: number) => {
+    if (index === activeTab) return;
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     pagerRef.current?.scrollToOffset({ offset: index * SCREEN_WIDTH, animated: true });
+  }, [activeTab]);
 
-    // We update activeTab here, but ensure onPagerScroll doesn't conflict
-    setActiveTab(index);
-  };
-
-  return (
+    return (
     <Screen safe={false}>
-      <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
-        <PremiumHeader
-            title={isSearching ? "" : "Discover"}
-            leftSlot={isSearching ? (
-                <View style={[styles.searchContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
-                    <Search size={18} color={currentTheme.colors.textMuted} />
-                    <TextInput
-                        ref={searchInputRef}
-                        style={[styles.searchInput, { color: currentTheme.colors.text }]}
-                        placeholder="Search roles, companies..."
-                        placeholderTextColor={currentTheme.colors.textMuted}
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        autoCorrect={false}
-                        autoFocus={false}
-                    />
-                    {searchQuery.length > 0 && (
-                        <TouchableOpacity onPress={() => setSearchQuery('')}>
-                            <X size={18} color={currentTheme.colors.textMuted} />
-                        </TouchableOpacity>
-                    )}
-                </View>
-            ) : null}
-            rightSlot={
-                <View style={styles.headerActions}>
-                    <TouchableOpacity 
-                        onPress={toggleSearch}
-                        style={styles.actionBtn}
-                    >
-                        {isSearching ? (
-                            <Text style={[styles.cancelText, { color: currentTheme.colors.primary }]}>Cancel</Text>
-                        ) : (
-                            <Search size={24} color={currentTheme.colors.text} />
+      <View style={{ 
+          backgroundColor: currentTheme.colors.background,
+      }}>
+        <View style={{ paddingTop: insets.top + 10 }}>
+            <PremiumHeader
+                title={isSearching ? "" : "FresherFlow"}
+                style={{ paddingBottom: SPACING.sm }}
+                leftSlot={isSearching ? (
+                    <View style={[styles.searchContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
+                        <Search size={18} color={currentTheme.colors.textMuted} />
+                        <TextInput
+                            ref={searchInputRef}
+                            style={[styles.searchInput, { color: currentTheme.colors.text }]}
+                            placeholder="Search roles, companies..."
+                            placeholderTextColor={currentTheme.colors.textMuted}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            autoCorrect={false}
+                            autoFocus={false}
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <X size={18} color={currentTheme.colors.textMuted} />
+                            </TouchableOpacity>
                         )}
-                    </TouchableOpacity>
-                    {!isSearching && (
+                    </View>
+                ) : null}
+                rightSlot={
+                    <View style={styles.headerActions}>
                         <TouchableOpacity 
-                            onPress={() => navigation.navigate('Notifications')}
-                            style={styles.notificationBtn}
+                            onPress={toggleSearch}
+                            style={styles.actionBtn}
                         >
-                            <Bell size={24} color={currentTheme.colors.text} />
-                            {unreadCount > 0 && (
-                                <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]} />
+                            {isSearching ? (
+                                <Text style={[styles.cancelText, { color: currentTheme.colors.primary }]}>Cancel</Text>
+                            ) : (
+                                <Search size={24} color={currentTheme.colors.text} />
                             )}
                         </TouchableOpacity>
-                    )}
-                </View>
-            }
-        />
+                        {!isSearching && (
+                            <TouchableOpacity 
+                                onPress={() => navigation.navigate('Notifications')}
+                                style={styles.notificationBtn}
+                            >
+                                <Bell size={24} color={currentTheme.colors.text} />
+                                {unreadCount > 0 && (
+                                    <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]} />
+                                )}
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                }
+            />
 
-        <View style={styles.feedSelector}>
-            <ScrollView
-                ref={tabListRef}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.feedList}
-                keyboardShouldPersistTaps="always"
-            >
-                {feeds.map((feed, index) => {
-                    const isActive = activeTab === index;
-                    const tabKey = `tab-${feed.id || 'all'}-${index}`;
-                    return (
-                        <TouchableOpacity
-                            key={tabKey}
-                            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                            onLayout={(e) => {
-                                const { x, width } = e.nativeEvent.layout;
-                                setTabLayouts(prev => ({ ...prev, [index]: { x, width } }));
-                            }}
-                            style={styles.feedTab}
-                            onPress={() => handleTabPress(index)}
-                        >
-                            <Text style={[
-                                styles.feedTabText,
-                                {
-                                    color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted,
-                                    opacity: isActive ? 1 : 0.6
-                                }
-                            ]}>
-                                {feed.label}
-                            </Text>
-                        </TouchableOpacity>
-                    );
-                })}
-                <MotiView
-                    animate={{
-                        left: tabLayouts[activeTab]?.x || 0,
-                        width: tabLayouts[activeTab]?.width || 0,
-                    }}
-                    transition={{ type: 'spring', damping: 28, stiffness: 300, mass: 0.8 }}
-                    style={[
-                        styles.tabIndicator,
-                        {
-                            backgroundColor: currentTheme.colors.primary,
-                        }
-                    ]}
-                />
-            </ScrollView>
+            <View style={styles.feedSelector}>
+                <ScrollView
+                    ref={tabListRef}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={styles.feedList}
+                    keyboardShouldPersistTaps="always"
+                >
+                    {feeds.map((feed, index) => {
+                        const isActive = activeTab === index;
+                        const tabKey = `tab-${feed.id || 'all'}-${index}`;
+                        return (
+                            <TouchableOpacity
+                                key={tabKey}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                onLayout={(e) => {
+                                    const { x, width } = e.nativeEvent.layout;
+                                    setTabLayouts(prev => ({ ...prev, [index]: { x, width } }));
+                                }}
+                                style={styles.feedTab}
+                                onPress={() => handleTabPress(index)}
+                            >
+                                <Text style={[
+                                    styles.feedTabText,
+                                    {
+                                        color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted,
+                                        opacity: isActive ? 1 : 0.55,
+                                    }
+                                ]}>
+                                    {feed.label}
+                                </Text>
+                            </TouchableOpacity>
+                        );
+                    })}
+                    <Animated.View
+                        style={[
+                            styles.tabIndicator,
+                            {
+                                backgroundColor: currentTheme.colors.primary,
+                                left: indicatorLeft,
+                                width: indicatorWidth,
+                            }
+                        ]}
+                    />
+                </ScrollView>
+            </View>
         </View>
       </View>
 
@@ -605,8 +537,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         keyExtractor={(f, index) => `pager-${f.id || 'all'}-${index}`}
         showsHorizontalScrollIndicator={false}
         onScroll={onPagerScroll}
-        scrollEventThrottle={32}
-        onMomentumScrollEnd={onMomentumScrollEnd}
+        scrollEventThrottle={16}
         getItemLayout={(_, index) => ({
             length: SCREEN_WIDTH,
             offset: SCREEN_WIDTH * index,
@@ -628,53 +559,6 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             />
         )}
       />
-
-      {detectedUrl && (
-        <MotiView
-          from={{ translateY: 100, opacity: 0 }}
-          animate={{ translateY: 0, opacity: 1 }}
-          exit={{ translateY: 100, opacity: 0 }}
-          transition={{ type: 'spring', damping: 15 }}
-          style={[
-            styles.clipboardCard,
-            {
-              backgroundColor: currentTheme.colors.surface,
-              borderColor: alpha(currentTheme.colors.primary, 0.2),
-              shadowColor: currentTheme.colors.text,
-            },
-          ]}
-        >
-          <View style={styles.clipboardContent}>
-            <LinkIcon size={16} color={currentTheme.colors.primary} style={{ marginRight: 8 }} />
-            <View style={{ flex: 1 }}>
-              <Text style={[styles.clipboardTitle, { color: currentTheme.colors.text }]}>Copied Job Link Detected</Text>
-              <Text style={[styles.clipboardSub, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
-                {detectedUrl}
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[styles.clipboardShareBtn, { backgroundColor: currentTheme.colors.primary }]}
-              onPress={() => {
-                const urlToShare = detectedUrl;
-                lastProcessedUrl.current = urlToShare;
-                setDetectedUrl(null);
-                navigation.navigate('Share', { url: urlToShare });
-              }}
-            >
-              <Text style={[styles.clipboardShareBtnText, { color: currentTheme.colors.background }]}>Share</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.clipboardCloseBtn}
-              onPress={() => {
-                lastProcessedUrl.current = detectedUrl;
-                setDetectedUrl(null);
-              }}
-            >
-              <X size={16} color={currentTheme.colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-        </MotiView>
-      )}
     </Screen>
   );
 });
@@ -685,7 +569,7 @@ const styles = StyleSheet.create({
         backgroundColor: 'transparent', // Screen will handle background
     },
     scrollContent: {
-        paddingTop: SPACING.md,
+        paddingTop: SPACING.sm,
     },
     feedSelector: {
         marginBottom: 0,
@@ -835,46 +719,6 @@ const styles = StyleSheet.create({
         fontSize: mScale(14),
         fontWeight: '800',
         letterSpacing: 0.5,
-    },
-    clipboardCard: {
-        position: 'absolute',
-        bottom: mScale(90),
-        left: 16,
-        right: 16,
-        borderRadius: 16,
-        borderWidth: 1,
-        padding: 12,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 10,
-        elevation: 8,
-        zIndex: 9999,
-    },
-    clipboardContent: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    clipboardTitle: {
-        fontSize: mScale(13),
-        fontWeight: '800',
-    },
-    clipboardSub: {
-        fontSize: mScale(11),
-        marginTop: 2,
-    },
-    clipboardShareBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        borderRadius: 8,
-        marginLeft: 8,
-    },
-    clipboardShareBtnText: {
-        fontSize: mScale(12),
-        fontWeight: '800',
-    },
-    clipboardCloseBtn: {
-        padding: 8,
-        marginLeft: 4,
     }
 });
 

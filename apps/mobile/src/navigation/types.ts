@@ -35,5 +35,6 @@ export type RootStackParamList = {
   Feedback: undefined;
   Legal: undefined;
   ChooseUsername: undefined;
+  ProfileChooseUsername: undefined;
   OTAUpdates: undefined;
 };

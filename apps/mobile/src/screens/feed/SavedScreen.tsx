@@ -48,7 +48,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     // Track scroll position for hide/show tab bar
     const scrollOffset = useRef(0);
 
-    const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const handleScroll = useCallback((event: any) => {
         const currentOffset = event.nativeEvent.contentOffset.y;
         const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
 
@@ -115,7 +115,8 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
                 // @ts-expect-error - FlashList typing bug with estimatedItemSize
-                estimatedItemSize={160}
+                estimatedItemSize={180}
+                drawDistance={2500}
                 renderItem={({ item, index }) => (
                     <JobCard
                         opportunity={item}

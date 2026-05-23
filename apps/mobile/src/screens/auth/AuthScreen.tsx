@@ -11,14 +11,14 @@ import {
     StatusBar,
     ScrollView,
     Image,
-    Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Controller } from 'react-hook-form';
 import { Mail, ArrowRight, Apple } from 'lucide-react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
-import { useTheme } from '@/contexts/ThemeContext';
 import { useLogin } from '@/hooks/useLogin';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useAuthStore } from '@/store/useAuthStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 
@@ -34,7 +34,12 @@ const alpha = (color: string, opacity: number) => {
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
 };
 
-const AuthScreen: React.FC<Props> = memo(({ route }: Props) => {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const logoBlack = require('../../assets/logo.png');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const logoWhite = require('../../assets/logo-white.png');
+
+const AuthScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const {
@@ -54,14 +59,33 @@ const AuthScreen: React.FC<Props> = memo(({ route }: Props) => {
         handleAppleSignIn,
     } = useLogin(route);
     const [isAppleAvailable, setIsAppleAvailable] = React.useState(false);
+    const logo = currentTheme.mode === 'dark' ? logoWhite : logoBlack;
 
     React.useEffect(() => {
         AppleAuthentication.isAvailableAsync().then(setIsAppleAvailable);
     }, []);
 
-    // AuthGate (AuthGate.tsx) handles routing once auth state changes.
-    // This screen never navigates anywhere itself.
-    const showEmail = false as unknown as boolean;
+    // Handle post-login routing imperatively now that AuthGate is gone
+    const { isAuthenticated, user, skipUsernameSetup } = useAuthStore();
+    
+    React.useEffect(() => {
+        if (isAuthenticated && user && !user.isAnonymous) {
+            const hasUsername = Boolean(user.username?.trim());
+            if (hasUsername || skipUsernameSetup) {
+                // Fully onboarded (or skipped), close the auth modal and return to previous screen
+                if (navigation.canGoBack()) {
+                    navigation.goBack();
+                } else {
+                    navigation.navigate('Main');
+                }
+            } else {
+                // New user without a handle — redirect to setup
+                navigation.replace('ProfileChooseUsername');
+            }
+        }
+    }, [isAuthenticated, user, skipUsernameSetup, navigation]);
+
+    const showEmail = false;
 
     return (
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
@@ -88,6 +112,13 @@ const AuthScreen: React.FC<Props> = memo(({ route }: Props) => {
                 >
                     <View style={styles.content}>
                         <View style={styles.headerSection}>
+                            {!otpSent && (
+                                <View style={{ alignItems: 'center' }}>
+                                    <View style={styles.logoBox}>
+                                        <Image source={logo} style={styles.logoImage} />
+                                    </View>
+                                </View>
+                            )}
                             <Text style={[styles.title, { color: currentTheme.colors.text }]}>
                                 {otpSent ? "Check your email" : "Continue to FresherFlow"}
                             </Text>
@@ -262,14 +293,14 @@ const AuthScreen: React.FC<Props> = memo(({ route }: Props) => {
                                 By continuing, you agree to our{' '}
                                 <Text
                                     style={{ color: currentTheme.colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}
-                                    onPress={() => Linking.openURL('https://fresherflow.in/terms')}
+                                    onPress={() => navigation.navigate('Legal')}
                                 >
                                     Terms
                                 </Text>{' '}
                                 and{' '}
                                 <Text
                                     style={{ color: currentTheme.colors.primary, fontWeight: '700', textDecorationLine: 'underline' }}
-                                    onPress={() => Linking.openURL('https://fresherflow.in/privacy')}
+                                    onPress={() => navigation.navigate('Legal')}
                                 >
                                     Privacy Policy
                                 </Text>.
@@ -312,6 +343,20 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         letterSpacing: -1.5,
         lineHeight: mScale(38),
+    },
+    logoBox: {
+        width: mScale(100),
+        height: mScale(100),
+        borderRadius: mScale(24),
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: mScale(24),
+        overflow: 'hidden',
+    },
+    logoImage: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'contain',
     },
     subtitle: {
         fontSize: mScale(16),
@@ -450,22 +495,6 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: mScale(18),
         fontWeight: '500',
-    },
-    otpInputGroup: {
-        width: '80%',
-        height: mScale(60),
-        borderBottomWidth: 2,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginVertical: mScale(12),
-        alignSelf: 'center',
-    },
-    otpCleanInput: {
-        fontSize: mScale(32),
-        fontWeight: '900',
-        letterSpacing: 10,
-        textAlign: 'center',
-        width: '100%',
     },
 });
 

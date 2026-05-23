@@ -8,9 +8,8 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     StatusBar,
+    Animated,
     ScrollView,
-    NativeSyntheticEvent,
-    NativeScrollEvent,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Compass, Filter, Building2, ChevronRight, X } from 'lucide-react-native';
@@ -32,6 +31,7 @@ import { FilterChip } from '@/system/components/FilterChip';
 import { UsernameNudgeCard } from '@/system/components/UsernameNudgeCard';
 import { SPACING } from '@/system/constants/dimensions';
 import { useExplore } from '@/hooks/useExplore';
+import { saveRecentSearchKeyword } from '@/utils/userBehavior';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { CORE_CATEGORIES, CONTROLLED_TAGS, CATEGORY_LABELS } from '@fresherflow/constants';
 import { useToast } from '@/contexts/ToastContext';
@@ -123,6 +123,8 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         }
     }, [filters, viewMode, searchQuery]);
 
+
+
     const derivedCompanies = React.useMemo(() => {
         const unique = new Map<string, CompanySummary>();
 
@@ -145,11 +147,12 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         return Array.from(unique.values());
     }, [results]);
 
+    const { showSuccess } = useToast();
+
     // Track scroll position for animations and tab bar
     const scrollOffset = useRef(0);
 
-    const { showSuccess } = useToast();
-    const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const handleScroll = useCallback((event: any) => {
         const currentOffset = event.nativeEvent.contentOffset.y;
         const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
 
@@ -161,7 +164,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             }
             scrollOffset.current = currentOffset;
         }
-    };
+    }, [hideTabBar, showTabBar]);
 
     const handleToggleSave = useCallback((opportunity: Opportunity) => {
         const wasSaved = isSaved(opportunity.id);
@@ -243,59 +246,64 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         <Screen safe={false}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-            <View style={{ backgroundColor: currentTheme.colors.background, paddingTop: insets.top + 10 }}>
-                <PremiumHeader
-                    title="Discovery"
-                    subtitle="Explore Opportunities"
-                    rightSlot={
-                        <TouchableOpacity
-                            onPress={() => {
-                                console.log('[ExploreScreen] Opening FilterSheet via Ref');
-                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                filterSheetRef.current?.present();
-                            }}
-                            style={[styles.filterBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
-                        >
-                            <View>
-                                <Filter size={20} color={currentTheme.colors.primary} />
-                                {activeFilterCount > 0 && (
-                                    <View style={[styles.badge, { backgroundColor: currentTheme.colors.error, borderColor: currentTheme.colors.background }]} />
-                                )}
-                            </View>
-                        </TouchableOpacity>
-                    }
-                />
-                <View style={[styles.searchContainer, { backgroundColor: currentTheme.colors.background }]}>
-                    <PremiumSearchBar
-                        value={searchQuery}
-                        onChangeText={setSearchQuery}
-                        onClear={() => setSearchQuery('')}
-                        placeholder="Search roles or companies..."
+            <View 
+                style={{ 
+                    backgroundColor: currentTheme.colors.background,
+                }}
+            >
+                <View style={{ paddingTop: insets.top + 10 }}>
+                    <PremiumHeader
+                        title="Discover"
+                        subtitle="Explore Opportunities"
+                        rightSlot={
+                            <TouchableOpacity
+                                onPress={() => {
+                                    console.log('[ExploreScreen] Opening FilterSheet via Ref');
+                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    filterSheetRef.current?.present();
+                                }}
+                                style={[styles.filterBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                            >
+                                <View>
+                                    <Filter size={20} color={currentTheme.colors.primary} />
+                                    {activeFilterCount > 0 && (
+                                        <View style={[styles.badge, { backgroundColor: currentTheme.colors.error, borderColor: currentTheme.colors.background }]} />
+                                    )}
+                                </View>
+                            </TouchableOpacity>
+                        }
                     />
-                </View>
+                    <View style={[styles.searchContainer, { backgroundColor: currentTheme.colors.background }]}>
+                        <PremiumSearchBar
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            onClear={() => setSearchQuery('')}
+                            placeholder="Search roles or companies..."
+                        />
+                    </View>
 
-                {(activeFilterCount > 0 || searchQuery) && (
-                    <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        style={styles.chipScroll}
-                        contentContainerStyle={styles.chipContent}
-                    >
-                        {filters.type && (
-                            <FilterChip label={CATEGORY_LABELS[filters.type] || filters.type} onRemove={() => setFilters({ type: null })} />
-                        )}
-                        {filters.tag && (
-                            <FilterChip label={filters.tag} onRemove={() => setFilters({ tag: null })} />
-                        )}
-                        {filters.workMode && (
-                            <FilterChip label={filters.workMode} onRemove={() => setFilters({ workMode: null })} />
-                        )}
-                        {filters.batchYear && (
-                            <FilterChip label={`${filters.batchYear} Batch`} onRemove={() => setFilters({ batchYear: null })} />
-                        )}
-                    </ScrollView>
-                )}
-                <View style={{ height: 8 }} />
+                    {(activeFilterCount > 0 || searchQuery) && (
+                        <ScrollView
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                            style={styles.chipScroll}
+                            contentContainerStyle={styles.chipContent}
+                        >
+                            {filters.type && (
+                                <FilterChip label={CATEGORY_LABELS[filters.type] || filters.type} onRemove={() => setFilters({ type: null })} />
+                            )}
+                            {filters.tag && (
+                                <FilterChip label={filters.tag} onRemove={() => setFilters({ tag: null })} />
+                            )}
+                            {filters.workMode && (
+                                <FilterChip label={filters.workMode} onRemove={() => setFilters({ workMode: null })} />
+                            )}
+                            {filters.batchYear && (
+                                <FilterChip label={`${filters.batchYear} Batch`} onRemove={() => setFilters({ batchYear: null })} />
+                            )}
+                        </ScrollView>
+                    )}
+                </View>
             </View>
 
             <FlashList<ExploreItem>
@@ -334,7 +342,8 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     return items;
                 })()}
                 // @ts-expect-error - FlashList typing bug with estimatedItemSize
-                estimatedItemSize={160}
+                estimatedItemSize={180}
+                drawDistance={2500}
                 keyExtractor={(item) => item.key}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
@@ -385,6 +394,11 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                     } else {
                                                         setViewMode('opportunities');
                                                         setFilters({ type: cat });
+                                                        // Intercept and store high-intent category selection interest
+                                                        const label = CATEGORY_LABELS[cat] || cat;
+                                                        if (label.length >= 3) {
+                                                            saveRecentSearchKeyword(label.toLowerCase());
+                                                        }
                                                     }
                                                 }}
                                                 style={[styles.categoryCard, {
@@ -416,7 +430,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                         showsHorizontalScrollIndicator={false}
                                         contentContainerStyle={styles.categoryScroll}
                                     >
-                                        {[...CONTROLLED_TAGS.BATCHES, ...CONTROLLED_TAGS.ROLES].map(tag => (
+                                        {CONTROLLED_TAGS.BATCHES.map(tag => (
                                             <TouchableOpacity
                                                 key={tag}
                                                 onPress={() => {
@@ -426,6 +440,10 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                     } else {
                                                         setViewMode('opportunities');
                                                         setFilters({ tag });
+                                                        // Intercept and store high-intent tag click behavior
+                                                        if (tag.length >= 3) {
+                                                            saveRecentSearchKeyword(tag.toLowerCase());
+                                                        }
                                                     }
                                                 }}
                                                 style={[styles.tagChip, {

@@ -28,7 +28,7 @@ import axios from 'axios';
 import { TAKEN_USERNAMES_URL } from '@/config/api';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ChooseUsername'>;
+type Props = NativeStackScreenProps<RootStackParamList, 'ChooseUsername' | 'ProfileChooseUsername'>;
 
 export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
     const { currentTheme } = useTheme();

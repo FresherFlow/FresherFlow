@@ -7,8 +7,8 @@ import {
     ActivityIndicator,
     StatusBar,
     Animated,
-    Linking,
 } from 'react-native';
+import { openExternalURL } from '@/utils/browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Share2, Globe, Building2, Home } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -120,7 +120,7 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                                     activeOpacity={0.7}
                                     onPress={() => {
                                         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                        void Linking.openURL(website);
+                                        void openExternalURL(website, currentTheme.colors);
                                     }}
                                     style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
                                 >

@@ -1,23 +1,15 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
-import { useFocusEffect } from '@react-navigation/native';
-import { Opportunity, OpportunityType, Profile } from '@fresherflow/types';
-import { useNotificationStore } from '@/store/useNotificationStore';
-import { useNotifications } from '@repo/frontend-core';
+import { OpportunityType, Profile } from '@fresherflow/types';
+import { useNotifications, useSaved } from '@repo/frontend-core';
 import { useAuthStore } from '@/store/useAuthStore';
-import { saveFeedCache, readFeedCache, saveLastSyncTimestamp } from '@/utils/offlineCache';
-import { diffAndNotify } from '@/utils/localNotifications';
+import { useFeedStore } from '@/store/useFeedStore';
 import { getLocalProfile } from '@/utils/localProfile';
-import { calculateMatchScore } from '@/utils/matchScoring';
-import { generateCdnSignature } from '@/utils/cdnSignature';
 import Fuse from 'fuse.js';
-import axios from 'axios';
-import { BOOTSTRAP_FEED_URL, FEED_VERSION_URL } from '@/config/api';
-
-import { getString, setString } from '@/utils/storage';
 
 export const useFeed = (initialFeedType: string | null = null) => {
     const { user } = useAuthStore();
     useNotifications();
+    const { savedJobs } = useSaved();
     
     const [localProfile, setLocalProfile] = useState<Profile | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -26,11 +18,20 @@ export const useFeed = (initialFeedType: string | null = null) => {
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
     const [feedType, setFeedType] = useState<string | null>(initialFeedType);
     
-    const [cachedItems, setCachedItems] = useState<Opportunity[]>([]);
-    const [isBootstrapping, setIsBootstrapping] = useState(false);
-    const [isSyncing, setIsSyncing] = useState(false);
-    const [isRefreshing, setIsRefreshing] = useState(false);
-    const [syncError, setSyncError] = useState<string | null>(null);
+    // Subscribe to global store
+    const {
+        cachedItems,
+        seenIds,
+        openedIds,
+        appliedIds,
+        recentKeywords,
+        isBootstrapping,
+        isSyncing,
+        isRefreshing,
+        syncError,
+        performSync,
+        refreshBehavioralData
+    } = useFeedStore();
 
     // Sync local profile for match scoring
     useEffect(() => {
@@ -51,126 +52,6 @@ export const useFeed = (initialFeedType: string | null = null) => {
         ));
     }, [localProfile]);
 
-    // 1. Client-First Hydration (Instant Render from Cache)
-    useEffect(() => {
-        const hydrate = async () => {
-            setIsBootstrapping(true);
-            try {
-                const cached = await readFeedCache();
-                if (cached && cached.items.length > 0) {
-                    setCachedItems(cached.items);
-                }
-            } catch (e) {
-                console.warn('[useFeed] Offline cache read failed:', (e as Error).message);
-            } finally {
-                setIsBootstrapping(false);
-            }
-        };
-        void hydrate();
-    }, []);
-
-    // 2. Local Score Computing Helper
-    const computeScoringAndCache = useCallback(async (opportunities: Opportunity[]) => {
-        const profile = await getLocalProfile();
-        
-        const hasProfileData = profile && (
-            (profile.skills && profile.skills.length > 0) ||
-            (profile.preferredCities && profile.preferredCities.length > 0) ||
-            (profile.interestedIn && profile.interestedIn.length > 0) ||
-            profile.educationLevel
-        );
-
-        const scoredOpportunities = opportunities.map(job => {
-            if (!hasProfileData) return job;
-            const match = calculateMatchScore(profile, job);
-            return {
-                ...job,
-                matchScore: match.score > 0 ? match.score : undefined,
-                matchReason: match.score > 0 ? match.reason : undefined,
-                isEligible: match.isEligible
-            };
-        });
-
-        // Save feed cache locally
-        if (scoredOpportunities.length > 0) {
-            await saveFeedCache(scoredOpportunities);
-            setCachedItems(scoredOpportunities);
-            
-            // Diff against seen list and update notification badge counts
-            void diffAndNotify(scoredOpportunities).then(() => {
-                void useNotificationStore.getState().fetchUnreadCount();
-            });
-        }
-    }, []);
-
-    // 3. Smart Edge Sync (Zero Database pressure, queries static CDN file)
-    const performSync = useCallback(async (force = false, isUserInitiated = false) => {
-        const lastSyncStr = getString('fresherflow_last_sync_timestamp');
-        const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
-        const now = Date.now();
-        // Cooldown: 5 minutes (300,000ms) to prevent redundant Edge pulls
-        if (!force && now - lastSync < 300000) return;
-        setString('fresherflow_last_sync_timestamp', now.toString());
-
-        if (isUserInitiated) {
-            setIsRefreshing(true);
-        }
-        setIsSyncing(true);
-        setSyncError(null);
-
-        try {
-            // Fetch the centrally uploaded feed version to bypass stale CDN edge caches
-            let feedVersion = '';
-            try {
-                const versionRes = await axios.get(FEED_VERSION_URL, {
-                    timeout: 3000,
-                    headers: { 'Cache-Control': 'no-cache' }
-                });
-                if (versionRes.data?.version) {
-                    feedVersion = versionRes.data.version;
-                }
-            } catch (e) {
-                console.warn('[mobile] Failed to fetch feed version, using timestamp:', e);
-                feedVersion = Math.floor(Date.now() / 300000).toString();
-            }
-
-            // Generate HMAC cryptographic request signature to bypass Edge WAF block
-            const signatureParams = generateCdnSignature('/bootstrap-feed.min.json');
-            const signedUrl = `${BOOTSTRAP_FEED_URL}?v=${feedVersion}&t=${signatureParams.t}&sig=${signatureParams.sig}`;
-
-            console.log('Fetching signed URL:', signedUrl);
-
-            // Pull the single compressed Master JSON feed directly from CDN Pop
-            const response = await axios.get(signedUrl, { 
-                timeout: 5000,
-                headers: {
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
-                }
-            });
-
-            if (response.data?.opportunities) {
-                const opportunities = response.data.opportunities as Opportunity[];
-                await computeScoringAndCache(opportunities);
-                await saveLastSyncTimestamp(response.data.timestamp || now);
-            }
-        } catch (e) {
-            const errMsg = (e as Error).message;
-            console.warn('[useFeed] CDN static sync failed:', errMsg);
-            setSyncError(errMsg);
-        } finally {
-            setIsSyncing(false);
-            setIsRefreshing(false);
-        }
-    }, [computeScoringAndCache]);
-
-    // Pull from CDN on screen focus automatically (respects cooldown)
-    useFocusEffect(
-        useCallback(() => {
-            void performSync();
-        }, [performSync])
-    );
-
     // 4. In-Memory Fuzzy Search Index (Fuse.js)
     const fuseIndex = useMemo(() => {
         if (cachedItems.length === 0) return null;
@@ -179,6 +60,36 @@ export const useFeed = (initialFeedType: string | null = null) => {
             threshold: 0.3,
         });
     }, [cachedItems]);
+
+    const savedJobsData = useMemo(() => {
+        const skills = new Set<string>();
+        const functions = new Set<string>();
+        savedJobs.forEach(job => {
+            if (job.requiredSkills) {
+                job.requiredSkills.forEach(s => skills.add(s.toLowerCase().trim()));
+            }
+            if (job.jobFunction) {
+                functions.add(job.jobFunction.toLowerCase().trim());
+            }
+        });
+        return { skills, functions };
+    }, [savedJobs]);
+
+    const openedJobsData = useMemo(() => {
+        const skills = new Set<string>();
+        const functions = new Set<string>();
+        cachedItems.forEach(job => {
+            if (openedIds.has(job.id)) {
+                if (job.requiredSkills) {
+                    job.requiredSkills.forEach(s => skills.add(s.toLowerCase().trim()));
+                }
+                if (job.jobFunction) {
+                    functions.add(job.jobFunction.toLowerCase().trim());
+                }
+            }
+        });
+        return { skills, functions };
+    }, [cachedItems, openedIds]);
 
     // 5. High-Speed Local Filter/Scoring Pipeline (Takes <3ms)
     const filteredOpportunities = useMemo(() => {
@@ -206,42 +117,113 @@ export const useFeed = (initialFeedType: string | null = null) => {
             result = fuseIndex.search(searchQuery).map(r => r.item);
         }
 
-        // Expiry management: sort expired listings cleanly to the bottom
         const now = Date.now();
-        const active: Opportunity[] = [];
-        const expired: Opportunity[] = [];
+
+        // Map and compute relevance scores for all items in result
+        const scored = result.map(job => {
+            let score = (job as { matchScore?: number }).matchScore || 0;
+
+            // 1. Saved Job Boost (max +30)
+            let savedBoost = 0;
+            if (job.jobFunction && savedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
+                savedBoost += 15;
+            }
+            if (job.requiredSkills) {
+                let skillMatches = 0;
+                job.requiredSkills.forEach(s => {
+                    if (savedJobsData.skills.has(s.toLowerCase().trim())) {
+                        skillMatches++;
+                    }
+                });
+                savedBoost += Math.min(skillMatches * 3, 15);
+            }
+            score += savedBoost;
+
+            // 2. Recent Search Keyword Boost (max +25)
+            let searchBoost = 0;
+            if (recentKeywords.length > 0) {
+                const titleLower = (job.title || '').toLowerCase();
+                const compLower = (job.company || '').toLowerCase();
+                const funcLower = (job.jobFunction || '').toLowerCase();
+                const locsLower = (job.locations || []).map(l => l.toLowerCase());
+
+                recentKeywords.forEach(kw => {
+                    if (
+                        titleLower.includes(kw) ||
+                        compLower.includes(kw) ||
+                        funcLower.includes(kw) ||
+                        locsLower.some(l => l.includes(kw))
+                    ) {
+                        searchBoost += 10;
+                    }
+                });
+                searchBoost = Math.min(searchBoost, 25);
+            }
+            score += searchBoost;
+
+            // 3. Viewed/Opened Job Similarity Boost (max +15)
+            let openedBoost = 0;
+            if (job.jobFunction && openedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
+                openedBoost += 5;
+            }
+            if (job.requiredSkills) {
+                let skillMatches = 0;
+                job.requiredSkills.forEach(s => {
+                    if (openedJobsData.skills.has(s.toLowerCase().trim())) {
+                        skillMatches++;
+                    }
+                });
+                openedBoost += Math.min(skillMatches * 2, 10);
+            }
+            score += openedBoost;
+
+            // 4. Trending scaling boost (max +10)
+            const trendBoost = Math.min(job.trendingScore || 0, 100) * 0.1;
+            score += trendBoost;
+
+            // 5. Referral Boost (if referral, add +10 so referrals naturally float higher)
+            if (job.isReferral) {
+                score += 10;
+            }
+
+            return {
+                ...job,
+                clicksCount: openedIds.has(job.id) ? Math.max(job.clicksCount || 0, 1) : (job.clicksCount || 0),
+                relevanceScore: Math.round(score)
+            };
+        });
+
+        // Expiry, Applied, and Seen management: partition into unseen active, seen active, applied active, and expired
+        const unseenActive: typeof scored = [];
+        const seenActive: typeof scored = [];
+        const appliedActive: typeof scored = [];
+        const expired: typeof scored = [];
         
-        for (const j of result) {
-            if (!j.expiresAt || new Date(j.expiresAt).getTime() > now) {
-                active.push(j);
-            } else {
+        for (const j of scored) {
+            if (j.expiresAt && new Date(j.expiresAt).getTime() <= now) {
                 expired.push(j);
+            } else if (appliedIds.has(j.id)) {
+                appliedActive.push(j);
+            } else if (seenIds.has(j.id)) {
+                seenActive.push(j);
+            } else {
+                unseenActive.push(j);
             }
         }
         
-        // Sort active opportunities: referred & eligible to the top, then referred & ineligible, then normal active.
-        active.sort((a: Opportunity & { isReferral?: boolean; isEligible?: boolean }, b: Opportunity & { isReferral?: boolean; isEligible?: boolean }) => {
-            const isReferredA = a.isReferral ? 1 : 0;
-            const isReferredB = b.isReferral ? 1 : 0;
-            
-            if (isReferredA !== isReferredB) {
-                return isReferredB - isReferredA; // Referred ones first
-            }
-            
-            // If both are referred, prioritize eligible ones
-            if (a.isReferral && b.isReferral) {
-                const eligibleA = a.isEligible !== false ? 1 : 0;
-                const eligibleB = b.isEligible !== false ? 1 : 0;
-                if (eligibleA !== eligibleB) {
-                    return eligibleB - eligibleA; // Eligible first
-                }
-            }
-            
-            return 0; // Maintain original database/CDN order otherwise
-        });
+        const sortByRelevance = (a: typeof scored[0], b: typeof scored[0]) => {
+            return b.relevanceScore - a.relevanceScore;
+        };
         
-        return [...active, ...expired];
-    }, [cachedItems, fuseIndex, searchQuery, activeFilter, feedType]);
+        unseenActive.sort(sortByRelevance);
+        seenActive.sort(sortByRelevance);
+        appliedActive.sort(sortByRelevance);
+
+        // Expired sorted by expiry time (newest first)
+        expired.sort((a, b) => new Date(b.expiresAt || 0).getTime() - new Date(a.expiresAt || 0).getTime());
+        
+        return [...unseenActive, ...seenActive, ...appliedActive, ...expired];
+    }, [cachedItems, fuseIndex, searchQuery, activeFilter, feedType, seenIds, appliedIds, recentKeywords, savedJobsData, openedJobsData]);
 
     const clearFilters = useCallback(() => {
         setSearchQuery('');
@@ -272,8 +254,10 @@ export const useFeed = (initialFeedType: string | null = null) => {
         setSelectedTag,
         feedType,
         setFeedType,
-        offlineMode: !!syncError,
-        onRefresh: () => performSync(true, true), // Force refresh head check marked as user-initiated
+        onRefresh: useCallback(() => {
+            void refreshBehavioralData();
+            void performSync(true, true);
+        }, [performSync, refreshBehavioralData]), // Force refresh head check marked as user-initiated
         loadMore: () => {}, // No paging scroll requests needed!
         filteredOpportunities,
         clearFilters,
