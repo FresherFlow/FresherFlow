@@ -18,6 +18,7 @@ export interface ContributionShare {
         status: string;
         publishedAt?: string;
         expiredAt?: string;
+        deletionReason?: string | null;
         clicksCount: number;
         savesCount: number;
         type?: string;
@@ -44,12 +45,12 @@ export const ContributionPreviewCard = memo(({ share, onPress }: Props) => {
                     label: 'Live',
                     description: 'Approved & posted live on the opportunity feed'
                 };
-            case 'REJECTED':
+            case 'ARCHIVED':
                 return {
                     icon: XCircle,
                     color: currentTheme.colors.error,
                     label: 'Rejected',
-                    description: 'Submission declined by moderation team'
+                    description: opp?.deletionReason || 'Submission declined by admin'
                 };
             case 'EXPIRED':
                 return {
@@ -63,14 +64,14 @@ export const ContributionPreviewCard = memo(({ share, onPress }: Props) => {
                     icon: Clock,
                     color: currentTheme.colors.warning,
                     label: 'Reviewing',
-                    description: 'In verification queue by community mods'
+                    description: 'In verification queue by our team'
                 };
             default:
                 return {
                     icon: Clock,
                     color: currentTheme.colors.warning,
                     label: 'Reviewing',
-                    description: 'In verification queue by community mods'
+                    description: 'In verification queue by our team'
                 };
         }
     };

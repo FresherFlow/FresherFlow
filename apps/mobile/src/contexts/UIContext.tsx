@@ -28,21 +28,21 @@ export function UIProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const hideTabBar = () => {
+  const hideTabBar = React.useCallback(() => {
     Animated.timing(tabBarTranslateY, {
       toValue: 100,
       duration: 300,
       useNativeDriver: true,
     }).start();
-  };
+  }, [tabBarTranslateY]);
 
-  const showTabBar = () => {
+  const showTabBar = React.useCallback(() => {
     Animated.timing(tabBarTranslateY, {
       toValue: 0,
       duration: 300,
       useNativeDriver: true,
     }).start();
-  };
+  }, [tabBarTranslateY]);
 
   return (
     <UIContext.Provider value={{ tabBarTranslateY, isKeyboardVisible, hideTabBar, showTabBar }}>

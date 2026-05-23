@@ -29,8 +29,12 @@ interface Slide {
     color: string;
 }
 
+interface FirstRunGateProps {
+    children: React.ReactNode;
+    onDismiss?: () => void;
+}
 
-export const FirstRunGate: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss }) => {
     const [isVisible, setIsVisible] = useState<boolean | null>(false);
     const [activeIndex, setActiveIndex] = useState(0);
     const flatListRef = useRef<FlatList>(null);
@@ -79,6 +83,9 @@ export const FirstRunGate: React.FC<{ children: React.ReactNode }> = ({ children
             await AsyncStorage.setItem(FIRST_RUN_KEY, 'true');
         } catch (e) {
             console.error('[FirstRunGate] Failed to save flag', e);
+        }
+        if (onDismiss) {
+            onDismiss();
         }
     };
 

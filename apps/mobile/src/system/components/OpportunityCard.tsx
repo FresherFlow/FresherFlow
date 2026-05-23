@@ -40,7 +40,7 @@ const getTypeConfig = (type: OpportunityType, theme: AppTheme) => {
 };
 
 import { MotiView } from 'moti';
-import { isToday, isBefore, differenceInDays } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import { useUIStore } from '@/store/useUIStore';
 
 export const OpportunityCard = memo(({
@@ -50,7 +50,6 @@ export const OpportunityCard = memo(({
   isSaved,
   heatBadge,
   matchScore,
-  index = 0,
 }: Props) => {
   const { currentTheme } = useTheme();
   const openActionSheet = useUIStore(s => s.actionSheet.open);
@@ -66,14 +65,29 @@ export const OpportunityCard = memo(({
     if (!opportunity.expiresAt) return null;
     const expiryDate = new Date(opportunity.expiresAt);
     const now = new Date();
+    if (isNaN(expiryDate.getTime())) return null;
 
-    if (isBefore(expiryDate, now)) return { label: 'Expired', color: currentTheme.colors.error };
-    if (isToday(expiryDate)) return { label: 'Closing Today', color: currentTheme.colors.warning };
+    const expiryDateStart = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate());
+    const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const diffTime = expiryDateStart.getTime() - nowStart.getTime();
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays < 0) {
+      return { label: 'expired', color: currentTheme.colors.error, type: 'EXPIRED' };
+    }
+    if (diffDays === 0) {
+      return { label: 'expires today', color: currentTheme.colors.warning, type: 'URGENT' };
+    }
+    if (diffDays === 1) {
+      return { label: 'expires tomorrow', color: currentTheme.colors.warning, type: 'URGENT' };
+    }
     
-    const daysLeft = differenceInDays(expiryDate, now);
-    if (daysLeft <= 3) return { label: `${daysLeft}d Left`, color: currentTheme.colors.warning };
-    
-    return null;
+    return {
+      label: `expires in ${diffDays} days`,
+      color: diffDays <= 3 ? currentTheme.colors.warning : currentTheme.colors.textMuted,
+      type: diffDays <= 3 ? 'URGENT' : 'NORMAL'
+    };
   })();
 
   const computedHeatBadge = (() => {
@@ -90,15 +104,7 @@ export const OpportunityCard = memo(({
   const effectiveMatchScore = matchScore ?? opportunity.matchScore;
 
   return (
-    <MotiView 
-        from={{ opacity: 0, scale: 0.98 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ 
-            type: 'timing', 
-            duration: 300,
-            delay: Math.min(index * 50, 500)
-        }}
-    >
+    <View>
         <SurfaceCard
             onPress={onPress}
             onLongPress={handleLongPress}
@@ -274,11 +280,11 @@ export const OpportunityCard = memo(({
               )}
               {opportunity.isReferral ? (
                   <Text style={[styles.contributorText, { color: currentTheme.colors.warning, fontWeight: '700' }]}>
-                      Referred by {opportunity.referredByUsername ? `@${opportunity.referredByUsername}` : (opportunity.rawIngestions?.[0]?.creator ? getDisplayHandle(opportunity.rawIngestions[0].creator) : 'user from community')}
+                      Referred by {opportunity.referredByUsername ? `@${opportunity.referredByUsername}` : (opportunity.user?.username ? `@${opportunity.user.username}` : (opportunity.rawIngestions?.[0]?.creator ? getDisplayHandle(opportunity.rawIngestions[0].creator) : 'user from community'))}
                   </Text>
-              ) : opportunity.rawIngestions?.[0]?.creator && (
+              ) : (opportunity.user?.username || opportunity.rawIngestions?.[0]?.creator) && (
                   <Text style={[styles.contributorText, { color: currentTheme.colors.textMuted }]}>
-                      Shared by {getDisplayHandle(opportunity.rawIngestions[0].creator)}
+                      Shared by {opportunity.user?.username ? `@${opportunity.user.username}` : getDisplayHandle(opportunity.rawIngestions![0].creator)}
                   </Text>
               )}
           </View>
@@ -289,9 +295,17 @@ export const OpportunityCard = memo(({
           </View>
       </View>
         </SurfaceCard>
-    </MotiView>
+    </View>
   );
-});
+}, propsAreEqual);
+
+function propsAreEqual(prevProps: Props, nextProps: Props) {
+    return prevProps.opportunity.id === nextProps.opportunity.id &&
+           prevProps.isSaved === nextProps.isSaved &&
+           prevProps.index === nextProps.index &&
+           prevProps.matchScore === nextProps.matchScore &&
+           prevProps.heatBadge === nextProps.heatBadge;
+};
 
 export const JobCard: React.FC<Props> = memo((props) => {
     return (
@@ -299,7 +313,7 @@ export const JobCard: React.FC<Props> = memo((props) => {
             <OpportunityCard {...props} />
         </View>
     );
-});
+}, propsAreEqual);
 
 const styles = StyleSheet.create({
     container: {

@@ -13,7 +13,7 @@ export interface PersistedExploreFilters {
   workMode: WorkMode | null;
   batchYear: number | null;
   tag: string | null;
-  sort: 'latest' | 'trending' | 'closing_soon';
+  sort: 'recommended' | 'latest' | 'trending' | 'closing_soon';
 }
 
 interface UIState {
@@ -30,7 +30,7 @@ const initialFilters: PersistedExploreFilters = {
   workMode: null,
   batchYear: null,
   tag: null,
-  sort: 'latest',
+  sort: 'recommended',
 };
 
 export const useUIStore = create<UIState>((set) => ({

@@ -34,7 +34,6 @@ const AppHeader: React.FC<AppHeaderProps> = memo(({
   const { currentTheme } = useTheme();
 
   const topSpacing = Platform.OS === 'android' ? ANDROID_STATUSBAR_HEIGHT : insets.top;
-  const headerBaseHeight = Platform.OS === 'android' ? 80 : 60;
 
   return (
     <View style={[styles.headerContainer, isTransparent && styles.transparentHeader]}>
@@ -50,11 +49,11 @@ const AppHeader: React.FC<AppHeaderProps> = memo(({
       )}
       <View style={[styles.header, { paddingTop: topSpacing }]}>
         {!hideTitleRow && (
-          <View style={[styles.titleRow, { height: headerBaseHeight }]}>
+          <View style={styles.titleRow}>
             <View style={styles.headerContent}>
               {showBackButton || onBackPress ? (
                 <TouchableOpacity style={styles.backButton} onPress={onBackPress} activeOpacity={0.7}>
-                  <ChevronLeft size={24} color={currentTheme.colors.text} />
+                  <ChevronLeft size={32} color={currentTheme.colors.text} />
                 </TouchableOpacity>
               ) : null}
 
@@ -108,6 +107,7 @@ const styles = StyleSheet.create({
   titleRow: {
     justifyContent: 'flex-end',
     paddingBottom: 4,
+    marginTop: 12,
   },
   headerContent: {
     flexDirection: 'row',
@@ -116,16 +116,17 @@ const styles = StyleSheet.create({
   },
   backButton: {
     padding: 8,
-    marginLeft: -8,
+    marginLeft: -12,
     marginRight: 8,
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: '800',
-    letterSpacing: -0.5,
+    fontSize: 38,
+    fontWeight: '900',
+    letterSpacing: -1.2,
+    lineHeight: 44,
   },
   headerTitleWithBack: {
-    fontSize: 22,
+    fontSize: 38,
   },
   headerSubtitle: {
     fontSize: 13,

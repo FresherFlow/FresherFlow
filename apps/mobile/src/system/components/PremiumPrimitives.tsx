@@ -142,8 +142,8 @@ export const PremiumHeader: React.FC<{
             compact && { paddingTop: 0, paddingBottom: 0 }, 
             style
         ]}>
-            <View style={[styles.headerContent, compact && { alignItems: 'center', marginBottom: 0 }]}>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm }}>
+            <View style={[styles.headerContent, (compact || !subtitle) && { alignItems: 'center' }, compact && { marginBottom: 0 }]}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: (compact || !subtitle) ? 'center' : 'flex-start', gap: SPACING.sm }}>
                     {showBack && (
                         <TouchableOpacity onPress={handleBack} style={styles.backBtnHeader}>
                             <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
@@ -189,7 +189,7 @@ export const SecondaryHeader: React.FC<{
 
     return (
         <View style={styles.header}>
-            <View style={styles.headerContent}>
+            <View style={[styles.headerContent, { alignItems: 'center' }]}>
                 <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
                     <TouchableOpacity onPress={onBack} style={styles.backBtn}>
                         <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
@@ -199,6 +199,73 @@ export const SecondaryHeader: React.FC<{
                 {rightSlot && <View>{rightSlot}</View>}
             </View>
         </View>
+    );
+};
+
+export const AnimatedPremiumHeader: React.FC<{
+    title: string;
+    subtitle?: string;
+    rightSlot?: React.ReactNode;
+    leftSlot?: React.ReactNode;
+    showBack?: boolean;
+    onBack?: () => void;
+    scrollY: Animated.Value;
+    scrollDistance?: number;
+    insetsTop?: number;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    style?: any;
+}> = (props) => {
+    const { scrollY, scrollDistance = 40, insetsTop = 0, style, ...rest } = props;
+    const { currentTheme } = useTheme();
+    
+    const translateY = scrollY.interpolate({
+        inputRange: [0, scrollDistance],
+        outputRange: [0, -scrollDistance],
+        extrapolate: 'clamp',
+    });
+
+    return (
+        <Animated.View style={{ 
+            position: 'absolute', top: 0, left: 0, right: 0,
+            backgroundColor: currentTheme.colors.background,
+            transform: [{ translateY }], 
+            zIndex: 100 
+        }}>
+            <View style={{ paddingTop: insetsTop + scrollDistance }}>
+                <PremiumHeader {...rest} style={[{ backgroundColor: 'transparent', paddingTop: 0 }, style]} />
+            </View>
+        </Animated.View>
+    );
+};
+
+export const AnimatedSecondaryHeader: React.FC<{
+    title: string;
+    onBack: () => void;
+    rightSlot?: React.ReactNode;
+    scrollY: Animated.Value;
+    scrollDistance?: number;
+    insetsTop?: number;
+}> = (props) => {
+    const { scrollY, scrollDistance = 40, insetsTop = 0, ...rest } = props;
+    const { currentTheme } = useTheme();
+    
+    const translateY = scrollY.interpolate({
+        inputRange: [0, scrollDistance],
+        outputRange: [0, -scrollDistance],
+        extrapolate: 'clamp',
+    });
+
+    return (
+        <Animated.View style={{ 
+            position: 'absolute', top: 0, left: 0, right: 0,
+            backgroundColor: currentTheme.colors.background,
+            transform: [{ translateY }], 
+            zIndex: 100 
+        }}>
+            <View style={{ paddingTop: insetsTop + scrollDistance }}>
+                <SecondaryHeader {...rest} />
+            </View>
+        </Animated.View>
     );
 };
 
@@ -322,10 +389,10 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
     },
     headerTitle: {
-        fontSize: mScale(38),
+        fontSize: mScale(28),
         fontWeight: '900',
-        letterSpacing: -1.2,
-        lineHeight: mScale(44),
+        letterSpacing: -1.0,
+        lineHeight: mScale(34),
     },
     headerSubtitle: {
         fontSize: mScale(13),
@@ -335,10 +402,10 @@ const styles = StyleSheet.create({
         opacity: 0.8,
     },
     secondaryTitle: {
-        fontSize: mScale(38),
+        fontSize: mScale(28),
         fontWeight: '900',
-        letterSpacing: -1.2,
-        lineHeight: mScale(44),
+        letterSpacing: -1.0,
+        lineHeight: mScale(34),
     },
     backBtn: {
         width: 48,

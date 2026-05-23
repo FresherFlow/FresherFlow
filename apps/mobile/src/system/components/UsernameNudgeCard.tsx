@@ -28,7 +28,7 @@ export const UsernameNudgeCard = memo(() => {
 
   const handleAction = () => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    navigation.navigate('ChooseUsername');
+    navigation.navigate('ProfileChooseUsername');
   };
 
   if (!showNudge) return null;
