@@ -53,7 +53,7 @@ export function useDashboard() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [isAnonymous]);
 
     useEffect(() => {
         const loadCache = async () => {

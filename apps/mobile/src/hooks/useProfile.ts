@@ -4,6 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSaved } from '@repo/frontend-core';
 import { Profile } from '@fresherflow/types';
 import { saveLocalProfile, getLocalProfile } from '@/utils/localProfile';
+import { enqueueProfileSync } from '@/utils/onboardingState';
 
 // --- In-memory cache & request deduplication layer ---
 let lastStatsFetchTime = 0;
@@ -28,14 +29,14 @@ export const useProfile = () => {
     useEffect(() => {
         const loadCache = async () => {
             try {
-                const cached = await getLocalProfile();
+                const cached = await getLocalProfile(user?.id);
                 if (cached) setFullProfile(cached);
             } finally {
                 setLoadingCache(false);
             }
         };
         void loadCache();
-    }, []);
+    }, [user?.id]);
     const [completionPercentage, setCompletionPercentage] = useState(0);
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [appliedCount, setAppliedCount] = useState(0);
@@ -136,7 +137,7 @@ export const useProfile = () => {
 
             setFullProfile(res.profile);
             setCompletionPercentage(res.completionPercentage);
-            await saveLocalProfile(res.profile);
+            await saveLocalProfile(res.profile, user.id);
         } catch (e) {
             console.warn('Failed to fetch profile data', e);
         } finally {
@@ -160,7 +161,7 @@ export const useProfile = () => {
         // Always merge + save locally, even on first save (fullProfile may be null)
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         setFullProfile(merged);
-        await saveLocalProfile(merged);
+        await saveLocalProfile(merged, user?.id);
         // Invalidate profile cache to force fresh reload
         lastProfileFetchTime = 0;
         if (isAnonymous) return;
@@ -170,8 +171,9 @@ export const useProfile = () => {
             await Promise.all([fetchProfile(), refreshMe()]);
         } catch (e) {
             console.warn('[useProfile] Education sync failed, local saved ok', e);
+            if (user?.id) enqueueProfileSync(user.id, 'education', data);
         }
-    }, [fullProfile, fetchProfile, refreshMe]);
+    }, [fullProfile, fetchProfile, refreshMe, isAnonymous, user?.id]);
 
     const updatePreferences = useCallback(async (data: {
         interestedIn: string[];
@@ -180,7 +182,7 @@ export const useProfile = () => {
     }) => {
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         setFullProfile(merged);
-        await saveLocalProfile(merged);
+        await saveLocalProfile(merged, user?.id);
         // Invalidate profile cache
         lastProfileFetchTime = 0;
         if (isAnonymous) return;
@@ -189,13 +191,14 @@ export const useProfile = () => {
             await Promise.all([fetchProfile(), refreshMe()]);
         } catch (e) {
             console.warn('[useProfile] Preferences sync failed, local saved ok', e);
+            if (user?.id) enqueueProfileSync(user.id, 'preferences', data);
         }
-    }, [fullProfile, fetchProfile, refreshMe]);
+    }, [fullProfile, fetchProfile, refreshMe, isAnonymous, user?.id]);
 
     const updateReadiness = useCallback(async (data: { availability: string; skills: string[] }) => {
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         setFullProfile(merged);
-        await saveLocalProfile(merged);
+        await saveLocalProfile(merged, user?.id);
         // Invalidate profile cache
         lastProfileFetchTime = 0;
         if (isAnonymous) return;
@@ -204,8 +207,9 @@ export const useProfile = () => {
             await Promise.all([fetchProfile(), refreshMe()]);
         } catch (e) {
             console.warn('[useProfile] Readiness sync failed, local saved ok', e);
+            if (user?.id) enqueueProfileSync(user.id, 'readiness', data);
         }
-    }, [fullProfile, fetchProfile, refreshMe]);
+    }, [fullProfile, fetchProfile, refreshMe, isAnonymous, user?.id]);
 
     useEffect(() => {
         if (user && !user.isAnonymous) {

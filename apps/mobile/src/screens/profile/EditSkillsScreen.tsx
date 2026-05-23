@@ -37,7 +37,7 @@ export const SkillsView = ({ profile, availabilityLabel, onEdit, currentTheme }:
     const hasSkills = (profile?.skills || []).length > 0;
     return (
         <View style={{ paddingHorizontal: 20, paddingBottom: 24 }}>
-            <SurfaceCard style={{ padding: 24, borderRadius: 28 }}>
+            <SurfaceCard style={{ padding: 24, borderRadius: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: hasSkills ? 24 : 12 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Zap size={20} color={currentTheme.colors.primary} />
@@ -334,8 +334,8 @@ const styles = StyleSheet.create({
     viewSection: { marginBottom: 28, marginTop: 20 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
     sectionLabel: { fontSize: 11, fontWeight: '900', letterSpacing: 0.5 },
-    card: { padding: 16, borderRadius: 28 },
-    viewCard: { padding: 20, borderRadius: 24 },
+    card: { padding: 16, borderRadius: 16 },
+    viewCard: { padding: 20, borderRadius: 16 },
     viewFieldLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6 },
     viewFieldValue: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
     inputContainer: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 56, borderRadius: 18, borderWidth: 1 },

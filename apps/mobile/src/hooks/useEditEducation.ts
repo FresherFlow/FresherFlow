@@ -17,14 +17,30 @@ const educationSchema = z.object({
     pgCourse: z.string().optional(),
     pgSpecialization: z.string().optional(),
     pgYear: z.string().optional(),
-}).refine(data => {
-    if (data.hasPG) {
-        return !!data.pgCourse && !!data.pgSpecialization && /^\d{4}$/.test(data.pgYear || '');
+}).superRefine((data, ctx) => {
+    if (data.hasPG || data.educationLevel === 'PG') {
+        if (!data.pgCourse) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Required',
+                path: ['pgCourse'],
+            });
+        }
+        if (!data.pgSpecialization) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Required',
+                path: ['pgSpecialization'],
+            });
+        }
+        if (!/^\d{4}$/.test(data.pgYear || '')) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: 'Enter 4-digit year',
+                path: ['pgYear'],
+            });
+        }
     }
-    return true;
-}, {
-    message: "Please complete PG details",
-    path: ["pgCourse"]
 });
 
 export interface EducationFormData {
@@ -100,7 +116,7 @@ export const useEditEducation = () => {
                 gradCourse: data.gradCourse,
                 gradSpecialization: data.gradSpecialization,
                 gradYear: parseInt(data.gradYear),
-                ...(data.hasPG && {
+                ...((data.hasPG || data.educationLevel === 'PG') && {
                     pgCourse: data.pgCourse,
                     pgSpecialization: data.pgSpecialization,
                     pgYear: data.pgYear ? parseInt(data.pgYear) : undefined,

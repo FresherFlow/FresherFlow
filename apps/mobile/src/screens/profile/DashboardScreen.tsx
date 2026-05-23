@@ -46,6 +46,12 @@ import { JobCard } from '@/system/components/OpportunityCard';
 import { saveDetailCache } from '@/utils/offlineCache';
 import { useSaved } from '@repo/frontend-core';
 
+import { useStreak } from '@/hooks/useStreak';
+import { Flame } from 'lucide-react-native';
+
+import { useAuthStore } from '@/store/useAuthStore';
+import { UsernameNudgeCard } from '@/system/components/UsernameNudgeCard';
+
 const getContributorRank = (sharesCount: number) => {
     if (sharesCount === 0) return 'Newbie';
     if (sharesCount < 5) return 'Seed';
@@ -58,10 +64,14 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const { hideTabBar, showTabBar } = useUI();
+    const { user } = useAuthStore();
     const { highlights, recentActivity, latestJobs, appliedJobs, loading, refresh } = useDashboard();
     const { isSaved, toggleSave } = useSaved();
     const { shareStats } = useProfile();
     const [activeTab, setActiveTab] = React.useState<'featured' | 'latest' | 'expiring' | 'applied'>('featured');
+    
+    // Track daily login streak
+    const { streakCount } = useStreak();
 
     // Track scroll position for hide/show tab bar
     const scrollOffset = useRef(0);
@@ -92,15 +102,25 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const renderHeader = () => (
         <View style={{ backgroundColor: currentTheme.colors.background }}>
             <View style={styles.headerArea}>
-                <PremiumHeader
-                    title="Dashboard"
-                    subtitle="Your Career Pulse"
-                />
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingRight: 24 }}>
+                    <View style={{ flex: 1 }}>
+                        <PremiumHeader
+                            title="Dashboard"
+                            subtitle="Your Career Pulse"
+                        />
+                    </View>
+                    {streakCount > 0 && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: alpha(currentTheme.colors.error, 0.1), paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: alpha(currentTheme.colors.error, 0.2) }}>
+                            <Flame size={16} color={currentTheme.colors.error} style={{ marginRight: 4 }} />
+                            <Text style={{ color: currentTheme.colors.error, fontWeight: '800', fontSize: 13 }}>{streakCount} Day</Text>
+                        </View>
+                    )}
+                </View>
 
                 <View style={styles.statsGrid}>
                     <TouchableOpacity
                         onPress={() => setActiveTab('featured')}
-                        style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderRadius: 24, borderWidth: activeTab === 'featured' ? 1 : 0, borderColor: currentTheme.colors.primary }]}
+                        style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderRadius: 16, borderWidth: activeTab === 'featured' ? 1 : 0, borderColor: currentTheme.colors.primary }]}
                     >
                         <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
                             <Bookmark size={16} color={currentTheme.colors.primary} />
@@ -110,7 +130,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     </TouchableOpacity>
                     <TouchableOpacity
                         onPress={() => setActiveTab('applied')}
-                        style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderRadius: 24, borderWidth: activeTab === 'applied' ? 1 : 0, borderColor: currentTheme.colors.success }]}
+                        style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderRadius: 16, borderWidth: activeTab === 'applied' ? 1 : 0, borderColor: currentTheme.colors.success }]}
                     >
                         <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
                             <Send size={16} color={currentTheme.colors.success} />
@@ -120,16 +140,24 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         </Text>
                         <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Applied</Text>
                     </TouchableOpacity>
-                    <View style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.warning, 0.05), borderRadius: 24 }]}>
-                        <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
-                            <Trophy size={16} color={currentTheme.colors.warning} />
+                    {user?.username && (
+                        <View style={[styles.statCard, { backgroundColor: alpha(currentTheme.colors.warning, 0.05), borderRadius: 16 }]}>
+                            <View style={[styles.statIcon, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
+                                <Trophy size={16} color={currentTheme.colors.warning} />
+                            </View>
+                            <Text style={[styles.statValue, { color: currentTheme.colors.text }]} numberOfLines={1}>
+                                {getContributorRank(shareStats.totalShared)}
+                            </Text>
+                            <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Rank</Text>
                         </View>
-                        <Text style={[styles.statValue, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                            {getContributorRank(shareStats.totalShared)}
-                        </Text>
-                        <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Rank</Text>
-                    </View>
+                    )}
                 </View>
+
+                {!user?.username && (
+                    <View style={{ paddingHorizontal: 20, marginTop: 16 }}>
+                        <UsernameNudgeCard />
+                    </View>
+                )}
 
                 {/* Dashboard Tabs (Parity with Web) */}
                 <View style={styles.tabContainer}>

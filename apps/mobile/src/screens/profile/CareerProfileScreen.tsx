@@ -103,9 +103,9 @@ const styles = StyleSheet.create({
         marginBottom: 12,
         marginTop: 20,
     },
-    card: {
+    groupCard: {
         padding: 0,
-        borderRadius: 28,
+        borderRadius: 16,
     },
     infoBox: {
         marginTop: 32,

@@ -91,7 +91,7 @@ export const EducationView = ({ profile, onEdit, currentTheme }: { profile: Retu
 
     return (
         <View style={{ paddingHorizontal: 20, paddingBottom: 24 }}>
-            <SurfaceCard style={{ padding: 24, borderRadius: 28 }}>
+            <SurfaceCard style={{ padding: 24, borderRadius: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: highestCourse ? 24 : 0 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <GraduationCap size={20} color={currentTheme.colors.primary} />
@@ -173,7 +173,9 @@ const EditEducationScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const { getCoursesForLevel, getSpecializationsForCourse } = useEducationMetadata();
 
-    const courses = getCoursesForLevel(educationLevel);
+    const courses = getCoursesForLevel(educationLevel === 'PG' ? 'DEGREE' : educationLevel);
+
+    const showPGFields = hasPG || educationLevel === 'PG';
 
     const onSave = useCallback(() => {
         void handleSubmit((data: EducationFormData) => {
@@ -314,9 +316,13 @@ const EditEducationScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                 onSelect={(val: string) => {
                                                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                                     const actualLevel = val === 'UG' ? 'DEGREE' : val;
+                                                    const oldLevelIsDiploma = educationLevel === 'DIPLOMA';
+                                                    const newLevelIsDiploma = actualLevel === 'DIPLOMA';
                                                     onChange(actualLevel);
-                                                    setValue('gradCourse', '');
-                                                    setValue('gradSpecialization', '');
+                                                    if (oldLevelIsDiploma !== newLevelIsDiploma) {
+                                                        setValue('gradCourse', '');
+                                                        setValue('gradSpecialization', '');
+                                                    }
                                                 }}
                                                 currentTheme={currentTheme}
                                                 error={errors.educationLevel?.message}
@@ -408,75 +414,81 @@ const EditEducationScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                             </TouchableOpacity>
                                         )}
                                     />
+                                </View>
+                            )}
 
-                                    {hasPG && (
-                                        <SurfaceCard style={styles.card}>
-                                            <Controller
-                                                control={control}
-                                                name="pgCourse"
-                                                render={({ field: { onChange, value } }) => (
-                                                    <DropdownSelector
-                                                        label="PG COURSE"
-                                                        value={value || ''}
-                                                        options={getCoursesForLevel('PG')}
-                                                        onSelect={(val: string) => {
-                                                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                            onChange(val);
-                                                            setValue('pgSpecialization', '');
-                                                        }}
-                                                        currentTheme={currentTheme}
-                                                        error={errors.pgCourse?.message}
-                                                    />
-                                                )}
-                                            />
-                                            <Controller
-                                                control={control}
-                                                name="pgSpecialization"
-                                                render={({ field: { onChange, value } }) => (
-                                                    <DropdownSelector
-                                                        label="SPECIALIZATION"
-                                                        value={value || ''}
-                                                        options={getSpecializationsForCourse(pgCourse || '')}
-                                                        onSelect={(val: string) => {
-                                                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                            onChange(val);
-                                                        }}
-                                                        currentTheme={currentTheme}
-                                                        error={errors.pgSpecialization?.message}
-                                                    />
-                                                )}
-                                            />
-                                            <View style={[styles.inputGroup, { marginTop: 24 }]}>
-                                                <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>PG YEAR</Text>
-                                                <Controller
-                                                    control={control}
-                                                    name="pgYear"
-                                                    render={({ field: { onChange, value, onBlur } }) => (
-                                                        <View>
-                                                            <TextInput
-                                                                style={[
-                                                                    styles.input, 
-                                                                    { 
-                                                                        color: currentTheme.colors.text, 
-                                                                        backgroundColor: alpha(currentTheme.colors.text, 0.03), 
-                                                                        borderColor: errors.pgYear ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1) 
-                                                                    }
-                                                                ]}
-                                                                placeholder="2026"
-                                                                placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
-                                                                keyboardType="number-pad"
-                                                                maxLength={4}
-                                                                value={value}
-                                                                onChangeText={onChange}
-                                                                onBlur={onBlur}
-                                                            />
-                                                            {errors.pgYear && <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{errors.pgYear.message}</Text>}
-                                                        </View>
-                                                    )}
+                            {showPGFields && (
+                                <View style={styles.section}>
+                                    <View style={styles.sectionHeader}>
+                                        <GraduationCap size={16} color={currentTheme.colors.primary} />
+                                        <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>POSTGRADUATE DETAILS</Text>
+                                    </View>
+                                    <SurfaceCard style={styles.card}>
+                                        <Controller
+                                            control={control}
+                                            name="pgCourse"
+                                            render={({ field: { onChange, value } }) => (
+                                                <DropdownSelector
+                                                    label="PG COURSE"
+                                                    value={value || ''}
+                                                    options={getCoursesForLevel('PG')}
+                                                    onSelect={(val: string) => {
+                                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                        onChange(val);
+                                                        setValue('pgSpecialization', '');
+                                                    }}
+                                                    currentTheme={currentTheme}
+                                                    error={errors.pgCourse?.message}
                                                 />
-                                            </View>
-                                        </SurfaceCard>
-                                    )}
+                                            )}
+                                        />
+                                        <Controller
+                                            control={control}
+                                            name="pgSpecialization"
+                                            render={({ field: { onChange, value } }) => (
+                                                <DropdownSelector
+                                                    label="SPECIALIZATION"
+                                                    value={value || ''}
+                                                    options={getSpecializationsForCourse(pgCourse || '')}
+                                                    onSelect={(val: string) => {
+                                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                        onChange(val);
+                                                    }}
+                                                    currentTheme={currentTheme}
+                                                    error={errors.pgSpecialization?.message}
+                                                />
+                                            )}
+                                        />
+                                        <View style={[styles.inputGroup, { marginTop: 24 }]}>
+                                            <Text style={[styles.label, { color: currentTheme.colors.textMuted }]}>PG YEAR</Text>
+                                            <Controller
+                                                control={control}
+                                                name="pgYear"
+                                                render={({ field: { onChange, value, onBlur } }) => (
+                                                    <View>
+                                                        <TextInput
+                                                            style={[
+                                                                styles.input, 
+                                                                { 
+                                                                    color: currentTheme.colors.text, 
+                                                                    backgroundColor: alpha(currentTheme.colors.text, 0.03), 
+                                                                    borderColor: errors.pgYear ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1) 
+                                                                }
+                                                            ]}
+                                                            placeholder="2026"
+                                                            placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
+                                                            keyboardType="number-pad"
+                                                            maxLength={4}
+                                                            value={value}
+                                                            onChangeText={onChange}
+                                                            onBlur={onBlur}
+                                                        />
+                                                        {errors.pgYear && <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{errors.pgYear.message}</Text>}
+                                                    </View>
+                                                )}
+                                            />
+                                        </View>
+                                    </SurfaceCard>
                                 </View>
                             )}
                         </View>
@@ -501,8 +513,8 @@ const styles = StyleSheet.create({
     viewSection: { marginBottom: 28 },
     sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
     sectionLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5 },
-    card: { padding: 24, borderRadius: 28 },
-    viewCard: { padding: 20, borderRadius: 24 },
+    card: { padding: 24, borderRadius: 16 },
+    viewCard: { padding: 20, borderRadius: 16 },
     row: { flexDirection: 'row' },
     inputGroup: { marginBottom: 0 },
     label: { fontSize: 10, fontWeight: '900', letterSpacing: 1, marginBottom: 10, marginLeft: 4 },
@@ -511,7 +523,7 @@ const styles = StyleSheet.create({
     viewFieldLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 6 },
     viewFieldValue: { fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
     viewFieldSub: { fontSize: 13, fontWeight: '500', marginTop: 4 },
-    pgToggle: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 24, borderWidth: 1, marginBottom: 16 },
+    pgToggle: { flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
     checkbox: { width: 22, height: 22, borderRadius: 8, borderWidth: 2.5, marginRight: 14, justifyContent: 'center', alignItems: 'center' },
     pgToggleText: { fontSize: 15, fontWeight: '800' },
     chipScroll: { marginHorizontal: -4 },

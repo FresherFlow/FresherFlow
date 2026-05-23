@@ -1,4 +1,4 @@
-import React, { memo, useRef, useCallback } from 'react';
+import React, { memo, useRef, useCallback, useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -23,6 +23,7 @@ import {
   History,
   Info,
   RefreshCw,
+  Sparkles,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -34,6 +35,7 @@ import { useFollows } from '@/hooks/useFollows';
 import { useNotifications } from '@/hooks/useNotifications';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
+import { subscribeToGlobalStats } from '@/utils/firebaseViewsDb';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -48,18 +50,26 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
 const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
-  const { user } = useProfile();
+
+  const [globalStats, setGlobalStats] = useState({ downloads: 12840, activeUsers: 5430 });
+
+  useEffect(() => {
+    const unsubscribe = subscribeToGlobalStats((stats) => {
+      setGlobalStats(stats);
+    });
+    return unsubscribe;
+  }, []);
+  const { user, completionPercentage } = useProfile();
   const firebaseUser = useAuthStore(s => s.firebaseUser);
   const { unreadCount } = useNotifications();
   const { follows, unfollow } = useFollows();
   const { hideTabBar, showTabBar } = useUI();
   const isAnonymous = !user || user.isAnonymous;
 
-
   // Track scroll position for hide/show tab bar
   const scrollOffset = useRef(0);
 
-  const handleScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+  const handleScroll = useCallback((event: any) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
     const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
 
@@ -143,12 +153,21 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 >
                                     <Text style={[styles.signInBtnSmallText, { color: currentTheme.colors.inverseText }]}>Sign In</Text>
                                 </TouchableOpacity>
-                            ) : (!user?.username && (
+                            ) : (!user?.username ? (
                                 <TouchableOpacity 
                                     style={[styles.signInBtnSmall, { backgroundColor: currentTheme.colors.primary }]}
-                                    onPress={() => navigation.navigate('ChooseUsername')}
+                                    onPress={() => navigation.navigate('ProfileChooseUsername')}
                                 >
                                     <Text style={[styles.signInBtnSmallText, { color: currentTheme.colors.inverseText }]}>Set Handle</Text>
+                                </TouchableOpacity>
+                            ) : (
+                                <TouchableOpacity 
+                                    style={[styles.completionBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                                    onPress={() => navigation.navigate('CareerProfile')}
+                                >
+                                    <Text style={[styles.completionText, { color: currentTheme.colors.primary }]}>
+                                        {completionPercentage}%
+                                    </Text>
                                 </TouchableOpacity>
                             ))}
                         </View>
@@ -249,11 +268,28 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                       <MenuRow
                         icon={RefreshCw}
                         label="Software Updates"
-                        subtitle="Over-the-air (OTA) updates"
                         onPress={() => navigation.navigate('OTAUpdates')}
                         currentTheme={currentTheme}
                         isLast
                       />
+                  </SurfaceCard>
+
+                  {/* Premium Community Stats Card */}
+                  <SurfaceCard style={[styles.premiumStatsCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderColor: alpha(currentTheme.colors.primary, 0.15) }]}>
+                      <View style={styles.premiumStatsHeader}>
+                          <View style={[styles.sparklesBg, { backgroundColor: alpha(currentTheme.colors.primary, 0.15) }]}>
+                              <Sparkles size={16} color={currentTheme.colors.primary} strokeWidth={2.5} />
+                          </View>
+                          <Text style={[styles.premiumStatsTitle, { color: currentTheme.colors.primary }]}>
+                              FresherFlow Plus
+                          </Text>
+                      </View>
+                      <Text style={[styles.premiumStatsValue, { color: currentTheme.colors.text }]}>
+                          {globalStats.downloads.toLocaleString()}+ developers downloaded the app
+                      </Text>
+                      <Text style={[styles.premiumStatsDesc, { color: currentTheme.colors.textMuted }]}>
+                          Active in private spaces: <Text style={{ color: currentTheme.colors.text, fontWeight: '900' }}>{globalStats.activeUsers.toLocaleString()}+ members</Text>
+                      </Text>
                   </SurfaceCard>
 
                </View>
@@ -491,7 +527,47 @@ const styles = StyleSheet.create({
     },
     groupCard: {
         padding: 0,
-        borderRadius: 28,
+        borderRadius: 16,
+    },
+    premiumStatsCard: {
+        marginTop: 24,
+        padding: 16,
+        borderRadius: 16,
+        borderWidth: 1,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    premiumStatsHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 10,
+    },
+    sparklesBg: {
+        width: 28,
+        height: 28,
+        borderRadius: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    premiumStatsTitle: {
+        fontSize: mScale(12),
+        fontWeight: '900',
+        letterSpacing: 0.8,
+        textTransform: 'uppercase',
+    },
+    premiumStatsValue: {
+        fontSize: mScale(13),
+        fontWeight: '800',
+        textAlign: 'center',
+        marginBottom: 6,
+        letterSpacing: -0.2,
+    },
+    premiumStatsDesc: {
+        fontSize: mScale(11),
+        fontWeight: '600',
+        textAlign: 'center',
+        lineHeight: 16,
     },
     menuRow: {
         flexDirection: 'row',
@@ -576,6 +652,15 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '800',
         letterSpacing: 0.5,
+    },
+    completionBadge: {
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 8,
+    },
+    completionText: {
+        fontSize: 12,
+        fontWeight: '800',
     }
 });
 

@@ -36,7 +36,7 @@ export const PreferencesView = ({ profile, onEdit, currentTheme }: { profile: Re
     const hasPreferences = (profile?.interestedIn || []).length > 0;
     return (
         <View style={{ paddingHorizontal: 20, paddingBottom: 24 }}>
-            <SurfaceCard style={{ padding: 24, borderRadius: 28 }}>
+            <SurfaceCard style={{ padding: 24, borderRadius: 16 }}>
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: hasPreferences ? 24 : 0 }}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                         <Target size={20} color={currentTheme.colors.primary} />
@@ -386,8 +386,8 @@ const styles = StyleSheet.create({
     checkboxItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 4 },
     checkboxLabel: { fontSize: 16, fontWeight: '700' },
     errorText: { fontSize: 11, marginTop: 8, marginLeft: 4, fontWeight: '600' },
-    card: { padding: 16, borderRadius: 28 },
-    viewCard: { padding: 20, borderRadius: 24 },
+    card: { padding: 16, borderRadius: 16 },
+    viewCard: { padding: 20, borderRadius: 16 },
     viewFieldLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6 },
     chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
     viewChip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12 },
