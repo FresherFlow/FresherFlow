@@ -8,3 +8,4 @@ export * from './fingerprint';
 export * from './domains';
 export * from './user';
 export * from './username';
+export * from './numberNormalization';

@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
+import { storage } from '@repo/frontend-core';
 import { useUITheme } from './theme';
 import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
 
@@ -81,11 +82,23 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
 
     React.useEffect(() => {
         let mounted = true;
-        const initCache = () => {
+        const initCache = async () => {
             // Memory cache check for instant resolution
             if (memCache.has(cacheKey)) {
                 if (mounted) setCurrentSrc(memCache.get(cacheKey)!);
                 return;
+            }
+
+            // Persistent storage check
+            try {
+                const persistent = await storage.getItem(`logo_${cacheKey}`);
+                if (persistent && mounted) {
+                    memCache.set(cacheKey, persistent);
+                    setCurrentSrc(persistent);
+                    return;
+                }
+            } catch (err) {
+                console.warn('[CompanyLogo] Failed to read persistent logo cache:', err);
             }
 
             // Fallback to first candidate (expo-image will handle disk check automatically)
@@ -95,7 +108,7 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
                 setCurrentSrc(candidates[0]);
             }
         };
-        initCache();
+        void initCache();
         return () => { mounted = false; };
     }, [cacheKey, candidates, memCache]);
 
@@ -139,6 +152,9 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
                             handleLoadError();
                         } else {
                             memCache.set(cacheKey, currentSrc!);
+                            void storage.setItem(`logo_${cacheKey}`, currentSrc!).catch((err) => {
+                                console.warn('[CompanyLogo] Failed to save logo to persistent cache:', err);
+                            });
                         }
                     }}
                 />

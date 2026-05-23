@@ -273,6 +273,10 @@ export interface Opportunity {
     postedByUserId: string;
     adminId: string;
     admin?: Admin;
+    user?: {
+        username: string | null;
+        fullName: string | null;
+    };
 
     // Walk-in Details (only if type === WALKIN)
     walkInDetails?: WalkInDetails;

@@ -1,4 +1,3 @@
-import { User } from '@fresherflow/types';
 
 /**
  * Returns a user-facing handle for a user.
