@@ -15,6 +15,7 @@ export interface Share {
         status: string;
         publishedAt: string;
         expiredAt: string;
+        deletionReason?: string | null;
         clicksCount: number;
         savesCount: number;
     } | null;

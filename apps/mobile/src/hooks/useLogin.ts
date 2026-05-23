@@ -158,23 +158,15 @@ export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: s
 
     const handleResend = useCallback(async () => {
         if (resendTimer > 0 || loading) return;
-        setLoading(true);
-        setEmailLoading(true);
-        try {
-            await handleSendOtp({ email, otp });
-        } finally {
-            setLoading(false);
-            setEmailLoading(false);
-        }
-    }, [resendTimer, loading, handleSendOtp, email, otp]);
+        // Only pass email — otp is irrelevant when resending a magic link
+        await handleSendOtp({ email, otp: '' });
+    }, [resendTimer, loading, handleSendOtp, email]);
 
     useEffect(() => {
-        let interval: NodeJS.Timeout;
-        if (resendTimer > 0) {
-            interval = setInterval(() => {
-                setResendTimer((prev) => prev - 1);
-            }, 1000);
-        }
+        if (resendTimer <= 0) return;
+        const interval = setInterval(() => {
+            setResendTimer((prev) => prev - 1);
+        }, 1000);
         return () => clearInterval(interval);
     }, [resendTimer]);
 

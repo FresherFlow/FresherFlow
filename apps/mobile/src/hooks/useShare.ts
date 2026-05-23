@@ -17,6 +17,22 @@ const shareSchema = z.object({
     description: z.string().optional(),
     companyUrl: z.string().optional(),
     eligibleBatches: z.string().optional(),
+}).superRefine((data, ctx) => {
+    // If URL is empty, we are in Referral mode, so validate referral fields
+    if (!data.url || data.url.trim().length === 0) {
+        if (!data.title || data.title.trim().length < 2) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Job title is required', path: ['title'] });
+        }
+        if (!data.company || data.company.trim().length < 2) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Company is required', path: ['company'] });
+        }
+        if (!data.contact || data.contact.trim().length < 3) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Contact info is required', path: ['contact'] });
+        }
+        if (!data.description || data.description.trim().length < 10) {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Description must be at least 10 chars', path: ['description'] });
+        }
+    }
 });
 
 export type ShareFormData = z.infer<typeof shareSchema>;

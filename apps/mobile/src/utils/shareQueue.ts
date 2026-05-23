@@ -1,7 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { opportunitiesApi, profileApi } from '@fresherflow/api-client';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
-import { getJSON, setJSON } from '@/utils/storage';
+import { getJSON, mutateJSON } from '@/utils/storage';
 
 const SHARE_QUEUE_KEY = 'fresherflow_share_queue';
 
@@ -29,7 +28,6 @@ export const queueShare = async (
 ): Promise<string> => {
     try {
         const tempId = `temp_share_${Date.now()}`;
-        const queue = await getShareQueue();
         
         const newItem: QueuedShare = {
             tempId,
@@ -39,7 +37,7 @@ export const queueShare = async (
             timestamp: Date.now(),
         };
 
-        await AsyncStorage.setItem(SHARE_QUEUE_KEY, JSON.stringify([...queue, newItem]));
+        mutateJSON<QueuedShare[]>(SHARE_QUEUE_KEY, (queue) => [...(queue || []), newItem]);
         return tempId;
     } catch (e) {
         console.warn('[ShareQueue] Failed to queue share', e);
@@ -51,12 +49,7 @@ export const queueShare = async (
  * Retrieves all queued shares.
  */
 export const getShareQueue = async (): Promise<QueuedShare[]> => {
-    try {
-        const data = await AsyncStorage.getItem(SHARE_QUEUE_KEY);
-        return data ? JSON.parse(data) : [];
-    } catch {
-        return [];
-    }
+    return getJSON<QueuedShare[]>(SHARE_QUEUE_KEY) || [];
 };
 
 /**
@@ -64,64 +57,80 @@ export const getShareQueue = async (): Promise<QueuedShare[]> => {
  */
 export const removeFromQueue = async (tempId: string): Promise<void> => {
     try {
-        const queue = await getShareQueue();
-        const filtered = queue.filter(item => item.tempId !== tempId);
-        await AsyncStorage.setItem(SHARE_QUEUE_KEY, JSON.stringify(filtered));
+        mutateJSON<QueuedShare[]>(SHARE_QUEUE_KEY, (queue) => (queue || []).filter(item => item.tempId !== tempId));
     } catch (e) {
         console.warn('[ShareQueue] Failed to remove from queue', e);
     }
 };
+
+let isSyncing = false;
 
 /**
  * Syncs the entire share queue with the backend.
  * Returns the number of successfully synced shares.
  */
 export const syncShareQueue = async (): Promise<number> => {
-    const queue = await getShareQueue();
-    if (queue.length === 0) return 0;
+    if (isSyncing) return 0;
+    isSyncing = true;
+    
+    try {
+        const queue = await getShareQueue();
+        if (queue.length === 0) return 0;
 
-    let syncedCount = 0;
-    console.log(`[ShareQueue] Attempting to sync ${queue.length} shares...`);
+        let syncedCount = 0;
+        console.log(`[ShareQueue] Attempting to sync ${queue.length} shares...`);
 
-    for (const item of queue) {
-        try {
-            if (item.type === 'LINK' && item.url) {
-                const normalized = normalizeOpportunityUrl(item.url);
-                const response = await opportunitiesApi.shareLink(normalized);
-                
-                // Add successfully submitted link to local cache if not duplicate
-                if (!response.existing) {
-                    const cachedList = getJSON<string[]>('fresherflow_submitted_links') || [];
-                    if (!cachedList.includes(normalized)) {
-                        cachedList.push(normalized);
-                        setJSON('fresherflow_submitted_links', cachedList);
+        for (const item of queue) {
+            try {
+                if (item.type === 'LINK' && item.url) {
+                    const normalized = normalizeOpportunityUrl(item.url);
+                    const response = await opportunitiesApi.shareLink(normalized);
+                    
+                    // Add successfully submitted link to local cache if not duplicate
+                    if (!response.existing) {
+                        mutateJSON<string[]>('fresherflow_submitted_links', (cachedList) => {
+                            const list = cachedList || [];
+                            if (!list.includes(normalized)) {
+                                list.push(normalized);
+                            }
+                            return list;
+                        });
                     }
+                } else if (item.type === 'REFERRAL' && item.referral) {
+                    await profileApi.submitShare({
+                        referral: {
+                            title: item.referral.title,
+                            company: item.referral.company,
+                            contact: item.referral.contact,
+                            description: item.referral.description,
+                            companyUrl: item.referral.companyUrl,
+                            eligibleBatches: item.referral.eligibleBatches,
+                        }
+                    });
                 }
-            } else if (item.type === 'REFERRAL' && item.referral) {
-                await profileApi.submitShare({
-                    referral: {
-                        title: item.referral.title,
-                        company: item.referral.company,
-                        contact: item.referral.contact,
-                        description: item.referral.description,
-                        companyUrl: item.referral.companyUrl,
-                        eligibleBatches: item.referral.eligibleBatches,
-                    }
-                });
+                await removeFromQueue(item.tempId);
+                syncedCount++;
+            } catch (e) {
+                console.warn(`[ShareQueue] Failed to sync share ${item.tempId}.`, (e as Error).message);
+                const status = (e as { status?: number }).status;
+                const isPermanentFailure = status && [400, 401, 403, 404, 409, 422].includes(status);
+                
+                if (isPermanentFailure) {
+                    console.log(`[ShareQueue] Dropping poison pill ${item.tempId} due to permanent error: ${status}`);
+                    await removeFromQueue(item.tempId);
+                } else {
+                    // Network error, timeout, 5xx, or rate limit -> break and retry later
+                    break;
+                }
             }
-            await removeFromQueue(item.tempId);
-            syncedCount++;
-        } catch (e) {
-            console.warn(`[ShareQueue] Failed to sync share ${item.tempId}, will retry later.`, (e as Error).message);
-            // Stop syncing if we hit a network error to avoid multiple failures
-            const error = e as { status?: number };
-            if (!error.status || error.status === 0) break;
         }
-    }
 
-    if (syncedCount > 0) {
-        console.log(`[ShareQueue] Successfully synced ${syncedCount} shares.`);
-    }
+        if (syncedCount > 0) {
+            console.log(`[ShareQueue] Successfully synced ${syncedCount} shares.`);
+        }
 
-    return syncedCount;
+        return syncedCount;
+    } finally {
+        isSyncing = false;
+    }
 };

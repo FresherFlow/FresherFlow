@@ -1,5 +1,5 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { commentsApi } from '@fresherflow/api-client';
+import { mutateJSON, getJSON } from './storage';
 
 const COMMENT_QUEUE_KEY = 'fresherflow_comment_queue';
 
@@ -16,8 +16,6 @@ export interface QueuedComment {
 export const queueComment = async (opportunityId: string, text: string): Promise<string> => {
     try {
         const tempId = `temp_${Date.now()}`;
-        const queue = await getCommentQueue();
-        
         const newItem: QueuedComment = {
             tempId,
             opportunityId,
@@ -25,7 +23,7 @@ export const queueComment = async (opportunityId: string, text: string): Promise
             timestamp: Date.now(),
         };
 
-        await AsyncStorage.setItem(COMMENT_QUEUE_KEY, JSON.stringify([...queue, newItem]));
+        mutateJSON<QueuedComment[]>(COMMENT_QUEUE_KEY, (queue) => [...(queue || []), newItem]);
         return tempId;
     } catch (e) {
         console.warn('[CommentQueue] Failed to queue comment', e);
@@ -37,12 +35,7 @@ export const queueComment = async (opportunityId: string, text: string): Promise
  * Retrieves all queued comments.
  */
 export const getCommentQueue = async (): Promise<QueuedComment[]> => {
-    try {
-        const data = await AsyncStorage.getItem(COMMENT_QUEUE_KEY);
-        return data ? JSON.parse(data) : [];
-    } catch {
-        return [];
-    }
+    return getJSON<QueuedComment[]>(COMMENT_QUEUE_KEY) || [];
 };
 
 /**
@@ -50,42 +43,56 @@ export const getCommentQueue = async (): Promise<QueuedComment[]> => {
  */
 export const removeFromQueue = async (tempId: string) => {
     try {
-        const queue = await getCommentQueue();
-        const filtered = queue.filter(item => item.tempId !== tempId);
-        await AsyncStorage.setItem(COMMENT_QUEUE_KEY, JSON.stringify(filtered));
+        mutateJSON<QueuedComment[]>(COMMENT_QUEUE_KEY, (queue) => (queue || []).filter(item => item.tempId !== tempId));
     } catch (e) {
         console.warn('[CommentQueue] Failed to remove from queue', e);
     }
 };
+
+let isSyncing = false;
 
 /**
  * Syncs the entire queue with the backend.
  * Returns the number of successfully synced comments.
  */
 export const syncCommentQueue = async (): Promise<number> => {
-    const queue = await getCommentQueue();
-    if (queue.length === 0) return 0;
+    if (isSyncing) return 0;
+    isSyncing = true;
+    
+    try {
+        const queue = await getCommentQueue();
+        if (queue.length === 0) return 0;
 
-    let syncedCount = 0;
-    console.log(`[CommentQueue] Attempting to sync ${queue.length} comments...`);
+        let syncedCount = 0;
+        console.log(`[CommentQueue] Attempting to sync ${queue.length} comments...`);
 
-    for (const item of queue) {
-        try {
-            await commentsApi.post(item.opportunityId, item.text);
-            await removeFromQueue(item.tempId);
-            syncedCount++;
-        } catch (e) {
-            console.warn(`[CommentQueue] Failed to sync comment ${item.tempId}, will retry later.`, (e as Error).message);
-            // Stop syncing if we hit a network error to avoid multiple failures
-            const error = e as { status?: number };
-            if (!error.status || error.status === 0) break;
+        for (const item of queue) {
+            try {
+                await commentsApi.post(item.opportunityId, item.text);
+                await removeFromQueue(item.tempId);
+                syncedCount++;
+            } catch (e) {
+                console.warn(`[CommentQueue] Failed to sync comment ${item.tempId}.`, (e as Error).message);
+                const status = (e as { status?: number }).status;
+                const isPermanentFailure = status && [400, 401, 403, 404, 409, 422].includes(status);
+                
+                if (isPermanentFailure) {
+                    console.log(`[CommentQueue] Dropping poison pill ${item.tempId} due to permanent error: ${status}`);
+                    await removeFromQueue(item.tempId);
+                } else {
+                    // Network error, timeout, 5xx, or rate limit -> break and retry later
+                    break;
+                }
+            }
         }
-    }
 
-    if (syncedCount > 0) {
-        console.log(`[CommentQueue] Successfully synced ${syncedCount} comments.`);
-    }
+        if (syncedCount > 0) {
+            console.log(`[CommentQueue] Successfully synced ${syncedCount} comments.`);
+        }
 
-    return syncedCount;
-}
+        return syncedCount;
+    } finally {
+        isSyncing = false;
+    }
+};
 

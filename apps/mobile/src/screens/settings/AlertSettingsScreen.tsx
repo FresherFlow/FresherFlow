@@ -1,12 +1,12 @@
-import React, { memo } from 'react';
+import React, { memo, useRef } from 'react';
 import {
     StyleSheet,
     Text,
     View,
-    ScrollView,
     StatusBar,
     ActivityIndicator,
     TextInput,
+    Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
@@ -21,7 +21,7 @@ import { useAlertSettings } from '@/hooks/useAlertSettings';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { SecondaryHeader, SurfaceCard, PremiumToggle } from '@/system/components/PremiumPrimitives';
+import { AnimatedSecondaryHeader, SurfaceCard, PremiumToggle } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AlertSettings'>;
 
@@ -33,6 +33,7 @@ const alpha = (color: string, opacity: number) => {
 const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
+    const scrollY = useRef(new Animated.Value(0)).current;
     const {
         loading,
         control,
@@ -55,16 +56,22 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
-            <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
-                <SecondaryHeader 
-                    title="Alert Settings" 
-                    onBack={() => navigation.goBack()}
-                />
-            </View>
+            <AnimatedSecondaryHeader
+                title="Alert Settings"
+                onBack={() => navigation.goBack()}
+                scrollY={scrollY}
+                scrollDistance={40}
+                insetsTop={insets.top}
+            />
 
-            <ScrollView 
+            <Animated.ScrollView 
                 showsVerticalScrollIndicator={false} 
-                contentContainerStyle={styles.scrollContent}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 40 + 70 }]}
+                onScroll={Animated.event(
+                    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+                    { useNativeDriver: true }
+                )}
+                scrollEventThrottle={16}
             >
                 <View style={styles.content}>
                     <View style={styles.heroSection}>
@@ -133,7 +140,7 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     </SurfaceCard>
 
                 </View>
-            </ScrollView>
+            </Animated.ScrollView>
         </Screen>
     );
 });
@@ -148,7 +155,7 @@ const styles = StyleSheet.create({
     heroTitle: { fontSize: 32, fontWeight: '900', letterSpacing: -1.5, lineHeight: 36 },
     heroSub: { fontSize: 15, marginTop: 12, lineHeight: 22 },
     groupLabel: { fontSize: 10, fontWeight: '900', letterSpacing: 1.5, marginLeft: 12, marginBottom: 12, marginTop: 32 },
-    groupCard: { padding: 0, borderRadius: 28 },
+    groupCard: { padding: 0, borderRadius: 16 },
     row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
     rowLeft: { flexDirection: 'row', alignItems: 'center', gap: 16 },
     iconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },

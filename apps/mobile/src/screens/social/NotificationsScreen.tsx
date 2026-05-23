@@ -1,27 +1,33 @@
-import React, { memo, useMemo, useCallback, useRef } from 'react';
+import React, { memo, useMemo, useCallback, useRef, useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Animated, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
 import { useNotifications } from '@/hooks/useNotifications';
 import { saveDetailCache } from '@/utils/offlineCache';
-import { LocalAlert } from '@/utils/localNotifications';
+import { LocalAlert, isProfileSetupComplete } from '@/utils/localNotifications';
+import { getLocalProfile } from '@/utils/localProfile';
 import { useTheme } from '@/contexts/ThemeContext';
 import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { Screen } from '@/system/layout/Layout';
-import { BellOff, ArrowRight, Trash2, Settings } from 'lucide-react-native';
+import { BellOff, ArrowRight, Trash2, Settings, Sparkles, Compass } from 'lucide-react-native';
 import { CompanyLogo } from '@repo/ui';
 import { SPACING, RADIUS, mScale } from '@/system/constants/dimensions';
 import { TYPOGRAPHY } from '@/system/constants/typography';
 import { toTitleCase } from '@/utils/text';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
+import { useFocusEffect } from '@react-navigation/native';
+import { Profile } from '@fresherflow/types';
+import { useProfile } from '@/hooks/useProfile';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
 type NotificationListItem = 
     | { type: 'header'; title: string; key: string }
-    | { type: 'alert'; alert: LocalAlert; key: string };
+    | { type: 'alert'; alert: LocalAlert; key: string }
+    | { type: 'nudge'; key: string }
+    | { type: 'guest-nudge'; key: string };
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -39,6 +45,80 @@ const getRelativeTime = (date: string | Date) => {
     if (diffInSecs < 604800) return `${Math.floor(diffInSecs / 86400)}d ago`;
     return sent.toLocaleDateString();
 };
+
+const ProfileSetupNudge = memo(({ onComplete }: { onComplete: () => void }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <View style={[
+            styles.nudgeCard,
+            {
+                backgroundColor: alpha(currentTheme.colors.primary, 0.04),
+                borderColor: alpha(currentTheme.colors.primary, 0.15)
+            }
+        ]}>
+            <View style={styles.nudgeRow}>
+                <View style={[styles.nudgeIconContainer, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                    <Sparkles size={22} color={currentTheme.colors.primary} />
+                </View>
+                <View style={styles.nudgeTextContainer}>
+                    <Text style={[styles.nudgeTitle, { color: currentTheme.colors.text }]}>
+                        Unlock Personalized Match Scores 🎯
+                    </Text>
+                    <Text style={[styles.nudgeBody, { color: currentTheme.colors.textMuted }]}>
+                        Complete your skills, education, and preferred cities to get personalized job matches and receive real-time updates.
+                    </Text>
+                </View>
+            </View>
+            <TouchableOpacity
+                onPress={onComplete}
+                activeOpacity={0.8}
+                style={[styles.nudgeButton, { backgroundColor: currentTheme.colors.primary }]}
+            >
+                <Text style={[styles.nudgeButtonText, { color: currentTheme.colors.background }]}>
+                    Complete My Profile
+                </Text>
+                <ArrowRight size={16} color={currentTheme.colors.background} />
+            </TouchableOpacity>
+        </View>
+    );
+});
+
+const GuestSetupNudge = memo(({ onRegister }: { onRegister: () => void }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <View style={[
+            styles.nudgeCard,
+            {
+                backgroundColor: alpha(currentTheme.colors.primary, 0.04),
+                borderColor: alpha(currentTheme.colors.primary, 0.15)
+            }
+        ]}>
+            <View style={styles.nudgeRow}>
+                <View style={[styles.nudgeIconContainer, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                    <Sparkles size={22} color={currentTheme.colors.primary} />
+                </View>
+                <View style={styles.nudgeTextContainer}>
+                    <Text style={[styles.nudgeTitle, { color: currentTheme.colors.text }]}>
+                        Unlock Personalized Match Scores 🎯
+                    </Text>
+                    <Text style={[styles.nudgeBody, { color: currentTheme.colors.textMuted }]}>
+                        Create an account to get personalized job matches, real-time job alerts, and view your match scores.
+                    </Text>
+                </View>
+            </View>
+            <TouchableOpacity
+                onPress={onRegister}
+                activeOpacity={0.8}
+                style={[styles.nudgeButton, { backgroundColor: currentTheme.colors.primary }]}
+            >
+                <Text style={[styles.nudgeButtonText, { color: currentTheme.colors.background }]}>
+                    Create Account / Sign In
+                </Text>
+                <ArrowRight size={16} color={currentTheme.colors.background} />
+            </TouchableOpacity>
+        </View>
+    );
+});
 
 const AlertRow = memo(({
     alert,
@@ -116,8 +196,37 @@ const AlertRow = memo(({
                         >
                             {alert.opportunity.company} · {toTitleCase(alert.opportunity.locations?.[0] || 'Remote')} · Posted {getRelativeTime(alert.opportunity.postedAt || alert.sentAt)}
                         </Text>
-                    </View>
 
+                        {/* Match Score Badge */}
+                        {alert.opportunity.matchScore !== undefined && alert.opportunity.matchScore > 0 && (
+                            <View style={styles.badgeRow}>
+                                <View style={[
+                                    styles.pillBadge,
+                                    { backgroundColor: alpha(currentTheme.colors.success, 0.08) }
+                                ]}>
+                                    <Sparkles size={11} color={currentTheme.colors.success} style={{ marginRight: 4 }} />
+                                    <Text style={[styles.pillText, { color: currentTheme.colors.success }]}>
+                                        {alert.opportunity.matchScore}% Match
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* AI Match Insights */}
+                        {alert.opportunity.matchReason && (
+                            <View style={[
+                                styles.insightContainer,
+                                { borderTopColor: alpha(currentTheme.colors.border, 0.05) }
+                            ]}>
+                                <Text 
+                                    style={[styles.insightText, { color: currentTheme.colors.textMuted }]}
+                                    numberOfLines={2}
+                                >
+                                    💡 {alert.opportunity.matchReason}
+                                </Text>
+                            </View>
+                        )}
+                    </View>
                 </View>
 
                 <TouchableOpacity
@@ -135,15 +244,28 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const { alerts, unreadCount, refreshing, markRead, markAllRead, deleteAlert, refresh } = useNotifications();
+    const [profile, setProfile] = useState<Profile | null>(null);
+    const { user } = useProfile();
+    const isAnonymous = !user || user.isAnonymous;
+
+    const loadProfile = useCallback(async () => {
+        const p = await getLocalProfile();
+        setProfile(p);
+    }, []);
+
+    useFocusEffect(
+        useCallback(() => {
+            void loadProfile();
+        }, [loadProfile])
+    );
+
+    const isSetup = useMemo(() => isProfileSetupComplete(profile), [profile]);
 
     const handleAlertPress = useCallback((alert: LocalAlert) => {
         if (!alert.readAt) markRead(alert.id);
-
         void saveDetailCache(alert.opportunity);
         navigation.navigate('JobDetail', { opportunity: alert.opportunity, opportunityId: alert.opportunity.id });
     }, [navigation, markRead]);
-
-    // Initial hydration is handled by useNotifications on mount
 
     const flattenedData = useMemo(() => {
         const today: LocalAlert[] = [];
@@ -162,6 +284,14 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
         });
 
         const result: NotificationListItem[] = [];
+
+        // Insert profile incomplete nudge or guest login nudge at the very top of alerts
+        if (isAnonymous) {
+            result.push({ type: 'guest-nudge', key: 'guest-nudge' });
+        } else if (!isSetup) {
+            result.push({ type: 'nudge', key: 'profile-nudge' });
+        }
+
         if (today.length > 0) {
             result.push({ type: 'header', title: 'Today', key: 'header-today' });
             today.forEach(a => result.push({ type: 'alert', alert: a, key: a.id }));
@@ -176,9 +306,25 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
         }
 
         return result;
-    }, [alerts]);
+    }, [alerts, isSetup, isAnonymous]);
+
+    const handleCompleteProfileNudge = useCallback(() => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        navigation.navigate('EditPreferences');
+    }, [navigation]);
+
+    const handleRegister = useCallback(() => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        navigation.navigate('Auth');
+    }, [navigation]);
 
     const renderItem = useCallback(({ item }: { item: NotificationListItem }) => {
+        if (item.type === 'nudge') {
+            return <ProfileSetupNudge onComplete={handleCompleteProfileNudge} />;
+        }
+        if (item.type === 'guest-nudge') {
+            return <GuestSetupNudge onRegister={handleRegister} />;
+        }
         if (item.type === 'header') {
             return (
                 <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>
@@ -193,26 +339,41 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                 onDelete={deleteAlert}
             />
         );
-    }, [currentTheme, handleAlertPress, deleteAlert]);
+    }, [currentTheme, handleAlertPress, deleteAlert, handleCompleteProfileNudge, handleRegister]);
 
     const renderEmpty = () => (
         <View style={styles.emptyContainer}>
             <View style={[styles.emptyIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
-                <BellOff size={48} color={currentTheme.colors.primary} />
+                <BellOff size={44} color={currentTheme.colors.primary} />
             </View>
             <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No New Opportunities</Text>
             <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
-                Newly detected jobs that match your profile will appear here.
+                {isAnonymous 
+                    ? "Sign in or create an account to get personalized recommendations and receive real-time job alerts."
+                    : "Newly detected jobs matching your profile credentials will appear here."}
             </Text>
             <TouchableOpacity
                 style={[styles.exploreBtn, { backgroundColor: currentTheme.colors.primary }]}
                 onPress={() => {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    navigation.navigate('Explore');
+                    if (isAnonymous) {
+                        navigation.navigate('Auth');
+                    } else {
+                        navigation.navigate('Explore');
+                    }
                 }}
             >
-                <Text style={[styles.exploreBtnText, { color: currentTheme.colors.background }]}>Explore Feed</Text>
-                <ArrowRight size={18} color={currentTheme.colors.background} />
+                {isAnonymous ? (
+                    <>
+                        <Sparkles size={18} color={currentTheme.colors.background} />
+                        <Text style={[styles.exploreBtnText, { color: currentTheme.colors.background }]}>Create Account</Text>
+                    </>
+                ) : (
+                    <>
+                        <Compass size={18} color={currentTheme.colors.background} />
+                        <Text style={[styles.exploreBtnText, { color: currentTheme.colors.background }]}>Explore Feed</Text>
+                    </>
+                )}
             </TouchableOpacity>
         </View>
     );
@@ -238,7 +399,7 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                                 <Settings size={22} color={currentTheme.colors.primary} />
                             </TouchableOpacity>
                             {unreadCount > 0 && (
-                                <TouchableOpacity onPress={handleClearAll}>
+                                <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
                                     <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Clear</Text>
                                 </TouchableOpacity>
                             )}
@@ -253,7 +414,7 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                 renderItem={renderItem}
                 getItemType={item => item.type}
                 // @ts-expect-error - FlashList typing bug with estimatedItemSize
-                estimatedItemSize={80}
+                estimatedItemSize={100}
                 initialNumToRender={15}
                 drawDistance={500}
                 contentContainerStyle={styles.listContent}
@@ -269,21 +430,14 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-    loader: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
     listContent: {
         paddingBottom: SPACING.xl,
-    },
-    section: {
-        marginBottom: SPACING.lg,
     },
     sectionTitle: {
         ...TYPOGRAPHY.sectionTitle,
         marginHorizontal: SPACING.lg,
-        marginBottom: SPACING.sm,
+        marginTop: SPACING.md,
+        marginBottom: SPACING.xs,
     },
     alertRowContainer: {
         width: '100%',
@@ -294,17 +448,23 @@ const styles = StyleSheet.create({
         paddingVertical: SPACING.md,
         paddingHorizontal: SPACING.lg,
         marginHorizontal: SPACING.md,
-        marginBottom: SPACING.xs,
+        marginBottom: SPACING.sm,
         borderRadius: RADIUS.lg,
         borderWidth: 1,
+        elevation: 1,
+        shadowColor: 'rgba(0, 0, 0, 0.04)',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 1,
+        shadowRadius: 4,
     },
     alertContent: {
         flex: 1,
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
     },
     logoContainer: {
         marginRight: SPACING.md,
+        marginTop: 2,
     },
     textContainer: {
         flex: 1,
@@ -315,8 +475,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     alertTitle: {
-        fontSize: mScale(15),
-        fontWeight: '700',
+        fontSize: mScale(14.5),
         flex: 1,
         marginRight: SPACING.sm,
     },
@@ -325,40 +484,38 @@ const styles = StyleSheet.create({
         fontWeight: '500',
     },
     alertSub: {
-        fontSize: mScale(13),
+        fontSize: mScale(12.5),
         fontWeight: '500',
         marginTop: 2,
     },
     unreadBadge: {
         position: 'absolute',
-        top: -2,
-        right: -2,
-        width: 12,
-        height: 12,
-        borderRadius: 6,
-        borderWidth: 2,
+        top: -3,
+        right: -3,
+        width: 11,
+        height: 11,
+        borderRadius: 5.5,
+        borderWidth: 1.8,
     },
     deleteBtn: {
-        padding: SPACING.sm,
+        padding: SPACING.md,
         marginLeft: SPACING.xs,
+        alignSelf: 'center',
     },
     emptyContainer: {
         flex: 1,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingTop: 100,
+        paddingTop: 120,
         paddingHorizontal: 40,
     },
     emptyIcon: {
-        width: 100,
-        height: 100,
-        borderRadius: 40,
+        width: 88,
+        height: 88,
+        borderRadius: 36,
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: 24,
-    },
-    typeBadgeText: {
-        ...TYPOGRAPHY.badge,
     },
     emptyTitle: {
         ...TYPOGRAPHY.h2,
@@ -374,18 +531,108 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: 8,
-        paddingHorizontal: 24,
+        paddingHorizontal: 28,
         paddingVertical: 14,
         borderRadius: 16,
+        elevation: 2,
+        shadowColor: 'rgba(0, 0, 0, 0.08)',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 1,
+        shadowRadius: 8,
     },
     exploreBtnText: {
-        fontWeight: '700',
-        fontSize: 16,
+        fontWeight: '800',
+        fontSize: 15,
+        letterSpacing: 0.5,
     },
     markAll: {
         fontSize: mScale(13),
         fontWeight: '800',
         letterSpacing: 0.5,
+    },
+    clearBtn: {
+        paddingVertical: 4,
+        paddingHorizontal: 8,
+    },
+    // Nudge Card Styling
+    nudgeCard: {
+        marginHorizontal: SPACING.md,
+        marginTop: SPACING.md,
+        marginBottom: SPACING.sm,
+        padding: SPACING.lg,
+        borderRadius: RADIUS.xl,
+        borderWidth: 1.5,
+        borderStyle: 'dashed',
+    },
+    nudgeRow: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+    },
+    nudgeIconContainer: {
+        width: 42,
+        height: 42,
+        borderRadius: 14,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: SPACING.md,
+    },
+    nudgeTextContainer: {
+        flex: 1,
+    },
+    nudgeTitle: {
+        fontSize: mScale(14),
+        fontWeight: '800',
+        marginBottom: 4,
+    },
+    nudgeBody: {
+        fontSize: mScale(12),
+        fontWeight: '500',
+        lineHeight: 18,
+    },
+    nudgeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        marginTop: SPACING.md,
+        paddingVertical: 11,
+        borderRadius: 12,
+    },
+    nudgeButtonText: {
+        fontSize: mScale(13),
+        fontWeight: '800',
+    },
+    // Badge pill styling
+    badgeRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 8,
+    },
+    pillBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 6,
+    },
+    pillText: {
+        fontSize: mScale(10.5),
+        fontWeight: '600',
+    },
+    // Insight matching text
+    insightContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 0.5,
+        borderTopColor: 'rgba(0, 0, 0, 0.05)',
+    },
+    insightText: {
+        fontSize: mScale(11),
+        fontWeight: '500',
+        flex: 1,
     }
 });
 

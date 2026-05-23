@@ -2,33 +2,43 @@ import { useEffect } from 'react';
 import { useNotificationStore } from '@/store/useNotificationStore';
 
 export function useNotifications() {
-    const store = useNotificationStore();
+    // Select primitives individually — prevents re-render loop from new object references
+    const alerts = useNotificationStore(s => s.alerts);
+    const unreadCount = useNotificationStore(s => s.unreadCount);
+    const unseenFeedCount = useNotificationStore(s => s.unseenFeedCount);
+    const loading = useNotificationStore(s => s.loading);
+    const refreshing = useNotificationStore(s => s.refreshing);
+    const lastFetched = useNotificationStore(s => s.lastFetched);
+    const hydrate = useNotificationStore(s => s.hydrate);
+    const startPolling = useNotificationStore(s => s.startPolling);
+    const stopPolling = useNotificationStore(s => s.stopPolling);
+    const fetchAlerts = useNotificationStore(s => s.fetchAlerts);
+    const markRead = useNotificationStore(s => s.markRead);
+    const markAllRead = useNotificationStore(s => s.markAllRead);
+    const deleteAlert = useNotificationStore(s => s.deleteAlert);
 
-    // Initial hydration and fetch from local store
+    // Initial hydration — only if never fetched
     useEffect(() => {
-        const init = async () => {
-            if (!store.lastFetched) {
-                await store.hydrate();
-            }
-        };
-        init();
-    }, [store.lastFetched, store.hydrate]);
+        if (!lastFetched) {
+            void hydrate();
+        }
+    }, []); // intentionally run once on mount only
 
-    // Handle initial unread count fetch
+    // Start/stop the 30s poll tied to this component's lifecycle
     useEffect(() => {
-        store.startPolling();
-        return () => store.stopPolling();
-    }, [store.startPolling, store.stopPolling]);
+        startPolling();
+        return () => stopPolling();
+    }, []); // intentionally run once on mount only
 
     return {
-        alerts: store.alerts,
-        unreadCount: store.unreadCount,
-        unseenFeedCount: store.unseenFeedCount,
-        loading: store.loading,
-        refreshing: store.refreshing,
-        markRead: store.markRead,
-        markAllRead: store.markAllRead,
-        deleteAlert: store.deleteAlert,
-        refresh: () => store.fetchAlerts(true),
+        alerts,
+        unreadCount,
+        unseenFeedCount,
+        loading,
+        refreshing,
+        markRead,
+        markAllRead,
+        deleteAlert,
+        refresh: () => fetchAlerts(true),
     };
 }

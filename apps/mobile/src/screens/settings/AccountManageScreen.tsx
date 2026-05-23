@@ -90,7 +90,7 @@ const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             label="Public Handle" 
                             value={user?.username ? `@${user.username}` : 'Not set'}
                             currentTheme={currentTheme}
-                            onPress={() => navigation.navigate('ChooseUsername')}
+                            onPress={user?.username ? undefined : () => navigation.navigate('ProfileChooseUsername')}
                             isLast
                         />
                     </SurfaceCard>
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     },
     groupCard: {
         padding: 0,
-        borderRadius: 28,
+        borderRadius: 16,
     },
     row: {
         flexDirection: 'row',

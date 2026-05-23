@@ -5,6 +5,7 @@ import {
     markLocalAlertAsRead, 
     markAllLocalAlertsAsRead, 
     deleteLocalAlert,
+    processNextDripAlertIfNeeded,
     LocalAlert
 } from '@/utils/localNotifications';
 
@@ -34,7 +35,6 @@ const sortAlerts = (alerts: LocalAlert[]) => {
         const timeB = new Date(b.sentAt).getTime();
         if (timeA !== timeB) return timeB - timeA;
         
-        // Tie-breaker: postedAt
         const postedA = new Date(a.opportunity.postedAt || 0).getTime();
         const postedB = new Date(b.opportunity.postedAt || 0).getTime();
         return postedB - postedA;
@@ -50,13 +50,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
     lastFetched: null,
 
     fetchAlerts: async (isRefresh = false) => {
-        const { alerts } = get();
+        const { alerts: currentAlerts } = get();
         if (isRefresh) set({ refreshing: true });
-        else if (alerts.length === 0) set({ loading: true });
+        else if (currentAlerts.length === 0) set({ loading: true });
 
         try {
             const alerts = await getLocalAlerts();
-            // In local-first, unreadCount is calculated from local alerts
             const unreadCount = alerts.filter(a => !a.readAt).length;
 
             set({
@@ -74,10 +73,10 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
     fetchUnreadCount: async () => {
         try {
-            const [alerts, unseenFeed] = await Promise.all([
-                getLocalAlerts(),
-                getUnseenCount()
-            ]);
+            await processNextDripAlertIfNeeded();
+
+            const alerts = await getLocalAlerts();
+            const unseenFeed = await getUnseenCount();
             
             set({
                 alerts: sortAlerts(alerts),
@@ -91,12 +90,12 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
     markRead: async (id: string) => {
         try {
-            await markLocalAlertAsRead(id);
-            const { alerts } = get();
-            const updated = alerts.map(a => a.id === id ? { ...a, readAt: new Date().toISOString() } : a);
+            const currentAlerts = get().alerts;
+            const updated = currentAlerts.map(a => a.id === id ? { ...a, readAt: new Date().toISOString() } : a);
             const unreadCount = updated.filter(a => !a.readAt).length;
-            
             set({ alerts: updated, unreadCount });
+
+            await markLocalAlertAsRead(id);
         } catch (error) {
             console.error('[NotificationStore] markRead failed:', error);
         }
@@ -104,11 +103,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
     markAllRead: async () => {
         try {
-            await markAllLocalAlertsAsRead();
-            const { alerts } = get();
-            const updated = alerts.map(a => ({ ...a, readAt: new Date().toISOString() }));
-            
+            const currentAlerts = get().alerts;
+            const updated = currentAlerts.map(a => ({ ...a, readAt: new Date().toISOString() }));
             set({ alerts: updated, unreadCount: 0 });
+
+            await markAllLocalAlertsAsRead();
         } catch (error) {
             console.error('[NotificationStore] markAllRead failed:', error);
         }
@@ -116,27 +115,24 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
     deleteAlert: async (id: string) => {
         try {
-            await deleteLocalAlert(id);
-            const { alerts } = get();
-            const updated = alerts.filter(a => a.id !== id);
+            const currentAlerts = get().alerts;
+            const updated = currentAlerts.filter(a => a.id !== id);
             const unreadCount = updated.filter(a => !a.readAt).length;
-            
             set({ alerts: updated, unreadCount });
+
+            await deleteLocalAlert(id);
         } catch (error) {
             console.error('[NotificationStore] deleteAlert failed:', error);
         }
     },
 
     hydrate: async () => {
-        // Only set loading if we don't have any alerts yet to avoid "blink"
         const { alerts: currentAlerts } = get();
         if (currentAlerts.length === 0) set({ loading: true });
 
         try {
-            const [alerts, unseenCount] = await Promise.all([
-                getLocalAlerts(),
-                getUnseenCount()
-            ]);
+            const alerts = await getLocalAlerts();
+            const unseenCount = await getUnseenCount();
             
             set({ 
                 alerts: sortAlerts(alerts), 
@@ -153,13 +149,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
     startPolling: () => {
         const { stopPolling, fetchUnreadCount } = get();
-        // Clear any existing interval
         stopPolling();
         
-        // Initial fetch
         void fetchUnreadCount();
         
-        // Poll every 30 seconds for background updates
+        // Poll every 30 seconds for background updates and drip triggers
         const interval = setInterval(() => {
             void fetchUnreadCount();
         }, 30000);

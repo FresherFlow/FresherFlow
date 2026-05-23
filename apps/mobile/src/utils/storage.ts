@@ -58,3 +58,17 @@ export const setJSON = (key: string, value: unknown) => {
 export const remove = (key: string) => {
   storage.delete(key);
 };
+
+/**
+ * MMKV Helper: Atomic mutation
+ * Reads the current JSON, passes it to the updater, and synchronously writes the result.
+ */
+export function mutateJSON<T>(
+  key: string,
+  updater: (current: T | null) => T
+): T {
+  const current = getJSON<T>(key);
+  const updated = updater(current);
+  setJSON(key, updated);
+  return updated;
+}

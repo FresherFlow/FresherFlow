@@ -9,6 +9,7 @@ import {
     Alert,
     ScrollView,
     FlatList,
+    Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -21,6 +22,8 @@ import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTracker } from '@/hooks/useTracker';
 import { ActionType, Opportunity } from '@fresherflow/types';
+// import LottieView from 'lottie-react-native';
+import { Share } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 
@@ -80,9 +83,12 @@ interface TrackerTabContentProps {
             error: string;
         };
     };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    onScroll: any;
+    contentPaddingTop: number;
 }
 
-const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLength, refresh, refreshing, currentTheme }: TrackerTabContentProps) => {
+const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLength, refresh, refreshing, currentTheme, onScroll, contentPaddingTop }: TrackerTabContentProps) => {
     return (
         <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
             {loading && actionsLength === 0 ? (
@@ -96,7 +102,9 @@ const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLen
                     renderItem={renderItem}
                     // @ts-expect-error - FlashList typing bug with estimatedItemSize
                     estimatedItemSize={140}
-                    contentContainerStyle={styles.listContent}
+                    onScroll={onScroll}
+                    scrollEventThrottle={16}
+                    contentContainerStyle={[styles.listContent, { paddingTop: contentPaddingTop }]}
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <View style={[styles.emptyIconBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03) }]}>
@@ -131,10 +139,29 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
     } = useTracker();
 
     const [activeStatus, setActiveStatus] = useState<ActionType>(ActionType.PLANNED);
+    const [celebrateJob, setCelebrateJob] = useState<Opportunity | null>(null);
     const pagerRef = useRef<FlatList>(null);
     const tabListRef = useRef<ScrollView>(null);
     const isManualScrolling = useRef(false);
     const [tabLayouts, setTabLayouts] = useState<{[key: number]: {x: number, width: number}}>({});
+    const scrollY = useRef(new Animated.Value(0)).current;
+
+    const handleShareSuccess = async () => {
+        if (!celebrateJob) return;
+        try {
+            await Share.share({
+                message: `I just got an offer from ${celebrateJob.company} for the ${celebrateJob.title} role! 🎉 Thanks to the FresherFlow app for helping me track and discover this amazing opportunity. #FresherFlow #Hired #Tech`,
+            });
+        } catch (error) {
+            console.log(error);
+        }
+    };
+
+    const headerTranslateY = scrollY.interpolate({
+        inputRange: [0, 40],
+        outputRange: [0, -40],
+        extrapolate: 'clamp',
+    });
 
     const handleUpdateStatus = async (opportunityId: string, newStatus: ActionType) => {
         try {
@@ -258,13 +285,26 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
 
                 <View style={styles.actionRow}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusScroll}>
+                        {item.actionType === ActionType.SELECTED && (
+                            <TouchableOpacity 
+                                onPress={() => {
+                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                                    setCelebrateJob(opp);
+                                }}
+                                style={[styles.statusBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.15) }]}
+                            >
+                                <Text style={[styles.statusBtnText, { color: currentTheme.colors.primary }]}>
+                                    🎉 Celebrate Offer
+                                </Text>
+                            </TouchableOpacity>
+                        )}
                         {STATUS_ORDER.filter(s => s !== item.actionType).map(status => (
                             <TouchableOpacity 
                                 key={status}
                                 onPress={() => handleUpdateStatus(opp.id, status)}
-                                style={[styles.statusBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}
+                                style={[styles.statusBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
                             >
-                                <Text style={[styles.statusBtnText, { color: currentTheme.colors.primary }]}>
+                                <Text style={[styles.statusBtnText, { color: currentTheme.colors.text }]}>
                                     Move to {STATUS_LABEL[status]}
                                 </Text>
                             </TouchableOpacity>
@@ -281,68 +321,74 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
 
     return (
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
-            <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
-                <SecondaryHeader 
-                    title="Tracker" 
-                    onBack={() => navigation.goBack()}
-                />
-            </View>
-
-            <View style={[styles.tabContainer, { borderBottomColor: alpha(currentTheme.colors.border, 0.08) }]}>
-                <ScrollView 
-                    ref={tabListRef}
-                    horizontal 
-                    showsHorizontalScrollIndicator={false} 
-                    contentContainerStyle={styles.tabScroll}
-                >
-                    {STATUS_ORDER.map((status, index) => {
-                        const isActive = activeStatus === status;
-                        const count = grouped[status]?.length || 0;
-                        return (
-                            <TouchableOpacity
-                                key={status}
-                                activeOpacity={0.8}
-                                onLayout={(e) => {
-                                    const { x, width } = e.nativeEvent.layout;
-                                    setTabLayouts(prev => ({ ...prev, [index]: { x, width } }));
-                                }}
-                                onPress={() => handleTabPress(status, index)}
-                                style={styles.tab}
-                            >
-                                <View style={styles.tabContent}>
-                                    <Text style={[
-                                        styles.tabText, 
-                                        { 
-                                            color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted,
-                                            opacity: isActive ? 1 : 0.6
-                                        }
-                                    ]}>
-                                        {STATUS_LABEL[status]}
-                                    </Text>
-                                    {count > 0 && (
-                                        <View style={[
-                                            styles.countBadge, 
-                                            { backgroundColor: isActive ? alpha(currentTheme.colors.primary, 0.08) : alpha(currentTheme.colors.text, 0.04) }
-                                        ]}>
+            <Animated.View style={{ 
+                position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100,
+                backgroundColor: currentTheme.colors.background,
+                transform: [{ translateY: headerTranslateY }] 
+            }}>
+                <View style={{ paddingTop: insets.top + 10 }}>
+                    <SecondaryHeader 
+                        title="Tracker" 
+                        onBack={() => navigation.goBack()}
+                    />
+                    <View style={[styles.tabContainer, { borderBottomColor: alpha(currentTheme.colors.border, 0.08) }]}>
+                        <ScrollView 
+                            ref={tabListRef}
+                            horizontal 
+                            showsHorizontalScrollIndicator={false} 
+                            contentContainerStyle={styles.tabScroll}
+                        >
+                            {STATUS_ORDER.map((status, index) => {
+                                const isActive = activeStatus === status;
+                                const count = grouped[status]?.length || 0;
+                                return (
+                                    <TouchableOpacity
+                                        key={status}
+                                        activeOpacity={0.8}
+                                        onLayout={(e) => {
+                                            const { x, width } = e.nativeEvent.layout;
+                                            setTabLayouts(prev => ({ ...prev, [index]: { x, width } }));
+                                        }}
+                                        onPress={() => handleTabPress(status, index)}
+                                        style={styles.tab}
+                                    >
+                                        <View style={styles.tabContent}>
                                             <Text style={[
-                                                styles.countText, 
-                                                { color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted }
+                                                styles.tabText, 
+                                                { 
+                                                    color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted,
+                                                    opacity: isActive ? 1 : 0.6
+                                                }
                                             ]}>
-                                                {count}
+                                                {STATUS_LABEL[status]}
                                             </Text>
+                                            {count > 0 && (
+                                                <View style={[
+                                                    styles.countBadge, 
+                                                    { backgroundColor: isActive ? alpha(currentTheme.colors.primary, 0.08) : alpha(currentTheme.colors.text, 0.04) }
+                                                ]}>
+                                                    <Text style={[
+                                                        styles.countText, 
+                                                        { color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted }
+                                                    ]}>
+                                                        {count}
+                                                    </Text>
+                                                </View>
+                                            )}
                                         </View>
-                                    )}
-                                </View>
-                                {isActive && (
-                                    <View style={[styles.activeLine, { backgroundColor: currentTheme.colors.primary }]} />
-                                )}
-                            </TouchableOpacity>
-                        );
-                    })}
-                </ScrollView>
-            </View>
+                                        {isActive && (
+                                            <View style={[styles.activeLine, { backgroundColor: currentTheme.colors.primary }]} />
+                                        )}
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Animated.View>
 
             <FlatList
+
                 ref={pagerRef}
                 horizontal
                 pagingEnabled
@@ -368,9 +414,38 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                         refresh={refresh}
                         refreshing={refreshing}
                         currentTheme={currentTheme}
+                        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
+                        contentPaddingTop={insets.top + 10 + 110}
                     />
                 )}
             />
+
+            {/* Celebrate Modal */}
+            {celebrateJob && (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: alpha(currentTheme.colors.background, 0.95), zIndex: 1000, justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
+                    <Text style={{ fontSize: 80, marginBottom: 20 }}>🎉</Text>
+                    <Text style={{ fontSize: 32, fontWeight: '900', color: currentTheme.colors.text, textAlign: 'center', marginBottom: 12 }}>
+                        You Got Hired!
+                    </Text>
+                    <Text style={{ fontSize: 16, color: currentTheme.colors.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 24 }}>
+                        Congratulations on your offer from <Text style={{ color: currentTheme.colors.primary, fontWeight: '800' }}>{celebrateJob.company}</Text> for the <Text style={{ color: currentTheme.colors.text, fontWeight: '800' }}>{celebrateJob.title}</Text> role!
+                    </Text>
+                    
+                    <TouchableOpacity 
+                        onPress={handleShareSuccess}
+                        style={{ backgroundColor: '#0A66C2', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 100, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, width: '100%', justifyContent: 'center' }}
+                    >
+                        <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 16 }}>Share on LinkedIn</Text>
+                    </TouchableOpacity>
+                    
+                    <TouchableOpacity 
+                        onPress={() => setCelebrateJob(null)}
+                        style={{ padding: 16 }}
+                    >
+                        <Text style={{ color: currentTheme.colors.textMuted, fontWeight: '700' }}>Close</Text>
+                    </TouchableOpacity>
+                </View>
+            )}
         </Screen>
     );
 });
@@ -427,7 +502,7 @@ const styles = StyleSheet.create({
     },
     jobCard: {
         padding: 0,
-        borderRadius: 24,
+        borderRadius: 16,
         marginBottom: 16,
         overflow: 'hidden',
     },

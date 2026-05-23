@@ -21,6 +21,7 @@ import {
     Tag
 } from 'lucide-react-native';
 import * as Updates from 'expo-updates';
+import Constants from 'expo-constants';
 import * as Haptics from 'expo-haptics';
 import Animated, { 
     useSharedValue, 
@@ -74,8 +75,11 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
     };
 
     // Expo-Updates metadata resolution
-    const currentUpdateId = Updates.updateId ? Updates.updateId.substring(0, 8) : 'Dev-Client';
-    const currentChannel = Updates.channel || 'development';
+    const appEnv = Constants.expoConfig?.extra?.appEnv || (process.env.EXPO_PUBLIC_APP_ENV || 'development');
+    const currentUpdateId = Updates.updateId 
+        ? Updates.updateId.substring(0, 8) 
+        : (appEnv === 'staging' ? 'Staging-Build' : (__DEV__ ? 'Dev-Client' : 'Production-Build'));
+    const currentChannel = Updates.channel || appEnv;
     const currentCreatedAt = Updates.createdAt 
         ? new Date(Updates.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
         : 'Running Locally';
@@ -125,11 +129,16 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
             
             if (check.isAvailable) {
                 setStatus('available');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const manifest = check.manifest as any;
+                const version = manifest?.metadata?.version || manifest?.extra?.expoClient?.version || '1.0.0';
+                const createdAt = manifest?.createdAt 
+                    ? new Date(manifest.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
+                    : new Date().toLocaleDateString(undefined, { dateStyle: 'medium' });
+
                 setUpdateMetadata({
-                    version: (check.manifest as { version?: string })?.version || '1.0.4-ota',
-                    createdAt: (check.manifest as { createdAt?: string })?.createdAt 
-                        ? new Date((check.manifest as { createdAt?: string }).createdAt!).toLocaleDateString(undefined, { dateStyle: 'medium' })
-                        : new Date().toLocaleDateString(undefined, { dateStyle: 'medium' }),
+                    version: manifest?.id ? `${version} (${manifest.id.substring(0, 8)})` : version,
+                    createdAt: createdAt,
                     changelog: [
                         '⚡ Optimized React Query persist caches.',
                         '🚀 High-fidelity zero-latency offline action queue sync.',
@@ -395,7 +404,7 @@ const styles = StyleSheet.create({
     },
     systemCard: {
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 16,
     },
     cardHeader: {
         flexDirection: 'row',
@@ -483,7 +492,7 @@ const styles = StyleSheet.create({
     },
     otaUpdateCard: {
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 16,
     },
     otaHeader: {
         flexDirection: 'row',

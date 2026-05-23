@@ -97,7 +97,7 @@ const ShareScreen: React.FC = () => {
   const [recentShares, setRecentShares] = useState<Awaited<ReturnType<typeof profileApi.getShares>>['shares']>([]);
 
   const fetchRecentShares = useCallback(async () => {
-    if (!user) return; // Guard against guest calls
+    if (!user || user.isAnonymous) return; // Guard against guest calls
     try {
       const response = await profileApi.getShares(1);
       setRecentShares(response.shares.slice(0, 5));
@@ -107,36 +107,35 @@ const ShareScreen: React.FC = () => {
         console.error('Failed to fetch shares', err);
       }
     }
-  }, [user]);
+  }, [user?.id, user?.isAnonymous]);
 
-  // Persistent check to avoid re-triggering on tab switch
-  const [hasCheckedInSession, setHasCheckedInSession] = useState(false);
-
-  const checkClipboard = useCallback(async () => {
-    // Only check if we haven't already found something or checked this session
-    if (hasCheckedInSession || hasCheckedClipboard || url || preview) return;
-
-    try {
-        // hasStringAsync is less intrusive on some platforms, but we need to check if it's a URL
-        // We'll only call getStringAsync once.
-        const content = await Clipboard.getStringAsync();
-        setHasCheckedInSession(true); // Mark as checked for this session regardless of result
-
-        if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
-            setHasCheckedClipboard(true);
-            setClipboardLink(content);
-        }
-    } catch (e) {
-        console.warn('Clipboard check failed', e);
-    }
-  }, [hasCheckedInSession, hasCheckedClipboard, url, preview]);
+  const hasCheckedInSession = useRef(false);
 
   useFocusEffect(
     useCallback(() => {
-        // Only trigger if we haven't checked in this specific visit
-        void checkClipboard();
+        let isActive = true;
+
+        const checkClip = async () => {
+            if (hasCheckedInSession.current || hasCheckedClipboard) return;
+            try {
+                const content = await Clipboard.getStringAsync();
+                hasCheckedInSession.current = true;
+                if (isActive && content && (content.startsWith('http://') || content.startsWith('https://'))) {
+                    setHasCheckedClipboard(true);
+                    setClipboardLink(content);
+                }
+            } catch (e) {
+                console.warn('Clipboard check failed', e);
+            }
+        };
+
+        void checkClip();
         void fetchRecentShares();
-    }, [checkClipboard, fetchRecentShares])
+
+        return () => {
+            isActive = false;
+        };
+    }, [hasCheckedClipboard, fetchRecentShares])
   );
 
   useEffect(() => {
@@ -160,22 +159,6 @@ const ShareScreen: React.FC = () => {
       if (mode === 'SHARE') {
         result = await handleShare();
       } else {
-        if (!data.title?.trim() || data.title.trim().length < 2) {
-            showToast("Job title is too short (min 2 chars)");
-            return;
-        }
-        if (!data.company?.trim() || data.company.trim().length < 2) {
-            showToast("Company name is too short (min 2 chars)");
-            return;
-        }
-        if (!data.contact?.trim() || data.contact.trim().length < 3) {
-            showToast("Contact info is required (min 3 chars)");
-            return;
-        }
-        if (!data.description?.trim() || data.description.trim().length < 5) {
-            showToast("Details should be more descriptive (min 5 chars)");
-            return;
-        }
         result = await handleReferral(data);
       }
 
@@ -780,7 +763,7 @@ const ShareScreen: React.FC = () => {
 
 
 
-                            {recentShares.length > 0 && item.id === 'SHARE' && (
+                            {recentShares.length > 0 && (
                                 <View style={styles.recentSection}>
                                     <View style={styles.recentHeader}>
                                         <Clock size={14} color={currentTheme.colors.textMuted} />

@@ -1,4 +1,4 @@
-import React, { useCallback, memo, useState } from 'react';
+import React, { useCallback, memo, useState, useEffect } from 'react';
 import {
   StyleSheet,
   Text,
@@ -34,6 +34,18 @@ const AppearanceScreen = ({ navigation }: Props) => {
   const { currentTheme, themeMode, setThemeMode, isAmoled, toggleAmoled } = useTheme();
 
   const [useInAppBrowser, setUseInAppBrowser] = useState(getBoolean('use_in_app_browser', true));
+
+  // Write the default value to storage on first mount if it was never explicitly set.
+  // The mock MMKV hydrates from AsyncStorage asynchronously — if we don't write the
+  // default, browser.ts may read 'undefined' on a fresh install and behave incorrectly.
+  useEffect(() => {
+    const stored = getBoolean('use_in_app_browser', true);
+    setUseInAppBrowser(stored);
+    // Always persist so it's never undefined in storage
+    if (stored !== false) {
+      setBoolean('use_in_app_browser', stored);
+    }
+  }, []);
 
   const toggleInAppBrowser = (value: boolean) => {
       setUseInAppBrowser(value);
@@ -226,7 +238,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 16,
     padding: 20,
-    borderRadius: 24,
+    borderRadius: 16,
     borderWidth: 1,
   },
   infoIcon: {

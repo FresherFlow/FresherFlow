@@ -8,7 +8,8 @@ import { ShieldCheck, Github, Twitter, Linkedin, Instagram, ExternalLink, Facebo
 import { MenuRow } from '../profile/SettingsScreen';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
-import { Image, Linking, Dimensions } from 'react-native';
+import { Image, Dimensions } from 'react-native';
+import { openExternalURL } from '@/utils/browser';
 import Animated, { 
     useSharedValue, 
     useAnimatedStyle, 
@@ -198,7 +199,7 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                     key={`${item.url}-${index}`}
                                     icon={item.icon} 
                                     color={item.color} 
-                                    onPress={() => Linking.openURL(item.url)} 
+                                    onPress={() => openExternalURL(item.url, currentTheme.colors)} 
                                 />
                             ))}
                         </Animated.View>
@@ -207,7 +208,7 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
                 <TouchableOpacity 
                     activeOpacity={0.8}
-                    onPress={() => Linking.openURL('https://github.com/MukeshCheekatla/fresherflow')}
+                    onPress={() => openExternalURL('https://github.com/MukeshCheekatla/fresherflow', currentTheme.colors)}
                     style={[styles.githubCard, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
                 >
                     <View style={styles.githubLeft}>
@@ -224,7 +225,7 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
                 <TouchableOpacity 
                     activeOpacity={0.8}
-                    onPress={() => Linking.openURL('https://fresherflow.in')}
+                    onPress={() => openExternalURL('https://fresherflow.in', currentTheme.colors)}
                     style={[styles.websiteCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderColor: alpha(currentTheme.colors.primary, 0.1) }]}
                 >
                     <View style={styles.githubLeft}>
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
     },
     groupCard: {
         padding: 0,
-        borderRadius: 28,
+        borderRadius: 16,
         marginBottom: 32,
     },
     sectionLabel: {
@@ -337,7 +338,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 16,
         borderWidth: 1,
         marginBottom: 16,
     },
@@ -346,7 +347,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: 20,
-        borderRadius: 24,
+        borderRadius: 16,
         borderWidth: 1,
         marginBottom: 40,
     },

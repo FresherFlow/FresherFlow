@@ -1,5 +1,5 @@
 import { ActionType, FeedbackReason, Opportunity } from '@fresherflow/types';
-import { actionsApi, savedApi, feedbackApi, followsApi } from '@fresherflow/api-client';
+import { actionsApi, savedApi, feedbackApi, followsApi, opportunityClicksApi } from '@fresherflow/api-client';
 import { storage } from '../lib/storage';
 
 
@@ -45,7 +45,12 @@ type FollowRemoveAction = OfflineActionBase & {
     value: string;
 };
 
-type OfflineAction = SaveToggleAction | ActionTrack | ActionRemove | ReportSubmitAction | FollowAddAction | FollowRemoveAction;
+type ClickTrackAction = OfflineActionBase & {
+    type: 'CLICK_TRACK';
+    source: string;
+};
+
+type OfflineAction = SaveToggleAction | ActionTrack | ActionRemove | ReportSubmitAction | FollowAddAction | FollowRemoveAction | ClickTrackAction;
 
 type FlushResult = {
     synced: number;
@@ -209,6 +214,26 @@ export async function enqueueOfflineFollowRemove(type: 'TAG' | 'COMPANY' | 'CONT
     await writeQueue(queue);
 }
 
+export async function enqueueOfflineClickTrack(opportunityId: string, source = 'opportunity_detail', ownerId?: string) {
+    const queue = await readQueue();
+    // Prevent duplicate click tracking in the offline queue for the same opportunity
+    const exists = queue.some(
+        item => item.type === 'CLICK_TRACK' && item.opportunityId === opportunityId && item.ownerId === ownerId
+    );
+    if (exists) return;
+
+    queue.push({
+        id: nextId(),
+        type: 'CLICK_TRACK',
+        ownerId,
+        opportunityId,
+        source,
+        createdAt: Date.now(),
+        attempts: 0,
+    });
+    await writeQueue(queue);
+}
+
 export async function getPendingOfflineActionsCount(ownerId?: string): Promise<number> {
     const queue = await readQueue();
     return queue.filter((item) => matchesOwner(item, ownerId)).length;
@@ -272,6 +297,11 @@ async function runOfflineAction(action: OfflineAction) {
     if (action.type === 'FOLLOW_REMOVE') {
         const act = action as FollowRemoveAction;
         await followsApi.unfollow({ type: act.followType, value: act.value });
+        return;
+    }
+    if (action.type === 'CLICK_TRACK') {
+        const act = action as ClickTrackAction;
+        await opportunityClicksApi.trackApplyClick(act.opportunityId, act.source);
         return;
     }
 }
