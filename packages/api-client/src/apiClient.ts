@@ -58,6 +58,9 @@ export class ApiClient {
 
         // Request Interceptor for Token and Anon ID injection
         this.axiosInstance.interceptors.request.use(async (config) => {
+            // Ensure X-Requested-From is always set to bypass the CSRF gate
+            config.headers['X-Requested-From'] = 'fresherflow-client';
+
             if (this.storage) {
                 const [token, anonId] = await Promise.all([
                     this.storage.getItem('ff_auth_token_v1'),
@@ -85,8 +88,8 @@ export class ApiClient {
                     normalizedError = new OfflineError();
                 } else {
                     const status = error.response.status;
-                    const body = error.response.data;
-                    const message = (body as { message?: string })?.message || `Request failed (${status})`;
+                    const body = error.response.data as any;
+                    const message = body?.error?.message || body?.message || `Request failed (${status})`;
                     normalizedError = new HttpError(message, status, body);
                 }
 

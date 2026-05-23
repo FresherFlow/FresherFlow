@@ -6,17 +6,26 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "APP_ENV": "development"
+      }
     },
     "preview": {
       "distribution": "internal",
-      "channel": "preview"
+      "channel": "preview",
+      "env": {
+        "APP_ENV": "development"
+      }
     },
     "staging": {
       "channel": "staging",
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "staging"
       }
     },
     "production": {
@@ -24,6 +33,9 @@
       "distribution": "store",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "APP_ENV": "production"
       }
     }
   },

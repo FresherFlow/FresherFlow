@@ -1,24 +1,12 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import * as Updates from 'expo-updates';
 
-const PROD_API_URL = 'https://api.fresherflow.in';
-const STAGING_API_URL = 'https://api-staging.fresherflow.in';
 const DEV_LOCAL_URL = 'http://localhost:5000';
 
 function resolveApiUrl(): string {
-    // Override via env var (e.g. for custom builds)
+    // Read directly from environment variable (injected at build time or local .env)
     const envUrl = process.env.EXPO_PUBLIC_API_URL;
     if (envUrl) return envUrl.replace(/\/+$/, '');
-
-    // In production standalone builds, resolve API dynamically based on EAS channel
-    if (!__DEV__) {
-        const channel = Updates.channel;
-        if (channel === 'staging') {
-            return STAGING_API_URL;
-        }
-        return PROD_API_URL;
-    }
 
     let baseUrl = DEV_LOCAL_URL;
 
@@ -50,18 +38,17 @@ function resolveApiUrl(): string {
 
 export const API_URL = resolveApiUrl();
 
-const PROD_CDN_URL = 'https://cdn.fresherflow.in';
-const STAGING_CDN_URL = 'https://cdn-staging.fresherflow.in';
-
 function resolveCdnUrl(): string {
-    if (!__DEV__) {
-        const channel = Updates.channel;
-        if (channel === 'staging') {
-            return STAGING_CDN_URL;
-        }
-        return PROD_CDN_URL;
+    const envCdnUrl = process.env.EXPO_PUBLIC_CDN_URL;
+    if (envCdnUrl) return envCdnUrl.replace(/\/+$/, '');
+
+    // In development, the local API server handles serving the CDN files dynamically
+    if (__DEV__) {
+        return API_URL;
     }
-    return PROD_CDN_URL;
+
+    // Fallback to normal production CDN if not configured in environment
+    return 'https://cdn.fresherflow.in';
 }
 
 export const CDN_URL = resolveCdnUrl();
@@ -74,4 +61,3 @@ export const GET_CATEGORY_SHARD_URL = (id: string) => `${CDN_URL}/categories/${i
 export const EDUCATION_METADATA_URL = `${CDN_URL}/education.json`;
 export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;
 export const CITIES_METADATA_URL = `${CDN_URL}/cities.json`;
-

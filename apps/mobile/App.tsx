@@ -9,14 +9,22 @@ Sentry.init({
 import { NavigationContainer, DarkTheme, DefaultTheme, useNavigationContainerRef } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View } from 'react-native';
+import { View, Alert, StyleSheet } from 'react-native';
 import { AppNavigator, RootStackParamList } from './src/navigation/AppNavigator';
 import { BrandIntroLoader } from './src/components/BrandIntroLoader';
 import { OfflineBanner } from './src/system/components/OfflineBanner';
 import * as Notifications from 'expo-notifications';
+import * as Updates from 'expo-updates';
 import * as Linking from 'expo-linking';
 import { getOpportunityAtomic, readDetailCache } from './src/utils/offlineCache';
 import { useNotificationStore } from './src/store/useNotificationStore';
+import { openExternalURL } from './src/utils/browser';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the native splash screen visible until React Native is fully loaded and BrandIntroLoader renders
+SplashScreen.preventAutoHideAsync().catch(() => {
+  /* reloading the app might trigger some race conditions, ignore them */
+});
 
 // Register global cache reader for frontend-core offline action queue
 (global as any).readJobDetailsFromCache = async (id: string) => {
@@ -97,10 +105,18 @@ const AuthBridge = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+import { useFeedStore } from './src/store/useFeedStore';
+
 const AppContent = () => {
   useAuthHandshake(); // Background handshake logic
   useEmailLinkSignIn(); // Listen and complete email magic link logins
   const [isLoaded, setIsLoaded] = useState(false);
+
+  React.useEffect(() => {
+    // Globally hydrate the master feed on app start
+    void useFeedStore.getState().hydrate();
+  }, []);
+
   const { currentTheme } = useTheme();
 
   const isDark = currentTheme.mode === 'dark';
@@ -108,9 +124,60 @@ const AppContent = () => {
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
   const { user, isSyncing: isLoading } = useAuthStore();
 
+  const { isUpdatePending } = Updates.useUpdates();
+
   React.useEffect(() => {
     // Initialize Google Sign-In & Firebase Auth listeners after native bridge boots
     void AuthManager.initialize();
+  }, []);
+
+  // OTA Updates: Listen for downloaded updates and prompt user to reload
+  React.useEffect(() => {
+    if (isLoaded) {
+      // Fail-safe: Ensure the native splash screen is hidden once the main app is ready to mount
+      SplashScreen.hideAsync().catch(() => {});
+    }
+  }, [isLoaded]);
+
+  React.useEffect(() => {
+    if (isUpdatePending) {
+      Alert.alert(
+        'Update Ready',
+        'A new software update has been downloaded in the background. Reload now to apply the changes?',
+        [
+          { text: 'Later', style: 'cancel' },
+          {
+            text: 'Reload',
+            style: 'default',
+            onPress: () => {
+              Updates.reloadAsync().catch((err) => {
+                console.warn('[OTA] Reload failed:', err);
+              });
+            },
+          },
+        ]
+      );
+    }
+  }, [isUpdatePending]);
+
+  // OTA Updates: Defer a background check and download on startup
+  React.useEffect(() => {
+    if (!Updates.isEnabled) return;
+
+    const timer = setTimeout(async () => {
+      try {
+        console.log('[OTA] Running deferred startup update check...');
+        const check = await Updates.checkForUpdateAsync();
+        if (check.isAvailable) {
+          console.log('[OTA] Update available, fetching in background...');
+          await Updates.fetchUpdateAsync();
+        }
+      } catch (err) {
+        console.log('[OTA] Deferred startup update check skipped or failed:', err);
+      }
+    }, 5000); // 5 seconds delay to allow UI/main thread to settle
+
+    return () => clearTimeout(timer);
   }, []);
 
 
@@ -132,11 +199,11 @@ const AppContent = () => {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             navigationRef.navigate(data.screen as any);
           } else if (data?.url && typeof data.url === 'string') {
-            void Linking.openURL(data.url);
+            void openExternalURL(data.url, currentTheme.colors);
           }
       }
     }
-  }, [lastNotificationResponse]);
+  }, [lastNotificationResponse, currentTheme]);
 
   const navTheme = {
     ...baseTheme,
@@ -157,16 +224,24 @@ const AppContent = () => {
         backgroundColor="transparent" 
         translucent={true}
       />
-      {!isLoaded ? (
-        <BrandIntroLoader onComplete={() => setIsLoaded(true)} />
-      ) : (
-        <FirstRunGate>
-          <NavigationContainer ref={navigationRef} linking={linking} theme={navTheme}>
-            <AppNavigator />
-          </NavigationContainer>
-          <OfflineBanner />
-          <GlobalActionSheet />
-        </FirstRunGate>
+      <FirstRunGate onDismiss={() => {
+        const { isAuthenticated } = useAuthStore.getState();
+        if (!isAuthenticated && navigationRef.isReady()) {
+          console.log('[FirstRunGate] Onboarding complete. Triggering authentication modal.');
+          navigationRef.navigate('Auth');
+        }
+      }}>
+        <NavigationContainer ref={navigationRef} linking={linking} theme={navTheme}>
+          <AppNavigator />
+        </NavigationContainer>
+        <OfflineBanner />
+        <GlobalActionSheet />
+      </FirstRunGate>
+
+      {!isLoaded && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 99999 }]}>
+          <BrandIntroLoader isLoading={isLoading} onComplete={() => setIsLoaded(true)} />
+        </View>
       )}
     </View>
   );

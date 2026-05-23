@@ -22,9 +22,13 @@ function normalizePrefixList(value: string | undefined, fallback: string[]): str
         .map((item) => normalizeUrl(item, item));
 }
 
+import Constants from 'expo-constants';
+
 export const MOBILE_SITE_URL = normalizeUrl(
     process.env.EXPO_PUBLIC_SITE_URL,
-    'https://fresherflow.in'
+    Constants.expoConfig?.extra?.appEnv === 'staging'
+      ? 'https://staging.fresherflow.in'
+      : 'https://fresherflow.in'
 );
 
 export const MOBILE_LINKING_PREFIXES = normalizePrefixList(

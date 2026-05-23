@@ -4,7 +4,7 @@
     "slug": "fresherflow",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/icon-1024.png",
     "userInterfaceStyle": "dark",
     "scheme": "fresherflow",
     "backgroundColor": "#0D0D0D",
@@ -21,7 +21,7 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#0F1115"
       },
       "package": "in.fresherflow.app",
       "googleServicesFile": "./google-services.json",
@@ -79,9 +79,13 @@
     ],
     "updates": {
       "url": "https://u.expo.dev/f44bb950-d1e0-4575-b499-b1a019e1e049",
-      "enabled": true
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 30000
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "extra": {
       "apiUrl": "https://api.fresherflow.in",
       "eas": {
