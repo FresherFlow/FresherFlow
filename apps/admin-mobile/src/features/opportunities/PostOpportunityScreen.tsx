@@ -181,7 +181,18 @@ export const PostOpportunityScreen = ({
 
                             <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
-                            <Label>Expiration Date (YYYY-MM-DD)</Label>
+                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                                <Text style={[styles.label, { color: currentTheme.colors.textMuted, marginBottom: 0 }]}>Expiration Date (YYYY-MM-DD)</Text>
+                                {form.expiresAt ? (
+                                    <TouchableOpacity 
+                                        onPress={() => set('expiresAt', '')}
+                                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: alpha(currentTheme.colors.error, 0.1) }}
+                                        activeOpacity={0.7}
+                                    >
+                                        <Text style={{ color: currentTheme.colors.error, fontSize: mScale(9), fontWeight: '800' }}>CLEAR</Text>
+                                    </TouchableOpacity>
+                                ) : null}
+                            </View>
                             <FormInput 
                                 placeholder="e.g. 2026-12-31" 
                                 value={form.expiresAt} 
