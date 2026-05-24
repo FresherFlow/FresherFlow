@@ -117,7 +117,7 @@ export function subscribeToGlobalStats(
   const timeout = setTimeout(() => {
     if (!settled) {
       settled = true;
-      onUpdate({ downloads: 12840, activeUsers: 5430 });
+      onUpdate({ downloads: 0, activeUsers: 0 });
     }
   }, 5000);
 
@@ -131,8 +131,8 @@ export function subscribeToGlobalStats(
       }
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const val = snapshot.val() as any;
-      const downloads = val?.downloads ?? 12840;
-      const activeUsers = val?.activeUsers ?? 5430;
+      const downloads = val?.downloads ?? 0;
+      const activeUsers = val?.activeUsers ?? 0;
       onUpdate({ downloads, activeUsers });
     });
 

@@ -56,14 +56,34 @@ export async function writeFirebaseOnboardingRecord(
   if (!firebaseUser || firebaseUser.isAnonymous) return;
 
   try {
-    const writePromise = onboardingRef(firebaseUser.uid)?.update({
+    const ref = onboardingRef(firebaseUser.uid);
+    if (!ref) return;
+
+    // Read existing record to check if already counted
+    const snapshot = await ref.once('value');
+    const existing = snapshot?.val();
+    const isNewUser = !existing || !existing.counted;
+
+    const writePromise = ref.update({
       ...payload,
+      counted: true,
       updatedAt: Date.now(),
     });
 
-    if (!writePromise) return;
+    // Fire-and-forget global counter increment entirely inside Firebase
+    if (isNewUser) {
+      try {
+        const firebase = require('@react-native-firebase/app').default;
+        const db = firebase.app().database(getFirebaseDatabaseUrl());
+        const dbModule = require('@react-native-firebase/database');
+        const ServerValue = dbModule.ServerValue || dbModule.default?.ServerValue;
+        void db.ref('/stats/global/downloads').set(ServerValue.increment(1));
+      } catch (fbErr) {
+        console.warn('[firebaseOnboardingDb] Failed to increment global counter:', fbErr);
+      }
+    }
 
-    // Fire-and-forget with a silent timeout — don't block the caller
+    // Silent timeout for onboarding write — don't block the caller
     const timeoutPromise = new Promise<void>((_, reject) =>
       setTimeout(() => reject(new Error('RTDB write timeout')), 5000)
     );

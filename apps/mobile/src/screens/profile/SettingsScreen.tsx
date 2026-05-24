@@ -23,7 +23,6 @@ import {
   History,
   Info,
   RefreshCw,
-  Sparkles,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -51,7 +50,10 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
 
-  const [globalStats, setGlobalStats] = useState({ downloads: 12840, activeUsers: 5430 });
+  const { user, completionPercentage } = useProfile();
+  const firebaseUser = useAuthStore(s => s.firebaseUser);
+
+  const [globalStats, setGlobalStats] = useState({ downloads: 0, activeUsers: 0 });
 
   useEffect(() => {
     const unsubscribe = subscribeToGlobalStats((stats) => {
@@ -59,8 +61,6 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     });
     return unsubscribe;
   }, []);
-  const { user, completionPercentage } = useProfile();
-  const firebaseUser = useAuthStore(s => s.firebaseUser);
   const { unreadCount } = useNotifications();
   const { follows, unfollow } = useFollows();
   const { hideTabBar, showTabBar } = useUI();
@@ -274,21 +274,10 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                       />
                   </SurfaceCard>
 
-                  {/* Premium Community Stats Card */}
-                  <SurfaceCard style={[styles.premiumStatsCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderColor: alpha(currentTheme.colors.primary, 0.15) }]}>
-                      <View style={styles.premiumStatsHeader}>
-                          <View style={[styles.sparklesBg, { backgroundColor: alpha(currentTheme.colors.primary, 0.15) }]}>
-                              <Sparkles size={16} color={currentTheme.colors.primary} strokeWidth={2.5} />
-                          </View>
-                          <Text style={[styles.premiumStatsTitle, { color: currentTheme.colors.primary }]}>
-                              FresherFlow Plus
-                          </Text>
-                      </View>
-                      <Text style={[styles.premiumStatsValue, { color: currentTheme.colors.text }]}>
-                          {globalStats.downloads.toLocaleString()}+ developers downloaded the app
-                      </Text>
-                      <Text style={[styles.premiumStatsDesc, { color: currentTheme.colors.textMuted }]}>
-                          Active in private spaces: <Text style={{ color: currentTheme.colors.text, fontWeight: '900' }}>{globalStats.activeUsers.toLocaleString()}+ members</Text>
+                  {/* Simple Real User Count Card */}
+                  <SurfaceCard style={styles.simpleStatsCard}>
+                      <Text style={[styles.simpleStatsText, { color: currentTheme.colors.text }]}>
+                          <Text style={{ fontWeight: '900', color: currentTheme.colors.primary }}>{globalStats.downloads.toLocaleString()}</Text> users have joined FresherFlow
                       </Text>
                   </SurfaceCard>
 
@@ -529,45 +518,17 @@ const styles = StyleSheet.create({
         padding: 0,
         borderRadius: 16,
     },
-    premiumStatsCard: {
+    simpleStatsCard: {
         marginTop: 24,
         padding: 16,
         borderRadius: 16,
-        borderWidth: 1,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    premiumStatsHeader: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 8,
-        marginBottom: 10,
-    },
-    sparklesBg: {
-        width: 28,
-        height: 28,
-        borderRadius: 8,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    premiumStatsTitle: {
-        fontSize: mScale(12),
-        fontWeight: '900',
-        letterSpacing: 0.8,
-        textTransform: 'uppercase',
-    },
-    premiumStatsValue: {
+    simpleStatsText: {
         fontSize: mScale(13),
-        fontWeight: '800',
+        fontWeight: '700',
         textAlign: 'center',
-        marginBottom: 6,
-        letterSpacing: -0.2,
-    },
-    premiumStatsDesc: {
-        fontSize: mScale(11),
-        fontWeight: '600',
-        textAlign: 'center',
-        lineHeight: 16,
     },
     menuRow: {
         flexDirection: 'row',
