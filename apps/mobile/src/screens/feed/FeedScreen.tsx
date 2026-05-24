@@ -429,10 +429,11 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
       <View style={{ 
           backgroundColor: currentTheme.colors.background,
       }}>
-        <View style={{ paddingTop: insets.top + 10 }}>
+        <View style={{ paddingTop: insets.top + 4 }}>
             <PremiumHeader
                 title={isSearching ? "" : "FresherFlow"}
-                style={{ paddingBottom: SPACING.sm }}
+                subtitle={isSearching ? undefined : "Opportunities for You"}
+                style={{ paddingBottom: 4 }}
                 leftSlot={isSearching ? (
                     <View style={[styles.searchContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
                         <Search size={18} color={currentTheme.colors.textMuted} />
@@ -579,7 +580,7 @@ const styles = StyleSheet.create({
         gap: SPACING.lg,
     },
     feedTab: {
-        paddingVertical: SPACING.md,
+        paddingVertical: 8,
     },
     tabIndicator: {
         position: 'absolute',

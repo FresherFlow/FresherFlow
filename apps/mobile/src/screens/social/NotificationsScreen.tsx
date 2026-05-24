@@ -310,7 +310,7 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
 
     const handleCompleteProfileNudge = useCallback(() => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        navigation.navigate('EditPreferences');
+        navigation.navigate('CareerProfile');
     }, [navigation]);
 
     const handleRegister = useCallback(() => {

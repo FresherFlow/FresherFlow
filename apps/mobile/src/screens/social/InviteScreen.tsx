@@ -98,7 +98,7 @@ const InviteScreen: React.FC = () => {
 
     if (loading && !referralCode) {
         return (
-            <Screen>
+            <Screen safe={false}>
                 <View style={{ paddingTop: insets.top + 10 }}>
                     <PremiumHeader title="Invite" subtitle="Grow the Community" showBack />
                 </View>

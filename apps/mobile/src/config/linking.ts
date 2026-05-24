@@ -47,6 +47,32 @@ export const linking: LinkingOptions<RootStackParamList> = {
   },
   getStateFromPath(path, options) {
     let rewrittenPath = path;
+
+    // Parse query params for referral codes/IDs (e.g. ?ref=XYZ, ?referral=XYZ, ?referralId=XYZ, ?referralCode=XYZ)
+    if (rewrittenPath.includes('?')) {
+      try {
+        const queryStr = rewrittenPath.split('?')[1];
+        if (queryStr) {
+          const params = queryStr.split('&');
+          let foundCode: string | null = null;
+          for (const param of params) {
+            const [key, val] = param.split('=');
+            if (key === 'ref' || key === 'referral' || key === 'referralId' || key === 'referralCode') {
+              foundCode = val;
+              break;
+            }
+          }
+          if (foundCode) {
+            import('@/store/useAuthStore').then(({ useAuthStore }) => {
+              useAuthStore.getState().setReferralCode(foundCode.toUpperCase());
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('[Linking] Failed to parse query params for referral:', err);
+      }
+    }
+
     // Normalize share links
     if (rewrittenPath.startsWith('/jobs/')) {
       rewrittenPath = rewrittenPath.replace('/jobs/', '/opportunities/');
