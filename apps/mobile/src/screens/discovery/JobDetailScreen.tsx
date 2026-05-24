@@ -55,7 +55,7 @@ import { useToast } from '@/contexts/ToastContext';
 import { useAuthStore } from '@/store/useAuthStore';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { differenceInDays } from 'date-fns';
+import { differenceInCalendarDays } from 'date-fns';
 import * as StoreReview from 'expo-store-review';
 
 
@@ -433,7 +433,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                 {(() => {
                                   const postedAt = opportunity.postedAt ? new Date(opportunity.postedAt) : null;
                                   if (!postedAt || isNaN(postedAt.getTime())) return null;
-                                  const diff = Math.max(0, differenceInDays(new Date(), postedAt));
+                                  const diff = Math.max(0, differenceInCalendarDays(new Date(), postedAt));
                                   const label = diff === 0 ? 'Posted Today' : diff === 1 ? 'Posted 1d Ago' : `Posted ${diff}d Ago`;
                                   return (
                                     <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
@@ -916,7 +916,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     bottom: insets.bottom + 20,
                     width: fabAnim.interpolate({
                         inputRange: [0, 1],
-                        outputRange: [56, expiryInfo?.type === 'EXPIRED' ? SCREEN_WIDTH * 0.54 : SCREEN_WIDTH * 0.44]
+                        outputRange: [56, expiryInfo?.type === 'EXPIRED' ? 208 : 168]
                     }),
                     opacity: expiryInfo?.type === 'EXPIRED' ? 0.8 : 1
                 }
@@ -940,15 +940,13 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 }}
             >
                 <Animated.View style={{
-                    overflow: 'hidden',
-                    width: fabAnim.interpolate({
-                        inputRange: [0, 0.2, 1],
-                        outputRange: [0, 0, expiryInfo?.type === 'EXPIRED' ? 140 : 100]
-                    }),
-                    opacity: fabAnim.interpolate({
-                        inputRange: [0, 0.2, 1],
-                        outputRange: [0, 0, 1]
-                    }),
+                    position: 'absolute',
+                    left: 0,
+                    right: 38,
+                    height: 56,
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    opacity: fabAnim,
                 }}>
                     <Text style={[styles.applyFabText, { color: currentTheme.colors.background }]} numberOfLines={1}>
                         {expiryInfo?.type === 'EXPIRED' ? 'Opportunity Expired' : 'Apply Now'}
@@ -1262,11 +1260,7 @@ const styles = StyleSheet.create({
         zIndex: 1000,
     },
     applyFab: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start',
         height: 56,
-        paddingLeft: 20,
         borderRadius: 28,
         width: '100%',
     },

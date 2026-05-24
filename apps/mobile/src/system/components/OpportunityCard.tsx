@@ -40,7 +40,7 @@ const getTypeConfig = (type: OpportunityType, theme: AppTheme) => {
 };
 
 import { MotiView } from 'moti';
-import { differenceInDays } from 'date-fns';
+import { differenceInCalendarDays } from 'date-fns';
 import { useUIStore } from '@/store/useUIStore';
 
 export const OpportunityCard = memo(({
@@ -133,7 +133,7 @@ export const OpportunityCard = memo(({
                 {(() => {
                   const postedAt = opportunity.postedAt ? new Date(opportunity.postedAt) : null;
                   if (!postedAt || isNaN(postedAt.getTime())) return null;
-                  const diff = Math.max(0, differenceInDays(new Date(), postedAt));
+                  const diff = Math.max(0, differenceInCalendarDays(new Date(), postedAt));
                   const label = diff === 0 ? 'Posted Today' : diff === 1 ? 'Posted 1d Ago' : `Posted ${diff}d Ago`;
                   const isFresh = diff <= 1;
                   
