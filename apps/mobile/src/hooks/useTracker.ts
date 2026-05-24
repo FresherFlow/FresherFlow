@@ -1,204 +1,194 @@
-import { useCallback, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { actionsApi } from '@fresherflow/api-client';
-import { ActionType } from '@fresherflow/types';
-import { readTrackerCacheSync, saveTrackerCache } from '@/utils/offlineCache';
-import { enqueueOfflineActionTrack, enqueueOfflineActionRemove } from '@repo/frontend-core';
+import { useEffect, useState, useCallback } from 'react';
+import { ActionType, Opportunity } from '@fresherflow/types';
+import { readTrackerCacheSync, saveTrackerCache, readDetailCache } from '@/utils/offlineCache';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useFeedStore } from '@/store/useFeedStore';
+import { subscribeToFirebaseTracker, writeFirebaseTrackerItem, removeFirebaseTrackerItem } from '@/utils/firebaseTrackerDb';
 import * as Haptics from 'expo-haptics';
 
+export interface TrackerAction {
+    id: string;
+    actionType: ActionType;
+    createdAt: string;
+    opportunityId: string;
+    opportunity?: Opportunity;
+}
+
 export const useTracker = () => {
-    const queryClient = useQueryClient();
     const { user } = useAuthStore();
-    const [isManualRefreshing, setIsManualRefreshing] = useState(false);
+    const [items, setItems] = useState<TrackerAction[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [updating, setUpdating] = useState(false);
 
     const isAnonymous = !user || user.isAnonymous;
 
-    // Dynamic cache-first query matching
-    const {
-        data: items = [],
-        isLoading,
-        error,
-        refetch,
-    } = useQuery({
-        queryKey: ['tracker'],
-        queryFn: async () => {
-            if (isAnonymous) {
-                const cached = readTrackerCacheSync();
-                return cached?.items || [];
-            }
-            const response = await actionsApi.list() as { actions: unknown[] };
-            const actions = response.actions || [];
-            
-            // Persistence
-            void saveTrackerCache(actions);
-            
-            return actions;
-        },
-        initialData: () => {
-            const cached = readTrackerCacheSync();
-            return cached?.items || [];
-        },
-        staleTime: 1000 * 60 * 5, // 5 minutes cache validity
-    });
+    // Load initial local cache on mount
+    useEffect(() => {
+        const cached = readTrackerCacheSync();
+        if (cached?.items) {
+            setItems(cached.items as TrackerAction[]);
+            setLoading(false);
+        }
+    }, []);
 
-    const onRefresh = useCallback(async () => {
-        setIsManualRefreshing(true);
-        await refetch();
-        setIsManualRefreshing(false);
-    }, [refetch]);
+    // Firebase subscription
+    useEffect(() => {
+        if (isAnonymous || !user?.id) {
+            setLoading(false);
+            return;
+        }
+
+        setLoading(true);
+        const unsubscribe = subscribeToFirebaseTracker(user.id, async (trackerMap) => {
+            try {
+                const cachedOpportunities = useFeedStore.getState().cachedItems;
+                const mappedActions: TrackerAction[] = [];
+
+                for (const [opportunityId, trackerItem] of Object.entries(trackerMap)) {
+                    // Match against CDN feed list
+                    let opp = cachedOpportunities.find(o => o.id === opportunityId);
+                    if (!opp) {
+                        // Fallback: Try reading from detail cache
+                        opp = (await readDetailCache(opportunityId)) || undefined;
+                    }
+
+                    mappedActions.push({
+                        id: opportunityId,
+                        actionType: trackerItem.status,
+                        createdAt: new Date(trackerItem.updatedAt).toISOString(),
+                        opportunityId,
+                        opportunity: opp,
+                    });
+                }
+
+                // Sort by updatedAt desc
+                mappedActions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+                setItems(mappedActions);
+                void saveTrackerCache(mappedActions);
+                
+                // Keep useFeedStore behavioral data in sync!
+                void useFeedStore.getState().refreshBehavioralData();
+            } catch (err) {
+                console.warn('[useTracker] Subscription mapping failed:', err);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        return unsubscribe;
+    }, [user?.id, isAnonymous]);
 
     const isTracking = useCallback((opportunityId: string) => {
-        return items.some(item => {
-            const tItem = item as { opportunityId?: string; opportunity?: { id?: string } };
-            return tItem.opportunityId === opportunityId || tItem.opportunity?.id === opportunityId;
-        });
+        return items.some(item => item.opportunityId === opportunityId);
     }, [items]);
 
     const getStatus = useCallback((opportunityId: string): ActionType | null => {
-        const item = items.find(item => {
-            const tItem = item as { opportunityId?: string; opportunity?: { id?: string } };
-            return tItem.opportunityId === opportunityId || tItem.opportunity?.id === opportunityId;
-        }) as { actionType?: ActionType } | undefined;
+        const item = items.find(item => item.opportunityId === opportunityId);
         return item?.actionType || null;
     }, [items]);
 
-    // Optimistic mutation tracking
-    const trackMutation = useMutation({
-        mutationFn: ({ opportunityId, status }: { opportunityId: string, status: ActionType, opportunity?: import('@fresherflow/types').Opportunity }) => {
-            if (isAnonymous) return Promise.resolve(null);
-            return actionsApi.track(opportunityId, status);
-        },
-        onMutate: async ({ opportunityId, status, opportunity }) => {
-            await queryClient.cancelQueries({ queryKey: ['tracker'] });
-            const previousActions = queryClient.getQueryData<unknown[]>(['tracker']) || [];
-
-            const updatedActions = [...previousActions];
-            const index = updatedActions.findIndex(item => {
-                const tItem = item as { opportunityId?: string; opportunity?: { id?: string } };
-                return tItem.opportunityId === opportunityId || tItem.opportunity?.id === opportunityId;
-            });
-
-            if (index > -1) {
-                updatedActions[index] = {
-                    ...(updatedActions[index] as Record<string, unknown>),
-                    actionType: status,
-                };
-            } else {
-                updatedActions.unshift({
-                    id: `temp-${opportunityId}-${Date.now()}`,
-                    actionType: status,
-                    createdAt: new Date().toISOString(),
-                    opportunityId,
-                    opportunity: opportunity || undefined,
-                });
-            }
-
-            queryClient.setQueryData(['tracker'], updatedActions);
-            void saveTrackerCache(updatedActions);
-
-            return { previousActions };
-        },
-        onError: (err: unknown, variables, context) => {
-            const error = err as { name?: string; message?: string };
-            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
-            if (isOffline && user) {
-                console.log('[Tracker] Offline detected during track status. Enqueueing offline action track...', variables);
-                void enqueueOfflineActionTrack(variables.opportunityId, variables.status, user.id);
-                // Keep the optimistic update in the local cache!
-                return;
-            }
-
-            if (context?.previousActions) {
-                queryClient.setQueryData(['tracker'], context.previousActions);
-                void saveTrackerCache(context.previousActions);
-            }
-        },
-        onSettled: (data, err) => {
-            const error = err as { name?: string; message?: string } | null;
-            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
-            if (!isOffline) {
-                void queryClient.invalidateQueries({ queryKey: ['tracker'] });
-            }
-        }
-    });
-
-    const removeMutation = useMutation({
-        mutationFn: (opportunityId: string) => {
-            if (isAnonymous) return Promise.resolve(null);
-            return actionsApi.remove(opportunityId);
-        },
-        onMutate: async (opportunityId) => {
-            await queryClient.cancelQueries({ queryKey: ['tracker'] });
-            const previousActions = queryClient.getQueryData<unknown[]>(['tracker']) || [];
-
-            const updatedActions = previousActions.filter(item => {
-                const tItem = item as { opportunityId?: string; opportunity?: { id?: string } };
-                return tItem.opportunityId !== opportunityId && tItem.opportunity?.id !== opportunityId;
-            });
-
-            queryClient.setQueryData(['tracker'], updatedActions);
-            void saveTrackerCache(updatedActions);
-
-            return { previousActions };
-        },
-        onError: (err: unknown, opportunityId, context) => {
-            const error = err as { name?: string; message?: string };
-            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
-            if (isOffline && user) {
-                console.log('[Tracker] Offline detected during remove action. Enqueueing offline action remove...', opportunityId);
-                void enqueueOfflineActionRemove(opportunityId, user.id);
-                // Keep the optimistic update in the local cache!
-                return;
-            }
-
-            if (context?.previousActions) {
-                queryClient.setQueryData(['tracker'], context.previousActions);
-                void saveTrackerCache(context.previousActions);
-            }
-        },
-        onSettled: (data, err) => {
-            const error = err as { name?: string; message?: string } | null;
-            const isOffline = error?.name === 'OfflineError' || error?.message?.toLowerCase().includes('offline') || error?.message?.toLowerCase().includes('network error');
-            if (!isOffline) {
-                void queryClient.invalidateQueries({ queryKey: ['tracker'] });
-            }
-        }
-    });
-
-    const toggleTracking = useCallback(async (opportunity: import('@fresherflow/types').Opportunity, status?: ActionType) => {
-        const currentlyTracking = isTracking(opportunity.id);
+    const toggleTracking = useCallback(async (opportunity: Opportunity, status?: ActionType) => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        
-        if (currentlyTracking && !status) {
-            await removeMutation.mutateAsync(opportunity.id);
-        } else {
-            const targetStatus = status || ActionType.PLANNED;
-            await trackMutation.mutateAsync({ opportunityId: opportunity.id, status: targetStatus, opportunity });
+        const currentlyTracking = isTracking(opportunity.id);
+
+        if (isAnonymous) {
+            // Support local offline-first demo state for guests
+            let updated: TrackerAction[];
+            if (currentlyTracking && !status) {
+                updated = items.filter(item => item.opportunityId !== opportunity.id);
+            } else {
+                const targetStatus = status || ActionType.PLANNED;
+                updated = [
+                    {
+                        id: opportunity.id,
+                        actionType: targetStatus,
+                        createdAt: new Date().toISOString(),
+                        opportunityId: opportunity.id,
+                        opportunity,
+                    },
+                    ...items.filter(item => item.opportunityId !== opportunity.id)
+                ];
+            }
+            setItems(updated);
+            void saveTrackerCache(updated);
+            void useFeedStore.getState().refreshBehavioralData();
+            return;
         }
-    }, [isTracking, trackMutation, removeMutation]);
+
+        if (!user?.id) return;
+
+        setUpdating(true);
+        try {
+            if (currentlyTracking && !status) {
+                await removeFirebaseTrackerItem(user.id, opportunity.id);
+            } else {
+                const targetStatus = status || ActionType.PLANNED;
+                await writeFirebaseTrackerItem(user.id, opportunity.id, targetStatus);
+            }
+        } finally {
+            setUpdating(false);
+        }
+    }, [isTracking, items, user?.id, isAnonymous]);
 
     const updateStatus = useCallback(async (opportunityId: string, status: ActionType) => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        await trackMutation.mutateAsync({ opportunityId, status });
-    }, [trackMutation]);
+        if (isAnonymous) {
+            const updated = items.map(item => 
+                item.opportunityId === opportunityId ? { ...item, actionType: status } : item
+            );
+            setItems(updated);
+            void saveTrackerCache(updated);
+            void useFeedStore.getState().refreshBehavioralData();
+            return;
+        }
+
+        if (!user?.id) return;
+
+        setUpdating(true);
+        try {
+            await writeFirebaseTrackerItem(user.id, opportunityId, status);
+        } finally {
+            setUpdating(false);
+        }
+    }, [items, user?.id, isAnonymous]);
 
     const removeAction = useCallback(async (opportunityId: string) => {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        await removeMutation.mutateAsync(opportunityId);
-    }, [removeMutation]);
+        if (isAnonymous) {
+            const updated = items.filter(item => item.opportunityId !== opportunityId);
+            setItems(updated);
+            void saveTrackerCache(updated);
+            void useFeedStore.getState().refreshBehavioralData();
+            return;
+        }
+
+        if (!user?.id) return;
+
+        setUpdating(true);
+        try {
+            await removeFirebaseTrackerItem(user.id, opportunityId);
+        } finally {
+            setUpdating(false);
+        }
+    }, [items, user?.id, isAnonymous]);
+
+    const onRefresh = useCallback(async () => {
+        return Promise.resolve();
+    }, []);
 
     return {
         actions: items,
-        loading: isLoading && items.length === 0,
-        refreshing: isManualRefreshing,
-        error: error ? (error as Error).message : null,
+        loading,
+        refreshing: false,
+        error: null,
         refresh: onRefresh,
         isTracking,
         getStatus,
         toggleTracking,
         updateStatus,
         removeAction,
-        updating: trackMutation.isPending || removeMutation.isPending,
+        updating,
     };
 };
+

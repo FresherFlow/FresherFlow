@@ -1,9 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import type { Opportunity, OpportunityListResponse } from '@fresherflow/types';
-import { readSavedJobs, saveSavedJobs, enqueueOfflineSaveToggle, subscribeOfflineActionQueue, getPendingOfflineActionsCount } from '../offline';
-
-import { savedApi } from '@fresherflow/api-client';
-import { secureStorage } from '../lib/storage';
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import type { Opportunity } from '@fresherflow/types';
+import { 
+  readSavedJobs, 
+  saveSavedJobs, 
+  readNativeFeedCache, 
+  readDetailCache, 
+  saveDetailCache 
+} from '../offline';
 
 interface SavedContextType {
   savedJobs: (Opportunity & { needsSync?: boolean })[];
@@ -15,34 +18,72 @@ interface SavedContextType {
 
 const SavedContext = createContext<SavedContextType | undefined>(undefined);
 
+let databaseInstance: any;
+
+function getDb(databaseUrl?: string) {
+  if (databaseInstance !== undefined) return databaseInstance;
+  if (!databaseUrl) return null;
+  try {
+    const firebase = require('@react-native-firebase/app').default;
+    require('@react-native-firebase/database');
+    databaseInstance = firebase.app().database(databaseUrl);
+  } catch (error) {
+    console.warn('[SavedProvider] Firebase Database unavailable:', error);
+    databaseInstance = null;
+  }
+  return databaseInstance;
+}
+
 export const SavedProvider: React.FC<{ 
   children: React.ReactNode,
   userId?: string,
-  anonSessionId?: string | null
-}> = ({ children, userId, anonSessionId }) => {
+  anonSessionId?: string | null,
+  firebaseDatabaseUrl?: string
+}> = ({ children, userId, anonSessionId, firebaseDatabaseUrl }) => {
   const [savedJobs, setSavedJobs] = useState<(Opportunity & { needsSync?: boolean })[]>([]);
   const [hasPendingSync, setHasPendingSync] = useState(false);
-  const ownerId = userId || anonSessionId || undefined;
-
-  const updatePendingCount = useCallback(async () => {
-    const count = await getPendingOfflineActionsCount(ownerId);
-    setHasPendingSync(count > 0);
-  }, [ownerId]);
 
   const syncSavedJobs = async () => {
+    if (!userId || !firebaseDatabaseUrl) return;
     try {
-      // GUARD: Don't sync if guest and no anon ID
-      const token = await secureStorage.getItemAsync('ff_auth_token_v1');
-      if (!token && !anonSessionId) return;
+      const db = getDb(firebaseDatabaseUrl);
+      if (!db) return;
 
-      const response = await savedApi.list() as OpportunityListResponse;
-      if (response && response.opportunities) {
-        setSavedJobs(response.opportunities);
-        void saveSavedJobs(response.opportunities);
-        await updatePendingCount();
+      const ref = db.ref(`/users/${userId}/savedJobs`);
+      const snapshot = await ref.once('value');
+      const savedIds = snapshot.val() as Record<string, boolean> | string[] | null;
+
+      let ids: string[] = [];
+      if (Array.isArray(savedIds)) {
+        ids = savedIds.filter(Boolean);
+      } else if (savedIds && typeof savedIds === 'object') {
+        ids = Object.keys(savedIds).filter(key => savedIds[key]);
       }
-    } catch {
-      // User likely logged out or offline, silently ignore
+
+      // Reconstruct full Opportunity objects from local feed cache/CDN JSON
+      const feedCache = await readNativeFeedCache();
+      const allJobs: Opportunity[] = feedCache?.items || [];
+
+      const updatedJobs: Opportunity[] = [];
+      for (const id of ids) {
+        const found = allJobs.find((j: Opportunity) => j.id === id);
+        if (found) {
+          updatedJobs.push(found);
+        } else {
+          const cachedDetail = await readDetailCache(id);
+          if (cachedDetail) {
+            updatedJobs.push(cachedDetail);
+          } else {
+            updatedJobs.push({ id, title: 'Saved Job', companyName: 'Details loading...', expiresAt: '' } as any);
+          }
+        }
+      }
+
+      setSavedJobs(updatedJobs);
+      void saveSavedJobs(updatedJobs);
+      setHasPendingSync(false);
+    } catch (err) {
+      console.warn('[Saved] Firebase sync failed:', err);
     }
   };
 
@@ -50,16 +91,10 @@ export const SavedProvider: React.FC<{
     const bootstrap = async () => {
       const cached = await readSavedJobs();
       setSavedJobs(cached);
-      await updatePendingCount();
-      // Attempt backend sync in background
       void syncSavedJobs();
     };
     void bootstrap();
-
-    return subscribeOfflineActionQueue(() => {
-      void updatePendingCount();
-    });
-  }, [updatePendingCount]);
+  }, [userId, firebaseDatabaseUrl]);
 
   const toggleSave = async (job: Opportunity) => {
     let updated: (Opportunity & { needsSync?: boolean })[];
@@ -69,28 +104,26 @@ export const SavedProvider: React.FC<{
       updated = savedJobs.filter((j) => j.id !== job.id);
     } else {
       updated = [...savedJobs, { ...job, needsSync: false }];
+      void saveDetailCache(job);
     }
 
-    // Optimistic update
     setSavedJobs(updated);
     void saveSavedJobs(updated);
 
-    // Backend sync
-    const token = await secureStorage.getItemAsync('ff_auth_token_v1');
-    if (!token && !anonSessionId) return;
+    if (!userId || !firebaseDatabaseUrl) return;
 
     try {
-        await savedApi.toggle(job.id, job);
+      const db = getDb(firebaseDatabaseUrl);
+      if (!db) return;
+
+      const ref = db.ref(`/users/${userId}/savedJobs`);
+      const map: Record<string, boolean> = {};
+      updated.forEach(j => {
+        map[j.id] = true;
+      });
+      await ref.set(map);
     } catch (err) {
-        // Silently fail and buffer if offline or cold start
-        console.log('[Saved] Backend sync failed, buffering locally...', err);
-        
-        // Mark as needsSync in local state if we just added it
-        if (!isAlreadySaved) {
-            setSavedJobs(prev => prev.map(j => j.id === job.id ? { ...j, needsSync: true } : j));
-        }
-        
-        await enqueueOfflineSaveToggle(job.id, ownerId);
+      console.warn('[Saved] Firebase save failed:', err);
     }
   };
 
@@ -111,4 +144,5 @@ export const useSaved = () => {
   }
   return context;
 };
+
 

@@ -88,6 +88,8 @@ configureClient(API_URL, secureStorage, {
 });
 
 
+import { getFirebaseDatabaseUrl } from './src/config/firebase';
+
 // Auth Bridge: Maps Zustand auth state to shared Provider props
 // This allows @repo/frontend-core providers to remain "pure" (prop-based) 
 // while the mobile app remains "Zustand-first".
@@ -97,7 +99,11 @@ const AuthBridge = ({ children }: { children: React.ReactNode }) => {
   // but we pass it as null to satisfy the prop requirement.
   return (
     <NotificationProvider userId={user?.id}>
-      <SavedProvider userId={user?.id} anonSessionId={null}>
+      <SavedProvider 
+        userId={user?.id} 
+        anonSessionId={null} 
+        firebaseDatabaseUrl={getFirebaseDatabaseUrl()}
+      >
         {/* @ts-expect-error - ReactNode version mismatch in monorepo */}
         {children}
       </SavedProvider>
