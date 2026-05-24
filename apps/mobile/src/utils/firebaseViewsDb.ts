@@ -7,34 +7,27 @@ type DatabaseInstance = {
   ref: (path: string) => AnyRef;
 };
 
-type DatabaseModule = {
-  default?: (databaseUrl?: string) => DatabaseInstance;
-  // ServerValue is a static on the module export, not the instance
-  ServerValue?: { increment: (n: number) => unknown };
-};
-
-let databaseModule: DatabaseModule | null | undefined;
-
-function loadDatabaseModule(): DatabaseModule | null {
-  if (databaseModule !== undefined) return databaseModule;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    databaseModule = require('@react-native-firebase/database') as DatabaseModule;
-  } catch (error) {
-    console.warn('[firebaseViewsDb] Firebase Database unavailable:', error);
-    databaseModule = null;
-  }
-  return databaseModule;
-}
+let databaseInstance: any;
+let serverValue: any;
 
 function getDb(): DatabaseInstance | null {
-  return loadDatabaseModule()?.default?.(getFirebaseDatabaseUrl()) ?? null;
+  if (databaseInstance !== undefined) return databaseInstance;
+  try {
+    const firebase = require('@react-native-firebase/app').default;
+    const dbModule = require('@react-native-firebase/database');
+    serverValue = dbModule.ServerValue || dbModule.default?.ServerValue;
+    databaseInstance = firebase.app().database(getFirebaseDatabaseUrl());
+  } catch (error) {
+    console.warn('[firebaseViewsDb] Firebase Database unavailable:', error);
+    databaseInstance = null;
+    serverValue = null;
+  }
+  return databaseInstance;
 }
 
 function getIncrement(n: number): unknown {
-  // ServerValue is on the module, not the instance
-  const mod = loadDatabaseModule();
-  return mod?.ServerValue?.increment(n) ?? n;
+  getDb(); // Ensure database and serverValue are loaded
+  return serverValue?.increment(n) ?? n;
 }
 
 /**

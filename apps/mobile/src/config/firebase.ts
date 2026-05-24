@@ -55,6 +55,14 @@ export const getFirebaseDatabaseUrl = (): string => {
   return 'https://fresherflow-dev-staging-default-rtdb.asia-southeast1.firebasedatabase.app';
 };
 
+export const getFirebaseAuthDomain = (): string => {
+  const appEnv = Constants.expoConfig?.extra?.appEnv || 'development';
+  if (appEnv === 'production') {
+    return 'fresherflow-3604b.firebaseapp.com';
+  }
+  return 'fresherflow-dev-staging.firebaseapp.com';
+};
+
 export const initializeAuth = () => {
   GoogleSignin.configure({
     webClientId: getGoogleWebClientId(),

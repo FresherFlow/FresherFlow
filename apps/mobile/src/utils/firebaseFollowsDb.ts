@@ -10,35 +10,23 @@ export interface FirebaseFollowsRecord {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type AnyRef = any;
 
-type DatabaseModule = {
-  default?: (databaseUrl?: string) => {
-    ref: (path: string) => {
-      once: (event: 'value') => Promise<{ val: () => FirebaseFollowsRecord | null }>;
-      set: (value: FirebaseFollowsRecord) => Promise<void>;
-      update: (value: Partial<FirebaseFollowsRecord>) => Promise<void>;
-      on: (event: 'value', callback: (snapshot: { val: () => FirebaseFollowsRecord | null }) => void) => void;
-      off: (event: 'value') => void;
-    };
-  };
-};
+let databaseInstance: any;
 
-let databaseModule: DatabaseModule | null | undefined;
-
-function loadDatabaseModule(): DatabaseModule | null {
-  if (databaseModule !== undefined) return databaseModule;
+function getDb() {
+  if (databaseInstance !== undefined) return databaseInstance;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    databaseModule = require('@react-native-firebase/database') as DatabaseModule;
+    const firebase = require('@react-native-firebase/app').default;
+    require('@react-native-firebase/database');
+    databaseInstance = firebase.app().database(getFirebaseDatabaseUrl());
   } catch (error) {
     console.warn('[firebaseFollowsDb] Firebase Database unavailable:', error);
-    databaseModule = null;
+    databaseInstance = null;
   }
-  return databaseModule;
+  return databaseInstance;
 }
 
 function followsRef(userId: string) {
-  const database = loadDatabaseModule()?.default?.(getFirebaseDatabaseUrl());
-  return database?.ref(`/users/${userId}/follows`);
+  return getDb()?.ref(`/users/${userId}/follows`);
 }
 
 /**
@@ -112,7 +100,7 @@ export function subscribeToFirebaseFollows(
   }, 5000);
 
   try {
-    ref.on('value', (snapshot) => {
+    ref.on('value', (snapshot: any) => {
       if (!settled) {
         settled = true;
         clearTimeout(timeout);

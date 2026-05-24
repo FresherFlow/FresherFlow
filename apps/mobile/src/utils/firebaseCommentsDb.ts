@@ -15,31 +15,19 @@ type FirebaseComment = {
 
 type CommentsSnapshotValue = Record<string, FirebaseComment>;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type AnyRef = any;
-
-type DatabaseModule = {
-  default?: (databaseUrl?: string) => {
-    ref: (path: string) => AnyRef;
-  };
-};
-
-let databaseModule: DatabaseModule | null | undefined;
-
-function loadDatabaseModule(): DatabaseModule | null {
-  if (databaseModule !== undefined) return databaseModule;
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    databaseModule = require('@react-native-firebase/database') as DatabaseModule;
-  } catch (error) {
-    console.warn('[firebaseCommentsDb] Firebase Database unavailable:', error);
-    databaseModule = null;
-  }
-  return databaseModule;
-}
+let databaseInstance: any;
 
 function getDb() {
-  return loadDatabaseModule()?.default?.(getFirebaseDatabaseUrl()) ?? null;
+  if (databaseInstance !== undefined) return databaseInstance;
+  try {
+    const firebase = require('@react-native-firebase/app').default;
+    require('@react-native-firebase/database');
+    databaseInstance = firebase.app().database(getFirebaseDatabaseUrl());
+  } catch (error) {
+    console.warn('[firebaseCommentsDb] Firebase Database unavailable:', error);
+    databaseInstance = null;
+  }
+  return databaseInstance;
 }
 
 /**
@@ -130,7 +118,7 @@ export function subscribeToFirebaseComments(
   try {
     const ref = database.ref(`/comments/${jobId}`);
 
-    ref.on('value', (snapshot: AnyRef) => {
+    ref.on('value', (snapshot: any) => {
       if (!settled) {
         settled = true;
         clearTimeout(timeout);

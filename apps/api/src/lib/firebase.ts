@@ -21,8 +21,10 @@ if (!admin.apps.length) {
             logger.error('Firebase Admin initialization failed:', error);
         }
     } else {
-        // Explicit fallback for local development
-        const pid = project_id || 'fresherflow-3604b';
+        const isStaging = process.env.RENDER_SERVICE_NAME?.includes('staging') || 
+                          process.env.RENDER_EXTERNAL_URL?.includes('staging') ||
+                          process.env.NODE_ENV === 'staging';
+        const pid = project_id || (isStaging ? 'fresherflow-dev-staging' : 'fresherflow-3604b');
         if (!process.env.GCLOUD_PROJECT) process.env.GCLOUD_PROJECT = pid;
         try {
             admin.initializeApp({

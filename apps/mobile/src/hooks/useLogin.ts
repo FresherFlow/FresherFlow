@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNotifications, storage } from '@repo/frontend-core';
 import { z } from 'zod';
-import { auth, createAppleCredential, createGoogleCredential } from '@/config/firebase';
+import { auth, createAppleCredential, createGoogleCredential, getFirebaseAuthDomain } from '@/config/firebase';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -53,7 +53,7 @@ export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: s
             const trimmedEmail = data.email.trim();
 
             const actionCodeSettings = {
-                url: 'https://fresherflow-3604b.firebaseapp.com/__/auth/links',
+                url: `https://${getFirebaseAuthDomain()}/__/auth/links`,
                 handleCodeInApp: true,
                 android: {
                     packageName: 'in.fresherflow.app',

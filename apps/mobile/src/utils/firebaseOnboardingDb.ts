@@ -9,32 +9,23 @@ export interface FirebaseOnboardingRecord {
   updatedAt?: number;
 }
 
-type DatabaseModule = {
-  default?: (databaseUrl?: string) => {
-    ref: (path: string) => {
-      once: (event: 'value') => Promise<{ val: () => FirebaseOnboardingRecord | null }>;
-      update: (value: FirebaseOnboardingRecord) => Promise<void>;
-    };
-  };
-};
+let databaseInstance: any;
 
-let databaseModule: DatabaseModule | null | undefined;
-
-function loadDatabaseModule(): DatabaseModule | null {
-  if (databaseModule !== undefined) return databaseModule;
+function getDb() {
+  if (databaseInstance !== undefined) return databaseInstance;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    databaseModule = require('@react-native-firebase/database') as DatabaseModule;
+    const firebase = require('@react-native-firebase/app').default;
+    require('@react-native-firebase/database');
+    databaseInstance = firebase.app().database(getFirebaseDatabaseUrl());
   } catch (error) {
     console.warn('[firebaseOnboardingDb] Firebase Database unavailable:', error);
-    databaseModule = null;
+    databaseInstance = null;
   }
-  return databaseModule;
+  return databaseInstance;
 }
 
 function onboardingRef(userId: string) {
-  const database = loadDatabaseModule()?.default?.(getFirebaseDatabaseUrl());
-  return database?.ref(`/users/${userId}/onboarding`);
+  return getDb()?.ref(`/users/${userId}/onboarding`);
 }
 
 export async function readFirebaseOnboardingRecord(
