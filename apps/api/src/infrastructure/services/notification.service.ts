@@ -213,7 +213,8 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
         const followedTags = (user.follows as UserFollow[] || []).filter((f: UserFollow) => f.type === 'TAG').map((f: UserFollow) => f.value);
         const followedContributors = (user.follows as UserFollow[] || []).filter((f: UserFollow) => f.type === 'CONTRIBUTOR').map((f: UserFollow) => f.value);
 
-        const followsCompany = followedCompanies.includes(opportunity.company);
+        const followsCompany = followedCompanies.includes(opportunity.company) ||
+            (opportunity.companyWebsite ? followedCompanies.includes(opportunity.companyWebsite) : false);
         const followsTag = opportunity.tags?.some(tag => followedTags.includes(tag));
         const followsContributor = followedContributors.includes(opportunity.postedByUserId);
 

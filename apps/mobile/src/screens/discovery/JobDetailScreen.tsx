@@ -113,8 +113,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
   const isFollowingCompany = useMemo(() => {
     if (!opportunity?.company) return false;
-    return isFollowing('COMPANY', opportunity.company);
-  }, [isFollowing, opportunity?.company]);
+    const companyKey = opportunity.companyWebsite || opportunity.company;
+    return isFollowing('COMPANY', companyKey);
+  }, [isFollowing, opportunity?.company, opportunity?.companyWebsite]);
 
   const { showSuccess } = useToast();
   const { showToast } = useNotifications();
@@ -455,18 +456,21 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     </TouchableOpacity>
                     {!isAnonymous && (
                         <TouchableOpacity
-                            onPress={() => isFollowing('COMPANY', opportunity.company) ? unfollow('COMPANY', opportunity.company) : follow('COMPANY', opportunity.company)}
+                            onPress={() => {
+                                const companyKey = opportunity.companyWebsite || opportunity.company;
+                                isFollowing('COMPANY', companyKey) ? unfollow('COMPANY', companyKey) : follow('COMPANY', companyKey);
+                            }}
                             style={[
                                 styles.followButton,
                                 {
-                                    backgroundColor: isFollowing('COMPANY', opportunity.company) ? 'transparent' : alpha(currentTheme.colors.primary, 0.1),
+                                    backgroundColor: isFollowing('COMPANY', opportunity.companyWebsite || opportunity.company) ? 'transparent' : alpha(currentTheme.colors.primary, 0.1),
                                     borderColor: currentTheme.colors.primary,
-                                    borderWidth: isFollowing('COMPANY', opportunity.company) ? 1 : 0
+                                    borderWidth: isFollowing('COMPANY', opportunity.companyWebsite || opportunity.company) ? 1 : 0
                                 }
                             ]}
                         >
                             <Text style={[styles.followButtonText, { color: currentTheme.colors.primary }]}>
-                                {isFollowing('COMPANY', opportunity.company) ? 'Following' : 'Follow'}
+                                {isFollowing('COMPANY', opportunity.companyWebsite || opportunity.company) ? 'Following' : 'Follow'}
                             </Text>
                         </TouchableOpacity>
                     )}
@@ -869,10 +873,11 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                         navigation.navigate('Auth');
                                         return;
                                     }
+                                    const companyKey = opportunity.companyWebsite || opportunity.company;
                                     try {
                                         await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                         if (isFollowingCompany) {
-                                            const success = await unfollow('COMPANY', opportunity.company);
+                                            const success = await unfollow('COMPANY', companyKey);
                                             if (success) {
                                                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                                 showToast(`Alerts disabled for ${opportunity.company}`, 'success');
@@ -880,7 +885,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                                 showToast('Failed to disable alerts', 'error');
                                             }
                                         } else {
-                                            const success = await follow('COMPANY', opportunity.company);
+                                            const success = await follow('COMPANY', companyKey);
                                             if (success) {
                                                 await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
                                                 showToast(`Alerts enabled for ${opportunity.company}!`, 'success');

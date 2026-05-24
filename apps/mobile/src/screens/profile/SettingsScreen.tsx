@@ -66,6 +66,16 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const { hideTabBar, showTabBar } = useUI();
   const isAnonymous = !user || user.isAnonymous;
 
+  // Converts stored companyKey (e.g. "https://wipro.com") to a readable label ("wipro")
+  const formatCompanyKey = (key: string): string => {
+    try {
+      const url = key.startsWith('http') ? new URL(key) : new URL(`https://${key}`);
+      return url.hostname.replace(/^www\./, '').split('.')[0] ?? key;
+    } catch {
+      return key; // plain name fallback
+    }
+  };
+
   // Track scroll position for hide/show tab bar
   const scrollOffset = useRef(0);
 
@@ -232,7 +242,7 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                         style={[styles.followChip, { backgroundColor: alpha(currentTheme.colors.text, 0.05), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
                                         onPress={() => unfollow('COMPANY', company)}
                                     >
-                                        <Text style={[styles.followChipText, { color: currentTheme.colors.text }]}>{company}</Text>
+                                        <Text style={[styles.followChipText, { color: currentTheme.colors.text }]}>{formatCompanyKey(company)}</Text>
                                     </TouchableOpacity>
                                 ))}
                                 {follows.tags.map(tag => (
