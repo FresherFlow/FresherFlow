@@ -49,6 +49,16 @@
               "scheme": "https",
               "host": "fresherflow.in",
               "pathPrefix": "/jobs"
+            },
+            {
+              "scheme": "https",
+              "host": "fresherflow.in",
+              "pathPrefix": "/r"
+            },
+            {
+              "scheme": "https",
+              "host": "fresherflow.in",
+              "pathPrefix": "/invite"
             }
           ],
           "category": [
@@ -74,7 +84,13 @@
       "expo-notifications",
       "@react-native-firebase/app",
       "@react-native-firebase/auth",
-      "@sentry/react-native",
+      [
+        "@sentry/react-native",
+        {
+          "organization": "fresherflow",
+          "project": "react-native"
+        }
+      ],
       "expo-web-browser"
     ],
     "updates": {

@@ -15,8 +15,11 @@ config.resolver.sourceExts = [
   'cjs',
 ];
 
-// 2. Watch all files within the monorepo
-config.watchFolders = [workspaceRoot];
+// 2. Watch all files within the monorepo that mobile depends on
+config.watchFolders = [
+  path.resolve(workspaceRoot, 'packages'),
+  path.resolve(workspaceRoot, 'node_modules'),
+];
 
 // 3. Resolve modules from both project and workspace node_modules
 config.resolver.nodeModulesPaths = [

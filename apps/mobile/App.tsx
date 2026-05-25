@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import * as Sentry from '@sentry/react-native';
 
 Sentry.init({
-  dsn: 'https://placeholder@sentry.io/placeholder', // TODO: Update with real DSN before prod
+  dsn: 'https://53f49256b2be0891128bcdc10aafd609@o4511002230849536.ingest.us.sentry.io/4511002238713856',
   enableNative: true,
   tracesSampleRate: 1.0,
 });
@@ -73,6 +73,7 @@ import { FirstRunGate } from './src/system/components/FirstRunGate';
 import { useAuthStore, AuthManager } from './src/store/useAuthStore';
 import { useAuthHandshake } from './src/hooks/useAuthHandshake';
 import { useEmailLinkSignIn } from './src/hooks/useEmailLinkSignIn';
+import { registerForPushNotificationsAsync } from './src/utils/pushNotifications';
 
 // Configure API client
 configureClient(API_URL, secureStorage, {
@@ -117,6 +118,7 @@ const AppContent = () => {
   useAuthHandshake(); // Background handshake logic
   useEmailLinkSignIn(); // Listen and complete email magic link logins
   const [isLoaded, setIsLoaded] = useState(false);
+  const pendingNavigationRef = React.useRef<{ screen: string; params: any } | null>(null);
 
   React.useEffect(() => {
     // Globally hydrate the master feed on app start
@@ -135,6 +137,7 @@ const AppContent = () => {
   React.useEffect(() => {
     // Initialize Google Sign-In & Firebase Auth listeners after native bridge boots
     void AuthManager.initialize();
+    void registerForPushNotificationsAsync();
   }, []);
 
   // OTA Updates: Listen for downloaded updates and prompt user to reload
@@ -194,19 +197,24 @@ const AppContent = () => {
     if (lastNotificationResponse) {
       const data = lastNotificationResponse.notification.request.content.data;
       
-      // Navigate based on structured data
-      if (navigationRef.isReady()) {
-          if (data?.jobId) {
-            void useNotificationStore.getState().markRead(data.jobId as string);
-            navigationRef.navigate('JobDetail', { opportunityId: data.jobId as string });
-          } else if (data?.userId) {
-            navigationRef.navigate('ContributorProfile', { userId: data.userId as string });
-          } else if (data?.screen) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            navigationRef.navigate(data.screen as any);
-          } else if (data?.url && typeof data.url === 'string') {
-            void openExternalURL(data.url, currentTheme.colors);
-          }
+      const navigateOrQueue = (screen: string, params: any) => {
+        if (navigationRef.isReady()) {
+          navigationRef.navigate(screen as any, params);
+        } else {
+          console.log('[Push] Navigation container not ready. Queueing cold-start deep link:', screen, params);
+          pendingNavigationRef.current = { screen, params };
+        }
+      };
+
+      if (data?.jobId) {
+        void useNotificationStore.getState().markRead(data.jobId as string);
+        navigateOrQueue('JobDetail', { opportunityId: data.jobId as string });
+      } else if (data?.userId) {
+        navigateOrQueue('ContributorProfile', { userId: data.userId as string });
+      } else if (data?.screen) {
+        navigateOrQueue(data.screen as string, data.params || {});
+      } else if (data?.url && typeof data.url === 'string') {
+        void openExternalURL(data.url, currentTheme.colors);
       }
     }
   }, [lastNotificationResponse, currentTheme]);
@@ -237,7 +245,19 @@ const AppContent = () => {
           navigationRef.navigate('Auth');
         }
       }}>
-        <NavigationContainer ref={navigationRef} linking={linking} theme={navTheme}>
+        <NavigationContainer 
+          ref={navigationRef} 
+          linking={linking} 
+          theme={navTheme}
+          onReady={() => {
+            if (pendingNavigationRef.current) {
+              const { screen, params } = pendingNavigationRef.current;
+              console.log('[Push] Navigation container is ready. Draining cold-start deep link queue:', screen, params);
+              navigationRef.navigate(screen as any, params);
+              pendingNavigationRef.current = null;
+            }
+          }}
+        >
           <AppNavigator />
         </NavigationContainer>
         <OfflineBanner />

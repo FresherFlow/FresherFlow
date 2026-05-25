@@ -35,8 +35,8 @@ module.exports = ({ config }) => {
     scheme: scheme,
     updates: {
       ...(config.updates || {}),
-      enabled: true,
-      checkAutomatically: "ON_LOAD",
+      enabled: !isDev,
+      checkAutomatically: isDev ? "NEVER" : "ON_LOAD",
       fallbackToCacheTimeout: 30000,
     },
     ios: {
