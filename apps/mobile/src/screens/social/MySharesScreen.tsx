@@ -13,7 +13,7 @@ import { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useMyShares } from '@/hooks/useMyShares';
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { ContributionPreviewCard } from '@/system/components/ContributionPreviewCard';
 import { saveDetailCache } from '@/utils/offlineCache';
 import { SPACING, mScale } from '@/system/constants/dimensions';
@@ -71,9 +71,8 @@ const MySharesScreen: React.FC<Props> = ({ navigation }) => {
     return (
         <Screen safe={false}>
             <View style={{ paddingTop: insets.top + 10 }}>
-                <PremiumHeader
+                <SecondaryHeader
                     title="My Shares"
-                    showBack
                     onBack={() => navigation.goBack()}
                 />
             </View>

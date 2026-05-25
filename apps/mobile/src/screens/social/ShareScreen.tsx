@@ -13,6 +13,8 @@ import {
   StatusBar,
   Animated,
   FlatList,
+  AppState,
+  AppStateStatus,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -58,7 +60,6 @@ const ShareScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const params = route.params as { url?: string } | undefined;
   const { user } = useAuthStore();
-  const [hasCheckedClipboard, setHasCheckedClipboard] = useState(false);
   const [shareResult, setShareResult] = useState<ShareResult | null>(null);
   const { shareStats, fetchStats } = useProfile();
 
@@ -109,20 +110,25 @@ const ShareScreen: React.FC = () => {
     }
   }, [user?.id, user?.isAnonymous]);
 
-  const hasCheckedInSession = useRef(false);
+  const lastSeenClipboardUrl = useRef<string | null>(null);
+  const appState = useRef(AppState.currentState);
 
   useFocusEffect(
     useCallback(() => {
         let isActive = true;
 
         const checkClip = async () => {
-            if (hasCheckedInSession.current || hasCheckedClipboard) return;
             try {
+                if (!Clipboard || typeof Clipboard.hasStringAsync !== 'function') return;
+                const hasString = await Clipboard.hasStringAsync();
+                if (!hasString) return;
+
                 const content = await Clipboard.getStringAsync();
-                hasCheckedInSession.current = true;
-                if (isActive && content && (content.startsWith('http://') || content.startsWith('https://'))) {
-                    setHasCheckedClipboard(true);
-                    setClipboardLink(content);
+                if (isActive && content && content !== lastSeenClipboardUrl.current) {
+                    lastSeenClipboardUrl.current = content;
+                    if (content.startsWith('http://') || content.startsWith('https://')) {
+                        setClipboardLink(content);
+                    }
                 }
             } catch (e) {
                 console.warn('Clipboard check failed', e);
@@ -132,10 +138,18 @@ const ShareScreen: React.FC = () => {
         void checkClip();
         void fetchRecentShares();
 
+        const subscription = AppState.addEventListener('change', (nextAppState: AppStateStatus) => {
+            if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+                void checkClip();
+            }
+            appState.current = nextAppState;
+        });
+
         return () => {
             isActive = false;
+            subscription.remove();
         };
-    }, [hasCheckedClipboard, fetchRecentShares])
+    }, [fetchRecentShares])
   );
 
   useEffect(() => {
@@ -348,15 +362,17 @@ const ShareScreen: React.FC = () => {
   return (
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
+      <View style={{ paddingTop: insets.top + 30 }}>
+          <PremiumHeader
+              title="Share"
+              rightSlot={<View style={{ width: 44, height: 44 }} />}
+          />
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
-        <View style={{ paddingTop: insets.top + 10 }}>
-            <PremiumHeader
-                title="Share"
-            />
-        </View>
 
         <View style={styles.tabSelector}>
             <ScrollView
@@ -493,7 +509,10 @@ const ShareScreen: React.FC = () => {
                                         <View style={[styles.clipboardPromo, { marginTop: 12, backgroundColor: alpha(currentTheme.colors.primary, 0.03), position: 'relative' }]}>
                                             <TouchableOpacity
                                                 activeOpacity={0.7}
-                                                onPress={() => setClipboardLink(null)}
+                                                onPress={() => {
+                                                    setClipboardLink(null);
+                                                    if (clipboardLink) lastSeenClipboardUrl.current = clipboardLink; // Mark as dismissed
+                                                }}
                                                 style={{ position: 'absolute', right: 12, top: 12, padding: 4, zIndex: 10 }}
                                             >
                                                 <X size={14} color={currentTheme.colors.textMuted} />
@@ -513,6 +532,7 @@ const ShareScreen: React.FC = () => {
                                                     onPress={() => {
                                                         setValue('url', clipboardLink || '');
                                                         void handleParse(clipboardLink || '');
+                                                        if (clipboardLink) lastSeenClipboardUrl.current = clipboardLink; // Mark as used
                                                         setClipboardLink(null);
                                                         showToast("Link used from clipboard");
                                                     }}

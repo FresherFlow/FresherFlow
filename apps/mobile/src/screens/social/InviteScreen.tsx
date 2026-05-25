@@ -19,7 +19,7 @@ import { alpha } from '@/theme';
 import { useReferrals, Badge } from '@/hooks/useReferrals';
 import { mScale, SPACING, RADIUS } from '../../system/constants/dimensions';
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 
 interface StatCardProps {
     label: string;
@@ -100,7 +100,7 @@ const InviteScreen: React.FC = () => {
         return (
             <Screen safe={false}>
                 <View style={{ paddingTop: insets.top + 10 }}>
-                    <PremiumHeader title="Invite" subtitle="Grow the Community" showBack />
+                    <SecondaryHeader title="Invite" subtitle="Grow the Community" />
                 </View>
                 <View style={styles.loadingContainer}>
                     <ActivityIndicator size="large" color={currentTheme.colors.primary} />
@@ -112,7 +112,7 @@ const InviteScreen: React.FC = () => {
     return (
         <Screen safe={false}>
             <View style={{ paddingTop: insets.top + 10 }}>
-                <PremiumHeader title="Invite" subtitle="Grow the Community" showBack />
+                <SecondaryHeader title="Invite" subtitle="Grow the Community" />
             </View>
             
             <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>

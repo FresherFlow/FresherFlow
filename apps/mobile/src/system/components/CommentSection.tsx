@@ -292,6 +292,7 @@ const styles = StyleSheet.create({
     commentText: {
         fontSize: mScale(14),
         lineHeight: 20,
+        marginLeft: 30,
     },
     loadingBox: {
         padding: 40,
