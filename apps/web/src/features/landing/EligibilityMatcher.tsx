@@ -2,9 +2,8 @@
 
 import React, { useState } from "react";
 import { Opportunity, EducationLevel } from "@fresherflow/types";
-import Link from "next/link";
-import { getOpportunityPath } from "@/lib/opportunityPath";
 import { EducationMetadata } from "@/lib/api/cdnFeed";
+import JobCard from "@/features/opportunities/components/JobCard";
 
 
 interface EligibilityMatcherProps {
@@ -20,30 +19,86 @@ export function EligibilityMatcher({
 }: EligibilityMatcherProps) {
   const currentYear = new Date().getFullYear();
   
-  // Extract and format dynamic degrees from CDN education.json
-  const degreesOptions = educationMetadata?.courses?.DEGREE
-    ? educationMetadata.courses.DEGREE.slice(0, 5).map(c => c.replace(" / B.E.", ""))
-    : ["B.Tech", "BCA", "BBA", "B.Sc", "M.Tech"];
+  // Extract unique degrees dynamically from opportunities or metadata
+  const degreesOptions = React.useMemo(() => {
+    const fromMetadata = educationMetadata?.courses?.DEGREE?.slice(0, 5).map(c => c.replace(" / B.E.", "")) || [];
+    if (fromMetadata.length > 0) return fromMetadata;
 
-  // Compute dynamic batches (current-1, current, current+1)
-  const gradYearsOptions = [currentYear - 1, currentYear, currentYear + 1];
+    if (opportunities && opportunities.length > 0) {
+      const degrees = new Set<string>();
+      opportunities.forEach(opp => {
+        opp.allowedCourses?.forEach(c => {
+          const cleaned = c.replace(" / B.E.", "").trim();
+          if (cleaned) degrees.add(cleaned);
+        });
+      });
+      const list = Array.from(degrees).slice(0, 5);
+      if (list.length > 0) return list;
+    }
+    return ["B.Tech", "BCA", "BBA", "B.Sc", "M.Tech"];
+  }, [educationMetadata, opportunities]);
 
-  // Extract dynamic skills from CDN skills.json, filtering generic soft skills
-  const skillsOptions = skillsMetadata && skillsMetadata.length > 0
-    ? skillsMetadata
-        .filter(s => !["communication skills", "problem solving", "analytical skills"].includes(s))
-        .slice(0, 5)
-        .map(s => s.charAt(0).toUpperCase() + s.slice(1))
-    : ["React", "Python", "SQL", "JavaScript", "Excel"];
+  // Compute dynamic graduation batches dynamically from opportunities or default
+  const gradYearsOptions = React.useMemo(() => {
+    if (opportunities && opportunities.length > 0) {
+      const years = new Set<number>();
+      opportunities.forEach(opp => {
+        opp.allowedPassoutYears?.forEach(y => {
+          if (y) years.add(y);
+        });
+      });
+      const list = Array.from(years).sort((a, b) => a - b).slice(0, 4);
+      if (list.length > 0) return list;
+    }
+    return [currentYear - 1, currentYear, currentYear + 1];
+  }, [opportunities, currentYear]);
 
-  const [selectedDegree, setSelectedDegree] = useState(degreesOptions[0] || "B.Tech");
-  const [selectedGradYear, setSelectedGradYear] = useState<number>(gradYearsOptions[1] || 2026);
-  const [selectedSkill, setSelectedSkill] = useState(skillsOptions[0] || "React");
+  // Stable, consistent skillsOptions sourced from metadata or high-end default list
+  const skillsOptions = React.useMemo(() => {
+    const fromMetadata = skillsMetadata && skillsMetadata.length > 0
+      ? skillsMetadata
+          .filter(s => !["communication skills", "problem solving", "analytical skills", "soft skills"].includes(s.toLowerCase()))
+          .slice(0, 5)
+          .map(s => s.charAt(0).toUpperCase() + s.slice(1))
+      : [];
+    if (fromMetadata.length > 0) return fromMetadata;
 
+    return ["React", "Python", "SQL", "JavaScript", "Excel"];
+  }, [skillsMetadata]);
+
+  // Selection Profile States
+  const [selectedDegree, setSelectedDegree] = useState("B.Tech");
+  const [selectedGradYear, setSelectedGradYear] = useState<number>(currentYear);
+  const [selectedSkill, setSelectedSkill] = useState("React");
+
+  // Keep selected states in sync when selection lists change
+  React.useEffect(() => {
+    if (degreesOptions.length > 0 && !degreesOptions.includes(selectedDegree)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedDegree(degreesOptions[0] || "B.Tech");
+    }
+  }, [degreesOptions, selectedDegree]);
+
+  React.useEffect(() => {
+    if (gradYearsOptions.length > 0 && !gradYearsOptions.includes(selectedGradYear)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedGradYear(gradYearsOptions[0] || currentYear);
+    }
+  }, [gradYearsOptions, selectedGradYear, currentYear]);
+
+  React.useEffect(() => {
+    if (skillsOptions.length > 0 && !skillsOptions.includes(selectedSkill)) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setSelectedSkill(skillsOptions[0] || "React");
+    }
+  }, [skillsOptions, selectedSkill]);
+
+  // expected level for degree mapping
   const expectedLevel = selectedDegree === "M.Tech" ? "PG" : "DEGREE";
-  
+
+  // Process all opportunities, score their match, and sort by highest matches
   const processedOpps = React.useMemo(() => {
-    if (!opportunities) return [];
+    if (!opportunities || opportunities.length === 0) return [];
     
     const mapped = opportunities.map(opp => {
       const degreeMatch =
@@ -73,24 +128,35 @@ export function EligibilityMatcher({
       return { opp, degreeMatch: !!degreeMatch, gradMatch: !!gradMatch, skillMatch: !!skillMatch, isFullyEligible, matchScore };
     });
 
-    return mapped.sort((a, b) => b.matchScore - a.matchScore);
+    // Show fully eligible first, then sort by match score descending
+    return mapped.sort((a, b) => {
+      if (a.isFullyEligible && !b.isFullyEligible) return -1;
+      if (!a.isFullyEligible && b.isFullyEligible) return 1;
+      return b.matchScore - a.matchScore;
+    });
   }, [opportunities, selectedDegree, selectedGradYear, selectedSkill, expectedLevel]);
+
+  const renderedOpps = React.useMemo(() => {
+    // Filter to show opportunities matching the hard academic criteria (degree & grad batch)
+    // based on left side settings
+    let filtered = processedOpps.filter(item => item.degreeMatch && item.gradMatch);
+    
+    // Fallback if no jobs match both hard criteria perfectly
+    if (filtered.length === 0) {
+      filtered = processedOpps.filter(item => item.degreeMatch || item.gradMatch);
+    }
+    
+    // Ultimate fallback to ensure a robust feed
+    if (filtered.length === 0) {
+      filtered = processedOpps;
+    }
+    
+    return filtered.slice(0, 20); // Render up to 20 compact scrollable jobs
+  }, [processedOpps]);
 
   return (
     <div className="w-full rounded-3xl border border-border bg-card/60 backdrop-blur-md p-5 sm:p-6 md:p-8 shadow-xl relative overflow-hidden">
-      <div className="max-w-5xl mx-auto space-y-8 relative z-10">
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full border border-border bg-muted/50 text-[10px] uppercase tracking-widest font-semibold text-muted-foreground">
-            Smart Fit Sandbox
-          </div>
-          <h3 className="text-xl md:text-2xl font-bold tracking-tight">
-            Stop Reading Long Job Specs - Fit Instantly
-          </h3>
-          <p className="text-sm text-muted-foreground max-w-xl mx-auto">
-            Traditional job boards make you scroll through long job descriptions just to check eligibility. Select your degree, batch, and skills to instantly see matching opportunities.
-          </p>
-        </div>
-
+      <div className="max-w-5xl mx-auto relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-[0.4fr_0.6fr] gap-8 items-start">
           {/* Controls Profile Cockpit */}
           <div className="rounded-2xl border border-border bg-muted/30 p-5 space-y-6">
@@ -165,106 +231,25 @@ export function EligibilityMatcher({
             </div>
           </div>
 
-          {/* Interactive Match Feed */}
-          <div className="space-y-4">
-            {processedOpps && processedOpps.length > 0 ? (
-              processedOpps.slice(0, 3).map(({ opp, degreeMatch, gradMatch, skillMatch, isFullyEligible }) => {
-                // Format salary beautifully from CDN fields
-                let salaryText = "";
-                if (opp.salaryRange) {
-                  salaryText = opp.salaryRange;
-                } else if (opp.salaryMin && opp.salaryMax) {
-                  const minL = Math.round(opp.salaryMin / 100000);
-                  const maxL = Math.round(opp.salaryMax / 100000);
-                  salaryText = `Rs. ${minL}L - Rs. ${maxL}L LPA`;
-                }
-
+          {/* Interactive Match Feed with a scrollable container */}
+          <div className="space-y-3 max-h-[440px] min-h-[440px] overflow-y-auto pr-2 flex flex-col justify-start scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+            {opportunities && opportunities.length > 0 ? (
+              renderedOpps.map(({ opp }) => {
                 return (
-                  <Link
+                  <JobCard
                     key={opp.id}
-                    href={getOpportunityPath(opp.type, opp.slug || opp.id)}
-                    className={`block premium-card relative overflow-hidden transition-all duration-300 border hover:border-primary/45 hover:shadow-md ${
-                      isFullyEligible
-                        ? "border-success/45 bg-success/[0.03] shadow-sm"
-                        : "border-border/80 opacity-65"
-                    }`}
-                  >
-                    <div className="space-y-3">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="space-y-1">
-                          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
-                            {opp.company}
-                          </span>
-                          <h4 className="text-sm md:text-base font-bold tracking-tight text-foreground">
-                            {opp.title}
-                          </h4>
-                        </div>
-                        {salaryText && (
-                          <span className="text-xs font-bold text-foreground bg-muted px-2.5 py-1 rounded-md border border-border/40 whitespace-nowrap">
-                            {salaryText}
-                          </span>
-                        )}
-                      </div>
-
-                      {/* Eligibility details */}
-                      <div className="flex flex-wrap gap-1.5">
-                        <span
-                          className={`badge text-[10px] font-bold tracking-tight uppercase ${
-                            degreeMatch ? "badge-success" : "bg-error/10 text-error"
-                          }`}
-                        >
-                          {selectedDegree} {degreeMatch ? "Eligible" : "Excluded"}
-                        </span>
-                        <span
-                          className={`badge text-[10px] font-bold tracking-tight uppercase ${
-                            gradMatch ? "badge-success" : "bg-error/10 text-error"
-                          }`}
-                        >
-                          {selectedGradYear} Batch {gradMatch ? "Eligible" : "Excluded"}
-                        </span>
-                        <span
-                          className={`badge text-[10px] font-bold tracking-tight uppercase ${
-                            skillMatch ? "badge-success" : "bg-error/10 text-error"
-                          }`}
-                        >
-                          {selectedSkill} {skillMatch ? "Eligible" : "Excluded"}
-                        </span>
-                      </div>
-
-                      {/* Fit Assessment Banner */}
-                      <div className="pt-3 border-t border-border/40 flex flex-col sm:flex-row sm:items-center gap-2 justify-between text-xs">
-                        {isFullyEligible ? (
-                          <div className="flex items-center gap-1.5 text-success font-bold tracking-tight">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                            Eligibility Confirmed
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 text-error font-semibold tracking-tight">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <span>
-                              Ineligible: {!degreeMatch && "Degree mismatch"}
-                              {degreeMatch && !gradMatch && "Batch mismatch"}
-                              {degreeMatch && gradMatch && !skillMatch && `Requires ${opp.requiredSkills?.join(", ") || "Skills match"}`}
-                            </span>
-                          </div>
-                        )}
-
-                        {isFullyEligible && (
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground group-hover:text-primary transition-colors">
-                            Apply Directly
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
+                    job={{
+                      ...opp,
+                      normalizedRole: opp.title,
+                      salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined,
+                    }}
+                    jobId={opp.id}
+                    isApplied={(opp.actions || []).some((a: { actionType: string }) => a.actionType === 'APPLIED')}
+                  />
                 );
               })
             ) : (
-              <div className="flex flex-col items-center justify-center p-8 text-center border border-dashed border-border rounded-2xl bg-muted/10 space-y-2">
+              <div className="flex flex-col items-center justify-center border border-dashed border-border rounded-2xl bg-muted/10 h-[440px] space-y-2">
                 <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
                 <span className="text-xs font-semibold text-muted-foreground">Loading live verified opportunities...</span>
               </div>

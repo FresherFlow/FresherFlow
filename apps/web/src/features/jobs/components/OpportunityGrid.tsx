@@ -1,7 +1,7 @@
 'use client';
 
 import { Opportunity } from '@fresherflow/types';
-import JobCard from './JobCard';
+import JobCard from '@/features/opportunities/components/JobCard';
 import { SkeletonJobCard } from '@/components/ui/Skeleton';
 import { ErrorMessage } from '@/components/ui/ErrorMessage';
 

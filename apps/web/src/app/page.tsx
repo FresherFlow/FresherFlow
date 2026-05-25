@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import { GovtLandingPage } from '@/features/landing/GovtLandingPage';
@@ -40,7 +41,7 @@ export const revalidate = 86400;
 
 
 export default async function LandingPage() {
-    // eslint-disable-next-line react-hooks/purity
+     
     const start = Date.now();
     
     // ZERO-BLOCKING STRATEGY:
@@ -79,42 +80,42 @@ export default async function LandingPage() {
         console.error('[Landing] Critical data resolution failure:', err);
     }
     
-    // eslint-disable-next-line react-hooks/purity
+     
     console.log(`[Landing] Page data resolved in ${Date.now() - start}ms (mode: ${mode}, count: ${liveCount}, opportunities: ${opportunities.length})`);
 
     if ((mode as string) === 'govt') {
         return <GovtLandingPage liveCount={liveCount} />;
     }
 
-    const countLabel = liveCount > 0 ? `${liveCount}+` : 'Daily';
     return (
         <>
             <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20 relative overflow-hidden">
                 <main className="flex-1 flex flex-col relative z-10">
 
                     {/* Hero Section */}
-                    <section className="relative pt-16 pb-20 md:pt-28 md:pb-28 px-6">
-                        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center">
+                    <section className="relative min-h-[calc(100vh-3.75rem)] md:min-h-[calc(100vh-4.75rem)] flex items-center justify-center pt-8 pb-12 md:py-16 px-6">
+                        <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-12 items-center w-full">
                             <div className="space-y-8">
-                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card/60 backdrop-blur shadow-sm">
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-border bg-card/65 backdrop-blur shadow-sm">
                                     <div className="w-2.5 h-2.5 rounded-full bg-success animate-pulse" />
                                     <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
                                         Every Job Verified Before You Apply
                                     </span>
                                 </div>
                                 <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight leading-[1.1] text-foreground">
-                                    Only Real Off-Campus Jobs & Internships.
+                                    Verified Off-Campus Jobs & Internships.
                                 </h1>
                                 <p className="text-base md:text-lg text-muted-foreground max-w-2xl leading-relaxed">
-                                    Freshers deserve better than fake listings and broken redirects. We manually verify internships, jobs, and walk-ins from official career pages for students and graduates across India.
+                                    Your first job search should be easy, clean, and honest. We find and check every job and internship directly from official company websites, giving you direct apply links without any spam, ads, or fake listings.
                                 </p>
                                 
-                                {/* Mobile-only Image (Option 2 placement: Main Text -> Image -> Buttons -> Cards) */}
-                                <div className="block lg:hidden relative rounded-2xl overflow-hidden shadow-md border border-border bg-card/40 backdrop-blur p-1.5 transition-all duration-300">
-                                    <img 
+                                <div className="block lg:hidden relative rounded-2xl overflow-hidden shadow-md border border-border bg-card/40 backdrop-blur p-1.5 transition-all duration-300 w-full h-[200px]">
+                                    <Image 
                                         alt="FresherFlow Interface Demonstration Mobile"
-                                        className="w-full h-[200px] object-cover rounded-xl grayscale-[0.05]"
+                                        className="object-cover rounded-xl grayscale-[0.05]"
                                         src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3tZJKvyI6tc96EkTndqlfFMEk4KqIdS2q0HKEDeAG3JExuSOyfTY_Df5ThvVRWlpwTfFeK5PPFA-gNhJvDGD80MbMvIMKAq_dvMc5ERdu9GFzynplovygxGg1Jwvaw89hUjtQa-ooCRA5soLZa3Cykp41b3AI7AgTKbPaTIupk13KMl_EGzcWZQfmIQ4UutVy278nvm7hKh4UHSgju6JmA0PDUT57o91tGcwYAao2dirY_UmttpRATIhoaTrbr_fDhalmVNfoAkv-" 
+                                        fill
+                                        priority
                                     />
                                 </div>
 
@@ -135,17 +136,19 @@ export default async function LandingPage() {
                                     ].map((stat) => (
                                         <div key={stat.label} className="rounded-xl sm:rounded-2xl border border-border bg-card/65 backdrop-blur p-2.5 sm:p-4.5 shadow-sm text-center flex flex-col justify-center">
                                           <div className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight text-foreground">{stat.value}</div>
-                                          <div className="text-[8px] sm:text-[10px] uppercase tracking-widest text-muted-foreground font-bold mt-0.5 sm:mt-1 truncate">{stat.label}</div>
+                                          <div className="text-[8px] sm:text-[10px] uppercase tracking-wide sm:tracking-widest text-muted-foreground font-bold mt-0.5 sm:mt-1 leading-tight text-center">{stat.label}</div>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="hidden lg:block relative rounded-3xl overflow-hidden shadow-xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20">
-                                <img 
+                            <div className="hidden lg:block relative rounded-3xl overflow-hidden shadow-xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20 w-full h-[480px]">
+                                <Image 
                                     alt="FresherFlow Interface Demonstration"
-                                    className="w-full h-[240px] sm:h-[320px] md:h-[480px] object-cover rounded-2xl grayscale-[0.05] transition-transform duration-700 group-hover:scale-[1.02]"
+                                    className="object-cover rounded-2xl grayscale-[0.05] transition-transform duration-700 group-hover:scale-[1.02]"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3tZJKvyI6tc96EkTndqlfFMEk4KqIdS2q0HKEDeAG3JExuSOyfTY_Df5ThvVRWlpwTfFeK5PPFA-gNhJvDGD80MbMvIMKAq_dvMc5ERdu9GFzynplovygxGg1Jwvaw89hUjtQa-ooCRA5soLZa3Cykp41b3AI7AgTKbPaTIupk13KMl_EGzcWZQfmIQ4UutVy278nvm7hKh4UHSgju6JmA0PDUT57o91tGcwYAao2dirY_UmttpRATIhoaTrbr_fDhalmVNfoAkv-" 
+                                    fill
+                                    priority
                                 />
                             </div>
                         </div>
@@ -155,7 +158,7 @@ export default async function LandingPage() {
 
 
                     {/* Pillar 2: Smart Fit Dynamic Sandbox */}
-                    <section className="hidden md:block py-14 md:py-20 px-6 border-t border-border/40">
+                    <section className="hidden md:block py-10 md:py-14 px-6 border-t border-border/40">
                         <div className="max-w-6xl mx-auto space-y-10">
                             <div className="max-w-2xl mx-auto text-center space-y-3">
                                 <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
@@ -174,7 +177,7 @@ export default async function LandingPage() {
                     </section>
 
                     {/* Pillar 3: Trust ledger */}
-                    <section className="py-14 md:py-20 px-6 border-t border-border/40 bg-muted/10">
+                    <section className="py-10 md:py-14 px-6 border-t border-border/40 bg-muted/10">
                         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[0.45fr_1fr] gap-10 items-start">
                             <div className="space-y-4">
                                 <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
@@ -201,7 +204,7 @@ export default async function LandingPage() {
                     </section>
 
                     {/* Curated Story-Driven Collections */}
-                    <section className="py-14 md:py-20 px-6 border-t border-border/40">
+                    <section className="py-10 md:py-14 px-6 border-t border-border/40">
                         <div className="max-w-6xl mx-auto space-y-10">
                             <div className="text-center space-y-3 max-w-2xl mx-auto">
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
@@ -242,7 +245,7 @@ export default async function LandingPage() {
                     </section>
 
                     {/* Final Premium CTA Card */}
-                    <section className="py-20 px-6 border-t border-border/40 bg-muted/5">
+                    <section className="py-14 px-6 border-t border-border/40 bg-muted/5">
                         <div className="max-w-5xl mx-auto text-center space-y-8 rounded-3xl border border-border bg-card/60 backdrop-blur-md p-10 md:p-14 shadow-xl relative overflow-hidden">
                             <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight">
                                 Stop searching. Start applying.

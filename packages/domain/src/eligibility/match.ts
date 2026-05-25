@@ -134,8 +134,9 @@ function getPreferenceMatchScore(opportunity: Opportunity, profile: Profile): nu
     ) || opportunity.workMode === 'REMOTE' || opportunity.workMode === 'HYBRID';
 
     const typeMatch = (profile.interestedIn || []).includes(opportunity.type);
+    const workModeMatch = opportunity.workMode ? (profile.workModes || []).includes(opportunity.workMode) : false;
 
-    return (locationMatch ? 0.5 : 0) + (typeMatch ? 0.5 : 0);
+    return (locationMatch ? 0.333 : 0) + (typeMatch ? 0.333 : 0) + (workModeMatch ? 0.333 : 0);
 }
 
 function computeRelevanceBreakdown(opportunity: Opportunity, profile: Profile): RelevanceBreakdown {
@@ -144,12 +145,12 @@ function computeRelevanceBreakdown(opportunity: Opportunity, profile: Profile): 
 
     return {
         experience: 0,
-        skills: Math.round(skillsScore * 90),
+        skills: Math.round(skillsScore * 85),
         passoutYear: 0,
         educationLevel: 0,
         course: 0,
         specialization: 0,
-        location: Math.round(prefsScore * 10),
+        location: Math.round(prefsScore * 15),
         workMode: 0,
         freshness: 0,
         urgency: 0,
@@ -199,7 +200,7 @@ export function calculateOpportunityMatch(profile: Profile | null, opportunity: 
     const score = Math.max(0, Math.min(100, Math.round(Object.values(breakdown).reduce((acc, val) => acc + val, 0))));
     
     const skillsCount = (opportunity.requiredSkills || []).length;
-    const matchCount = skillsCount > 0 ? Math.round((breakdown.skills / 90) * skillsCount) : 0;
+    const matchCount = skillsCount > 0 ? Math.round((breakdown.skills / 85) * skillsCount) : 0;
     
     let reason = 'Eligible to apply';
     if (score >= 90) reason = 'Strong skills match';

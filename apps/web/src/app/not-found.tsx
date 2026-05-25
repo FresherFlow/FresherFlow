@@ -1,31 +1,8 @@
 import Link from 'next/link';
-import { LogoImage } from '@/components/ui/navbar/LogoImage';
 
 export default function NotFoundPage() {
     return (
         <div className="min-h-screen bg-background text-foreground">
-            <header className="border-b border-border/70 bg-background/95 backdrop-blur-md">
-                <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:h-20 md:px-6">
-                    <Link href="/" className="flex items-center gap-2.5">
-                        <LogoImage width={28} height={28} className="h-7 w-7 object-contain" />
-                        <span className="text-[17px] font-semibold tracking-[0.01em] text-foreground">
-                            FresherFlow
-                        </span>
-                    </Link>
-                    <div className="hidden items-center gap-2 md:flex">
-                        <Link href="/jobs" className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                            Jobs
-                        </Link>
-                        <Link href="/internships" className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                            Internships
-                        </Link>
-                        <Link href="/walk-ins" className="rounded-full px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground">
-                            Walk-ins
-                        </Link>
-                    </div>
-                </div>
-            </header>
-
             <main className="relative overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,hsl(var(--primary)/0.12),transparent_34%),radial-gradient(circle_at_bottom_right,hsl(var(--primary)/0.08),transparent_26%)]" />
                 <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-7xl flex-col justify-center px-4 py-16 md:min-h-[calc(100vh-5rem)] md:px-6">

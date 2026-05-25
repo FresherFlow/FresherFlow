@@ -1,3 +1,5 @@
+'use client';
+
 import { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
@@ -148,6 +150,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     const getPostedLabel = () => {
         const postedAt = job.postedAt ? new Date(job.postedAt) : null;
         if (!postedAt || Number.isNaN(postedAt.getTime())) return null;
+        // eslint-disable-next-line react-hooks/purity
         const diff = Date.now() - postedAt.getTime();
         const days = Math.max(0, Math.floor(diff / (24 * 60 * 60 * 1000)));
         if (days === 0) return 'Posted today';
@@ -158,6 +161,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     const isFreshlyPosted = () => {
         const postedAt = job.postedAt ? new Date(job.postedAt) : null;
         if (!postedAt || Number.isNaN(postedAt.getTime())) return false;
+        // eslint-disable-next-line react-hooks/purity
         const diff = Date.now() - postedAt.getTime();
         const days = Math.max(0, Math.floor(diff / (24 * 60 * 60 * 1000)));
         return days <= 1;

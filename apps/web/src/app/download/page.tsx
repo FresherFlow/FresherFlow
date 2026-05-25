@@ -60,23 +60,23 @@ export default function DownloadPage() {
                     </div>
 
                     {/* 4. Features list */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 order-4">
-                        <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card/40">
-                            <div className="p-1.5 bg-primary/10 rounded-lg">
-                                <BellIcon className="w-5 h-5 text-primary" />
+                    <div className="grid grid-cols-1 gap-4 order-4 pt-2 w-full">
+                        <div className="flex items-center gap-4 p-4 rounded-2xl border border-border/60 bg-card/65 backdrop-blur-md shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 w-full">
+                            <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
+                                <BellIcon className="w-5 h-5" />
                             </div>
-                            <div>
-                                <h3 className="font-semibold text-foreground text-sm">Instant Push Alerts</h3>
-                                <p className="text-sm text-muted-foreground mt-0.5">Get notified immediately when a walk-in drive or off-campus role matching your profile goes live.</p>
+                            <div className="min-w-0">
+                                <h3 className="font-bold text-foreground text-sm tracking-tight">Instant Push Alerts</h3>
+                                <p className="text-xs md:text-sm text-muted-foreground leading-relaxed mt-0.5">Get notified immediately when a matching walk-in drive or off-campus role goes live.</p>
                             </div>
                         </div>
-                        <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-card/40">
-                            <div className="p-1.5 bg-primary/10 rounded-lg">
-                                <ClockIcon className="w-5 h-5 text-primary" />
+                        <div className="flex items-center gap-4 p-4 rounded-2xl border border-border/60 bg-card/65 backdrop-blur-md shadow-sm transition-all duration-300 hover:border-primary/30 hover:shadow-md hover:-translate-y-0.5 w-full">
+                            <div className="p-2.5 bg-primary/10 text-primary rounded-xl shrink-0">
+                                <ClockIcon className="w-5 h-5" />
                             </div>
-                            <div>
-                                <h3 className="font-semibold text-foreground text-sm">Deadline Reminders</h3>
-                                <p className="text-sm text-muted-foreground mt-0.5">Track closing dates and receive alerts before applications shut down.</p>
+                            <div className="min-w-0">
+                                <h3 className="font-bold text-foreground text-sm tracking-tight">Deadline Reminders</h3>
+                                <p className="text-xs md:text-sm text-muted-foreground leading-relaxed mt-0.5">Track closing dates and receive alerts before applications shut down.</p>
                             </div>
                         </div>
                     </div>

@@ -17,6 +17,10 @@
   --color-accent: hsl(var(--accent));
   --color-accent-foreground: hsl(var(--accent-foreground));
   
+  --color-success: hsl(var(--success));
+  --color-error: hsl(var(--error));
+  --color-warning: hsl(var(--warning));
+  
   --font-sans: system-ui, sans-serif;
   
   --spacing-18: 4.5rem;
@@ -498,8 +502,8 @@
     box-shadow: 0 8px 20px -16px hsl(var(--primary) / 0.6);
   }
 
-  /* Dark badges use muted surface, not bright gray */
-  .dark .badge {
+  /* Dark badges fallback uses muted surface, except when specific styles like success/error/warning/primary are applied */
+  .dark .badge:not(.badge-success):not(.badge-error):not(.badge-warning):not(.badge-primary) {
     background-color: hsl(var(--secondary));
     color: hsl(var(--foreground));
   }
@@ -513,21 +517,31 @@
     font-size: 12px;
     font-weight: 600;
     line-height: 1;
+    border: 1px solid transparent;
   }
   
   .badge-primary {
-    background-color: hsl(var(--accent) / 0.12);
+    background-color: hsl(var(--accent) / 0.08);
     color: hsl(var(--accent));
+    border-color: hsl(var(--accent) / 0.18);
   }
   
   .badge-success {
-    background-color: hsl(var(--success) / 0.1);
+    background-color: hsl(var(--success) / 0.08);
     color: hsl(var(--success));
+    border-color: hsl(var(--success) / 0.18);
   }
   
   .badge-warning {
-    background-color: hsl(var(--warning) / 0.1);
+    background-color: hsl(var(--warning) / 0.08);
     color: hsl(var(--warning));
+    border-color: hsl(var(--warning) / 0.18);
+  }
+
+  .badge-error {
+    background-color: hsl(var(--error) / 0.08);
+    color: hsl(var(--error));
+    border-color: hsl(var(--error) / 0.18);
   }
 
   /* Text hierarchy utilities */

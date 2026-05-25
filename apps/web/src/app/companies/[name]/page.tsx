@@ -4,11 +4,11 @@ import { getCompanyDomain } from '@fresherflow/utils';
 import JobCard from '@/features/opportunities/components/JobCard';
 import { SkeletonJobCard } from '@/components/ui/Skeleton';
 import { ArrowLeftIcon, GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
-import Image from 'next/image';
 import Link from 'next/link';
+import CompanyLogo from '@/components/ui/CompanyLogo';
 
 export const revalidate = 3600;
-export const dynamicParams = false; // Throw 404 for unknown companies instantly
+export const dynamicParams = true; // Allow dynamic generation for newly added/unlisted jobs dynamically
 
 export async function generateStaticParams() {
     const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
@@ -16,19 +16,24 @@ export async function generateStaticParams() {
     
     if (!feed?.opportunities) return [];
     
-    // One page per unique company domain — handles all name variants ("Wipro", "Wipro Ltd", etc.)
-    const domains = new Set<string>();
+    // Support both direct company name routing and domain routing in static params
+    const names = new Set<string>();
     feed.opportunities.forEach(opp => {
+        if (opp.company) {
+            names.add(opp.company);
+            names.add(opp.company.toLowerCase().trim());
+        }
         const domain = getCompanyDomain({
             companyWebsite: opp.companyWebsite,
             applyLink: opp.applyLink,
             sourceLink: opp.sourceLink,
         });
-        if (domain) domains.add(domain);
-        else if (opp.company) domains.add(encodeURIComponent(opp.company)); // fallback for no-link jobs
+        if (domain) {
+            names.add(domain);
+        }
     });
     
-    return Array.from(domains).map(name => ({ name }));
+    return Array.from(names).map(name => ({ name }));
 }
 
 export default async function CompanyProfilePage({ params }: { params: Promise<{ name: string }> }) {
@@ -40,16 +45,28 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     
     const allOpportunities = feed?.opportunities || [];
 
-    // Match by domain first — groups "Wipro", "Wipro Ltd", "Wipro Pvt Ltd" under wipro.com
+    // Match by domain first, or fall back to company name matching to ensure the page always resolves correctly
     const companyJobs = allOpportunities.filter(opp => {
         const domain = getCompanyDomain({
             companyWebsite: opp.companyWebsite,
             applyLink: opp.applyLink,
             sourceLink: opp.sourceLink,
         });
-        if (domain) return domain === slug;
-        // Fallback: slug is an encoded company name (no-link job)
-        return opp.company?.toLowerCase() === slug.toLowerCase();
+        
+        const slugLower = slug.toLowerCase().trim();
+        
+        // 1. Match by domain
+        if (domain && domain.toLowerCase() === slugLower) return true;
+        
+        // 2. Match by company name directly
+        if (opp.company?.toLowerCase().trim() === slugLower) return true;
+        
+        // 3. Fallback: handle clean matches (e.g. slugified versions or without spaces)
+        const cleanSlug = slugLower.replace(/[^a-z0-9]/g, '');
+        const cleanOppName = opp.company?.toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (cleanSlug && cleanSlug === cleanOppName) return true;
+        
+        return false;
     });
 
     if (companyJobs.length === 0) {
@@ -76,36 +93,16 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
     return (
         <div className="min-h-screen bg-background pb-20">
-            <div className="sticky top-0 z-40 w-full bg-background/80 backdrop-blur-xl border-b border-border/50">
-                <div className="max-w-5xl mx-auto px-4 h-16 flex items-center gap-4">
-                    <Link
-                        href="/jobs"
-                        className="p-2 hover:bg-muted rounded-xl transition-colors"
-                    >
-                        <ArrowLeftIcon className="w-5 h-5" />
-                    </Link>
-                    <span className="font-bold truncate">{profile.name}</span>
-                </div>
-            </div>
-
             <main className="max-w-5xl mx-auto px-4 py-8 space-y-8">
                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-border/60">
                     <div className="flex items-start gap-5">
-                        <div className="w-20 h-20 md:w-24 md:h-24 rounded-3xl bg-card border border-border shadow-sm flex items-center justify-center overflow-hidden shrink-0">
-                            {profile.logo ? (
-                                <div className="relative w-2/3 h-2/3">
-                                    <Image
-                                        src={profile.logo}
-                                        alt={profile.name}
-                                        fill
-                                        className="object-contain"
-                                        unoptimized
-                                    />
-                                </div>
-                            ) : (
-                                <BriefcaseIcon className="w-1/2 h-1/2 text-muted-foreground/40" />
-                            )}
-                        </div>
+                        <CompanyLogo
+                            companyName={profile.name}
+                            companyWebsite={profile.website}
+                            companyLogoUrl={profile.logo}
+                            applyLink={firstJob.applyLink}
+                            className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem]"
+                        />
                         <div className="space-y-2 pt-1">
                             <h1 className="text-3xl md:text-4xl font-black tracking-tight text-foreground">
                                 {profile.name}
@@ -136,12 +133,17 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                         <h2 className="text-xl font-bold tracking-tight">Open Opportunities</h2>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         {companyJobs.map((job) => (
                             <JobCard
                                 key={job.id}
-                                job={job}
+                                job={{
+                                    ...job,
+                                    normalizedRole: job.title,
+                                    salary: (job.salaryMin !== undefined && job.salaryMax !== undefined) ? { min: job.salaryMin, max: job.salaryMax } : undefined,
+                                }}
                                 jobId={job.id}
+                                isApplied={(job.actions || []).some((a: any) => a.actionType === 'APPLIED')}
                             />
                         ))}
                     </div>
