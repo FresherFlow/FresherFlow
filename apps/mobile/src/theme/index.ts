@@ -42,6 +42,13 @@ export const theme = {
         // Static Translucent Tokens (Legacy compatibility)
         blackTranslucent: 'rgba(0, 0, 0, 0.05)',
         blackOverlay: 'rgba(0, 0, 0, 0.5)',
+        
+        // Extracted Inline Colors (per user rules)
+        shadowLight: 'rgba(0, 0, 0, 0.04)',
+        shadowMedium: 'rgba(0, 0, 0, 0.08)',
+        borderTranslucent: 'rgba(0, 0, 0, 0.05)',
+        surfaceDarkSubtle: 'rgba(0,0,0,0.02)',
+        whiteTranslucent20: 'rgba(255, 255, 255, 0.2)',
     },
     spacing: {
         xxs: 4,

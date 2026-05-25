@@ -11,6 +11,7 @@ import {
   Animated,
   Easing,
   Dimensions,
+  InteractionManager,
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -71,7 +72,7 @@ import { MatchScoreGauge } from '@/system/components/MatchScoreGauge';
 import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING } from '../../system/constants/dimensions';
 import { CommentSection } from '@/system/components/CommentSection';
-import { TrackerStatusSheet } from '@/system/components/TrackerStatusSheet';
+import { TrackerStatusSheet, TrackerStatusSheetRef } from '@/system/components/TrackerStatusSheet';
 import { PremiumActionSheet } from '@/system/components/PremiumActionSheet';
 import { ActionType } from '@fresherflow/types';
 import { SuccessModal } from '@/system/components/SuccessModal';
@@ -119,6 +120,15 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
   const { showSuccess } = useToast();
   const { showToast } = useNotifications();
+
+  // Defer heavy rendering until after navigation transition completes
+  const [isReady, setIsReady] = React.useState(false);
+  React.useEffect(() => {
+    const task = InteractionManager.runAfterInteractions(() => {
+      setIsReady(true);
+    });
+    return () => task.cancel();
+  }, []);
 
   const reportSheetRef = useRef<ReportActionSheetRef>(null);
   const scrollY = React.useRef(new Animated.Value(0)).current;
@@ -172,14 +182,15 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     extrapolate: 'clamp',
   });
 
-  // Entry animations
-  const fadeAnim1 = React.useRef(new Animated.Value(0)).current;
-  const fadeAnim2 = React.useRef(new Animated.Value(0)).current;
-  const fadeAnim3 = React.useRef(new Animated.Value(0)).current;
-  const fadeAnim4 = React.useRef(new Animated.Value(0)).current;
-  const fadeAnim5 = React.useRef(new Animated.Value(0)).current;
-  const fadeAnim6 = React.useRef(new Animated.Value(0)).current;
-  const fadeAnim7 = React.useRef(new Animated.Value(0)).current;
+  // Entry animations — skip them if data is already available (fast tap from feed)
+  const hasInitialData = !!(route.params?.opportunity ?? route.params?.job);
+  const fadeAnim1 = React.useRef(new Animated.Value(hasInitialData ? 1 : 0)).current;
+  const fadeAnim2 = React.useRef(new Animated.Value(hasInitialData ? 1 : 0)).current;
+  const fadeAnim3 = React.useRef(new Animated.Value(hasInitialData ? 1 : 0)).current;
+  const fadeAnim4 = React.useRef(new Animated.Value(hasInitialData ? 1 : 0)).current;
+  const fadeAnim5 = React.useRef(new Animated.Value(hasInitialData ? 1 : 0)).current;
+  const fadeAnim6 = React.useRef(new Animated.Value(hasInitialData ? 1 : 0)).current;
+  const fadeAnim7 = React.useRef(new Animated.Value(hasInitialData ? 1 : 0)).current;
 
   const handleReport = useCallback(() => {
     reportSheetRef.current?.present();
@@ -193,21 +204,24 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     if (!loading && opportunity && opportunityId && lastAnimatedId.current !== opportunityId) {
       void markJobAsSeen(opportunityId);
       lastAnimatedId.current = opportunityId;
-      Animated.stagger(100, [
-        Animated.spring(fadeAnim1, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
-        Animated.spring(fadeAnim2, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
-        Animated.spring(fadeAnim3, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
-        Animated.spring(fadeAnim4, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
-        Animated.spring(fadeAnim5, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
-        Animated.spring(fadeAnim6, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
-        Animated.spring(fadeAnim7, { toValue: 1, useNativeDriver: true, tension: 50, friction: 7 }),
-      ]).start();
+      // Only animate in if we started from 0 (no initial data was passed)
+      if (!hasInitialData) {
+        Animated.stagger(80, [
+          Animated.spring(fadeAnim1, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
+          Animated.spring(fadeAnim2, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
+          Animated.spring(fadeAnim3, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
+          Animated.spring(fadeAnim4, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
+          Animated.spring(fadeAnim5, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
+          Animated.spring(fadeAnim6, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
+          Animated.spring(fadeAnim7, { toValue: 1, useNativeDriver: true, tension: 60, friction: 8 }),
+        ]).start();
+      }
     }
   }, [loading, opportunityId]);
 
 
 
-    const [trackerSheetVisible, setTrackerSheetVisible] = React.useState(false);
+    const trackerSheetRef = useRef<TrackerStatusSheetRef>(null);
 
     const handleToggleSave = useCallback(() => {
         if (!opportunity) return;
@@ -219,7 +233,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
     const handleStatusSelect = useCallback(async (status: ActionType) => {
         if (!opportunity) return;
-        setTrackerSheetVisible(false);
+        trackerSheetRef.current?.dismiss();
         const isCurrentlyTracking = isTracking(opportunity.id);
         
         if (isCurrentlyTracking) {
@@ -233,23 +247,20 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
     const [successModalVisible, setSuccessModalVisible] = React.useState(false);
     const [menuVisible, setMenuVisible] = React.useState(false);
+    const [isScrolled, setIsScrolled] = React.useState(false);
+    const isScrolledRef = React.useRef(false);
 
     const openTrackerSheet = useCallback(() => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        setTrackerSheetVisible(true);
+        trackerSheetRef.current?.present();
     }, []);
 
     const expiryInfo = useMemo(() => {
         if (!opportunity?.expiresAt) return null;
         const expiryDate = new Date(opportunity.expiresAt);
-        const now = new Date();
         if (isNaN(expiryDate.getTime())) return null;
 
-        const expiryDateStart = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate());
-        const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        const diffTime = expiryDateStart.getTime() - nowStart.getTime();
-        const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+        const diffDays = differenceInCalendarDays(expiryDate, new Date());
 
         if (diffDays < 0) {
             return { label: 'expired', color: currentTheme.colors.error, type: 'EXPIRED' };
@@ -260,6 +271,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         if (diffDays === 1) {
             return { label: 'expires tomorrow', color: currentTheme.colors.warning, type: 'URGENT' };
         }
+        if (diffDays > 30) {
+            return null; // Don't show banner for far-future expiries (e.g. 350 days)
+        }
 
         return {
             label: `expires in ${diffDays} days`,
@@ -268,7 +282,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         };
     }, [opportunity?.expiresAt, currentTheme]);
 
-  if (loading) {
+  if (loading || !isReady) {
     return (
       <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
         <ActivityIndicator size="large" color={currentTheme.colors.primary} />
@@ -289,7 +303,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
       {/* Floating Header */}
-      <Animated.View style={[
+      <Animated.View 
+        pointerEvents={isScrolled ? 'auto' : 'none'}
+        style={[
         styles.stickyHeader,
         {
           opacity: headerOpacity,
@@ -308,16 +324,6 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             onBack={() => navigation.goBack()}
             rightSlot={
                 <View style={{ flexDirection: 'row', gap: mScale(4), alignItems: 'center' }}>
-                    <TouchableOpacity onPress={handleToggleSave} style={styles.iconBtn}>
-                        <Bookmark
-                            size={mScale(20)}
-                            color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text}
-                            fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'}
-                        />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={handleShare} style={styles.iconBtn}>
-                        <Share2 size={mScale(20)} color={currentTheme.colors.text} />
-                    </TouchableOpacity>
                     <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.iconBtn}>
                         <MoreVertical size={mScale(20)} color={currentTheme.colors.text} />
                     </TouchableOpacity>
@@ -351,7 +357,19 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
       <Animated.ScrollView
         onScroll={Animated.event(
             [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true }
+            { 
+              useNativeDriver: true,
+              listener: (event: any) => {
+                const y = event.nativeEvent.contentOffset.y;
+                if (y > 20 && !isScrolledRef.current) {
+                  isScrolledRef.current = true;
+                  setIsScrolled(true);
+                } else if (y <= 20 && isScrolledRef.current) {
+                  isScrolledRef.current = false;
+                  setIsScrolled(false);
+                }
+              }
+            }
         )}
         onScrollBeginDrag={shrinkFab}
         onMomentumScrollBegin={shrinkFab}
@@ -364,35 +382,19 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         <View style={styles.container}>
             {/* Hero Section */}
             <Animated.View style={[styles.hero, { opacity: heroOpacity, transform: [{ translateY: heroTranslateY }, { scale: heroScale }] }]}>
-                {expiryInfo && (
-                    <View style={[
-                        styles.statusBanner, 
-                        { backgroundColor: alpha(expiryInfo.color, 0.1), borderColor: alpha(expiryInfo.color, 0.2) }
-                    ]}>
-                        <Clock size={14} color={expiryInfo.color} />
-                        <Text style={[styles.statusBannerText, { color: expiryInfo.color }]}>
-                            {expiryInfo.type === 'EXPIRED' ? 'This opportunity is expired' : `This opportunity ${expiryInfo.label}`}
-                        </Text>
-                    </View>
-                )}
                 <LinearGradient
                     colors={[alpha(currentTheme.colors.primary, 0.15), 'transparent']}
                     style={styles.heroGradient}
                 />
                 <View style={styles.titleRow}>
-                    <Text style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}>{opportunity.title}</Text>
-                    {((opportunity.matchScore !== undefined && opportunity.matchScore > 0) || opportunity.isEligible === false) && (
-                        <View style={{ alignItems: 'center' }}>
-                            <MatchScoreGauge
-                                score={opportunity.matchScore ?? 0}
-                                isEligible={opportunity.isEligible !== false}
-                                size={mScale(56)}
-                            />
-                            <Text style={[styles.matchLabel, { color: currentTheme.colors.textMuted, marginTop: 4 }]}>
-                                {opportunity.isEligible === false ? 'Match' : 'Fit'}
-                            </Text>
-                        </View>
-                    )}
+                    <Text 
+                        style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}
+                        numberOfLines={2}
+                        adjustsFontSizeToFit
+                        minimumFontScale={0.7}
+                    >
+                        {opportunity.title}
+                    </Text>
                 </View>
                 {opportunity.matchReason && opportunity.matchScore !== undefined && opportunity.matchScore > 0 && (
                     <Text style={[
@@ -477,9 +479,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </View>
             </Animated.View>
 
-            {/* Momentum Bar */}
+            {/* Momentum Stats */}
             <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: fadeAnim1.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-                <SurfaceCard style={[styles.momentumBar, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
+                <SurfaceCard style={[styles.momentumBar, { backgroundColor: alpha(currentTheme.colors.text, 0.02), marginBottom: expiryInfo ? SPACING.sm : SPACING.xl }]}>
                 <View style={styles.momentumItem}>
                     <Eye size={16} color={currentTheme.colors.primary} />
                     <Text style={[styles.momentumText, { color: currentTheme.colors.text }]}>
@@ -493,15 +495,38 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         <Text style={{ color: currentTheme.colors.textMuted }}>Applied</Text> {opportunity.appliedCount || 0}
                     </Text>
                 </View>
-                <View style={[styles.momentumDivider, { backgroundColor: currentTheme.colors.border }]} />
-                <View style={styles.momentumItem}>
-                    <Trophy size={16} color={currentTheme.colors.warning} />
-                    <Text style={[styles.momentumText, { color: currentTheme.colors.text }]}>
-                        <Text style={{ color: currentTheme.colors.textMuted }}>Selected</Text> {opportunity.selectedCount || 0}
-                    </Text>
-                </View>
+                {((opportunity.matchScore !== undefined && opportunity.matchScore > 0) || opportunity.isEligible === false) && (
+                    <>
+                        <View style={[styles.momentumDivider, { backgroundColor: currentTheme.colors.border }]} />
+                        <View style={styles.momentumItem}>
+                            <MatchScoreGauge
+                                score={opportunity.matchScore ?? 0}
+                                isEligible={opportunity.isEligible !== false}
+                                size={22}
+                                strokeWidth={2.5}
+                            />
+                            <Text style={[styles.momentumText, { color: currentTheme.colors.text, marginLeft: 6 }]}>
+                                <Text style={{ color: currentTheme.colors.textMuted }}>
+                                    {opportunity.isEligible === false ? 'Match' : 'Fit'}
+                                </Text>{' '}
+                                {opportunity.isEligible === false ? 'Ineligible' : `${opportunity.matchScore ?? 0}%`}
+                            </Text>
+                        </View>
+                    </>
+                )}
                 </SurfaceCard>
             </Animated.View>
+
+            {expiryInfo && (
+                <Animated.View style={{ opacity: fadeAnim2, transform: [{ translateY: fadeAnim2.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: SPACING.xl, gap: 6 }}>
+                        <Clock size={14} color={expiryInfo.color} />
+                        <Text style={{ fontSize: mScale(13), fontWeight: '600', color: expiryInfo.color }}>
+                            {expiryInfo.type === 'EXPIRED' ? 'This opportunity is expired' : `This opportunity ${expiryInfo.label}`}
+                        </Text>
+                    </View>
+                </Animated.View>
+            )}
 
             {/* Quick Info Detail Card */}
             <Animated.View style={{ opacity: fadeAnim2, transform: [{ translateY: fadeAnim2.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
@@ -987,10 +1012,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
       />
 
       <TrackerStatusSheet
-          visible={trackerSheetVisible}
+          ref={trackerSheetRef}
           opportunity={opportunity}
           currentStatus={getStatus(opportunity.id)}
-          onClose={() => setTrackerSheetVisible(false)}
           onSelect={handleStatusSelect}
       />
 
@@ -1015,6 +1039,36 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             <LayoutDashboard size={mScale(20)} color={isTracking(opportunity.id) ? currentTheme.colors.success : currentTheme.colors.text} />
             <Text style={[styles.menuItemText, { color: currentTheme.colors.text }]}>
               {isTracking(opportunity.id) ? 'Track Application Status' : 'Add to Job Tracker'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.05) }]}
+            onPress={() => {
+              setMenuVisible(false);
+              setTimeout(() => {
+                handleToggleSave();
+              }, 250);
+            }}
+          >
+            <Bookmark size={mScale(20)} color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text} fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'} />
+            <Text style={[styles.menuItemText, { color: currentTheme.colors.text }]}>
+              {isSaved(opportunity.id) ? 'Remove from Saves' : 'Save Opportunity'}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.menuItem, { borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.05) }]}
+            onPress={() => {
+              setMenuVisible(false);
+              setTimeout(() => {
+                handleShare();
+              }, 250);
+            }}
+          >
+            <Share2 size={mScale(20)} color={currentTheme.colors.text} />
+            <Text style={[styles.menuItemText, { color: currentTheme.colors.text }]}>
+              Share Opportunity
             </Text>
           </TouchableOpacity>
 
@@ -1144,13 +1198,13 @@ const styles = StyleSheet.create({
     },
     companyArea: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         gap: 16,
         flex: 1,
     },
     companyAreaContainer: {
         flexDirection: 'row',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'space-between',
         marginTop: 20,
     },

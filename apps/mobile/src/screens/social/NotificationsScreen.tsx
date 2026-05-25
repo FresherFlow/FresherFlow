@@ -8,7 +8,7 @@ import { saveDetailCache } from '@/utils/offlineCache';
 import { LocalAlert, isProfileSetupComplete } from '@/utils/localNotifications';
 import { getLocalProfile } from '@/utils/localProfile';
 import { useTheme } from '@/contexts/ThemeContext';
-import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { Screen } from '@/system/layout/Layout';
 import { BellOff, ArrowRight, Trash2, Settings, Sparkles, Compass } from 'lucide-react-native';
 import { CompanyLogo } from '@repo/ui';
@@ -158,9 +158,9 @@ const AlertRow = memo(({
                 onPress={handlePress}
                 style={[
                     styles.alertRow,
-                    {
                         backgroundColor: currentTheme.colors.surface,
-                        borderColor: alpha(currentTheme.colors.border, 0.3)
+                        borderColor: alpha(currentTheme.colors.border, 0.3),
+                        shadowColor: currentTheme.colors.shadowLight,
                     }
                 ]}
             >
@@ -209,6 +209,16 @@ const AlertRow = memo(({
                                         {alert.opportunity.matchScore}% Match
                                     </Text>
                                 </View>
+                                {alert.kind === 'CLOSING_SOON' && (
+                                    <View style={[styles.pillBadge, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
+                                        <Text style={[styles.pillText, { color: currentTheme.colors.warning }]}>⏰ Closing Soon</Text>
+                                    </View>
+                                )}
+                                {alert.kind === 'FOLLOWED_COMPANY' && (
+                                    <View style={[styles.pillBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                                        <Text style={[styles.pillText, { color: currentTheme.colors.primary }]}>🏢 Following</Text>
+                                    </View>
+                                )}
                             </View>
                         )}
 
@@ -353,7 +363,7 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                     : "Newly detected jobs matching your profile credentials will appear here."}
             </Text>
             <TouchableOpacity
-                style={[styles.exploreBtn, { backgroundColor: currentTheme.colors.primary }]}
+                style={[styles.exploreBtn, { backgroundColor: currentTheme.colors.primary, shadowColor: currentTheme.colors.shadowMedium }]}
                 onPress={() => {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     if (isAnonymous) {
@@ -386,10 +396,9 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
     return (
         <Screen safe={false}>
             <View style={{ paddingTop: insets.top + 10 }}>
-                <PremiumHeader
+                <SecondaryHeader
                     title="Alerts"
                     subtitle="Newly Detected Jobs"
-                    showBack
                     rightSlot={
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                             <TouchableOpacity 
@@ -452,7 +461,6 @@ const styles = StyleSheet.create({
         borderRadius: RADIUS.lg,
         borderWidth: 1,
         elevation: 1,
-        shadowColor: 'rgba(0, 0, 0, 0.04)',
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 1,
         shadowRadius: 4,
@@ -535,7 +543,6 @@ const styles = StyleSheet.create({
         paddingVertical: 14,
         borderRadius: 16,
         elevation: 2,
-        shadowColor: 'rgba(0, 0, 0, 0.08)',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 1,
         shadowRadius: 8,
@@ -627,7 +634,6 @@ const styles = StyleSheet.create({
         marginTop: 8,
         paddingTop: 8,
         borderTopWidth: 0.5,
-        borderTopColor: 'rgba(0, 0, 0, 0.05)',
     },
     insightText: {
         fontSize: mScale(11),

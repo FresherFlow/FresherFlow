@@ -35,7 +35,7 @@ export const MatchScoreGauge: React.FC<MatchScoreGaugeProps> = ({
                     cx={size / 2}
                     cy={size / 2}
                     r={radius}
-                    stroke={currentTheme.colors.surfaceMuted}
+                    stroke={currentTheme.mode === 'dark' ? currentTheme.colors.whiteTranslucent20 : currentTheme.colors.surfaceMuted}
                     strokeWidth={strokeWidth}
                     fill="transparent"
                 />
@@ -52,11 +52,13 @@ export const MatchScoreGauge: React.FC<MatchScoreGaugeProps> = ({
                     fill="transparent"
                 />
             </Svg>
-            <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
-                <Text style={[styles.scoreText, { color: progressColor }]}>
-                    {score}%
-                </Text>
-            </View>
+            {size >= 35 && (
+                <View style={[StyleSheet.absoluteFillObject, { alignItems: 'center', justifyContent: 'center' }]}>
+                    <Text style={[styles.scoreText, { color: progressColor }]}>
+                        {score}%
+                    </Text>
+                </View>
+            )}
         </View>
     );
 };
