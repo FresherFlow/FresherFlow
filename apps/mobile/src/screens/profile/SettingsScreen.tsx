@@ -9,6 +9,7 @@ import {
   NativeSyntheticEvent,
   NativeScrollEvent,
   Image,
+  Share,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -23,6 +24,7 @@ import {
   History,
   Info,
   RefreshCw,
+  Share2,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -35,6 +37,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { subscribeToGlobalStats } from '@/utils/firebaseViewsDb';
+import { useIsFocused } from '@react-navigation/native';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -50,8 +53,16 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
 
-  const { user, completionPercentage } = useProfile();
+  const { user, completionPercentage, fetchProfile, fetchStats } = useProfile();
   const firebaseUser = useAuthStore(s => s.firebaseUser);
+  const isFocused = useIsFocused();
+
+  useEffect(() => {
+    if (isFocused && user && !user.isAnonymous) {
+      void fetchProfile();
+      void fetchStats();
+    }
+  }, [isFocused, user, fetchProfile, fetchStats]);
 
   const [globalStats, setGlobalStats] = useState({ downloads: 0, activeUsers: 0 });
 
@@ -98,35 +109,57 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     navigation.navigate(isAnonymous ? ('Auth' as never) : (screen as never));
   };
 
+  const handleShareApp = useCallback(async () => {
+    try {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      await Share.share({
+        message: `Hey! Check out FresherFlow — the ultimate app to track, discover, and apply for premium fresher opportunities, internships, and remote jobs! 🚀\n\nDownload it here: https://fresherflow.in/download`,
+      });
+    } catch (error) {
+      console.error('Failed to share app', error);
+    }
+  }, []);
+
   return (
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-      <View style={{ paddingTop: insets.top + 10 }}>
-          <PremiumHeader
-              title="Settings"
-              subtitle="Manage your professional presence"
-              rightSlot={
-                  <TouchableOpacity
-                    activeOpacity={0.7}
-                    style={styles.notificationBtn}
-                    onPress={() => navigation.navigate('Notifications')}
-                  >
-                      <Bell size={24} color={currentTheme.colors.text} />
-                      {unreadCount > 0 && (
-                          <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]} />
-                      )}
-                  </TouchableOpacity>
-              }
-          />
-      </View>
-
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 120 }]}
+        contentContainerStyle={[
+            styles.scrollContent,
+            {
+                paddingTop: 30, // Keeps the header down initially (Nuvio type)
+                paddingBottom: insets.bottom + 120,
+            }
+        ]}
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        stickyHeaderIndices={[0]}
       >
+          {/* Sticky Header Page Title & Action Slot */}
+          <View style={{
+              backgroundColor: currentTheme.colors.background,
+              paddingTop: insets.top,
+              paddingBottom: 4,
+          }}>
+              <PremiumHeader
+                  title="Settings"
+                  rightSlot={
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        style={styles.notificationBtn}
+                        onPress={() => navigation.navigate('Notifications')}
+                      >
+                          <Bell size={24} color={currentTheme.colors.text} />
+                          {unreadCount > 0 && (
+                              <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]} />
+                          )}
+                      </TouchableOpacity>
+                  }
+              />
+          </View>
+
           <View style={styles.container}>
               
 
@@ -202,24 +235,11 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 label="Application Tracker"
                                 onPress={() => onNavigate('ApplicationTracker')}
                                 currentTheme={currentTheme}
-                                isLast
                             />
-                        </SurfaceCard>
-                  </>
-                  
-                  <>
-                        <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>My Contributions</Text>
-                        <SurfaceCard style={styles.groupCard}>
-                             <MenuRow
+                            <MenuRow
                                 icon={History}
                                 label="Contribution History"
                                 onPress={() => onNavigate('MyShares')}
-                                currentTheme={currentTheme}
-                            />
-                            <MenuRow
-                                icon={Users}
-                                label="Invite Friends"
-                                onPress={() => onNavigate('Invite')}
                                 currentTheme={currentTheme}
                                 isLast
                             />
@@ -290,6 +310,18 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                           <Text style={{ fontWeight: '900', color: currentTheme.colors.primary }}>{globalStats.downloads.toLocaleString()}</Text> users have joined FresherFlow
                       </Text>
                   </SurfaceCard>
+
+                  {/* Simple Share Row */}
+                  <TouchableOpacity
+                      activeOpacity={0.7}
+                      onPress={handleShareApp}
+                      style={styles.simpleShareRow}
+                  >
+                      <Share2 size={16} color={currentTheme.colors.primary} strokeWidth={2.5} />
+                      <Text style={[styles.simpleShareText, { color: currentTheme.colors.primary }]}>
+                          Share FresherFlow with friends
+                      </Text>
+                  </TouchableOpacity>
 
                </View>
           </View>
@@ -365,9 +397,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: 16,
         paddingHorizontal: 8,
-        paddingVertical: 16,
-        marginBottom: 8,
-        marginTop: 10,
+        paddingVertical: 6,
+        marginBottom: 0,
+        marginTop: 0,
     },
     avatarImage: {
         width: '100%',
@@ -522,7 +554,7 @@ const styles = StyleSheet.create({
         ...TYPOGRAPHY.label,
         marginLeft: 12,
         marginBottom: 12,
-        marginTop: 20,
+        marginTop: 14,
     },
     groupCard: {
         padding: 0,
@@ -539,6 +571,19 @@ const styles = StyleSheet.create({
         fontSize: mScale(13),
         fontWeight: '700',
         textAlign: 'center',
+    },
+    simpleShareRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        marginTop: 16,
+        paddingVertical: 12,
+    },
+    simpleShareText: {
+        fontSize: mScale(13),
+        fontWeight: '800',
+        letterSpacing: -0.2,
     },
     menuRow: {
         flexDirection: 'row',

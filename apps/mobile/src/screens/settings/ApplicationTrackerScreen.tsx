@@ -144,8 +144,6 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
     const tabListRef = useRef<ScrollView>(null);
     const isManualScrolling = useRef(false);
     const [tabLayouts, setTabLayouts] = useState<{[key: number]: {x: number, width: number}}>({});
-    const scrollY = useRef(new Animated.Value(0)).current;
-
     const handleShareSuccess = async () => {
         if (!celebrateJob) return;
         try {
@@ -156,12 +154,6 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
             console.log(error);
         }
     };
-
-    const headerTranslateY = scrollY.interpolate({
-        inputRange: [0, 40],
-        outputRange: [0, -40],
-        extrapolate: 'clamp',
-    });
 
     const handleUpdateStatus = async (opportunityId: string, newStatus: ActionType) => {
         try {
@@ -320,13 +312,11 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
     }, [currentTheme, navigation]);
 
     return (
-        <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
-            <Animated.View style={{ 
-                position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100,
+        <Screen safe={true} style={{ backgroundColor: currentTheme.colors.background }}>
+            <View style={{ 
                 backgroundColor: currentTheme.colors.background,
-                transform: [{ translateY: headerTranslateY }] 
             }}>
-                <View style={{ paddingTop: insets.top + 10 }}>
+                <View style={{ paddingTop: 10 }}>
                     <SecondaryHeader 
                         title="Tracker" 
                         onBack={() => navigation.goBack()}
@@ -385,10 +375,9 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                         </ScrollView>
                     </View>
                 </View>
-            </Animated.View>
+            </View>
 
             <FlatList
-
                 ref={pagerRef}
                 horizontal
                 pagingEnabled
@@ -414,8 +403,8 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                         refresh={refresh}
                         refreshing={refreshing}
                         currentTheme={currentTheme}
-                        onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
-                        contentPaddingTop={insets.top + 10 + 110}
+                        onScroll={null}
+                        contentPaddingTop={10}
                     />
                 )}
             />

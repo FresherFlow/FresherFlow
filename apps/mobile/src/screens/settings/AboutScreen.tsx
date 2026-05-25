@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, ScrollView, StatusBar, TouchableOpacity } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { ShieldCheck, Github, Twitter, Linkedin, Instagram, ExternalLink, Facebook, Send, MessageSquare } from 'lucide-react-native';
 import { MenuRow } from '../profile/SettingsScreen';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -139,10 +139,10 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
             <View style={{ paddingTop: insets.top + 10 }}>
-                <PremiumHeader 
+                <SecondaryHeader 
                     title="About" 
                     subtitle={`FresherFlow v${Constants.expoConfig?.version || '1.0.0'}`}
-                    showBack
+                    onBack={() => navigation.goBack()}
                 />
             </View>
 

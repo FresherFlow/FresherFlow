@@ -5,7 +5,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader } from '@/system/components/PremiumPrimitives';
 import { useProfile } from '@/hooks/useProfile';
 import * as Haptics from 'expo-haptics';
 import { EducationView } from './EditEducationScreen';
@@ -39,10 +39,8 @@ const CareerProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
       
       <View style={[styles.headerContainer, { paddingTop: insets.top + 10 }]}>
-          <PremiumHeader
+          <SecondaryHeader
               title="Career Profile"
-              subtitle="Manage your professional information"
-              showBack
               onBack={() => navigation.goBack()}
           />
       </View>

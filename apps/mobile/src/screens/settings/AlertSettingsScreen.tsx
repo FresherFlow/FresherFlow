@@ -1,4 +1,4 @@
-import React, { memo, useRef } from 'react';
+import React, { memo } from 'react';
 import {
     StyleSheet,
     Text,
@@ -6,7 +6,7 @@ import {
     StatusBar,
     ActivityIndicator,
     TextInput,
-    Animated,
+    ScrollView,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
@@ -21,7 +21,7 @@ import { useAlertSettings } from '@/hooks/useAlertSettings';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { AnimatedSecondaryHeader, SurfaceCard, PremiumToggle } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, SurfaceCard, PremiumToggle } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AlertSettings'>;
 
@@ -33,7 +33,6 @@ const alpha = (color: string, opacity: number) => {
 const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
-    const scrollY = useRef(new Animated.Value(0)).current;
     const {
         loading,
         control,
@@ -56,22 +55,16 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
-            <AnimatedSecondaryHeader
-                title="Alert Settings"
-                onBack={() => navigation.goBack()}
-                scrollY={scrollY}
-                scrollDistance={40}
-                insetsTop={insets.top}
-            />
+            <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
+                <SecondaryHeader
+                    title="Alert Settings"
+                    onBack={() => navigation.goBack()}
+                />
+            </View>
 
-            <Animated.ScrollView 
+            <ScrollView 
                 showsVerticalScrollIndicator={false} 
-                contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 40 + 70 }]}
-                onScroll={Animated.event(
-                    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-                    { useNativeDriver: true }
-                )}
-                scrollEventThrottle={16}
+                contentContainerStyle={[styles.scrollContent, { paddingTop: 12, paddingBottom: insets.bottom + 40 }]}
             >
                 <View style={styles.content}>
                     <View style={styles.heroSection}>
@@ -140,7 +133,7 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     </SurfaceCard>
 
                 </View>
-            </Animated.ScrollView>
+            </ScrollView>
         </Screen>
     );
 });

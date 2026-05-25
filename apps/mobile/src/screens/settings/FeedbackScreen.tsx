@@ -31,7 +31,7 @@ import { submitFirebaseAppFeedback } from '@/utils/firebaseFeedbackDb';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard, GlassCard } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, SurfaceCard, GlassCard } from '@/system/components/PremiumPrimitives';
 import { mScale, SPACING, RADIUS } from '@/system/constants/dimensions';
 import { alpha } from '@/theme';
 
@@ -157,9 +157,8 @@ const FeedbackScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     return (
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
-                <PremiumHeader 
+                <SecondaryHeader 
                     title="Feedback" 
-                    showBack
                     onBack={() => navigation.goBack()}
                 />
             </View>

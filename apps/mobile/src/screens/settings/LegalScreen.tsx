@@ -3,7 +3,7 @@ import { StyleSheet, View, Text, ScrollView, StatusBar } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader } from '@/system/components/PremiumPrimitives';
 import { SPACING } from '@/system/constants/dimensions';
 import { TYPOGRAPHY } from '@/system/constants/typography';
 
@@ -23,10 +23,9 @@ const LegalScreen: React.FC = memo(() => {
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
             <View style={{ paddingTop: insets.top + 10 }}>
-                <PremiumHeader 
+                <SecondaryHeader 
                     title="Legal" 
                     subtitle="Terms & Privacy Policy"
-                    showBack
                 />
             </View>
 

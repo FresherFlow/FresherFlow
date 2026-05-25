@@ -33,7 +33,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useTheme } from '@/contexts/ThemeContext';
 import { Screen } from '@/system/layout/Layout';
-import { SurfaceCard, PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { SurfaceCard, SecondaryHeader } from '@/system/components/PremiumPrimitives';
 import { alpha } from '@/theme';
 
 type UpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'no-update' | 'error';
@@ -153,8 +153,15 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
         } catch (err) {
             stopSpinner();
             setStatus('error');
-            const msg = err instanceof Error ? err.message : 'Failed to query OTA endpoint';
-            setErrorMsg(msg);
+            const rawMsg = err instanceof Error ? err.message : 'Failed to query OTA endpoint';
+            let friendlyMsg = rawMsg;
+            if (rawMsg.includes('checkForUpdateAsync') || rawMsg.includes('Failed to check for update')) {
+                friendlyMsg = 'EAS Update check failed. Common causes:\n\n' +
+                    '• Channel Unlinked: The "staging" channel has not been linked to a branch in the Expo Dashboard.\n' +
+                    '• No Update Published: No update has been published to the target branch matching this runtime version.\n' +
+                    '• Build Mismatch: Staging is compiled with "in.fresherflow.app.staging", but the update was published with a different package identifier.';
+            }
+            setErrorMsg(friendlyMsg);
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
     };
@@ -215,10 +222,9 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
             
             {/* Standardized Header matching the app layout */}
             <View style={{ paddingTop: insets.top + 10 }}>
-                <PremiumHeader 
+                <SecondaryHeader 
                     title="Software Update" 
                     subtitle="Over-The-Air (OTA)"
-                    showBack
                 />
             </View>
 
