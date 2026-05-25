@@ -17,6 +17,33 @@ let cachedCompletionPercentage = 0;
 let activeStatsPromise: Promise<{ applied: number; shareStats: typeof cachedShareStats }> | null = null;
 let activeProfilePromise: Promise<{ profile: Profile; completionPercentage: number }> | null = null;
 
+// --- Global Subscription listeners to synchronize all mounted hook instances ---
+const profileListeners = new Set<(profile: Profile | null) => void>();
+const percentageListeners = new Set<(percentage: number) => void>();
+const statsListeners = new Set<(stats: { applied: number; shareStats: typeof cachedShareStats }) => void>();
+
+const updateGlobalProfile = (p: Profile | null) => {
+    cachedProfile = p;
+    profileListeners.forEach(listener => {
+        try { listener(p); } catch (e) { console.error(e); }
+    });
+};
+
+const updateGlobalPercentage = (pct: number) => {
+    cachedCompletionPercentage = pct;
+    percentageListeners.forEach(listener => {
+        try { listener(pct); } catch (e) { console.error(e); }
+    });
+};
+
+const updateGlobalStats = (stats: { applied: number; shareStats: typeof cachedShareStats }) => {
+    cachedAppliedCount = stats.applied;
+    cachedShareStats = stats.shareStats;
+    statsListeners.forEach(listener => {
+        try { listener(stats); } catch (e) { console.error(e); }
+    });
+};
+
 export const useProfile = () => {
     const { user, logout } = useAuthStore();
     const refreshMe = async () => {}; // Placeholder to match previous interface
@@ -25,18 +52,47 @@ export const useProfile = () => {
     const [fullProfile, setFullProfile] = useState<Profile | null>(null);
     const [loadingCache, setLoadingCache] = useState(true);
 
+    // Subscribe to global updates
+    useEffect(() => {
+        profileListeners.add(setFullProfile);
+        percentageListeners.add(setCompletionPercentage);
+        
+        const statsListener = (s: { applied: number; shareStats: typeof cachedShareStats }) => {
+            setAppliedCount(s.applied);
+            setShareStats(s.shareStats);
+        };
+        statsListeners.add(statsListener);
+
+        return () => {
+            profileListeners.delete(setFullProfile);
+            percentageListeners.delete(setCompletionPercentage);
+            statsListeners.delete(statsListener);
+        };
+    }, []);
+
     // Load from cache on mount
     useEffect(() => {
         const loadCache = async () => {
             try {
                 const cached = await getLocalProfile(user?.id);
-                if (cached) setFullProfile(cached);
+                if (cached) {
+                    updateGlobalProfile(cached);
+                }
             } finally {
                 setLoadingCache(false);
             }
         };
         void loadCache();
     }, [user?.id]);
+
+    // Set initial values from memory cache if available
+    useEffect(() => {
+        if (cachedProfile) setFullProfile(cachedProfile);
+        if (cachedCompletionPercentage) setCompletionPercentage(cachedCompletionPercentage);
+        if (cachedAppliedCount) setAppliedCount(cachedAppliedCount);
+        setShareStats(cachedShareStats);
+    }, []);
+
     const [completionPercentage, setCompletionPercentage] = useState(0);
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [appliedCount, setAppliedCount] = useState(0);
@@ -49,8 +105,7 @@ export const useProfile = () => {
 
         // 1. If stats were fetched in the last 10 seconds, serve from cache
         if (Date.now() - lastStatsFetchTime < 10000) {
-            setAppliedCount(cachedAppliedCount);
-            setShareStats(cachedShareStats);
+            updateGlobalStats({ applied: cachedAppliedCount, shareStats: cachedShareStats });
             return;
         }
 
@@ -58,8 +113,7 @@ export const useProfile = () => {
         if (activeStatsPromise) {
             try {
                 const res = await activeStatsPromise;
-                setAppliedCount(res.applied);
-                setShareStats(res.shareStats);
+                updateGlobalStats(res);
             } catch {
                 // Handled in main promise
             }
@@ -81,12 +135,8 @@ export const useProfile = () => {
 
         try {
             const res = await activeStatsPromise;
-            cachedAppliedCount = res.applied;
-            cachedShareStats = res.shareStats;
             lastStatsFetchTime = Date.now();
-
-            setAppliedCount(res.applied);
-            setShareStats(res.shareStats);
+            updateGlobalStats(res);
         } catch (e) {
             console.warn('Failed to fetch user stats', e);
         } finally {
@@ -99,8 +149,8 @@ export const useProfile = () => {
 
         // 1. If profile was fetched in the last 10 seconds, serve from cache
         if (Date.now() - lastProfileFetchTime < 10000 && cachedProfile) {
-            setFullProfile(cachedProfile);
-            setCompletionPercentage(cachedCompletionPercentage);
+            updateGlobalProfile(cachedProfile);
+            updateGlobalPercentage(cachedCompletionPercentage);
             return;
         }
 
@@ -108,8 +158,8 @@ export const useProfile = () => {
         if (activeProfilePromise) {
             try {
                 const res = await activeProfilePromise;
-                setFullProfile(res.profile);
-                setCompletionPercentage(res.completionPercentage);
+                updateGlobalProfile(res.profile);
+                updateGlobalPercentage(res.completionPercentage);
             } catch {
                 // Handled in main promise
             }
@@ -131,12 +181,10 @@ export const useProfile = () => {
 
         try {
             const res = await activeProfilePromise;
-            cachedProfile = res.profile;
-            cachedCompletionPercentage = res.completionPercentage;
             lastProfileFetchTime = Date.now();
 
-            setFullProfile(res.profile);
-            setCompletionPercentage(res.completionPercentage);
+            updateGlobalProfile(res.profile);
+            updateGlobalPercentage(res.completionPercentage);
             await saveLocalProfile(res.profile, user.id);
         } catch (e) {
             console.warn('Failed to fetch profile data', e);
@@ -158,14 +206,12 @@ export const useProfile = () => {
         pgSpecialization?: string;
         pgYear?: number;
     }) => {
-        // Always merge + save locally, even on first save (fullProfile may be null)
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
-        setFullProfile(merged);
+        updateGlobalProfile(merged);
         await saveLocalProfile(merged, user?.id);
         // Invalidate profile cache to force fresh reload
         lastProfileFetchTime = 0;
         if (isAnonymous) return;
-        // Background API sync — silent fail is fine, local save is source of truth
         try {
             await profileApi.updateEducation(data);
             await Promise.all([fetchProfile(), refreshMe()]);
@@ -181,7 +227,7 @@ export const useProfile = () => {
         workModes: string[];
     }) => {
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
-        setFullProfile(merged);
+        updateGlobalProfile(merged);
         await saveLocalProfile(merged, user?.id);
         // Invalidate profile cache
         lastProfileFetchTime = 0;
@@ -197,7 +243,7 @@ export const useProfile = () => {
 
     const updateReadiness = useCallback(async (data: { availability: string; skills: string[] }) => {
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
-        setFullProfile(merged);
+        updateGlobalProfile(merged);
         await saveLocalProfile(merged, user?.id);
         // Invalidate profile cache
         lastProfileFetchTime = 0;
@@ -224,8 +270,6 @@ export const useProfile = () => {
 
     return {
         user,
-        // fullProfile is local AsyncStorage data — source of truth for local-first testing
-        // Falls back to authProfile only if local cache is empty
         profile: fullProfile ?? (user?.profile as Profile),
         completionPercentage,
         loadingProfile,

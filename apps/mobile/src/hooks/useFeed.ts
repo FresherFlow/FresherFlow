@@ -1,15 +1,18 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { OpportunityType, Profile } from '@fresherflow/types';
 import { useNotifications, useSaved } from '@repo/frontend-core';
+import { useFollows } from '@/hooks/useFollows';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
 import { getLocalProfile } from '@/utils/localProfile';
+import { calculateMatchScore } from '@/utils/matchScoring';
 import Fuse from 'fuse.js';
 
 export const useFeed = (initialFeedType: string | null = null) => {
     const { user } = useAuthStore();
     useNotifications();
     const { savedJobs } = useSaved();
+    const { follows } = useFollows();
     
     const [localProfile, setLocalProfile] = useState<Profile | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -91,7 +94,40 @@ export const useFeed = (initialFeedType: string | null = null) => {
         return { skills, functions };
     }, [cachedItems, openedIds]);
 
-    // 5. High-Speed Local Filter/Scoring Pipeline (Takes <3ms)
+    const followSets = useMemo(() => {
+        const companies = new Set<string>();
+        const tags = new Set<string>();
+        const contributors = new Set<string>();
+
+        Object.keys(follows.companies || {}).forEach(k => companies.add(k.toLowerCase().trim()));
+        Object.keys(follows.tags || {}).forEach(k => tags.add(k.toLowerCase().trim()));
+        Object.keys(follows.contributors || {}).forEach(k => contributors.add(k.toLowerCase().trim()));
+
+        return { companies, tags, contributors };
+    }, [follows]);
+
+    // 5. Behavioral Snapshotting
+    // To prevent the feed from wildly re-sorting or re-bucketing when a user saves or clicks a job,
+    // we snapshot the behavioral data once after hydration, and only update it on manual refresh.
+    const [snapshot, setSnapshot] = useState<{
+        savedJobsData: typeof savedJobsData | null;
+        openedJobsData: typeof openedJobsData | null;
+        seenIds: Set<string> | null;
+        appliedIds: Set<string> | null;
+    }>({ savedJobsData: null, openedJobsData: null, seenIds: null, appliedIds: null });
+
+    useEffect(() => {
+        if (!isBootstrapping && snapshot.seenIds === null) {
+            setSnapshot({
+                savedJobsData,
+                openedJobsData,
+                seenIds: new Set(seenIds),
+                appliedIds: new Set(appliedIds),
+            });
+        }
+    }, [isBootstrapping, savedJobsData, openedJobsData, seenIds, appliedIds, snapshot.seenIds]);
+
+    // 6. High-Speed Local Filter/Scoring Pipeline (Takes <3ms)
     const filteredOpportunities = useMemo(() => {
         let result = cachedItems;
 
@@ -121,17 +157,21 @@ export const useFeed = (initialFeedType: string | null = null) => {
 
         // Map and compute relevance scores for all items in result
         const scored = result.map(job => {
-            let score = (job as { matchScore?: number }).matchScore || 0;
+            const matchResult = calculateMatchScore(localProfile, job as any);
+            let score = matchResult.score;
+
+            const activeSavedJobsData = snapshot.savedJobsData || savedJobsData;
+            const activeOpenedJobsData = snapshot.openedJobsData || openedJobsData;
 
             // 1. Saved Job Boost (max +30)
             let savedBoost = 0;
-            if (job.jobFunction && savedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
+            if (job.jobFunction && activeSavedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
                 savedBoost += 15;
             }
             if (job.requiredSkills) {
                 let skillMatches = 0;
                 job.requiredSkills.forEach(s => {
-                    if (savedJobsData.skills.has(s.toLowerCase().trim())) {
+                    if (activeSavedJobsData.skills.has(s.toLowerCase().trim())) {
                         skillMatches++;
                     }
                 });
@@ -163,13 +203,13 @@ export const useFeed = (initialFeedType: string | null = null) => {
 
             // 3. Viewed/Opened Job Similarity Boost (max +15)
             let openedBoost = 0;
-            if (job.jobFunction && openedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
+            if (job.jobFunction && activeOpenedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
                 openedBoost += 5;
             }
             if (job.requiredSkills) {
                 let skillMatches = 0;
                 job.requiredSkills.forEach(s => {
-                    if (openedJobsData.skills.has(s.toLowerCase().trim())) {
+                    if (activeOpenedJobsData.skills.has(s.toLowerCase().trim())) {
                         skillMatches++;
                     }
                 });
@@ -186,25 +226,51 @@ export const useFeed = (initialFeedType: string | null = null) => {
                 score += 10;
             }
 
+            // 6. Follow Signals Boost (max +75)
+            if (job.companyWebsite && followSets.companies.has(job.companyWebsite.toLowerCase().replace(/^https?:\/\/(www\.)?/, '').split('/')[0].trim())) {
+                score += 40;
+            } else if (job.company && followSets.companies.has(job.company.toLowerCase().trim())) {
+                score += 40;
+            }
+
+            if (job.tags && job.tags.length > 0) {
+                job.tags.forEach(t => {
+                    if (followSets.tags.has(t.toLowerCase().trim())) score += 20;
+                });
+            }
+
+            if (job.postedByUserId && followSets.contributors.has(job.postedByUserId.toLowerCase().trim())) {
+                score += 15;
+            }
+
             return {
                 ...job,
+                isEligible: matchResult.isEligible,
+                matchScore: matchResult.score,
+                matchReason: matchResult.reason,
                 clicksCount: openedIds.has(job.id) ? Math.max(job.clicksCount || 0, 1) : (job.clicksCount || 0),
                 relevanceScore: Math.round(score)
             };
         });
 
-        // Expiry, Applied, and Seen management: partition into unseen active, seen active, applied active, and expired
+        // Expiry, Applied, and Seen management: partition into unseen active, seen active, applied active, ineligible, and expired
         const unseenActive: typeof scored = [];
         const seenActive: typeof scored = [];
         const appliedActive: typeof scored = [];
+        const ineligibleActive: typeof scored = [];
         const expired: typeof scored = [];
         
+        const activeSeenIds = snapshot.seenIds || seenIds;
+        const activeAppliedIds = snapshot.appliedIds || appliedIds;
+
         for (const j of scored) {
             if (j.expiresAt && new Date(j.expiresAt).getTime() <= now) {
                 expired.push(j);
-            } else if (appliedIds.has(j.id)) {
+            } else if (!j.isEligible) {
+                ineligibleActive.push(j);
+            } else if (activeAppliedIds.has(j.id)) {
                 appliedActive.push(j);
-            } else if (seenIds.has(j.id)) {
+            } else if (activeSeenIds.has(j.id)) {
                 seenActive.push(j);
             } else {
                 unseenActive.push(j);
@@ -218,12 +284,17 @@ export const useFeed = (initialFeedType: string | null = null) => {
         unseenActive.sort(sortByRelevance);
         seenActive.sort(sortByRelevance);
         appliedActive.sort(sortByRelevance);
+        ineligibleActive.sort(sortByRelevance);
 
         // Expired sorted by expiry time (newest first)
         expired.sort((a, b) => new Date(b.expiresAt || 0).getTime() - new Date(a.expiresAt || 0).getTime());
         
-        return [...unseenActive, ...seenActive, ...appliedActive, ...expired];
-    }, [cachedItems, fuseIndex, searchQuery, activeFilter, feedType, seenIds, appliedIds, recentKeywords, savedJobsData, openedJobsData]);
+        return [...unseenActive, ...seenActive, ...appliedActive, ...ineligibleActive, ...expired];
+    }, [cachedItems, fuseIndex, searchQuery, activeFilter, feedType, snapshot, recentKeywords, followSets, localProfile, openedIds]);
+
+    const profileMatchedOpportunities = useMemo(() => {
+        return filteredOpportunities.filter(j => j.isEligible && (j.matchScore || 0) > 0);
+    }, [filteredOpportunities]);
 
     const clearFilters = useCallback(() => {
         setSearchQuery('');
@@ -238,7 +309,8 @@ export const useFeed = (initialFeedType: string | null = null) => {
     return {
         user,
         profile: localProfile,
-        opportunities: filteredOpportunities,
+        opportunities: feedType === 'profile' ? profileMatchedOpportunities : filteredOpportunities,
+        profileMatchedOpportunities,
         loading: isBootstrapping,
         refreshing: isRefreshing,
         isSyncing,
@@ -255,9 +327,15 @@ export const useFeed = (initialFeedType: string | null = null) => {
         feedType,
         setFeedType,
         onRefresh: useCallback(() => {
+            setSnapshot({
+                savedJobsData,
+                openedJobsData,
+                seenIds: new Set(seenIds),
+                appliedIds: new Set(appliedIds),
+            });
             void refreshBehavioralData();
             void performSync(true, true);
-        }, [performSync, refreshBehavioralData]), // Force refresh head check marked as user-initiated
+        }, [performSync, refreshBehavioralData, savedJobsData, openedJobsData, seenIds, appliedIds]), // Force refresh head check marked as user-initiated
         loadMore: () => {}, // No paging scroll requests needed!
         filteredOpportunities,
         clearFilters,

@@ -55,10 +55,6 @@ export const openExternalURL = async (url: string, colors?: ThemeColors): Promis
   if (useInApp) {
     try {
       await WebBrowser.openBrowserAsync(target, {
-        dismissButtonStyle: 'close',
-        toolbarColor: colors?.background,
-        controlsColor: colors?.primary,
-        createTask: false,
         presentationStyle: WebBrowser.WebBrowserPresentationStyle?.PAGE_SHEET,
       });
     } catch (e) {

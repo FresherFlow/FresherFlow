@@ -110,7 +110,7 @@ export function calculateMatchScore(profile: Profile | null, opportunity: Opport
   }
 
   // ==========================================
-  // 2. Skill Match (90%)
+  // 2. Skill Match (85%)
   // ==========================================
   let skillsScore = 0;
   const hasSkills = opportunity.requiredSkills && opportunity.requiredSkills.length > 0;
@@ -119,21 +119,23 @@ export function calculateMatchScore(profile: Profile | null, opportunity: Opport
     const userSkills = new Set(normalizeSkillList(profile.skills || []));
     const required = normalizeSkillList(opportunity.requiredSkills || []);
     const matches = required.filter(skill => userSkills.has(skill)).length;
-    skillsScore = (matches / required.length) * 90;
+    skillsScore = (matches / required.length) * 85;
   } else if (opportunity.requiredSkills && opportunity.requiredSkills.length === 0) {
     // Explicitly no skills required
-    skillsScore = 90;
+    skillsScore = 85;
   }
 
   // ==========================================
-  // 3. Preference Match (10%)
+  // 3. Preference Match (15%)
   // ==========================================
   const locationMatch = (opportunity.locations || []).some(loc => 
     (profile.preferredCities || []).some(city => city.toLowerCase().includes(loc.toLowerCase()))
   ) || opportunity.workMode === 'REMOTE' || opportunity.workMode === 'HYBRID';
 
   const typeMatch = (profile.interestedIn || []).includes(opportunity.type);
-  const prefsScore = (locationMatch ? 5 : 0) + (typeMatch ? 5 : 0);
+  const workModeMatch = opportunity.workMode ? (profile.workModes || []).includes(opportunity.workMode) : false;
+
+  const prefsScore = (locationMatch ? 5 : 0) + (typeMatch ? 5 : 0) + (workModeMatch ? 5 : 0);
 
   const totalScore = Math.round(skillsScore + prefsScore);
 
@@ -144,7 +146,7 @@ export function calculateMatchScore(profile: Profile | null, opportunity: Opport
   if (totalScore >= 90) reason = 'Strong skills match';
   else if (totalScore >= 70) reason = 'Good skills match';
   else if (skillsScore > 0) {
-    const matchCount = Math.round((skillsScore / 90) * (opportunity.requiredSkills?.length || 0));
+    const matchCount = Math.round((skillsScore / 85) * (opportunity.requiredSkills?.length || 0));
     reason = `${matchCount} skills matched`;
   } else if (locationMatch) {
     reason = 'Location match';
