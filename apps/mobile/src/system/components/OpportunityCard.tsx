@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { CircleDollarSign, MapPin, Users, Clock, Bookmark, ChevronRight, Briefcase, Eye, Trophy } from 'lucide-react-native';
+import { CircleDollarSign, MapPin, Users, Clock, Bookmark, ChevronRight, Briefcase, Trophy } from 'lucide-react-native';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
@@ -31,7 +31,7 @@ const getTypeConfig = (type: OpportunityType, theme: AppTheme) => {
     case OpportunityType.JOB:
       return { label: 'Full Time', color: theme.colors.primary, bg: alpha(theme.colors.primary, 0.1) };
     case OpportunityType.INTERNSHIP:
-      return { label: 'Internship', color: theme.colors.info, bg: alpha(theme.colors.info, 0.1) };
+      return { label: 'Internship', color: theme.colors.primary, bg: alpha(theme.colors.primary, 0.1) };
     case OpportunityType.WALKIN:
       return { label: 'Walk-in', color: theme.colors.warning, bg: alpha(theme.colors.warning, 0.1) };
     default:
@@ -39,7 +39,6 @@ const getTypeConfig = (type: OpportunityType, theme: AppTheme) => {
   }
 };
 
-import { MotiView } from 'moti';
 import { differenceInCalendarDays } from 'date-fns';
 import { useUIStore } from '@/store/useUIStore';
 
@@ -64,27 +63,22 @@ export const OpportunityCard = memo(({
   const expiryInfo = (() => {
     if (!opportunity.expiresAt) return null;
     const expiryDate = new Date(opportunity.expiresAt);
-    const now = new Date();
     if (isNaN(expiryDate.getTime())) return null;
 
-    const expiryDateStart = new Date(expiryDate.getFullYear(), expiryDate.getMonth(), expiryDate.getDate());
-    const nowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const diffTime = expiryDateStart.getTime() - nowStart.getTime();
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = differenceInCalendarDays(expiryDate, new Date());
 
     if (diffDays < 0) {
-      return { label: 'expired', color: currentTheme.colors.error, type: 'EXPIRED' };
+      return { label: 'Expired', color: currentTheme.colors.error, type: 'EXPIRED' };
     }
     if (diffDays === 0) {
-      return { label: 'expires today', color: currentTheme.colors.warning, type: 'URGENT' };
+      return { label: 'Expires Today', color: currentTheme.colors.warning, type: 'URGENT' };
     }
     if (diffDays === 1) {
-      return { label: 'expires tomorrow', color: currentTheme.colors.warning, type: 'URGENT' };
+      return { label: 'Expires Tomorrow', color: currentTheme.colors.warning, type: 'URGENT' };
     }
     
     return {
-      label: `expires in ${diffDays} days`,
+      label: `Expires in ${diffDays}d`,
       color: diffDays <= 3 ? currentTheme.colors.warning : currentTheme.colors.textMuted,
       type: diffDays <= 3 ? 'URGENT' : 'NORMAL'
     };
@@ -106,7 +100,10 @@ export const OpportunityCard = memo(({
   return (
     <View>
         <SurfaceCard
-            onPress={onPress}
+            onPress={() => {
+                haptic.light();
+                onPress();
+            }}
             onLongPress={handleLongPress}
             style={[
                 styles.container,
@@ -151,6 +148,7 @@ export const OpportunityCard = memo(({
                     </View>
                   );
                 })()}
+
                 {((effectiveMatchScore !== undefined && effectiveMatchScore > 0) || opportunity.isEligible === false) && (
                     <View style={[
                         styles.verifiedBadge,
@@ -190,22 +188,11 @@ export const OpportunityCard = memo(({
                     onSave?.(opportunity);
                 }}
             >
-                <MotiView
-                    animate={{
-                        scale: isSaved ? [1, 1.3, 1] : 1,
-                    }}
-                    transition={{
-                        type: 'spring',
-                        damping: 12,
-                        stiffness: 200,
-                    }}
-                >
-                    <Bookmark
-                        size={mScale(20)}
-                        color={isSaved ? currentTheme.colors.primary : currentTheme.colors.textMuted}
-                        fill={isSaved ? currentTheme.colors.primary : 'transparent'}
-                    />
-                </MotiView>
+                <Bookmark
+                    size={mScale(20)}
+                    color={isSaved ? currentTheme.colors.primary : currentTheme.colors.textMuted}
+                    fill={isSaved ? currentTheme.colors.primary : 'transparent'}
+                />
             </TouchableOpacity>
       </View>
 
@@ -243,14 +230,7 @@ export const OpportunityCard = memo(({
 
       <View style={[styles.footer, { borderTopColor: alpha(currentTheme.colors.border, 0.3) }]}>
           <View style={styles.footerInfo}>
-              {(opportunity.clicksCount ?? 0) > 0 && (
-                  <View style={styles.stat}>
-                      <Eye size={mScale(12)} color={currentTheme.colors.textMuted} />
-                      <Text style={[styles.statText, { color: currentTheme.colors.textMuted }]}>
-                          {opportunity.clicksCount}
-                      </Text>
-                  </View>
-              )}
+
               {(opportunity.appliedCount ?? 0) > 0 && (
                   <View style={styles.stat}>
                       <Briefcase size={mScale(12)} color={currentTheme.colors.success} />
@@ -273,11 +253,14 @@ export const OpportunityCard = memo(({
                   </View>
               )}
               {expiryInfo && (
-                  <View style={[styles.expiryBadge, { backgroundColor: alpha(expiryInfo.color, 0.05) }]}>
-                      <Clock size={mScale(10)} color={expiryInfo.color} />
-                      <Text style={[styles.expiryText, { color: expiryInfo.color }]}>{expiryInfo.label}</Text>
+                  <View style={styles.stat}>
+                      <Clock size={mScale(12)} color={expiryInfo.color} />
+                      <Text style={[styles.statText, { color: expiryInfo.color }]}>
+                          {expiryInfo.label}
+                      </Text>
                   </View>
               )}
+
               {opportunity.isReferral ? (
                   <Text style={[styles.contributorText, { color: currentTheme.colors.warning, fontWeight: '700' }]}>
                       Referred by {opportunity.referredByUsername ? `@${opportunity.referredByUsername}` : (opportunity.user?.username ? `@${opportunity.user.username}` : (opportunity.rawIngestions?.[0]?.creator ? getDisplayHandle(opportunity.rawIngestions[0].creator) : 'user from community'))}
@@ -337,7 +320,7 @@ const styles = StyleSheet.create({
     typeBadge: {
         paddingHorizontal: SPACING.sm,
         paddingVertical: 4,
-        borderRadius: RADIUS.lg,
+        borderRadius: RADIUS.xs,
     },
     typeText: {
         fontSize: 11,
@@ -445,17 +428,7 @@ const styles = StyleSheet.create({
     heatText: {
         ...TYPOGRAPHY.badge,
     },
-    expiryBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: 4,
-        borderRadius: RADIUS.xs,
-    },
-    expiryText: {
-        ...TYPOGRAPHY.badge,
-    },
+
     actionArea: {
         flexDirection: 'row',
         alignItems: 'center',

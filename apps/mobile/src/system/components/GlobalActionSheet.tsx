@@ -1,19 +1,19 @@
 import React, { useCallback, useMemo, useRef, useEffect } from 'react';
 import { View, BackHandler } from 'react-native';
 import { BottomSheetModal, BottomSheetBackdrop, BottomSheetView, BottomSheetBackdropProps } from '@gorhom/bottom-sheet';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { OpportunityActionSheetContent } from './OpportunityActionSheet';
 import { useUIStore } from '@/store/useUIStore';
 import { useTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
-import { RADIUS } from '../constants/dimensions';
-
-
+import { RADIUS, SPACING } from '../constants/dimensions';
 
 export const GlobalActionSheet = () => {
     const { currentTheme } = useTheme();
+    const insets = useSafeAreaInsets();
     const { isOpen, opportunity, close } = useUIStore(s => s.actionSheet);
     const bottomSheetModalRef = useRef<BottomSheetModal>(null);
-    const snapPoints = useMemo(() => ['60%'], []);
+    const snapPoints = useMemo(() => ['65%'], []);
 
     useEffect(() => {
         if (isOpen && opportunity) {
@@ -59,7 +59,6 @@ export const GlobalActionSheet = () => {
         <BottomSheetModal
             ref={bottomSheetModalRef}
             snapPoints={snapPoints}
-            enableDynamicSizing={true}
             index={0}
             enablePanDownToClose
             backdropComponent={renderBackdrop}
@@ -82,7 +81,7 @@ export const GlobalActionSheet = () => {
                 borderRadius: 2.5,
             }}
         >
-            <BottomSheetView style={{ flex: 1 }}>
+            <BottomSheetView style={{ flex: 1, paddingBottom: Math.max(insets.bottom, SPACING.lg) }}>
                 {opportunity ? (
                     <OpportunityActionSheetContent 
                         opportunity={opportunity} 

@@ -214,8 +214,9 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                     opportunity={s}
                                     index={idx}
                                     onPress={() => {
-                                        void saveDetailCache(s);
-                                        navigation.navigate('JobDetail', { opportunity: s, opportunityId: s.id });
+                                        requestAnimationFrame(() => {
+                                            navigation.navigate('JobDetail', { opportunity: s, opportunityId: s.id });
+                                        });
                                     }}
                                     onSave={() => handleToggleSave(s)}
                                     isSaved={isSaved(s.id)}
@@ -251,10 +252,9 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     backgroundColor: currentTheme.colors.background,
                 }}
             >
-                <View style={{ paddingTop: insets.top + 10 }}>
-                    <PremiumHeader
-                        title="Discover"
-                        subtitle="Explore Opportunities"
+            <View style={{ paddingTop: insets.top + 30 }}>
+                <PremiumHeader
+                    title="Discover"
                         rightSlot={
                             <TouchableOpacity
                                 onPress={() => {
@@ -509,8 +509,9 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 opportunity={item.data}
                                 index={index}
                                 onPress={() => {
-                                    void saveDetailCache(item.data);
-                                    navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
+                                    requestAnimationFrame(() => {
+                                        navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
+                                    });
                                 }}
                                 onSave={() => handleToggleSave(item.data)}
                                 isSaved={isSaved(item.data.id)}

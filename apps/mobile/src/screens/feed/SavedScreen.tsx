@@ -37,6 +37,8 @@ const alpha = (color: string, opacity: number) => {
 };
 
 import { useUI } from '@/contexts/UIContext';
+import { useSaved } from '@repo/frontend-core';
+import { useToast } from '@/contexts/ToastContext';
 
 const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
@@ -44,9 +46,17 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { savedJobs, loading, refresh } = useSavedJobs();
     const { hideTabBar, showTabBar } = useUI();
     const { unreadCount } = useNotifications();
+    const { isSaved, toggleSave } = useSaved();
+    const { showSuccess } = useToast();
 
     // Track scroll position for hide/show tab bar
     const scrollOffset = useRef(0);
+
+    const handleToggleSave = useCallback((opportunity: Opportunity) => {
+        const wasSaved = isSaved(opportunity.id);
+        toggleSave(opportunity);
+        showSuccess(wasSaved ? 'Opportunity removed from saved' : 'Opportunity saved successfully!');
+    }, [isSaved, toggleSave, showSuccess]);
 
     const handleScroll = useCallback((event: any) => {
         const currentOffset = event.nativeEvent.contentOffset.y;
@@ -87,57 +97,75 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         </View>
     ), [loading, currentTheme, navigation]);
 
+    const listData = React.useMemo(() => {
+        return [{ id: 'nudge-header-item', isHeader: true } as any, ...savedJobs];
+    }, [savedJobs]);
+
+    const renderItem = useCallback(({ item, index }: { item: Opportunity & { isHeader?: boolean }, index: number }) => {
+        if (item.isHeader) {
+            return (
+                <View>
+                    <UsernameNudgeCard />
+                    {!loading && savedJobs.length > 0 ? (
+                        <View style={styles.resultsHeader}>
+                            <Text style={[styles.resultsText, { color: currentTheme.colors.textMuted }]}>
+                                {savedJobs.length} Saved Opportunities
+                            </Text>
+                        </View>
+                    ) : null}
+                </View>
+            );
+        }
+        return (
+            <JobCard
+                opportunity={item}
+                index={index - 1}
+                onPress={() => {
+                    requestAnimationFrame(() => {
+                        navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
+                    });
+                }}
+                isSaved={isSaved(item.id)}
+                onSave={handleToggleSave}
+            />
+        );
+    }, [savedJobs, loading, currentTheme, isSaved, handleToggleSave, navigation]);
+
     return (
         <Screen safe={false}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
-            <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
-                <PremiumHeader
-                    title="Library"
-                    subtitle="Saved Opportunities"
-                    rightSlot={
-                        <TouchableOpacity 
-                            onPress={() => navigation.navigate('Notifications')}
-                            style={styles.notificationBtn}
-                        >
-                            <Bell size={24} color={currentTheme.colors.text} />
-                            {unreadCount > 0 && (
-                                <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]} />
-                            )}
-                        </TouchableOpacity>
-                    }
-                />
-            </View>
-
-            <FlashList<Opportunity>
-                data={savedJobs}
+            <FlashList<Opportunity & { isHeader?: boolean }>
+                data={listData}
+                extraData={{ savedJobs, isSaved }}
                 keyExtractor={(item) => item.id}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
+                stickyHeaderIndices={[0]}
                 // @ts-expect-error - FlashList typing bug with estimatedItemSize
                 estimatedItemSize={180}
                 drawDistance={2500}
-                renderItem={({ item, index }) => (
-                    <JobCard
-                        opportunity={item}
-                        index={index}
-                        onPress={() => {
-                            void saveDetailCache(item);
-                            navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
-                        }}
-                        isSaved={true}
-                    />
-                )}
+                renderItem={renderItem}
                 ListHeaderComponent={
-                    <View>
-                        <UsernameNudgeCard />
-                        {!loading && savedJobs.length > 0 ? (
-                            <View style={styles.resultsHeader}>
-                                <Text style={[styles.resultsText, { color: currentTheme.colors.textMuted }]}>
-                                    {savedJobs.length} Saved Opportunities
-                                </Text>
-                            </View>
-                        ) : null}
+                    <View style={{
+                        backgroundColor: currentTheme.colors.background,
+                        paddingTop: insets.top,
+                        paddingBottom: 4,
+                    }}>
+                        <PremiumHeader
+                            title="Library"
+                            rightSlot={
+                                <TouchableOpacity 
+                                    onPress={() => navigation.navigate('Notifications')}
+                                    style={styles.notificationBtn}
+                                >
+                                    <Bell size={24} color={currentTheme.colors.text} />
+                                    {unreadCount > 0 && (
+                                        <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]} />
+                                    )}
+                                </TouchableOpacity>
+                            }
+                        />
                     </View>
                 }
                 ListEmptyComponent={renderEmpty}
@@ -175,7 +203,7 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingBottom: 100,
-        paddingTop: 12,
+        paddingTop: 30,
     },
     resultsHeader: {
         paddingHorizontal: SPACING.lg,

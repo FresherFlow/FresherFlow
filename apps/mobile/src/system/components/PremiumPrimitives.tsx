@@ -58,9 +58,10 @@ interface SurfaceProps {
     onLongPress?: () => void;
     onPressIn?: () => void;
     onPressOut?: () => void;
+    activeOpacity?: number;
 }
 
-export const SurfaceCard: React.FC<SurfaceProps> = ({ children, style, accent, onPress, onLongPress, onPressIn, onPressOut }) => {
+export const SurfaceCard: React.FC<SurfaceProps> = ({ children, style, accent, onPress, onLongPress, onPressIn, onPressOut, activeOpacity = 0.7 }) => {
     const { currentTheme } = useTheme();
     const Container = (onPress || onLongPress || onPressIn || onPressOut) ? TouchableOpacity : View as React.ElementType;
 
@@ -71,7 +72,7 @@ export const SurfaceCard: React.FC<SurfaceProps> = ({ children, style, accent, o
             onPressIn={onPressIn}
             onPressOut={onPressOut}
             delayLongPress={300}
-            activeOpacity={0.9}
+            activeOpacity={activeOpacity}
             style={[
                 styles.surface,
                 {
@@ -139,6 +140,8 @@ export const PremiumHeader: React.FC<{
         <View style={[
             styles.header, 
             { backgroundColor: currentTheme.colors.background },
+            !subtitle && { paddingBottom: SPACING.xs },
+            showBack && { paddingTop: 18 },
             compact && { paddingTop: 0, paddingBottom: 0 }, 
             style
         ]}>
@@ -182,19 +185,36 @@ export const PremiumHeader: React.FC<{
 
 export const SecondaryHeader: React.FC<{
     title: string;
-    onBack: () => void;
+    onBack?: () => void;
     rightSlot?: React.ReactNode;
-}> = ({ title, onBack, rightSlot }) => {
+    subtitle?: string;
+}> = ({ title, onBack, rightSlot, subtitle }) => {
     const { currentTheme } = useTheme();
+    const navigation = useNavigation();
+
+    const handleBack = () => {
+        if (onBack) {
+            onBack();
+        } else {
+            navigation.goBack();
+        }
+    };
 
     return (
-        <View style={styles.header}>
-            <View style={[styles.headerContent, { alignItems: 'center' }]}>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
-                    <TouchableOpacity onPress={onBack} style={styles.backBtn}>
+        <View style={[styles.header, { paddingTop: 18 }]}>
+            <View style={[styles.headerContent, !subtitle && { alignItems: 'center' }]}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: !subtitle ? 'center' : 'flex-start', gap: SPACING.sm }}>
+                    <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
                         <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
                     </TouchableOpacity>
-                    <Text style={[styles.secondaryTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{title}</Text>
+                    <View style={{ flex: 1 }}>
+                        <Text style={[styles.secondaryTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{title}</Text>
+                        {subtitle && (
+                            <Text style={[styles.headerSubtitle, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                                {subtitle}
+                            </Text>
+                        )}
+                    </View>
                 </View>
                 {rightSlot && <View>{rightSlot}</View>}
             </View>
@@ -380,7 +400,7 @@ const styles = StyleSheet.create({
     },
     header: {
         paddingHorizontal: SPACING.lg,
-        paddingTop: SPACING.lg,
+        paddingTop: SPACING.xs,
         paddingBottom: SPACING.md,
     },
     headerContent: {
