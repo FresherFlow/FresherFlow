@@ -50,6 +50,12 @@ const getNuvioDarkColors = (isAmoled: boolean) => {
     indigo: '#6366f1',
     emerald: '#10b981',
     amber: '#f59e0b',
+    // Extracted Inline Colors
+    shadowLight: 'rgba(0, 0, 0, 0.04)',
+    shadowMedium: 'rgba(0, 0, 0, 0.08)',
+    borderTranslucent: 'rgba(0, 0, 0, 0.05)',
+    surfaceDarkSubtle: 'rgba(0,0,0,0.02)',
+    whiteTranslucent20: 'rgba(255, 255, 255, 0.2)',
   };
 };
 
@@ -94,6 +100,12 @@ const lightBaseColors = {
   indigo: '#4f46e5',
   emerald: '#059669',
   amber: '#d97706',
+  // Extracted Inline Colors
+  shadowLight: 'rgba(0, 0, 0, 0.04)',
+  shadowMedium: 'rgba(0, 0, 0, 0.08)',
+  borderTranslucent: 'rgba(0, 0, 0, 0.05)',
+  surfaceDarkSubtle: 'rgba(0,0,0,0.02)',
+  whiteTranslucent20: 'rgba(255, 255, 255, 0.2)',
 };
 
 const DEFAULT_TOKENS = {

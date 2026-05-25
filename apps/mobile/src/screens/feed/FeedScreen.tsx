@@ -187,6 +187,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                     type: 'timing',
                     duration: 1000,
                     loop: true,
+                }}
                 style={[styles.skeletonCard, { backgroundColor: currentTheme.colors.surfaceDarkSubtle }]}
             >
                 <View style={styles.skeletonHeader}>

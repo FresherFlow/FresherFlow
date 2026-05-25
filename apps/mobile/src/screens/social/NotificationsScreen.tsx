@@ -158,6 +158,7 @@ const AlertRow = memo(({
                 onPress={handlePress}
                 style={[
                     styles.alertRow,
+                    {
                         backgroundColor: currentTheme.colors.surface,
                         borderColor: alpha(currentTheme.colors.border, 0.3),
                         shadowColor: currentTheme.colors.shadowLight,
