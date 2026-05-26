@@ -17,6 +17,11 @@ import { SurfaceCard } from '../system/components/PremiumPrimitives';
 import { AppButton } from '@repo/ui';
 import { Sparkles, Check } from 'lucide-react-native';
 
+// Native Imports
+import DateTimePicker from '@react-native-community/datetimepicker';
+import SegmentedControl from '@react-native-segmented-control/segmented-control';
+import Slider from '@react-native-community/slider';
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 const OPPORTUNITY_TYPES = [OpportunityType.JOB, OpportunityType.INTERNSHIP, OpportunityType.WALKIN] as const;
 const WORK_MODES        = ['ONSITE', 'HYBRID', 'REMOTE'] as const;
@@ -54,7 +59,6 @@ export const PostOpportunityScreen = ({
 
     return (
         <Screen safe>
-            
             <KeyboardAvoidingView 
                 behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
                 style={styles.flex}
@@ -65,36 +69,23 @@ export const PostOpportunityScreen = ({
                     keyboardShouldPersistTaps="handled"
                     showsVerticalScrollIndicator={false}
                 >
-                    {/* No banner, using FAB instead */}
-
                     <Section title="Signal Configuration">
                         <SurfaceCard style={styles.formCard}>
-                            <Label>Status</Label>
-                            <ChipRow wrap>
-                                {STATUSES.map(s => (
-                                    <Chip 
-                                        key={s} 
-                                        label={s} 
-                                        active={form.status === s}
-                                        onPress={() => set('status', s)}
-                                        activeColor={s === 'PUBLISHED' ? currentTheme.colors.success : s === 'ARCHIVED' ? currentTheme.colors.muted : currentTheme.colors.secondary} 
-                                    />
-                                ))}
-                            </ChipRow>
+                            <SegmentedControlField
+                                label="Status"
+                                options={STATUSES}
+                                selectedValue={form.status}
+                                onChange={v => set('status', v)}
+                            />
 
                             <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
-                            <Label>Signal Type</Label>
-                            <ChipRow>
-                                {OPPORTUNITY_TYPES.map(t => (
-                                    <Chip 
-                                        key={t} 
-                                        label={t} 
-                                        active={form.type === t} 
-                                        onPress={() => set('type', t)} 
-                                    />
-                                ))}
-                            </ChipRow>
+                            <SegmentedControlField
+                                label="Signal Type"
+                                options={OPPORTUNITY_TYPES}
+                                selectedValue={form.type}
+                                onChange={v => set('type', v)}
+                            />
                         </SurfaceCard>
                     </Section>
 
@@ -149,12 +140,12 @@ export const PostOpportunityScreen = ({
 
                     <Section title="Logistics">
                         <SurfaceCard style={styles.formCard}>
-                            <Label>Work Mode</Label>
-                            <ChipRow>
-                                {WORK_MODES.map(m => (
-                                    <Chip key={m} label={m} active={form.workMode === m} onPress={() => set('workMode', m)} />
-                                ))}
-                            </ChipRow>
+                            <SegmentedControlField
+                                label="Work Mode"
+                                options={WORK_MODES}
+                                selectedValue={form.workMode}
+                                onChange={v => set('workMode', v)}
+                            />
 
                             <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
@@ -181,22 +172,11 @@ export const PostOpportunityScreen = ({
 
                             <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
-                            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                                <Text style={[styles.label, { color: currentTheme.colors.textMuted, marginBottom: 0 }]}>Expiration Date (YYYY-MM-DD)</Text>
-                                {form.expiresAt ? (
-                                    <TouchableOpacity 
-                                        onPress={() => set('expiresAt', '')}
-                                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: alpha(currentTheme.colors.error, 0.1) }}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={{ color: currentTheme.colors.error, fontSize: mScale(9), fontWeight: '800' }}>CLEAR</Text>
-                                    </TouchableOpacity>
-                                ) : null}
-                            </View>
-                            <FormInput 
-                                placeholder="e.g. 2026-12-31" 
-                                value={form.expiresAt} 
-                                onChangeText={v => set('expiresAt', v)} 
+                            <DatePickerField
+                                label="Expiration Date"
+                                value={form.expiresAt}
+                                onChange={v => set('expiresAt', v)}
+                                onClear={() => set('expiresAt', '')}
                                 error={errors.expiresAt?.message}
                             />
                         </SurfaceCard>
@@ -224,21 +204,20 @@ export const PostOpportunityScreen = ({
 
                                 <View style={styles.row}>
                                     <View style={styles.flex}>
-                                        <Label>Start Date *</Label>
-                                        <FormInput 
-                                            placeholder="YYYY-MM-DD" 
-                                            value={form.walkInDate} 
-                                            onChangeText={v => set('walkInDate', v)} 
+                                        <DatePickerField
+                                            label="Start Date *"
+                                            value={form.walkInDate}
+                                            onChange={v => set('walkInDate', v)}
                                             error={errors.walkInDate?.message}
                                         />
                                     </View>
                                     <View style={{ width: SPACING.md }} />
                                     <View style={styles.flex}>
-                                        <Label>End Date</Label>
-                                        <FormInput 
-                                            placeholder="YYYY-MM-DD" 
-                                            value={form.walkInEndDate} 
-                                            onChangeText={v => set('walkInEndDate', v)} 
+                                        <DatePickerField
+                                            label="End Date"
+                                            value={form.walkInEndDate}
+                                            onChange={v => set('walkInEndDate', v)}
+                                            onClear={() => set('walkInEndDate', '')}
                                             error={errors.walkInEndDate?.message}
                                         />
                                     </View>
@@ -320,25 +299,47 @@ export const PostOpportunityScreen = ({
                                 placeholder={form.salaryPeriod === 'YEARLY' ? 'e.g. 6-12 LPA' : 'e.g. 40k-60k /month'}
                                 value={form.salaryRange} onChangeText={v => set('salaryRange', v)} />
                             
-                            <Label>Period</Label>
-                            <ChipRow>
-                                {SALARY_PERIODS.map(p => (
-                                    <Chip key={p} label={p} active={form.salaryPeriod === p} onPress={() => set('salaryPeriod', p)} />
-                                ))}
-                            </ChipRow>
+                            <SegmentedControlField
+                                label="Period"
+                                options={SALARY_PERIODS}
+                                selectedValue={form.salaryPeriod}
+                                onChange={v => set('salaryPeriod', v)}
+                            />
 
                             <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
-                            <View style={styles.row}>
-                                <View style={styles.flex}>
-                                    <Label>Exp Min</Label>
-                                    <FormInput placeholder="0" value={form.expMin} onChangeText={v => set('expMin', v)} numeric />
+                            <View style={{ marginBottom: SPACING.md }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                    <Label>Min Experience: {form.expMin || '0'} yrs</Label>
                                 </View>
-                                <View style={{ width: SPACING.md }} />
-                                <View style={styles.flex}>
-                                    <Label>Exp Max</Label>
-                                    <FormInput placeholder="3" value={form.expMax} onChangeText={v => set('expMax', v)} numeric />
+                                <Slider
+                                    minimumValue={0}
+                                    maximumValue={10}
+                                    step={1}
+                                    value={Number(form.expMin || 0)}
+                                    onValueChange={v => set('expMin', String(v))}
+                                    minimumTrackTintColor={currentTheme.colors.primary}
+                                    maximumTrackTintColor={alpha(currentTheme.colors.text, 0.1)}
+                                    thumbTintColor={currentTheme.colors.primary}
+                                    style={{ height: 40 }}
+                                />
+                            </View>
+
+                            <View style={{ marginBottom: SPACING.md }}>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                                    <Label>Max Experience: {form.expMax || '0'} yrs</Label>
                                 </View>
+                                <Slider
+                                    minimumValue={0}
+                                    maximumValue={15}
+                                    step={1}
+                                    value={Number(form.expMax || 0)}
+                                    onValueChange={v => set('expMax', String(v))}
+                                    minimumTrackTintColor={currentTheme.colors.primary}
+                                    maximumTrackTintColor={alpha(currentTheme.colors.text, 0.1)}
+                                    thumbTintColor={currentTheme.colors.primary}
+                                    style={{ height: 40 }}
+                                />
                             </View>
                         </SurfaceCard>
                     </Section>
@@ -449,6 +450,133 @@ const FormInput = ({
                 multiline={multiline}
             />
             {error && <Text style={{ color: currentTheme.colors.error, fontSize: 10, marginTop: 4, fontWeight: '700' }}>{error}</Text>}
+        </View>
+    );
+};
+
+const SegmentedControlField = <T extends string>({
+    label,
+    options,
+    selectedValue,
+    onChange,
+}: {
+    label: string;
+    options: readonly T[];
+    selectedValue: T;
+    onChange: (val: T) => void;
+}) => {
+    const { currentTheme } = useTheme();
+    const selectedIndex = options.indexOf(selectedValue);
+    
+    return (
+        <View style={{ marginBottom: SPACING.md }}>
+            <Label>{label}</Label>
+            <SegmentedControl
+                values={options as unknown as string[]}
+                selectedIndex={selectedIndex >= 0 ? selectedIndex : 0}
+                onChange={(event) => {
+                    const idx = event.nativeEvent.selectedSegmentIndex;
+                    onChange(options[idx]);
+                }}
+                style={{ height: 40, marginTop: 8 }}
+                tintColor={currentTheme.colors.primary}
+                backgroundColor={alpha(currentTheme.colors.text, 0.05)}
+                activeFontStyle={{ color: currentTheme.colors.background, fontWeight: '800' }}
+                fontStyle={{ color: currentTheme.colors.textMuted, fontWeight: '600' }}
+            />
+        </View>
+    );
+};
+
+const DatePickerField = ({
+    label,
+    value,
+    onChange,
+    error,
+    onClear,
+}: {
+    label: string;
+    value: string;
+    onChange: (dateStr: string) => void;
+    error?: string;
+    onClear?: () => void;
+}) => {
+    const { currentTheme } = useTheme();
+    const [show, setShow] = useState(false);
+
+    const handleDateChange = (event: any, selectedDate?: Date) => {
+        if (Platform.OS === 'android') {
+            setShow(false);
+        }
+        if (selectedDate) {
+            const formatted = selectedDate.toISOString().split('T')[0];
+            onChange(formatted);
+        }
+    };
+
+    const displayDate = value ? new Date(value) : null;
+    const pickerDate = displayDate && !isNaN(displayDate.getTime()) ? displayDate : new Date();
+
+    return (
+        <View style={{ marginBottom: SPACING.md }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ fontSize: mScale(10), fontWeight: '900', letterSpacing: 1.5, color: currentTheme.colors.textMuted, textTransform: 'uppercase' }}>{label}</Text>
+                {value && onClear ? (
+                    <TouchableOpacity 
+                        onPress={onClear}
+                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, backgroundColor: alpha(currentTheme.colors.error, 0.1) }}
+                        activeOpacity={0.7}
+                    >
+                        <Text style={{ color: currentTheme.colors.error, fontSize: mScale(9), fontWeight: '800' }}>CLEAR</Text>
+                    </TouchableOpacity>
+                ) : null}
+            </View>
+            <TouchableOpacity
+                onPress={() => setShow(true)}
+                style={[
+                    styles.input,
+                    {
+                        borderBottomColor: error ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1),
+                        marginBottom: 0,
+                        justifyContent: 'center',
+                        paddingVertical: 12,
+                    }
+                ]}
+            >
+                <Text style={{ 
+                    color: value ? currentTheme.colors.text : alpha(currentTheme.colors.text, 0.3),
+                    fontSize: mScale(15),
+                    fontWeight: '600'
+                }}>
+                    {value ? value : 'Select Date'}
+                </Text>
+            </TouchableOpacity>
+            {error && <Text style={{ color: currentTheme.colors.error, fontSize: 10, marginTop: 4, fontWeight: '700' }}>{error}</Text>}
+
+            {show && (
+                <>
+                    {Platform.OS === 'ios' ? (
+                        <View style={{ marginTop: 10, alignItems: 'flex-start' }}>
+                            <DateTimePicker
+                                value={pickerDate}
+                                mode="date"
+                                display="default"
+                                onChange={handleDateChange}
+                            />
+                            <TouchableOpacity onPress={() => setShow(false)} style={{ marginTop: 8, padding: 6, alignSelf: 'flex-end' }}>
+                                <Text style={{ color: currentTheme.colors.primary, fontWeight: '700' }}>Done</Text>
+                            </TouchableOpacity>
+                        </View>
+                    ) : (
+                        <DateTimePicker
+                            value={pickerDate}
+                            mode="date"
+                            display="default"
+                            onChange={handleDateChange}
+                        />
+                    )}
+                </>
+            )}
         </View>
     );
 };

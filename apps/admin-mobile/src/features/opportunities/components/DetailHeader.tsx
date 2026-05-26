@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { CheckCircle2, Clock, Edit3, ExternalLink, MessageSquare, RotateCcw, Trash2, Copy } from 'lucide-react-native';
+import { CheckCircle2, Clock, Edit3, ExternalLink, MessageSquare, RotateCcw, Trash2, Copy, MoreHorizontal } from 'lucide-react-native';
 import { CompanyLogo } from '@repo/ui';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { alpha } from '../../../theme';
@@ -10,6 +10,9 @@ import { SurfaceCard } from '../../system/components/PremiumPrimitives';
 import { type Opportunity } from '@fresherflow/types';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OpportunitiesStackParamList } from '../../../navigation/OpportunitiesNavigator';
+
+// Native Menu Import
+import { MenuView } from '@react-native-menu/menu';
 
 interface DetailHeaderProps {
     opp: Opportunity;
@@ -35,6 +38,14 @@ export const DetailHeader = ({
     onCopySocial 
 }: DetailHeaderProps) => {
     const { currentTheme } = useTheme();
+
+    const menuActions = [
+        ...(dynamicStatus === 'DRAFT' && onPublish ? [{ id: 'publish', title: 'Publish Opportunity' }] : []),
+        ...(dynamicStatus === 'LIVE' && onExpire ? [{ id: 'expire', title: 'Expire Opportunity' }] : []),
+        ...((dynamicStatus === 'EXPIRED' || dynamicStatus === 'ARCHIVED') && onRestore ? [{ id: 'restore', title: 'Restore Opportunity' }] : []),
+        ...(onCopySocial ? [{ id: 'copy_social', title: 'Copy Social Caption' }] : []),
+        ...(onDelete ? [{ id: 'delete', title: 'Delete Signal', attributes: { destructive: true } }] : []),
+    ];
 
     return (
         <SurfaceCard accent style={styles.headerCard}>
@@ -65,31 +76,39 @@ export const DetailHeader = ({
                     label="Edit"
                     onPress={() => navigation.navigate('PostOpportunity', { opportunityId: opp.id })} 
                 />
-                {dynamicStatus === 'DRAFT' && onPublish && (
-                    <ActionBtn icon={<CheckCircle2 size={14} color={currentTheme.colors.success} />} label="Publish" onPress={onPublish} />
-                )}
-                {dynamicStatus === 'LIVE' && onExpire && (
-                    <ActionBtn icon={<Clock size={14} color={currentTheme.colors.warning} />} label="Expire" onPress={onExpire} />
-                )}
-                {(dynamicStatus === 'EXPIRED' || dynamicStatus === 'ARCHIVED') && onRestore && (
-                    <ActionBtn icon={<RotateCcw size={14} color={currentTheme.colors.primary} />} label="Restore" onPress={onRestore} />
-                )}
-                {onCopySocial && (
-                    <ActionBtn icon={<Copy size={14} color={currentTheme.colors.primary} />} label="Copy Social" onPress={onCopySocial} />
-                )}
+                
                 <ActionBtn icon={<MessageSquare size={14} color={currentTheme.colors.textMuted} />} label="Feedback"
                     onPress={() => navigation.navigate('OpportunityFeedback', {
                         opportunityId: opp.id,
                         title: opp.title,
                         company: opp.company,
-                    website: (opp as Opportunity & { companyWebsite?: string | null }).companyWebsite ?? null,
+                        website: (opp as Opportunity & { companyWebsite?: string | null }).companyWebsite ?? null,
                     })}
                 />
-                {opp.applyLink &&
+
+                {opp.applyLink && (
                     <ActionBtn icon={<ExternalLink size={14} color={currentTheme.colors.secondary} />} label="Apply"
-                        onPress={() => Linking.openURL(String(opp.applyLink))} />}
-                {onDelete && (
-                    <ActionBtn icon={<Trash2 size={14} color={currentTheme.colors.error} />} label="Delete" onPress={onDelete} />
+                        onPress={() => Linking.openURL(String(opp.applyLink))} />
+                )}
+
+                {menuActions.length > 0 && (
+                    <MenuView
+                        title="Manage Signal"
+                        onPressAction={({ nativeEvent }) => {
+                            const actionId = nativeEvent.event;
+                            if (actionId === 'publish' && onPublish) onPublish();
+                            else if (actionId === 'expire' && onExpire) onExpire();
+                            else if (actionId === 'restore' && onRestore) onRestore();
+                            else if (actionId === 'copy_social' && onCopySocial) onCopySocial();
+                            else if (actionId === 'delete' && onDelete) onDelete();
+                        }}
+                        actions={menuActions}
+                    >
+                        <View style={[styles.headerActionBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
+                            <MoreHorizontal size={14} color={currentTheme.colors.primary} />
+                            <Text style={[styles.headerActionText, { color: currentTheme.colors.text }]}>Actions</Text>
+                        </View>
+                    </MenuView>
                 )}
             </View>
         </SurfaceCard>
