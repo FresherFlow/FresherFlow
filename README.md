@@ -1,100 +1,88 @@
-<h1 align="center">
-  <img src="./apps/web/public/main.png" width="38" height="38" align="center" alt="FresherFlow Logo" />
-  FresherFlow
-</h1>
+# FresherFlow Monorepo
 
-<p align="center">
-  <strong>Empowering freshers to discover their first professional opportunity.</strong><br/>
-  <em>Verified, high-performance job discoverability index for students and freshers.</em>
-</p>
+[![Website](https://img.shields.io/badge/Website-000000?style=flat-square&logo=google-chrome&logoColor=white)](https://fresherflow.in)
+[![GitHub](https://img.shields.io/badge/GitHub-181717?style=flat-square&logo=github&logoColor=white)](https://github.com/MukeshCheekatla/fresherflow)
+[![Discord](https://img.shields.io/badge/Discord-5865F2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/CcPAnWSHD)
+[![Telegram](https://img.shields.io/badge/Telegram-26A5E4?style=flat-square&logo=telegram&logoColor=white)](https://t.me/fresherflowin)
 
-<p align="center">
-  <a href="https://fresherflow.in">
-    <img src="https://img.shields.io/badge/Website-000000?style=for-the-badge&logo=google-chrome&logoColor=white" alt="Website" />
-  </a>&nbsp;&nbsp;
-  <a href="https://github.com/MukeshCheekatla/fresherflow">
-    <img src="https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub" />
-  </a>&nbsp;&nbsp;
-  <a href="https://www.linkedin.com/company/fresherflow-in">
-    <img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white" alt="LinkedIn" />
-  </a>&nbsp;&nbsp;
-  <a href="https://twitter.com/Fresherflow">
-    <img src="https://img.shields.io/badge/Twitter-1DA1F2?style=for-the-badge&logo=x&logoColor=white" alt="Twitter" />
-  </a>
-  <br/><br/>
-  <a href="https://discord.gg/CcPAnWSHD">
-    <img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord" />
-  </a>&nbsp;&nbsp;
-  <a href="https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D">
-    <img src="https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="WhatsApp" />
-  </a>&nbsp;&nbsp;
-  <a href="https://t.me/fresherflowin">
-    <img src="https://img.shields.io/badge/Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram" />
-  </a>&nbsp;&nbsp;
-  <a href="https://instagram.com/fresherflow">
-    <img src="https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white" alt="Instagram" />
-  </a>
-</p>
+A verified, high-performance job and walk-in discovery engine tailored for students and graduates across India. Built as a type-safe TypeScript monorepo.
 
 ---
 
-## 🌊 Our Mission
+## 🏗️ Architecture & Stack
 
-> FresherFlow started with a simple observation: the best job opportunities are often hidden in plain sight or buried under noise. We built this as a community-first platform where students and freshers help each other by sharing verified links and referrals. **No spam, no fluff—just pure opportunities.**
+FresherFlow is built with a decoupled frontend, Express backend, and a worker-based parser/ingestion pipeline:
+
+```mermaid
+graph TD
+    A[Mobile App - React Native] -->|Handshake| B[API Gateway - Express]
+    W[Web App - Next.js] -->|Static Feed| C[CDN / S3]
+    B -->|Prisma| D[(PostgreSQL)]
+    B -->|BullMQ| E[Redis]
+    F[Ingestion Service] -->|Parsing| G[Parser Engine]
+    G -->|Store| D
+    H[Admin Mobile] -->|Moderation| B
+    E -->|Worker| I[Background Jobs]
+```
+
+### Core Stack
+- **Frontend**: Next.js 16 (Web App), React Native Expo (Mobile App & Admin Mobile)
+- **Backend**: Node.js & Express API Gateway, BullMQ background tasks
+- **Database**: PostgreSQL with Prisma ORM
+- **Cache & Queue**: Redis
+- **Monorepo Manager**: Turborepo with `pnpm` workspaces
 
 ---
 
-## 📂 Project Structure
+## 📂 Repository Map
 
-The ecosystem is organized as a type-safe **Turborepo** monorepo:
+The codebase is organized into isolated applications (`apps/`) and shared, type-safe packages (`packages/`):
 
-*   **`apps/web`**: Next.js web application with dynamic eligibility matchmaking controls.
-*   **`apps/mobile`**: React Native Expo mobile application optimized for job discovery.
-*   **`apps/admin-mobile`**: React Native Expo mobile dashboard for immediate opportunity vetting.
-*   **`apps/api`**: Node.js/Express secure REST API gateway.
-*   **`packages/`**: Shared TypeScript definitions, constants, validation schemas, and database layers.
-
----
-
-## 🚀 Getting Started
-
-### Prerequisites
-*   **Node.js** $\ge$ 20.0.0
-*   **npm** $\ge$ 9.0.0
-
-### Run the Project
-```bash
-# Clone the repository
-git clone https://github.com/MukeshCheekatla/fresherflow.git
-cd fresherflow
-
-# Install and build dependencies
-npm install
-npm run db:generate
-
-# Start all applications concurrently
-npm run dev
+```
+├── apps/
+│   ├── web/            # Next.js web portal (port 3000)
+│   ├── mobile/         # User mobile application (React Native)
+│   ├── admin-mobile/   # Moderation and administrative mobile portal
+│   ├── api/            # Central backend REST gateway (port 5000)
+│   ├── worker/         # BullMQ queue runner and job processor (port 5001)
+│   └── ingestion/      # Data scrapers and raw lead processor
+├── packages/
+│   ├── database/       # Prisma models, migration scripts, and database client
+│   ├── types/          # Shared TypeScript interfaces (Source of Truth)
+│   ├── ui/             # Reusable UI component configurations & design tokens
+│   ├── domain/         # Core business logic (eligibility matching, profile scores)
+│   ├── api-client/     # Axios API wrapper shared across frontend packages
+│   └── parser/         # NLP pattern-matching pipeline to parse job listings
 ```
 
 ---
 
-## 🎮 Core CLI Scripts
+## 🚀 Getting Started & Onboarding
 
-| Command | Workspace Scope | Function |
-| :--- | :--- | :--- |
-| `npm run dev` | Monorepo Root | Launches active Web and API development servers concurrently |
-| `npm run build` | Monorepo Root | Builds all workspace applications and shared packages for production |
-| `npm run lint` | Monorepo Root | Performs strict linting and code-hygiene verification |
-| `npm run typecheck` | Monorepo Root | Validates TypeScript compilation across all projects |
+To set up the monorepo locally, configure environment variables, and run development databases, please follow our step-by-step onboarding guide:
+
+👉 **[Setup & Onboarding Guide](./docs/setup.md)**
 
 ---
 
-## 📄 License
+## 🎮 Development Commands
 
-Distributed under the **MIT License**. See [LICENSE](./LICENSE) for details.
+All tasks are managed at the root using `pnpm` and Turborepo:
+
+| Script | Action |
+| :--- | :--- |
+| `pnpm dev` | Launches all applications concurrently (checks and frees conflicting ports) |
+| `pnpm dev:web` | Run only the Next.js web application |
+| `pnpm dev:mobile` | Run only the user Expo mobile application |
+| `pnpm dev:api` | Run only the REST API express server |
+| `pnpm build` | Builds all packages and services for production |
+| `pnpm typecheck` | Compiles and validates TypeScript types across the workspaces |
+| `pnpm db:generate` | Generates the local Prisma Client |
 
 ---
 
-<p align="center">
-  <strong>Built with discipline. Optimized for students.</strong>
-</p>
+## 🗺️ Product Roadmap
+
+We are actively driving towards our Mobile MVP release. To view our milestones, current checklist, and contributor guidelines, check:
+
+👉 **[Launch Roadmap](./ROADMAP.md)**
