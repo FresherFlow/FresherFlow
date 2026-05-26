@@ -79,6 +79,10 @@
         "backgroundColor": "#000000"
       }
     },
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#000000"
+    },
     "plugins": [
       "expo-secure-store",
       "expo-notifications",

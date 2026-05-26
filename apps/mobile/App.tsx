@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import * as Sentry from '@sentry/react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 Sentry.init({
-  dsn: 'https://53f49256b2be0891128bcdc10aafd609@o4511002230849536.ingest.us.sentry.io/4511002238713856',
+  dsn: 'https://e23ea3b19c0247d5f0366941f9e490c8@o4511002230849536.ingest.us.sentry.io/4511449039175680',
   enableNative: true,
   tracesSampleRate: 1.0,
 });
@@ -40,7 +41,6 @@ SplashScreen.preventAutoHideAsync().catch(() => {
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -123,6 +123,13 @@ const AppContent = () => {
   React.useEffect(() => {
     // Globally hydrate the master feed on app start
     void useFeedStore.getState().hydrate();
+    
+    // Check if first run - if so, bypass BrandIntroLoader splash animation to go straight to onboarding
+    AsyncStorage.getItem('ff_first_run_done').then(val => {
+      if (val !== 'true') {
+        setIsLoaded(true);
+      }
+    }).catch(() => {});
   }, []);
 
   const { currentTheme } = useTheme();
@@ -283,13 +290,11 @@ export default function App() {
               <ErrorBoundary>
                 <QueryClientProvider client={queryClient}>
                   <ToastProvider>
-                    <UIThemeContext.Provider value={theme}>
-                          <AuthBridge>
-                            <BottomSheetModalProvider>
-                              <AppContent />
-                            </BottomSheetModalProvider>
-                          </AuthBridge>
-                    </UIThemeContext.Provider>
+                    <AuthBridge>
+                      <BottomSheetModalProvider>
+                        <AppContent />
+                      </BottomSheetModalProvider>
+                    </AuthBridge>
                   </ToastProvider>
                 </QueryClientProvider>
               </ErrorBoundary>
@@ -303,9 +308,19 @@ export default function App() {
 
 const ThemedRoot = ({ children }: { children: React.ReactNode }) => {
   const { currentTheme } = useTheme();
+
+  // Dynamically build a new UITheme context value so that React context detects the change and propagates it instantly
+  const uiThemeValue = React.useMemo(() => ({
+    colors: currentTheme.colors,
+    spacing: currentTheme.spacing,
+    roundness: currentTheme.roundness,
+  }), [currentTheme.colors, currentTheme.spacing, currentTheme.roundness]);
+
   return (
     <View style={{ flex: 1, backgroundColor: currentTheme.colors.background }}>
-      {children}
+      <UIThemeContext.Provider value={uiThemeValue}>
+        {children}
+      </UIThemeContext.Provider>
     </View>
   );
 };
