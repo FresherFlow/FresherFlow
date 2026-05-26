@@ -25,6 +25,7 @@ import {
   Info,
   RefreshCw,
   Share2,
+  Building2,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -87,22 +88,7 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     }
   };
 
-  // Track scroll position for hide/show tab bar
-  const scrollOffset = useRef(0);
 
-  const handleScroll = useCallback((event: any) => {
-    const currentOffset = event.nativeEvent.contentOffset.y;
-    const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
-
-    if (Math.abs(currentOffset - scrollOffset.current) > 20) {
-      if (direction === 'down' && currentOffset > 100) {
-        hideTabBar();
-      } else if (direction === 'up' || currentOffset < 50) {
-        showTabBar();
-      }
-      scrollOffset.current = currentOffset;
-    }
-  }, [hideTabBar, showTabBar]);
 
   const onNavigate = (screen: keyof RootStackParamList) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -133,8 +119,6 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 paddingBottom: insets.bottom + 120,
             }
         ]}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
         stickyHeaderIndices={[0]}
       >
           {/* Sticky Header Page Title & Action Slot */}
@@ -220,7 +204,7 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         <SurfaceCard style={styles.groupCard}>
                             <MenuRow
                                 icon={Settings}
-                                label="Manage Profile"
+                                label="Account & Privacy"
                                 onPress={() => onNavigate('AccountManage')}
                                 currentTheme={currentTheme}
                             />
@@ -241,44 +225,17 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 label="Contribution History"
                                 onPress={() => onNavigate('MyShares')}
                                 currentTheme={currentTheme}
+                            />
+                            <MenuRow
+                                icon={Building2}
+                                label="Companies"
+                                onPress={() => onNavigate('FollowedCompanies')}
+                                currentTheme={currentTheme}
                                 isLast
                             />
                         </SurfaceCard>
                   </>
 
-                  {!isAnonymous && (follows.companies.length > 0 || follows.tags.length > 0 || follows.contributors.length > 0) && (
-                    <>
-                        <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Following</Text>
-                        <SurfaceCard style={styles.groupCard}>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.followsList}
-                            >
-                                {follows.companies.map(company => (
-                                    <TouchableOpacity
-                                        key={company}
-                                        activeOpacity={0.8}
-                                        style={[styles.followChip, { backgroundColor: alpha(currentTheme.colors.text, 0.05), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
-                                        onPress={() => unfollow('COMPANY', company)}
-                                    >
-                                        <Text style={[styles.followChipText, { color: currentTheme.colors.text }]}>{formatCompanyKey(company)}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                                {follows.tags.map(tag => (
-                                    <TouchableOpacity
-                                        key={tag}
-                                        activeOpacity={0.8}
-                                        style={[styles.followChip, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderColor: alpha(currentTheme.colors.primary, 0.1) }]}
-                                        onPress={() => unfollow('TAG', tag)}
-                                    >
-                                        <Text style={[styles.followChipText, { color: currentTheme.colors.primary }]}>#{tag.toLowerCase()}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </ScrollView>
-                        </SurfaceCard>
-                    </>
-                  )}
 
 
                   <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Community & System</Text>
@@ -304,12 +261,15 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                       />
                   </SurfaceCard>
 
-                  {/* Simple Real User Count Card */}
-                  <SurfaceCard style={styles.simpleStatsCard}>
-                      <Text style={[styles.simpleStatsText, { color: currentTheme.colors.text }]}>
-                          <Text style={{ fontWeight: '900', color: currentTheme.colors.primary }}>{globalStats.downloads.toLocaleString()}</Text> users have joined FresherFlow
+                  {/* Attractive Real User Count */}
+                  <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 8 }}>
+                      <Text style={{ fontSize: 36, fontWeight: '900', color: currentTheme.colors.primary, letterSpacing: -1 }}>
+                          {globalStats.downloads.toLocaleString()}
                       </Text>
-                  </SurfaceCard>
+                      <Text style={{ fontSize: 12, fontWeight: '800', color: alpha(currentTheme.colors.textMuted, 0.6), marginTop: 2, letterSpacing: 1, textTransform: 'uppercase' }}>
+                          Users Joined
+                      </Text>
+                  </View>
 
                   {/* Simple Share Row */}
                   <TouchableOpacity
@@ -566,6 +526,7 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         alignItems: 'center',
         justifyContent: 'center',
+        alignSelf: 'center',
     },
     simpleStatsText: {
         fontSize: mScale(13),

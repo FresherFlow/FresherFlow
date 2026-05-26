@@ -171,11 +171,6 @@ const ModeCard = ({ label, active, icon: Icon, onPress, currentTheme }: ModeCard
         <Icon size={24} color={active ? currentTheme.colors.background : currentTheme.colors.text} />
       </View>
       <Text style={[styles.modeLabel, { color: active ? currentTheme.colors.text : currentTheme.colors.textMuted }]} numberOfLines={1}>{label}</Text>
-      {active && (
-          <View style={[styles.checkBadge, { backgroundColor: currentTheme.colors.primary }]}>
-              <Check size={10} color={currentTheme.colors.background} />
-          </View>
-      )}
     </TouchableOpacity>
 );
 

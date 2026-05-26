@@ -19,7 +19,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { usernameApi } from '@fresherflow/api-client';
 import { haptic } from '@/utils/haptics';
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { SPACING, RADIUS, mScale } from '@/system/constants/dimensions';
 import { alpha } from '@/theme';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -30,9 +30,10 @@ import { generateCdnSignature } from '@/utils/cdnSignature';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChooseUsername' | 'ProfileChooseUsername'>;
 
-export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
+export const ChooseUsernameScreen: React.FC<Props> = ({ route, navigation }) => {
     const { currentTheme } = useTheme();
     const { updateUser, skipUsername } = useAuthStore();
+    const isOnboarding = route.params?.isOnboarding;
     
     const [username, setUsername] = useState('');
     const [isChecking, setIsChecking] = useState(false);
@@ -172,10 +173,9 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
                 style={styles.flex}
             >
                 <View style={[styles.headerContainer, { backgroundColor: currentTheme.colors.background }]}>
-                    <PremiumHeader 
+                    <SecondaryHeader 
                         title="Choose Handle"
-                        subtitle="Your unique identity on FresherFlow"
-                        showBack={false}
+                        showBack={!isOnboarding}
                     />
                 </View>
 
@@ -192,7 +192,7 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ navigation }) => {
                     >
                         {!isKeyboardVisible && (
                             <Text style={[styles.instruction, { color: currentTheme.colors.textMuted }]}>
-                                This is how others will see you in comments and shares. You can change it once every 30 days.
+                                This is how others will see you in comments and shares. Note: Usernames cannot be changed once set.
                             </Text>
                         )}
 

@@ -50,9 +50,9 @@ export const SkillsView = ({ profile, availabilityLabel, onEdit, currentTheme }:
 
                 {hasSkills ? (
                     <>
-                        {/* Technical Stack */}
+                        {/* Skills */}
                         <View style={{ marginBottom: 24 }}>
-                            <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted, marginBottom: 12 }]}>TECHNICAL STACK</Text>
+                            <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted, marginBottom: 12 }]}>SKILLS & EXPERTISE</Text>
                             <View style={styles.tagContainer}>
                                 {(profile?.skills || []).map(skill => (
                                     <View key={skill} style={[styles.viewTag, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
@@ -79,7 +79,7 @@ export const SkillsView = ({ profile, availabilityLabel, onEdit, currentTheme }:
                             ))}
                         </View>
                         <TouchableOpacity onPress={onEdit} activeOpacity={0.8} style={{ alignItems: 'center', paddingVertical: 14, backgroundColor: alpha(currentTheme.colors.primary, 0.06), borderRadius: 16, borderWidth: 1, borderColor: alpha(currentTheme.colors.primary, 0.1) }}>
-                            <Text style={{ fontSize: 13, fontWeight: '700', color: currentTheme.colors.primary }}>Add skills and tech stack</Text>
+                            <Text style={{ fontSize: 13, fontWeight: '700', color: currentTheme.colors.primary }}>Add your skills</Text>
                         </TouchableOpacity>
                     </View>
                 )}
@@ -174,7 +174,7 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <View style={styles.heroSection}>
                                 <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>What can you{'\n'}deliver?</Text>
                                 <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
-                                    Add your tech stack and availability. More signals = better matches.
+                                    Add your skills and availability. More signals = better matches.
                                 </Text>
                             </View>
                         )}
@@ -182,7 +182,7 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         <View style={styles.section}>
                             <View style={styles.sectionHeader}>
                                 <Zap size={16} color={currentTheme.colors.primary} />
-                                <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Technical Stack</Text>
+                                <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Skills & Expertise</Text>
                             </View>
 
                             <SurfaceCard style={styles.card}>

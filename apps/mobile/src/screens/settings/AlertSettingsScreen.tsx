@@ -7,7 +7,10 @@ import {
     ActivityIndicator,
     TextInput,
     ScrollView,
+    TouchableOpacity,
 } from 'react-native';
+import * as Notifications from 'expo-notifications';
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
     Bell, 
@@ -45,9 +48,18 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     if (loading) {
         return (
-            <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
-                <ActivityIndicator color={currentTheme.colors.primary} />
-            </View>
+            <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
+                <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
+                <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
+                    <SecondaryHeader
+                        title="Alert Settings"
+                        onBack={() => navigation.goBack()}
+                    />
+                </View>
+                <View style={styles.center}>
+                    <ActivityIndicator color={currentTheme.colors.primary} />
+                </View>
+            </Screen>
         );
     }
 
@@ -132,6 +144,30 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         </View>
                     </SurfaceCard>
 
+                    <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Diagnostics</Text>
+                    <TouchableOpacity 
+                        style={[styles.testButton, { backgroundColor: currentTheme.colors.primary }]}
+                        onPress={async () => {
+                            await Notifications.scheduleNotificationAsync({
+                                content: {
+                                    title: "Test Match from FresherFlow",
+                                    body: "If you see this, your push notifications are working perfectly locally.",
+                                    sound: true,
+                                    android: {
+                                        channelId: 'matches',
+                                        smallIcon: '@drawable/notification_icon',
+                                        largeIcon: null,
+                                    },
+                                },
+                                trigger: null, // Fire immediately
+                            });
+                        }}
+                    >
+                        <Text style={[styles.testButtonText, { color: currentTheme.colors.background }]}>
+                            Test Push Notification
+                        </Text>
+                    </TouchableOpacity>
+
                 </View>
             </ScrollView>
         </Screen>
@@ -157,6 +193,8 @@ const styles = StyleSheet.create({
     inputRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
     inputLabelContainer: { flex: 1 },
     input: { width: 60, height: 40, borderRadius: 12, textAlign: 'center', fontWeight: '800', fontSize: 15 },
+    testButton: { marginTop: 8, padding: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    testButtonText: { fontSize: 16, fontWeight: '800' },
     footerInfo: { marginTop: 32, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, paddingBottom: 40 },
     footerText: { fontSize: 12, fontWeight: '700' }
 });

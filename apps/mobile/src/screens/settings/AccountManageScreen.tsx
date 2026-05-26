@@ -51,7 +51,9 @@ const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         setShowLogoutModal(false);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         await logout();
+        navigation.goBack();
     };
+
 
 
     return (
@@ -95,17 +97,21 @@ const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         />
                     </SurfaceCard>
 
-                    <Text style={[styles.groupLabel, { color: currentTheme.colors.error }]}>Account Actions</Text>
-                    <SurfaceCard style={styles.groupCard}>
-                        <SettingRow 
-                            icon={LogOut} 
-                            label="Sign Out" 
-                            currentTheme={currentTheme}
-                            destructive
-                            onPress={onLogoutPress}
-                            isLast
-                        />
-                    </SurfaceCard>
+                    {!(!user || user.isAnonymous) && (
+                        <>
+                            <Text style={[styles.groupLabel, { color: currentTheme.colors.error }]}>Account Actions</Text>
+                            <SurfaceCard style={styles.groupCard}>
+                                <SettingRow 
+                                    icon={LogOut} 
+                                    label="Sign Out" 
+                                    currentTheme={currentTheme}
+                                    destructive
+                                    onPress={onLogoutPress}
+                                    isLast
+                                />
+                            </SurfaceCard>
+                        </>
+                    )}
 
                     <View style={styles.footerInfo}>
                         <Info size={16} color={currentTheme.colors.textMuted} />

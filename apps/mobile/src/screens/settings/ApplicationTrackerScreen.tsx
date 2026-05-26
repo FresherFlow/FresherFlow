@@ -32,6 +32,7 @@ import { Screen } from '@/system/layout/Layout';
 import { SecondaryHeader, SurfaceCard, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { CompanyLogo } from '@repo/ui';
 import { SCREEN_WIDTH } from '@/system/constants/dimensions';
+import { TrackerStatusSheet, TrackerStatusSheetRef } from '@/system/components/TrackerStatusSheet';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ApplicationTracker'>;
 
@@ -140,6 +141,10 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
 
     const [activeStatus, setActiveStatus] = useState<ActionType>(ActionType.PLANNED);
     const [celebrateJob, setCelebrateJob] = useState<Opportunity | null>(null);
+    const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
+    const [selectedStatus, setSelectedStatus] = useState<ActionType | null>(null);
+    const trackerSheetRef = useRef<TrackerStatusSheetRef>(null);
+
     const pagerRef = useRef<FlatList>(null);
     const tabListRef = useRef<ScrollView>(null);
     const isManualScrolling = useRef(false);
@@ -158,6 +163,19 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
     const handleUpdateStatus = async (opportunityId: string, newStatus: ActionType) => {
         try {
             await updateStatus(opportunityId, newStatus);
+        } catch {
+            Alert.alert('Error', 'Failed to update status');
+        }
+    };
+
+    const handleSelectStatus = async (newStatus: ActionType) => {
+        if (!selectedOpp) return;
+        try {
+            await updateStatus(selectedOpp.id, newStatus);
+            if (newStatus === ActionType.SELECTED) {
+                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+                setCelebrateJob(selectedOpp);
+            }
         } catch {
             Alert.alert('Error', 'Failed to update status');
         }
@@ -243,73 +261,58 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
         pagerRef.current?.scrollToOffset({ offset: index * SCREEN_WIDTH, animated: true });
     };
 
+    const handleCardLongPress = useCallback((opp: Opportunity, currentStatus: ActionType) => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setSelectedOpp(opp);
+        setSelectedStatus(currentStatus);
+        setTimeout(() => {
+            trackerSheetRef.current?.present();
+        }, 50);
+    }, []);
+
     const renderItem = useCallback(({ item }: { item: ActionRecord }) => {
         const opp = item.opportunity;
         if (!opp) return null;
 
         return (
             <SurfaceCard style={styles.jobCard}>
-                <TouchableOpacity 
-                    activeOpacity={0.7}
-                    onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        navigation.navigate('JobDetail', { opportunityId: opp.id });
-                    }}
-                    style={styles.cardHeader}
-                >
-                    <CompanyLogo 
-                        name={opp.company} 
-                        logoUrl={opp.companyLogoUrl} 
-                        size={44} 
-                    />
-                    <View style={styles.cardInfo}>
-                        <Text style={[styles.jobTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                            {opp.title}
-                        </Text>
-                        <Text style={[styles.companyName, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
-                            {opp.company}
-                        </Text>
-                    </View>
-                    <ChevronRight size={18} color={currentTheme.colors.textMuted} opacity={0.3} />
-                </TouchableOpacity>
-
-                <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.05) }]} />
-
-                <View style={styles.actionRow}>
-                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.statusScroll}>
-                        {item.actionType === ActionType.SELECTED && (
-                            <TouchableOpacity 
-                                onPress={() => {
-                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                                    setCelebrateJob(opp);
-                                }}
-                                style={[styles.statusBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.15) }]}
-                            >
-                                <Text style={[styles.statusBtnText, { color: currentTheme.colors.primary }]}>
-                                    🎉 Celebrate Offer
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-                        {STATUS_ORDER.filter(s => s !== item.actionType).map(status => (
-                            <TouchableOpacity 
-                                key={status}
-                                onPress={() => handleUpdateStatus(opp.id, status)}
-                                style={[styles.statusBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
-                            >
-                                <Text style={[styles.statusBtnText, { color: currentTheme.colors.text }]}>
-                                    Move to {STATUS_LABEL[status]}
-                                </Text>
-                            </TouchableOpacity>
-                        ))}
-                    </ScrollView>
-                    
-                    <TouchableOpacity onPress={() => handleRemove(opp.id)} style={styles.deleteBtn}>
-                        <Trash2 size={16} color={currentTheme.colors.error} opacity={0.6} />
+                <View style={styles.cardHeader}>
+                    <TouchableOpacity 
+                        activeOpacity={0.7}
+                        onPress={() => {
+                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            navigation.navigate('JobDetail', { opportunityId: opp.id });
+                        }}
+                        onLongPress={() => handleCardLongPress(opp, item.actionType)}
+                        style={styles.cardInfoContainer}
+                    >
+                        <CompanyLogo 
+                            name={opp.company} 
+                            website={opp.companyWebsite}
+                            applyLink={opp.applyLink}
+                            logoUrl={opp.companyLogoUrl} 
+                            size={44} 
+                        />
+                        <View style={styles.cardInfo}>
+                            <Text style={[styles.jobTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>
+                                {opp.title}
+                            </Text>
+                            <Text style={[styles.companyName, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                                {opp.company}
+                            </Text>
+                        </View>
                     </TouchableOpacity>
+
+                    <View style={styles.headerRightActions}>
+                        <TouchableOpacity onPress={() => handleRemove(opp.id)} style={styles.cardTrashBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+                            <Trash2 size={16} color={currentTheme.colors.error} opacity={0.6} />
+                        </TouchableOpacity>
+                        <ChevronRight size={18} color={currentTheme.colors.textMuted} opacity={0.3} />
+                    </View>
                 </View>
             </SurfaceCard>
         );
-    }, [currentTheme, navigation]);
+    }, [currentTheme, navigation, handleCardLongPress, handleRemove]);
 
     return (
         <Screen safe={true} style={{ backgroundColor: currentTheme.colors.background }}>
@@ -419,7 +422,6 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                     <Text style={{ fontSize: 16, color: currentTheme.colors.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 24 }}>
                         Congratulations on your offer from <Text style={{ color: currentTheme.colors.primary, fontWeight: '800' }}>{celebrateJob.company}</Text> for the <Text style={{ color: currentTheme.colors.text, fontWeight: '800' }}>{celebrateJob.title}</Text> role!
                     </Text>
-                    
                     <TouchableOpacity 
                         onPress={handleShareSuccess}
                         style={{ backgroundColor: '#0A66C2', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 100, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, width: '100%', justifyContent: 'center' }}
@@ -435,6 +437,13 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                     </TouchableOpacity>
                 </View>
             )}
+
+            <TrackerStatusSheet
+                ref={trackerSheetRef}
+                opportunity={selectedOpp}
+                currentStatus={selectedStatus}
+                onSelect={handleSelectStatus}
+            />
         </Screen>
     );
 });
@@ -499,7 +508,23 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         padding: 16,
+        justifyContent: 'space-between',
+    },
+    cardInfoContainer: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
         gap: 16,
+    },
+    headerRightActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+    },
+    cardTrashBtn: {
+        padding: 6,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     cardInfo: {
         flex: 1,
