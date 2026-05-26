@@ -22,19 +22,19 @@ export function calculateMatchScore(profile: Profile | null, opportunity: Opport
     return { score: 0, reason: 'Complete profile to see fit', isEligible: true };
   }
 
+  // If career profile education data is empty, treat as eligible but with no score/matching
+  // (nothing implements until they actually fill in their career credentials)
+  const isProfileEmpty = !profile.educationLevel && !profile.gradCourse && !profile.gradSpecialization;
+  if (isProfileEmpty) {
+    return { score: 0, reason: 'Complete profile to see eligibility', isEligible: true };
+  }
+
   // ==========================================
-  // 1. Strict Eligibility Gates (Must Pass)
+  // 1. Strict Eligibility Gates (Must Pass if data exists)
   // ==========================================
 
   // Gate A: Allowed Degrees (Degree/Level Gate)
-  if (opportunity.allowedDegrees && opportunity.allowedDegrees.length > 0) {
-    if (!profile.educationLevel) {
-      return {
-        score: 0,
-        reason: `Required degrees: ${opportunity.allowedDegrees.join(', ')}`,
-        isEligible: false
-      };
-    }
+  if (opportunity.allowedDegrees && opportunity.allowedDegrees.length > 0 && profile.educationLevel) {
     const levels = ['DIPLOMA', 'DEGREE', 'PG'];
     const userLevelIndex = levels.indexOf(profile.educationLevel);
     const levelMatch = userLevelIndex !== -1 && opportunity.allowedDegrees.some(deg => {
@@ -52,7 +52,7 @@ export function calculateMatchScore(profile: Profile | null, opportunity: Opport
   }
 
   // Gate B: Allowed Passout Years (Batch / Passout Gate)
-  if (opportunity.allowedPassoutYears && opportunity.allowedPassoutYears.length > 0) {
+  if (opportunity.allowedPassoutYears && opportunity.allowedPassoutYears.length > 0 && (profile.gradYear || profile.pgYear)) {
     const normGradYear = normalizeNumber(profile.gradYear);
     const normPgYear = normalizeNumber(profile.pgYear);
 
@@ -70,7 +70,7 @@ export function calculateMatchScore(profile: Profile | null, opportunity: Opport
   }
 
   // Gate C: Allowed Courses (Course Gate)
-  if (opportunity.allowedCourses && opportunity.allowedCourses.length > 0) {
+  if (opportunity.allowedCourses && opportunity.allowedCourses.length > 0 && (profile.gradCourse || profile.pgCourse)) {
     const allowedCourses = opportunity.allowedCourses.map(course => normalizeAcademicToken(normalizeCourseName(course))).filter(Boolean);
     if (allowedCourses.length > 0) {
       const userCourse = normalizeAcademicToken(normalizeCourseName(profile.gradCourse));
@@ -90,7 +90,7 @@ export function calculateMatchScore(profile: Profile | null, opportunity: Opport
   }
 
   // Gate D: Allowed Specializations (Specialization Gate)
-  if (opportunity.allowedSpecializations && opportunity.allowedSpecializations.length > 0) {
+  if (opportunity.allowedSpecializations && opportunity.allowedSpecializations.length > 0 && (profile.gradSpecialization || profile.pgSpecialization)) {
     const allowedSpecs = opportunity.allowedSpecializations.map(spec => normalizeAcademicToken(normalizeSpecializationName(spec))).filter(Boolean);
     if (allowedSpecs.length > 0) {
       const userSpec = normalizeAcademicToken(normalizeSpecializationName(profile.gradSpecialization));

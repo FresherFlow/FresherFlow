@@ -8,6 +8,8 @@ export interface QueuedShare {
     tempId: string;
     type: 'LINK' | 'REFERRAL';
     url?: string;
+    title?: string;
+    company?: string;
     referral?: {
         title: string;
         company: string;
@@ -24,7 +26,7 @@ export interface QueuedShare {
  */
 export const queueShare = async (
     type: 'LINK' | 'REFERRAL',
-    data: { url?: string; referral?: QueuedShare['referral'] }
+    data: { url?: string; title?: string; company?: string; referral?: QueuedShare['referral'] }
 ): Promise<string> => {
     try {
         const tempId = `temp_share_${Date.now()}`;
@@ -33,6 +35,8 @@ export const queueShare = async (
             tempId,
             type,
             url: data.url,
+            title: data.title,
+            company: data.company,
             referral: data.referral,
             timestamp: Date.now(),
         };
@@ -84,7 +88,7 @@ export const syncShareQueue = async (): Promise<number> => {
             try {
                 if (item.type === 'LINK' && item.url) {
                     const normalized = normalizeOpportunityUrl(item.url);
-                    const response = await opportunitiesApi.shareLink(normalized);
+                    const response = await opportunitiesApi.shareLink(normalized, item.title, item.company);
                     
                     // Add successfully submitted link to local cache if not duplicate
                     if (!response.existing) {

@@ -114,17 +114,35 @@ export function enqueueProfileSync(userId: string, kind: ProfileSyncKind, payloa
 
 function isPermanentSyncError(error: unknown) {
   const status = (error as { status?: number })?.status;
-  return Boolean(status && status >= 400 && status < 500 && status !== 408 && status !== 429);
+  // 401/403 = auth issue (token not ready yet or expired) — retry, don't drop
+  // 408/429 = timeout / rate limit — retry
+  // 400/404/422 = bad data — drop permanently
+  const AUTH_ERRORS = [401, 403];
+  const TRANSIENT_ERRORS = [408, 429];
+  if (!status || status >= 500) return false; // server error — retry
+  if (AUTH_ERRORS.includes(status)) return false; // auth error — retry
+  if (TRANSIENT_ERRORS.includes(status)) return false; // transient — retry
+  return true; // 400, 404, 422, etc — bad data, drop
 }
+
+const QUEUE_ITEM_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function flushOnboardingSyncQueue(userId: string): Promise<number> {
   const queue = getQueue();
   const remaining: SyncQueueItem[] = [];
   let flushed = 0;
+  const now = Date.now();
 
   for (const item of queue) {
+    // Keep items belonging to other users — don't touch them
     if (item.userId !== userId) {
       remaining.push(item);
+      continue;
+    }
+
+    // Drop stale items to prevent queue bloat (older than 7 days)
+    if (now - item.createdAt > QUEUE_ITEM_MAX_AGE_MS) {
+      console.warn('[onboardingState] Dropping stale sync item (>7 days):', item.kind);
       continue;
     }
 
@@ -139,10 +157,13 @@ export async function flushOnboardingSyncQueue(userId: string): Promise<number> 
         await profileApi.updateReadiness(item.payload as Parameters<typeof profileApi.updateReadiness>[0]);
       }
       flushed += 1;
+      console.log('[onboardingState] Flushed sync item:', item.kind);
     } catch (error) {
       if (isPermanentSyncError(error)) {
-        console.warn('[onboardingState] Dropping permanent onboarding sync failure:', item.kind, error);
+        console.warn('[onboardingState] Dropping bad-data sync failure:', item.kind, error);
       } else {
+        // Auth/network/server error — keep in queue for next flush
+        console.warn('[onboardingState] Keeping sync item for retry:', item.kind, (error as any)?.status);
         remaining.push(item);
       }
     }

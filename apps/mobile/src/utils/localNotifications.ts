@@ -22,7 +22,9 @@ import { getLocalAlertPrefs } from './localAlerts';
 import { calculateMatchScore } from './matchScoring';
 import { getSeenIds } from './seenJobs';
 import { getJSON, setJSON, getString, setString } from './storage';
+import { useAuthStore } from '@/store/useAuthStore';
 import * as Notifications from 'expo-notifications';
+
 import {
   getDripQueue,
   dequeueDripJob,
@@ -37,8 +39,9 @@ export { AlertOpportunity };
 // ─── Storage Keys ─────────────────────────────────────────────────────────────
 const NOTIF_BADGE_KEY     = 'ff:unseen_badge_count';
 export const LOCAL_ALERTS_KEY = 'ff:local_alerts_list';
-const SENT_ALERT_IDS_KEY  = 'ff:sent_alert_ids';      // jobId → never re-fire
+const SENT_ALERT_IDS_KEY  = 'ff:sent_alert_ids_v2';      // jobId → never re-fire
 const NOTIF_DAY_KEY       = 'ff:notif_day';            // YYYY-MM-DD
+
 const NOTIF_DAY_COUNT_KEY = 'ff:notif_day_count';      // pushes fired today
 const MAX_LOCAL_ALERTS    = 50;
 const MAX_ALERTS_PER_SYNC = 10;                       // max new jobs to add to list at once
@@ -52,8 +55,9 @@ const PRIME_WINDOWS = [
   { start: 7, end: 9 },    // Morning:  7 AM – 9 AM
   { start: 18, end: 21 },  // Evening:  6 PM – 9 PM
 ];
-const PRIME_MAX_PER_DAY  = 2;  // can send up to 2 during prime time
-const OFFPEAK_MAX_PER_DAY = 1; // still 1 allowed outside prime time
+const PRIME_MAX_PER_DAY  = 6;  // can send up to 6 during prime time
+const OFFPEAK_MAX_PER_DAY = 4; // still 4 allowed outside prime time
+
 // Closing-soon bypasses all caps — always fires immediately (it's urgent)
 
 function isPrimeTime(): boolean {
@@ -115,13 +119,20 @@ async function markAsSent(ids: string[]): Promise<void> {
 
 export function isProfileSetupComplete(profile: Profile | null | undefined): boolean {
   if (!profile) return false;
-  return !!(
+  
+  // Need education for gating (degree/batch matching)
+  const hasEducation = !!(profile.educationLevel || profile.gradCourse || profile.gradSpecialization);
+  
+  // Need preferences for role/skill matching
+  const hasPreferences = !!(
     (profile.skills && profile.skills.length > 0) ||
-    (profile.preferredCities && profile.preferredCities.length > 0) ||
     (profile.interestedIn && profile.interestedIn.length > 0) ||
-    profile.educationLevel
+    (profile.preferredCities && profile.preferredCities.length > 0)
   );
+
+  return hasEducation && hasPreferences;
 }
+
 
 // ─── Local alert types ────────────────────────────────────────────────────────
 
@@ -146,7 +157,7 @@ async function firePush(
   let data: any = {};
 
   if (kind === 'GROUPED' && 'count' in job) {
-    title = `🎯 ${job.count} New Matches Found!`;
+    title = `You have ${job.count} new matches`;
     body = `We found ${job.count} new jobs that match your profile. Tap to see them.`;
     data = { screen: 'Notifications' };
   } else if (kind !== 'GROUPED' && 'id' in job) {
@@ -155,23 +166,36 @@ async function firePush(
         (new Date(job.expiresAt!).getTime() - Date.now()) / (1000 * 60 * 60)
       );
       const timeLabel = hoursLeft <= 1 ? 'under an hour' : `${hoursLeft}h`;
-      title = `⏰ Closes in ${timeLabel}: ${job.company}`;
+      title = `Closes in ${timeLabel}: ${job.company}`;
       body  = `${job.title} — apply before it's gone! (${job.matchScore}% match)`;
     } else if (kind === 'FOLLOWED_COMPANY') {
-      title = `🏢 ${job.company} posted a new role`;
+      title = `New role at ${job.company}`;
       body  = `${job.title} — a company you follow just posted this${job.matchScore ? ` (${job.matchScore}% match)` : ''}.`;
     } else {
-      const label = !job.matchScore ? 'Matched' : job.matchScore >= 85 ? 'Top' : job.matchScore >= 70 ? 'Great' : 'Good';
-      title = `${label} match: ${job.company} 🎯`;
-      body  = `${job.title}${job.matchScore ? ` — ${job.matchScore}% profile match` : ''}.`;
+      const hasScore = !!job.matchScore;
+      const scoreLabel = job.matchScore! >= 85 ? 'Top match' : job.matchScore! >= 70 ? 'Great match' : 'New role';
+      title = `${hasScore ? scoreLabel : 'New role'} at ${job.company}`;
+      body  = `${job.title}${job.matchScore ? ` — ${job.matchScore}% profile match` : ''}`;
     }
     data = { jobId: job.id };
   } else {
     return;
   }
 
+  const channelId = kind === 'CLOSING_SOON' ? 'deadlines' : 'matches';
+
   await Notifications.scheduleNotificationAsync({
-    content: { title, body, data, sound: true },
+    content: {
+      title,
+      body,
+      data,
+      sound: true,
+      android: {
+        channelId,
+        smallIcon: '@drawable/notification_icon',
+        largeIcon: null,
+      },
+    },
     trigger: null,
   });
 }
@@ -203,9 +227,11 @@ function jobMatchesFollowedCompany(job: Opportunity, followedKeys: Set<string>):
 
 export async function diffAndNotify(freshJobs: Opportunity[]): Promise<number> {
   try {
+    const userId = useAuthStore.getState().user?.id;
     const [profile, prefs, seenIds, sentIds] = await Promise.all([
-      getLocalProfile(),
+      getLocalProfile(userId),
       getLocalAlertPrefs(),
+
       getSeenIds(),
       getSentAlertIds(),
     ]);
@@ -469,7 +495,10 @@ export async function saveLocalAlerts(
 export async function getLocalAlerts(): Promise<LocalAlert[]> {
   try {
     const raw = await AsyncStorage.getItem(LOCAL_ALERTS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const parsed: LocalAlert[] = raw ? JSON.parse(raw) : [];
+    // Filter out any accidentally saved invalid alerts to fix ghost badges
+    return parsed.filter(a => a.opportunity?.matchReason !== 'Complete profile to see eligibility');
+
   } catch {
     return [];
   }

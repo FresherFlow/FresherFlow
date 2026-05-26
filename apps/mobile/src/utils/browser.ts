@@ -5,6 +5,7 @@ import { getBoolean, setBoolean } from '@/utils/storage';
 interface ThemeColors {
   background?: string;
   primary?: string;
+  surface?: string;
 }
 
 /**
@@ -55,7 +56,11 @@ export const openExternalURL = async (url: string, colors?: ThemeColors): Promis
   if (useInApp) {
     try {
       await WebBrowser.openBrowserAsync(target, {
-        presentationStyle: WebBrowser.WebBrowserPresentationStyle?.PAGE_SHEET,
+        presentationStyle: WebBrowser.WebBrowserPresentationStyle.PAGE_SHEET,
+        toolbarColor: colors?.surface || '#FFFFFF',
+        controlsColor: colors?.primary || '#1A1D23',
+        enableBarCollapsing: true,
+        showTitle: true,
       });
     } catch (e) {
       console.warn('[browser] WebBrowser failed, falling back to Linking:', e);

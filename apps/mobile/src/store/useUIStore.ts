@@ -9,9 +9,9 @@ interface ActionSheetState {
 }
 
 export interface PersistedExploreFilters {
-  type: OpportunityType | null;
-  workMode: WorkMode | null;
-  batchYear: number | null;
+  types: OpportunityType[];
+  workModes: WorkMode[];
+  batchYears: number[];
   tag: string | null;
   sort: 'recommended' | 'latest' | 'trending' | 'closing_soon';
 }
@@ -26,9 +26,9 @@ interface UIState {
 }
 
 const initialFilters: PersistedExploreFilters = {
-  type: null,
-  workMode: null,
-  batchYear: null,
+  types: [],
+  workModes: [],
+  batchYears: [],
   tag: null,
   sort: 'recommended',
 };

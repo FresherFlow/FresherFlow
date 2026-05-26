@@ -167,11 +167,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   // Calculate actual theme based on mode, system preference, and amoled state
   const activeTheme = useMemo(() => {
     const mode = themeMode === 'system' ? (systemColorScheme || 'dark') : themeMode;
-    
     const colors = mode === 'dark' ? getNuvioDarkColors(isAmoled) : (lightBaseColors as unknown as ThemeColors);
     
-    return {
-        id: mode,
+    const nextTheme = {
+        id: `${mode}-${isAmoled ? 'amoled' : 'normal'}`,
         name: mode === 'dark' ? (isAmoled ? 'AMOLED Dark' : 'Dark Mode') : 'Light Mode',
         mode: mode as 'light' | 'dark',
         colors,
@@ -181,9 +180,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         accent1: mode === 'dark' ? '#F5F7F8' : '#1A1D23',
         accent2: '#FF6B6B',
     };
-  }, [themeMode, systemColorScheme, isAmoled]);
 
-  const [currentTheme, setCurrentThemeState] = useState<AppTheme>(activeTheme);
+    // Synchronously update the imported static theme colors on the fly
+    Object.assign(staticTheme.colors, colors);
+    
+    return nextTheme;
+  }, [themeMode, systemColorScheme, isAmoled]);
 
   // Load saved preference
   useEffect(() => {
@@ -208,14 +210,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     loadPreferences();
   }, []);
 
-  // Sync with activeTheme changes
-  useEffect(() => {
-    if (JSON.stringify(activeTheme.colors) !== JSON.stringify(currentTheme.colors) || activeTheme.id !== currentTheme.id) {
-       Object.assign(staticTheme.colors, activeTheme.colors);
-       setCurrentThemeState(activeTheme);
-    }
-  }, [activeTheme, currentTheme]);
-
   const setThemeMode = (mode: 'light' | 'dark' | 'system') => {
     if (mode === themeMode) return;
     setThemeModeState(mode);
@@ -231,8 +225,8 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ themeMode, isAmoled, currentTheme, setThemeMode, toggleAmoled }}>
-      <View style={{ flex: 1, backgroundColor: currentTheme.colors.background }}>
+    <ThemeContext.Provider value={{ themeMode, isAmoled, currentTheme: activeTheme, setThemeMode, toggleAmoled }}>
+      <View style={{ flex: 1, backgroundColor: activeTheme.colors.background }}>
           {children}
       </View>
     </ThemeContext.Provider>

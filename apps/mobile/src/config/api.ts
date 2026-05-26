@@ -1,26 +1,47 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import * as Device from 'expo-device';
 
 const DEV_LOCAL_URL = 'http://localhost:5000';
 
 function resolveApiUrl(): string {
     // Read directly from environment variable (injected at build time or local .env)
-    const envUrl = process.env.EXPO_PUBLIC_API_URL;
-    if (envUrl) return envUrl.replace(/\/+$/, '');
-
+    let envUrl = process.env.EXPO_PUBLIC_API_URL;
     let baseUrl = DEV_LOCAL_URL;
 
-    // Physical Device Fallback: In development, if using localhost,
+    if (envUrl) {
+        baseUrl = envUrl.replace(/\/+$/, '');
+    }
+
+    // If the base URL hostname is the Android loopback (10.0.2.2) but we are on iOS,
+    // remap it to localhost so it works out of the box in the iOS Simulator.
+    try {
+        const parsed = new URL(baseUrl);
+        if (Platform.OS === 'ios' && parsed.hostname === '10.0.2.2') {
+            parsed.hostname = 'localhost';
+            baseUrl = parsed.toString().replace(/\/+$/, '');
+        }
+    } catch {
+        // Fallback
+    }
+
+    // Physical Device Fallback: In development, if using localhost, 127.0.0.1, or 10.0.2.2
     // try to resolve the machine's local IP via expo-constants.
-    if (['localhost', '127.0.0.1'].includes(new URL(baseUrl).hostname)) {
-        const debuggerHost = Constants.expoConfig?.hostUri;
-        if (debuggerHost) {
-            const ip = debuggerHost.split(':')[0];
-            if (ip) {
-                baseUrl = `http://${ip}:5000`;
-                console.log(`[mobile] Resolved physical device API to machine IP: ${baseUrl}`);
+    try {
+        const parsed = new URL(baseUrl);
+        if (Device.isDevice && ['localhost', '127.0.0.1', '10.0.2.2'].includes(parsed.hostname)) {
+            const debuggerHost = Constants.expoConfig?.hostUri;
+            if (debuggerHost) {
+                const ip = debuggerHost.split(':')[0];
+                if (ip) {
+                    parsed.hostname = ip;
+                    baseUrl = parsed.toString().replace(/\/+$/, '');
+                    console.log(`[mobile] Resolved physical device API to machine IP: ${baseUrl}`);
+                }
             }
         }
+    } catch {
+        // Fallback
     }
 
     try {
