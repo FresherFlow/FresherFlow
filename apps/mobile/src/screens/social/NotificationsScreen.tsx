@@ -224,7 +224,7 @@ const AlertRow = memo(({
                         )}
 
                         {/* AI Match Insights */}
-                        {alert.opportunity.matchReason && (
+                        {alert.opportunity.matchReason && alert.opportunity.matchReason !== 'Eligible to apply' && (
                             <View style={[
                                 styles.insightContainer,
                                 { borderTopColor: alpha(currentTheme.colors.border, 0.05) }
@@ -256,13 +256,17 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
     const { currentTheme } = useTheme();
     const { alerts, unreadCount, refreshing, markRead, markAllRead, deleteAlert, refresh } = useNotifications();
     const [profile, setProfile] = useState<Profile | null>(null);
+    const [isLoadingProfile, setIsLoadingProfile] = useState(true);
     const { user } = useProfile();
     const isAnonymous = !user || user.isAnonymous;
 
     const loadProfile = useCallback(async () => {
-        const p = await getLocalProfile();
+        setIsLoadingProfile(true);
+        const p = await getLocalProfile(user?.id);
         setProfile(p);
-    }, []);
+        setIsLoadingProfile(false);
+    }, [user?.id]);
+
 
     useFocusEffect(
         useCallback(() => {
@@ -287,21 +291,25 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
         const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
         const startOfYesterday = startOfToday - 86400000;
 
-        alerts.forEach(alert => {
-            const time = new Date(alert.sentAt).getTime();
-            if (time >= startOfToday) today.push(alert);
-            else if (time >= startOfYesterday) yesterday.push(alert);
-            else older.push(alert);
-        });
+        alerts
+            .filter(a => a.opportunity.matchReason !== 'Complete profile to see eligibility')
+            .forEach(alert => {
+                const time = new Date(alert.sentAt).getTime();
+                if (time >= startOfToday) today.push(alert);
+                else if (time >= startOfYesterday) yesterday.push(alert);
+                else older.push(alert);
+            });
+
 
         const result: NotificationListItem[] = [];
 
         // Insert profile incomplete nudge or guest login nudge at the very top of alerts
         if (isAnonymous) {
             result.push({ type: 'guest-nudge', key: 'guest-nudge' });
-        } else if (!isSetup) {
+        } else if (!isLoadingProfile && !isSetup) {
             result.push({ type: 'nudge', key: 'profile-nudge' });
         }
+
 
         if (today.length > 0) {
             result.push({ type: 'header', title: 'Today', key: 'header-today' });
@@ -396,23 +404,23 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
 
     return (
         <Screen safe={false}>
-            <View style={{ paddingTop: insets.top + 10 }}>
+            <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                 <SecondaryHeader
                     title="Alerts"
                     subtitle="Newly Detected Jobs"
                     rightSlot={
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                            <TouchableOpacity 
-                                onPress={() => navigation.navigate('AlertSettings')}
-                                style={{ padding: 8 }}
-                            >
-                                <Settings size={22} color={currentTheme.colors.primary} />
-                            </TouchableOpacity>
                             {unreadCount > 0 && (
                                 <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
                                     <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Clear</Text>
                                 </TouchableOpacity>
                             )}
+                            <TouchableOpacity 
+                                onPress={() => navigation.navigate('AlertSettings')}
+                                style={styles.settingsBtn}
+                            >
+                                <Settings size={24} color={currentTheme.colors.text} />
+                            </TouchableOpacity>
                         </View>
                     }
                 />
@@ -562,6 +570,13 @@ const styles = StyleSheet.create({
         paddingVertical: 4,
         paddingHorizontal: 8,
     },
+    settingsBtn: {
+        width: mScale(44),
+        height: mScale(44),
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginRight: -SPACING.sm,
+    },
     // Nudge Card Styling
     nudgeCard: {
         marginHorizontal: SPACING.md,
@@ -640,6 +655,9 @@ const styles = StyleSheet.create({
         fontSize: mScale(11),
         fontWeight: '500',
         flex: 1,
+    },
+    stickyHeader: {
+        zIndex: 10,
     }
 });
 

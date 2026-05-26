@@ -55,7 +55,8 @@ type ExploreItem =
   | { type: 'opportunity'; data: Opportunity; key: string }
   | { type: 'company'; data: CompanySummary; key: string }
   | { type: 'discovery'; key: string }
-  | { type: 'empty'; key: string };
+  | { type: 'empty'; key: string }
+  | { type: 'loading'; key: string };
 
 
 
@@ -175,7 +176,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const resultsCount = results.length;
 
-    const activeFilterCount = (filters.type ? 1 : 0) + (filters.workMode ? 1 : 0) + (filters.batchYear ? 1 : 0) + (filters.tag ? 1 : 0);
+    const activeFilterCount = (filters.types?.length || 0) + (filters.workModes?.length || 0) + (filters.batchYears?.length || 0) + (filters.tag ? 1 : 0);
 
     const renderEmpty = useCallback(() => (
         <View style={styles.emptyContainer}>
@@ -195,7 +196,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             style={[styles.clearEmptyBtn, { borderColor: currentTheme.colors.primary }]}
                             onPress={() => {
                                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                setFilters({ type: null, tag: null, workMode: null, batchYear: null });
+                                setFilters({ types: [], tag: null, workModes: [], batchYears: [] });
                                 setSearchQuery('');
                             }}
                         >
@@ -234,9 +235,9 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         if (!searchQuery && activeFilterCount === 0) return `Recent Opportunities`;
         let text = `Found ${resultsCount} results`;
         if (searchQuery.trim()) text += ` for "${searchQuery}"`;
-        else if (filters.type) {
-            const label = filters.type === 'JOB' ? 'jobs' : filters.type === 'INTERNSHIP' ? 'internships' : 'walk-ins';
-            text = `Found ${resultsCount} ${label}`;
+        else if (filters.types && filters.types.length > 0) {
+            const labels = filters.types.map(t => t === 'JOB' ? 'jobs' : t === 'INTERNSHIP' ? 'internships' : 'walk-ins').join(', ');
+            text = `Found ${resultsCount} ${labels}`;
         } else if (filters.tag) {
             text = `Found ${resultsCount} for ${filters.tag}`;
         }
@@ -289,18 +290,18 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             style={styles.chipScroll}
                             contentContainerStyle={styles.chipContent}
                         >
-                            {filters.type && (
-                                <FilterChip label={CATEGORY_LABELS[filters.type] || filters.type} onRemove={() => setFilters({ type: null })} />
-                            )}
+                            {filters.types && filters.types.map(t => (
+                                <FilterChip key={t} label={CATEGORY_LABELS[t] || t} onRemove={() => setFilters({ types: filters.types.filter(x => x !== t) })} />
+                            ))}
                             {filters.tag && (
                                 <FilterChip label={filters.tag} onRemove={() => setFilters({ tag: null })} />
                             )}
-                            {filters.workMode && (
-                                <FilterChip label={filters.workMode} onRemove={() => setFilters({ workMode: null })} />
-                            )}
-                            {filters.batchYear && (
-                                <FilterChip label={`${filters.batchYear} Batch`} onRemove={() => setFilters({ batchYear: null })} />
-                            )}
+                            {filters.workModes && filters.workModes.map(w => (
+                                <FilterChip key={w} label={w} onRemove={() => setFilters({ workModes: filters.workModes.filter(x => x !== w) })} />
+                            ))}
+                            {filters.batchYears && filters.batchYears.map(y => (
+                                <FilterChip key={y} label={`${y} Batch`} onRemove={() => setFilters({ batchYears: filters.batchYears.filter(x => x !== y) })} />
+                            ))}
                         </ScrollView>
                     )}
                 </View>
@@ -320,6 +321,8 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             });
                         } else if (!loading) {
                             items.push({ type: 'empty', key: 'empty_state' });
+                        } else if (loading) {
+                            items.push({ type: 'loading', key: 'loading_state' });
                         }
                         return items;
                     }
@@ -337,6 +340,8 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         });
                     } else if (!loading && !showDiscovery) {
                         items.push({ type: 'empty', key: 'empty_state' });
+                    } else if (loading) {
+                        items.push({ type: 'loading', key: 'loading_state' });
                     }
 
                     return items;
@@ -389,11 +394,11 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                 key={cat}
                                                 onPress={() => {
                                                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                    if (filters.type === cat && viewMode === 'opportunities') {
-                                                        setFilters({ type: null });
+                                                    if (filters.types?.includes(cat) && viewMode === 'opportunities') {
+                                                        setFilters({ types: filters.types.filter(x => x !== cat) });
                                                     } else {
                                                         setViewMode('opportunities');
-                                                        setFilters({ type: cat });
+                                                        setFilters({ types: [...(filters.types || []), cat] });
                                                         // Intercept and store high-intent category selection interest
                                                         const label = CATEGORY_LABELS[cat] || cat;
                                                         if (label.length >= 3) {
@@ -402,18 +407,18 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                                     }
                                                 }}
                                                 style={[styles.categoryCard, {
-                                                    backgroundColor: (viewMode === 'opportunities' && filters.type === cat) ? currentTheme.colors.primary : alpha(currentTheme.colors.primary, 0.05),
+                                                    backgroundColor: (viewMode === 'opportunities' && filters.types?.includes(cat)) ? currentTheme.colors.primary : alpha(currentTheme.colors.primary, 0.05),
                                                     borderWidth: 1,
-                                                    borderColor: (viewMode === 'opportunities' && filters.type === cat) ? currentTheme.colors.primary : 'transparent',
+                                                    borderColor: (viewMode === 'opportunities' && filters.types?.includes(cat)) ? currentTheme.colors.primary : 'transparent',
                                                     flexDirection: 'row',
                                                     alignItems: 'center',
                                                     gap: 6
                                                 }]}
                                             >
-                                                <Text style={[styles.categoryLabel, { color: (viewMode === 'opportunities' && filters.type === cat) ? currentTheme.colors.background : currentTheme.colors.primary }]}>
+                                                <Text style={[styles.categoryLabel, { color: (viewMode === 'opportunities' && filters.types?.includes(cat)) ? currentTheme.colors.background : currentTheme.colors.primary }]}>
                                                     {CATEGORY_LABELS[cat] || cat}
                                                 </Text>
-                                                {(viewMode === 'opportunities' && filters.type === cat) && (
+                                                {(viewMode === 'opportunities' && filters.types?.includes(cat)) && (
                                                     <X size={14} color={currentTheme.colors.background} />
                                                 )}
                                             </TouchableOpacity>
@@ -483,6 +488,14 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
                     if (item.type === 'empty') {
                         return renderEmpty();
+                    }
+
+                    if (item.type === 'loading') {
+                        return (
+                            <View style={{ paddingTop: 60, alignItems: 'center', justifyContent: 'center' }}>
+                                <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+                            </View>
+                        );
                     }
 
                     if (item.type === 'company') {

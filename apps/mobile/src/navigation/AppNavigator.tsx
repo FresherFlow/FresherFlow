@@ -12,6 +12,7 @@ import JobDetailScreen from '@/screens/discovery/JobDetailScreen';
 import SavedScreen from '@/screens/feed/SavedScreen';
 import SettingsScreen from '@/screens/profile/SettingsScreen';
 import MySharesScreen from '@/screens/social/MySharesScreen';
+import FollowedCompaniesScreen from '@/screens/profile/FollowedCompaniesScreen';
 import AuthScreen from '@/screens/auth/AuthScreen';
 import AppearanceScreen from '@/screens/settings/AppearanceScreen';
 import EditEducationScreen from '@/screens/profile/EditEducationScreen';
@@ -31,6 +32,8 @@ import LegalScreen from '@/screens/settings/LegalScreen';
 import ChooseUsernameScreen from '@/screens/auth/ChooseUsernameScreen';
 import AboutScreen from '@/screens/settings/AboutScreen';
 import OTAUpdatesScreen from '@/screens/settings/OTAUpdatesScreen';
+import OnboardingScreen from '@/screens/auth/OnboardingScreen';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUI } from '@/contexts/UIContext';
@@ -222,12 +225,13 @@ const styles = StyleSheet.create({
 
 // --- Full app stack (anonymous + authenticated users) ---
 // Auth is a modal inside here — guest users can navigate to it contextually.
-const AppStack = () => (
+const AppStack = ({ initialRouteName = "Main" }: { initialRouteName?: keyof RootStackParamList }) => (
   <Stack.Navigator
     screenOptions={{ headerShown: false, animation: 'fade' }}
-    initialRouteName="Main"
+    initialRouteName={initialRouteName}
   >
     <Stack.Screen name="Main" component={TabNavigator} />
+    <Stack.Screen name="Onboarding" component={OnboardingScreen} />
     <Stack.Screen name="JobDetail" component={JobDetailScreen} />
     <Stack.Screen name="Appearance" component={AppearanceScreen} />
     <Stack.Screen name="Dashboard" component={DashboardScreen} />
@@ -239,6 +243,7 @@ const AppStack = () => (
     <Stack.Screen name="EditPreferences" component={EditPreferencesScreen} />
     <Stack.Screen name="CareerProfile" component={CareerProfileScreen} />
     <Stack.Screen name="MyShares" component={MySharesScreen} />
+    <Stack.Screen name="FollowedCompanies" component={FollowedCompaniesScreen} />
     <Stack.Screen name="ContributorProfile" component={ContributorProfileScreen} />
 
     <Stack.Screen name="About" component={AboutScreen} />
@@ -271,10 +276,19 @@ const AppLoading = () => {
 
 export const AppNavigator = () => {
   const { isSyncing, isSkipLoaded } = useAuthStore();
+  const [isOnboardingCompleted, setIsOnboardingCompleted] = React.useState<boolean | null>(null);
 
-  if (isSyncing || !isSkipLoaded) {
+  React.useEffect(() => {
+    AsyncStorage.getItem('ff_onboarding_completed').then((val) => {
+      setIsOnboardingCompleted(val === 'true');
+    }).catch(() => {
+      setIsOnboardingCompleted(true);
+    });
+  }, []);
+
+  if (isSyncing || !isSkipLoaded || isOnboardingCompleted === null) {
     return <AppLoading />;
   }
 
-  return <AppStack />;
+  return <AppStack initialRouteName={isOnboardingCompleted ? "Main" : "Onboarding"} />;
 };

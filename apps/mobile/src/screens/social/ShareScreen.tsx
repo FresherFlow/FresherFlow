@@ -32,6 +32,9 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { profileApi } from '@fresherflow/api-client';
 import { useProfile } from '@/hooks/useProfile';
 import { Analytics, EventNames } from '@/utils/analytics';
+import { readSharesCache, saveSharesCache } from '@/utils/offlineCache';
+import { getBoolean, setBoolean, getJSON } from '@/utils/storage';
+import { normalizeOpportunityUrl } from '@fresherflow/utils';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -51,6 +54,8 @@ const getContributorRankTitle = (sharesCount: number) => {
     if (sharesCount < 25) return 'Star Sharer';
     return 'Community Champion';
 };
+
+let lastSharesScreenFetchTime = 0;
 
 const ShareScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
@@ -81,6 +86,29 @@ const ShareScreen: React.FC = () => {
   } = useShare();
 
   const url = watch('url') || '';
+  const urlRef = useRef(url);
+  useEffect(() => {
+    urlRef.current = url;
+  }, [url]);
+
+  const successCardTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const dismissShareResult = useCallback(() => {
+      if (successCardTimerRef.current) {
+          clearTimeout(successCardTimerRef.current);
+          successCardTimerRef.current = null;
+      }
+      setShareResult(null);
+  }, []);
+
+  useEffect(() => {
+      return () => {
+          if (successCardTimerRef.current) {
+              clearTimeout(successCardTimerRef.current);
+          }
+      };
+  }, []);
+
   const [activeTab, setActiveTab] = useState(0);
   const pagerRef = useRef<FlatList>(null);
   const tabListRef = useRef<ScrollView>(null);
@@ -99,9 +127,36 @@ const ShareScreen: React.FC = () => {
 
   const fetchRecentShares = useCallback(async () => {
     if (!user || user.isAnonymous) return; // Guard against guest calls
+    
+    // 1. Try to load from local cache first
     try {
+      const cached = await readSharesCache();
+      if (cached && cached.items.length > 0) {
+        setRecentShares(cached.items.slice(0, 5) as any);
+      }
+    } catch (cacheError) {
+      console.warn('[ShareScreen] Failed to read shares cache:', cacheError);
+    }
+
+    // 2. Network Fetch with Throttling & Invalidation Check
+    try {
+      const now = Date.now();
+      const isDirty = getBoolean('fresherflow_shares_dirty', false);
+      const throttleDuration = 30000; // 30 seconds
+
+      // Skip network call if we fetched recently, unless cache is dirty (new data arrived)
+      if (now - lastSharesScreenFetchTime < throttleDuration && !isDirty) {
+        const cached = await readSharesCache();
+        if (cached && cached.items.length > 0) {
+          return;
+        }
+      }
+
       const response = await profileApi.getShares(1);
       setRecentShares(response.shares.slice(0, 5));
+      void saveSharesCache(response.shares, response.stats);
+      setBoolean('fresherflow_shares_dirty', false); // Clear dirty flag
+      lastSharesScreenFetchTime = Date.now();
     } catch (err: unknown) {
       // Silently ignore 401s for guests/bootstrap
       if ((err as { status?: number }).status !== 401) {
@@ -124,10 +179,24 @@ const ShareScreen: React.FC = () => {
                 if (!hasString) return;
 
                 const content = await Clipboard.getStringAsync();
-                if (isActive && content && content !== lastSeenClipboardUrl.current) {
-                    lastSeenClipboardUrl.current = content;
-                    if (content.startsWith('http://') || content.startsWith('https://')) {
-                        setClipboardLink(content);
+                if (isActive && content) {
+                    const isNew = content !== lastSeenClipboardUrl.current;
+                    if (isNew || !urlRef.current) {
+                        lastSeenClipboardUrl.current = content;
+                        if (content.startsWith('http://') || content.startsWith('https://')) {
+                            // Skip showing clipboard promo if the link has already been submitted
+                            try {
+                                const normalized = normalizeOpportunityUrl(content);
+                                const submitted = getJSON<string[]>('fresherflow_submitted_links') || [];
+                                if (submitted.includes(normalized)) {
+                                    setClipboardLink(null);
+                                    return;
+                                }
+                            } catch {
+                                // ignore normalization errors for random/invalid URLs in clipboard
+                            }
+                            setClipboardLink(content);
+                        }
                     }
                 }
             } catch (e) {
@@ -148,8 +217,9 @@ const ShareScreen: React.FC = () => {
         return () => {
             isActive = false;
             subscription.remove();
+            dismissShareResult();
         };
-    }, [fetchRecentShares])
+    }, [fetchRecentShares, dismissShareResult])
   );
 
   useEffect(() => {
@@ -168,8 +238,38 @@ const ShareScreen: React.FC = () => {
     }
   }, [params?.url, setValue, handleParse]);
 
+  const [prevTotalShared, setPrevTotalShared] = useState(0);
+  const [animatedCount, setAnimatedCount] = useState(0);
+  const [animationStep, setAnimationStep] = useState(0); // 0: old center, 1: tick center, 2: shift left & show text
+
+  useEffect(() => {
+      if (shareResult) {
+          setAnimatedCount(prevTotalShared);
+          setAnimationStep(0);
+          
+          // Step 1: Update the count after 600ms
+          const timer1 = setTimeout(() => {
+              setAnimatedCount(prevTotalShared + 1);
+              setAnimationStep(1);
+          }, 600);
+
+          // Step 2: Shift to the left and show text after 1300ms
+          const timer2 = setTimeout(() => {
+              setAnimationStep(2);
+          }, 1300);
+
+          return () => {
+              clearTimeout(timer1);
+              clearTimeout(timer2);
+          };
+      }
+  }, [shareResult, prevTotalShared]);
+
   const onConfirm = handleSubmit(async (data: ShareFormData) => {
       let result;
+      const currentCount = shareStats.totalShared;
+      setPrevTotalShared(currentCount);
+
       if (mode === 'SHARE') {
         result = await handleShare();
       } else {
@@ -177,9 +277,22 @@ const ShareScreen: React.FC = () => {
       }
 
       if (result) {
+          // Clear inputs immediately!
+          reset();
+          setPreview(null);
+          setError(null);
+          
           setShareResult(result);
           void fetchRecentShares();
           void fetchStats();
+
+          // Auto-dismiss the celebration card after 5 seconds
+          if (successCardTimerRef.current) {
+              clearTimeout(successCardTimerRef.current);
+          }
+          successCardTimerRef.current = setTimeout(() => {
+              setShareResult(null);
+          }, 5000);
 
           // Track contribution
           Analytics.trackEvent(mode === 'SHARE' ? EventNames.JOB_SHARED : EventNames.REFERRAL_OFFERED, {
@@ -189,10 +302,8 @@ const ShareScreen: React.FC = () => {
       }
   });
 
-
-
   const resetShare = () => {
-      setShareResult(null);
+      dismissShareResult();
       setPreview(null);
       reset();
   };
@@ -251,113 +362,7 @@ const ShareScreen: React.FC = () => {
     setActiveTab(index);
   };
 
-  if (shareResult) {
-      let title = '';
-      let body = '';
-      let badge = '';
-      let iconColor = currentTheme.colors.primary;
 
-      if (shareResult.existing) {
-          title = 'Already on FresherFlow!';
-          body = "This opportunity already exists. Your share was counted and helps rank it higher for others.";
-          badge = 'DUPLICATE';
-          iconColor = currentTheme.colors.warning;
-      } else {
-          title = 'Submitted for Review';
-          body = "Thank you! Our community mods will verify the details before making it live for everyone.";
-          badge = 'UNDER REVIEW';
-          iconColor = currentTheme.colors.warning;
-      }
-
-      return (
-          <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
-              <Animated.View
-                style={[
-                    styles.successContainer,
-                    {
-                        opacity: fadeAnim,
-                        transform: [{ translateY: slideAnim }]
-                    }
-                ]}
-              >
-                  <View style={styles.successHeader}>
-                      <View style={[styles.typeBadge, { backgroundColor: alpha(iconColor, 0.1) }]}>
-                          <Text style={[styles.typeBadgeText, { color: iconColor }]}>{badge}</Text>
-                      </View>
-                  </View>
-                  
-                  <View style={styles.successIconWrapper}>
-                    <Sparkles
-                        size={mScale(80)}
-                        color={iconColor}
-                    />
-                  </View>
-
-                  <Text style={[styles.successTitle, { color: currentTheme.colors.text }]}>{title}</Text>
-                  
-                  <View style={{
-                      backgroundColor: alpha(currentTheme.colors.warning, 0.08),
-                      paddingHorizontal: 16,
-                      paddingVertical: 8,
-                      borderRadius: 20,
-                      marginBottom: 20,
-                      flexDirection: 'row',
-                      alignItems: 'center',
-                      gap: 8,
-                      alignSelf: 'center'
-                  }}>
-                      <Trophy size={14} color={currentTheme.colors.warning} />
-                      <Text style={{ color: currentTheme.colors.warning, fontWeight: '800', fontSize: mScale(12) }}>
-                          Contributor Rank: {getContributorRankTitle(shareStats.totalShared)}
-                      </Text>
-                  </View>
-
-                  <View style={styles.statsRow}>
-                      <View style={styles.statBox}>
-                          <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{shareStats.totalShared}</Text>
-                          <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Opportunities Shared</Text>
-                      </View>
-                      <View style={[styles.statDivider, { backgroundColor: currentTheme.colors.border }]} />
-                      <View style={styles.statBox}>
-                          <Text style={[styles.statValue, { color: currentTheme.colors.text }]}>{shareStats.totalPublished}</Text>
-                          <Text style={[styles.statLabel, { color: currentTheme.colors.textMuted }]}>Live on Platform</Text>
-                      </View>
-                  </View>
-                  <Text style={[styles.successSub, { color: currentTheme.colors.textMuted }]}>
-                      {body}
-                  </Text>
-
-                  {shareStats.totalShared > 0 && (
-                      <View style={[styles.infoRow, { backgroundColor: alpha(currentTheme.colors.warning, 0.05) }]}>
-                          <Clock size={14} color={currentTheme.colors.warning} />
-                          <Text style={[styles.infoRowText, { color: currentTheme.colors.warning }]}>
-                              Total {shareStats.totalShared} opportunities shared by you so far.
-                          </Text>
-                      </View>
-                  )}
-
-                  <View style={styles.successActions}>
-                    <TouchableOpacity
-                        activeOpacity={0.8}
-                        style={[styles.primaryAction, { backgroundColor: currentTheme.colors.text }]}
-                        onPress={resetShare}
-                    >
-                        <Text style={[styles.primaryActionText, { color: currentTheme.colors.background }]}>
-                            Share Another
-                        </Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.doneBtn}
-                        onPress={() => navigation.goBack()}
-                    >
-                        <Text style={[styles.doneBtnText, { color: currentTheme.colors.textMuted }]}>I'm done for now</Text>
-                    </TouchableOpacity>
-                  </View>
-              </Animated.View>
-          </Screen>
-      );
-  }
 
   return (
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
@@ -448,7 +453,7 @@ const ShareScreen: React.FC = () => {
                                 <>
                                     <View style={styles.heroSection}>
                                         <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>
-                                            Help others{'\n'}discover opportunities.
+                                            Help others discover opportunities.
                                         </Text>
                                         <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
                                             Paste a job or internship link to share it with others.
@@ -497,7 +502,6 @@ const ShareScreen: React.FC = () => {
                                                     autoCapitalize="none"
                                                     autoCorrect={false}
                                                     multiline
-                                                    numberOfLines={3}
                                                     returnKeyType="done"
                                                     onSubmitEditing={() => void handleParse()}
                                                 />
@@ -603,7 +607,7 @@ const ShareScreen: React.FC = () => {
                                         </View>
                                     )}
 
-                                    {url.trim().length > 0 && !(preview && preview.isDuplicate) && (
+                                    {url.trim().length > 0 && preview && !preview.isDuplicate && !loading && (
                                         <TouchableOpacity
                                             activeOpacity={0.9}
                                             style={[styles.actionBtn, loading && styles.disabledBtn, { backgroundColor: currentTheme.colors.primary, marginTop: 16 }]}
@@ -622,9 +626,9 @@ const ShareScreen: React.FC = () => {
                                 </>
                             ) : (
                                 <View style={styles.referralForm}>
-                                    <View style={[styles.heroSection, { marginBottom: 20 }]}>
+                                    <View style={[styles.heroSection, { marginTop: 16, marginBottom: 20 }]}>
                                         <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>
-                                            Offer a{'\n'}Referral.
+                                            Offer a Referral.
                                         </Text>
                                         <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
                                             Help fellow students by referring them at your current company.
@@ -783,32 +787,122 @@ const ShareScreen: React.FC = () => {
 
 
 
-                            {recentShares.length > 0 && (
-                                <View style={styles.recentSection}>
-                                    <View style={styles.recentHeader}>
-                                        <Clock size={14} color={currentTheme.colors.textMuted} />
-                                        <Text style={[styles.recentLabel, { color: currentTheme.colors.textMuted }]}>Your Recent Shares</Text>
-                                    </View>
-
-                                    {recentShares.map((share) => (
-                                        <ContributionPreviewCard
-                                            key={share.id}
-                                            share={share}
-                                            onPress={() => {
-                                                if (share.mappedOpportunity?.id) {
-                                                    navigation.navigate('JobDetail', { opportunityId: share.mappedOpportunity.id });
-                                                }
-                                            }}
-                                        />
-                                    ))}
-                                </View>
-                            )}
+                            {/* Spacer to push the button down slightly */}
+                            <View style={{ height: 60 }} />
+                            
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => navigation.navigate('MyShares')}
+                                style={{ alignItems: 'center', paddingVertical: 16 }}
+                            >
+                                <Text style={{ color: currentTheme.colors.textMuted, fontWeight: '600', fontSize: 14, textDecorationLine: 'underline' }}>
+                                    View Recent Shares
+                                </Text>
+                            </TouchableOpacity>
                         </View>
                     </ScrollView>
                 </View>
             )}
         />
       </KeyboardAvoidingView>
+
+      {/* Floating Success Celebration Card */}
+      {shareResult && (
+          <Animated.View
+            style={[
+                styles.successCardFloating,
+                {
+                    opacity: fadeAnim,
+                    transform: [{ translateY: slideAnim }],
+                    backgroundColor: currentTheme.colors.surface, // Solid surface card background!
+                    borderColor: currentTheme.colors.border, // Subtle clean border, no glow!
+                    borderWidth: 1,
+                    shadowColor: '#000',
+                    shadowOffset: { width: 0, height: 6 },
+                    shadowOpacity: 0.08,
+                    shadowRadius: 16,
+                    elevation: 8,
+                    top: insets.top + 90, // Placed perfectly at the top right below the header!
+                    paddingVertical: 20, // Taller card!
+                }
+            ]}
+          >
+              <View style={{ height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                  {/* The animated digit badge */}
+                  <MotiView
+                      animate={{
+                          scale: animationStep === 1 ? 1.15 : 1, // Subtle pop when ticking
+                      }}
+                      transition={{ type: 'spring', damping: 15, stiffness: 220 }}
+                      style={{
+                          backgroundColor: alpha(currentTheme.colors.primary, 0.08),
+                          paddingHorizontal: 16,
+                          paddingVertical: 8,
+                          borderRadius: 14,
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                      }}
+                  >
+                      <Trophy size={18} color={currentTheme.colors.primary} style={{ marginRight: 6 }} />
+                      <View style={{ height: 26, width: 24, justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
+                          <MotiView
+                              animate={{
+                                  translateY: animationStep >= 1 ? -30 : 0,
+                                  opacity: animationStep >= 1 ? 0 : 1,
+                              }}
+                              transition={{ type: 'timing', duration: 250 }}
+                          >
+                              <Text style={{ fontSize: mScale(16), fontWeight: '900', color: currentTheme.colors.primary }}>
+                                  {prevTotalShared}
+                              </Text>
+                          </MotiView>
+                          <MotiView
+                              from={{ translateY: 30, opacity: 0 }}
+                              animate={{
+                                  translateY: animationStep >= 1 ? 0 : 30,
+                                  opacity: animationStep >= 1 ? 1 : 0,
+                              }}
+                              transition={{ type: 'timing', duration: 250 }}
+                              style={{ position: 'absolute', top: 0, left: 0 }}
+                          >
+                              <Text style={{ fontSize: mScale(16), fontWeight: '900', color: currentTheme.colors.primary }}>
+                                  {prevTotalShared + 1}
+                              </Text>
+                          </MotiView>
+                      </View>
+                  </MotiView>
+
+                  {/* The text label sliding/fading in on the right with zero collision */}
+                  <MotiView
+                      animate={{
+                          opacity: animationStep === 2 ? 1 : 0,
+                          width: animationStep === 2 ? 170 : 0,
+                          marginLeft: animationStep === 2 ? 14 : 0,
+                      }}
+                      transition={{ type: 'spring', damping: 18, stiffness: 180 }}
+                      style={{ overflow: 'hidden' }}
+                  >
+                      <View style={{ width: 170 }}>
+                          <Text style={{ fontSize: mScale(13.5), fontWeight: '900', color: currentTheme.colors.text }} numberOfLines={1}>
+                              {shareResult.existing ? 'Opportunity Ranked' : 'Opportunity Shared'}
+                          </Text>
+                          <Text style={{ fontSize: mScale(10), color: currentTheme.colors.textMuted, marginTop: 1 }} numberOfLines={1}>
+                              Total contributions
+                          </Text>
+                      </View>
+                  </MotiView>
+
+                  {/* Close button on the top right */}
+                  <TouchableOpacity 
+                      onPress={dismissShareResult} 
+                      style={{ position: 'absolute', right: 0, top: -10, padding: 4 }}
+                  >
+                      <X size={16} color={currentTheme.colors.textMuted} />
+                  </TouchableOpacity>
+              </View>
+          </Animated.View>
+      )}
     </Screen>
   );
 };
@@ -826,18 +920,18 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     heroSection: {
-        marginTop: 20,
-        marginBottom: 32,
+        marginTop: 110,
+        marginBottom: 20,
     },
     heroTitle: {
-        fontSize: 32,
-        fontWeight: '900',
-        letterSpacing: -1.5,
-        lineHeight: 36,
+        fontSize: 26,
+        fontWeight: '800',
+        letterSpacing: -0.4,
+        lineHeight: 32,
     },
     heroSub: {
-        fontSize: 15,
-        marginTop: 12,
+        fontSize: 14.5,
+        marginTop: 6,
         lineHeight: 22,
     },
     inputCard: {
@@ -863,7 +957,7 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         lineHeight: 22,
-        minHeight: 60,
+        minHeight: 120,
         textAlignVertical: 'top',
     },
     errorBox: {
@@ -1269,6 +1363,19 @@ const styles = StyleSheet.create({
         fontSize: 9,
         fontWeight: '900',
         letterSpacing: 0.5,
+    },
+    successCardFloating: {
+        position: 'absolute',
+        left: 20,
+        right: 20,
+        padding: 16,
+        borderRadius: 24,
+        borderWidth: 1.5,
+        elevation: 6,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 10,
+        zIndex: 9999,
     },
 });
 

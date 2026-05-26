@@ -445,11 +445,15 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                   );
                                 })()}
                                 {(() => {
-                                    const sharedBy = opportunity.user?.username || opportunity.referredByUsername;
+                                    const isReferral = !!opportunity.referredByUsername;
+                                    const sharedBy = opportunity.referredByUsername || (opportunity.user as any)?.username || (opportunity.rawIngestions?.[0] as any)?.creator?.username;
                                     if (!sharedBy) return null;
+                                    
+                                    const badgeColor = isReferral ? currentTheme.colors.success : currentTheme.colors.warning;
+                                    const badgeText = isReferral ? `Referred by @${sharedBy}` : `Shared by @${sharedBy}`;
                                     return (
-                                        <View style={[styles.verifiedBadge, { backgroundColor: alpha(currentTheme.colors.warning, 0.1), borderColor: alpha(currentTheme.colors.warning, 0.2), borderWidth: 1 }]}>
-                                            <Text style={[styles.typeText, { color: currentTheme.colors.warning, fontSize: 9 }]}>Shared by @{sharedBy}</Text>
+                                        <View style={[styles.verifiedBadge, { backgroundColor: alpha(badgeColor, 0.1), borderColor: alpha(badgeColor, 0.2), borderWidth: 1 }]}>
+                                            <Text style={[styles.typeText, { color: badgeColor, fontSize: 9 }]}>{badgeText}</Text>
                                         </View>
                                     );
                                 })()}
@@ -495,21 +499,21 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         <Text style={{ color: currentTheme.colors.textMuted }}>Applied</Text> {opportunity.appliedCount || 0}
                     </Text>
                 </View>
-                {((opportunity.matchScore !== undefined && opportunity.matchScore > 0) || opportunity.isEligible === false) && (
+                {(opportunity.matchScore !== undefined && opportunity.matchScore > 0 && opportunity.isEligible !== false) && (
                     <>
                         <View style={[styles.momentumDivider, { backgroundColor: currentTheme.colors.border }]} />
                         <View style={styles.momentumItem}>
                             <MatchScoreGauge
                                 score={opportunity.matchScore ?? 0}
-                                isEligible={opportunity.isEligible !== false}
+                                isEligible={true}
                                 size={22}
                                 strokeWidth={2.5}
                             />
                             <Text style={[styles.momentumText, { color: currentTheme.colors.text, marginLeft: 6 }]}>
                                 <Text style={{ color: currentTheme.colors.textMuted }}>
-                                    {opportunity.isEligible === false ? 'Match' : 'Fit'}
+                                    Fit
                                 </Text>{' '}
-                                {opportunity.isEligible === false ? 'Ineligible' : `${opportunity.matchScore ?? 0}%`}
+                                {`${opportunity.matchScore ?? 0}%`}
                             </Text>
                         </View>
                     </>
@@ -961,7 +965,6 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 onPress={async () => {
                     const success = await handleApply();
                     if (success) {
-                        setSuccessModalVisible(true);
                         // Prompt for review after successful application flow
                         if (await StoreReview.hasAction()) {
                             void StoreReview.requestReview();
@@ -1018,12 +1021,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
           onSelect={handleStatusSelect}
       />
 
-      <SuccessModal
-          visible={successModalVisible}
-          onClose={() => setSuccessModalVisible(false)}
-          title="Application Started!"
-          subtitle={`We've redirected you to ${opportunity.company}'s portal. Good luck with your application!`}
-      />
+
 
       <PremiumActionSheet visible={menuVisible} onClose={() => setMenuVisible(false)}>
         <View style={styles.menuContainer}>

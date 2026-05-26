@@ -112,7 +112,9 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 {savedJobs.length} Saved Opportunities
                             </Text>
                         </View>
-                    ) : null}
+                    ) : (
+                        savedJobs.length === 0 ? renderEmpty() : null
+                    )}
                 </View>
             );
         }
@@ -168,7 +170,6 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         />
                     </View>
                 }
-                ListEmptyComponent={renderEmpty}
                 contentContainerStyle={styles.scrollContent}
                 showsVerticalScrollIndicator={false}
                 refreshControl={

@@ -18,8 +18,6 @@ import {
   InteractionManager,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
-
-const AnimatedPagerView = Animated.createAnimatedComponent(PagerView);
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import {
@@ -255,11 +253,15 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
         <FlashList<FeedItem>
             data={listData}
             renderItem={renderItem}
-            extraData={{ isBootstrapping, searchQuery, tabFeedType, hasProfileData, isSaved }}
+            extraData={searchQuery}
             keyExtractor={(item) => item.key}
             // @ts-expect-error - FlashList typing bug with estimatedItemSize
             estimatedItemSize={180}
-            drawDistance={2500}
+            drawDistance={600}
+            removeClippedSubviews={true}
+            windowSize={3}
+            maxToRenderPerBatch={5}
+            initialNumToRender={5}
             showsVerticalScrollIndicator={false}
             onViewableItemsChanged={onViewableItemsChanged}
                         viewabilityConfig={viewabilityConfig}
@@ -280,6 +282,11 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
         />
     </View>
   );
+}, (prev, next) => {
+  return (
+    prev.feedType === next.feedType &&
+    prev.searchQuery === next.searchQuery
+  );
 });
 
 const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
@@ -290,7 +297,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const { hideTabBar, showTabBar } = useUI();
   const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState(0);
-  const [visitedTabs, setVisitedTabs] = useState<Set<number>>(new Set([0]));
+  const activeTabRef = useRef(0);
   const pagerRef = useRef<PagerView>(null);
   const tabListRef = useRef<ScrollView>(null);
   // Indicator position — springs to new tab after swipe lands (no per-frame JS bridge cost)
@@ -353,7 +360,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
   const feeds = [
     { id: null, label: 'For You' },
-    { id: 'profile', label: 'Profile' },
+    // { id: 'profile', label: 'Profile' },
     { id: 'trending', label: 'Trending' },
     { id: 'remote', label: 'Remote' },
     { id: '2026', label: '2026 Batch' },
@@ -361,11 +368,23 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   ];
 
 
-  // Initialize indicator position on first layout
+  // Animate indicator position smoothly when active tab changes
   useEffect(() => {
     if (tabLayouts[activeTab]) {
-      indicatorLeft.setValue(tabLayouts[activeTab].center || tabLayouts[activeTab].x);
-      indicatorWidth.setValue(tabLayouts[activeTab].width);
+      Animated.parallel([
+          Animated.spring(indicatorLeft, {
+              toValue: tabLayouts[activeTab].center || tabLayouts[activeTab].x,
+              useNativeDriver: true,
+              bounciness: 0,
+              speed: 14,
+          }),
+          Animated.spring(indicatorWidth, {
+              toValue: tabLayouts[activeTab].width,
+              useNativeDriver: true,
+              bounciness: 0,
+              speed: 14,
+          })
+      ]).start();
     }
   }, [tabLayouts, activeTab]);
 
@@ -400,58 +419,17 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     showSuccess(wasSaved ? 'Opportunity removed from saved' : 'Opportunity saved successfully!');
   }, [isSaved, toggleSave, showSuccess]);
 
-  const animatedPosition = useRef(new Animated.Value(0)).current;
-  const animatedOffset = useRef(new Animated.Value(0)).current;
-  
-  const scrollX = useMemo(() => 
-    Animated.multiply(Animated.add(animatedPosition, animatedOffset), SCREEN_WIDTH),
-  [animatedPosition, animatedOffset]);
 
-  const allLayoutsReady = useMemo(() => {
-    return Object.keys(tabLayouts).length === feeds.length;
-  }, [tabLayouts, feeds.length]);
 
-  // Pre-load adjacent tabs while idle (like ViewPager2 setOffscreenPageLimit)
-  // This ensures the next tab is completely rendered *before* the user even starts swiping,
-  // making the swipe 100% native smooth without blocking the JS thread during the gesture.
-  useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
-        setVisitedTabs(prev => {
-            const next = new Set(prev);
-            next.add(activeTab);
-            if (activeTab > 0) next.add(activeTab - 1);
-            if (activeTab < feeds.length - 1) next.add(activeTab + 1);
-            return next;
-        });
-    });
-    return () => task.cancel();
-  }, [activeTab, feeds.length]);
 
-  const interpolatedTranslateX = useMemo(() => {
-    if (!allLayoutsReady) return indicatorLeft;
-    const inputRange = feeds.map((_, i) => i * SCREEN_WIDTH);
-    const outputRange = feeds.map((_, i) => tabLayouts[i]?.center ?? 0);
-    return scrollX.interpolate({
-      inputRange,
-      outputRange,
-      extrapolate: 'clamp',
-    });
-  }, [allLayoutsReady, tabLayouts, indicatorLeft]);
-
-  const interpolatedScaleX = useMemo(() => {
-    if (!allLayoutsReady) return indicatorWidth;
-    const inputRange = feeds.map((_, i) => i * SCREEN_WIDTH);
-    const outputRange = feeds.map((_, i) => tabLayouts[i]?.width ?? 0);
-    return scrollX.interpolate({
-      inputRange,
-      outputRange,
-      extrapolate: 'clamp',
-    });
-  }, [allLayoutsReady, tabLayouts, indicatorWidth]);
 
   const handlePageSelected = useCallback((index: number) => {
-    if (index >= 0 && index < feeds.length && index !== activeTab) {
-        setActiveTab(index);
+    if (index >= 0 && index < feeds.length && index !== activeTabRef.current) {
+        activeTabRef.current = index;
+
+        requestAnimationFrame(() => {
+            setActiveTab(index);
+        });
         
         // Scroll the tab list itself to keep the active tab visible
         if (tabLayouts[index] && tabListRef.current) {
@@ -459,19 +437,30 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             tabListRef.current.scrollTo({ x: Math.max(0, centerOffset), animated: true });
         }
     }
-  }, [tabLayouts, activeTab]);
+  }, [tabLayouts, feeds.length]);
 
   const handleTabPress = useCallback((index: number) => {
-    if (index === activeTab) return;
+    if (index === activeTabRef.current) return;
+
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    activeTabRef.current = index;
     setActiveTab(index);
+
     pagerRef.current?.setPage(index);
-    
+
     if (tabLayouts[index] && tabListRef.current) {
-        const centerOffset = tabLayouts[index].x - (SCREEN_WIDTH / 2) + (tabLayouts[index].width / 2);
-        tabListRef.current.scrollTo({ x: Math.max(0, centerOffset), animated: true });
+        const centerOffset =
+            tabLayouts[index].x -
+            (SCREEN_WIDTH / 2) +
+            (tabLayouts[index].width / 2);
+
+        tabListRef.current.scrollTo({
+            x: Math.max(0, centerOffset),
+            animated: true,
+        });
     }
-  }, [activeTab, tabLayouts]);
+}, [activeTab, tabLayouts]);
 
     return (
     <Screen safe={false}>
@@ -535,24 +524,12 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     horizontal
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.feedList}
-                    keyboardShouldPersistTaps="always"
-                >                    {feeds.map((feed, index) => {
+                >
+                    {feeds.map((feed, index) => {
                         const isActive = activeTab === index;
                         const tabKey = `tab-${feed.id || 'all'}-${index}`;
                         
-                        // High-performance opacity transitions driven natively by scrollX
-                        // Note: Color is not animated with scrollX because Native Driver doesn't support color interpolation
                         const tabColor = isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted;
-
-                        const tabOpacity = allLayoutsReady ? scrollX.interpolate({
-                            inputRange: [
-                                (index - 1) * SCREEN_WIDTH,
-                                index * SCREEN_WIDTH,
-                                (index + 1) * SCREEN_WIDTH,
-                            ],
-                            outputRange: [0.55, 1, 0.55],
-                            extrapolate: 'clamp',
-                        }) : (isActive ? 1 : 0.55);
 
                         return (
                             <TouchableOpacity
@@ -565,15 +542,15 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 style={styles.feedTab}
                                 onPress={() => handleTabPress(index)}
                             >
-                                <Animated.Text style={[
+                                <Text style={[
                                     styles.feedTabText,
                                     {
-                                        color: tabColor as any,
-                                        opacity: tabOpacity,
+                                        color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted,
+                                        opacity: isActive ? 1 : 0.55,
                                     }
                                 ]}>
                                     {feed.label}
-                                </Animated.Text>
+                                </Text>
                             </TouchableOpacity>
                         );
                     })}
@@ -581,12 +558,12 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         style={[
                             styles.tabIndicator,
                             {
-                                backgroundColor: currentTheme.colors.primary,
-                                width: 1, // Base width 1px for native scaling
+                                width: 1,
                                 transform: [
-                                    { translateX: interpolatedTranslateX },
-                                    { scaleX: interpolatedScaleX }
-                                ]
+                                    { translateX: indicatorLeft },
+                                    { scaleX: indicatorWidth }
+                                ],
+                                backgroundColor: currentTheme.colors.primary,
                             }
                         ]}
                     />
@@ -595,26 +572,18 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         </View>
       </View>
  
-      <AnimatedPagerView
+      <PagerView
         ref={pagerRef as any}
         style={{ flex: 1 }}
         initialPage={0}
-        onPageScroll={Animated.event(
-            [
-                {
-                    nativeEvent: {
-                        position: animatedPosition,
-                        offset: animatedOffset,
-                    },
-                },
-            ],
-            { useNativeDriver: true }
-        )}
+        offscreenPageLimit={1}
+        overdrag={false}
+        overScrollMode="never"
+        layoutDirection="ltr"
         onPageSelected={(e) => handlePageSelected(e.nativeEvent.position)}
       >
-        {feeds.map((item, index) => (
-            <View key={`pager-${item.id || 'all'}-${index}`} style={{ flex: 1 }}>
-                {visitedTabs.has(index) ? (
+            {feeds.map((item, index) => (
+                <View key={`pager-${item.id || 'all'}-${index}`} style={{ flex: 1 }}>
                     <FeedTabContent
                         feedType={item.id}
                         navigation={navigation}
@@ -624,12 +593,9 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         handleScroll={handleScroll}
                         searchQuery={searchQuery}
                     />
-                ) : (
-                    <View style={{ flex: 1, backgroundColor: currentTheme.colors.background }} />
-                )}
-            </View>
-        ))}
-      </AnimatedPagerView>
+                </View>
+            ))}
+      </PagerView>
     </Screen>
   );
 });
