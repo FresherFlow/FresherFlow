@@ -24,6 +24,7 @@ async function sendExpoPush(data: PushJobData) {
             body,
             data: { url, opportunityId },
             sound: 'default',
+            channelId: 'matches',
         });
         logger.info('Expo push notification sent', { userId: data.userId });
     } catch (err: unknown) {
