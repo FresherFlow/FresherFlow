@@ -132,8 +132,15 @@ export class UrlParser {
         locations?: string[];
         applyLink?: string;
     } {
-        const scripts = Array.from(html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi))
-            .map((match) => match[1]);
+        // Safety: Ensure html is a string
+        const htmlStr = typeof html === 'string' ? html : (html ? String(html) : '');
+
+        const scripts: string[] = [];
+        const regex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+        let match;
+        while ((match = regex.exec(htmlStr)) !== null) {
+            scripts.push(match[1]);
+        }
 
         for (const raw of scripts) {
             try {

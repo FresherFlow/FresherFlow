@@ -15,7 +15,7 @@ const router = Router();
  */
 router.post('/share', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { url } = req.body;
+        const { url, title: bodyTitle, company: bodyCompany } = req.body;
         const userId = req.userId as string;
 
         if (!url || typeof url !== 'string') {
@@ -107,22 +107,26 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
                 rawPayload: {
                     sharedByUserId: userId,
                     originalUrl: url,
-                    source: 'mobile_share'
+                    source: 'mobile_share',
+                    parsedTitle: bodyTitle,
+                    parsedCompany: bodyCompany
                 }
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             } as any
         });
 
         // 3. Synchronous DRAFT creation (Bypassing ingestion queue)
-        let companyName = 'Unknown Company';
-        try {
-            const urlObj = new URL(normalizedUrl);
-            companyName = urlObj.hostname.replace(/^www\./, '');
-        } catch (e) {
-            // ignore
+        let companyName = bodyCompany || 'Unknown Company';
+        if (!bodyCompany) {
+            try {
+                const urlObj = new URL(normalizedUrl);
+                companyName = urlObj.hostname.replace(/^www\./, '');
+            } catch (e) {
+                // ignore
+            }
         }
 
-        const title = 'New Opportunity';
+        const title = bodyTitle || 'New Opportunity';
         const baseSlug = `${title.toLowerCase().replace(/\s+/g, '-')}-at-${companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
         const uniqueSlug = `${baseSlug}-${rawOpportunity.id.slice(-6)}`;
 

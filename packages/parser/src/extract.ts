@@ -88,9 +88,16 @@ export function extractSkills(text: string, locations: string[] = []): string[] 
     ];
 
     for (const pattern of sectionPatterns) {
-        const matches = Array.from(text.matchAll(new RegExp(pattern.source, 'gis')));
-        for (const match of matches) {
-            const content = match[1].split(
+        // Safety: Ensure text is a string
+        const textStr = typeof text === 'string' ? text : (text ? String(text) : '');
+        const regex = new RegExp(pattern.source, 'gis');
+        const matches: RegExpExecArray[] = [];
+        let match;
+        while ((match = regex.exec(textStr)) !== null) {
+            matches.push(match);
+        }
+        for (const m of matches) {
+            const content = m[1].split(
                 /(?:\n\n|\r\n\r\n|Role:|Education|Industry Type|Department|Requirements|Work location|Immediate joiner|Walk-in Details|Note :)/i
             )[0];
             const lines = content.split('\n').map(l => l.trim()).filter(l => l.length > 0);

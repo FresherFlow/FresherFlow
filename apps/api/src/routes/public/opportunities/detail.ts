@@ -111,8 +111,8 @@ router.get('/:id', adaptiveDetailLimiter, async (req: Request, res: Response, ne
         })) || [];
 
         const creator = rawIngestionsMapped[0]?.creator;
-        const isReferral = Boolean(creator);
-        const referredByUsername = creator?.username || undefined;
+        const isReferral = Boolean(creator) && !opportunitySafe.sourceLink;
+        const referredByUsername = isReferral ? (creator?.username || undefined) : undefined;
 
         const opportunityWithSaved = {
             ...opportunitySafe,

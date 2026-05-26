@@ -162,8 +162,8 @@ router.get('/', adaptiveFeedLimiter, async (req: Request, res: Response, next: N
             })) || [];
 
             const creator = rawIngestionsMapped[0]?.creator;
-            const isReferral = Boolean(creator);
-            const referredByUsername = creator?.username || undefined;
+            const isReferral = Boolean(creator) && !rest.sourceLink;
+            const referredByUsername = isReferral ? (creator?.username || undefined) : undefined;
 
             return {
                 ...rest,

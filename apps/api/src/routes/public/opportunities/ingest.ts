@@ -30,7 +30,21 @@ router.post('/ingest', async (req: Request, res: Response, next: NextFunction) =
         // as the mobile app relies on its local CDN cache for duplicate prevention.
 
         const result = await UrlParser.parseUrl(normalizedUrl).catch((err: Error) => {
-            throw new AppError(`Parsing failed: ${err.message}`, 500);
+            console.error(`[Ingest] Parsing failed for ${normalizedUrl}:`, err);
+            // Graceful fallback: return empty parsed data with the raw URL so the share is NOT blocked!
+            return {
+                parsed: {
+                    title: 'Shared Opportunity',
+                    company: new URL(normalizedUrl).hostname,
+                },
+                meta: {
+                    sourceType: 'GENERIC' as const,
+                    confidence: 0,
+                    missing: ['title', 'description'],
+                    warnings: [`parsing_failed: ${err.message}`],
+                    finalUrl: normalizedUrl
+                }
+            };
         });
 
         res.json({

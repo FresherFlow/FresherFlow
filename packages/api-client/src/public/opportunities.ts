@@ -66,7 +66,7 @@ export const opportunitiesApi = {
         headers: { 'Content-Type': 'application/json' }
     }),
 
-    shareLink: (url: string) => apiClient<{
+    shareLink: (url: string, title?: string, company?: string) => apiClient<{
         success: boolean;
         id: string;
         existing?: boolean;
@@ -74,7 +74,7 @@ export const opportunitiesApi = {
         message?: string;
     }>(`/api/opportunities/share`, {
         method: 'POST',
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, title, company }),
         headers: { 'Content-Type': 'application/json' }
     }),
 
