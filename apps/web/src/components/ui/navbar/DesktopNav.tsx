@@ -29,7 +29,7 @@ export function DesktopNav() {
     const desktopRoutes = getNavRoutes(mode).filter(r => r.showInDesktop);
 
     useEffect(() => {
-        const onScroll = () => setScrolled(window.scrollY > 60);
+        const onScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', onScroll, { passive: true });
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
@@ -43,7 +43,7 @@ export function DesktopNav() {
                 'pointer-events-auto w-full flex items-center justify-between gap-4 transition-all duration-500 ease-in-out px-6 shadow-none',
                 scrolled
                     ? 'max-w-3xl h-[52px] rounded-2xl border border-border/80 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
-                    : 'max-w-7xl h-[64px] rounded-2xl border border-transparent bg-transparent'
+                    : 'max-w-7xl h-[64px] rounded-2xl border border-transparent bg-background/80 dark:bg-background/80 backdrop-blur-md'
             )}>
 
                 {/* Brand */}

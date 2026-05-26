@@ -68,14 +68,14 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
         return candidates.join('|');
     }, [candidates, normalizedName]);
 
-    const [currentSrc, setCurrentSrc] = useState<string | null>(() => memCache.get(cacheKey) || null);
+    const [currentSrc, setCurrentSrc] = useState<string | null>(() => memCache.get(cacheKey) || candidates[0] || null);
     const [prevCacheKey, setPrevCacheKey] = useState<string | null>(cacheKey);
 
     // Synchronous reset when company/cacheKey changes to avoid recycling artifacts
     // and provide instant cached resolution (the "use cached" request)
     if (cacheKey !== prevCacheKey) {
         setPrevCacheKey(cacheKey);
-        setCurrentSrc(memCache.get(cacheKey) || null);
+        setCurrentSrc(memCache.get(cacheKey) || candidates[0] || null);
         setAttemptIndex(0);
         setImgError(false);
     }

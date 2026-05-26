@@ -166,7 +166,6 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     const metaChips = (() => {
         const chips: string[] = [];
         if (job.governmentJobDetails || (job.tags || []).some((tag) => /government/i.test(tag))) chips.push('Government');
-        chips.push(isDrive ? 'Hiring Drive' : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time');
         if (isDrive) chips.push('Campus 2024-2026');
         if (isDrive) chips.push('0-2 Yrs');
         const maxChips = variant === 'compact' ? 1 : 2;
@@ -206,9 +205,12 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                 <div className="absolute left-0 top-0 h-[2px] w-full bg-primary/45" />
             )}
 
-            {/* Top Bar: Heat Badge + Meta */}
+            {/* Top Bar: Type Badge + Heat Badge + Meta */}
             <div className="flex items-center justify-between gap-2 z-20 pointer-events-none">
                 <div className="flex items-center gap-2">
+                    <span className="inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-md bg-muted/80 text-foreground border border-border/70">
+                        {isDrive ? 'Hiring Drive' : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
+                    </span>
                     {heatBadge && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider border border-amber-500/20">
                             <FireIcon className="w-3 h-3" />

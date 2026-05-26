@@ -322,14 +322,6 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                             />
                         ))}
                     </div>
-
-                    {!isLoading && !profileIncomplete && (
-                        <div className={cn("mt-12 text-center pb-8 border-t border-border/50 pt-8")}>
-                            <p className="text-[10px] font-bold text-muted-foreground/40 capitalize tracking-[0.2em]">
-                                Verified - {totalCount} listings active
-                            </p>
-                        </div>
-                    )}
                 </div>
             )
             }

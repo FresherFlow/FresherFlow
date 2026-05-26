@@ -170,7 +170,6 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     const metaChips = (() => {
         const chips: string[] = [];
         if (job.governmentJobDetails || (job.tags || []).some((tag) => /government/i.test(tag))) chips.push('Government');
-        chips.push(isDrive ? 'Hiring Drive' : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Drive' : 'Full-time');
         if (isDrive) chips.push('Campus 2024-2026');
         if (isDrive) chips.push('0-2 Yrs');
         const maxChips = variant === 'compact' ? 1 : 2;
@@ -209,6 +208,23 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             {isClosingSoon() && !isExpired() && (
                 <div className="absolute left-0 top-0 h-[2px] w-full bg-primary/45" />
             )}
+
+            {/* Top Bar: Type Badge + Posted Label */}
+            <div className="flex items-center justify-between gap-2 z-20 pointer-events-none">
+                <div className="flex items-center gap-2">
+                    <span className="inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-full bg-muted/80 text-foreground border border-border/70">
+                        {isDrive ? 'Hiring Drive' : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Drive' : 'Full-time'}
+                    </span>
+                </div>
+                <div className="flex items-center gap-2">
+                   {getPostedLabel() && (
+                        <span className={cn("text-[10px] font-bold uppercase tracking-wider text-muted-foreground", isFreshlyPosted() && "text-primary")}>
+                            {getPostedLabel()}
+                        </span>
+                    )}
+                </div>
+            </div>
+
             {/* Header: Company + Title + Save */}
             <div className="flex justify-between items-start">
                 <div className="flex items-start gap-3 min-w-0 flex-1">
@@ -221,13 +237,6 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         >
                             {job.company}
                         </Link>
-                        {(getPostedLabel()) && (
-                            <div className="mt-0.5 flex items-center gap-2 text-xs text-muted-foreground">
-                                {getPostedLabel() && (
-                                    <span className={cn(isFreshlyPosted() && "text-primary/90")}>{getPostedLabel()}</span>
-                                )}
-                            </div>
-                        )}
                         <h3 className="mt-0.5 text-[17px] md:text-[18px] font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
                             {job.normalizedRole || job.title}
                         </h3>

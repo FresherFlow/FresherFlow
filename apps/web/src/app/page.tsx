@@ -115,6 +115,7 @@ export default async function LandingPage() {
                                         className="object-cover rounded-xl grayscale-[0.05]"
                                         src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3tZJKvyI6tc96EkTndqlfFMEk4KqIdS2q0HKEDeAG3JExuSOyfTY_Df5ThvVRWlpwTfFeK5PPFA-gNhJvDGD80MbMvIMKAq_dvMc5ERdu9GFzynplovygxGg1Jwvaw89hUjtQa-ooCRA5soLZa3Cykp41b3AI7AgTKbPaTIupk13KMl_EGzcWZQfmIQ4UutVy278nvm7hKh4UHSgju6JmA0PDUT57o91tGcwYAao2dirY_UmttpRATIhoaTrbr_fDhalmVNfoAkv-" 
                                         fill
+                                        sizes="(max-width: 768px) 100vw, 50vw"
                                         priority
                                     />
                                 </div>
@@ -142,12 +143,13 @@ export default async function LandingPage() {
                                 </div>
                             </div>
 
-                            <div className="hidden lg:block relative rounded-3xl overflow-hidden shadow-xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20 w-full h-[480px]">
+                             <div className="hidden lg:block relative rounded-3xl overflow-hidden shadow-xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20 w-full h-[480px]">
                                 <Image 
                                     alt="FresherFlow Interface Demonstration"
                                     className="object-cover rounded-2xl grayscale-[0.05] transition-transform duration-700 group-hover:scale-[1.02]"
                                     src="https://lh3.googleusercontent.com/aida-public/AB6AXuC3tZJKvyI6tc96EkTndqlfFMEk4KqIdS2q0HKEDeAG3JExuSOyfTY_Df5ThvVRWlpwTfFeK5PPFA-gNhJvDGD80MbMvIMKAq_dvMc5ERdu9GFzynplovygxGg1Jwvaw89hUjtQa-ooCRA5soLZa3Cykp41b3AI7AgTKbPaTIupk13KMl_EGzcWZQfmIQ4UutVy278nvm7hKh4UHSgju6JmA0PDUT57o91tGcwYAao2dirY_UmttpRATIhoaTrbr_fDhalmVNfoAkv-" 
                                     fill
+                                    sizes="(max-width: 1024px) 100vw, (max-width: 1200px) 50vw, 600px"
                                     priority
                                 />
                             </div>
@@ -251,7 +253,7 @@ export default async function LandingPage() {
                                 Stop searching. Start applying.
                             </h2>
                             <p className="text-muted-foreground text-sm md:text-base max-w-xl mx-auto leading-relaxed">
-                                Join thousands of students getting fast, direct redirection to authentic, manual-checked tech openings.
+                                Join thousands of students getting fast, direct redirection to authentic, manual-checked career openings.
                             </p>
                             <div className="flex justify-center pt-2">
                                 <Link href="/download" className="premium-button px-9 text-[12px] uppercase tracking-widest shadow-md">
