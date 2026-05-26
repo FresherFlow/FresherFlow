@@ -1,10 +1,14 @@
-import React, { useEffect, useCallback } from 'react';
-import { StyleSheet, Text, View, Image } from 'react-native';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text, View, Image, Animated } from 'react-native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import LogoImage from '@/assets/logo.png';
 import LogoWhiteImage from '@/assets/logo-white.png';
-import { MotiView } from 'moti';
 import * as SplashScreen from 'expo-splash-screen';
+
+const alpha = (color: string, opacity: number) => {
+  if (color.startsWith('rgba')) return color;
+  return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+};
 
 const createStyles = (theme: AppTheme) => StyleSheet.create({
   container: {
@@ -49,15 +53,36 @@ const createStyles = (theme: AppTheme) => StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.5,
   },
+  progressBarContainer: {
+    width: 160,
+    height: 4,
+    backgroundColor: alpha(theme.colors.text, 0.08),
+    borderRadius: 2,
+    marginTop: 28,
+    overflow: 'hidden',
+  },
+  progressBar: {
+    height: '100%',
+    backgroundColor: theme.colors.primary,
+    borderRadius: 2,
+    width: '100%',
+  },
 });
 
-export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () => void }> = ({ isLoading = true, onComplete }) => {
+export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () => void }> = ({ onComplete }) => {
   const { currentTheme } = useTheme();
   const styles = createStyles(currentTheme);
-  const [exiting, setExiting] = React.useState(false);
+  
+  const progressAnim = React.useRef(new Animated.Value(0)).current;
 
-  const onLayoutRootView = useCallback(async () => {
-    // This is the exact moment the handoff happens
+  // Capture onComplete in a ref to prevent any potential prop restarts
+  const onCompleteRef = React.useRef(onComplete);
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
+
+  // Hide the native splash screen immediately when this component mounts
+  const onLayoutRootView = React.useCallback(async () => {
     try {
       await SplashScreen.hideAsync();
     } catch (e) {
@@ -65,45 +90,31 @@ export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () =>
     }
   }, []);
 
-  // Handle dynamic exiting based on loading state
-  const hasTriggeredExit = React.useRef(false);
-  const onCompleteRef = React.useRef(onComplete);
+  useEffect(() => {
+    const totalDuration = 1000; // Exact 1.0s display time matching the progress bar
 
-  // Keep ref up to date without triggering effects
-  useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
-  
-  useEffect(() => {
-    if (!isLoading && !hasTriggeredExit.current) {
-      hasTriggeredExit.current = true;
-      setExiting(true);
-      
-      setTimeout(() => {
-        onCompleteRef.current();
-      }, 300);
-    }
-  }, [isLoading]);
+    // 1. Run progress bar filling animation
+    Animated.timing(progressAnim, {
+      toValue: 1,
+      duration: totalDuration,
+      useNativeDriver: true,
+    }).start();
+
+    // 2. Instantly trigger onComplete at 100% progress (no translucent mixing/blending overlays)
+    const timer = setTimeout(() => {
+      onCompleteRef.current();
+    }, totalDuration);
+
+    return () => clearTimeout(timer);
+  }, [progressAnim]);
 
   return (
-    <MotiView 
-      animate={{ opacity: exiting ? 0 : 1 }}
-      transition={{ type: 'timing', duration: 300 }}
+    <View 
       style={styles.container}
       onLayout={onLayoutRootView}
     >
       <View style={styles.content}>
-        <MotiView 
-            from={{ opacity: 0, scale: 0.9, translateY: 10 }}
-            animate={{ opacity: 1, scale: 1, translateY: 0 }}
-            transition={{ 
-                type: 'spring', 
-                damping: 12, 
-                stiffness: 100, 
-                mass: 0.9 
-            }}
-            style={styles.logoContainer}
-        >
+        <View style={styles.logoContainer}>
           <View style={styles.logoBox}>
             <Image 
               source={currentTheme.mode === 'dark' ? LogoWhiteImage : LogoImage}
@@ -113,8 +124,27 @@ export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () =>
           </View>
           <Text style={styles.brandName}>FresherFlow</Text>
           <Text style={styles.tagline}>Opportunity Discovery Network</Text>
-        </MotiView>
+
+          {/* Progress bar fills left-to-right over exactly 1.5s */}
+          <View style={styles.progressBarContainer}>
+            <Animated.View 
+              style={[
+                styles.progressBar, 
+                {
+                  transform: [
+                    { 
+                      translateX: progressAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-160, 0]
+                      }) 
+                    }
+                  ]
+                }
+              ]} 
+            />
+          </View>
+        </View>
       </View>
-    </MotiView>
+    </View>
   );
 };

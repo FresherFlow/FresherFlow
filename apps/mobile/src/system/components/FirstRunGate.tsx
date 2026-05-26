@@ -7,17 +7,21 @@ import {
     FlatList, 
     NativeScrollEvent, 
     NativeSyntheticEvent,
-    StatusBar,
-    Platform
+    Platform,
+    Image
 } from 'react-native';
-import { MotiView, AnimatePresence } from 'moti';
-import { Zap, Share2, ShieldCheck, ChevronRight } from 'lucide-react-native';
+import { MotiView } from 'moti';
+import { ChevronRight, Compass, BellRing, Share2, Clipboard, ShieldCheck, Check } from 'lucide-react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as Haptics from 'expo-haptics';
-import { BlurView } from 'expo-blur';
 import { useTheme } from '@/contexts/ThemeContext';
 import { SCREEN_WIDTH, SPACING, RADIUS, mScale } from '@/system/constants/dimensions';
 import { alpha } from '@/theme';
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import LogoImage from '@/assets/logo.png';
+import LogoWhiteImage from '@/assets/logo-white.png';
 
 const FIRST_RUN_KEY = 'ff_first_run_done';
 
@@ -25,8 +29,6 @@ interface Slide {
     id: string;
     title: string;
     description: string;
-    Icon: React.ComponentType<{ size?: number; color?: string; strokeWidth?: number }>;
-    color: string;
 }
 
 interface FirstRunGateProps {
@@ -35,40 +37,35 @@ interface FirstRunGateProps {
 }
 
 export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss }) => {
-    const [isVisible, setIsVisible] = useState<boolean | null>(false);
+    const [isVisible, setIsVisible] = useState<boolean | null>(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const flatListRef = useRef<FlatList>(null);
     const { currentTheme } = useTheme();
+    const insets = useSafeAreaInsets();
 
     const SLIDES: Slide[] = useMemo(() => [
         {
             id: '1',
-            title: 'Jobs, Instantly',
-            description: 'A lightning-fast feed of fresh opportunities, updated by the community in real-time.',
-            Icon: Zap,
-            color: currentTheme.colors.indigo,
+            title: 'Welcome to FresherFlow',
+            description: 'We help you find verified jobs and internships directly. No spam, just active career links.',
         },
         {
             id: '2',
-            title: 'Share to Earn Trust',
-            description: 'Contributing valid links builds your reputation. Verified contributors get priority features.',
-            Icon: Share2,
-            color: currentTheme.colors.emerald,
+            title: 'How It Works',
+            description: 'Simple three-step discovery feed tracking:',
         },
         {
             id: '3',
-            title: 'Privacy First',
-            description: 'Your username is your identity. No trackers, no spam, just pure career growth.',
-            Icon: ShieldCheck,
-            color: currentTheme.colors.amber,
+            title: 'Share & Help Others',
+            description: 'Found a live opportunity? Share the hiring link with your peers:',
         },
     ], [currentTheme]);
 
     useEffect(() => {
         const checkFirstRun = async () => {
             try {
-                // Muted the Get Started onboarding intro for sometime as requested
-                setIsVisible(false);
+                const done = await AsyncStorage.getItem(FIRST_RUN_KEY);
+                setIsVisible(done !== 'true');
             } catch {
                 setIsVisible(false);
             }
@@ -98,170 +95,290 @@ export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss 
         }
     }, [activeIndex]);
 
-    const renderSlide = ({ item }: { item: Slide }) => (
-        <View style={styles.slide}>
-            <MotiView
-                from={{ scale: 0.5, opacity: 0, translateY: 20 }}
-                animate={{ scale: 1, opacity: 1, translateY: 0 }}
-                transition={{ type: 'spring', damping: 15 }}
-                style={[styles.iconBox, { backgroundColor: alpha(item.color, 0.15) }]}
-            >
-                <item.Icon size={mScale(64)} color={item.color} strokeWidth={2.5} />
-            </MotiView>
-            <MotiView
-                from={{ opacity: 0, translateY: 10 }}
-                animate={{ opacity: 1, translateY: 0 }}
-                transition={{ delay: 100 }}
-            >
-                <Text style={[styles.title, { color: currentTheme.colors.text }]}>{item.title}</Text>
-                <Text style={[styles.description, { color: currentTheme.colors.textMuted }]}>{item.description}</Text>
-            </MotiView>
-        </View>
-    );
+    const renderSlide = ({ item, index }: { item: Slide, index: number }) => {
+        return (
+            <View style={styles.slide}>
+                <View style={styles.contentCard}>
+                    {index === 0 ? (
+                        <MotiView
+                            from={{ scale: 0.8, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            transition={{ type: 'spring', damping: 15 }}
+                            style={styles.logoContainer}
+                        >
+                            <Image
+                                source={currentTheme.mode === 'dark' ? LogoWhiteImage : LogoImage}
+                                style={styles.logo}
+                                resizeMode="contain"
+                            />
+                        </MotiView>
+                    ) : null}
+
+                    <MotiView
+                        from={{ opacity: 0, translateY: 10 }}
+                        animate={{ opacity: 1, translateY: 0 }}
+                        transition={{ delay: 100 }}
+                        style={styles.textContainer}
+                    >
+                        <Text style={[styles.title, { color: currentTheme.colors.text }]}>
+                            {item.title}
+                        </Text>
+                        <Text style={[styles.description, { color: currentTheme.colors.textMuted }]}>
+                            {item.description}
+                        </Text>
+                    </MotiView>
+
+                    {index === 1 && (
+                        <View style={styles.stepsContainer}>
+                            <View style={styles.stepItem}>
+                                <View style={[styles.stepIconWrapper, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                    <Compass size={18} color={currentTheme.colors.primary} />
+                                </View>
+                                <View style={styles.stepTextWrapper}>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>1. Browse live listings</Text>
+                                    <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Explore verified jobs and internships feed</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.stepItem}>
+                                <View style={[styles.stepIconWrapper, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                    <ChevronRight size={18} color={currentTheme.colors.primary} />
+                                </View>
+                                <View style={styles.stepTextWrapper}>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>2. Apply directly</Text>
+                                    <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Tap listing to apply directly to company pages</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.stepItem}>
+                                <View style={[styles.stepIconWrapper, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                    <BellRing size={18} color={currentTheme.colors.primary} />
+                                </View>
+                                <View style={styles.stepTextWrapper}>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>3. Stay updated</Text>
+                                    <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Enable notifications to catch new links early</Text>
+                                </View>
+                            </View>
+                        </View>
+                    )}
+
+                    {index === 2 && (
+                        <View style={styles.stepsContainer}>
+                            <View style={styles.stepItem}>
+                                <View style={[styles.stepIconWrapper, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                    <Clipboard size={18} color={currentTheme.colors.primary} />
+                                </View>
+                                <View style={styles.stepTextWrapper}>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>1. Paste job link</Text>
+                                    <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Copy and paste any active application URL</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.stepItem}>
+                                <View style={[styles.stepIconWrapper, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                    <ShieldCheck size={18} color={currentTheme.colors.primary} />
+                                </View>
+                                <View style={styles.stepTextWrapper}>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>2. Get verified</Text>
+                                    <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Community members check and confirm the link</Text>
+                                </View>
+                            </View>
+
+                            <View style={styles.stepItem}>
+                                <View style={[styles.stepIconWrapper, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                    <Check size={18} color={currentTheme.colors.primary} />
+                                </View>
+                                <View style={styles.stepTextWrapper}>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>3. Help the community</Text>
+                                    <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Verified links are published instantly to the feed</Text>
+                                </View>
+                            </View>
+                        </View>
+                    )}
+                </View>
+            </View>
+        );
+    };
 
     if (isVisible === null) return null; // Wait for storage check
 
-    return (
-        <>
-            {children}
-            <AnimatePresence>
-                {isVisible && (
-                    <MotiView
-                        from={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        style={StyleSheet.absoluteFill}
-                    >
-                        <BlurView 
-                            intensity={Platform.OS === 'ios' ? 80 : 100} 
-                            tint={currentTheme.mode === 'dark' ? 'dark' : 'light'} 
-                            style={StyleSheet.absoluteFill} 
-                        />
-                        <View style={[styles.container, { backgroundColor: alpha(currentTheme.colors.background, 0.6) }]}>
-                            <TouchableOpacity 
-                                style={styles.skipBtn}
-                                onPress={handleDismiss}
-                            >
-                                <Text style={[styles.skipText, { color: currentTheme.colors.textMuted }]}>Skip</Text>
-                            </TouchableOpacity>
+    if (isVisible) {
+        return (
+            <View style={[styles.container, { backgroundColor: currentTheme.colors.background, paddingTop: insets.top }]}>
+                <ExpoStatusBar 
+                    style={currentTheme.mode === 'dark' ? "light" : "dark"} 
+                    backgroundColor="transparent" 
+                    translucent={true}
+                />
+                <TouchableOpacity 
+                    style={[styles.skipBtn, { top: insets.top + SPACING.sm }]}
+                    onPress={handleDismiss}
+                    hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+                >
+                    <Text style={[styles.skipText, { color: currentTheme.colors.textMuted }]}>Skip</Text>
+                </TouchableOpacity>
 
-                            <FlatList
-                                ref={flatListRef}
-                                data={SLIDES}
-                                renderItem={renderSlide}
-                                keyExtractor={(item) => item.id}
-                                horizontal
-                                pagingEnabled
-                                showsHorizontalScrollIndicator={false}
-                                onScroll={handleScroll}
-                                scrollEventThrottle={16}
-                                decelerationRate="fast"
-                                style={styles.list}
+                <FlatList
+                    ref={flatListRef}
+                    data={SLIDES}
+                    renderItem={renderSlide}
+                    keyExtractor={(item) => item.id}
+                    horizontal
+                    pagingEnabled
+                    showsHorizontalScrollIndicator={false}
+                    onScroll={handleScroll}
+                    scrollEventThrottle={16}
+                    decelerationRate="fast"
+                    style={styles.list}
+                />
+
+                <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+                    <View style={styles.pagination}>
+                        {SLIDES.map((_, i) => (
+                            <View 
+                                key={i} 
+                                style={[
+                                    styles.dot, 
+                                    { 
+                                        backgroundColor: i === activeIndex ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.1),
+                                        width: i === activeIndex ? 24 : 8
+                                    }
+                                ]} 
                             />
+                        ))}
+                    </View>
 
-                            <View style={styles.footer}>
-                                <View style={styles.pagination}>
-                                    {SLIDES.map((_, i) => (
-                                        <View 
-                                            key={i} 
-                                            style={[
-                                                styles.dot, 
-                                                { 
-                                                    backgroundColor: i === activeIndex ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.1),
-                                                    width: i === activeIndex ? 24 : 8
-                                                }
-                                            ]} 
-                                        />
-                                    ))}
-                                </View>
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[
+                            styles.ctaBtn, 
+                            { 
+                                backgroundColor: activeIndex === SLIDES.length - 1 ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05) 
+                            }
+                        ]}
+                        onPress={() => {
+                            if (activeIndex === SLIDES.length - 1) {
+                                void handleDismiss();
+                            } else {
+                                flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
+                            }
+                        }}
+                    >
+                        <Text style={[
+                            styles.ctaText, 
+                            { 
+                                color: activeIndex === SLIDES.length - 1 ? currentTheme.colors.background : currentTheme.colors.text 
+                            }
+                        ]}>
+                            {activeIndex === SLIDES.length - 1 ? 'Get Started' : 'Next'}
+                        </Text>
+                        {activeIndex !== SLIDES.length - 1 && (
+                            <ChevronRight size={18} color={currentTheme.colors.text} />
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </View>
+        );
+    }
 
-                                <TouchableOpacity
-                                    activeOpacity={0.8}
-                                    style={[
-                                        styles.ctaBtn, 
-                                        { 
-                                            backgroundColor: activeIndex === SLIDES.length - 1 ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05) 
-                                        }
-                                    ]}
-                                    onPress={() => {
-                                        if (activeIndex === SLIDES.length - 1) {
-                                            void handleDismiss();
-                                        } else {
-                                            flatListRef.current?.scrollToIndex({ index: activeIndex + 1, animated: true });
-                                        }
-                                    }}
-                                >
-                                    <Text style={[
-                                        styles.ctaText, 
-                                        { 
-                                            color: activeIndex === SLIDES.length - 1 ? currentTheme.colors.background : currentTheme.colors.text 
-                                        }
-                                    ]}>
-                                        {activeIndex === SLIDES.length - 1 ? 'Get Started' : 'Next'}
-                                    </Text>
-                                    {activeIndex !== SLIDES.length - 1 && (
-                                        <ChevronRight size={18} color={currentTheme.colors.text} />
-                                    )}
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </MotiView>
-                )}
-            </AnimatePresence>
-        </>
-    );
+    return <>{children}</>;
 };
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        paddingTop: StatusBar.currentHeight || 44,
     },
     skipBtn: {
         position: 'absolute',
-        top: (StatusBar.currentHeight || 44) + SPACING.md,
         right: SPACING.lg,
         zIndex: 10,
         padding: SPACING.sm,
     },
     skipText: {
         fontSize: mScale(14),
-        fontWeight: '700',
+        fontWeight: '800',
+        letterSpacing: 0.5,
     },
     list: {
         flex: 1,
     },
     slide: {
         width: SCREEN_WIDTH,
-        paddingHorizontal: SPACING.xxl,
+        paddingHorizontal: SPACING.xl,
         alignItems: 'center',
         justifyContent: 'center',
     },
-    iconBox: {
-        width: mScale(160),
-        height: mScale(160),
-        borderRadius: RADIUS.xl * 1.5,
+    contentCard: {
+        width: '100%',
         alignItems: 'center',
+        paddingHorizontal: SPACING.lg,
+    },
+    logoContainer: {
+        width: mScale(100),
+        height: mScale(100),
         justifyContent: 'center',
+        alignItems: 'center',
         marginBottom: SPACING.xxl,
     },
+    logo: {
+        width: '100%',
+        height: '100%',
+    },
+    textContainer: {
+        alignItems: 'center',
+        width: '100%',
+        marginBottom: SPACING.xl,
+    },
     title: {
-        fontSize: mScale(32),
+        fontSize: mScale(28),
         fontWeight: '900',
         textAlign: 'center',
         marginBottom: SPACING.md,
-        letterSpacing: -1,
+        letterSpacing: -0.8,
     },
     description: {
-        fontSize: mScale(16),
+        fontSize: mScale(15),
         textAlign: 'center',
         lineHeight: mScale(24),
-        opacity: 0.8,
+        opacity: 0.85,
+        fontWeight: '500',
+    },
+    stepsContainer: {
+        width: '100%',
+        gap: 16,
+        marginTop: 10,
+    },
+    stepItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 12,
+        width: '100%',
+    },
+    stepIconWrapper: {
+        width: 36,
+        height: 36,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    stepTextWrapper: {
+        flex: 1,
+        alignItems: 'flex-start',
+    },
+    stepTitle: {
+        fontSize: mScale(15),
+        fontWeight: '800',
+        textAlign: 'left',
+    },
+    stepDescription: {
+        fontSize: mScale(12),
+        fontWeight: '500',
+        marginTop: 2,
+        textAlign: 'left',
     },
     footer: {
         paddingHorizontal: SPACING.xl,
-        paddingBottom: Platform.OS === 'ios' ? 60 : 40,
-        gap: SPACING.xl,
+        gap: SPACING.lg,
     },
     pagination: {
         flexDirection: 'row',
@@ -279,9 +396,10 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
+        marginBottom: 36,
     },
     ctaText: {
-        fontSize: mScale(16),
+        fontSize: mScale(15),
         fontWeight: '800',
         letterSpacing: 0.5,
     }

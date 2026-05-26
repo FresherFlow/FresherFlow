@@ -188,7 +188,8 @@ export const SecondaryHeader: React.FC<{
     onBack?: () => void;
     rightSlot?: React.ReactNode;
     subtitle?: string;
-}> = ({ title, onBack, rightSlot, subtitle }) => {
+    showBack?: boolean;
+}> = ({ title, onBack, rightSlot, subtitle, showBack = true }) => {
     const { currentTheme } = useTheme();
     const navigation = useNavigation();
 
@@ -202,22 +203,34 @@ export const SecondaryHeader: React.FC<{
 
     return (
         <View style={[styles.header, { paddingTop: 18 }]}>
-            <View style={[styles.headerContent, !subtitle && { alignItems: 'center' }]}>
-                <View style={{ flex: 1, flexDirection: 'row', alignItems: !subtitle ? 'center' : 'flex-start', gap: SPACING.sm }}>
-                    <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
-                        <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
-                    </TouchableOpacity>
-                    <View style={{ flex: 1 }}>
+            <View style={[styles.headerContent, { alignItems: 'center' }]}>
+                <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: SPACING.sm }}>
+                    {showBack && (
+                        <TouchableOpacity onPress={handleBack} style={styles.backBtn}>
+                            <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
+                        </TouchableOpacity>
+                    )}
+                    <View style={{ flex: 1, height: mScale(44), justifyContent: 'center' }}>
                         <Text style={[styles.secondaryTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>{title}</Text>
-                        {subtitle && (
-                            <Text style={[styles.headerSubtitle, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
-                                {subtitle}
-                            </Text>
-                        )}
                     </View>
                 </View>
-                {rightSlot && <View>{rightSlot}</View>}
+                {rightSlot && (
+                    <View style={{ 
+                        height: mScale(44), 
+                        justifyContent: 'center',
+                        alignItems: 'center'
+                    }}>
+                        {rightSlot}
+                    </View>
+                )}
             </View>
+            {subtitle && (
+                <View style={{ paddingLeft: showBack ? mScale(44) : 0, marginTop: -2 }}>
+                    <Text style={[styles.headerSubtitle, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                        {subtitle}
+                    </Text>
+                </View>
+            )}
         </View>
     );
 };
@@ -345,14 +358,16 @@ export const PremiumToggle: React.FC<{
             <View style={[
                 styles.switchTrack,
                 {
-                    backgroundColor: value ? currentTheme.colors.primary : alpha(currentTheme.colors.border, 0.15)
+                    backgroundColor: value ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.16)
                 }
             ]}>
                 <Animated.View style={[
                     styles.switchThumb,
                     {
-                        backgroundColor: value ? currentTheme.colors.background : currentTheme.colors.inverseText, // Use themed inverse text for thumb
-                        shadowColor: currentTheme.colors.text,
+                        backgroundColor: value 
+                            ? currentTheme.colors.background 
+                            : (currentTheme.mode === 'dark' ? '#8E8E93' : '#FFFFFF'),
+                        shadowColor: '#000000',
                         transform: [{ translateX }],
                     }
                 ]} />
@@ -458,6 +473,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: SPACING.md,
         flex: 1,
+        marginRight: SPACING.lg, // Prevents text from being too close to the toggle switch
     },
     toggleIconWrapper: {
         width: mScale(40),

@@ -94,13 +94,7 @@ export const ContributionPreviewCard = memo(({ share, onPress }: Props) => {
             style={styles.touchable}
         >
             <SurfaceCard
-                style={[
-                    styles.card,
-                    {
-                        borderLeftColor: config.color,
-                        borderLeftWidth: 4,
-                    }
-                ]}
+                style={styles.card}
             >
                 <View style={styles.cardHeader}>
                     <View style={styles.statusBadgeRow}>

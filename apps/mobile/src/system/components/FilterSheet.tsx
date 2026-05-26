@@ -7,7 +7,8 @@ import {
     TouchableOpacity,
     Dimensions,
     Platform,
-    BackHandler
+    BackHandler,
+    ScrollView
 } from 'react-native';
 import { X, Check } from 'lucide-react-native';
 import { 
@@ -56,24 +57,42 @@ export const FilterSheet = React.forwardRef<FilterSheetRef, FilterSheetProps>(({
         dismiss: () => bottomSheetModalRef.current?.dismiss(),
     }));
 
-    const toggleType = (type: ExploreFilters['type']) => {
+    const toggleType = (type: OpportunityType) => {
         void Haptics.selectionAsync();
         setTempFilters(produce(draft => {
-            draft.type = draft.type === type ? null : type;
+            if (!draft.types) draft.types = [];
+            const idx = draft.types.indexOf(type);
+            if (idx > -1) {
+                draft.types.splice(idx, 1);
+            } else {
+                draft.types.push(type);
+            }
         }));
     };
 
-    const toggleWorkMode = (mode: ExploreFilters['workMode']) => {
+    const toggleWorkMode = (mode: WorkMode) => {
         void Haptics.selectionAsync();
         setTempFilters(produce(draft => {
-            draft.workMode = draft.workMode === mode ? null : mode;
+            if (!draft.workModes) draft.workModes = [];
+            const idx = draft.workModes.indexOf(mode);
+            if (idx > -1) {
+                draft.workModes.splice(idx, 1);
+            } else {
+                draft.workModes.push(mode);
+            }
         }));
     };
 
     const toggleBatchYear = (year: number) => {
         void Haptics.selectionAsync();
         setTempFilters(produce(draft => {
-            draft.batchYear = draft.batchYear === year ? null : year;
+            if (!draft.batchYears) draft.batchYears = [];
+            const idx = draft.batchYears.indexOf(year);
+            if (idx > -1) {
+                draft.batchYears.splice(idx, 1);
+            } else {
+                draft.batchYears.push(year);
+            }
         }));
     };
 
@@ -93,11 +112,11 @@ export const FilterSheet = React.forwardRef<FilterSheetRef, FilterSheetProps>(({
     const handleReset = () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         const reset: ExploreFilters = {
-            type: null,
-            workMode: null,
-            batchYear: null,
+            types: [],
+            workModes: [],
+            batchYears: [],
             tag: null,
-            sort: 'latest',
+            sort: 'recommended',
         };
         setTempFilters(reset);
         onApply(reset);
@@ -159,16 +178,22 @@ export const FilterSheet = React.forwardRef<FilterSheetRef, FilterSheetProps>(({
         [currentTheme, handleReset, handleApply]
     );
 
-    const FilterSection = ({ title, children }: { title: string, children: React.ReactNode }) => (
+    const FilterSection = ({ title, children, scrollable = false }: { title: string, children: React.ReactNode, scrollable?: boolean }) => (
         <View style={styles.section}>
             <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>{title}</Text>
-            <View style={styles.optionsGrid}>
-                {children}
-            </View>
+            {scrollable ? (
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: SPACING.lg }}>
+                    {children}
+                </ScrollView>
+            ) : (
+                <View style={styles.optionsGrid}>
+                    {children}
+                </View>
+            )}
         </View>
     );
 
-    const Option = ({ label, active, onPress }: { label: string, active: boolean, onPress: () => void }) => (
+    const Option = ({ label, active, onPress, style }: { label: string, active: boolean, onPress: () => void, style?: any }) => (
         <TouchableOpacity
             activeOpacity={0.7}
             onPress={onPress}
@@ -177,13 +202,13 @@ export const FilterSheet = React.forwardRef<FilterSheetRef, FilterSheetProps>(({
                 {
                     backgroundColor: active ? alpha(currentTheme.colors.primary, 0.1) : currentTheme.colors.surfaceMuted,
                     borderColor: active ? currentTheme.colors.primary : alpha(currentTheme.colors.border, 0.1)
-                }
+                },
+                style
             ]}
         >
             <Text style={[styles.optionText, { color: active ? currentTheme.colors.primary : currentTheme.colors.text }]}>
                 {label}
             </Text>
-            {active && <Check size={14} color={currentTheme.colors.primary} />}
         </TouchableOpacity>
     );
 
@@ -220,32 +245,34 @@ export const FilterSheet = React.forwardRef<FilterSheetRef, FilterSheetProps>(({
                     contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
                 >
                     <FilterSection title="Opportunity Type">
-                        <Option label="Jobs" active={tempFilters.type === OpportunityType.JOB} onPress={() => toggleType(OpportunityType.JOB)} />
-                        <Option label="Internships" active={tempFilters.type === OpportunityType.INTERNSHIP} onPress={() => toggleType(OpportunityType.INTERNSHIP)} />
-                        <Option label="Walk-ins" active={tempFilters.type === OpportunityType.WALKIN} onPress={() => toggleType(OpportunityType.WALKIN)} />
+                        <Option label="Jobs" active={tempFilters.types?.includes(OpportunityType.JOB)} onPress={() => toggleType(OpportunityType.JOB)} />
+                        <Option label="Internships" active={tempFilters.types?.includes(OpportunityType.INTERNSHIP)} onPress={() => toggleType(OpportunityType.INTERNSHIP)} />
+                        <Option label="Walk-ins" active={tempFilters.types?.includes(OpportunityType.WALKIN)} onPress={() => toggleType(OpportunityType.WALKIN)} />
                     </FilterSection>
  
                     <FilterSection title="Work Mode">
-                        <Option label="Remote" active={tempFilters.workMode === WorkMode.REMOTE} onPress={() => toggleWorkMode(WorkMode.REMOTE)} />
-                        <Option label="Hybrid" active={tempFilters.workMode === WorkMode.HYBRID} onPress={() => toggleWorkMode(WorkMode.HYBRID)} />
-                        <Option label="On-site" active={tempFilters.workMode === WorkMode.ONSITE} onPress={() => toggleWorkMode(WorkMode.ONSITE)} />
+                        <Option label="Remote" active={tempFilters.workModes?.includes(WorkMode.REMOTE)} onPress={() => toggleWorkMode(WorkMode.REMOTE)} />
+                        <Option label="Hybrid" active={tempFilters.workModes?.includes(WorkMode.HYBRID)} onPress={() => toggleWorkMode(WorkMode.HYBRID)} />
+                        <Option label="On-site" active={tempFilters.workModes?.includes(WorkMode.ONSITE)} onPress={() => toggleWorkMode(WorkMode.ONSITE)} />
                     </FilterSection>
  
-                    <FilterSection title="Graduation Batch">
-                        {[2024, 2025, 2026, 2027].map(year => (
+                    <FilterSection title="Graduation Batch" scrollable>
+                        {[2023, 2024, 2025, 2026, 2027, 2028].map(year => (
                             <Option
                                 key={year}
-                                label={`${year} Batch`}
-                                active={tempFilters.batchYear === year}
+                                label={`${year}`}
+                                active={tempFilters.batchYears?.includes(year)}
                                 onPress={() => toggleBatchYear(year)}
+                                style={{ flex: 0, minWidth: 'auto', paddingHorizontal: 20 }}
                             />
                         ))}
                     </FilterSection>
  
                     <FilterSection title="Sort By">
-                        <Option label="Latest First" active={tempFilters.sort === 'latest'} onPress={() => setSort('latest')} />
-                        <Option label="Trending" active={tempFilters.sort === 'trending'} onPress={() => setSort('trending')} />
-                        <Option label="Closing Soon" active={tempFilters.sort === 'closing_soon'} onPress={() => setSort('closing_soon')} />
+                        <Option style={{ minWidth: '45%' }} label="Recommended" active={tempFilters.sort === 'recommended'} onPress={() => setSort('recommended')} />
+                        <Option style={{ minWidth: '45%' }} label="Latest First" active={tempFilters.sort === 'latest'} onPress={() => setSort('latest')} />
+                        <Option style={{ minWidth: '45%' }} label="Trending" active={tempFilters.sort === 'trending'} onPress={() => setSort('trending')} />
+                        <Option style={{ minWidth: '45%' }} label="Closing Soon" active={tempFilters.sort === 'closing_soon'} onPress={() => setSort('closing_soon')} />
                     </FilterSection>
                 </BottomSheetScrollView>
             </BottomSheetView>
@@ -305,14 +332,16 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     option: {
+        flex: 1,
+        minWidth: '30%',
         flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 16,
+        justifyContent: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
         paddingVertical: 12,
         borderRadius: RADIUS.md,
         borderWidth: 1,
-        minWidth: '45%',
     },
     optionText: {
         fontSize: mScale(14),

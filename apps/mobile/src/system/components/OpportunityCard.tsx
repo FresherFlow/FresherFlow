@@ -107,7 +107,6 @@ export const OpportunityCard = memo(({
             onLongPress={handleLongPress}
             style={[
                 styles.container,
-                opportunity.isEligible === false && { opacity: 0.75 },
                 opportunity.isReferral && {
                     borderColor: alpha(currentTheme.colors.warning, 0.4),
                     borderWidth: 1.5,

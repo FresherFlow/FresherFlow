@@ -75,8 +75,6 @@ export const TrackerStatusSheet = forwardRef<TrackerStatusSheetRef, Props>(({
         dismiss: () => bottomSheetModalRef.current?.dismiss(),
     }));
 
-    if (!opportunity) return null;
-
     const STATUS_OPTIONS = [
         { id: ActionType.PLANNED, label: 'Add to My Jobs', icon: Bookmark, color: currentTheme.colors.text },
         { id: ActionType.APPLIED, label: 'Applied', icon: Send, color: currentTheme.colors.primary },
@@ -102,6 +100,8 @@ export const TrackerStatusSheet = forwardRef<TrackerStatusSheetRef, Props>(({
         onSelect(status);
         bottomSheetModalRef.current?.dismiss();
     };
+
+    if (!opportunity) return null;
 
     return (
         <BottomSheetModal
