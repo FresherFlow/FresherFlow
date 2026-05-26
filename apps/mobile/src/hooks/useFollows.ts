@@ -28,21 +28,23 @@ const getCachedFollows = (): Follows => {
 };
 
 export function useFollows() {
-    const { user } = useAuthStore();
+    const { user, firebaseUser } = useAuthStore();
     const [follows, setFollows] = useState<Follows>(getCachedFollows);
     const [loading, setLoading] = useState(false);
 
     const isAnonymous = !user || user.isAnonymous;
+    const firebaseUid = firebaseUser?.uid;
 
     // Real-time synchronization with Firebase RTDB
     useEffect(() => {
-        if (isAnonymous || !user?.id) {
+        if (isAnonymous || !firebaseUid) {
             setFollows({ tags: [], companies: [], contributors: [] });
             return;
         }
 
         setLoading(true);
-        const unsubscribe = subscribeToFirebaseFollows(user.id, (record) => {
+        const unsubscribe = subscribeToFirebaseFollows(firebaseUid, (record) => {
+
             const sanitized: Follows = {
                 tags: record.tags || [],
                 companies: record.companies || [],
@@ -54,10 +56,11 @@ export function useFollows() {
         });
 
         return unsubscribe;
-    }, [isAnonymous, user?.id]);
+    }, [isAnonymous, firebaseUid]);
 
     const follow = useCallback(async (type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
-        if (isAnonymous || !user?.id) return false;
+        if (isAnonymous || !firebaseUid) return false;
+
         
         const key = type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors';
         
@@ -73,16 +76,17 @@ export function useFollows() {
             setJSON(FOLLOWS_CACHE_KEY, next);
             
             // Fire-and-forget write to Firebase (native caching handles offline queuing)
-            void writeFirebaseFollows(user.id, next);
+            void writeFirebaseFollows(firebaseUid, next);
             updated = true;
             return next;
         });
 
         return updated;
-    }, [isAnonymous, user?.id]);
+    }, [isAnonymous, firebaseUid]);
 
     const unfollow = useCallback(async (type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
-        if (isAnonymous || !user?.id) return false;
+        if (isAnonymous || !firebaseUid) return false;
+
 
         const key = type.toLowerCase() === 'tag' ? 'tags' : type.toLowerCase() === 'company' ? 'companies' : 'contributors';
         
@@ -98,13 +102,14 @@ export function useFollows() {
             setJSON(FOLLOWS_CACHE_KEY, next);
             
             // Fire-and-forget write to Firebase (native caching handles offline queuing)
-            void writeFirebaseFollows(user.id, next);
+            void writeFirebaseFollows(firebaseUid, next);
             updated = true;
             return next;
         });
 
         return updated;
-    }, [isAnonymous, user?.id]);
+    }, [isAnonymous, firebaseUid]);
+
 
     const isFollowing = useCallback((type: 'TAG' | 'COMPANY' | 'CONTRIBUTOR', value: string) => {
         const list = type === 'TAG' ? follows.tags : type === 'COMPANY' ? follows.companies : follows.contributors;

@@ -3,6 +3,7 @@ import { profileApi } from '@fresherflow/api-client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { saveSharesCache, readSharesCache } from '@/utils/offlineCache';
 import { getShareQueue, QueuedShare, syncShareQueue } from '@/utils/shareQueue';
+import { getBoolean, setBoolean } from '@/utils/storage';
 
 export interface Share {
     id: string;
@@ -56,6 +57,9 @@ const mapQueuedShareToShare = (q: QueuedShare): Share => {
         };
     }
 };
+
+let lastFetchedTime = 0;
+const THROTTLE_MS = 30000; // 30 seconds throttle
 
 export function useMyShares() {
     const { user } = useAuthStore();
@@ -139,8 +143,19 @@ export function useMyShares() {
                     setLoading(false);
                     return;
                 }
+                
+                // Skip server fetch if we fetched very recently (throttling), unless data is dirty
+                const now = Date.now();
+                const isDirty = getBoolean('fresherflow_shares_dirty', false);
+                if (now - lastFetchedTime < THROTTLE_MS && cached && cached.items.length > 0 && !isDirty) {
+                    setLoading(false);
+                    return;
+                }
+
                 await syncShareQueue();
                 const res = await profileApi.getShares(1);
+                lastFetchedTime = Date.now();
+                setBoolean('fresherflow_shares_dirty', false);
                 const newShares = res.shares as Share[];
                 const queueAfterSync = await getShareQueue();
                 const offlineSharesAfterSync = queueAfterSync.map(mapQueuedShareToShare);
@@ -175,6 +190,7 @@ export function useMyShares() {
             setRefreshing(true);
             await syncShareQueue();
             await fetchShares(1);
+            lastFetchedTime = Date.now(); // Reset throttle on manual pull-to-refresh
             setRefreshing(false);
         },
     };

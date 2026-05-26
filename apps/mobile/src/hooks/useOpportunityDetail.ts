@@ -88,20 +88,6 @@ export const useOpportunityDetail = (
             try {
                 let foundOpportunity: Opportunity | null = null;
 
-                // 1. Try resolving from public opportunities API first to get live, dynamic data (like views count)
-                try {
-                    const res = await opportunitiesApi.get(opportunityId);
-                    if (res) {
-                        const resObj = res as unknown as Record<string, unknown>;
-                        if (resObj && typeof resObj === 'object' && 'opportunity' in resObj) {
-                            foundOpportunity = resObj.opportunity as unknown as Opportunity;
-                        } else {
-                            foundOpportunity = res as unknown as Opportunity;
-                        }
-                    }
-                } catch (apiErr) {
-                    console.warn('[useOpportunityDetail] Direct API load failed, trying local feed/CDN fallbacks:', apiErr);
-                }
 
                 // 2. Fallback: Try resolving from local offline feed cache
                 if (!foundOpportunity) {
@@ -169,10 +155,6 @@ export const useOpportunityDetail = (
                     await saveDetailCache(fullOpportunity as Opportunity);
                 }
 
-                // Track VIEW action
-                if (user && !user.isAnonymous) {
-                    void actionsApi.track(opportunityId, ActionType.VIEWED);
-                }
                 
                 // Trigger similar load now that we have the object
                 void loadSimilar(fullOpportunity as Opportunity);

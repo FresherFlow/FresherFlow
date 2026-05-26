@@ -1,9 +1,14 @@
 import { useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
-import { authApi } from '@fresherflow/api-client';
+import { authApi, profileApi } from '@fresherflow/api-client';
 import { AuthResponse } from '@fresherflow/types';
-import { flushOfflineActions } from '@repo/frontend-core';
+import { flushOfflineActions, secureStorage } from '@repo/frontend-core';
 import { flushOnboardingSyncQueue } from '@/utils/onboardingState';
+import { saveLocalProfile } from '@/utils/localProfile';
+import { readFirebaseProfile, writeFirebaseProfile } from '@/utils/firebaseProfileDb';
+
+
+
 
 export const useAuthHandshake = () => {
     const { firebaseUser, user, setAuth, setSyncing, handshakeTrigger } = useAuthStore();
@@ -39,9 +44,38 @@ export const useAuthHandshake = () => {
 
                 if (response.user && response.accessToken) {
                     console.log(`[Auth] Handshake successful for ${response.user.username || 'no-handle'}`);
-                    setAuth(response.user, response.accessToken);
                     
+                    // 1. Explicitly await the token write before flushing the sync queue.
+                    //    setAuth() uses `void secureStorage.setItem(...)` (fire-and-forget),
+                    //    so without this the API interceptor sends queued requests without auth headers.
+                    await secureStorage.setItem('ff_auth_token_v1', response.accessToken);
+                    setAuth(response.user, response.accessToken);
                     if (referralCode) setReferralCode(null);
+
+                    // 2. Hydrate career profile — Firebase first (fast), API as fallback for new/existing users
+                    try {
+                        let profile = await readFirebaseProfile(response.user.id as string);
+
+                        if (!profile) {
+                            // Firebase empty (new user or pre-Firebase feature) — pull from API and backfill Firebase
+                            console.log('[Auth] No Firebase profile found, falling back to API');
+                            const profileRes = await profileApi.get() as { profile: any };
+                            profile = profileRes?.profile || null;
+
+                            // Backfill Firebase so next login is fast
+                            if (profile) {
+                                void writeFirebaseProfile(response.user.id as string, profile);
+                            }
+                        }
+
+                        if (profile) {
+                            await saveLocalProfile(profile, response.user.id as string);
+                            console.log('[Auth] Career profile hydrated after handshake');
+                        }
+                    } catch (profileError) {
+                        console.warn('[Auth] Profile hydration failed:', profileError);
+                    }
+
                     await flushOnboardingSyncQueue(response.user.id as string);
                     await flushOfflineActions(response.user.id as string);
                 }

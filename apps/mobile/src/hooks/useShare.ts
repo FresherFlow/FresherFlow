@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -6,7 +6,7 @@ import { opportunitiesApi, profileApi } from '@fresherflow/api-client';
 import { ParsedJob, Opportunity } from '@fresherflow/types';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
 import { readFeedCache } from '@/utils/offlineCache';
-import { getJSON, setJSON } from '@/utils/storage';
+import { getJSON, setJSON, setBoolean } from '@/utils/storage';
 import { queueShare } from '../utils/shareQueue';
 
 const shareSchema = z.object({
@@ -73,6 +73,11 @@ export const useShare = () => {
 
     const watchedUrl = watch('url');
 
+    useEffect(() => {
+        setPreview(null);
+        setError(null);
+    }, [watchedUrl]);
+
     const handleParse = useCallback(async (manualUrl?: string) => {
         const urlToUse = manualUrl || watchedUrl;
         if (!urlToUse || !urlToUse.trim()) return;
@@ -114,16 +119,60 @@ export const useShare = () => {
                 }
             }
 
-            const response = await opportunitiesApi.ingest(normalized);
-            if (response.success && response.data) {
-                setPreview({
-                    ...response.data,
-                    isDuplicate: !!response.data.isDuplicate,
-                    existingId: response.data.existingId
+            let parsedTitle = 'Shared Opportunity';
+            let parsedCompany = '';
+
+            try {
+                // Fetch the HTML directly from mobile (completely bypasses CORS!)
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 seconds max wait
+
+                const resp = await fetch(normalized, {
+                    signal: controller.signal,
+                    headers: {
+                        'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 16_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.5 Mobile/15E148 Safari/604.1'
+                    }
                 });
-            } else {
-                setError(response.message || 'Could not extract details from this link.');
+                clearTimeout(timeoutId);
+
+                const html = await resp.text();
+
+                // Extract <title> tag using basic regex
+                const titleMatch = html.match(/<title[^>]*>([^<]{1,300})<\/title>/i);
+                if (titleMatch && titleMatch[1]) {
+                    parsedTitle = titleMatch[1].replace(/\s+/g, ' ').trim();
+                }
+
+                const urlParsed = new URL(normalized);
+                parsedCompany = urlParsed.hostname.replace('www.', '');
+
+                // Simple title & company format cleanup (e.g. "Software Engineer at Google | LinkedIn" -> Title: Software Engineer, Company: Google)
+                if (parsedTitle.includes('|')) {
+                    const parts = parsedTitle.split('|');
+                    parsedTitle = parts[0].trim();
+                    if (parts[1]) parsedCompany = parts[1].trim();
+                } else if (parsedTitle.includes('-')) {
+                    const parts = parsedTitle.split('-');
+                    parsedTitle = parts[0].trim();
+                    if (parts[1]) parsedCompany = parts[1].trim();
+                }
+            } catch (localParseError) {
+                console.log('[useShare] Local HTML prefetch failed, using domain fallback:', localParseError);
+                try {
+                    const urlParsed = new URL(normalized);
+                    parsedCompany = urlParsed.hostname.replace('www.', '');
+                } catch {
+                    parsedCompany = 'Unknown Source';
+                }
             }
+
+            setPreview({
+                title: parsedTitle || 'Shared Opportunity',
+                company: parsedCompany,
+                locations: [],
+                isDuplicate: false,
+                existingId: null
+            });
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'An error occurred while parsing the URL.';
             setError(message);
@@ -149,7 +198,7 @@ export const useShare = () => {
                 return undefined;
             }
 
-            const response = await opportunitiesApi.shareLink(normalized);
+            const response = await opportunitiesApi.shareLink(normalized, preview.title || undefined, preview.company || undefined);
 
             // Add successfully submitted link to local cache if not duplicate
             if (!response.existing) {
@@ -157,6 +206,7 @@ export const useShare = () => {
                 setJSON('fresherflow_submitted_links', cachedList);
             }
 
+            setBoolean('fresherflow_shares_dirty', true);
             return {
                 success: true,
                 id: response.id || '',
@@ -167,7 +217,12 @@ export const useShare = () => {
             const error = err as { status?: number; message?: string };
             const isNetworkError = !error.status || error.status === 0 || error.message === 'Network Error';
             if (isNetworkError) {
-                const tempId = await queueShare('LINK', { url: watchedUrl });
+                const tempId = await queueShare('LINK', { 
+                    url: watchedUrl,
+                    title: preview?.title || undefined,
+                    company: preview?.company || undefined
+                });
+                setBoolean('fresherflow_shares_dirty', true);
                 return {
                     success: true,
                     id: tempId,
@@ -209,6 +264,7 @@ export const useShare = () => {
             setLoading(false);
 
             if (response.success && response.share) {
+                setBoolean('fresherflow_shares_dirty', true);
                 return {
                     success: true,
                     id: response.share.id || '',
@@ -231,6 +287,7 @@ export const useShare = () => {
                         eligibleBatches: data.eligibleBatches
                     }
                 });
+                setBoolean('fresherflow_shares_dirty', true);
                 return {
                     success: true,
                     id: tempId,

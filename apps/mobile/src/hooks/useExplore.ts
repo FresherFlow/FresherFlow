@@ -13,17 +13,21 @@ import { getRecentSearchKeywords, saveRecentSearchKeyword } from '@/utils/userBe
 import { getLocalProfile } from '@/utils/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
 import { getOpenedIds } from '@/utils/seenJobs';
+import { useAuthStore } from '@/store/useAuthStore';
+
 
 export interface ExploreFilters {
-    type: OpportunityType | null;
-    workMode: WorkMode | null;
-    batchYear: number | null;
+    types: OpportunityType[];
+    workModes: WorkMode[];
+    batchYears: number[];
     tag: string | null;
     sort: 'recommended' | 'latest' | 'trending' | 'closing_soon';
 }
 
 export function useExplore() {
+    const { user } = useAuthStore();
     const [searchQuery, setSearchQuery] = useState('');
+
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const filters = useUIStore(s => s.exploreFilters);
     const setFilters = useUIStore(s => s.setExploreFilters);
@@ -72,11 +76,12 @@ export function useExplore() {
     // Sync local profile for match scoring
     useEffect(() => {
         const syncProfile = async () => {
-            const p = await getLocalProfile();
+            const p = await getLocalProfile(user?.id);  // scoped to current user
             setLocalProfile(p);
         };
         void syncProfile();
-    }, []);
+    }, [user?.id]);
+
 
 
 
@@ -207,12 +212,8 @@ export function useExplore() {
         let items = cachedItems;
 
         // Apply Filters Locally
-        if (filters.type) {
-            if (filters.type === OpportunityType.REMOTE) {
-                items = items.filter(j => j.workMode === 'REMOTE' || j.type === OpportunityType.REMOTE);
-            } else {
-                items = items.filter(j => j.type === filters.type);
-            }
+        if (filters.types && filters.types.length > 0) {
+            items = items.filter(j => filters.types.includes(j.type));
         }
 
         if (filters.tag) {
@@ -226,12 +227,12 @@ export function useExplore() {
             }
         }
 
-        if (filters.workMode) {
-            items = items.filter(j => j.workMode === filters.workMode);
+        if (filters.workModes && filters.workModes.length > 0) {
+            items = items.filter(j => filters.workModes.includes(j.workMode as any));
         }
 
-        if (filters.batchYear) {
-            items = items.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.includes(filters.batchYear!));
+        if (filters.batchYears && filters.batchYears.length > 0) {
+            items = items.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.some(y => filters.batchYears.includes(y)));
         }
 
         // Map and compute relevance scores for all items in result

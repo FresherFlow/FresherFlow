@@ -5,6 +5,9 @@ import { useSaved } from '@repo/frontend-core';
 import { Profile } from '@fresherflow/types';
 import { saveLocalProfile, getLocalProfile } from '@/utils/localProfile';
 import { enqueueProfileSync } from '@/utils/onboardingState';
+import { calculateProfileCompletion } from '@/utils/profileCompletion';
+import { readFirebaseProfile, writeFirebaseProfile } from '@/utils/firebaseProfileDb';
+
 
 // --- In-memory cache & request deduplication layer ---
 let lastStatsFetchTime = 0;
@@ -45,7 +48,9 @@ const updateGlobalStats = (stats: { applied: number; shareStats: typeof cachedSh
 };
 
 export const useProfile = () => {
-    const { user, logout } = useAuthStore();
+    const { user, logout, firebaseUser } = useAuthStore();
+    const firebaseUid = firebaseUser?.uid;  // Firebase UID for RTDB — different from user.id (Neon UUID)
+
     const refreshMe = async () => {}; // Placeholder to match previous interface
     const { savedJobs } = useSaved();
 
@@ -103,11 +108,12 @@ export const useProfile = () => {
     const fetchStats = useCallback(async () => {
         if (!user || user.isAnonymous) return;
 
-        // 1. If stats were fetched in the last 10 seconds, serve from cache
-        if (Date.now() - lastStatsFetchTime < 10000) {
+        // 1. If stats were fetched in the last 5 minutes, serve from cache
+        if (Date.now() - lastStatsFetchTime < 300000) {
             updateGlobalStats({ applied: cachedAppliedCount, shareStats: cachedShareStats });
             return;
         }
+
 
         // 2. Deduplicate simultaneous active requests
         if (activeStatsPromise) {
@@ -147,14 +153,14 @@ export const useProfile = () => {
     const fetchProfile = useCallback(async () => {
         if (!user || user.isAnonymous) return;
 
-        // 1. If profile was fetched in the last 10 seconds, serve from cache
+        // 1. Serve from memory cache if fresh
         if (Date.now() - lastProfileFetchTime < 10000 && cachedProfile) {
             updateGlobalProfile(cachedProfile);
             updateGlobalPercentage(cachedCompletionPercentage);
             return;
         }
 
-        // 2. Deduplicate simultaneous active requests
+        // 2. Deduplicate simultaneous requests
         if (activeProfilePromise) {
             try {
                 const res = await activeProfilePromise;
@@ -168,31 +174,35 @@ export const useProfile = () => {
 
         setLoadingProfile(true);
         activeProfilePromise = (async () => {
-            const [profileRes, completionRes] = await Promise.all([
-                profileApi.get(),
-                profileApi.getCompletion()
-            ]) as [{ profile: Profile }, { completionPercentage: number }];
+            // 3. Try Firebase RTDB first — fast, no cold start
+            const firebaseProfile = firebaseUid ? await readFirebaseProfile(firebaseUid) : null;
 
-            return {
-                profile: profileRes.profile,
-                completionPercentage: completionRes.completionPercentage
-            };
+            if (firebaseProfile) {
+                const completionPercentage = calculateProfileCompletion(firebaseProfile).percentage;
+                return { profile: firebaseProfile, completionPercentage, source: 'firebase' };
+            }
+
+            // 4. Fallback to API if Firebase has nothing (first login, new user)
+            const profileRes = await profileApi.get() as { profile: Profile };
+            const completionPercentage = calculateProfileCompletion(profileRes.profile).percentage;
+            return { profile: profileRes.profile, completionPercentage, source: 'api' };
         })();
 
         try {
             const res = await activeProfilePromise;
             lastProfileFetchTime = Date.now();
-
             updateGlobalProfile(res.profile);
             updateGlobalPercentage(res.completionPercentage);
             await saveLocalProfile(res.profile, user.id);
+            console.log(`[useProfile] Profile loaded from ${res.source}`);
         } catch (e) {
-            console.warn('Failed to fetch profile data', e);
+            console.warn('[useProfile] Failed to fetch profile', e);
         } finally {
             setLoadingProfile(false);
             activeProfilePromise = null;
         }
     }, [user]);
+
 
     const updateEducation = useCallback(async (data: {
         fullName?: string;
@@ -206,63 +216,85 @@ export const useProfile = () => {
         pgSpecialization?: string;
         pgYear?: number;
     }) => {
+        // 1. Local-first: update in-memory and persist immediately
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         updateGlobalProfile(merged);
+        updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
-        // Invalidate profile cache to force fresh reload
-        lastProfileFetchTime = 0;
+
         if (isAnonymous) return;
+
+        // 2. Write to Firebase RTDB (primary fast store) — fire-and-forget
+        if (firebaseUid) void writeFirebaseProfile(firebaseUid, merged);
+
+
+        // 3. Background sync to API (Neon DB for backend matching)
         try {
             await profileApi.updateEducation(data);
-            await Promise.all([fetchProfile(), refreshMe()]);
+            lastProfileFetchTime = 0;
         } catch (e) {
-            console.warn('[useProfile] Education sync failed, local saved ok', e);
+            console.warn('[useProfile] Education API sync failed, queued for retry', e);
             if (user?.id) enqueueProfileSync(user.id, 'education', data);
         }
-    }, [fullProfile, fetchProfile, refreshMe, isAnonymous, user?.id]);
+    }, [fullProfile, isAnonymous, user?.id]);
+
 
     const updatePreferences = useCallback(async (data: {
         interestedIn: string[];
         preferredCities: string[];
         workModes: string[];
     }) => {
+        // 1. Local-first
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         updateGlobalProfile(merged);
+        updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
-        // Invalidate profile cache
-        lastProfileFetchTime = 0;
+
         if (isAnonymous) return;
+
+        // 2. Write to Firebase RTDB — fire-and-forget
+        if (firebaseUid) void writeFirebaseProfile(firebaseUid, merged);
+
+        // 3. Background sync to API
         try {
             await profileApi.updatePreferences(data);
-            await Promise.all([fetchProfile(), refreshMe()]);
+            lastProfileFetchTime = 0;
         } catch (e) {
-            console.warn('[useProfile] Preferences sync failed, local saved ok', e);
+            console.warn('[useProfile] Preferences API sync failed, queued for retry', e);
             if (user?.id) enqueueProfileSync(user.id, 'preferences', data);
         }
-    }, [fullProfile, fetchProfile, refreshMe, isAnonymous, user?.id]);
+    }, [fullProfile, isAnonymous, user?.id]);
+
 
     const updateReadiness = useCallback(async (data: { availability: string; skills: string[] }) => {
+        // 1. Local-first
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         updateGlobalProfile(merged);
+        updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
-        // Invalidate profile cache
-        lastProfileFetchTime = 0;
+
         if (isAnonymous) return;
+
+        // 2. Write to Firebase RTDB — fire-and-forget
+        if (firebaseUid) void writeFirebaseProfile(firebaseUid, merged);
+
+        // 3. Background sync to API
         try {
             await profileApi.updateReadiness(data);
-            await Promise.all([fetchProfile(), refreshMe()]);
+            lastProfileFetchTime = 0;
         } catch (e) {
-            console.warn('[useProfile] Readiness sync failed, local saved ok', e);
+            console.warn('[useProfile] Readiness API sync failed, queued for retry', e);
             if (user?.id) enqueueProfileSync(user.id, 'readiness', data);
         }
-    }, [fullProfile, fetchProfile, refreshMe, isAnonymous, user?.id]);
+    }, [fullProfile, isAnonymous, user?.id]);
+
 
     useEffect(() => {
         if (user && !user.isAnonymous) {
-            void fetchStats();
             void fetchProfile();
         }
-    }, [user, fetchStats, fetchProfile]);
+    }, [user, fetchProfile]);
+
 
     const handleLogout = useCallback(async () => {
         await logout();

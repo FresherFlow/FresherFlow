@@ -39,11 +39,12 @@ export const useFeed = (initialFeedType: string | null = null) => {
     // Sync local profile for match scoring
     useEffect(() => {
         const syncProfile = async () => {
-            const p = await getLocalProfile();
+            const p = await getLocalProfile(user?.id);  // scoped to this user
             setLocalProfile(p || (user?.profile as Profile));
         };
         void syncProfile();
-    }, [user?.profile]);
+    }, [user?.id, user?.profile]);
+
 
     const hasProfileData = useMemo(() => {
         const profile = localProfile;
