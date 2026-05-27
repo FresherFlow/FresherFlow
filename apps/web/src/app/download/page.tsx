@@ -3,8 +3,8 @@ import { APP_LINKS } from '@/config/links';
 import DownloadMockup from '@/components/site/DownloadMockup';
 
 export const metadata = {
-    title: 'FresherFlow — Off-Campus Jobs, Internships & Alerts',
-    description: 'Get the FresherFlow mobile app for the best experience. Access verified jobs, internships, and walk-ins with real-time alerts.',
+    title: 'Download FresherFlow Android App - Instant Off-Campus Job Alerts',
+    description: 'Download the official FresherFlow Android app today. Save opportunities offline and track your off-campus applications with zero redirect spam.',
 };
 
 export default function DownloadPage() {
@@ -16,7 +16,7 @@ export default function DownloadPage() {
                 <div className="flex flex-col space-y-6 md:space-y-7 w-full">
                     {/* 1. Headline */}
                     <div className="space-y-4 order-1">
-                        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card/60 backdrop-blur shadow-sm">
+                        <div className="hidden sm:inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-card/60 backdrop-blur shadow-sm">
                             <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
                                 Verified Opportunities. Instant Alerts.
                             </span>
@@ -58,44 +58,46 @@ export default function DownloadPage() {
                     </div>
 
                     {/* 2. Interactive Mockup on Mobile (Order 3 below LG, Hidden in this column on LG) */}
-                    <div className="order-3 lg:hidden w-full py-2 flex justify-center">
+                    <div className="order-3 lg:hidden w-full pt-2 pb-7 flex justify-center">
                         <DownloadMockup />
                     </div>
 
                     {/* 3. Hero Buttons (Order 4 below LG - Placed at the bottom for comfortable thumb reach) */}
-                    <div className="flex flex-col gap-3 pt-1 order-4 w-full sm:max-w-md">
-                        {/* Main App Download Buttons */}
-                        <div className="flex flex-col gap-1.5 w-full">
-                            <div className="flex flex-col sm:flex-row gap-2.5 w-full">
-                                <a
-                                    href={APP_LINKS.androidDownload}
-                                    className="premium-button w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-bold tracking-widest flex items-center justify-center gap-2 !shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 shrink-0 bg-primary text-primary-foreground border border-primary/20"
-                                >
-                                    <ArrowDownTrayIcon className="w-4 h-4" />
-                                    Download Android App
-                                </a>
-                                <button className="premium-button-outline w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-semibold tracking-widest flex items-center justify-center gap-2 cursor-not-allowed opacity-45 shrink-0 bg-zinc-900/10 border-border/60 !shadow-none">
-                                    <DevicePhoneMobileIcon className="w-4 h-4" />
-                                    iOS Coming Soon
-                                </button>
+                    <div className="flex flex-col w-full sm:max-w-xl order-4 items-start select-none pb-6">
+                        {/* Download CTA Buttons */}
+                        <div className="flex flex-col sm:flex-row gap-3.5 sm:gap-4 w-full">
+                            <a
+                                href={APP_LINKS.androidDownload}
+                                className="premium-button w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-bold tracking-widest flex items-center justify-center gap-2 !shadow-none hover:scale-[1.02] active:scale-[0.98] transition-all duration-150 bg-primary text-primary-foreground border border-primary/20 shrink-0"
+                            >
+                                <ArrowDownTrayIcon className="w-4 h-4" />
+                                Download Android App
+                            </a>
+                            <div className="premium-button-outline w-full sm:w-auto px-5 py-3 text-[12px] uppercase font-semibold tracking-widest flex items-center justify-center gap-2 cursor-not-allowed opacity-75 bg-transparent border border-border/40 text-muted-foreground/80 !shadow-none shrink-0">
+                                <DevicePhoneMobileIcon className="w-4 h-4 text-foreground/75" />
+                                iOS Coming Soon
                             </div>
-                            <span className="text-[10px] text-muted-foreground/50 sm:pl-1 select-none">
-                                Current version: {APP_LINKS.currentVersion}
-                            </span>
                         </div>
 
-                        {/* Universal APK Link (Subtle secondary options) */}
-                        <div className="text-center sm:text-left select-none pt-0.5">
-                            <p className="text-[11px] text-muted-foreground leading-normal">
-                                Using an older or 32-bit device?{' '}
+                        {/* Universal APK Helper Text Block (12px before helper text) */}
+                        <div className="mt-2.5 pl-1.5 select-none leading-normal text-left">
+                            <p className="text-[11px] text-muted-foreground/90">
+                                Older or 32-bit device?<br />
                                 <a
                                     href="https://github.com/MukeshCheekatla/FresherFlow/releases/latest/download/FresherFlow-universal.apk"
-                                    className="text-primary hover:underline font-bold inline-flex items-center gap-0.5"
+                                    className="text-primary hover:underline font-bold inline-flex items-center gap-0.5 mt-1"
                                 >
                                     Try the Universal APK.
                                     <ArrowDownTrayIcon className="w-3 h-3" />
                                 </a>
                             </p>
+                        </div>
+
+                        {/* Version Text Block (6px before version text) */}
+                        <div className="mt-1.5 pl-1.5">
+                            <span className="text-[9px] text-muted-foreground/35 tracking-wider uppercase font-bold">
+                                Version {APP_LINKS.currentVersion}
+                            </span>
                         </div>
                     </div>
                 </div>

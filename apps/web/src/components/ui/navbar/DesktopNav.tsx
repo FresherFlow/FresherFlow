@@ -113,13 +113,7 @@ export function DesktopNav() {
                                         <UserCircleIcon className="w-[18px] h-[18px]" />
                                     </Link>
                                 </div>
-                            ) : (
-                                /* TEMPORARY PIVOT: Hide Sign in button on web discovery layer */
-                                /* 
-                                <Link href="/login" className="ml-1 inline-flex items-center h-8 px-4 rounded-lg bg-foreground text-background text-xs font-semibold hover:opacity-85 transition-all shadow-sm">
-                                    Sign in
-                                </Link>
-                                */
+                            ) : pathname !== '/download' ? (
                                 <Link
                                     href="/download"
                                     target="_self"
@@ -130,7 +124,7 @@ export function DesktopNav() {
                                 >
                                     Get App
                                 </Link>
-                            )}
+                            ) : null}
                         </>
                     )}
                 </div>

@@ -108,13 +108,7 @@ export function MobileTopNav() {
                                 </div>
                             </button>
                         </div>
-                    ) : (
-                        /* TEMPORARY PIVOT: Hide Sign in on mobile web */
-                        /* 
-                        <Link href="/login" className="inline-flex items-center h-8 px-3.5 rounded-lg bg-foreground text-background text-[11px] font-semibold hover:opacity-85 transition-all shadow-sm shrink-0">
-                            Sign in
-                        </Link>
-                        */
+                    ) : pathname !== '/download' ? (
                         <Link
                             href="/download"
                             target="_self"
@@ -125,7 +119,7 @@ export function MobileTopNav() {
                         >
                             Get App
                         </Link>
-                    )}
+                    ) : null}
                 </div>
             </header>
 
