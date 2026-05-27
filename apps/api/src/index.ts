@@ -47,6 +47,7 @@ import adminAnalyticsRoutes from './routes/admin/analytics';
 import adminTotpRoutes from './routes/admin/totp';
 import adminSocialRoutes from './routes/admin/social';
 import adminQueuesRoutes from './routes/admin/queues';
+import adminPushRoutes from './routes/admin/push';
 import healthRoutes from './routes/public/health';
 import growthRoutes from './routes/public/growth';
 import companyRoutes from './routes/public/companies';
@@ -402,6 +403,7 @@ if (isAdminMode) {
     app.use('/api/admin/analytics', restrictAdmin, adminAnalyticsRoutes);
     app.use('/api/admin/social-posts', restrictAdmin, adminSocialRoutes);
     app.use('/api/admin/queues', restrictAdmin, adminQueuesRoutes);
+    app.use('/api/admin/push', restrictAdmin, adminPushRoutes);
 }
 
 // ============================================================================
