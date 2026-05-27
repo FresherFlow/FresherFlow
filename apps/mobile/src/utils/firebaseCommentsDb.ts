@@ -72,7 +72,7 @@ export async function postFirebaseComment(
     };
   } catch (error) {
     console.warn('[firebaseCommentsDb] Failed to post comment:', error);
-    return null;
+    throw error;
   }
 }
 

@@ -32,12 +32,21 @@ function getIncrement(n: number): unknown {
 
 /**
  * Increments the view count for a specific job in Firebase RTDB.
+ * Prevents multiple views from the same user if userId is provided.
  */
-export async function incrementFirebaseJobView(jobId: string): Promise<void> {
+export async function incrementFirebaseJobView(jobId: string, userId?: string | null): Promise<void> {
   const database = getDb();
   if (!database) return;
 
   try {
+    if (userId) {
+      const userRef = database.ref(`/users/${userId}/interactions/${jobId}/viewed`);
+      const snapshot = await userRef.once('value');
+      if (snapshot.exists()) return; // Already viewed by this user
+      
+      await userRef.set(Date.now());
+    }
+    
     await database.ref(`/stats/${jobId}/views`).set(getIncrement(1));
   } catch (error) {
     console.warn('[firebaseViewsDb] Failed to increment job view:', error);
@@ -46,12 +55,21 @@ export async function incrementFirebaseJobView(jobId: string): Promise<void> {
 
 /**
  * Increments the apply click count for a specific job in Firebase RTDB.
+ * Prevents multiple applies from the same user if userId is provided.
  */
-export async function incrementFirebaseJobClick(jobId: string): Promise<void> {
+export async function incrementFirebaseJobClick(jobId: string, userId?: string | null): Promise<void> {
   const database = getDb();
   if (!database) return;
 
   try {
+    if (userId) {
+      const userRef = database.ref(`/users/${userId}/interactions/${jobId}/applied`);
+      const snapshot = await userRef.once('value');
+      if (snapshot.exists()) return; // Already applied by this user
+      
+      await userRef.set(Date.now());
+    }
+
     await database.ref(`/stats/${jobId}/applied`).set(getIncrement(1));
   } catch (error) {
     console.warn('[firebaseViewsDb] Failed to increment job click:', error);

@@ -59,6 +59,33 @@ export async function submitFirebaseOpportunityFeedback(
 }
 
 /**
+ * Fast network check to see if a user has already reported a job.
+ * Uses a 3-second timeout to fail open (returns false) if offline.
+ */
+export async function checkFirebaseOpportunityReported(
+  userId: string,
+  jobId: string
+): Promise<boolean> {
+  try {
+    const database = getDb();
+    if (!database) return false;
+
+    const ref = database.ref(`/users/${userId}/feedback/opportunities/${jobId}`);
+    
+    // Timeout so offline users don't hang
+    const snapshot = await Promise.race([
+      ref.once('value'),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
+    ]);
+
+    if (!snapshot) return false;
+    return snapshot.exists();
+  } catch (error) {
+    return false;
+  }
+}
+
+/**
  * Subscribes to the user's feedback and report counts in real-time.
  * Returns an unsubscribe function.
  */

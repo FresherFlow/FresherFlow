@@ -27,11 +27,12 @@ if (!admin.apps.length) {
         const pid = project_id || (isStaging ? 'fresherflow-dev-staging' : 'fresherflow-3604b');
         if (!process.env.GCLOUD_PROJECT) process.env.GCLOUD_PROJECT = pid;
         try {
-            admin.initializeApp({
-                projectId: pid,
-                databaseURL: `https://${pid}-default-rtdb.asia-southeast1.firebasedatabase.app`
-            });
-            logger.info(`[Firebase] Admin initialized with Project ID: ${pid} (Fallback Mode)`);
+            // No service account available — init with projectId only.
+            // Omitting databaseURL prevents Firebase from repeatedly retrying ADC
+            // and spamming "invalid-credential" warnings in local dev.
+            // admin.auth() (token verification) works fine without RTDB connectivity.
+            admin.initializeApp({ projectId: pid });
+            logger.info(`[Firebase] Admin initialized with Project ID: ${pid} (Fallback Mode — RTDB disabled)`);
         } catch (error) {
             logger.error('[Firebase] Admin initialization failed in fallback mode:', error);
         }
