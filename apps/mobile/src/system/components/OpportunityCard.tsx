@@ -1,6 +1,6 @@
 import React, { memo } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
-import { CircleDollarSign, MapPin, Users, Clock, Bookmark, ChevronRight, Briefcase, Trophy } from 'lucide-react-native';
+import { IndianRupee, MapPin, Users, Clock, Bookmark, ChevronRight, Briefcase, Trophy } from 'lucide-react-native';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
@@ -197,32 +197,85 @@ export const OpportunityCard = memo(({
 
       {(() => {
           const locs = opportunity.locations || [];
-          const locationLabel = locs.length === 0 ? 'Remote' : (locs.length <= 2 ? formatListToTitleCase(locs) : `${toTitleCase(locs[0])}, ${toTitleCase(locs[1])} +${locs.length - 2} more`);
+          
+          const getCityStateLabel = (city: string): string => {
+            const normalized = city.trim().toLowerCase();
+            const stateMap: Record<string, string> = {
+              bangalore: 'Karnataka',
+              bengaluru: 'Karnataka',
+              hyderabad: 'Telangana',
+              pune: 'Maharashtra',
+              mumbai: 'Maharashtra',
+              'navi mumbai': 'Maharashtra',
+              noida: 'Uttar Pradesh',
+              gurgaon: 'Haryana',
+              gurugram: 'Haryana',
+              chennai: 'Tamil Nadu',
+              delhi: 'Delhi',
+              'new delhi': 'Delhi',
+              kolkata: 'West Bengal',
+              ahmedabad: 'Gujarat',
+              kochi: 'Kerala',
+              cochin: 'Kerala',
+              trivandrum: 'Kerala',
+              thiruvananthapuram: 'Kerala',
+              coimbatore: 'Tamil Nadu',
+              jaipur: 'Rajasthan',
+              indore: 'Madhya Pradesh',
+              bhubaneswar: 'Odisha',
+              chandigarh: 'Chandigarh',
+              lucknow: 'Uttar Pradesh',
+              patna: 'Bihar',
+              nagpur: 'Maharashtra',
+              visakhapatnam: 'Andhra Pradesh',
+              vizag: 'Andhra Pradesh',
+              vijayawada: 'Andhra Pradesh',
+              bhopal: 'Madhya Pradesh',
+            };
+            const state = stateMap[normalized];
+            return state ? `${toTitleCase(city)}, ${state}` : toTitleCase(city);
+          };
+
+          const locationLabel = locs.length === 0 
+            ? 'Remote' 
+            : (locs.length === 1 
+                ? getCityStateLabel(locs[0]) 
+                : (locs.length === 2 
+                    ? formatListToTitleCase(locs) 
+                    : `${toTitleCase(locs[0])}, ${toTitleCase(locs[1])} +${locs.length - 2}`));
+
           const salaryLabel = formatSalary(opportunity);
-          const isCrowded = (locationLabel.length + (salaryLabel?.length || 0)) > 35;
 
           return (
             <View style={styles.metaRow}>
-                <View style={styles.metaItem}>
-                    <MapPin size={mScale(12)} color={currentTheme.colors.textMuted} />
-                    <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
-                        {locationLabel}
-                    </Text>
-                </View>
-                {salaryLabel && (
-                    <View style={styles.metaItem}>
-                        <CircleDollarSign size={mScale(12)} color={currentTheme.colors.textMuted} />
-                        <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>{salaryLabel}</Text>
+                {/* Left side: Location & Salary */}
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.md, flexShrink: 1, minWidth: '50%', maxWidth: '70%' }}>
+                    {/* Location */}
+                    <View style={[styles.metaItem, { flexShrink: 1 }]}>
+                        <MapPin size={mScale(12)} color={currentTheme.colors.textMuted} />
+                        <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                            {locationLabel}
+                        </Text>
                     </View>
-                )}
-                {!isCrowded && (opportunity.experienceMin !== undefined || opportunity.experienceMax !== undefined) && (
+
+                    {/* Salary */}
+                    {salaryLabel ? (
+                        <View style={[styles.metaItem, { flexShrink: 0 }]}>
+                            <IndianRupee size={mScale(12)} color={currentTheme.colors.textMuted} />
+                            <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>{salaryLabel}</Text>
+                        </View>
+                    ) : null}
+                </View>
+
+                {/* Right side: Experience */}
+                {(opportunity.experienceMin !== undefined || opportunity.experienceMax !== undefined) ? (
                     <View style={styles.metaItem}>
                         <Briefcase size={mScale(12)} color={currentTheme.colors.textMuted} />
                         <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>
                             {opportunity.experienceMax ? `${opportunity.experienceMin || 0}-${opportunity.experienceMax}y` : 'Fresher'}
                         </Text>
                     </View>
-                )}
+                ) : null}
             </View>
           );
       })()}
@@ -323,7 +376,7 @@ const styles = StyleSheet.create({
     },
     typeText: {
         fontSize: 11,
-        fontWeight: '900',
+        fontWeight: '500',
         letterSpacing: 0.5,
     },
     verifiedBadge: {
@@ -336,7 +389,7 @@ const styles = StyleSheet.create({
     },
     verifiedText: {
         fontSize: mScale(9),
-        fontWeight: '900',
+        fontWeight: '500',
         letterSpacing: 0.5,
     },
     titleWrapper: {

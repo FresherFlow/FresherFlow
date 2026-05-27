@@ -42,6 +42,11 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
 
     const handleSubmit = async () => {
         if (!inputText.trim() || posting) return;
+        if (!user?.username) {
+            showToast('Please claim a username first!', 'error');
+            navigation.navigate('ProfileChooseUsername');
+            return;
+        }
 
         try {
             await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -55,7 +60,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
             if (error.status === 401) {
                 showToast('Sign in required for synced comments. Saving locally.', 'info');
             } else {
-                showToast(error.message || 'Failed to post comment.', 'error');
+                showToast(error.message || 'Failed to post comment. Ensure you have a username set.', 'error');
             }
         }
     };
@@ -94,7 +99,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
         <Section title="Community Discussion">
             <View style={styles.container}>
                 {/* Input Area */}
-                {!isAnonymous ? (
+                {user?.username ? (
                     <SurfaceCard style={styles.inputContainer}>
                         <TextInput
                             style={[styles.input, { color: currentTheme.colors.text }]}
@@ -127,10 +132,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
                     <TouchableOpacity 
                         style={[styles.guestPrompt, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderColor: alpha(currentTheme.colors.primary, 0.1) }]}
                         activeOpacity={0.8}
+                        onPress={() => {
+                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            navigation.navigate('ProfileChooseUsername');
+                        }}
                     >
                         <MessageSquare size={16} color={currentTheme.colors.primary} />
                         <Text style={[styles.guestPromptText, { color: currentTheme.colors.primary }]}>
-                            Sign in to join the discussion
+                            Claim a username to join the discussion
                         </Text>
                     </TouchableOpacity>
                 )}

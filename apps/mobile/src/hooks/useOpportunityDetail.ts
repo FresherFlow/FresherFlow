@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
-import { Alert, Share } from 'react-native';
+import { Share } from 'react-native';
 import { openExternalURL } from '@/utils/browser';
 import axios from 'axios';
 import { Opportunity, OpportunityType, ActionType, FeedbackReason } from '@fresherflow/types';
@@ -19,7 +19,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/contexts/ThemeContext';
 import { incrementFirebaseJobView, incrementFirebaseJobClick, subscribeToFirebaseJobStats } from '@/utils/firebaseViewsDb';
-import { submitFirebaseOpportunityFeedback } from '@/utils/firebaseFeedbackDb';
+import { submitFirebaseOpportunityFeedback, checkFirebaseOpportunityReported } from '@/utils/firebaseFeedbackDb';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -254,10 +254,20 @@ export const useOpportunityDetail = (
         const unsubscribe = subscribeToFirebaseJobStats(opportunityId, (realtimeStats) => {
             setOpportunity(prev => {
                 if (!prev) return null;
+                
+                // Prevent downward flickering (e.g. if Firebase initially returns null from local cache before network fetch)
+                // Also preserves our optimistic local increment!
+                const newViews = Math.max(prev.clicksCount || 0, realtimeStats.views);
+                const newApplies = Math.max(prev.appliedCount || 0, realtimeStats.applied);
+
+                if (prev.clicksCount === newViews && prev.appliedCount === newApplies) {
+                    return prev;
+                }
+
                 return {
                     ...prev,
-                    clicksCount: realtimeStats.views,
-                    appliedCount: realtimeStats.applied
+                    clicksCount: newViews,
+                    appliedCount: newApplies
                 };
             });
         });
@@ -294,7 +304,9 @@ export const useOpportunityDetail = (
                     
                     // 5. Track/Sync view count increment on Firebase RTDB
                     try {
-                        await incrementFirebaseJobView(opportunity.id);
+                        if (!__DEV__) {
+                            await incrementFirebaseJobView(opportunity.id, user?.id);
+                        }
                     } catch (trackError: unknown) {
                         console.warn('[useOpportunityDetail] Failed to increment view in Firebase:', trackError);
                         // Fallback to local offline cache if Firebase fails (highly unlikely as Firebase has its own robust offline queueing)
@@ -349,7 +361,7 @@ export const useOpportunityDetail = (
     const handleReport = useCallback(async (reason: FeedbackReason) => {
         if (!opportunityId) return false;
         if (!user || user.isAnonymous) {
-            Alert.alert('Sign in required', 'Please sign in to report this opportunity.');
+            showToast('Please sign in to report this opportunity.', 'info');
             return false;
         }
 
@@ -359,10 +371,18 @@ export const useOpportunityDetail = (
             return false;
         }
 
-        // 2. Submit to Firebase RTDB instantly (non-blocking)
+        // 2. Fast Network Check (Firebase)
+        const alreadyReported = await checkFirebaseOpportunityReported(user.id, opportunityId);
+        if (alreadyReported) {
+             saveReportedJobLocally(opportunityId);
+             showToast('You have already reported this opportunity', 'info');
+             return false;
+        }
+
+        // 3. Submit to Firebase RTDB instantly (non-blocking)
         void submitFirebaseOpportunityFeedback(user.id, opportunityId, reason);
 
-        // 3. Mark locally instantly to prevent double-submitting
+        // 4. Mark locally instantly to prevent double-submitting
         saveReportedJobLocally(opportunityId);
 
         // 4. Fire-and-forget backend sync in background for Telegram & Admin panel
@@ -391,7 +411,7 @@ export const useOpportunityDetail = (
 
     const handleApply = useCallback(async () => {
         if (!opportunity?.applyLink) {
-            Alert.alert('Apply link unavailable', 'This opportunity does not have an application link yet.');
+            showToast('This opportunity does not have an application link yet.', 'info');
             return;
         }
 
@@ -407,11 +427,10 @@ export const useOpportunityDetail = (
         }
 
         if (user && !user.isAnonymous) {
-            try {
-                await incrementFirebaseJobClick(opportunity.id);
-            } catch (trackError) {
+            // Fire-and-forget: Do not await network calls so the button action remains responsive offline
+            void incrementFirebaseJobClick(opportunity.id, user.id).catch(trackError => {
                 console.warn('Failed to track application action in Firebase', trackError);
-            }
+            });
         }
         
         try {
@@ -429,7 +448,7 @@ export const useOpportunityDetail = (
             return true; // Indicate success for UI-side effects like StoreReview
         } catch (err) {
             console.error('Apply link opening failed:', err);
-            Alert.alert('Could not open link', 'Please try again later.');
+            showToast('Could not open link. Please try again later.', 'error');
             return false;
         }
     }, [opportunity, isTracking, toggleTracking, navigation, user, currentTheme.id]);

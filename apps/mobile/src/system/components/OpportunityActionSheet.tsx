@@ -31,9 +31,11 @@ import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import { feedbackApi, actionsApi } from '@fresherflow/api-client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/contexts/ToastContext';
-import { submitFirebaseOpportunityFeedback } from '@/utils/firebaseFeedbackDb';
-import { Alert, ActivityIndicator } from 'react-native';
+import { submitFirebaseOpportunityFeedback, checkFirebaseOpportunityReported } from '@/utils/firebaseFeedbackDb';
+import { isJobReportedLocally, saveReportedJobLocally } from '@/utils/offlineCache';
+import { ActivityIndicator } from 'react-native';
 import { ChevronLeft, Ban, Info, Link, AlertTriangle, Trash2, ChevronRight } from 'lucide-react-native';
+import { openExternalURL } from '@/utils/browser';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -62,23 +64,38 @@ export const OpportunityActionSheetContent: React.FC<{
     
     const isSaved = checkIsSaved(activeOpportunity.id);
 
+    const fresherflowLink = (() => {
+        const slug = activeOpportunity.slug ? activeOpportunity.slug.trim() : '';
+        const safeSegment = slug ? encodeURIComponent(slug.split('/').filter(Boolean).pop() || slug) : activeOpportunity.id;
+        if (activeOpportunity.type === 'JOB') return `https://fresherflow.in/jobs/${safeSegment}`;
+        if (activeOpportunity.type === 'INTERNSHIP') return `https://fresherflow.in/internships/${safeSegment}`;
+        if (activeOpportunity.type === 'WALKIN') return `https://fresherflow.in/walk-ins/details/${safeSegment}`;
+        return `https://fresherflow.in/opportunities/${safeSegment}`;
+    })();
+
     const handleShare = async () => {
         await Share.share({
-            message: `Check out this ${activeOpportunity.title} at ${activeOpportunity.company} on FresherFlow! \n\nLink: ${activeOpportunity.applyLink || 'https://fresherflow.in'}`
+            message: `Check out this ${activeOpportunity.title} at ${activeOpportunity.company} on FresherFlow! \n\nLink: ${fresherflowLink}`
         });
         onClose();
     };
 
     const handleCopy = async () => {
-        if (activeOpportunity.applyLink) {
-            await Clipboard.setStringAsync(activeOpportunity.applyLink);
-            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        }
+        await Clipboard.setStringAsync(fresherflowLink);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showSuccess('Opportunity link copied to clipboard!');
         onClose();
     };
 
+    const handleApply = async () => {
+        if (activeOpportunity.applyLink) {
+            onClose();
+            await openExternalURL(activeOpportunity.applyLink, currentTheme.colors);
+        }
+    };
+
     const { user } = useAuthStore();
-    const { showSuccess } = useToast();
+    const { showSuccess, showError } = useToast();
     const [step, setStep] = React.useState(0); // 0: Actions, 1: Report Reasons
     const [loading, setLoading] = React.useState(false);
 
@@ -90,13 +107,28 @@ export const OpportunityActionSheetContent: React.FC<{
 
     const handleReport = async (reason: FeedbackReason) => {
         if (!user) {
-            Alert.alert('Sign in required', 'Please sign in to report this opportunity.');
+            showError('Sign in required to report this opportunity.');
             onClose();
             return;
         }
 
+        if (isJobReportedLocally(activeOpportunity.id)) {
+            showError('You have already reported this opportunity');
+            onClose();
+            return;
+        }
+
+        const alreadyReported = await checkFirebaseOpportunityReported(user.id, activeOpportunity.id);
+        if (alreadyReported) {
+             saveReportedJobLocally(activeOpportunity.id);
+             showError('You have already reported this opportunity');
+             onClose();
+             return;
+        }
+
         // 1. Submit to Firebase RTDB instantly (non-blocking)
         void submitFirebaseOpportunityFeedback(user.id, activeOpportunity.id, reason);
+        saveReportedJobLocally(activeOpportunity.id);
 
         // 2. Fire-and-forget backend sync in background for Telegram & Admin panel
         void feedbackApi.submit(activeOpportunity.id, reason)
@@ -179,7 +211,7 @@ export const OpportunityActionSheetContent: React.FC<{
 
                     <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
-                    <View style={styles.actions}>
+                     <View style={styles.actions}>
                         <ActionRow
                             icon={Bookmark}
                             label={isSaved ? "Remove from Saved" : "Save Opportunity"}
@@ -192,13 +224,11 @@ export const OpportunityActionSheetContent: React.FC<{
                             label="Share Opportunity"
                             onPress={handleShare}
                         />
-                        {activeOpportunity.applyLink && activeOpportunity.applyLink.trim().length > 0 && (
-                            <ActionRow
-                                icon={Copy}
-                                label="Copy Apply Link"
-                                onPress={handleCopy}
-                            />
-                        )}
+                        <ActionRow
+                            icon={Copy}
+                            label="Copy Link"
+                            onPress={handleCopy}
+                        />
                         <ActionRow
                             icon={Flag}
                             label="Report Inaccurate Info"
@@ -219,7 +249,7 @@ export const OpportunityActionSheetContent: React.FC<{
                         >
                             <ChevronLeft size={20} color={currentTheme.colors.text} />
                         </TouchableOpacity>
-                        <Text style={[styles.reportTitle, { color: currentTheme.colors.text }]}>Why report this?</Text>
+                        <Text style={[styles.reportTitle, { color: currentTheme.colors.text }]}>Why are you reporting this?</Text>
                     </View>
                     
                     <View style={styles.reasonsList}>

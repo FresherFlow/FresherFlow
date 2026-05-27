@@ -16,7 +16,7 @@ import {
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import {
-  CircleDollarSign,
+  IndianRupee,
   ExternalLink,
   Bookmark,
   MapPin,
@@ -120,15 +120,6 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
   const { showSuccess } = useToast();
   const { showToast } = useNotifications();
-
-  // Defer heavy rendering until after navigation transition completes
-  const [isReady, setIsReady] = React.useState(false);
-  React.useEffect(() => {
-    const task = InteractionManager.runAfterInteractions(() => {
-      setIsReady(true);
-    });
-    return () => task.cancel();
-  }, []);
 
   const reportSheetRef = useRef<ReportActionSheetRef>(null);
   const scrollY = React.useRef(new Animated.Value(0)).current;
@@ -282,7 +273,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         };
     }, [opportunity?.expiresAt, currentTheme]);
 
-  if (loading || !isReady) {
+  if (!opportunity && loading) {
     return (
       <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
         <ActivityIndicator size="large" color={currentTheme.colors.primary} />
@@ -426,7 +417,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             <Text style={[styles.companyName, { color: currentTheme.colors.text }]}>{opportunity.company}</Text>
                             <View style={styles.badgeRow}>
                                 <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{toTitleCase(opportunity.type || 'Job')}</Text>
+                                    <Text style={[styles.typeText, { color: currentTheme.colors.primary }]}>{opportunity.type === 'JOB' ? 'Full Time' : opportunity.type === 'INTERNSHIP' ? 'Internship' : opportunity.type === 'WALKIN' ? 'Walk-in' : toTitleCase(opportunity.type as any || '')}</Text>
                                 </View>
                                 {(opportunity.clicksCount || 0) > 200 && (
                                     <View style={[styles.typeBadge, { backgroundColor: alpha(currentTheme.colors.error, 0.1), borderColor: alpha(currentTheme.colors.error, 0.2), borderWidth: 1 }]}>
@@ -547,7 +538,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         </View>
                         <View style={[styles.detailDividerVertical, { backgroundColor: currentTheme.colors.border }]} />
                         <View style={styles.detailItemHalf}>
-                            <CircleDollarSign size={20} color={currentTheme.colors.primary} />
+                            <IndianRupee size={20} color={currentTheme.colors.primary} />
                             <View style={styles.detailContent}>
                                 <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>
                                     {opportunity.type === 'INTERNSHIP' ? 'Stipend' : 'Salary'}
@@ -1147,7 +1138,7 @@ const styles = StyleSheet.create({
     },
     typeText: {
         fontSize: 11,
-        fontWeight: '900',
+        fontWeight: '500',
         letterSpacing: 0.5,
     },
     verifiedBadge: {
