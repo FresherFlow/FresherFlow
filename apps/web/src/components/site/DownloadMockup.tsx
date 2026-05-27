@@ -7,22 +7,22 @@ const SCREENS = [
     {
         id: 'explore',
         title: 'Explore',
-        image: '/screenshots/discover.jpg',
+        image: '/screenshots/discover.png',
     },
     {
         id: 'details',
         title: 'Details',
-        image: '/screenshots/details.jpg',
+        image: '/screenshots/details.png',
     },
     {
         id: 'saved',
         title: 'Saved',
-        image: '/screenshots/shares.jpg',
+        image: '/screenshots/shares.png',
     },
     {
         id: 'actions',
         title: 'Actions',
-        image: '/screenshots/overlay.jpg',
+        image: '/screenshots/overlay.png',
     },
 ];
 
