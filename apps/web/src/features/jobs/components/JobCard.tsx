@@ -193,7 +193,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
     return (
         <div
             className={cn(
-                "group relative bg-card border border-border/50 rounded-xl p-4 md:p-5 shadow-md dark:shadow-none transition-all duration-200 hover:border-primary/40 hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 hover:bg-linear-to-b hover:from-white/3 hover:to-transparent flex flex-col gap-3 overflow-hidden",
+                "group relative bg-card border border-border/50 rounded-xl p-4 md:p-5 shadow-md dark:shadow-none transition-all duration-200 hover:border-primary/40 hover:shadow-lg dark:hover:shadow-none hover:-translate-y-0.5 hover:bg-linear-to-b hover:from-white/3 hover:to-transparent flex flex-col gap-3 overflow-hidden shrink-0",
                 isClosingSoon() && !isExpired() && "border-primary/45",
                 isExpired() && "opacity-70",
                 "cursor-pointer"

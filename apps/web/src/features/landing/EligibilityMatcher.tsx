@@ -232,7 +232,7 @@ export function EligibilityMatcher({
           </div>
 
           {/* Interactive Match Feed with a scrollable container */}
-          <div className="space-y-3 max-h-[440px] min-h-[440px] overflow-y-auto pr-2 flex flex-col justify-start scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+          <div className="space-y-3 max-h-[440px] min-h-[440px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
             {opportunities && opportunities.length > 0 ? (
               renderedOpps.map(({ opp }) => {
                 return (
