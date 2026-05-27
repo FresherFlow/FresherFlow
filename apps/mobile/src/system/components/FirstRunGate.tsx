@@ -169,7 +169,7 @@ export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss 
                                     <Clipboard size={18} color={currentTheme.colors.primary} />
                                 </View>
                                 <View style={styles.stepTextWrapper}>
-                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>1. Paste job link</Text>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>Paste job link</Text>
                                     <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Copy and paste any active application URL</Text>
                                 </View>
                             </View>
@@ -179,7 +179,7 @@ export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss 
                                     <ShieldCheck size={18} color={currentTheme.colors.primary} />
                                 </View>
                                 <View style={styles.stepTextWrapper}>
-                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>2. Get verified</Text>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>Get verified</Text>
                                     <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Community members check and confirm the link</Text>
                                 </View>
                             </View>
@@ -189,7 +189,7 @@ export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss 
                                     <Check size={18} color={currentTheme.colors.primary} />
                                 </View>
                                 <View style={styles.stepTextWrapper}>
-                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>3. Help the community</Text>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>Help the community</Text>
                                     <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Verified links are published instantly to the feed</Text>
                                 </View>
                             </View>

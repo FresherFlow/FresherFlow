@@ -154,8 +154,17 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
             }
         } catch (err) {
             stopSpinner();
-            setStatus('error');
             const rawMsg = err instanceof Error ? err.message : 'Failed to query OTA endpoint';
+            
+            // If the server rejects the request (e.g. embedded bundle is newer than the server's bundle),
+            // we should gracefully tell the user they are up to date instead of throwing a scary error.
+            if (rawMsg.includes('rejected') || rawMsg.includes('Failed to check for update')) {
+                setStatus('no-update');
+                void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                return;
+            }
+
+            setStatus('error');
             setErrorMsg(rawMsg);
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
