@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "YOUR_TEAM_ID.in.fresherflow.app",
+        "paths": ["/opportunities/*", "/jobs/*", "/r/*", "/invite/*"]
+      }
+    ]
+  }
+}

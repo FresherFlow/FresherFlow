@@ -4,17 +4,13 @@ import * as Device from 'expo-device';
 
 const DEV_LOCAL_URL = 'http://localhost:5000';
 
-function resolveApiUrl(): string {
-    // Read directly from environment variable (injected at build time or local .env)
-    let envUrl = process.env.EXPO_PUBLIC_API_URL;
-    let baseUrl = DEV_LOCAL_URL;
+function resolveLocalUrl(envUrl: string | undefined, defaultUrl: string): string {
+    let baseUrl = defaultUrl;
 
     if (envUrl) {
         baseUrl = envUrl.replace(/\/+$/, '');
     }
 
-    // If the base URL hostname is the Android loopback (10.0.2.2) but we are on iOS,
-    // remap it to localhost so it works out of the box in the iOS Simulator.
     try {
         const parsed = new URL(baseUrl);
         if (Platform.OS === 'ios' && parsed.hostname === '10.0.2.2') {
@@ -25,8 +21,6 @@ function resolveApiUrl(): string {
         // Fallback
     }
 
-    // Physical Device Fallback: In development, if using localhost, 127.0.0.1, or 10.0.2.2
-    // try to resolve the machine's local IP via expo-constants.
     try {
         const parsed = new URL(baseUrl);
         if (Device.isDevice && ['localhost', '127.0.0.1', '10.0.2.2'].includes(parsed.hostname)) {
@@ -36,7 +30,7 @@ function resolveApiUrl(): string {
                 if (ip) {
                     parsed.hostname = ip;
                     baseUrl = parsed.toString().replace(/\/+$/, '');
-                    console.log(`[mobile] Resolved physical device API to machine IP: ${baseUrl}`);
+                    console.log(`[mobile] Resolved physical device URL to machine IP: ${baseUrl}`);
                 }
             }
         }
@@ -46,8 +40,7 @@ function resolveApiUrl(): string {
 
     try {
         const parsed = new URL(baseUrl);
-        // Android emulator cannot reach host via localhost — remap to 10.0.2.2
-        if (Platform.OS === 'android' && ['localhost', '127.0.0.1'].includes(parsed.hostname)) {
+        if (Platform.OS === 'android' && !Device.isDevice && ['localhost', '127.0.0.1'].includes(parsed.hostname)) {
             parsed.hostname = '10.0.2.2';
             return parsed.toString().replace(/\/+$/, '');
         }
@@ -57,11 +50,13 @@ function resolveApiUrl(): string {
     }
 }
 
-export const API_URL = resolveApiUrl();
+export const API_URL = resolveLocalUrl(process.env.EXPO_PUBLIC_API_URL, DEV_LOCAL_URL);
 
 function resolveCdnUrl(): string {
     const envCdnUrl = process.env.EXPO_PUBLIC_CDN_URL;
-    if (envCdnUrl) return envCdnUrl.replace(/\/+$/, '');
+    if (envCdnUrl) {
+        return resolveLocalUrl(envCdnUrl, envCdnUrl);
+    }
 
     // In development, the local API server handles serving the CDN files dynamically
     if (__DEV__) {
