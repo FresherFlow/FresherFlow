@@ -568,10 +568,10 @@ export const authApi = {
 
 // Admin Auth API calls
 export const adminAuthApi = {
-    getRegistrationOptions: (email: string) =>
+    getRegistrationOptions: (email: string, bootstrapSecret?: string) =>
         apiClient<PublicKeyCredentialCreationOptionsJSON>('/api/admin/auth/register/options', {
             method: 'POST',
-            body: JSON.stringify({ email })
+            body: JSON.stringify({ email, bootstrapSecret })
         }),
 
     verifyRegistration: (email: string, body: RegistrationResponseJSON) =>

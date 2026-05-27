@@ -6,7 +6,7 @@ import { logger } from '@fresherflow/logger';
  */
 export function ensureDomainHost(expectedHost: string) {
     return (req: Request, res: Response, next: NextFunction) => {
-        if (process.env.NODE_ENV !== 'production') {
+        if (process.env.NODE_ENV !== 'production' || !expectedHost) {
             return next();
         }
 
@@ -26,7 +26,7 @@ export function ensureDomainHost(expectedHost: string) {
             } catch { /* ignore */ }
         }
 
-        if (requestHostname !== expectedHost.toLowerCase()) {
+        if (requestHostname !== expectedHost.toLowerCase() && requestHostname !== 'localhost' && requestHostname !== '127.0.0.1') {
             logger.warn('Domain restriction violation', {
                 path: req.path,
                 expectedHost,

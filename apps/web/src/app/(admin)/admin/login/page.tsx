@@ -15,6 +15,7 @@ export default function AdminLoginPage() {
     const ADMIN_EMAIL = (process.env.NEXT_PUBLIC_ADMIN_EMAIL || '').toLowerCase();
     const adminEmailConfigured = ADMIN_EMAIL.length > 0;
     const [email, setEmail] = useState('');
+    const [bootstrapSecret, setBootstrapSecret] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [showOtherOptions, setShowOtherOptions] = useState(false);
     const [totpCode, setTotpCode] = useState('');
@@ -51,7 +52,7 @@ export default function AdminLoginPage() {
 
         setIsLoading(true);
         try {
-            const options = await adminAuthApi.getRegistrationOptions(email.toLowerCase());
+            const options = await adminAuthApi.getRegistrationOptions(email.toLowerCase(), bootstrapSecret);
             const regResp = await startRegistration({ optionsJSON: options as unknown as Parameters<typeof startRegistration>[0]['optionsJSON'] });
             const verification = await adminAuthApi.verifyRegistration(email.toLowerCase(), regResp);
 
@@ -198,6 +199,18 @@ export default function AdminLoginPage() {
                                     placeholder={adminEmailConfigured ? ADMIN_EMAIL : 'admin@yourdomain.com'}
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
+                                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                                />
+                            </div>
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
+                                    Bootstrap Secret (If Required)
+                                </label>
+                                <input
+                                    type="password"
+                                    placeholder="Enter backend bootstrap secret"
+                                    value={bootstrapSecret}
+                                    onChange={(e) => setBootstrapSecret(e.target.value)}
                                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
                                 />
                             </div>

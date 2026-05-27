@@ -221,6 +221,15 @@ router.post('/register/options', adminAuthLimiter, async (req: Request, res: Res
             if (authenticatedAdminId !== user.id) {
                 return next(new AppError('Forbidden: Must be logged in as admin to add more passkeys', 403));
             }
+        } else {
+            // Bootstrap phase: verify bootstrap secret if configured
+            const expectedSecret = process.env.ADMIN_BOOTSTRAP_SECRET;
+            if (expectedSecret && expectedSecret.length > 0) {
+                const secret = req.body.bootstrapSecret;
+                if (!secret || secret !== expectedSecret) {
+                    return next(new AppError('Forbidden: Invalid bootstrap secret', 403));
+                }
+            }
         }
 
         const options: GenerateRegistrationOptionsOpts = {
