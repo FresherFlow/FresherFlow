@@ -82,9 +82,9 @@ export const OfflineBanner = () => {
     <AnimatePresence>
       {isVisible && (
         <MotiView
-          from={{ translateY: insets.top + 12, opacity: 0 }}
+          from={{ translateY: -100, opacity: 0 }}
           animate={{ translateY: insets.top + 12, opacity: 1 }}
-          exit={{ translateY: insets.top + 12, opacity: 0 }}
+          exit={{ translateY: -100, opacity: 0 }}
           transition={{ type: 'timing', duration: 250 }}
           style={styles.container}
         >

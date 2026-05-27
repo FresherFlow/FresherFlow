@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
 import { Clock, CheckCircle2, XCircle, History, ChevronRight, Zap, Link as LinkIcon } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -6,6 +6,7 @@ import { alpha } from '@/theme';
 import { SurfaceCard } from './PremiumPrimitives';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import { haptic } from '@/utils/haptics';
+import { subscribeToFirebaseJobStats } from '@/utils/firebaseViewsDb';
 
 export interface ContributionShare {
     id: string;
@@ -86,6 +87,20 @@ export const ContributionPreviewCard = memo(({ share, onPress }: Props) => {
         }
     };
 
+    const [realtimeViews, setRealtimeViews] = useState(opp?.clicksCount || 0);
+
+    useEffect(() => {
+        if (!isLive || !opp?.id) return;
+        
+        setRealtimeViews(prev => Math.max(prev, opp.clicksCount || 0));
+
+        const unsubscribe = subscribeToFirebaseJobStats(opp.id, (stats) => {
+            setRealtimeViews(prev => Math.max(prev, stats.views));
+        });
+
+        return () => unsubscribe();
+    }, [isLive, opp?.id, opp?.clicksCount]);
+
     return (
         <TouchableOpacity
             activeOpacity={isLive ? 0.9 : 1}
@@ -117,7 +132,7 @@ export const ContributionPreviewCard = memo(({ share, onPress }: Props) => {
                         <View style={styles.viewsBadge}>
                             <Zap size={mScale(11)} color={currentTheme.colors.primary} />
                             <Text style={[styles.viewsText, { color: currentTheme.colors.primary }]}>
-                                {opp.clicksCount || 0} views
+                                {realtimeViews} views
                             </Text>
                         </View>
                     )}

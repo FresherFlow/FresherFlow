@@ -187,9 +187,10 @@ export const SecondaryHeader: React.FC<{
     title: string;
     onBack?: () => void;
     rightSlot?: React.ReactNode;
+    subtitleRightSlot?: React.ReactNode;
     subtitle?: string;
     showBack?: boolean;
-}> = ({ title, onBack, rightSlot, subtitle, showBack = true }) => {
+}> = ({ title, onBack, rightSlot, subtitleRightSlot, subtitle, showBack = true }) => {
     const { currentTheme } = useTheme();
     const navigation = useNavigation();
 
@@ -225,10 +226,11 @@ export const SecondaryHeader: React.FC<{
                 )}
             </View>
             {subtitle && (
-                <View style={{ paddingLeft: showBack ? mScale(44) : 0, marginTop: -2 }}>
+                <View style={{ paddingLeft: showBack ? mScale(44) : 0, marginTop: -2, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Text style={[styles.headerSubtitle, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
                         {subtitle}
                     </Text>
+                    {subtitleRightSlot && subtitleRightSlot}
                 </View>
             )}
         </View>

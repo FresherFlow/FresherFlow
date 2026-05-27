@@ -46,6 +46,22 @@ const getRelativeTime = (date: string | Date) => {
     return sent.toLocaleDateString();
 };
 
+const getPostedDateString = (date: string | Date) => {
+    const d = new Date(date);
+    const now = new Date();
+    
+    // Calculate the difference in calendar days
+    const utc1 = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+    const utc2 = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.floor((utc2 - utc1) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) return 'today';
+    if (diffDays === 1) return 'yesterday';
+    if (diffDays > 1 && diffDays < 7) return `${diffDays} days ago`;
+    
+    return `on ${d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+};
+
 const ProfileSetupNudge = memo(({ onComplete }: { onComplete: () => void }) => {
     const { currentTheme } = useTheme();
     return (
@@ -195,7 +211,7 @@ const AlertRow = memo(({
                             style={[styles.alertSub, { color: currentTheme.colors.textMuted }]}
                             numberOfLines={1}
                         >
-                            {alert.opportunity.company} · {toTitleCase(alert.opportunity.locations?.[0] || 'Remote')} · Posted {getRelativeTime(alert.opportunity.postedAt || alert.sentAt)}
+                            {alert.opportunity.company} · {toTitleCase(alert.opportunity.locations?.[0] || 'Remote')} · Posted {getPostedDateString(alert.opportunity.postedAt || alert.sentAt)}
                         </Text>
 
                         {/* Match Score Badge */}
@@ -205,7 +221,6 @@ const AlertRow = memo(({
                                     styles.pillBadge,
                                     { backgroundColor: alpha(currentTheme.colors.success, 0.08) }
                                 ]}>
-                                    <Sparkles size={11} color={currentTheme.colors.success} style={{ marginRight: 4 }} />
                                     <Text style={[styles.pillText, { color: currentTheme.colors.success }]}>
                                         {alert.opportunity.matchScore}% Match
                                     </Text>
@@ -409,19 +424,19 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                     title="Alerts"
                     subtitle="Newly Detected Jobs"
                     rightSlot={
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                            {unreadCount > 0 && (
-                                <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
-                                    <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Clear</Text>
-                                </TouchableOpacity>
-                            )}
-                            <TouchableOpacity 
-                                onPress={() => navigation.navigate('AlertSettings')}
-                                style={styles.settingsBtn}
-                            >
-                                <Settings size={24} color={currentTheme.colors.text} />
+                        <TouchableOpacity 
+                            onPress={() => navigation.navigate('AlertSettings')}
+                            style={styles.settingsBtn}
+                        >
+                            <Settings size={24} color={currentTheme.colors.text} />
+                        </TouchableOpacity>
+                    }
+                    subtitleRightSlot={
+                        unreadCount > 0 ? (
+                            <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
+                                <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Clear</Text>
                             </TouchableOpacity>
-                        </View>
+                        ) : undefined
                     }
                 />
             </View>
@@ -515,8 +530,9 @@ const styles = StyleSheet.create({
         borderWidth: 1.8,
     },
     deleteBtn: {
-        padding: SPACING.md,
-        marginLeft: SPACING.xs,
+        padding: SPACING.lg,
+        marginLeft: SPACING.sm,
+        marginRight: -SPACING.sm,
         alignSelf: 'center',
     },
     emptyContainer: {
