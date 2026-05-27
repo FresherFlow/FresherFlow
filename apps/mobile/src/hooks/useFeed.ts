@@ -142,12 +142,6 @@ export const useFeed = (initialFeedType: string | null = null) => {
             result = result.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.includes(2026));
         } else if (feedType === 'internships') {
             result = result.filter(j => j.type === 'INTERNSHIP');
-        } else if (feedType === 'trending') {
-            result = [...result].sort((a, b) => {
-                const scoreA = a.trendingScore || 0;
-                const scoreB = b.trendingScore || 0;
-                return scoreB - scoreA;
-            });
         }
 
         if (searchQuery.trim() && fuseIndex) {
@@ -279,6 +273,11 @@ export const useFeed = (initialFeedType: string | null = null) => {
         }
         
         const sortByRelevance = (a: typeof scored[0], b: typeof scored[0]) => {
+            if (feedType === 'trending') {
+                const tScoreA = ((a.clicksCount || 0) * 1.5) + ((a.appliedCount || 0) * 4.0) + ((a.savesCount || 0) * 3.0) + (a.trendingScore || 0);
+                const tScoreB = ((b.clicksCount || 0) * 1.5) + ((b.appliedCount || 0) * 4.0) + ((b.savesCount || 0) * 3.0) + (b.trendingScore || 0);
+                return tScoreB - tScoreA;
+            }
             return b.relevanceScore - a.relevanceScore;
         };
         

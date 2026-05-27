@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Opportunity, OpportunityType, WorkMode, Profile, ActionType } from '@fresherflow/types';
 import { readFeedCache, saveFeedCache, saveLastSyncTimestamp, readTrackerCacheSync } from '@/utils/offlineCache';
 import { generateCdnSignature } from '@/utils/cdnSignature';
@@ -34,7 +34,7 @@ export function useExplore() {
     const resetExploreFilters = useUIStore(s => s.resetExploreFilters);
 
     const [cachedItems, setCachedItems] = useState<Opportunity[]>([]);
-    const [isBootstrapping, setIsBootstrapping] = useState(false);
+    const [isBootstrapping, setIsBootstrapping] = useState(true);
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
 
@@ -207,6 +207,28 @@ export function useExplore() {
         return { skills, functions };
     }, [cachedItems, openedIds]);
 
+    // Store dynamic user behavior states in refs to prevent layout shifting/re-ordering during active sessions
+    const savedJobsDataRef = useRef(savedJobsData);
+    const openedJobsDataRef = useRef(openedJobsData);
+    const appliedIdsRef = useRef(appliedIds);
+    const recentKeywordsRef = useRef(recentKeywords);
+
+    useEffect(() => {
+        savedJobsDataRef.current = savedJobsData;
+    }, [savedJobsData]);
+
+    useEffect(() => {
+        openedJobsDataRef.current = openedJobsData;
+    }, [openedJobsData]);
+
+    useEffect(() => {
+        appliedIdsRef.current = appliedIds;
+    }, [appliedIds]);
+
+    useEffect(() => {
+        recentKeywordsRef.current = recentKeywords;
+    }, [recentKeywords]);
+
     // 3. High-Speed Local Filter & Sort Pipeline (Parsed in <3ms)
     const rawResults = useMemo(() => {
         let items = cachedItems;
@@ -235,6 +257,11 @@ export function useExplore() {
             items = items.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.some(y => filters.batchYears.includes(y)));
         }
 
+        const currentSavedData = savedJobsDataRef.current;
+        const currentOpenedData = openedJobsDataRef.current;
+        const currentKeywords = recentKeywordsRef.current;
+        const currentAppliedIds = appliedIdsRef.current;
+
         // Map and compute relevance scores for all items in result
         const scored = items.map(job => {
             let baseScore = 0;
@@ -247,13 +274,13 @@ export function useExplore() {
 
             // 1. Saved Job Boost (max +30)
             let savedBoost = 0;
-            if (job.jobFunction && savedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
+            if (job.jobFunction && currentSavedData.functions.has(job.jobFunction.toLowerCase().trim())) {
                 savedBoost += 15;
             }
             if (job.requiredSkills) {
                 let skillMatches = 0;
                 job.requiredSkills.forEach(s => {
-                    if (savedJobsData.skills.has(s.toLowerCase().trim())) {
+                    if (currentSavedData.skills.has(s.toLowerCase().trim())) {
                         skillMatches++;
                     }
                 });
@@ -263,13 +290,13 @@ export function useExplore() {
 
             // 2. Recent Search Keyword Boost (max +25)
             let searchBoost = 0;
-            if (recentKeywords.length > 0) {
+            if (currentKeywords.length > 0) {
                 const titleLower = (job.title || '').toLowerCase();
                 const compLower = (job.company || '').toLowerCase();
                 const funcLower = (job.jobFunction || '').toLowerCase();
                 const locsLower = (job.locations || []).map(l => l.toLowerCase());
 
-                recentKeywords.forEach(kw => {
+                currentKeywords.forEach(kw => {
                     if (
                         titleLower.includes(kw) ||
                         compLower.includes(kw) ||
@@ -285,13 +312,13 @@ export function useExplore() {
 
             // 3. Viewed/Opened Job Similarity Boost (max +15)
             let openedBoost = 0;
-            if (job.jobFunction && openedJobsData.functions.has(job.jobFunction.toLowerCase().trim())) {
+            if (job.jobFunction && currentOpenedData.functions.has(job.jobFunction.toLowerCase().trim())) {
                 openedBoost += 5;
             }
             if (job.requiredSkills) {
                 let skillMatches = 0;
                 job.requiredSkills.forEach(s => {
-                    if (openedJobsData.skills.has(s.toLowerCase().trim())) {
+                    if (currentOpenedData.skills.has(s.toLowerCase().trim())) {
                         skillMatches++;
                     }
                 });
@@ -333,7 +360,7 @@ export function useExplore() {
             for (const j of scored) {
                 if (j.expiresAt && new Date(j.expiresAt).getTime() <= now) {
                     expired.push(j);
-                } else if (appliedIds.has(j.id)) {
+                } else if (currentAppliedIds.has(j.id)) {
                     applied.push(j);
                 } else {
                     active.push(j);
@@ -348,17 +375,17 @@ export function useExplore() {
         }
 
         return items;
-    }, [cachedItems, filters, localProfile, savedJobsData, openedJobsData, recentKeywords, appliedIds]);
+    }, [cachedItems, filters, localProfile]);
 
-    // 4. Fuse.js Fuzzy Search Index
+    // 4. Fuse.js Fuzzy Search Index (Lazy-loaded to prevent blocking UI on filter changes)
     const fuseIndex = useMemo(() => {
-        if (rawResults.length === 0) return null;
+        if (rawResults.length === 0 || !debouncedSearchQuery) return null;
         return new Fuse(rawResults, {
             keys: ['title', 'company', 'jobFunction', 'locations'],
             threshold: 0.3,
             distance: 100,
         });
-    }, [rawResults]);
+    }, [rawResults, debouncedSearchQuery]);
 
     // 5. In-Memory Search Engine & Suggestions
     const { results, suggestions } = useMemo(() => {

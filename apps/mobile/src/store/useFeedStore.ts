@@ -17,13 +17,19 @@ import { storage } from '@repo/frontend-core';
 import { useAuthStore } from './useAuthStore';
 
 
+const resolvedIds = new Set<string>();
+
 const preResolveAndCacheLogos = async (opportunities: Opportunity[]) => {
-    if (opportunities.length === 0) return;
-    console.log(`[useFeedStore] Starting background logo pre-resolution engine for ${opportunities.length} opportunities...`);
+    const toResolve = opportunities.filter(o => !resolvedIds.has(o.id));
+    if (toResolve.length === 0) return;
+    
+    toResolve.forEach(o => resolvedIds.add(o.id));
+    
+    console.log(`[useFeedStore] Starting background logo pre-resolution engine for ${toResolve.length} opportunities...`);
     
     // Process in batches of 5 to avoid network/bridge congestion
-    for (let i = 0; i < opportunities.length; i += 5) {
-        const chunk = opportunities.slice(i, i + 5);
+    for (let i = 0; i < toResolve.length; i += 5) {
+        const chunk = toResolve.slice(i, i + 5);
         
         await Promise.all(chunk.map(async (opp) => {
             try {
@@ -120,7 +126,7 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
     openedIds: new Set(),
     appliedIds: new Set(),
     recentKeywords: [],
-    isBootstrapping: false,
+    isBootstrapping: true,
     isSyncing: false,
     isRefreshing: false,
     syncError: null,
@@ -180,8 +186,8 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
         if (scoredOpportunities.length > 0) {
             await saveFeedCache(scoredOpportunities);
             
-            // 1. Pre-resolve the top 10 items BEFORE updating UI so first screen render is instant
-            await preResolveAndCacheLogos(scoredOpportunities.slice(0, 10));
+            // 1. Pre-resolve the top 10 items in the background so feed renders instantly
+            void preResolveAndCacheLogos(scoredOpportunities.slice(0, 10));
 
             // 2. Push to UI
             set({ cachedItems: scoredOpportunities });

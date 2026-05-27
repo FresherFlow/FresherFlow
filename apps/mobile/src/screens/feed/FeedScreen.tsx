@@ -19,13 +19,14 @@ import {
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useScrollToTop } from '@react-navigation/native';
 import {
     TrendingUp,
     Compass,
     Bell,
     Search,
     X,
+    ChevronUp,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useSaved } from '@repo/frontend-core';
@@ -74,10 +75,22 @@ interface FeedTabContentProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     handleScroll?: any;
     searchQuery: string;
+    savedJobs: Opportunity[];
 }
 
-const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, isSaved, toggleSave, handleScroll, searchQuery }: FeedTabContentProps) => {
+const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, isSaved, toggleSave, handleScroll, searchQuery, savedJobs }: FeedTabContentProps) => {
   const insets = useSafeAreaInsets();
+  const listRef = useRef<any>(null);
+  useScrollToTop(listRef);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const localHandleScroll = useCallback((event: any) => {
+    const currentOffset = event.nativeEvent.contentOffset.y;
+    setShowScrollTop(currentOffset > 600);
+    if (handleScroll) {
+      handleScroll(event);
+    }
+  }, [handleScroll]);
 
   const {
     loading,
@@ -206,10 +219,10 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                     {searchQuery ? "No results found" : "Community is quiet right now"}
                 </Text>
                 <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
-                    {searchQuery ? `We couldn't find anything for "${searchQuery}".` : "Try adjusting your filters or search keywords."}
+                    {searchQuery ? `We couldn't find anything for "${searchQuery}".` : "No live opportunities have been shared today yet."}
                 </Text>
                 
-                {searchQuery ? (
+                {searchQuery && (
                     <TouchableOpacity
                         activeOpacity={0.8}
                         style={[styles.ctaBtn, { backgroundColor: currentTheme.colors.primary, marginTop: 20 }]}
@@ -217,28 +230,6 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                     >
                         <Text style={[styles.ctaText, { color: currentTheme.colors.background }]}>Share what you found</Text>
                     </TouchableOpacity>
-                ) : (
-                    <View style={{ marginTop: SPACING.lg, width: '100%', alignItems: 'center' }}>
-                        <Text style={{ fontSize: mScale(12), fontWeight: '700', color: currentTheme.colors.textMuted, marginBottom: SPACING.sm, letterSpacing: 0.5 }}>Trending Tags</Text>
-                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm, justifyContent: 'center' }}>
-                            {['Software Engineer', 'React', 'Remote', '2026 Batch', 'AI/ML'].map(tag => (
-                                <TouchableOpacity
-                                    key={tag}
-                                    style={{
-                                        paddingHorizontal: SPACING.md,
-                                        paddingVertical: 10,
-                                        borderRadius: RADIUS.lg,
-                                        backgroundColor: alpha(currentTheme.colors.text, 0.05),
-                                        borderWidth: 0.5,
-                                        borderColor: alpha(currentTheme.colors.border, 0.3)
-                                    }}
-                                    onPress={() => setSearchQuery(tag)}
-                                >
-                                    <Text style={{ color: currentTheme.colors.text, fontSize: mScale(13), fontWeight: '500' }}>{tag}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    </View>
                 )}
             </View>
         );
@@ -251,9 +242,10 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
   return (
     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
         <FlashList<FeedItem>
+            ref={listRef}
             data={listData}
             renderItem={renderItem}
-            extraData={searchQuery}
+            extraData={{ searchQuery, savedJobs }}
             keyExtractor={(item) => item.key}
             // @ts-expect-error - FlashList typing bug with estimatedItemSize
             estimatedItemSize={180}
@@ -264,10 +256,10 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
             initialNumToRender={5}
             showsVerticalScrollIndicator={false}
             onViewableItemsChanged={onViewableItemsChanged}
-                        viewabilityConfig={viewabilityConfig}
+            viewabilityConfig={viewabilityConfig}
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + mScale(60) }]}
             onEndReached={loadMore}
-            onScroll={handleScroll}
+            onScroll={localHandleScroll}
             scrollEventThrottle={16}
             keyboardShouldPersistTaps="always"
             refreshControl={
@@ -280,12 +272,27 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                 loadingMore ? <ActivityIndicator style={{ margin: SPACING.md }} color={currentTheme.colors.primary} /> : null
             }
         />
+
+        {showScrollTop && (
+            <TouchableOpacity
+                activeOpacity={0.8}
+                onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                }}
+                style={[
+                    styles.scrollTopBtn,
+                    {
+                        backgroundColor: currentTheme.colors.surface,
+                        borderColor: alpha(currentTheme.colors.border, 0.3),
+                        bottom: insets.bottom + mScale(100),
+                    },
+                ]}
+            >
+                <ChevronUp size={20} color={currentTheme.colors.primary} />
+            </TouchableOpacity>
+        )}
     </View>
-  );
-}, (prev, next) => {
-  return (
-    prev.feedType === next.feedType &&
-    prev.searchQuery === next.searchQuery
   );
 });
 
@@ -293,7 +300,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
   const { showSuccess } = useToast();
-  const { isSaved, toggleSave } = useSaved();
+  const { isSaved, toggleSave, savedJobs } = useSaved();
   const { hideTabBar, showTabBar } = useUI();
   const { unreadCount } = useNotifications();
   const [activeTab, setActiveTab] = useState(0);
@@ -592,6 +599,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         toggleSave={handleToggleSave}
                         handleScroll={handleScroll}
                         searchQuery={searchQuery}
+                        savedJobs={savedJobs}
                     />
                 </View>
             ))}
@@ -601,6 +609,28 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 });
 
 const styles = StyleSheet.create({
+    scrollTopBtn: {
+        position: 'absolute',
+        right: 28,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        zIndex: 9999,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
+    },
     stickyHeader: {
         zIndex: 10,
         backgroundColor: 'transparent', // Screen will handle background

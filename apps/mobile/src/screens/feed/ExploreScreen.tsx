@@ -10,10 +10,12 @@ import {
     StatusBar,
     Animated,
     ScrollView,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Compass, Filter, Building2, ChevronRight, X } from 'lucide-react-native';
+import { Compass, Filter, Building2, ChevronRight, X, ChevronUp } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useScrollToTop } from '@react-navigation/native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { saveDetailCache } from '@/utils/offlineCache';
@@ -96,7 +98,7 @@ const CompanyCard = memo(({ company, onPress, theme }: { company: CompanySummary
 const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
-    const { isSaved, toggleSave } = useSaved();
+    const { isSaved, toggleSave, savedJobs } = useSaved();
     const { hideTabBar, showTabBar } = useUI();
     const {
         results,
@@ -113,6 +115,8 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const filterSheetRef = React.useRef<FilterSheetRef>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const flashListRef = React.useRef<any>(null);
+    useScrollToTop(flashListRef);
+    const [showScrollTop, setShowScrollTop] = React.useState(false);
     const [viewMode, setViewMode] = React.useState<'opportunities' | 'companies'>('opportunities');
 
     // Scroll back to top on search query, filter change, or view mode toggle
@@ -155,6 +159,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const handleScroll = useCallback((event: any) => {
         const currentOffset = event.nativeEvent.contentOffset.y;
+        setShowScrollTop(currentOffset > 600);
         const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
 
         if (Math.abs(currentOffset - scrollOffset.current) > 20) {
@@ -309,6 +314,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
             <FlashList<ExploreItem>
                 ref={flashListRef}
+                extraData={{ savedJobs, isSaved }}
                 data={(() => {
                     const items: ExploreItem[] = [];
 
@@ -349,6 +355,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 // @ts-expect-error - FlashList typing bug with estimatedItemSize
                 estimatedItemSize={180}
                 drawDistance={2500}
+                getItemType={(item) => item.type}
                 keyExtractor={(item) => item.key}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
@@ -551,6 +558,26 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 filters={filters}
                 onApply={setFilters}
             />
+
+            {showScrollTop && (
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    }}
+                    style={[
+                        styles.scrollTopBtn,
+                        {
+                            backgroundColor: currentTheme.colors.surface,
+                            borderColor: alpha(currentTheme.colors.border, 0.3),
+                            bottom: insets.bottom + 110,
+                        },
+                    ]}
+                >
+                    <ChevronUp size={20} color={currentTheme.colors.primary} />
+                </TouchableOpacity>
+            )}
         </Screen>
     );
 });
@@ -673,6 +700,28 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 22,
+    },
+    scrollTopBtn: {
+        position: 'absolute',
+        right: 28,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        zIndex: 9999,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     }
 });
 
