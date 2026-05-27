@@ -189,11 +189,11 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 </TouchableOpacity>
                             ) : (
                                 <TouchableOpacity 
-                                    style={[styles.completionBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                                    style={completionPercentage === 0 ? [styles.signInBtnSmall, { backgroundColor: currentTheme.colors.primary }] : [styles.completionBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
                                     onPress={() => navigation.navigate('CareerProfile')}
                                 >
-                                    <Text style={[styles.completionText, { color: currentTheme.colors.primary }]}>
-                                        {completionPercentage}%
+                                    <Text style={completionPercentage === 0 ? [styles.signInBtnSmallText, { color: currentTheme.colors.inverseText }] : [styles.completionText, { color: currentTheme.colors.primary }]}>
+                                        {completionPercentage === 0 ? 'Update Profile' : `Profile Completion: ${completionPercentage}%`}
                                     </Text>
                                 </TouchableOpacity>
                             ))}
@@ -211,6 +211,7 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <MenuRow
                                 icon={Award}
                                 label="Career Profile"
+                                subtitle={isAnonymous ? undefined : 'Update your details'}
                                 onPress={() => onNavigate('CareerProfile')}
                                 currentTheme={currentTheme}
                             />
@@ -261,27 +262,39 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                       />
                   </SurfaceCard>
 
-                  {/* Attractive Real User Count */}
-                  <View style={{ alignItems: 'center', marginTop: 24, marginBottom: 8 }}>
-                      <Text style={{ fontSize: 36, fontWeight: '900', color: currentTheme.colors.primary, letterSpacing: -1 }}>
-                          {globalStats.downloads.toLocaleString()}
+                  {/* Community Impact Card */}
+                  <SurfaceCard style={{ marginTop: 24, marginBottom: 24, padding: 24, alignItems: 'center', justifyContent: 'center' }}>
+                      <View style={{ marginBottom: 2 }}>
+                          <Text style={{ fontSize: 34, lineHeight: 40, fontWeight: '900', color: currentTheme.colors.text, letterSpacing: -1.2 }}>
+                              {globalStats.downloads.toLocaleString()}
+                          </Text>
+                      </View>
+                      
+                      <Text style={{ fontSize: 13, fontWeight: '600', color: currentTheme.colors.textMuted, textAlign: 'center', letterSpacing: 0.5 }}>
+                          People joined FresherFlow
                       </Text>
-                      <Text style={{ fontSize: 12, fontWeight: '800', color: alpha(currentTheme.colors.textMuted, 0.6), marginTop: 2, letterSpacing: 1, textTransform: 'uppercase' }}>
-                          Users Joined
-                      </Text>
-                  </View>
 
-                  {/* Simple Share Row */}
-                  <TouchableOpacity
-                      activeOpacity={0.7}
-                      onPress={handleShareApp}
-                      style={styles.simpleShareRow}
-                  >
-                      <Share2 size={16} color={currentTheme.colors.primary} strokeWidth={2.5} />
-                      <Text style={[styles.simpleShareText, { color: currentTheme.colors.primary }]}>
-                          Share FresherFlow with friends
-                      </Text>
-                  </TouchableOpacity>
+                      <TouchableOpacity 
+                          onPress={handleShareApp}
+                          activeOpacity={0.8}
+                          style={{
+                              marginTop: 20,
+                              backgroundColor: currentTheme.colors.primary,
+                              paddingVertical: 12,
+                              paddingHorizontal: 28,
+                              borderRadius: 24,
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              gap: 8,
+                              alignSelf: 'center'
+                          }}
+                      >
+                          <Share2 size={16} color={currentTheme.colors.inverseText} strokeWidth={2.5} />
+                          <Text style={{ color: currentTheme.colors.inverseText, fontSize: 14, fontWeight: '800' }}>
+                              Share App
+                          </Text>
+                      </TouchableOpacity>
+                  </SurfaceCard>
 
                </View>
           </View>
@@ -567,7 +580,7 @@ const styles = StyleSheet.create({
     },
     rowLabel: {
         fontSize: 14,
-        fontWeight: '800',
+        fontWeight: '500',
     },
     rowSubtitle: {
         fontSize: 11,

@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useProfile } from './useProfile';
+import { useToast } from '@/contexts/ToastContext';
 
 const preferencesSchema = z.object({
     interestedIn: z.array(z.string()).min(1, 'Select at least one type'),
@@ -15,6 +16,7 @@ export type PreferencesFormData = z.infer<typeof preferencesSchema>;
 
 export const usePreferences = () => {
     const { profile, updatePreferences, loadingCache } = useProfile();
+    const { showToast, showError } = useToast();
     const [saving, setSaving] = useState(false);
     const [cityInput, setCityInput] = useState('');
     const [showCitySuggestions, setShowCitySuggestions] = useState(false);
@@ -63,7 +65,7 @@ export const usePreferences = () => {
         const trimmed = city.trim();
         if (trimmed && !preferredCities.includes(trimmed)) {
             if (preferredCities.length >= 5) {
-                Alert.alert('Limit Reached', 'You can select up to 5 cities');
+                showToast('You can select up to 5 cities', 'warning');
                 return;
             }
             setValue('preferredCities', [...preferredCities, trimmed], { shouldValidate: true });
@@ -85,7 +87,7 @@ export const usePreferences = () => {
                 preferredCities: data.preferredCities,
             });
         } catch (error: unknown) {
-            Alert.alert('Error', (error as Error).message || 'Failed to update preferences');
+            showError((error as Error).message || 'Failed to update preferences');
         } finally {
             setSaving(false);
         }

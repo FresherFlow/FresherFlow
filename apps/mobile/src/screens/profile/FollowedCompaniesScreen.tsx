@@ -1,4 +1,4 @@
-import React, { memo, useMemo, useState } from 'react';
+import React, { memo, useMemo, useState, useRef, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,11 +7,13 @@ import {
   TouchableOpacity,
   FlatList,
   StatusBar,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, X, ChevronRight, Check, Plus, Building2 } from 'lucide-react-native';
+import { Search, X, ChevronRight, Check, Plus, Building2, ChevronUp } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useScrollToTop } from '@react-navigation/native';
 import { useFollows } from '@/hooks/useFollows';
 import { useFeedStore } from '@/store/useFeedStore';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -42,6 +44,14 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
   const { follows, follow, unfollow, isFollowing } = useFollows();
   const cachedItems = useFeedStore(s => s.cachedItems);
   const isAnonymous = !user || user.isAnonymous;
+  const listRef = useRef<any>(null);
+  useScrollToTop(listRef);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const handleScroll = useCallback((event: any) => {
+    const currentOffset = event.nativeEvent.contentOffset.y;
+    setShowScrollTop(currentOffset > 600);
+  }, []);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'ALL' | 'FOLLOWED'>('ALL');
@@ -211,7 +221,13 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
         <PremiumHeader
           title="Companies"
           showBack
-          onBack={() => navigation.goBack()}
+          onBack={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('Main' as never);
+            }
+          }}
         />
       </View>
 
@@ -269,10 +285,13 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
 
         {/* Companies List */}
         <FlatList
+          ref={listRef}
           data={filteredCompanies}
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
@@ -286,6 +305,26 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
           }
         />
       </View>
+
+      {showScrollTop && (
+        <TouchableOpacity
+          activeOpacity={0.8}
+          onPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            listRef.current?.scrollToOffset({ offset: 0, animated: true });
+          }}
+          style={[
+            styles.scrollTopBtn,
+            {
+              backgroundColor: currentTheme.colors.surface,
+              borderColor: alpha(currentTheme.colors.border, 0.3),
+              bottom: insets.bottom + 110,
+            },
+          ]}
+        >
+          <ChevronUp size={20} color={currentTheme.colors.primary} />
+        </TouchableOpacity>
+      )}
     </Screen>
   );
 });
@@ -387,6 +426,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
+  scrollTopBtn: {
+    position: 'absolute',
+    right: 28,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    zIndex: 9999,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+      },
+      android: {
+        elevation: 4,
+      },
+    }),
+  }
 });
 
 export default FollowedCompaniesScreen;

@@ -161,7 +161,7 @@ const ThemeContext = createContext<ThemeContextProps | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemColorScheme = useColorScheme();
-  const [themeMode, setThemeModeState] = useState<'light' | 'dark' | 'system'>('system');
+  const [themeMode, setThemeModeState] = useState<'light' | 'dark' | 'system'>('dark');
   const [isAmoled, setIsAmoledState] = useState(false);
 
   // Calculate actual theme based on mode, system preference, and amoled state

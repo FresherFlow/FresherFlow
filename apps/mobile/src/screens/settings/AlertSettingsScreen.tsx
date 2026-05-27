@@ -53,7 +53,13 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                     <SecondaryHeader
                         title="Alert Settings"
-                        onBack={() => navigation.goBack()}
+                        onBack={() => {
+                            if (navigation.canGoBack()) {
+                                navigation.goBack();
+                            } else {
+                                navigation.navigate('Main' as never);
+                            }
+                        }}
                     />
                 </View>
                 <View style={styles.center}>
@@ -70,7 +76,13 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
                 <SecondaryHeader
                     title="Alert Settings"
-                    onBack={() => navigation.goBack()}
+                    onBack={() => {
+                        if (navigation.canGoBack()) {
+                            navigation.goBack();
+                        } else {
+                            navigation.navigate('Main' as never);
+                        }
+                    }}
                 />
             </View>
 
@@ -158,7 +170,7 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                         smallIcon: '@drawable/notification_icon',
                                         largeIcon: null,
                                     },
-                                },
+                                } as any,
                                 trigger: null, // Fire immediately
                             });
                         }}

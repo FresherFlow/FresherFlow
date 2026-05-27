@@ -71,7 +71,13 @@ const AppearanceScreen = ({ navigation }: Props) => {
       <View style={[styles.stickyHeader, { paddingTop: insets.top + 10 }]}>
         <SecondaryHeader 
             title="Appearance" 
-            onBack={() => navigation.goBack()}
+            onBack={() => {
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+              } else {
+                navigation.navigate('Main' as never);
+              }
+            }}
         />
       </View>
 
@@ -116,7 +122,8 @@ const AppearanceScreen = ({ navigation }: Props) => {
             </View>
         )}
 
-        <View style={styles.section}>
+        {/* Muted In-App Browser toggle as requested since it is not working reliably for now */}
+        {/* <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>App Settings</Text>
           <View style={{ gap: 16 }}>
             <PremiumToggle 
@@ -127,7 +134,7 @@ const AppearanceScreen = ({ navigation }: Props) => {
                 icon={Globe}
             />
           </View>
-        </View>
+        </View> */}
 
         <View style={[styles.infoBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.3) }]}>
           <View style={[styles.infoIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>

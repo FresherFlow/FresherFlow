@@ -7,9 +7,9 @@ import {
     ActivityIndicator,
     ScrollView,
     StatusBar,
-    Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { PremiumPopup } from '@/system/components/PremiumPopup';
 import { 
     RefreshCw, 
     DownloadCloud, 
@@ -45,6 +45,8 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
     const [status, setStatus] = useState<UpdateState>('idle');
     const [progress, setProgress] = useState(0);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
+    const [simulatedPopupVisible, setSimulatedPopupVisible] = useState(false);
+    const [readyPopupVisible, setReadyPopupVisible] = useState(false);
     const [updateMetadata, setUpdateMetadata] = useState<{
         version: string;
         createdAt: string;
@@ -154,14 +156,7 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
             stopSpinner();
             setStatus('error');
             const rawMsg = err instanceof Error ? err.message : 'Failed to query OTA endpoint';
-            let friendlyMsg = rawMsg;
-            if (rawMsg.includes('checkForUpdateAsync') || rawMsg.includes('Failed to check for update')) {
-                friendlyMsg = 'EAS Update check failed. Common causes:\n\n' +
-                    '• Channel Unlinked: The "staging" channel has not been linked to a branch in the Expo Dashboard.\n' +
-                    '• No Update Published: No update has been published to the target branch matching this runtime version.\n' +
-                    '• Build Mismatch: Staging is compiled with "in.fresherflow.app.staging", but the update was published with a different package identifier.';
-            }
-            setErrorMsg(friendlyMsg);
+            setErrorMsg(rawMsg);
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         }
     };
@@ -181,14 +176,7 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
                     clearInterval(interval);
                     setStatus('ready');
                     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    Alert.alert(
-                        "Update Downloaded",
-                        "Simulation complete. Would you like to reload to simulate applying the update?",
-                        [
-                            { text: "Cancel", style: "cancel", onPress: () => setStatus('idle') },
-                            { text: "Reload", style: "default", onPress: () => setStatus('idle') }
-                        ]
-                    );
+                    setSimulatedPopupVisible(true);
                 }
             }, 400);
             return;
@@ -199,16 +187,7 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
             setStatus('ready');
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             
-            Alert.alert(
-                "Update Ready",
-                "The update has been successfully downloaded. Reload the application now to apply updates?",
-                [
-                    { text: "Later", style: "cancel" },
-                    { text: "Reload", style: "default", onPress: async () => {
-                        await Updates.reloadAsync();
-                    }}
-                ]
-            );
+            setReadyPopupVisible(true);
         } catch (err) {
             setStatus('error');
             setErrorMsg(err instanceof Error ? err.message : 'Error downloading asset bundles');
@@ -396,6 +375,54 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
                     </TouchableOpacity>
                 )}
             </ScrollView>
+
+            <PremiumPopup
+                visible={simulatedPopupVisible}
+                title="Update Downloaded"
+                description="Simulation complete. Would you like to reload to simulate applying the update?"
+                actions={[
+                    {
+                        text: 'Cancel',
+                        style: 'cancel',
+                        onPress: () => setStatus('idle')
+                    },
+                    {
+                        text: 'Reload',
+                        style: 'default',
+                        onPress: () => setStatus('idle')
+                    }
+                ]}
+                onDismiss={() => {
+                    setSimulatedPopupVisible(false);
+                    setStatus('idle');
+                }}
+            />
+
+            <PremiumPopup
+                visible={readyPopupVisible}
+                title="Update Ready"
+                description="The update has been successfully downloaded. Reload the application now to apply updates?"
+                actions={[
+                    {
+                        text: 'Later',
+                        style: 'cancel',
+                        onPress: () => setReadyPopupVisible(false)
+                    },
+                    {
+                        text: 'Reload',
+                        style: 'default',
+                        onPress: async () => {
+                            setReadyPopupVisible(false);
+                            try {
+                                await Updates.reloadAsync();
+                            } catch (err) {
+                                console.warn('[OTA] Reload failed:', err);
+                            }
+                        }
+                    }
+                ]}
+                onDismiss={() => setReadyPopupVisible(false)}
+            />
         </Screen>
     );
 });

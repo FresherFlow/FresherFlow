@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { actionsApi, profileApi } from '@fresherflow/api-client';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useFeedStore } from '@/store/useFeedStore';
 import { useSaved } from '@repo/frontend-core';
 import { Profile } from '@fresherflow/types';
 import { saveLocalProfile, getLocalProfile } from '@/utils/localProfile';
@@ -18,7 +19,7 @@ let cachedProfile: Profile | null = null;
 let cachedCompletionPercentage = 0;
 
 let activeStatsPromise: Promise<{ applied: number; shareStats: typeof cachedShareStats }> | null = null;
-let activeProfilePromise: Promise<{ profile: Profile; completionPercentage: number }> | null = null;
+let activeProfilePromise: Promise<{ profile: Profile; completionPercentage: number; source: string }> | null = null;
 
 // --- Global Subscription listeners to synchronize all mounted hook instances ---
 const profileListeners = new Set<(profile: Profile | null) => void>();
@@ -195,6 +196,9 @@ export const useProfile = () => {
             updateGlobalPercentage(res.completionPercentage);
             await saveLocalProfile(res.profile, user.id);
             console.log(`[useProfile] Profile loaded from ${res.source}`);
+            // Trigger instant real-time re-scoring of jobs
+            const feedStore = useFeedStore.getState();
+            void feedStore.computeScoringAndCache(feedStore.cachedItems);
         } catch (e) {
             console.warn('[useProfile] Failed to fetch profile', e);
         } finally {
@@ -221,6 +225,10 @@ export const useProfile = () => {
         updateGlobalProfile(merged);
         updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
+
+        // Trigger instant real-time re-scoring of jobs
+        const feedStore = useFeedStore.getState();
+        void feedStore.computeScoringAndCache(feedStore.cachedItems);
 
         if (isAnonymous) return;
 
@@ -250,6 +258,10 @@ export const useProfile = () => {
         updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
 
+        // Trigger instant real-time re-scoring of jobs
+        const feedStore = useFeedStore.getState();
+        void feedStore.computeScoringAndCache(feedStore.cachedItems);
+
         if (isAnonymous) return;
 
         // 2. Write to Firebase RTDB — fire-and-forget
@@ -272,6 +284,10 @@ export const useProfile = () => {
         updateGlobalProfile(merged);
         updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
+
+        // Trigger instant real-time re-scoring of jobs
+        const feedStore = useFeedStore.getState();
+        void feedStore.computeScoringAndCache(feedStore.cachedItems);
 
         if (isAnonymous) return;
 

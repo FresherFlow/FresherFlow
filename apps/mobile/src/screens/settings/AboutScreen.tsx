@@ -142,7 +142,13 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 <SecondaryHeader 
                     title="About" 
                     subtitle={`FresherFlow v${Constants.expoConfig?.version || '1.0.0'}`}
-                    onBack={() => navigation.goBack()}
+                    onBack={() => {
+                        if (navigation.canGoBack()) {
+                            navigation.goBack();
+                        } else {
+                            navigation.navigate('Main' as never);
+                        }
+                    }}
                 />
             </View>
 

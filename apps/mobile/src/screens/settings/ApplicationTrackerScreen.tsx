@@ -6,13 +6,13 @@ import {
     TouchableOpacity,
     ActivityIndicator,
     Platform,
-    Alert,
     ScrollView,
     FlatList,
     Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
+import { PremiumPopup } from '@/system/components/PremiumPopup';
 import { 
     Briefcase,
     Trash2, 
@@ -33,6 +33,7 @@ import { SecondaryHeader, SurfaceCard, PremiumRefreshControl } from '@/system/co
 import { CompanyLogo } from '@repo/ui';
 import { SCREEN_WIDTH } from '@/system/constants/dimensions';
 import { TrackerStatusSheet, TrackerStatusSheetRef } from '@/system/components/TrackerStatusSheet';
+import { useToast } from '@/contexts/ToastContext';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ApplicationTracker'>;
 
@@ -138,11 +139,14 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
         updateStatus,
         removeAction,
     } = useTracker();
+    const { showError } = useToast();
 
     const [activeStatus, setActiveStatus] = useState<ActionType>(ActionType.PLANNED);
     const [celebrateJob, setCelebrateJob] = useState<Opportunity | null>(null);
     const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
     const [selectedStatus, setSelectedStatus] = useState<ActionType | null>(null);
+    const [removeConfirmVisible, setRemoveConfirmVisible] = useState(false);
+    const [removingOppId, setRemovingOppId] = useState<string | null>(null);
     const trackerSheetRef = useRef<TrackerStatusSheetRef>(null);
 
     const pagerRef = useRef<FlatList>(null);
@@ -164,7 +168,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
         try {
             await updateStatus(opportunityId, newStatus);
         } catch {
-            Alert.alert('Error', 'Failed to update status');
+            showError('Failed to update status');
         }
     };
 
@@ -177,29 +181,13 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                 setCelebrateJob(selectedOpp);
             }
         } catch {
-            Alert.alert('Error', 'Failed to update status');
+            showError('Failed to update status');
         }
     };
 
-    const handleRemove = async (opportunityId: string) => {
-        Alert.alert(
-            "Stop Tracking",
-            "Are you sure you want to remove this from your tracker?",
-            [
-                { text: "Cancel", style: "cancel" },
-                { 
-                    text: "Remove", 
-                    style: "destructive", 
-                    onPress: async () => {
-                        try {
-                            await removeAction(opportunityId);
-                        } catch {
-                            Alert.alert('Error', 'Failed to remove from tracker');
-                        }
-                    }
-                }
-            ]
-        );
+    const handleRemove = (opportunityId: string) => {
+        setRemovingOppId(opportunityId);
+        setRemoveConfirmVisible(true);
     };
 
     const grouped = useMemo(() => {
@@ -443,6 +431,41 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                 opportunity={selectedOpp}
                 currentStatus={selectedStatus}
                 onSelect={handleSelectStatus}
+            />
+
+            <PremiumPopup
+                visible={removeConfirmVisible}
+                title="Stop Tracking"
+                description="Are you sure you want to remove this from your tracker?"
+                actions={[
+                    {
+                        text: 'Cancel',
+                        style: 'cancel',
+                        onPress: () => {
+                            setRemoveConfirmVisible(false);
+                            setRemovingOppId(null);
+                        }
+                    },
+                    {
+                        text: 'Remove',
+                        style: 'destructive',
+                        onPress: async () => {
+                            if (removingOppId) {
+                                try {
+                                    await removeAction(removingOppId);
+                                } catch {
+                                    showError('Failed to remove from tracker');
+                                }
+                            }
+                            setRemoveConfirmVisible(false);
+                            setRemovingOppId(null);
+                        }
+                    }
+                ]}
+                onDismiss={() => {
+                    setRemoveConfirmVisible(false);
+                    setRemovingOppId(null);
+                }}
             />
         </Screen>
     );

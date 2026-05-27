@@ -33,6 +33,14 @@ const ClipboardListener = ({ onLinkFound }: Props) => {
 
   const checkClipboard = async () => {
     try {
+      if (typeof Clipboard.hasUrlAsync === 'function') {
+        try {
+          const hasUrl = await Clipboard.hasUrlAsync();
+          if (!hasUrl) return;
+        } catch (err) {
+          // Silently swallow native method errors on unsupported Android builds
+        }
+      }
       const hasString = await Clipboard.hasStringAsync();
       if (!hasString) return;
 

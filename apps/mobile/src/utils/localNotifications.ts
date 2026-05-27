@@ -195,7 +195,7 @@ async function firePush(
         smallIcon: '@drawable/notification_icon',
         largeIcon: null,
       },
-    },
+    } as any,
     trigger: null,
   });
 }
