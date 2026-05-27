@@ -196,9 +196,9 @@ export const useProfile = () => {
             updateGlobalPercentage(res.completionPercentage);
             await saveLocalProfile(res.profile, user.id);
             console.log(`[useProfile] Profile loaded from ${res.source}`);
-            // Trigger instant real-time re-scoring of jobs
+            // Trigger instant real-time full sync of jobs from CDN
             const feedStore = useFeedStore.getState();
-            void feedStore.computeScoringAndCache(feedStore.cachedItems);
+            void feedStore.performSync(true, true);
         } catch (e) {
             console.warn('[useProfile] Failed to fetch profile', e);
         } finally {
@@ -226,9 +226,9 @@ export const useProfile = () => {
         updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
 
-        // Trigger instant real-time re-scoring of jobs
+        // Trigger instant real-time full sync of jobs from CDN
         const feedStore = useFeedStore.getState();
-        void feedStore.computeScoringAndCache(feedStore.cachedItems);
+        void feedStore.performSync(true, true);
 
         if (isAnonymous) return;
 
@@ -258,9 +258,9 @@ export const useProfile = () => {
         updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
 
-        // Trigger instant real-time re-scoring of jobs
+        // Trigger instant real-time full sync of jobs from CDN
         const feedStore = useFeedStore.getState();
-        void feedStore.computeScoringAndCache(feedStore.cachedItems);
+        void feedStore.performSync(true, true);
 
         if (isAnonymous) return;
 
@@ -285,9 +285,9 @@ export const useProfile = () => {
         updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
 
-        // Trigger instant real-time re-scoring of jobs
+        // Trigger instant real-time full sync of jobs from CDN
         const feedStore = useFeedStore.getState();
-        void feedStore.computeScoringAndCache(feedStore.cachedItems);
+        void feedStore.performSync(true, true);
 
         if (isAnonymous) return;
 
