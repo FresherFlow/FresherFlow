@@ -1,10 +1,13 @@
 import { useEffect } from 'react';
-import { Alert } from 'react-native';
+import { } from 'react-native';
 import * as Linking from 'expo-linking';
 import auth, { isFirebaseAuthAvailable } from '@/config/firebase';
 import { storage } from '@repo/frontend-core';
+import { useToast } from '@/contexts/ToastContext';
 
 export const useEmailLinkSignIn = () => {
+    const { showToast, showError } = useToast();
+
     useEffect(() => {
         if (!isFirebaseAuthAvailable()) return;
 
@@ -17,9 +20,9 @@ export const useEmailLinkSignIn = () => {
 
                     const email = await storage.getItem('ff_email_for_sign_in');
                     if (!email) {
-                        Alert.alert(
-                            'Verification Required',
-                            'For security, please open the sign-in link on the same device where you requested it, or make sure your session was not interrupted.'
+                        showToast(
+                            'For security, please open the sign-in link on the same device where you requested it.',
+                            'warning'
                         );
                         return;
                     }
@@ -34,8 +37,7 @@ export const useEmailLinkSignIn = () => {
                 }
             } catch (error: unknown) {
                 console.error('[Auth] Error handling deep link:', error);
-                Alert.alert(
-                    'Authentication Failed',
+                showError(
                     'The sign-in link may have expired or is invalid. Please request a new link.'
                 );
             }

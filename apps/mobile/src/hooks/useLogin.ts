@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useNotifications, storage } from '@repo/frontend-core';
@@ -20,7 +20,7 @@ const authSchema = z.object({
 type AuthFormData = z.infer<typeof authSchema>;
 
 export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: string } }) => {
-    const { requestPushPermission } = useNotifications();
+    const { requestPushPermission, showToast } = useNotifications();
     const [otpSent, setOtpSent] = useState(!!route.params?.prefilledEmail);
     const [loading, setLoading] = useState(false);
     const [emailLoading, setEmailLoading] = useState(false);
@@ -76,12 +76,12 @@ export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: s
         } catch (error: unknown) {
             console.error('[Auth] Failed to send email magic link:', error);
             const msg = error instanceof Error ? error.message : 'Could not send sign-in link';
-            Alert.alert('Verification Failed', `${msg}\n\nPlease check your internet connection.`);
+            showToast(`Verification Failed: ${msg}`, 'error');
         } finally {
             setLoading(false);
             setEmailLoading(false);
         }
-    }, []);
+    }, [showToast]);
 
     const handleGoogleSignIn = useCallback(async () => {
         setLoading(true);
@@ -108,13 +108,13 @@ export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: s
         } catch (error: unknown) {
             console.error('[Auth] Google Sign-In failed:', error);
             if (error && typeof error === 'object' && 'code' in error && error.code !== 'ASYNC_OP_IN_PROGRESS') {
-                Alert.alert('Google Sign-In failed', 'Could not complete authentication.');
+                showToast('Google Sign-In failed: Could not complete authentication.', 'error');
             }
         } finally {
             setLoading(false);
             setGoogleLoading(false);
         }
-    }, [requestPushPermission]);
+    }, [requestPushPermission, showToast]);
 
     const handleAppleSignIn = useCallback(async () => {
         setLoading(true);
@@ -148,13 +148,13 @@ export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: s
                 // User canceled the flow - silent fail
             } else {
                 console.error('[Auth] Apple Sign-In failed:', error);
-                Alert.alert('Apple Sign-In failed', 'Could not complete authentication.');
+                showToast('Apple Sign-In failed: Could not complete authentication.', 'error');
             }
         } finally {
             setLoading(false);
             setAppleLoading(false);
         }
-    }, [requestPushPermission]);
+    }, [requestPushPermission, showToast]);
 
     const handleResend = useCallback(async () => {
         if (resendTimer > 0 || loading) return;

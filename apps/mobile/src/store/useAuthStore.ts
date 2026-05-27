@@ -78,7 +78,6 @@ export const useAuthStore = create<AuthState>()(
       console.log('[Auth] setAuth called. Saving to MMKV...', user);
       const currentState = get();
       const canKeepLocalUsername =
-        currentState.user?.id === user.id &&
         !currentState.user?.isAnonymous &&
         Boolean(currentState.user?.username);
       const isAnonymous = user.isAnonymous ?? currentState.firebaseUser?.isAnonymous ?? false;
@@ -91,7 +90,17 @@ export const useAuthStore = create<AuthState>()(
       };
       void secureStorage.setItem('ff_auth_token_v1', token);
       setString('ff_cached_user_profile_v3', JSON.stringify(mergedUser));
+      // Write snapshot under Postgres UUID (primary key for profile operations)
       saveOnboardingUser(mergedUser, get().skipUsernameSetup);
+      // ALSO write under Firebase UID so boot-time setFirebaseUser can find it without a handshake
+      const fbUid = currentState.firebaseUser?.uid;
+      if (fbUid && fbUid !== mergedUser.id) {
+        writeOnboardingSnapshot(fbUid, {
+          user: { ...mergedUser, id: fbUid }, // Keep Firebase UID as id in this snapshot
+          profile: mergedUser.profile || readOnboardingSnapshot(mergedUser.id)?.profile || null,
+          skipUsernameSetup: get().skipUsernameSetup || Boolean(mergedUser.username),
+        });
+      }
       void writeFirebaseOnboardingRecord(currentState.firebaseUser, {
         username: mergedUser.username,
         fullName: mergedUser.fullName,
@@ -155,7 +164,11 @@ export const useAuthStore = create<AuthState>()(
             }
             state.isAuthenticated = false;
         } else if (!state.user || state.user.id !== fbUser.uid || state.user.isOptimistic || state.user.isAnonymous) {
-            const cached = readOnboardingSnapshot(fbUser.uid);
+            // Try snapshot by Firebase UID first (set by setAuth after handshake)
+            // Fall back to Postgres UUID key (stored before this fix was deployed)
+            const cached =
+                readOnboardingSnapshot(fbUser.uid) ??
+                (state.user?.id && state.user.id !== fbUser.uid ? readOnboardingSnapshot(state.user.id) : null);
             const fallbackUser: User = {
                 id: fbUser.uid,
                 email: fbUser.email || undefined,
@@ -380,13 +393,30 @@ export const AuthManager = {
       return;
     }
 
+    let hasResolvedAuthState = false;
     // 4. Initialize Firebase auth listeners
     auth().onAuthStateChanged((fbUser) => {
       useAuthStore.getState().setFirebaseUser(fbUser);
       clearTimeout(startupTimeout);
+      
+      if (!hasResolvedAuthState) {
+        hasResolvedAuthState = true;
+        if (!fbUser) {
+          // Only initiate automatic guest session if onboarding has already been completed in the past
+          AsyncStorage.getItem('ff_onboarding_completed').then((completed) => {
+            if (completed === 'true') {
+              console.log('[Auth] No active session restored. Initiating automatic guest session...');
+              void useAuthStore.getState().ensureSession();
+            } else {
+              console.log('[Auth] First run / Onboarding active. Bypassing automatic guest session to let user authenticate.');
+            }
+          }).catch(() => {
+            console.log('[Auth] Error reading onboarding status. Bypassing automatic guest session.');
+          });
+        } else {
+          console.log('[Auth] Restored active session on boot:', fbUser.uid, fbUser.isAnonymous ? '(Guest)' : '(Member)');
+        }
+      }
     });
-
-    // 5. Initialize session (Anonymous login if needed)
-    void useAuthStore.getState().ensureSession();
   }
 };

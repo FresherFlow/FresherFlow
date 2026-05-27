@@ -5,8 +5,8 @@ import { getJSON, setJSON, remove } from './storage';
 type ProfileSyncKind = 'education' | 'preferences' | 'readiness';
 
 type SyncQueueItem =
-  | { id: string; userId: string; kind: 'username'; username: string; createdAt: number }
-  | { id: string; userId: string; kind: ProfileSyncKind; payload: Record<string, unknown>; createdAt: number };
+  | { id: string; userId: string; firebaseUid?: string; kind: 'username'; username: string; createdAt: number }
+  | { id: string; userId: string; firebaseUid?: string; kind: ProfileSyncKind; payload: Record<string, unknown>; createdAt: number };
 
 export interface OnboardingSnapshot {
   user: User;
@@ -88,15 +88,29 @@ function setQueue(items: SyncQueueItem[]) {
   setJSON(QUEUE_KEY, items);
 }
 
-export function enqueueUsernameClaim(userId: string, username: string) {
-  const queue = getQueue().filter(item => !(item.userId === userId && item.kind === 'username'));
+export function enqueueUsernameClaim(userId: string, username: string, firebaseUid?: string) {
+  // Deduplicate: remove any existing username claim for this user (by either ID)
+  const queue = getQueue().filter(item => !(
+    item.kind === 'username' &&
+    (item.userId === userId || (firebaseUid && item.userId === firebaseUid))
+  ));
   queue.push({
     id: `username:${userId}:${Date.now()}`,
     userId,
+    firebaseUid,
     kind: 'username',
     username,
     createdAt: Date.now(),
   });
+  setQueue(queue);
+}
+
+/** Remove a username claim from the queue (call after a successful background HTTP claim). */
+export function removeUsernameClaim(userId: string, firebaseUid?: string) {
+  const queue = getQueue().filter(item => !(
+    item.kind === 'username' &&
+    (item.userId === userId || (firebaseUid && item.userId === firebaseUid))
+  ));
   setQueue(queue);
 }
 
@@ -112,30 +126,37 @@ export function enqueueProfileSync(userId: string, kind: ProfileSyncKind, payloa
   setQueue(queue);
 }
 
-function isPermanentSyncError(error: unknown) {
+function isPermanentSyncError(error: unknown, kind?: string) {
   const status = (error as { status?: number })?.status;
-  // 401/403 = auth issue (token not ready yet or expired) — retry, don't drop
+  // For username claims: 403 means "already claimed / cooldown" — the username IS set, so drop it
+  if (kind === 'username' && status === 403) return true;
+  // 401 = auth issue (token not ready yet or expired) — retry, don't drop
   // 408/429 = timeout / rate limit — retry
   // 400/404/422 = bad data — drop permanently
-  const AUTH_ERRORS = [401, 403];
+  const AUTH_ERRORS = [401];
   const TRANSIENT_ERRORS = [408, 429];
   if (!status || status >= 500) return false; // server error — retry
   if (AUTH_ERRORS.includes(status)) return false; // auth error — retry
   if (TRANSIENT_ERRORS.includes(status)) return false; // transient — retry
-  return true; // 400, 404, 422, etc — bad data, drop
+  return true; // 400, 403, 404, 422, etc — drop
 }
 
 const QUEUE_ITEM_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
-export async function flushOnboardingSyncQueue(userId: string): Promise<number> {
+export async function flushOnboardingSyncQueue(userId: string, firebaseUid?: string): Promise<number> {
   const queue = getQueue();
   const remaining: SyncQueueItem[] = [];
   let flushed = 0;
   const now = Date.now();
 
   for (const item of queue) {
-    // Keep items belonging to other users — don't touch them
-    if (item.userId !== userId) {
+    // Match by Postgres userId OR Firebase UID (stored at enqueue time)
+    const isOwnItem =
+      item.userId === userId ||
+      (firebaseUid && (item.userId === firebaseUid || item.firebaseUid === firebaseUid)) ||
+      (item.firebaseUid && item.firebaseUid === firebaseUid);
+
+    if (!isOwnItem) {
       remaining.push(item);
       continue;
     }
@@ -159,8 +180,8 @@ export async function flushOnboardingSyncQueue(userId: string): Promise<number> 
       flushed += 1;
       console.log('[onboardingState] Flushed sync item:', item.kind);
     } catch (error) {
-      if (isPermanentSyncError(error)) {
-        console.warn('[onboardingState] Dropping bad-data sync failure:', item.kind, error);
+      if (isPermanentSyncError(error, item.kind)) {
+        console.warn('[onboardingState] Dropping permanent sync failure:', item.kind, (error as any)?.status);
       } else {
         // Auth/network/server error — keep in queue for next flush
         console.warn('[onboardingState] Keeping sync item for retry:', item.kind, (error as any)?.status);

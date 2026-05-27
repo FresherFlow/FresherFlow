@@ -22,6 +22,7 @@ import { Screen } from '@/system/layout/Layout';
 import { SecondaryHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { SPACING, RADIUS, mScale } from '@/system/constants/dimensions';
 import { alpha } from '@/theme';
+import { enqueueUsernameClaim, removeUsernameClaim } from '@/utils/onboardingState';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import axios from 'axios';
@@ -142,16 +143,28 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ route, navigation }) => 
             // 1. Update user profile optimistically in local store/MMKV immediately
             updateUser({ username, isOptimistic: false });
             
-            // 2. Fire the claim request in the background (tolerating sleeping Render cold start)
+            // 2. Enqueue the username claim with Firebase UID so it persists offline and syncs automatically later
+            const authState = useAuthStore.getState();
+            const postgresId = authState.user?.id;
+            const firebaseUid = authState.firebaseUser?.uid;
+            if (postgresId) {
+                enqueueUsernameClaim(postgresId, username, firebaseUid);
+            }
+            
+            // 3. Fire the claim request in the background (tolerating sleeping Render cold start)
             void usernameApi.claim(username)
                 .then(() => {
                     console.log('[ChooseUsername] Background username claim succeeded on server:', username);
+                    // Clear the queue item — no need for the flush to re-send it
+                    const s = useAuthStore.getState();
+                    removeUsernameClaim(s.user?.id ?? '', s.firebaseUser?.uid);
                 })
                 .catch((err) => {
                     console.error('[ChooseUsername] Background username claim failed on server:', err.message || err);
+                    // Queue item stays — flush will retry on next handshake
                 });
             
-            // 3. Dismiss the screen instantly
+            // 4. Dismiss the screen instantly
             const canGoBack = navigation.canGoBack();
             if (canGoBack) {
                 navigation.goBack();

@@ -54,7 +54,8 @@ export const useAuthHandshake = () => {
 
                     // 2. Hydrate career profile — Firebase first (fast), API as fallback for new/existing users
                     try {
-                        let profile = await readFirebaseProfile(response.user.id as string);
+                        // Firebase RTDB path keyed by Firebase UID (auth.uid) — NOT Postgres UUID
+                        let profile = await readFirebaseProfile(firebaseUser.uid);
 
                         if (!profile) {
                             // Firebase empty (new user or pre-Firebase feature) — pull from API and backfill Firebase
@@ -64,7 +65,7 @@ export const useAuthHandshake = () => {
 
                             // Backfill Firebase so next login is fast
                             if (profile) {
-                                void writeFirebaseProfile(response.user.id as string, profile);
+                                void writeFirebaseProfile(firebaseUser.uid, profile);
                             }
                         }
 
@@ -76,7 +77,7 @@ export const useAuthHandshake = () => {
                         console.warn('[Auth] Profile hydration failed:', profileError);
                     }
 
-                    await flushOnboardingSyncQueue(response.user.id as string);
+                    await flushOnboardingSyncQueue(response.user.id as string, firebaseUser.uid);
                     await flushOfflineActions(response.user.id as string);
                 }
             } catch (error) {

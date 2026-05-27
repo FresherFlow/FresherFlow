@@ -30,10 +30,14 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation, route }) => {
     const [step, setStep] = useState<number>(0);
     const [skippingAuth, setSkippingAuth] = useState(false);
 
-    // Step 0 -> Step 1: Advance when user successfully authenticates
+    // Step 0 -> Step 1: Advance when user successfully authenticates, or complete if anonymous guest
     useEffect(() => {
-        if (step === 0 && isAuthenticated && user && !user.isAnonymous) {
-            setStep(1);
+        if (step === 0 && user) {
+            if (user.isAnonymous) {
+                void handleFinishOnboarding();
+            } else if (isAuthenticated) {
+                setStep(1);
+            }
         }
     }, [isAuthenticated, user, step]);
 
