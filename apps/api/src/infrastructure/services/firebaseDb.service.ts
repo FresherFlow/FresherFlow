@@ -21,9 +21,10 @@ export class FirebaseDbService {
                 updatedAt: Date.now(),
             });
             logger.debug(`[FirebaseDbService] Updated onboarding record for ${firebaseUid}`);
-        } catch (error: any) {
+        } catch (error) {
+            const err = error as { code?: string; errorInfo?: { code?: string }; message?: string };
             // In local dev (fallback mode) RTDB is not initialized — skip silently
-            if (error?.code === 'app/invalid-credential' || error?.errorInfo?.code === 'app/no-database-url' || error?.message?.includes('database')) {
+            if (err?.code === 'app/invalid-credential' || err?.errorInfo?.code === 'app/no-database-url' || err?.message?.includes('database')) {
                 return;
             }
             logger.error(`[FirebaseDbService] Failed to update onboarding record for ${firebaseUid}:`, error);

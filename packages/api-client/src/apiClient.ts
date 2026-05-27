@@ -88,7 +88,7 @@ export class ApiClient {
                     normalizedError = new OfflineError();
                 } else {
                     const status = error.response.status;
-                    const body = error.response.data as any;
+                    const body = error.response.data as { error?: { message?: string }; message?: string } | null | undefined;
                     const message = body?.error?.message || body?.message || `Request failed (${status})`;
                     normalizedError = new HttpError(message, status, body);
                 }

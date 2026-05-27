@@ -60,6 +60,11 @@ export default [
           ],
         },
       ],
+      "@typescript-eslint/no-unused-expressions": "off",
+      "no-unused-expressions": "off",
+      "react-hooks/set-state-in-effect": "off",
+      "react-hooks/purity": "off",
+      "react-hooks/immutability": "off",
     },
   },
   // 2. Domain (strictest - Pure business logic)

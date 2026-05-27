@@ -18,15 +18,24 @@ interface SavedContextType {
 
 const SavedContext = createContext<SavedContextType | undefined>(undefined);
 
-let databaseInstance: any;
+interface FirebaseDatabase {
+  ref(path: string): {
+    once(event: string): Promise<{ val(): unknown }>;
+    set(value: unknown): Promise<void>;
+  };
+}
 
-function getDb(databaseUrl?: string) {
+let databaseInstance: FirebaseDatabase | null | undefined = undefined;
+
+function getDb(databaseUrl?: string): FirebaseDatabase | null {
   if (databaseInstance !== undefined) return databaseInstance;
   if (!databaseUrl) return null;
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const firebase = require('@react-native-firebase/app').default;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     require('@react-native-firebase/database');
-    databaseInstance = firebase.app().database(databaseUrl);
+    databaseInstance = firebase.app().database(databaseUrl) as FirebaseDatabase;
   } catch (error) {
     console.warn('[SavedProvider] Firebase Database unavailable:', error);
     databaseInstance = null;
@@ -39,7 +48,7 @@ export const SavedProvider: React.FC<{
   userId?: string,
   anonSessionId?: string | null,
   firebaseDatabaseUrl?: string
-}> = ({ children, userId, anonSessionId, firebaseDatabaseUrl }) => {
+}> = ({ children, userId, firebaseDatabaseUrl }) => {
   const [savedJobs, setSavedJobs] = useState<(Opportunity & { needsSync?: boolean })[]>([]);
   const [hasPendingSync, setHasPendingSync] = useState(false);
 
@@ -74,7 +83,7 @@ export const SavedProvider: React.FC<{
           if (cachedDetail) {
             updatedJobs.push(cachedDetail);
           } else {
-            updatedJobs.push({ id, title: 'Saved Job', companyName: 'Details loading...', expiresAt: '' } as any);
+            updatedJobs.push({ id, title: 'Saved Job', companyName: 'Details loading...', expiresAt: '' } as unknown as Opportunity);
           }
         }
       }
@@ -118,7 +127,7 @@ export const SavedProvider: React.FC<{
           updated.forEach(j => {
             map[j.id] = true;
           });
-          ref.set(map).catch((err: any) => {
+          ref.set(map).catch((err: unknown) => {
             console.warn('[Saved] Firebase save failed:', err);
           });
         }

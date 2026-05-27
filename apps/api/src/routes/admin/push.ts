@@ -5,7 +5,7 @@ import { logger } from '@fresherflow/logger';
 
 const router = Router();
 
-router.post('/broadcast', async (req: Request, res: Response): Promise<any> => {
+router.post('/broadcast', async (req: Request, res: Response) => {
     try {
         const { title, body } = req.body;
         if (!title || !body) {
