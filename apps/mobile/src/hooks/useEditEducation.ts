@@ -1,10 +1,11 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import { useProfile } from './useProfile';
+import { useToast } from '@/contexts/ToastContext';
 
 const educationSchema = z.object({
     educationLevel: z.string().min(1, 'Required'),
@@ -58,6 +59,7 @@ export interface EducationFormData {
 
 export const useEditEducation = () => {
     const { profile, updateEducation, loadingCache } = useProfile();
+    const { showError } = useToast();
     const [saving, setSaving] = useState(false);
 
     const {
@@ -123,7 +125,7 @@ export const useEditEducation = () => {
                 }),
             });
         } catch (error: unknown) {
-            Alert.alert('Error', (error as Error).message || 'Failed to update education');
+            showError((error as Error).message || 'Failed to update education');
         } finally {
             setSaving(false);
         }

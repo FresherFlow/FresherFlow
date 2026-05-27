@@ -175,6 +175,17 @@ const ShareScreen: React.FC = () => {
         const checkClip = async () => {
             try {
                 if (!Clipboard || typeof Clipboard.hasStringAsync !== 'function') return;
+                if (typeof Clipboard.hasUrlAsync === 'function') {
+                    try {
+                        const hasUrl = await Clipboard.hasUrlAsync();
+                        if (!hasUrl) {
+                            setClipboardLink(null);
+                            return;
+                        }
+                    } catch (err) {
+                        // Silently swallow native method errors on unsupported Android builds
+                    }
+                }
                 const hasString = await Clipboard.hasStringAsync();
                 if (!hasString) return;
 

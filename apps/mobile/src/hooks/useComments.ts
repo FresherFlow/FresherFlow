@@ -28,7 +28,7 @@ export function useComments(opportunityId: string) {
         return !!newComment;
       } catch (err: unknown) {
         console.error('[useComments] Failed to post comment to Firebase:', err);
-        return false;
+        throw err;
       } finally {
         setPosting(false);
       }

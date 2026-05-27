@@ -1,9 +1,11 @@
 import { useState, useCallback } from 'react';
-import { Alert } from 'react-native';
+import { } from 'react-native';
 import { useSaved } from '@repo/frontend-core';
+import { useToast } from '@/contexts/ToastContext';
 
 export const useSavedJobs = () => {
     const { savedJobs, syncSavedJobs } = useSaved();
+    const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     
     const refresh = useCallback(async () => {
@@ -18,7 +20,7 @@ export const useSavedJobs = () => {
     }, [syncSavedJobs]);
 
     const clearAll = () => {
-        Alert.alert('Coming Soon', 'Bulk clear is not yet implemented.');
+        showToast('Bulk clear is not yet implemented.', 'info');
     };
 
     return {

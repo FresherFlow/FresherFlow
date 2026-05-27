@@ -4,23 +4,26 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 Sentry.init({
   dsn: 'https://e23ea3b19c0247d5f0366941f9e490c8@o4511002230849536.ingest.us.sentry.io/4511449039175680',
+  environment: process.env.APP_ENV || process.env.EXPO_PUBLIC_APP_ENV || 'development',
   enableNative: true,
   tracesSampleRate: 1.0,
 });
 import { NavigationContainer, DarkTheme, DefaultTheme, useNavigationContainerRef } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Alert, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { AppNavigator, RootStackParamList } from './src/navigation/AppNavigator';
 import { BrandIntroLoader } from './src/components/BrandIntroLoader';
 import { OfflineBanner } from './src/system/components/OfflineBanner';
 import * as Notifications from 'expo-notifications';
 import * as Updates from 'expo-updates';
 import * as Linking from 'expo-linking';
+import axios from 'axios';
 import { getOpportunityAtomic, readDetailCache } from './src/utils/offlineCache';
 import { useNotificationStore } from './src/store/useNotificationStore';
 import { openExternalURL } from './src/utils/browser';
 import * as SplashScreen from 'expo-splash-screen';
+import { PremiumPopup } from './src/system/components/PremiumPopup';
 
 // Keep the native splash screen visible until React Native is fully loaded and BrandIntroLoader renders
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -95,13 +98,13 @@ import { getFirebaseDatabaseUrl } from './src/config/firebase';
 // This allows @repo/frontend-core providers to remain "pure" (prop-based) 
 // while the mobile app remains "Zustand-first".
 const AuthBridge = ({ children }: { children: React.ReactNode }) => {
-  const { user } = useAuthStore();
-  // We don't have a separate anonSessionId in mobile yet, 
-  // but we pass it as null to satisfy the prop requirement.
+  const { user, firebaseUser } = useAuthStore();
+  // RTDB paths are keyed by Firebase UID (auth.uid), NOT the Postgres UUID (user.id)
+  const rtdbUserId = firebaseUser?.uid ?? user?.id;
   return (
     <NotificationProvider userId={user?.id}>
       <SavedProvider 
-        userId={user?.id} 
+        userId={rtdbUserId} 
         anonSessionId={null} 
         firebaseDatabaseUrl={getFirebaseDatabaseUrl()}
       >
@@ -112,17 +115,30 @@ const AuthBridge = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+
 import { useFeedStore } from './src/store/useFeedStore';
 
 const AppContent = () => {
   useAuthHandshake(); // Background handshake logic
   useEmailLinkSignIn(); // Listen and complete email magic link logins
   const [isLoaded, setIsLoaded] = useState(false);
+  const [updatePopupVisible, setUpdatePopupVisible] = useState(false);
   const pendingNavigationRef = React.useRef<{ screen: string; params: any } | null>(null);
 
   React.useEffect(() => {
     // Globally hydrate the master feed on app start
     void useFeedStore.getState().hydrate();
+
+    // Cold-start wake up call for backend server on app boot
+    const wakeUpBackend = async () => {
+      try {
+        await axios.get(API_URL, { timeout: 8000 });
+        console.log('[API] Backend cold-start wake up dispatched.');
+      } catch {
+        // Silently catch since even a timeout/404/401 is enough to wake the server up
+      }
+    };
+    void wakeUpBackend();
     
     // Check if first run - if so, bypass BrandIntroLoader splash animation to go straight to onboarding
     AsyncStorage.getItem('ff_first_run_done').then(val => {
@@ -157,22 +173,7 @@ const AppContent = () => {
 
   React.useEffect(() => {
     if (isUpdatePending) {
-      Alert.alert(
-        'Update Ready',
-        'A new software update has been downloaded in the background. Reload now to apply the changes?',
-        [
-          { text: 'Later', style: 'cancel' },
-          {
-            text: 'Reload',
-            style: 'default',
-            onPress: () => {
-              Updates.reloadAsync().catch((err) => {
-                console.warn('[OTA] Reload failed:', err);
-              });
-            },
-          },
-        ]
-      );
+      setUpdatePopupVisible(true);
     }
   }, [isUpdatePending]);
 
@@ -270,6 +271,30 @@ const AppContent = () => {
         <OfflineBanner />
         <GlobalActionSheet />
       </FirstRunGate>
+
+      <PremiumPopup
+        visible={updatePopupVisible}
+        title="Update Ready"
+        description="A new software update has been downloaded in the background. Reload now to apply the changes?"
+        actions={[
+          {
+            text: 'Later',
+            style: 'cancel',
+            onPress: () => setUpdatePopupVisible(false)
+          },
+          {
+            text: 'Reload',
+            style: 'default',
+            onPress: () => {
+              setUpdatePopupVisible(false);
+              Updates.reloadAsync().catch((err) => {
+                console.warn('[OTA] Reload failed:', err);
+              });
+            }
+          }
+        ]}
+        onDismiss={() => setUpdatePopupVisible(false)}
+      />
 
       {!isLoaded && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 99999 }]}>

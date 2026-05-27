@@ -10,10 +10,13 @@ import {
     StatusBar,
     NativeSyntheticEvent,
     NativeScrollEvent,
+    Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bookmark, Compass, Bell } from 'lucide-react-native';
+import { Bookmark, Compass, Bell, ChevronUp } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useScrollToTop } from '@react-navigation/native';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { Opportunity } from '@fresherflow/types';
 import { JobCard } from '@/system/components/OpportunityCard';
@@ -48,6 +51,9 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { unreadCount } = useNotifications();
     const { isSaved, toggleSave } = useSaved();
     const { showSuccess } = useToast();
+    const flashListRef = useRef<any>(null);
+    useScrollToTop(flashListRef);
+    const [showScrollTop, setShowScrollTop] = React.useState(false);
 
     // Track scroll position for hide/show tab bar
     const scrollOffset = useRef(0);
@@ -60,6 +66,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const handleScroll = useCallback((event: any) => {
         const currentOffset = event.nativeEvent.contentOffset.y;
+        setShowScrollTop(currentOffset > 600);
         const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
 
         if (Math.abs(currentOffset - scrollOffset.current) > 20) {
@@ -138,6 +145,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
             <FlashList<Opportunity & { isHeader?: boolean }>
+                ref={flashListRef}
                 data={listData}
                 extraData={{ savedJobs, isSaved }}
                 keyExtractor={(item) => item.id}
@@ -176,6 +184,26 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <PremiumRefreshControl refreshing={loading} onRefresh={refresh} />
                 }
             />
+
+            {showScrollTop && (
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    }}
+                    style={[
+                        styles.scrollTopBtn,
+                        {
+                            backgroundColor: currentTheme.colors.surface,
+                            borderColor: alpha(currentTheme.colors.border, 0.3),
+                            bottom: insets.bottom + 110,
+                        },
+                    ]}
+                >
+                    <ChevronUp size={20} color={currentTheme.colors.primary} />
+                </TouchableOpacity>
+            )}
         </Screen>
     );
 });
@@ -258,6 +286,28 @@ const styles = StyleSheet.create({
         fontSize: 13,
         fontWeight: '900',
         letterSpacing: 1,
+    },
+    scrollTopBtn: {
+        position: 'absolute',
+        right: 28,
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        zIndex: 9999,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000',
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: 0.15,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 4,
+            },
+        }),
     }
 });
 

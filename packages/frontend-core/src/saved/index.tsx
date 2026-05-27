@@ -97,34 +97,35 @@ export const SavedProvider: React.FC<{
   }, [userId, firebaseDatabaseUrl]);
 
   const toggleSave = async (job: Opportunity) => {
-    let updated: (Opportunity & { needsSync?: boolean })[];
-    const isAlreadySaved = savedJobs.some((j) => j.id === job.id);
+    setSavedJobs((prev) => {
+      let updated: (Opportunity & { needsSync?: boolean })[];
+      const isAlreadySaved = prev.some((j) => j.id === job.id);
 
-    if (isAlreadySaved) {
-      updated = savedJobs.filter((j) => j.id !== job.id);
-    } else {
-      updated = [...savedJobs, { ...job, needsSync: false }];
-      void saveDetailCache(job);
-    }
+      if (isAlreadySaved) {
+        updated = prev.filter((j) => j.id !== job.id);
+      } else {
+        updated = [...prev, { ...job, needsSync: false }];
+        void saveDetailCache(job);
+      }
 
-    setSavedJobs(updated);
-    void saveSavedJobs(updated);
+      void saveSavedJobs(updated);
 
-    if (!userId || !firebaseDatabaseUrl) return;
+      if (userId && firebaseDatabaseUrl) {
+        const db = getDb(firebaseDatabaseUrl);
+        if (db) {
+          const ref = db.ref(`/users/${userId}/savedJobs`);
+          const map: Record<string, boolean> = {};
+          updated.forEach(j => {
+            map[j.id] = true;
+          });
+          ref.set(map).catch((err: any) => {
+            console.warn('[Saved] Firebase save failed:', err);
+          });
+        }
+      }
 
-    try {
-      const db = getDb(firebaseDatabaseUrl);
-      if (!db) return;
-
-      const ref = db.ref(`/users/${userId}/savedJobs`);
-      const map: Record<string, boolean> = {};
-      updated.forEach(j => {
-        map[j.id] = true;
-      });
-      await ref.set(map);
-    } catch (err) {
-      console.warn('[Saved] Firebase save failed:', err);
-    }
+      return updated;
+    });
   };
 
   const isSaved = (jobId: string) => savedJobs.some((j) => j.id === jobId);

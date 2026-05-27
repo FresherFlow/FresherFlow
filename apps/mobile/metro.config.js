@@ -6,6 +6,9 @@ const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
 
+// Ensure the project root for Metro is the workspace root so all monorepo files resolve correctly
+config.projectRoot = workspaceRoot;
+
 // 1. Prefer platform/native files before generic TS/JS.
 const platformExts = ['android.ts', 'android.tsx', 'native.ts', 'native.tsx', 'android.js', 'android.jsx', 'native.js', 'native.jsx'];
 config.resolver.sourceExts = [

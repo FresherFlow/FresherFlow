@@ -3,7 +3,7 @@ import { StyleSheet, Text, View, Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '@/contexts/ThemeContext';
 import { mScale } from '../constants/dimensions';
-import { WifiOff } from 'lucide-react-native';
+import { WifiOff, Wifi } from 'lucide-react-native';
 import { MotiView, AnimatePresence } from 'moti';
 import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,60 +18,93 @@ const alpha = (color: string, opacity: number) => {
 };
 
 export const OfflineBanner = () => {
-  const [isOffline, setIsOffline] = useState(false);
+  const [status, setStatus] = useState<'offline' | 'online' | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
   const wasOfflineRef = useRef(false);
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const { currentTheme } = useTheme();
   const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const removeNetInfoSubscription = NetInfo.addEventListener((state) => {
-      // Small delay to prevent flickering on quick reconnects
-      const offline = state.isConnected === false;
-      setIsOffline(offline);
+      const isCurrentlyOffline = state.isConnected === false;
 
-      if (!offline && wasOfflineRef.current) {
-        console.log('[OfflineBanner] Network reconnected! Syncing offline queues...');
+      // Handle transitions
+      if (isCurrentlyOffline) {
+        // Transition to Offline
+        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        setStatus('offline');
+        setIsVisible(true);
+        
+        hideTimeoutRef.current = setTimeout(() => {
+          setIsVisible(false);
+        }, 4000);
+      } else if (!isCurrentlyOffline && wasOfflineRef.current) {
+        // Transition back to Online
+        if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+        setStatus('online');
+        setIsVisible(true);
+
         const user = useAuthStore.getState().user;
         void syncCommentQueue();
         void syncShareQueue();
         if (user && !user.isAnonymous) {
           void flushOfflineActions(user.id);
         }
+
+        hideTimeoutRef.current = setTimeout(() => {
+          setIsVisible(false);
+        }, 4000);
       }
 
-      wasOfflineRef.current = offline;
+      wasOfflineRef.current = isCurrentlyOffline;
     });
 
-    return () => removeNetInfoSubscription();
+    return () => {
+      removeNetInfoSubscription();
+      if (hideTimeoutRef.current) clearTimeout(hideTimeoutRef.current);
+    };
   }, []);
+
+  const config = status === 'online' ? {
+    icon: Wifi,
+    color: currentTheme.colors.success,
+    text: 'Back online',
+  } : {
+    icon: WifiOff,
+    color: currentTheme.colors.error,
+    text: "You're offline",
+  };
+
+  const Icon = config.icon;
 
   return (
     <AnimatePresence>
-      {isOffline && (
+      {isVisible && (
         <MotiView
-          from={{ translateY: -100, opacity: 0, scale: 0.9 }}
-          animate={{ translateY: insets.top + 12, opacity: 1, scale: 1 }}
-          exit={{ translateY: -100, opacity: 0, scale: 0.9 }}
-          transition={{ type: 'spring', damping: 15, stiffness: 120 }}
+          from={{ translateY: insets.top + 12, opacity: 0 }}
+          animate={{ translateY: insets.top + 12, opacity: 1 }}
+          exit={{ translateY: insets.top + 12, opacity: 0 }}
+          transition={{ type: 'timing', duration: 250 }}
           style={styles.container}
         >
           <BlurView 
             intensity={Platform.OS === 'ios' ? 40 : 100} 
             tint={currentTheme.mode === 'dark' ? 'dark' : 'light'} 
-            style={[styles.blur, { borderColor: alpha(currentTheme.colors.border, 0.1), shadowColor: currentTheme.colors.text }]}
+            style={[styles.blur, { borderColor: alpha(config.color, 0.15), shadowColor: currentTheme.colors.text }]}
           >
             <View style={[
                 styles.content, 
                 { 
-                    backgroundColor: alpha(currentTheme.colors.error, 0.1),
-                    borderColor: alpha(currentTheme.colors.error, 0.2)
+                    backgroundColor: alpha(config.color, 0.08),
+                    borderColor: alpha(config.color, 0.18)
                 }
             ]}>
-              <WifiOff size={mScale(14)} color={currentTheme.colors.error} />
+              <Icon size={mScale(14)} color={config.color} />
               <Text style={[styles.text, { color: currentTheme.colors.text }]}>
-                Offline Mode
+                {config.text}
               </Text>
-              <View style={[styles.dot, { backgroundColor: currentTheme.colors.error }]} />
+              <View style={[styles.dot, { backgroundColor: config.color }]} />
             </View>
           </BlurView>
         </MotiView>
@@ -94,7 +127,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
-    // borderColor and shadowColor removed as they are overridden dynamically
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,

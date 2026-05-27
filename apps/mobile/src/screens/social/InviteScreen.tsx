@@ -8,7 +8,6 @@ import {
     TouchableOpacity, 
     Share, 
     ActivityIndicator,
-    Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Users, Copy, Share2, Lock, CheckCircle2, TrendingUp } from 'lucide-react-native';
@@ -20,6 +19,7 @@ import { useReferrals, Badge } from '@/hooks/useReferrals';
 import { mScale, SPACING, RADIUS } from '../../system/constants/dimensions';
 import { Screen } from '@/system/layout/Layout';
 import { SecondaryHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { useToast } from '@/contexts/ToastContext';
 
 interface StatCardProps {
     label: string;
@@ -73,6 +73,7 @@ const BadgeCard = ({ badge }: { badge: Badge }) => {
 const InviteScreen: React.FC = () => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
+    const { showToast } = useToast();
     useNavigation();
     const { referralCode, shareUrl, stats, badges, referrals, loading } = useReferrals();
 
@@ -80,7 +81,7 @@ const InviteScreen: React.FC = () => {
         if (!referralCode) return;
         await Clipboard.setStringAsync(referralCode);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Copied!', 'Invite code copied to clipboard.');
+        showToast('Invite code copied to clipboard.', 'success');
     };
 
     const handleShare = async () => {

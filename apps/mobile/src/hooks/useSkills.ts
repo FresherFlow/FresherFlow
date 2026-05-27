@@ -1,11 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Alert } from 'react-native';
+import { } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 
 import { Availability } from '@fresherflow/types';
 import { useProfile } from './useProfile';
+import { useToast } from '@/contexts/ToastContext';
 
 
 const skillsSchema = z.object({
@@ -17,6 +18,7 @@ export type SkillsFormData = z.infer<typeof skillsSchema>;
 
 export const useSkills = () => {
     const { profile, updateReadiness, loadingCache } = useProfile();
+    const { showError } = useToast();
     const [saving, setSaving] = useState(false);
     const [skillInput, setSkillInput] = useState('');
     const [showSuggestions, setShowSuggestions] = useState(false);
@@ -70,7 +72,7 @@ export const useSkills = () => {
                 skills: data.skills,
             });
         } catch (error: unknown) {
-            Alert.alert('Error', (error as Error).message || 'Failed to update skills');
+            showError((error as Error).message || 'Failed to update skills');
         } finally {
             setSaving(false);
         }

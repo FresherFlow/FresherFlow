@@ -38,6 +38,14 @@ const MagicShareBanner = memo(() => {
       if (!Clipboard || typeof Clipboard.hasStringAsync !== 'function' || typeof Clipboard.getStringAsync !== 'function') {
         return;
       }
+      if (typeof Clipboard.hasUrlAsync === 'function') {
+        try {
+          const hasUrl = await Clipboard.hasUrlAsync();
+          if (!hasUrl) return;
+        } catch (err) {
+          // Silently swallow native method errors on unsupported Android builds
+        }
+      }
       const hasString = await Clipboard.hasStringAsync();
       if (!hasString) return;
 

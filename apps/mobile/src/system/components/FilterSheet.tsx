@@ -8,8 +8,8 @@ import {
     Dimensions,
     Platform,
     BackHandler,
-    ScrollView
 } from 'react-native';
+import { ScrollView } from 'react-native-gesture-handler';
 import { X, Check } from 'lucide-react-native';
 import { 
     BottomSheetModal, 

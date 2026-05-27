@@ -135,7 +135,7 @@ export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss 
                                     <Compass size={18} color={currentTheme.colors.primary} />
                                 </View>
                                 <View style={styles.stepTextWrapper}>
-                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>1. Browse live listings</Text>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>Browse live listings</Text>
                                     <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Explore verified jobs and internships feed</Text>
                                 </View>
                             </View>
@@ -145,7 +145,7 @@ export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss 
                                     <ChevronRight size={18} color={currentTheme.colors.primary} />
                                 </View>
                                 <View style={styles.stepTextWrapper}>
-                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>2. Apply directly</Text>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>Apply directly</Text>
                                     <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Tap listing to apply directly to company pages</Text>
                                 </View>
                             </View>
@@ -155,7 +155,7 @@ export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss 
                                     <BellRing size={18} color={currentTheme.colors.primary} />
                                 </View>
                                 <View style={styles.stepTextWrapper}>
-                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>3. Stay updated</Text>
+                                    <Text style={[styles.stepTitle, { color: currentTheme.colors.text }]}>Stay updated</Text>
                                     <Text style={[styles.stepDescription, { color: currentTheme.colors.textMuted }]}>Enable notifications to catch new links early</Text>
                                 </View>
                             </View>

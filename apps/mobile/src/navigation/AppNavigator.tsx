@@ -286,7 +286,7 @@ export const AppNavigator = () => {
     });
   }, []);
 
-  if (isSyncing || !isSkipLoaded || isOnboardingCompleted === null) {
+  if (!isSkipLoaded || isOnboardingCompleted === null) {
     return <AppLoading />;
   }
 

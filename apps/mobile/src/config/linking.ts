@@ -12,13 +12,11 @@ export const linking: LinkingOptions<RootStackParamList> = {
           Feed: {
             screens: {
               FeedList: 'feed',
-              JobDetail: 'opportunities/:opportunityId',
             },
           },
           Explore: {
             screens: {
               ExploreMain: 'explore',
-              JobDetail: 'explore/:opportunityId',
             },
           },
           Share: {
@@ -29,7 +27,6 @@ export const linking: LinkingOptions<RootStackParamList> = {
           Saved: {
             screens: {
               SavedList: 'saved',
-              JobDetail: 'saved/:opportunityId',
             },
           },
           Profile: {
@@ -42,6 +39,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
           },
         },
       },
+      JobDetail: 'opportunities/:opportunityId',
       Auth: 'join',
     },
   },
