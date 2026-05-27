@@ -117,6 +117,7 @@ interface FeedStoreState {
     hydrate: () => Promise<void>;
     performSync: (force?: boolean, isUserInitiated?: boolean) => Promise<void>;
     computeScoringAndCache: (opportunities: Opportunity[]) => Promise<void>;
+    recalculateScores: () => Promise<void>;
     refreshBehavioralData: () => Promise<void>;
 }
 
@@ -131,6 +132,13 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
     isRefreshing: false,
     syncError: null,
     hasHydrated: false,
+
+    recalculateScores: async () => {
+        const { cachedItems, computeScoringAndCache } = get();
+        if (cachedItems && cachedItems.length > 0) {
+            await computeScoringAndCache(cachedItems);
+        }
+    },
 
     refreshBehavioralData: async () => {
         const [seen, opened] = await Promise.all([getSeenIds(), getOpenedIds()]);
@@ -173,10 +181,15 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
         );
 
         const scoredOpportunities = opportunities.map(job => {
-            if (!hasProfileData) return job;
-            const match = calculateMatchScore(profile, job);
+            const rawJob = { ...job } as any;
+            delete rawJob.matchScore;
+            delete rawJob.matchReason;
+            delete rawJob.isEligible;
+            
+            if (!hasProfileData) return rawJob as Opportunity;
+            const match = calculateMatchScore(profile, rawJob);
             return {
-                ...job,
+                ...rawJob,
                 matchScore: match.score > 0 ? match.score : undefined,
                 matchReason: match.score > 0 ? match.reason : undefined,
                 isEligible: match.isEligible

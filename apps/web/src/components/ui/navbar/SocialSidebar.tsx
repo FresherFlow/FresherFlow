@@ -68,17 +68,17 @@ const SOCIAL_LINKS = [
 
 export function SocialSidebar() {
     return (
-        <div className="hidden lg:flex fixed right-3 top-1/2 -translate-y-1/2 z-[65] flex-col gap-1.5 rounded-xl border border-border bg-card/95 backdrop-blur px-1.5 py-2 shadow-sm">
+        <div className="hidden lg:flex fixed right-3.5 top-1/2 -translate-y-1/2 z-[65] flex-col gap-1 rounded-xl border border-border/30 bg-card/20 hover:bg-card/85 backdrop-blur-sm hover:backdrop-blur-md px-1 py-1.5 hover:border-border/60 hover:shadow-lg hover:shadow-black/10 dark:hover:shadow-black/50 transition-all duration-300 opacity-60 hover:opacity-100">
             {SOCIAL_LINKS.map((item) => (
                 <a
                     key={item.href}
                     href={item.href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40"
+                    className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground/80 hover:text-primary hover:bg-primary/5 hover:scale-110 active:scale-95 transition-all duration-200"
                     aria-label={item.label}
                 >
-                    <item.icon className="w-4 h-4" />
+                    <item.icon className="w-3.5 h-3.5" />
                 </a>
             ))}
         </div>

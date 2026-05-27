@@ -415,14 +415,14 @@ export class StaticFeedService {
             logger.info('Starting full static asset regeneration...');
 
             // 1. Ensure dirs
-            [this.PUBLIC_ROOT, this.COMPANIES_DIR, this.CATEGORIES_DIR].forEach(d => {
+            [this.PUBLIC_ROOT].forEach(d => {
                 if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
             });
 
             // 2. Generate data
             const bootstrap = await this.generateBootstrapFeed();
-            const companyShards = await this.generateCompanyShards();
-            const categoryShards = await this.generateCategoryShards();
+            // const companyShards = await this.generateCompanyShards();
+            // const categoryShards = await this.generateCategoryShards();
             const stats = await this.generateStats();
             const sitemap = await this.generateSitemap();
             const sitemapData = await this.generateSitemapData();
@@ -454,6 +454,7 @@ export class StaticFeedService {
             fs.writeFileSync(this.USERNAMES_PATH, usernamesBody);
             await this.uploadToR2('taken-usernames.min.json', usernamesBody, 'application/json');
 
+            /*
             for (const s of companyShards) {
                 const body = JSON.stringify(s.data);
                 fs.writeFileSync(path.join(this.COMPANIES_DIR, `${s.slug}.json`), body);
@@ -465,10 +466,11 @@ export class StaticFeedService {
                 fs.writeFileSync(path.join(this.CATEGORIES_DIR, `${s.id}.json`), body);
                 await this.uploadToR2(`categories/${s.id}.json`, body, 'application/json');
             }
+            */
 
             logger.info('Static shards regenerated successfully', {
-                companies: companyShards.length,
-                categories: categoryShards.length,
+                // companies: companyShards.length,
+                // categories: categoryShards.length,
                 jobsInBootstrap: bootstrap.opportunities.length,
                 usernamesCount: usernames.length
             });

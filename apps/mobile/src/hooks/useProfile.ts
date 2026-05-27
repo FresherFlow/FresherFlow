@@ -228,6 +228,7 @@ export const useProfile = () => {
 
         // Trigger instant real-time full sync of jobs from CDN
         const feedStore = useFeedStore.getState();
+        void feedStore.recalculateScores();
         void feedStore.performSync(true, true);
 
         if (isAnonymous) return;
@@ -260,6 +261,7 @@ export const useProfile = () => {
 
         // Trigger instant real-time full sync of jobs from CDN
         const feedStore = useFeedStore.getState();
+        void feedStore.recalculateScores();
         void feedStore.performSync(true, true);
 
         if (isAnonymous) return;
@@ -287,6 +289,7 @@ export const useProfile = () => {
 
         // Trigger instant real-time full sync of jobs from CDN
         const feedStore = useFeedStore.getState();
+        void feedStore.recalculateScores();
         void feedStore.performSync(true, true);
 
         if (isAnonymous) return;

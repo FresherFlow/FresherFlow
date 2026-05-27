@@ -129,16 +129,7 @@ const AppContent = () => {
     // Globally hydrate the master feed on app start
     void useFeedStore.getState().hydrate();
 
-    // Cold-start wake up call for backend server on app boot
-    const wakeUpBackend = async () => {
-      try {
-        await axios.get(API_URL, { timeout: 8000 });
-        console.log('[API] Backend cold-start wake up dispatched.');
-      } catch {
-        // Silently catch since even a timeout/404/401 is enough to wake the server up
-      }
-    };
-    void wakeUpBackend();
+
     
     // Check if first run - if so, bypass BrandIntroLoader splash animation to go straight to onboarding
     AsyncStorage.getItem('ff_first_run_done').then(val => {
