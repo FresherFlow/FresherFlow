@@ -196,7 +196,7 @@ export default function AdminLoginPage() {
                                 </label>
                                 <input
                                     type="email"
-                                    placeholder={adminEmailConfigured ? ADMIN_EMAIL : 'admin@yourdomain.com'}
+                                    placeholder="admin@yourdomain.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
                                     className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"

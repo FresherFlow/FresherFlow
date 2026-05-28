@@ -7,7 +7,7 @@ import { ArrowLeftIcon, GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/
 import Link from 'next/link';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 
-export const revalidate = 3600;
+export const revalidate = 21600;
 export const dynamicParams = true; // Allow dynamic generation for newly added/unlisted jobs dynamically
 
 export async function generateStaticParams() {

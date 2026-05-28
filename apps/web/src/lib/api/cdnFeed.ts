@@ -80,7 +80,7 @@ export async function fetchFeedVersion(): Promise<string> {
     }
     try {
         const res = await fetch(FEED_VERSION_URL, {
-            next: { revalidate: 60 },
+            next: { revalidate: 3600 },
         });
         if (res.ok) {
             const data = await res.json() as { version?: string };

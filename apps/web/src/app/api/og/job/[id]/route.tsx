@@ -367,7 +367,7 @@ const renderFallbackCard = (title: string, subtitle: string) =>
     {
       ...size,
       headers: {
-        "Cache-Control": "public, max-age=3600, stale-while-revalidate=600",
+        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
       },
     }
   );
@@ -712,7 +712,7 @@ export async function GET(
     {
       ...size,
       headers: {
-        "Cache-Control": "public, max-age=604800, stale-while-revalidate=86400",
+        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
       },
     }
   );

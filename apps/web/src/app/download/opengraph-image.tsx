@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
+export const dynamic = 'force-static';
 export const size = {
     width: 1200,
     height: 630,
@@ -215,7 +216,7 @@ export default function DownloadOpenGraphImage() {
         {
             ...size,
             headers: {
-                'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400',
+                'Cache-Control': 'public, immutable, max-age=31536000',
             },
         }
     );

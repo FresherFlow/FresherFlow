@@ -193,10 +193,7 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     const canonicalId = opportunity.slug || opportunity.id;
     const canonicalPath = getOpportunityPath(opportunity.type, canonicalId);
     const url = `${SITE_URL}${canonicalPath}`;
-    const baseUrl = SITE_URL;
-    const ogImageVersion = process.env.NEXT_PUBLIC_OG_IMAGE_VERSION || '1';
-    const ogUpdatedAt = opportunity.updatedAt || opportunity.postedAt || '';
-    const ogImageUrl = `${baseUrl}/api/og/job/${encodeURIComponent(opportunity.id)}?v=${encodeURIComponent(ogImageVersion)}&t=${encodeURIComponent(String(ogUpdatedAt))}`;
+    const ogImageUrl = `${SITE_URL}/api/og/job/${encodeURIComponent(opportunity.id)}`;
 
     return {
         title: seoTitle,
