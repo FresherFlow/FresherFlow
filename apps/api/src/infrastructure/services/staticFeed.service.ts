@@ -159,17 +159,17 @@ export class StaticFeedService {
                     events: true,
 
                     // Referrals and Contributors
-                    isReferral: true,
-                    referredByUsername: true,
                     user: {
                         select: {
                             username: true,
-                            fullName: true
+                            fullName: true,
+                            role: true
                         }
                     },
                     rawIngestions: {
                         select: {
-                            creator: {
+                            reasonFlags: true,
+                            createdBy: {
                                 select: {
                                     id: true,
                                     fullName: true,
@@ -181,7 +181,36 @@ export class StaticFeedService {
                 },
             });
 
-            return { opportunities, timestamp: Date.now(), count: opportunities.length };
+            // Map createdBy to creator to match what the production mobile app expects
+            // Also dynamically determine if this is a "Referral" vs "Shared link" based on reasonFlags
+            const mappedOpportunities = opportunities.map(opp => {
+                let isReferral = false;
+                let referredByUsername: string | undefined = undefined;
+
+                if (opp.rawIngestions && opp.rawIngestions.length > 0) {
+                    const referralIngestion = opp.rawIngestions.find(ri => ri.reasonFlags?.includes('USER_REFERRAL'));
+                    if (referralIngestion) {
+                        isReferral = true;
+                        referredByUsername = referralIngestion.createdBy?.username || undefined;
+                    }
+                }
+
+                if (!opp.rawIngestions || opp.rawIngestions.length === 0) {
+                    return { ...opp, isReferral, referredByUsername };
+                }
+
+                return {
+                    ...opp,
+                    isReferral,
+                    referredByUsername,
+                    rawIngestions: opp.rawIngestions.map(ri => ({
+                        ...ri,
+                        creator: ri.createdBy
+                    }))
+                };
+            });
+
+            return { opportunities: mappedOpportunities, timestamp: Date.now(), count: opportunities.length };
         });
     }
 
