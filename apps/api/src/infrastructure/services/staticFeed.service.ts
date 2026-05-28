@@ -157,6 +157,27 @@ export class StaticFeedService {
                     walkInDetails: true,
                     governmentJobDetails: true,
                     events: true,
+
+                    // Referrals and Contributors
+                    isReferral: true,
+                    referredByUsername: true,
+                    user: {
+                        select: {
+                            username: true,
+                            fullName: true
+                        }
+                    },
+                    rawIngestions: {
+                        select: {
+                            creator: {
+                                select: {
+                                    id: true,
+                                    fullName: true,
+                                    username: true
+                                }
+                            }
+                        }
+                    },
                 },
             });
 
