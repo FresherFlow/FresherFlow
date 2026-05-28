@@ -5,13 +5,14 @@
   "scripts": {
     "prune:web": "turbo prune fresherflow-web --docker",
     "dev": "next dev",
-    "build:deps": "npm --prefix ../.. run build --workspace=@fresherflow/types && npm --prefix ../.. run build --workspace=@fresherflow/constants && npm --prefix ../.. run build --workspace=@fresherflow/logger && npm --prefix ../.. run build --workspace=@fresherflow/config && npm --prefix ../.. run build --workspace=@fresherflow/utils && npm --prefix ../.. run build --workspace=@fresherflow/schemas && npm --prefix ../.. run build --workspace=@fresherflow/database && npm --prefix ../.. run build --workspace=@fresherflow/domain && npm --prefix ../.. run build --workspace=@fresherflow/parser",
-    "build": "npm run build:deps && next build",
+    "build:deps": "npx turbo run build --filter=fresherflow-web^...",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test:smoke": "playwright test"
   },
   "dependencies": {
+    "firebase": "^11.2.0",
     "@fresherflow/api-client": "*",
     "@fresherflow/config": "*",
     "@fresherflow/constants": "*",
