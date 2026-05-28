@@ -17,6 +17,7 @@ export default function robots(): MetadataRoute.Robots {
                     '/internships',
                     '/walk-ins',
                     '/opportunities',
+                    '/api/og/',
                 ],
                 disallow: [
                     '/api',
