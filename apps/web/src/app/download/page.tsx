@@ -4,7 +4,27 @@ import DownloadMockup from '@/components/site/DownloadMockup';
 
 export const metadata = {
     title: 'Download FresherFlow Android App - Instant Off-Campus Job Alerts',
-    description: 'Download the official FresherFlow Android app today. Save opportunities offline and track your off-campus applications with zero redirect spam.',
+    description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
+    openGraph: {
+        type: 'website',
+        title: 'Download FresherFlow Android App - Instant Off-Campus Job Alerts',
+        description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
+        images: [
+            {
+                url: '/download/opengraph-image',
+                width: 1200,
+                height: 630,
+                type: 'image/png',
+                alt: 'Download FresherFlow Android App - Instant Off-Campus Job Alerts',
+            },
+        ],
+    },
+    twitter: {
+        card: 'summary_large_image',
+        title: 'Download FresherFlow Android App - Instant Off-Campus Job Alerts',
+        description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
+        images: ['/download/twitter-image'],
+    }
 };
 
 export default function DownloadPage() {
@@ -27,7 +47,7 @@ export default function DownloadPage() {
                         <p className="text-sm sm:text-base md:text-lg text-muted-foreground leading-relaxed">
                             Get instant alerts, save jobs offline, and track every application in one place.
                         </p>
-                        <p className="text-xs font-bold text-primary tracking-wide leading-none border-l-2 border-primary/40 pl-3 select-none">
+                        <p className="hidden sm:block text-xs font-bold text-primary tracking-wide leading-none border-l-2 border-primary/40 pl-3 select-none">
                             Direct apply links. No junk in between.
                         </p>
                     </div>

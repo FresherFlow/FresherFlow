@@ -292,21 +292,6 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         </span>
                     ))}
                 </div>
-                {job.expiresAt && (
-                    <span
-                        className={cn(
-                            "inline-flex max-w-[54%] items-center gap-1 px-2 py-0.5 border text-xs font-medium normal-case tracking-normal rounded-full whitespace-nowrap",
-                            isExpired()
-                                ? "bg-destructive/5 border-destructive/25 text-destructive dark:bg-destructive/10 dark:border-destructive/30"
-                                : isClosingSoon()
-                                    ? "bg-amber-100/70 border-amber-400/70 text-amber-800 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
-                                    : "bg-muted/70 border-border/70 text-foreground/80"
-                        )}
-                    >
-                        <ClockIcon className="w-3 h-3" aria-hidden="true" />
-                        {getExpiryLabel()}
-                    </span>
-                )}
             </div>
 
             {/* Key Meta */}
@@ -334,6 +319,22 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             {/* Footer */}
             <div className="flex items-center justify-between pt-1 mt-auto">
                 <div className="flex items-center gap-1.5">
+                    {job.expiresAt && (
+                        <span
+                            className={cn(
+                                "inline-flex items-center gap-1 px-2 py-0.5 border text-xs font-medium normal-case tracking-normal rounded-full whitespace-nowrap",
+                                isExpired()
+                                    ? "bg-destructive/5 border-destructive/25 text-destructive dark:bg-destructive/10 dark:border-destructive/30"
+                                    : isClosingSoon()
+                                        ? "bg-amber-100/70 border-amber-400/70 text-amber-800 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
+                                        : "bg-muted/70 border-border/70 text-foreground/80"
+                            )}
+                        >
+                            <ClockIcon className="w-3 h-3" aria-hidden="true" />
+                            {getExpiryLabel()}
+                        </span>
+                    )}
+
                     {(trackerStatus === 'APPLIED' || (!trackerStatus && isApplied)) && (
                         <span className="inline-flex items-center px-2 py-0.5 bg-primary/10 text-primary rounded text-xs font-medium border border-primary/20">
                             Applied

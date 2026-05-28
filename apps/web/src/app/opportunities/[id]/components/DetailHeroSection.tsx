@@ -20,7 +20,7 @@ interface DetailHeroSectionProps {
     driveDateItems: { label: string; date: Date | null }[];
     driveMeta: DriveMetadata;
     displaySalary: string | null;
-    locationInfo: { shortLabel: string; fullLabel: string };
+    locationInfo: { shortLabel: string; fullLabel: string; cities?: string[] };
     formatDeadline: (opp: Opportunity) => string | null;
     isExpired: (opp: Opportunity) => boolean;
     isClosingSoon: (opp: Opportunity) => boolean;
@@ -160,7 +160,9 @@ export function DetailHeroSection({
                             <div className="flex items-center gap-1 text-muted-foreground mt-0.5">
                                 <MapPinIcon className="w-3 h-3" />
                                 <span className="font-medium text-sm md:text-base" title={locationInfo.fullLabel}>
-                                    {locationInfo.shortLabel}
+                                    {locationInfo.cities && locationInfo.cities.length > 1
+                                        ? locationInfo.cities.join(', ')
+                                        : locationInfo.shortLabel}
                                 </span>
                             </div>
                         </div>

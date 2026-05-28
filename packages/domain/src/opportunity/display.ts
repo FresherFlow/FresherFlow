@@ -82,22 +82,34 @@ export function formatTimeText12Hour(input?: string | null): string {
  * Normalizes an array of locations into a human-friendly display label.
  * Prioritizes PAN India drive status.
  */
-export function parseOpportunityLocation(locations?: string[] | null): { shortLabel: string; fullLabel: string; city?: string; state?: string } {
+export function parseOpportunityLocation(locations?: string[] | null): { shortLabel: string; fullLabel: string; city?: string; state?: string; cities?: string[] } {
     if (!locations || locations.length === 0) {
-        return { shortLabel: 'Remote', fullLabel: 'Remote / Work from Home', city: 'Remote' };
+        return { shortLabel: 'Remote', fullLabel: 'Remote / Work from Home', city: 'Remote', cities: [] };
     }
 
-    const first = locations[0];
-    const cityCount = locations.length;
-    if (cityCount === 1) {
-        return { shortLabel: first, fullLabel: first, city: first };
+    const rawTokens = locations
+        .flatMap((value) => value.split(','))
+        .map((token) => token.trim())
+        .filter(Boolean);
+
+    const citiesList = Array.from(new Set(rawTokens));
+    const first = citiesList[0] || 'Remote';
+
+    let shortLabel = 'Remote';
+    if (citiesList.length === 1) {
+        shortLabel = first;
+    } else if (citiesList.length === 2) {
+        shortLabel = citiesList.join(', ');
+    } else if (citiesList.length > 2) {
+        shortLabel = `${first} +${citiesList.length - 1}`;
     }
 
-    if (cityCount > 3) {
-        return { shortLabel: `${first} +${cityCount - 1} cities`, fullLabel: locations.join(', '), city: first };
-    }
-
-    return { shortLabel: locations.join(', '), fullLabel: locations.join(', '), city: first };
+    return {
+        shortLabel,
+        fullLabel: locations.join(', '),
+        city: first,
+        cities: citiesList,
+    };
 }
 
 /**

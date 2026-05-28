@@ -294,21 +294,6 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         </span>
                     ))}
                 </div>
-                {job.expiresAt && (
-                    <span
-                        className={cn(
-                            "inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold rounded-md whitespace-nowrap",
-                            isExpired()
-                                ? "bg-destructive/5 border-destructive/25 text-destructive"
-                                : isClosingSoon()
-                                    ? "bg-amber-100/70 border-amber-400/70 text-amber-800 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
-                                    : "bg-muted/70 border-border/70 text-foreground/80"
-                        )}
-                    >
-                        <ClockIcon className="w-3 h-3" aria-hidden="true" />
-                        {getExpiryLabel()}
-                    </span>
-                )}
             </div>
 
             {/* Key Meta */}
@@ -328,6 +313,21 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             {/* Footer: Community Stats + CTA */}
             <div className="flex items-center justify-between pt-2 mt-auto border-t border-border/40">
                 <div className="flex items-center gap-3">
+                    {job.expiresAt && (
+                        <span
+                            className={cn(
+                                "inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold rounded-md whitespace-nowrap",
+                                isExpired()
+                                    ? "bg-destructive/5 border-destructive/25 text-destructive"
+                                    : isClosingSoon()
+                                        ? "bg-amber-100/70 border-amber-400/70 text-amber-800 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
+                                        : "bg-muted/70 border-border/70 text-foreground/80"
+                            )}
+                        >
+                            <ClockIcon className="w-3 h-3" aria-hidden="true" />
+                            {getExpiryLabel()}
+                        </span>
+                    )}
                     {job.shareCount && job.shareCount > 0 ? (
                         <div className="flex items-center gap-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                             <UsersIcon className="w-3.5 h-3.5" />

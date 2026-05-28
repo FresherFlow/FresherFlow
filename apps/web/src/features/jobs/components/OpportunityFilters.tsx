@@ -3,7 +3,7 @@
 import { MapPinIcon, ClockIcon, BookmarkIcon } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 
-const LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Remote'];
+const LOCATIONS = ['Bengaluru', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Remote'];
 
 interface OpportunityFiltersProps {
     id?: string;

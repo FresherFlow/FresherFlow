@@ -11,7 +11,7 @@ import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 
-const LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Remote'];
+const LOCATIONS = ['Bengaluru', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Remote'];
 
 const SALARY_OPTIONS: { label: string; value: number | null }[] = [
     { label: 'Any', value: null },
@@ -142,7 +142,7 @@ export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedTyp
                 </button>
 
                 {open === 'location' && (
-                    <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-52 z-50">
+                    <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-52 max-h-60 overflow-y-auto z-50">
                         {LOCATIONS.map(loc => (
                             <button
                                 key={loc}

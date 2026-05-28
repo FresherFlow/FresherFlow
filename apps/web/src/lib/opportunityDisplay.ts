@@ -277,24 +277,26 @@ export const parseOpportunityLocation = (locations?: string[] | null): ParsedOpp
 
     const dedupedCities = Array.from(new Set(cities));
     const primaryCity = dedupedCities[0];
-    const cityLabel = primaryCity
-        ? dedupedCities.length > 1
-            ? `${primaryCity} +${dedupedCities.length - 1}`
-            : primaryCity
+    const cityLabel = dedupedCities.length > 0
+        ? dedupedCities.join(', ')
         : undefined;
 
-    const locationParts = [primaryCity, state, country].filter(Boolean) as string[];
-    const fullLabel = dedupedCities.length > 1
-        ? `${locationParts.join(', ')} (+${dedupedCities.length - 1} more)`
-        : locationParts.join(', ');
+    let shortLabel = 'Remote';
+    if (cityLabel) {
+        if (dedupedCities.length === 1) {
+            shortLabel = state ? `${primaryCity}, ${state}` : primaryCity;
+        } else if (dedupedCities.length === 2) {
+            shortLabel = dedupedCities.join(', ');
+        } else {
+            shortLabel = `${primaryCity} +${dedupedCities.length - 1}`;
+        }
+    } else {
+        shortLabel = state || country || rawTokens[0] || 'Remote';
+    }
 
     return {
-        shortLabel: cityLabel
-            ? state && dedupedCities.length === 1
-                ? `${cityLabel}, ${state}`
-                : cityLabel
-            : state || country || rawTokens[0] || 'Remote',
-        fullLabel: fullLabel || rawTokens.join(', ') || 'Remote',
+        shortLabel,
+        fullLabel: cityLabel ? [cityLabel, state, country].filter(Boolean).join(', ') : (state || country || 'Remote'),
         city: primaryCity,
         state,
         country: country || 'India',

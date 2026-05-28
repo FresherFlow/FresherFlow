@@ -38,32 +38,32 @@ export const metadata: Metadata = {
   metadataBase: METADATA_BASE,
   applicationName: "FresherFlow",
   title: {
-    default: "FresherFlow",
+    default: "FresherFlow - Verified Off-Campus Opportunities",
     template: "%s | FresherFlow",
   },
-  description: "Verified fresher jobs, internships, and walk-ins in India. Direct apply links, profile-fit ranking, and closing-soon alerts on FresherFlow.",
+  description: "The community-driven fresher job network. Share verified opportunities with zero redirect spam.",
   alternates: {
     canonical: "/",
   },
   openGraph: {
     type: "website",
     siteName: "FresherFlow",
-    title: "FresherFlow - Verified Fresher Jobs & Internships in India",
-    description: "Verified fresher jobs, internships, and walk-ins in India with direct apply links.",
+    title: "FresherFlow - Verified Off-Campus Opportunities",
+    description: "The community-driven fresher job network. Share verified opportunities with zero redirect spam.",
     images: [
       {
         url: OG_IMAGE_URL,
         width: 1200,
         height: 630,
         type: "image/png",
-        alt: "FresherFlow - Verified Fresher Jobs and Internships",
+        alt: "FresherFlow - Verified Off-Campus Opportunities",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "FresherFlow - Verified Fresher Jobs & Internships in India",
-    description: "Verified fresher jobs, internships, and walk-ins in India with direct apply links.",
+    title: "FresherFlow - Verified Off-Campus Opportunities",
+    description: "The community-driven fresher job network. Share verified opportunities with zero redirect spam.",
     images: [TWITTER_IMAGE_URL],
   },
   icons: {

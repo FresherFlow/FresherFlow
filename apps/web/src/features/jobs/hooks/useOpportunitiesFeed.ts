@@ -260,7 +260,17 @@ export function useOpportunitiesFeed({
                 opp.description,
             ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch.toLowerCase()));
 
-            const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => loc.toLowerCase().includes(selectedLoc.toLowerCase()));
+            const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => {
+                const l = loc.toLowerCase().trim();
+                const s = selectedLoc.toLowerCase().trim();
+                if ((s === 'bangalore' || s === 'bengaluru') && (l === 'bangalore' || l === 'bengaluru')) {
+                    return true;
+                }
+                if ((s === 'gurgaon' || s === 'gurugram') && (l === 'gurgaon' || l === 'gurugram')) {
+                    return true;
+                }
+                return l.includes(s) || s.includes(l);
+            });
 
             const matchesClosingSoon = !closingSoon || (() => {
                 if (!opp.expiresAt) return false;
@@ -270,10 +280,15 @@ export function useOpportunitiesFeed({
                 return expiryDate >= now && expiryDate <= threeDaysFromNow;
             })();
 
-            const matchesSalary = (!minSalary || (opp.salaryMax && opp.salaryMax >= minSalary) || (opp.salaryMin && opp.salaryMin >= minSalary)) &&
-                (!maxSalary || (opp.salaryMin && opp.salaryMin <= maxSalary));
+            const matchesSalary = !minSalary || 
+                (opp.salaryMax && opp.salaryMax >= minSalary) || 
+                (opp.salaryMin && opp.salaryMin >= minSalary) ||
+                (!opp.salaryMin && !opp.salaryMax); // Allow undisclosed salaries so filter isn't empty, sorted below explicit matches
 
-            const matchesYear = !selectedYear || (opp.allowedPassoutYears || []).includes(selectedYear);
+            const matchesYear = !selectedYear || 
+                !opp.allowedPassoutYears || 
+                opp.allowedPassoutYears.length === 0 || 
+                opp.allowedPassoutYears.map(Number).includes(Number(selectedYear));
 
             return matchesSearch && matchesLoc && matchesClosingSoon && matchesSalary && matchesYear;
         });
@@ -302,6 +317,13 @@ export function useOpportunitiesFeed({
 
             // Not-eligible jobs always go to the bottom
             if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
+
+            // Prioritize explicit salary matches over undisclosed ones when salary filter is active
+            if (minSalary) {
+                const hasSalaryA = a.salaryMin !== null || a.salaryMax !== null;
+                const hasSalaryB = b.salaryMin !== null || b.salaryMax !== null;
+                if (hasSalaryA !== hasSalaryB) return hasSalaryA ? -1 : 1;
+            }
 
             const bucketDiff = bucketWeight(a) - bucketWeight(b);
             if (bucketDiff !== 0) return bucketDiff;
