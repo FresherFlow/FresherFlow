@@ -2,8 +2,18 @@
     "$schema": "https://turbo.build/schema.json",
     "ui": "tui",
     "globalDependencies": [
-        "package-lock.json",
+        "pnpm-lock.yaml",
         "turbo.json"
+    ],
+    "globalEnv": [
+        "API_URL",
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_SITE_URL",
+        "ADMIN_WEB_HOST",
+        "CDN_BUILD_TOKEN",
+        "CDN_SIGNATURE_SECRET",
+        "DATABASE_URL",
+        "NODE_ENV"
     ],
     "tasks": {
         "build": {
