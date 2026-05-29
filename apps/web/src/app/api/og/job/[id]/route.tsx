@@ -386,7 +386,7 @@ export async function GET(
     const signedUrl = await getSignedUrl(BOOTSTRAP_FEED_URL);
     const cdnResponse = await fetchWithTimeout(
       signedUrl,
-      15000,
+      5000,
       undefined,
       { 
         cacheMode: "force-cache", 

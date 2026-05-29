@@ -9,6 +9,23 @@ export default function robots(): MetadataRoute.Robots {
 
     return {
         rules: [
+            // Social crawlers: explicitly allow OG image routes so Twitter/Facebook
+            // card images are never blocked by the broader /api disallow below.
+            {
+                userAgent: 'Twitterbot',
+                allow: ['/api/og/'],
+                disallow: [],
+            },
+            {
+                userAgent: 'facebookexternalhit',
+                allow: ['/api/og/'],
+                disallow: [],
+            },
+            {
+                userAgent: 'LinkedInBot',
+                allow: ['/api/og/'],
+                disallow: [],
+            },
             {
                 userAgent: '*',
                 allow: [
@@ -17,7 +34,7 @@ export default function robots(): MetadataRoute.Robots {
                     '/internships',
                     '/walk-ins',
                     '/opportunities',
-                    '/api/og/',
+                    '/companies',
                 ],
                 disallow: [
                     '/api',
