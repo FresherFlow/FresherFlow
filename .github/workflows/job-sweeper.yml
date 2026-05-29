@@ -1,0 +1,40 @@
+name: Job Sweeper
+
+on:
+  schedule:
+    # Run once a day at midnight UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'scripts/sweeper/package.json'
+
+      - name: Install Sweeper Dependencies
+        working-directory: scripts/sweeper
+        run: npm install
+
+      - name: Install Playwright Browsers
+        working-directory: scripts/sweeper
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Job Sweeper
+        working-directory: scripts/sweeper
+        env:
+          CDN_SIGNATURE_SECRET: ${{ secrets.CDN_SIGNATURE_SECRET }}
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          NEXT_PUBLIC_CDN_URL: "https://cdn.fresherflow.in"
+        run: npm start
