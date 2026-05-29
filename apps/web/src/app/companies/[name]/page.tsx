@@ -1,4 +1,6 @@
 import { Suspense } from 'react';
+import type { Metadata } from 'next';
+import { permanentRedirect, notFound } from 'next/navigation';
 import { Opportunity } from '@fresherflow/types';
 import { getCompanyDomain } from '@fresherflow/utils';
 import JobCard from '@/features/opportunities/components/JobCard';
@@ -6,9 +8,10 @@ import { SkeletonJobCard } from '@/components/ui/Skeleton';
 import { ArrowLeftIcon, GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import CompanyLogo from '@/components/ui/CompanyLogo';
+import { SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = 21600;
-export const dynamicParams = true; // Allow dynamic generation for newly added/unlisted jobs dynamically
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
     const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
@@ -16,11 +19,11 @@ export async function generateStaticParams() {
     
     if (!feed?.opportunities) return [];
     
-    // Support both direct company name routing and domain routing in static params
+    // Only emit lowercase slugs — avoids duplicate routes (e.g. Accenture + accenture)
+    // which Google marks as "Alternate page with proper canonical tag".
     const names = new Set<string>();
     feed.opportunities.forEach(opp => {
         if (opp.company) {
-            names.add(opp.company);
             names.add(opp.company.toLowerCase().trim());
         }
         const domain = getCompanyDomain({
@@ -29,16 +32,37 @@ export async function generateStaticParams() {
             sourceLink: opp.sourceLink,
         });
         if (domain) {
-            names.add(domain);
+            names.add(domain.toLowerCase());
         }
     });
     
     return Array.from(names).map(name => ({ name }));
 }
 
+export async function generateMetadata(
+    { params }: { params: Promise<{ name: string }> }
+): Promise<Metadata> {
+    const { name: encodedName } = await params;
+    const slug = decodeURIComponent(encodedName).toLowerCase().trim();
+    const base = (SITE_URL || 'https://fresherflow.in').replace(/\/+$/, '');
+    const canonicalUrl = `${base}/companies/${encodeURIComponent(slug)}`;
+
+    return {
+        alternates: { canonical: canonicalUrl },
+        robots: { index: true, follow: true },
+    };
+}
+
 export default async function CompanyProfilePage({ params }: { params: Promise<{ name: string }> }) {
     const { name: encodedName } = await params;
-    const slug = decodeURIComponent(encodedName); // could be a domain (wipro.com) or fallback name
+    const rawName = decodeURIComponent(encodedName);
+    const slug = rawName.toLowerCase().trim();
+
+    // If the requested URL has mixed-case (e.g. /companies/Honeywell),
+    // 301 redirect to the lowercase version to fix Google Search Console 404s.
+    if (rawName !== slug) {
+        permanentRedirect(`/companies/${encodeURIComponent(slug)}`);
+    }
 
     const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
     const feed = await fetchBootstrapFeed();
@@ -70,15 +94,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     });
 
     if (companyJobs.length === 0) {
-        return (
-            <div className="min-h-screen flex items-center justify-center p-6">
-                <div className="text-center space-y-4">
-                    <h1 className="text-2xl font-bold">Company not found</h1>
-                    <p className="text-muted-foreground">No active job listings found for {slug}.</p>
-                    <Link href="/jobs" className="premium-button !w-fit px-6 inline-block">Browse all jobs</Link>
-                </div>
-            </div>
-        );
+        notFound();
     }
 
     const firstJob = companyJobs[0];

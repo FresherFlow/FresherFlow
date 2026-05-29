@@ -1,6 +1,6 @@
 import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
-import { permanentRedirect } from 'next/navigation';
+import { permanentRedirect, notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import OpportunityDetailClient from './OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
@@ -64,7 +64,12 @@ export default async function OpportunityDetailPage({ params }: Props) {
 
     try {
         opportunityData = await fetchOpportunityForPage(slugOrId, siteMode);
-        if (!opportunityData) throw new Error('Opportunity not found');
+
+        // Job not found in CDN feed — return a real 404 so Google doesn't
+        // soft-404 the page (200 with error UI = Soft 404 in GSC).
+        if (!opportunityData) {
+            notFound();
+        }
 
         const expiry = getExpiryState(opportunityData);
 
@@ -85,8 +90,13 @@ export default async function OpportunityDetailPage({ params }: Props) {
             const { getRelatedOpportunities } = await import('./detailUtils');
             relatedOpportunitiesData = getRelatedOpportunities(opportunityData, feed.opportunities);
         }
-    } catch {
-        // Fallback handled by client component (loading/404)
+    } catch (err) {
+        // Re-throw Next.js navigation errors (notFound, redirect) so they work correctly.
+        // Only swallow genuine network/fetch failures.
+        const msg = err instanceof Error ? err.message : '';
+        if (msg === 'NEXT_NOT_FOUND' || msg === 'NEXT_REDIRECT') throw err;
+        // CDN is temporarily down — render client with null so it can show retry UI
+        // rather than hard 404-ing on a transient error.
     }
 
     return (

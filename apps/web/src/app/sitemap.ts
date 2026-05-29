@@ -52,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }));
 
       companyEntries = (sitemapData.companies || []).map((c) => ({
-        url: `${BASE_URL}/companies/${encodeURIComponent(c.slug)}`,
+        url: `${BASE_URL}/companies/${encodeURIComponent(c.slug.toLowerCase().trim())}`,
         lastModified: new Date(),
       }));
     } else {
