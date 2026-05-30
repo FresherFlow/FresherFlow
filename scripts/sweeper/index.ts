@@ -127,13 +127,23 @@ async function run() {
 
     await browser.close();
 
+    function escapeHtml(unsafe: string) {
+        return unsafe
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
     // Message 2: Results
     if (expiredJobs.length > 0) {
         let msg = `🚨 <b>Found ${expiredJobs.length} Expired Jobs</b> 🚨\n\n`;
         for (const job of expiredJobs) {
-            msg += `- <b>${job.company}</b>: ${job.title}\n  ID: <code>${job.id}</code>\n`;
+            msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  ID: <code>${job.id}</code>\n`;
         }
         msg += `\nPlease delete these from the Admin Dashboard.`;
+        console.log("Sending Telegram message:", msg);
         await sendTelegramMessage(msg);
     } else {
         await sendTelegramMessage(`✅ <b>Job Sweeper Finished</b>\n\nAll ${opportunities.length} jobs appear to be live! No expired jobs found.`);
