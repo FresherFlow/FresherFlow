@@ -149,20 +149,20 @@ export default function CaptionsTool() {
         const locationHash = cleanLoc ? `#${cleanLoc}Jobs` : '';
 
         if (platform === 'telegram') {
-            const tgSkills = skillsLine ? `\n⚡ *Skills:* ${skillsLine}` : '';
-            const tgSalary = salary ? `\n💰 *Salary:* ${salary}` : '';
-            const tgBatch = batchYears ? `\n🎯 *Batch:* ${batchYears}` : '';
+            const tgSkills = skillsLine ? `\n⚡ Skills: ${skillsLine}` : '';
+            const tgSalary = salary ? `\n💰 Salary: ${salary}` : '';
+            const tgBatch = batchYears ? `\n🎯 Batch: ${batchYears}` : '';
 
-            return `🚀 *${opp.company}* Hiring *${opp.title}*
+            return `🚀 ${opp.company} Hiring ${opp.title}
 
-🎓 *Eligibility:* ${degrees}${tgBatch}
-💼 *Experience:* ${exp}
-📍 *Location:* ${locations}${tgSkills}${tgSalary}
+🎓 Eligibility: ${degrees}${tgBatch}
+💼 Experience: ${exp}
+📍 Location: ${locations}${tgSkills}${tgSalary}
 
-⭕️ *Apply Now:*
+⭕️ Apply Now:
 https://fresherflow.in/opportunities/${opp.slug}
 
-📱 *More jobs:* fresherflow.in/download`;
+📱 More jobs: fresherflow.in/download`;
         }
 
         if (platform === 'twitter') {
@@ -232,12 +232,12 @@ https://fresherflow.in/opportunities/${opp.slug}
         }
 
         if (activePlatform === 'telegram') {
-            let body = `🚨 *Today's Job Updates*\n\n`;
+            let body = `🚨 Today's Job Updates\n\n`;
             selectedOpps.forEach((opp, index) => {
                 const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} *${opp.company}* — ${opp.title}\n🔗 https://fresherflow.in/opportunities/${opp.slug}\n\n`;
+                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 https://fresherflow.in/opportunities/${opp.slug}\n\n`;
             });
-            body += `📱 *More jobs:* fresherflow.in/download`;
+            body += `📱 More jobs: fresherflow.in/download`;
             return body;
         }
 
@@ -353,16 +353,6 @@ https://fresherflow.in/opportunities/${opp.slug}
                             <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
                                 <SparklesIcon className="h-5 w-5 text-primary" />
                                 Social Captions Generator
-                                {canInstall && (
-                                    <button
-                                        onClick={() => void promptInstall('banner')}
-                                        className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[10px] font-bold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-sm active:scale-95 cursor-pointer"
-                                        title="Install App"
-                                    >
-                                        <ArrowDownTrayIcon className="w-3.5 h-3.5" />
-                                        Install
-                                    </button>
-                                )}
                             </h1>
                             <p className="text-[11px] text-muted-foreground mt-1">
                                 Extract live jobs from the CDN feed and generate custom WhatsApp & Telegram broadcast updates.

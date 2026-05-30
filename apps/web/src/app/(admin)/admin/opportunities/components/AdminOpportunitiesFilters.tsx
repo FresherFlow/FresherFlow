@@ -25,7 +25,7 @@ export const AdminOpportunitiesFilters = ({
     onClear
 }: AdminOpportunitiesFiltersProps) => {
     return (
-        <div className="sticky top-0 z-20 -mx-4 px-4 py-2 bg-background/90 backdrop-blur-md md:relative md:top-auto md:z-auto md:mx-0 md:px-0 md:py-0 md:bg-transparent space-y-3">
+        <div className="space-y-3">
             <div className="flex flex-col gap-3 md:bg-card md:border md:border-border md:p-4 md:rounded-lg md:flex-row md:items-center md:gap-4 md:shadow-none">
                 <div className="relative flex-1 w-full">
                     <MagnifyingGlassIcon className="absolute left-3 top-2.5 w-4 h-4 text-muted-foreground" />

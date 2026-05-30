@@ -3,7 +3,7 @@ import { getDatabase } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
 
 const isProd = typeof window !== 'undefined'
-    ? window.location.hostname.includes('fresherflow.com')
+    ? window.location.hostname.includes('fresherflow.in')
     : process.env.NEXT_PUBLIC_APP_ENV === 'production';
 
 const firebaseConfig = {

@@ -21,9 +21,9 @@ export function handleHostRouting(req: NextRequest) {
         if (isPublicDetailPath(pathname)) {
             return redirectWithMethodAwareness(req, `${req.nextUrl.protocol}//${PUBLIC_WEB_HOST}${pathname}${search}`);
         }
-        // Rewrite admin.fresherflow.in/* -> /admin/*
+        // Rewrite admin.fresherflow.in/* -> /admin/* (except API routes)
         const rewriteUrl = req.nextUrl.clone();
-        if (!pathname.startsWith('/admin')) {
+        if (!pathname.startsWith('/admin') && !pathname.startsWith('/api')) {
             rewriteUrl.pathname = `/admin${pathname}`;
         }
         return NextResponse.rewrite(rewriteUrl);

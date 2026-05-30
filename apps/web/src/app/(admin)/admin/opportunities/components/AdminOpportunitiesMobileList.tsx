@@ -50,7 +50,7 @@ export const AdminOpportunitiesMobileList = ({
     getPublicOpportunityHref
 }: AdminOpportunitiesMobileListProps) => {
     return (
-        <div className="md:hidden space-y-3">
+        <div className="md:hidden space-y-3 overflow-y-auto max-h-[calc(100vh-250px)] pb-4 custom-scrollbar">
             {opportunities.map((opp) => (
                 <div key={opp.id} className="bg-card rounded-lg border border-border p-3 shadow-sm">
                     <div className="flex items-start justify-between gap-3">
@@ -144,7 +144,7 @@ export const AdminOpportunitiesMobileList = ({
                                 <PencilSquareIcon className="w-4 h-4" />
                             </Link>
                         </div>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className={`grid gap-2 ${opp.status === 'DRAFT' ? 'grid-cols-3' : 'grid-cols-2'}`}>
                             {opp.status === 'DRAFT' && (
                                 <>
                                     <button

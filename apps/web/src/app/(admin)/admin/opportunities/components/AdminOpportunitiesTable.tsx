@@ -66,10 +66,10 @@ export const AdminOpportunitiesTable = ({
     const hasNextPage = page < effectiveTotalPages;
 
     return (
-        <div className="hidden md:block bg-card rounded-lg border border-border overflow-hidden">
+        <div className="hidden md:block bg-card rounded-lg border border-border overflow-y-auto max-h-[calc(100vh-180px)] custom-scrollbar">
             <table className="w-full text-left text-sm">
-                <thead>
-                    <tr className="border-b border-border bg-muted/50">
+                <thead className="sticky top-0 z-10 bg-card">
+                    <tr className="border-b border-border bg-muted/90 backdrop-blur-xs">
                         <th className="group px-5 py-3 w-10">
                             <div
                                 onClick={bulkActionPending ? undefined : toggleSelectAll}
