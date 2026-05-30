@@ -65,7 +65,7 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
     const isInstallEligibleHost = useMemo(() => {
         if (typeof window === 'undefined') return false;
         const host = window.location.hostname.toLowerCase();
-        return host === APP_WEB_HOST || host === ADMIN_WEB_HOST || host === 'localhost' || host === '127.0.0.1';
+        return host === APP_WEB_HOST || host === ADMIN_WEB_HOST || host === 'cdn.fresherflow.in' || host === 'localhost' || host === '127.0.0.1';
     }, []);
 
     // 1. Initial detection and PWA mode tracking
@@ -81,7 +81,8 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
         }, 0);
 
         if (installed && !readBoolean(STANDALONE_TRACKED_KEY)) {
-            void growthApi.trackEvent('OPENED_STANDALONE', 'pwa_install').catch(() => {});
+            // PWA tracking disabled since moving to mobile app
+            // void growthApi.trackEvent('OPENED_STANDALONE', 'pwa_install').catch(() => {});
             setBoolean(STANDALONE_TRACKED_KEY, true);
         }
 
@@ -112,7 +113,8 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
             event.preventDefault();
             deferredPromptRef.current = event as BeforeInstallPromptEvent;
             setHasPromptEvent(true);
-            void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', 'pwa_install').catch(() => {});
+            // PWA tracking disabled since moving to mobile app
+            // void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', 'pwa_install').catch(() => {});
         };
 
         const onAppInstalled = () => {
@@ -136,7 +138,8 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
 
     const promptInstall = useCallback(async (source?: 'navbar' | 'banner') => {
         if (source) {
-            void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', source).catch(() => {});
+            // PWA tracking disabled since moving to mobile app
+            // void growthApi.trackEvent('INSTALL_PROMPT_SHOWN', source).catch(() => {});
         }
 
         if (typeof window !== 'undefined' && !isInstallEligibleHost) {
@@ -154,7 +157,8 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
         setHasPromptEvent(false);
 
         if (choice.outcome === 'accepted') {
-            await growthApi.trackEvent('INSTALL_ACCEPTED', 'pwa_install').catch(() => {});
+            // PWA tracking disabled since moving to mobile app
+            // await growthApi.trackEvent('INSTALL_ACCEPTED', 'pwa_install').catch(() => {});
             setBannerDismissed(true);
             setBoolean(BANNER_DISMISSED_KEY, true);
             return true;
