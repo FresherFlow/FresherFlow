@@ -1,6 +1,7 @@
 import { Opportunity } from '@fresherflow/types';
 import { 
     BOOTSTRAP_FEED_URL, 
+    EXPIRED_FEED_URL,
     FEED_VERSION_URL,
     GET_CATEGORY_SHARD_URL, 
     SITE_URL, 
