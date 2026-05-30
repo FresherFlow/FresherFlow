@@ -99,9 +99,11 @@ export function DetailSidebarActions({
                     <p className="text-sm font-medium text-foreground leading-relaxed">
                         {listingState === 'EXPIRED'
                             ? 'This listing is expired. You can review details, but new applications are usually closed.'
-                            : listingState !== 'ACTIVE' && listingState !== 'CLOSING_SOON'
-                                ? `This listing is marked as ${listingState.toLowerCase()}. Check status updates from the source before applying.`
-                                : 'This listing is currently active and accepting applications.'}
+                            : listingState === 'CLOSING_SOON'
+                                ? 'This listing is closing soon. Apply before the deadline to be considered.'
+                                : listingState !== 'ACTIVE'
+                                    ? `This listing is marked as ${listingState.toLowerCase()}. Check status updates from the source before applying.`
+                                    : 'This listing is currently active and accepting applications.'}
                     </p>
 
                     {opp.expiresAt && (
@@ -160,13 +162,20 @@ export function DetailSidebarActions({
                                     Track Updates
                                 </button>
                             )}
-                            <Button
-                                onClick={handleApply}
-                                className="w-full h-12 text-base bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-tight shadow-lg hover:shadow-xl transition-all"
-                            >
-                                Apply Now
-                                <ArrowTopRightOnSquareIcon className="w-5 h-5" />
-                            </Button>
+                            {listingState === 'EXPIRED' ? (
+                                <div className="w-full h-12 rounded-xl border border-destructive/30 bg-destructive/5 flex items-center justify-center gap-2 text-destructive text-sm font-bold uppercase tracking-tight cursor-not-allowed select-none">
+                                    <span className="w-2 h-2 rounded-full bg-destructive" />
+                                    Applications Closed
+                                </div>
+                            ) : (
+                                <Button
+                                    onClick={handleApply}
+                                    className="w-full h-12 text-base bg-primary/70 text-primary-foreground border border-primary/60 hover:bg-primary/80 rounded-xl flex items-center justify-center gap-2 font-bold uppercase tracking-tight shadow-lg hover:shadow-xl transition-all"
+                                >
+                                    Apply Now
+                                    <ArrowTopRightOnSquareIcon className="w-5 h-5" />
+                                </Button>
+                            )}
                         </div>
                     )}
                     {/* Share & Copy Link row */}
