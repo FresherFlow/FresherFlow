@@ -290,6 +290,7 @@ export interface Opportunity {
         creator?: {
             id: string;
             fullName: string | null;
+            username?: string | null;
         } | null;
     }>;
 }

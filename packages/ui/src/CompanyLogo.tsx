@@ -103,7 +103,7 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
                                 setCurrentSrc(persistent);
                                 return;
                             }
-                        } catch (e) {
+                        } catch {
                             // ignore file system errors, fall through
                         }
                     } else {
@@ -169,7 +169,8 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
                         } else {
                             memCache.set(cacheKey, currentSrc!);
                             
-                            if (Platform.OS === 'web' || !(FileSystem as any).documentDirectory) {
+                            const fsWithDir = FileSystem as unknown as { documentDirectory?: string };
+                            if (Platform.OS === 'web' || !fsWithDir.documentDirectory) {
                                 void storage.setItem(`logo_${cacheKey}`, currentSrc!).catch(() => {});
                                 return;
                             }
@@ -181,7 +182,7 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
                             // Download for offline permanence
                             const ext = currentSrc?.split('?')[0].split('.').pop()?.substring(0, 4) || 'png';
                             const safeKey = cacheKey.replace(/[^a-z0-9]/gi, '_');
-                            const localUri = `${(FileSystem as any).documentDirectory}logo_${safeKey}.${ext}`;
+                            const localUri = `${fsWithDir.documentDirectory}logo_${safeKey}.${ext}`;
                             
                             FileSystem.downloadAsync(currentSrc!, localUri)
                                 .then(({ uri }) => {

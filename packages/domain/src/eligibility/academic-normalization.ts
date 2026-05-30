@@ -90,7 +90,10 @@ export function normalizeEducationBuckets(
         }
         if (isKnownSpecialization(value)) {
             normalizedSpecializations.push(value);
+            continue;
         }
+        // Non-destructive fallback: Preserve unknown course values
+        normalizedCourses.push(value);
     }
 
     for (const value of candidateSpecializations) {
@@ -100,7 +103,10 @@ export function normalizeEducationBuckets(
         }
         if (isKnownCourse(value)) {
             normalizedCourses.push(value);
+            continue;
         }
+        // Non-destructive fallback: Preserve unknown specialization values
+        normalizedSpecializations.push(value);
     }
 
     return {
