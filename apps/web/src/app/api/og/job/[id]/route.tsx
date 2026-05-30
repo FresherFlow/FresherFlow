@@ -10,7 +10,9 @@ const size = {
 };
 
 async function signPathname(pathname: string, secret: string): Promise<{ t: number; sig: string }> {
-  const t = Math.floor(Date.now() / 1000);
+  // Round timestamp to a 2-minute (120-second) window to make signed URLs stable for caching,
+  // while remaining safely within the Cloudflare Worker's 5-minute (300-second) replay attack window.
+  const t = Math.floor(Date.now() / 1000 / 120) * 120;
   const message = `${pathname}:${t}`;
 
   const encoder = new TextEncoder();
@@ -79,6 +81,7 @@ type OpportunityDto = {
   expiresAt?: string | null;
   companyWebsite?: string | null;
   applyLink?: string | null;
+  companyLogoUrl?: string | null;
   events?: Array<{
     eventType:
     | "NOTIFICATION"
@@ -183,6 +186,9 @@ const getLogoCandidates = (opportunity: OpportunityDto) => {
 };
 
 const resolveLogoUrl = async (opportunity: OpportunityDto) => {
+  if (opportunity.companyLogoUrl) {
+    return opportunity.companyLogoUrl;
+  }
 
   const candidates = getLogoCandidates(opportunity);
   if (!candidates.length) return "";

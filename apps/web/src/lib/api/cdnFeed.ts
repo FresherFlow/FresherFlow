@@ -24,7 +24,7 @@ export interface BootstrapFeedResponse {
  * Used for the bootstrap feed on the web/Next.js server side.
  */
 function signUrlWithVersion(url: string, version: string): string {
-    const secret = process.env.CDN_SIGNATURE_SECRET;
+    const secret = process.env.CDN_SIGNATURE_SECRET || process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET;
     if (!secret) return url;
     try {
         const parsedUrl = new URL(url, 'https://cdn.fresherflow.in');
@@ -120,9 +120,9 @@ export async function fetchFeedVersion(): Promise<string> {
  * Fetches the static bootstrap feed from the CDN.
  * This is used for "Zero-Spinner" instant discovery and SEO.
  */
-export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null> {
+export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFeedResponse | null> {
     try {
-        if (process.env.NODE_ENV === 'development') {
+        if (process.env.NODE_ENV === 'development' && !forceLive) {
             const res = await fetch(`${SITE_URL || 'http://localhost:3000'}/dummy-feed.json`, { cache: 'no-store' });
             return await res.json() as BootstrapFeedResponse;
         }
