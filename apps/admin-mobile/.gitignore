@@ -4,3 +4,4 @@ dist/
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+android/
