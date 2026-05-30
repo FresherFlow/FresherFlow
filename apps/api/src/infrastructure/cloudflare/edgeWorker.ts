@@ -145,18 +145,21 @@ export default {
 
             // 5. AUTHENTICATED — Serve from R2 with appropriate cache headers
             const r2Response = await fetch(request);
-            const newHeaders = new Headers(r2Response.headers);
 
             if (versionStr) {
-                // Stable version URL → tell all downstream edges to cache indefinitely
+                // Stable version URL → add immutable cache header for downstream edges
+                const newHeaders = new Headers(r2Response.headers);
                 newHeaders.set('Cache-Control', 'public, max-age=31536000, immutable');
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                return new Response(r2Response.body as any, {
+                    status: r2Response.status,
+                    statusText: r2Response.statusText,
+                    headers: newHeaders
+                });
             }
 
-            return new Response(r2Response.body, {
-                status: r2Response.status,
-                statusText: r2Response.statusText,
-                headers: newHeaders
-            });
+            // Legacy t= mode: pass R2 response through unchanged
+            return r2Response;
 
         } catch (e) {
             return new Response(JSON.stringify({
