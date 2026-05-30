@@ -95,8 +95,8 @@ class TelegramService {
         const message = [
             '<b>New User Signup</b>',
             '------------------------',
-            `<b>Name:</b> ${name}`,
-            `<b>Email:</b> ${email}`,
+            `<b>Name:</b> ${this.escapeHtml(name)}`,
+            `<b>Email:</b> ${this.escapeHtml(email)}`,
             '------------------------',
             '<i>FresherFlow Admin</i>'
         ].join('\n');
@@ -129,8 +129,8 @@ class TelegramService {
         const message = [
             '<b>New Job Created</b>',
             '------------------------',
-            `<b>Company:</b> ${company}`,
-            `<b>Role:</b> ${jobTitle}`,
+            `<b>Company:</b> ${this.escapeHtml(company)}`,
+            `<b>Role:</b> ${this.escapeHtml(jobTitle)}`,
             `<b>Status:</b> ${status}`,
             `<b>ID:</b> ${jobId}`,
             '------------------------',
@@ -143,8 +143,8 @@ class TelegramService {
         const message = [
             '<b>Link Verification Alert</b>',
             '------------------------',
-            `<b>Company:</b> ${company}`,
-            `<b>Role:</b> ${title}`,
+            `<b>Company:</b> ${this.escapeHtml(company)}`,
+            `<b>Role:</b> ${this.escapeHtml(title)}`,
             `<b>Status:</b> Auto-archived after broken-link checks`,
             `<b>Failures:</b> ${failures}`,
             `<b>ID:</b> ${opportunityId}`,
@@ -205,8 +205,8 @@ class TelegramService {
         const message = [
             '<b>New Job Link Submitted</b>',
             '------------------------',
-            `<b>URL:</b> ${url}`,
-            `<b>Source:</b> ${source}`,
+            `<b>URL:</b> ${this.escapeHtml(url)}`,
+            `<b>Source:</b> ${this.escapeHtml(source)}`,
             '------------------------',
             '<i>Action required: Review in DB (RawOpportunity)</i>'
         ].join('\n');
