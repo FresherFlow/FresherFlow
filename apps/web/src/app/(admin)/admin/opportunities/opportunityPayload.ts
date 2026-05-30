@@ -119,7 +119,10 @@ const formatTime = (value: string) => {
 const formatSalaryRange = (amount: string, period: SalaryPeriod) => {
     const raw = parseFloat(amount.replace(/[^0-9.]/g, ''));
     if (!raw || Number.isNaN(raw)) return '';
-    if (period === 'YEARLY') return `${raw} LPA`;
+    if (period === 'YEARLY') {
+        const lpa = raw >= 100000 ? raw / 100000 : raw;
+        return `${Number.isInteger(lpa) ? lpa.toFixed(0) : lpa.toFixed(1)} LPA`;
+    }
     return `${raw.toLocaleString('en-IN')}/month`;
 };
 
@@ -145,7 +148,7 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         type: values.type,
         title: values.title,
         company: values.company,
-        companyWebsite: values.companyWebsite || undefined,
+        companyWebsite: values.companyWebsite || null,
         description: values.description,
         allowedDegrees: values.allowedDegrees,
         allowedCourses: values.allowedCourses,
@@ -153,20 +156,20 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         allowedPassoutYears: values.passoutYears,
         requiredSkills: toCsvList(values.requiredSkills),
         locations: toCsvList(values.locations),
-        workMode: values.type === 'WALKIN' ? undefined : values.workMode,
-        salaryRange: values.salaryRange || formatSalaryRange(values.salaryAmount, values.salaryPeriod) || undefined,
-        salaryPeriod: values.salaryPeriod,
-        employmentType: values.employmentType || undefined,
-        incentives: values.incentives || undefined,
-        jobFunction: values.jobFunction || undefined,
-        selectionProcess: values.selectionProcess || undefined,
-        notesHighlights: values.notesHighlights || undefined,
+        workMode: values.type === 'WALKIN' ? undefined : (values.workMode || null),
+        salaryRange: values.salaryRange || formatSalaryRange(values.salaryAmount, values.salaryPeriod) || null,
+        salaryPeriod: values.salaryPeriod || null,
+        employmentType: values.employmentType || null,
+        incentives: values.incentives || null,
+        jobFunction: values.jobFunction || null,
+        selectionProcess: values.selectionProcess || null,
+        notesHighlights: values.notesHighlights || null,
         tags: values.isGovernmentJob ? toCsvList(values.governmentTags) : [],
-        experienceMin: toFloat(values.experienceMin),
-        experienceMax: toFloat(values.experienceMax),
-        sourceLink: normalizedSourceLink || undefined,
-        applyLink: normalizedApplyLink || normalizedSourceLink || undefined,
-        expiresAt: values.expiresAt || derivedWalkInExpiry || undefined,
+        experienceMin: toFloat(values.experienceMin) ?? null,
+        experienceMax: toFloat(values.experienceMax) ?? null,
+        sourceLink: normalizedSourceLink || null,
+        applyLink: normalizedApplyLink || normalizedSourceLink || null,
+        expiresAt: values.expiresAt || derivedWalkInExpiry || null,
     };
 
     if (values.type === 'WALKIN') {

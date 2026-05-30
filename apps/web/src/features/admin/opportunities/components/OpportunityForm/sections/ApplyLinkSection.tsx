@@ -25,7 +25,7 @@ export function ApplyLinkSection({
             {type === 'WALKIN' ? (
                 walkInDetailsComponent
             ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-4">
                     <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Source URL</label>
                         <input
@@ -46,7 +46,7 @@ export function ApplyLinkSection({
                             placeholder="https://careers.company.com/... (application page)"
                         />
                     </div>
-                    <p className="text-xs text-muted-foreground md:col-span-2">
+                    <p className="text-xs text-muted-foreground">
                         Add at least one URL. If both are present, `Source URL` stays for tracing and `Apply URL` is where the listing should land.
                     </p>
                 </div>

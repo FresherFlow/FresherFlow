@@ -2,6 +2,10 @@ import { apiClient } from './client';
 
 // Admin API methods using the centralized client (cookie-based auth)
 export const adminApi = {
+    // Users
+    getUsers: () =>
+        apiClient('/api/admin/users'),
+
     // Analytics overview
     getAnalyticsOverview: () =>
         apiClient('/api/admin/analytics/overview'),
@@ -121,6 +125,9 @@ export const adminApi = {
     // System observability metrics
     getSystemMetrics: () =>
         apiClient('/api/admin/system/metrics'),
+
+    getFirebaseToken: () =>
+        apiClient('/api/admin/auth/firebase-token'),
 
     // Canonical dashboard metrics
     getSystemMetricsV2: (window: '24h' | '7d' | '30d' = '30d') =>

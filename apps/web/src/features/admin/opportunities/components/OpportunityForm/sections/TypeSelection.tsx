@@ -9,46 +9,44 @@ interface TypeSelectionProps {
 
 export function TypeSelection({ type, setType, isGovernmentJob = false, setIsGovernmentJob }: TypeSelectionProps) {
     return (
-        <div className="space-y-3">
-            <h3 className="text-sm md:text-base font-semibold text-foreground flex items-center gap-2">
-                <InformationCircleIcon className="w-4 h-4 text-muted-foreground" />
-                Type
-            </h3>
-            <div className="grid grid-cols-3 gap-2 md:gap-3">
-                {(['JOB', 'INTERNSHIP', 'WALKIN'] as const).map((t) => (
-                    <button
-                        key={t}
-                        type="button"
-                        onClick={() => setType(t)}
-                        className={`flex flex-col items-center justify-center py-2.5 px-1 rounded-lg border transition-all text-center h-full ${type === t
-                            ? 'bg-primary/5 border-primary ring-1 ring-primary shadow-sm'
-                            : 'bg-card border-border hover:border-muted-foreground/30 hover:bg-muted/50'
-                            }`}
-                    >
-                        <span className={`text-[10px] md:text-sm font-bold capitalize tracking-wider ${type === t ? 'text-primary' : 'text-foreground'}`}>{t}</span>
-                        <span className="text-[9px] md:text-xs text-muted-foreground mt-0.5 whitespace-nowrap">
-                            {t === 'WALKIN' ? 'In-person' : 'Direct apply'}
-                        </span>
-                    </button>
-                ))}
-            </div>
-            {setIsGovernmentJob && (
-                <button
-                    type="button"
-                    onClick={() => setIsGovernmentJob(!isGovernmentJob)}
-                    className={`w-full rounded-lg border px-4 py-3 text-left transition-all ${isGovernmentJob ? 'border-primary bg-primary/5 ring-1 ring-primary' : 'border-border bg-card hover:bg-muted/40'}`}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col justify-center">
+                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
+                    Opportunity Type
+                </label>
+                <select
+                    value={type}
+                    onChange={(e) => setType(e.target.value as 'JOB' | 'INTERNSHIP' | 'WALKIN')}
+                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                    <div className="flex items-center justify-between gap-3">
-                        <div>
-                            <p className="text-sm font-bold text-foreground">Government Job Mode</p>
-                            <p className="text-xs text-muted-foreground">Turn this on for official-notice fields, tags, fee, age, and exam timeline metadata.</p>
-                        </div>
-                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[10px] font-bold capitalize tracking-widest ${isGovernmentJob ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
-                            {isGovernmentJob ? 'On' : 'Off'}
-                        </span>
+                    <option value="JOB">JOB - Direct apply</option>
+                    <option value="INTERNSHIP">INTERNSHIP - Direct apply</option>
+                    <option value="WALKIN">WALKIN - In-person</option>
+                </select>
+            </div>
+
+            {setIsGovernmentJob && (
+                <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-card">
+                    <p className="text-xs font-bold text-foreground">Govt Job Mode</p>
+
+                        <button
+                            type="button"
+                            role="switch"
+                            aria-checked={isGovernmentJob}
+                            onClick={() => setIsGovernmentJob(!isGovernmentJob)}
+                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-primary ${
+                                isGovernmentJob ? 'bg-primary' : 'bg-muted-foreground/30'
+                            }`}
+                        >
+                            <span
+                                aria-hidden="true"
+                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                                    isGovernmentJob ? 'translate-x-4' : 'translate-x-0'
+                                }`}
+                            />
+                        </button>
                     </div>
-                </button>
-            )}
-        </div>
+                )}
+            </div>
     );
 }

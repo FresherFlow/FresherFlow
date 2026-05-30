@@ -247,7 +247,7 @@ export const AdminOpportunitiesTable = ({
                     <button
                         onClick={() => setPage(prev => Math.max(1, (typeof prev === 'number' ? prev : 1) - 1))}
                         disabled={page === 1}
-                        className="h-8 px-3 rounded border border-input bg-background text-xs font-medium disabled:opacity-50 hover:bg-accent transition-colors"
+                        className="h-8 px-3 rounded border border-input bg-secondary/20 text-xs font-medium disabled:opacity-50 hover:bg-accent transition-colors"
                     >
                         Previous
                     </button>
@@ -265,7 +265,7 @@ export const AdminOpportunitiesTable = ({
                                     onClick={() => setPage(pageNum)}
                                     className={`w-8 h-8 rounded text-xs font-medium transition-colors ${page === pageNum
                                         ? 'bg-primary text-primary-foreground'
-                                        : 'border border-input bg-background hover:bg-accent'
+                                        : 'border border-input bg-secondary/20 hover:bg-accent'
                                         }`}
                                 >
                                     {pageNum}
@@ -276,7 +276,7 @@ export const AdminOpportunitiesTable = ({
                     <button
                         onClick={() => setPage(prev => Math.min(effectiveTotalPages, (typeof prev === 'number' ? prev : 1) + 1))}
                         disabled={!hasNextPage}
-                        className="h-8 px-3 rounded border border-input bg-background text-xs font-medium disabled:opacity-50 hover:bg-accent transition-colors"
+                        className="h-8 px-3 rounded border border-input bg-secondary/20 text-xs font-medium disabled:opacity-50 hover:bg-accent transition-colors"
                     >
                         Next
                     </button>

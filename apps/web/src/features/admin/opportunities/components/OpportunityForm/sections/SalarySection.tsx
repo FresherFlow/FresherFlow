@@ -13,7 +13,7 @@ export function SalarySection({
     salaryRange, setSalaryRange
 }: SalarySectionProps) {
     return (
-        <div className="space-y-4">
+        <div className="space-y-5 md:space-y-6 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm">
             <div className="space-y-2">
                 <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Salary Configuration</label>
                 <div className="flex gap-2">

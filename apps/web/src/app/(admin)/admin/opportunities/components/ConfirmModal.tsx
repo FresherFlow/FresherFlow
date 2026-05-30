@@ -48,13 +48,13 @@ export const ConfirmModal = ({
                         onChange={(e) => setReason(e.target.value)}
                         placeholder={reasonPlaceholder}
                         rows={3}
-                        className="w-full mb-4 px-3 py-2 text-sm rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+                        className="w-full mb-4 px-3 py-2 text-sm rounded-md border border-input bg-secondary/20 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                 )}
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onCancel}
-                        className="flex-1 h-10 px-4 rounded-md border border-input bg-background text-sm font-medium hover:bg-accent transition-colors"
+                        className="flex-1 h-10 px-4 rounded-md border border-input bg-secondary/20 text-sm font-medium hover:bg-accent transition-colors"
                     >
                         Cancel
                     </button>

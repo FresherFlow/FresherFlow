@@ -111,7 +111,7 @@ export const AdminOpportunitiesMobileList = ({
                         <div className="grid grid-cols-4 gap-2">
                             <button
                                 onClick={() => void copySocialCaption(opp)}
-                                className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-background text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                                className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-secondary/20 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                                 title="Copy social caption"
                             >
                                 <DocumentDuplicateIcon className="w-4 h-4" />
@@ -131,14 +131,14 @@ export const AdminOpportunitiesMobileList = ({
                                 href={getPublicOpportunityHref(opp)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-background text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                                className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-secondary/20 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                                 title="View as user"
                             >
                                 <EyeIcon className="w-4 h-4" />
                             </Link>
                             <Link
                                 href={`/admin/opportunities/edit/${opp.slug || opp.id}`}
-                                className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-background text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                                className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-secondary/20 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                                 title="Edit"
                             >
                                 <PencilSquareIcon className="w-4 h-4" />
@@ -168,7 +168,7 @@ export const AdminOpportunitiesMobileList = ({
                             {opp.status === 'PUBLISHED' && (
                                 <button
                                     onClick={() => handleExpire(opp.id, opp.title)}
-                                    className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-background text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                                    className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-secondary/20 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                                     title="Expire"
                                 >
                                     <ClockIcon className="w-4 h-4 mr-1.5" />

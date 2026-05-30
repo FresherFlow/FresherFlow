@@ -52,8 +52,11 @@ const toNumberOrUndefined = (value: string) => {
 const formatSalaryRange = (amount: string, period: SalaryPeriod) => {
     const raw = parseFloat(String(amount).replace(/[^0-9.]/g, ''));
     if (!raw || Number.isNaN(raw)) return '';
-    if (period === 'YEARLY') return `${raw} LPA`;
-    const kVal = raw / 1000;
+    if (period === 'YEARLY') {
+        const lpa = raw >= 100000 ? raw / 100000 : raw;
+        return `${Number.isInteger(lpa) ? lpa.toFixed(0) : lpa.toFixed(1)} LPA`;
+    }
+    const kVal = raw >= 1000 ? raw / 1000 : raw;
     return `${Number.isInteger(kVal) ? kVal.toFixed(0) : kVal.toFixed(1)}k/month`;
 };
 

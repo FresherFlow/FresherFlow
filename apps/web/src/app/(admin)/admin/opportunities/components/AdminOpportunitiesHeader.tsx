@@ -22,7 +22,7 @@ export const AdminOpportunitiesHeader = ({
             <div className="flex items-center gap-2">
                 <button
                     onClick={onRefresh}
-                    className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-secondary/20 px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
                     title="Refresh List"
                 >
                     <ArrowPathIcon className={`w-4 h-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
@@ -30,7 +30,7 @@ export const AdminOpportunitiesHeader = ({
                 </button>
                 <a
                     href={exportUrl}
-                    className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
+                    className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-secondary/20 px-3 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground"
                 >
                     <DocumentTextIcon className="w-4 h-4 mr-2" />
                     Share Link
