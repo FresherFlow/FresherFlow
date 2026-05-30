@@ -16,16 +16,33 @@ export interface BootstrapFeedResponse {
     generatedAt: string;
 }
 
-function signPathname(pathname: string, secret: string): { t: number; sig: string } {
-    const t = Math.floor(Date.now() / 1000);
-    const message = `${pathname}:${t}`;
-    const sig = crypto.createHmac('sha256', secret).update(message).digest('hex');
-    return { t, sig };
+/**
+ * Signs a CDN URL using a stable feed version string.
+ * The resulting URL is identical until the next job publish event,
+ * enabling indefinite CDN caching (immutable cache headers from Edge Worker).
+ * Used for the bootstrap feed on the web/Next.js server side.
+ */
+function signUrlWithVersion(url: string, version: string): string {
+    const secret = process.env.CDN_SIGNATURE_SECRET;
+    if (!secret) return url;
+    try {
+        const parsedUrl = new URL(url, 'https://cdn.fresherflow.in');
+        const pathname = parsedUrl.pathname;
+        const message = `${pathname}:${version}`;
+        const sig = crypto.createHmac('sha256', secret).update(message).digest('hex');
+        parsedUrl.searchParams.set('v', version);
+        parsedUrl.searchParams.set('sig', sig);
+        return parsedUrl.toString();
+    } catch (err) {
+        console.error('Failed to sign CDN url with version:', err);
+        return url;
+    }
 }
 
 /**
- * Signs a CDN URL if executed on the server-side (Vercel builds / Next.js SSR)
- * to successfully pass through Cloudflare Worker request signature verification.
+ * Signs a CDN URL using a rolling 2-minute timestamp window.
+ * Used for protected paths that don't have a version yet (categories, usernames).
+ * Remains safely within the Edge Worker's 5-minute replay attack window.
  */
 function signUrlIfServer(url: string): string {
     const IS_SERVER = typeof window === 'undefined';
@@ -36,13 +53,14 @@ function signUrlIfServer(url: string): string {
         try {
             const parsedUrl = new URL(url, 'https://cdn.fresherflow.in');
             const pathname = parsedUrl.pathname;
-            const isProtected = pathname === '/bootstrap-feed.min.json' ||
-                                pathname === '/taken-usernames.min.json' ||
+            const isProtected = pathname === '/taken-usernames.min.json' ||
                                 pathname === '/companies-directory.min.json' ||
                                 pathname.startsWith('/categories/');
 
             if (isProtected) {
-                const { t, sig } = signPathname(pathname, secret);
+                const t = Math.floor(Date.now() / 1000 / 120) * 120;
+                const message = `${pathname}:${t}`;
+                const sig = crypto.createHmac('sha256', secret).update(message).digest('hex');
                 parsedUrl.searchParams.set('t', t.toString());
                 parsedUrl.searchParams.set('sig', sig);
                 return parsedUrl.toString();
@@ -109,14 +127,18 @@ export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null
         }
 
         const version = await fetchFeedVersion();
-        const urlWithBuster = `${BOOTSTRAP_FEED_URL}?v=${version}`;
-        const url = signUrlIfServer(urlWithBuster);
+        // Sign using the stable version string — URL stays identical until next publish event,
+        // allowing Vercel / Cloudflare edges to cache it indefinitely (immutable).
+        const IS_SERVER = typeof window === 'undefined';
+        const signedUrl = IS_SERVER
+            ? signUrlWithVersion(BOOTSTRAP_FEED_URL, version)
+            : `${BOOTSTRAP_FEED_URL}?v=${version}`;
 
         const controller = new AbortController();
-        // 15s timeout to comfortably tolerate sleeping Render cold starts on unprimed caches
-        const timeoutId = setTimeout(() => controller.abort(), 15000); 
+        // 10s timeout — a cache hit should respond in <100ms; this guards only cold misses
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-        const res = await fetch(url, getCDNFetchOptions({
+        const res = await fetch(signedUrl, getCDNFetchOptions({
             next: { revalidate: 3600 },
             signal: controller.signal,
         }));
