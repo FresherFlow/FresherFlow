@@ -1,5 +1,6 @@
 import prisma from '../../infrastructure/database/prisma';
 import express, { Router, Request, Response, NextFunction } from 'express';
+import admin from '../../lib/firebase';
 
 import {
     generateRegistrationOptions,
@@ -538,7 +539,20 @@ router.delete('/passkeys/:id', requireAdmin, async (req: Request, res: Response,
 });
 
 /**
- * 8. Logout
+ * 8. Generate Firebase Custom Token
+ */
+router.get('/firebase-token', requireAdmin, async (req: Request, res: Response) => {
+    try {
+        const token = await admin.auth().createCustomToken(req.adminId!, { admin: true });
+        res.json({ firebaseToken: token });
+    } catch (error) {
+        logger.error('[Firebase Handshake] Failed to create custom token:', error);
+        res.status(500).json({ error: 'Failed to generate Firebase token' });
+    }
+});
+
+/**
+ * 9. Logout
  */
 router.post('/logout', (req, res) => {
     clearAdminCookieVariants(res);

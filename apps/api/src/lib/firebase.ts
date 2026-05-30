@@ -1,9 +1,9 @@
 import * as admin from 'firebase-admin';
 import { logger } from '@fresherflow/logger';
 
-const project_id = process.env.FIREBASE_PROJECT_ID;
-const client_email = process.env.FIREBASE_CLIENT_EMAIL;
-const private_key = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n');
+const project_id = process.env.FIREBASE_PROJECT_ID?.replace(/^"|"$/g, '');
+const client_email = process.env.FIREBASE_CLIENT_EMAIL?.replace(/^"|"$/g, '');
+const private_key = process.env.FIREBASE_PRIVATE_KEY?.replace(/^"|"$/g, '')?.replace(/\\n/g, '\n');
 
 if (!admin.apps.length) {
     if (project_id && client_email && private_key) {
@@ -18,7 +18,12 @@ if (!admin.apps.length) {
             });
             logger.info('Firebase Admin initialized with service account.');
         } catch (error) {
-            logger.error('Firebase Admin initialization failed:', error);
+            logger.error('[Firebase] Failed to initialize Admin SDK with certificate:', error);
+            const pid = project_id || 'fresherflow-dev-staging';
+            admin.initializeApp({ 
+                projectId: pid,
+                databaseURL: `https://${pid}-default-rtdb.asia-southeast1.firebasedatabase.app`
+            });
         }
     } else {
         const isStaging = process.env.RENDER_SERVICE_NAME?.includes('staging') || 
@@ -27,12 +32,12 @@ if (!admin.apps.length) {
         const pid = project_id || (isStaging ? 'fresherflow-dev-staging' : 'fresherflow-3604b');
         if (!process.env.GCLOUD_PROJECT) process.env.GCLOUD_PROJECT = pid;
         try {
-            // No service account available — init with projectId only.
-            // Omitting databaseURL prevents Firebase from repeatedly retrying ADC
-            // and spamming "invalid-credential" warnings in local dev.
-            // admin.auth() (token verification) works fine without RTDB connectivity.
-            admin.initializeApp({ projectId: pid });
-            logger.info(`[Firebase] Admin initialized with Project ID: ${pid} (Fallback Mode — RTDB disabled)`);
+            // No service account available — init with projectId and databaseURL.
+            admin.initializeApp({ 
+                projectId: pid,
+                databaseURL: `https://${pid}-default-rtdb.asia-southeast1.firebasedatabase.app`
+            });
+            logger.info(`[Firebase] Admin initialized with Project ID: ${pid} and Database URL.`);
         } catch (error) {
             logger.error('[Firebase] Admin initialization failed in fallback mode:', error);
         }

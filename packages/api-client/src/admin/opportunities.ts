@@ -106,6 +106,12 @@ export const adminOpportunitiesApi = {
             method: 'POST',
         }),
 
+    bulkSubmissions: (payload: { ids: string[]; action: 'PUBLISH' | 'ARCHIVE' }) =>
+        apiClient<{ success: boolean; updatedCount: number }>('/api/admin/opportunities/submissions/bulk', {
+            method: 'POST',
+            body: JSON.stringify(payload),
+        }),
+
     summary: () =>
         apiClient<{ summary: Record<string, unknown> }>('/api/admin/opportunities/summary'),
 };

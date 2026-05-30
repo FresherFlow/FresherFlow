@@ -1,20 +1,9 @@
-import prisma from '../../infrastructure/database/prisma';
 import express, { NextFunction, Request, Response } from 'express';
-import { eventService } from '../../infrastructure/services/event.service';
-
 import { optionalAuth } from '../../middleware/auth';
-import { updateOpportunityEngagement } from '../../application/opportunity/engagement';
 
 const router = express.Router();
 
 // IP hashing removed for privacy-first tracking
-
-function normalize(input: unknown, max = 200): string | null {
-    if (typeof input !== 'string') return null;
-    const trimmed = input.trim();
-    if (!trimmed) return null;
-    return trimmed.slice(0, max);
-}
 
 router.post('/opportunities/:id/click', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {

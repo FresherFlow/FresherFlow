@@ -123,8 +123,8 @@ export const opportunitySchema = z.object({
 
     title: z.string().min(1, 'Title is required'),
     company: z.string().min(1, 'Company is required'),
-    companyWebsite: z.string().url().optional(),
-    description: z.string().min(10, 'Description must be at least 10 characters').optional(),
+    companyWebsite: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
+    description: z.string().min(10, 'Description must be at least 10 characters').nullable().optional(),
 
     // Core Filters
     allowedDegrees: z.array(z.nativeEnum(EducationLevel)).optional().default([]),
@@ -135,24 +135,24 @@ export const opportunitySchema = z.object({
     locations: z.array(z.string()).min(1, 'Add at least one location'),
 
     // Job/Internship Fields
-    workMode: z.nativeEnum(WorkMode).optional(),
-    salaryMin: z.number().optional(), // Legacy
-    salaryMax: z.number().optional(), // Legacy
-    salaryRange: z.string().optional(), // New
-    stipend: z.string().optional(),     // New
-    salaryPeriod: z.nativeEnum(SalaryPeriod).optional(),
-    incentives: z.string().optional(),
-    jobFunction: z.string().optional(),
-    selectionProcess: z.string().optional(),
-    notesHighlights: z.string().optional(),
-    experienceMin: z.number().int().optional(),
-    experienceMax: z.number().int().optional(),
-    employmentType: z.string().optional(), // New
+    workMode: z.nativeEnum(WorkMode).nullable().optional(),
+    salaryMin: z.number().nullable().optional(), // Legacy
+    salaryMax: z.number().nullable().optional(), // Legacy
+    salaryRange: z.string().nullable().optional(), // New
+    stipend: z.string().nullable().optional(),     // New
+    salaryPeriod: z.nativeEnum(SalaryPeriod).nullable().optional(),
+    incentives: z.string().nullable().optional(),
+    jobFunction: z.string().nullable().optional(),
+    selectionProcess: z.string().nullable().optional(),
+    notesHighlights: z.string().nullable().optional(),
+    experienceMin: z.number().int().nullable().optional(),
+    experienceMax: z.number().int().nullable().optional(),
+    employmentType: z.string().nullable().optional(), // New
     tags: z.array(z.string()).optional().default([]),
-    sourceLink: z.string().url().optional().or(z.string().length(0)),
-    applyLink: z.string().url().optional().or(z.string().length(0)),
+    sourceLink: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
+    applyLink: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
 
-    expiresAt: z.string().optional(),
+    expiresAt: z.string().nullable().optional(),
     governmentJobDetails: z.object({
         department: z.string().optional(),
         organization: z.string().optional(),

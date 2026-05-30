@@ -1,9 +1,12 @@
 import dotenv from 'dotenv';
+import path from 'path';
+
 // Load environment variables immediately
 dotenv.config();
+dotenv.config({ path: path.join(__dirname, '../.env') });
+dotenv.config({ path: path.join(__dirname, '../../.env') });
 
 import fs from 'fs';
-import path from 'path';
 
 import express, { Application } from 'express';
 import cors from 'cors';
@@ -48,6 +51,7 @@ import adminTotpRoutes from './routes/admin/totp';
 import adminSocialRoutes from './routes/admin/social';
 import adminQueuesRoutes from './routes/admin/queues';
 import adminPushRoutes from './routes/admin/push';
+import adminUsersRoutes from './routes/admin/users';
 import healthRoutes from './routes/public/health';
 import growthRoutes from './routes/public/growth';
 import companyRoutes from './routes/public/companies';
@@ -404,6 +408,7 @@ if (isAdminMode) {
     app.use('/api/admin/social-posts', restrictAdmin, adminSocialRoutes);
     app.use('/api/admin/queues', restrictAdmin, adminQueuesRoutes);
     app.use('/api/admin/push', restrictAdmin, adminPushRoutes);
+    app.use('/api/admin/users', restrictAdmin, adminUsersRoutes);
 }
 
 // ============================================================================

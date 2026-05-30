@@ -4,6 +4,7 @@ export * from './admin/opportunities';
 export * from './admin/system';
 export * from './admin/analytics';
 export * from './admin/feedback';
+export * from './admin/users';
 
 // Public APIs
 export { authApi } from './public/auth';

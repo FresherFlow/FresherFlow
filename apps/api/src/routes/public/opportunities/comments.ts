@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { prisma } from '@fresherflow/database';
 import { requireAuth } from '../../../middleware/auth';
 import { AppError } from '../../../middleware/errorHandler';
 
@@ -20,7 +19,6 @@ router.get('/:id/comments', async (req, res) => {
  * @desc    Post a comment on an opportunity (protected)
  */
 router.post('/:id/comments', requireAuth, async (req, res) => {
-    const id = req.params.id as string;
     const { text } = req.body;
     const userId = req.userId;
     if (!userId || req.isAnonymous) {

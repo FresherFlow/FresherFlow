@@ -1,8 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
-import { ingestionQueue } from '@fresherflow/queue';
-import { tryResolveUserIdFromCookie } from './_helpers';
 import { requireAuth } from '../../../middleware/auth';
 import { updateOpportunityEngagement } from '../../../application/opportunity/engagement';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
@@ -121,7 +119,7 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
             try {
                 const urlObj = new URL(normalizedUrl);
                 companyName = urlObj.hostname.replace(/^www\./, '');
-            } catch (e) {
+            } catch {
                 // ignore
             }
         }

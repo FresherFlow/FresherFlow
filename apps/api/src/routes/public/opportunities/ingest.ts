@@ -1,8 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { UrlParser } from '@fresherflow/parser';
-import { prisma } from '@fresherflow/database';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
-import { AppError } from '../../../middleware/errorHandler';
+import { logger } from '@fresherflow/logger';
 
 const router = Router();
 
@@ -30,7 +29,7 @@ router.post('/ingest', async (req: Request, res: Response, next: NextFunction) =
         // as the mobile app relies on its local CDN cache for duplicate prevention.
 
         const result = await UrlParser.parseUrl(normalizedUrl).catch((err: Error) => {
-            console.error(`[Ingest] Parsing failed for ${normalizedUrl}:`, err);
+            logger.error(`[Ingest] Parsing failed for ${normalizedUrl}:`, err);
             // Graceful fallback: return empty parsed data with the raw URL so the share is NOT blocked!
             return {
                 parsed: {

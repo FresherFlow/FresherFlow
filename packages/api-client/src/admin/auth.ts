@@ -61,6 +61,8 @@ export const adminAuthApi = {
 
     me: () => apiClient<{ admin: Admin }>('/api/admin/auth/me'),
 
+    getFirebaseToken: () => apiClient<{ firebaseToken: string }>('/api/admin/auth/firebase-token'),
+
     generateTotp: () =>
         apiClient<{ secret: string; qrCode: string }>('/api/admin/auth/totp/generate', {
             method: 'POST',

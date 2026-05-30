@@ -6,6 +6,7 @@ import { validate } from '../middleware/validate';
 import { userActionSchema } from '../utils/validation';
 import { AppError } from '../middleware/errorHandler';
 import { checkEligibility } from '@fresherflow/domain';
+import { logger } from '@fresherflow/logger';
 
 
 const router: Router = express.Router();
@@ -57,7 +58,7 @@ router.post('/:id/action', requireAuth, validate(userActionSchema), async (req: 
         if (!eligibilityResult.eligible) {
             // Personal pipeline/actions tracking is allowed for all jobs regardless of eligibility matching.
             // We just log this warning for debugging purposes.
-            console.warn(`[Actions] User ${req.userId} tracking ineligible opportunity ${opportunityId}: ${eligibilityResult.reason}`);
+            logger.warn(`[Actions] User ${req.userId} tracking ineligible opportunity ${opportunityId}: ${eligibilityResult.reason}`);
         }
 
         // WALK-IN ATTENDED VALIDATION (Backend Only)

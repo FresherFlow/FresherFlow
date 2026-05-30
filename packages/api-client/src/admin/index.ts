@@ -3,6 +3,7 @@ import { adminOpportunitiesApi } from './opportunities';
 import { adminSystemApi } from './system';
 import { adminAnalyticsApi } from './analytics';
 import { adminFeedbackApi } from './feedback';
+import { adminUsersApi } from './users';
 
 export const adminApi = {
     ...adminAuthApi,
@@ -10,6 +11,7 @@ export const adminApi = {
     ...adminSystemApi,
     ...adminAnalyticsApi,
     ...adminFeedbackApi,
+    ...adminUsersApi,
     
     // Explicit Aliases for frontend compatibility
     getOpportunities: adminOpportunitiesApi.list,
@@ -37,3 +39,4 @@ export * from './opportunities';
 export * from './system';
 export * from './analytics';
 export * from './feedback';
+export * from './users';
