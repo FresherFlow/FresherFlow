@@ -80,6 +80,8 @@ export class StaticFeedService {
         }
     }
 
+    static readonly EXPIRED_FEED_PATH = path.join(this.PUBLIC_ROOT, 'expired-feed.min.json');
+
     /**
      * 1. MASTER DISCOVERY FEED (All active unexpired opportunities)
      * Select includes all fields needed by web (SEO/display) and mobile (match scoring, filtering).
@@ -97,120 +99,149 @@ export class StaticFeedService {
                     ]
                 },
                 orderBy: { postedAt: 'desc' },
-                select: {
-                    // Identity
-                    id: true,
-                    slug: true,
-                    type: true,
-                    status: true,
-
-                    // Display
-                    title: true,
-                    company: true,
-                    companyWebsite: true,
-                    companyLogoUrl: true,
-                    description: true,
-                    jobFunction: true,
-                    employmentType: true,
-                    notesHighlights: true,
-                    selectionProcess: true,
-                    tags: true,
-
-                    // Eligibility (mobile match scoring)
-                    allowedDegrees: true,
-                    allowedCourses: true,
-                    allowedSpecializations: true,
-                    allowedPassoutYears: true,
-                    requiredSkills: true,
-                    experienceMin: true,
-                    experienceMax: true,
-
-                    // Location
-                    locations: true,
-                    workMode: true,
-
-                    // Compensation
-                    salaryMin: true,
-                    salaryMax: true,
-                    salaryRange: true,
-                    salaryPeriod: true,
-                    stipend: true,
-                    incentives: true,
-
-                    // Application
-                    applyLink: true,
-                    sourceLink: true,
-
-                    // Timestamps
-                    postedAt: true,
-                    publishedAt: true,
-                    expiresAt: true,
-
-                    // Engagement stats (public)
-                    trendingScore: true,
-                    sharesCount: true,
-                    savesCount: true,
-                    clicksCount: true,
-                    commentsCount: true,
-
-                    // Relations
-                    walkInDetails: true,
-                    governmentJobDetails: true,
-                    events: true,
-
-                    // Referrals and Contributors
-                    user: {
-                        select: {
-                            username: true,
-                            fullName: true,
-                            role: true
-                        }
-                    },
-                    rawIngestions: {
-                        select: {
-                            reasonFlags: true,
-                            createdBy: {
-                                select: {
-                                    id: true,
-                                    fullName: true,
-                                    username: true
-                                }
-                            }
-                        }
-                    },
-                },
+                select: this.getFeedSelectFields(),
             });
 
-            // Map createdBy to creator to match what the production mobile app expects
-            // Also dynamically determine if this is a "Referral" vs "Shared link" based on reasonFlags
-            const mappedOpportunities = opportunities.map(opp => {
-                let isReferral = false;
-                let referredByUsername: string | undefined = undefined;
+            const mappedOpportunities = this.mapFeedOpportunities(opportunities);
+            return { opportunities: mappedOpportunities, timestamp: Date.now(), count: opportunities.length };
+        });
+    }
 
-                if (opp.rawIngestions && opp.rawIngestions.length > 0) {
-                    const referralIngestion = opp.rawIngestions.find(ri => ri.reasonFlags?.includes('USER_REFERRAL'));
-                    if (referralIngestion) {
-                        isReferral = true;
-                        referredByUsername = referralIngestion.createdBy?.username || undefined;
+    /**
+     * EXPIRED DISCOVERY FEED (Opportunities expired in the last 45 days)
+     * Used by detail pages to display the "Expired" state instead of 404ing.
+     */
+    static async generateExpiredFeed() {
+        return this.withDbRetry(async () => {
+            const opportunities = await prisma.opportunity.findMany({
+                where: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    expiresAt: { 
+                        lte: new Date(),
+                        gt: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000)
+                    }
+                },
+                orderBy: { postedAt: 'desc' },
+                select: this.getFeedSelectFields(),
+            });
+
+            const mappedOpportunities = this.mapFeedOpportunities(opportunities);
+            return { opportunities: mappedOpportunities, timestamp: Date.now(), count: opportunities.length };
+        });
+    }
+
+    private static getFeedSelectFields() {
+        return {
+            // Identity
+            id: true,
+            slug: true,
+            type: true,
+            status: true,
+
+            // Display
+            title: true,
+            company: true,
+            companyWebsite: true,
+            companyLogoUrl: true,
+            description: true,
+            jobFunction: true,
+            employmentType: true,
+            notesHighlights: true,
+            selectionProcess: true,
+            tags: true,
+
+            // Eligibility (mobile match scoring)
+            allowedDegrees: true,
+            allowedCourses: true,
+            allowedSpecializations: true,
+            allowedPassoutYears: true,
+            requiredSkills: true,
+            experienceMin: true,
+            experienceMax: true,
+
+            // Location
+            locations: true,
+            workMode: true,
+
+            // Compensation
+            salaryMin: true,
+            salaryMax: true,
+            salaryRange: true,
+            salaryPeriod: true,
+            stipend: true,
+            incentives: true,
+
+            // Application
+            applyLink: true,
+            sourceLink: true,
+
+            // Timestamps
+            postedAt: true,
+            publishedAt: true,
+            expiresAt: true,
+
+            // Engagement stats (public)
+            trendingScore: true,
+            sharesCount: true,
+            savesCount: true,
+            clicksCount: true,
+            commentsCount: true,
+
+            // Relations
+            walkInDetails: true,
+            governmentJobDetails: true,
+            events: true,
+
+            // Referrals and Contributors
+            user: {
+                select: {
+                    username: true,
+                    fullName: true,
+                    role: true
+                }
+            },
+            rawIngestions: {
+                select: {
+                    reasonFlags: true,
+                    createdBy: {
+                        select: {
+                            id: true,
+                            fullName: true,
+                            username: true
+                        }
                     }
                 }
+            },
+        };
+    }
 
-                if (!opp.rawIngestions || opp.rawIngestions.length === 0) {
-                    return { ...opp, isReferral, referredByUsername };
+    private static mapFeedOpportunities(opportunities: Record<string, unknown>[]) {
+        return opportunities.map((opp: Record<string, unknown>) => {
+            let isReferral = false;
+            let referredByUsername: string | undefined = undefined;
+
+            if (opp.rawIngestions && Array.isArray(opp.rawIngestions) && opp.rawIngestions.length > 0) {
+                const referralIngestion = opp.rawIngestions.find((ri: { reasonFlags?: string[] }) => ri.reasonFlags?.includes('USER_REFERRAL'));
+                if (referralIngestion) {
+                    isReferral = true;
+                    referredByUsername = (referralIngestion as { createdBy?: { username?: string } }).createdBy?.username || undefined;
                 }
+            }
 
-                return {
-                    ...opp,
-                    isReferral,
-                    referredByUsername,
-                    rawIngestions: opp.rawIngestions.map(ri => ({
-                        ...ri,
-                        creator: ri.createdBy
-                    }))
-                };
-            });
+            if (!opp.rawIngestions || !Array.isArray(opp.rawIngestions) || opp.rawIngestions.length === 0) {
+                return { ...opp, isReferral, referredByUsername };
+            }
 
-            return { opportunities: mappedOpportunities, timestamp: Date.now(), count: opportunities.length };
+            return {
+                ...opp,
+                isReferral,
+                referredByUsername,
+                rawIngestions: opp.rawIngestions.map((ri: { createdBy?: unknown }) => ({
+                    ...ri,
+                    creator: ri.createdBy
+                }))
+            };
         });
     }
 
@@ -471,6 +502,7 @@ export class StaticFeedService {
 
             // 2. Generate data
             const bootstrap = await this.generateBootstrapFeed();
+            const expired = await this.generateExpiredFeed();
             // const companyShards = await this.generateCompanyShards();
             // const categoryShards = await this.generateCategoryShards();
             const stats = await this.generateStats();
@@ -482,6 +514,10 @@ export class StaticFeedService {
             const bootstrapBody = JSON.stringify(bootstrap);
             fs.writeFileSync(this.BOOTSTRAP_PATH, bootstrapBody);
             await this.uploadToR2('bootstrap-feed.min.json', bootstrapBody, 'application/json');
+
+            const expiredBody = JSON.stringify(expired);
+            fs.writeFileSync(this.EXPIRED_FEED_PATH, expiredBody);
+            await this.uploadToR2('expired-feed.min.json', expiredBody, 'application/json');
 
             // Generate and upload dynamic feed-version.json cache buster
             const feedVersion = Date.now().toString();

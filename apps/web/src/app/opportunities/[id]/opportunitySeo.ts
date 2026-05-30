@@ -113,17 +113,29 @@ export async function fetchOpportunityForPage(slugOrId: string, siteMode: SiteMo
     try {
         // Optimized: Fetch the complete opportunity list from the CDN JSON instead of querying the Render database backend.
         // This prevents Render backend wake-ups, OOMs, and database connection limits during Vercel builds or revalidations.
-        const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+        const { fetchBootstrapFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
+        
         const feed = await fetchBootstrapFeed();
-        if (!feed?.opportunities) return null;
-
-        const opportunity = feed.opportunities.find(
-            (opp) => opp.slug === slugOrId || opp.id === slugOrId
-        );
-
-        if (opportunity) {
-            return opportunity as ExtendedOpportunity;
+        if (feed?.opportunities) {
+            const opportunity = feed.opportunities.find(
+                (opp) => opp.slug === slugOrId || opp.id === slugOrId
+            );
+            if (opportunity) {
+                return opportunity as ExtendedOpportunity;
+            }
         }
+
+        // FALLBACK: If not in the main active feed, check the secondary expired feed
+        const expiredFeed = await fetchExpiredFeed();
+        if (expiredFeed?.opportunities) {
+            const expiredOpportunity = expiredFeed.opportunities.find(
+                (opp) => opp.slug === slugOrId || opp.id === slugOrId
+            );
+            if (expiredOpportunity) {
+                return expiredOpportunity as ExtendedOpportunity;
+            }
+        }
+
         return null;
     } catch {
         return null;

@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { View, Text } from 'react-native';
 import { Image } from 'expo-image';
+import * as FileSystem from 'expo-file-system';
+import { Platform } from 'react-native';
 import { storage } from '@repo/frontend-core';
 import { useUITheme } from './theme';
 import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
@@ -93,9 +95,23 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
             try {
                 const persistent = await storage.getItem(`logo_${cacheKey}`);
                 if (persistent && mounted) {
-                    memCache.set(cacheKey, persistent);
-                    setCurrentSrc(persistent);
-                    return;
+                    if (persistent.startsWith('file://')) {
+                        try {
+                            const fileInfo = await FileSystem.getInfoAsync(persistent);
+                            if (fileInfo.exists) {
+                                memCache.set(cacheKey, persistent);
+                                setCurrentSrc(persistent);
+                                return;
+                            }
+                        } catch (e) {
+                            // ignore file system errors, fall through
+                        }
+                    } else {
+                        // Old remote URL
+                        memCache.set(cacheKey, persistent);
+                        setCurrentSrc(persistent);
+                        return;
+                    }
                 }
             } catch (err) {
                 console.warn('[CompanyLogo] Failed to read persistent logo cache:', err);
@@ -152,9 +168,30 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
                             handleLoadError();
                         } else {
                             memCache.set(cacheKey, currentSrc!);
-                            void storage.setItem(`logo_${cacheKey}`, currentSrc!).catch((err) => {
-                                console.warn('[CompanyLogo] Failed to save logo to persistent cache:', err);
-                            });
+                            
+                            if (Platform.OS === 'web' || !(FileSystem as any).documentDirectory) {
+                                void storage.setItem(`logo_${cacheKey}`, currentSrc!).catch(() => {});
+                                return;
+                            }
+                            
+                            if (currentSrc?.startsWith('file://')) {
+                                return; // Already cached locally
+                            }
+                            
+                            // Download for offline permanence
+                            const ext = currentSrc?.split('?')[0].split('.').pop()?.substring(0, 4) || 'png';
+                            const safeKey = cacheKey.replace(/[^a-z0-9]/gi, '_');
+                            const localUri = `${(FileSystem as any).documentDirectory}logo_${safeKey}.${ext}`;
+                            
+                            FileSystem.downloadAsync(currentSrc!, localUri)
+                                .then(({ uri }) => {
+                                    memCache.set(cacheKey, uri);
+                                    void storage.setItem(`logo_${cacheKey}`, uri);
+                                })
+                                .catch((err) => {
+                                    console.warn('[CompanyLogo] Failed to download logo:', err);
+                                    void storage.setItem(`logo_${cacheKey}`, currentSrc!);
+                                });
                         }
                     }}
                 />

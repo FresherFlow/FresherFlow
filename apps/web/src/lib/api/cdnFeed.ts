@@ -166,6 +166,50 @@ export async function fetchBootstrapFeed(): Promise<BootstrapFeedResponse | null
 }
 
 /**
+ * Fetches the static expired feed from the CDN.
+ * Used as a fallback by detail pages to prevent 404s for recently expired opportunities.
+ */
+export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> {
+    try {
+        if (process.env.NODE_ENV === 'development') {
+            return null; // Don't mock expired feed in dev for now
+        }
+
+        const version = await fetchFeedVersion();
+        const IS_SERVER = typeof window === 'undefined';
+        const signedUrl = IS_SERVER
+            ? signUrlWithVersion(EXPIRED_FEED_URL, version)
+            : `${EXPIRED_FEED_URL}?v=${version}`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        const res = await fetch(signedUrl, getCDNFetchOptions({
+            next: { revalidate: 3600 },
+            signal: controller.signal,
+        }));
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            console.error(`Failed to fetch expired feed: ${res.status} ${res.statusText}`);
+            return null;
+        }
+
+        const data = await res.json() as BootstrapFeedResponse;
+        
+        if (!data || !Array.isArray(data.opportunities)) {
+            return null;
+        }
+
+        return data;
+    } catch (err) {
+        console.warn('Expired CDN fetch failed:', err instanceof Error ? err.message : err);
+        return null;
+    }
+}
+
+/**
  * Fetches a specific category shard (e.g. trending, remote, 2026)
  */
 export async function fetchCategoryShard(id: string): Promise<BootstrapFeedResponse | null> {

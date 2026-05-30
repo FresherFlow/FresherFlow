@@ -97,6 +97,13 @@ export const BOOTSTRAP_FEED_URL =
         ? `${process.env.NEXT_PUBLIC_CDN_URL}/bootstrap-feed.min.json`
         : `${DEFAULT_CDN_HOST}/bootstrap-feed.min.json`);
 
+export const EXPIRED_FEED_URL =
+    process.env.NEXT_PUBLIC_EXPIRED_FEED_URL ||
+    process.env.EXPIRED_FEED_URL ||
+    (process.env.NEXT_PUBLIC_CDN_URL
+        ? `${process.env.NEXT_PUBLIC_CDN_URL}/expired-feed.min.json`
+        : `${DEFAULT_CDN_HOST}/expired-feed.min.json`);
+
 export const FEED_VERSION_URL =
     process.env.NEXT_PUBLIC_CDN_URL
         ? `${process.env.NEXT_PUBLIC_CDN_URL}/feed-version.json`
