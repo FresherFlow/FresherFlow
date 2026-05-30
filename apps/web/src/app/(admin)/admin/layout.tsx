@@ -56,6 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             return;
         }
 
+        /*
         const pullFeedbackAlerts = async () => {
             const since = window.localStorage.getItem(ADMIN_FEEDBACK_SEEN_KEY);
             if (!since) {
@@ -88,6 +89,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             window.clearInterval(interval);
             window.removeEventListener('focus', onFocus);
         };
+        */
+        return;
     }, [isAuthenticated, isLoginPage, pathname]);
 
     // Poll backend health
@@ -129,10 +132,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: '/admin/dashboard', label: 'Dashboard', icon: Squares2X2Icon },
         { href: '/admin/opportunities', label: 'Opportunities', icon: BriefcaseIcon },
         { href: '/admin/opportunities/create', label: 'Post New', icon: PlusCircleIcon },
-        { href: '/admin/analytics', label: 'Analytics', icon: ChartBarIcon },
+        { href: '/admin/captions', label: 'Captions', icon: ShareIcon },
+        // { href: '/admin/analytics', label: 'Analytics', icon: ChartBarIcon },
         { href: '/admin/feedback', label: 'Feedback', icon: ChatBubbleBottomCenterTextIcon },
-        { href: '/admin/alerts', label: 'Alerts', icon: BellAlertIcon },
-        { href: '/admin/telegram', label: 'Broadcasts', icon: ShareIcon },
+        // { href: '/admin/alerts', label: 'Alerts', icon: BellAlertIcon },
+        // { href: '/admin/telegram', label: 'Broadcasts', icon: ShareIcon },
         { href: '/admin/settings', label: 'Settings', icon: Cog8ToothIcon },
     ];
 
@@ -229,7 +233,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                     className="md:hidden fixed top-0 left-0 right-0 z-20 flex items-end justify-center pb-1.5 pt-[env(safe-area-inset-top)] pointer-events-none"
                     style={{ height: `calc(3.75rem + env(safe-area-inset-top))` }}
                 >
-                    <div className={`pointer-events-auto mx-2 w-[calc(100%-16px)] h-12 rounded-2xl px-2.5 flex items-center justify-between gap-2 transition-all duration-300 ${mobileMenuOpen ? 'border border-[hsl(var(--border))] bg-[hsl(var(--card)/0.97)] shadow-sm' : 'border border-transparent bg-transparent shadow-none'}`}>
+                    <div className={`pointer-events-auto mx-2 w-[calc(100%-16px)] h-12 rounded-2xl px-2.5 flex items-center justify-between gap-2 transition-all duration-300 border border-border/80 bg-card/90 backdrop-blur-md shadow-sm`}>
                         <Link href="/admin/dashboard" className="flex items-center gap-2 min-w-0 pl-0.5">
                             <div
                                 className="w-6 h-6 bg-contain bg-center bg-no-repeat"

@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
 import PlusCircleIcon from '@heroicons/react/24/outline/PlusCircleIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
-import ChartBarIcon from '@heroicons/react/24/outline/ChartBarIcon';
+import ChatBubbleBottomCenterTextIcon from '@heroicons/react/24/outline/ChatBubbleBottomCenterTextIcon';
 
 const NAV_ITEMS = [
     {
@@ -25,9 +25,9 @@ const NAV_ITEMS = [
         icon: PlusCircleIcon,
     },
     {
-        label: 'Analytics',
-        href: '/admin/analytics',
-        icon: ChartBarIcon,
+        label: 'Feedback',
+        href: '/admin/feedback',
+        icon: ChatBubbleBottomCenterTextIcon,
     }
 ];
 
@@ -46,17 +46,15 @@ export default function AdminBottomNav() {
                     if (item.label === 'Dashboard') {
                         isActive = pathname === '/dashboard' || pathname === '/admin' || pathname === '/admin/dashboard';
                     } else if (item.label === 'Post') {
-                        // Active ONLY for create page
                         isActive = pathname === '/opportunities/create' || pathname === '/admin/opportunities/create';
                     } else if (item.label === 'Search') {
-                        // Active for opportunities list, but NOT create page
                         isActive =
                             pathname === '/opportunities' ||
                             (pathname.startsWith('/opportunities/') && pathname !== '/opportunities/create') ||
                             pathname === '/admin/opportunities' ||
                             (pathname.startsWith('/admin/opportunities/') && pathname !== '/admin/opportunities/create');
-                    } else if (item.label === 'Analytics') {
-                        isActive = pathname === '/analytics' || pathname.startsWith('/admin/analytics');
+                    } else if (item.label === 'Feedback') {
+                        isActive = pathname === '/feedback' || pathname.startsWith('/admin/feedback');
                     }
 
                     return (

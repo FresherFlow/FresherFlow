@@ -112,7 +112,7 @@
     /* Muted backgrounds equivalent to 3% white */
     --muted: 195 10% 4%;
     
-    /* Muted text equivalent to 70% opacity white */
+    /* Muted text opacity equivalent */
     --muted-foreground: 200 15% 65%;
 
     --ring: 200 23% 97%;
@@ -132,6 +132,17 @@
 
   .dark input, .dark textarea, .dark select {
     color-scheme: dark;
+  }
+
+  .dark .bg-card input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  .dark .bg-card select,
+  .dark .bg-card textarea,
+  .dark .bg-card .bg-secondary\/20,
+  .dark .bg-card .bg-muted\/20,
+  .dark form input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]),
+  .dark form select,
+  .dark form textarea {
+    background-color: hsl(195 10% 14%) !important;
   }
 
 

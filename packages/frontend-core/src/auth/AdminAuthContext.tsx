@@ -99,6 +99,18 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     if (data.verified) {
       if (data.accessToken) {
         await secureStorage.setItemAsync(TOKEN_KEY, data.accessToken);
+        if (Platform.OS !== 'web') {
+          try {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore - React Native Firebase Auth is optional and dynamically imported
+            const firebaseAuthModule = await import('@react-native-firebase/auth');
+            const auth = firebaseAuthModule.default as unknown as () => { signInWithCustomToken: (token: string) => Promise<unknown> };
+            const { firebaseToken } = await adminAuthApi.getFirebaseToken();
+            await auth().signInWithCustomToken(firebaseToken);
+          } catch (firebaseErr) {
+            console.error('Firebase Auth error in verifyTotp:', firebaseErr);
+          }
+        }
       }
       await refreshMe();
     } else {
@@ -115,6 +127,18 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     if (data.verified) {
       if (data.accessToken) {
         await secureStorage.setItemAsync(TOKEN_KEY, data.accessToken);
+        if (Platform.OS !== 'web') {
+          try {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore - React Native Firebase Auth is optional and dynamically imported
+            const firebaseAuthModule = await import('@react-native-firebase/auth');
+            const auth = firebaseAuthModule.default as unknown as () => { signInWithCustomToken: (token: string) => Promise<unknown> };
+            const { firebaseToken } = await adminAuthApi.getFirebaseToken();
+            await auth().signInWithCustomToken(firebaseToken);
+          } catch (firebaseErr) {
+            console.error('Firebase Auth error in verifyPasskey:', firebaseErr);
+          }
+        }
       }
       await refreshMe();
     } else {
@@ -155,6 +179,18 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   }, [refreshMe]);
 
   const logout = useCallback(async () => {
+    if (Platform.OS !== 'web') {
+      try {
+        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+        // @ts-ignore
+        const firebaseAuthModule = await import('@react-native-firebase/auth');
+        const auth = firebaseAuthModule.default as unknown as () => { signOut: () => Promise<unknown> };
+        await auth().signOut();
+      } catch (firebaseErr) {
+        console.error('Firebase Auth signout error:', firebaseErr);
+      }
+    }
+
     try {
       await adminAuthApi.logout();
     } catch {

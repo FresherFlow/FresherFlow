@@ -39,8 +39,10 @@ export default function AdminAnalyticsPage() {
         setLoading(true);
         setError(null);
         try {
-            const response = await adminApi.getSystemMetricsV2('30d');
-            setMetrics(response as MetricsV2);
+            // Comment out system metrics call
+            // const response = await adminApi.getSystemMetricsV2('30d');
+            // setMetrics(response as MetricsV2);
+            setMetrics(null);
         } catch (err: unknown) {
             setError((err as Error).message || 'Failed to load analytics');
         } finally {
@@ -54,14 +56,20 @@ export default function AdminAnalyticsPage() {
 
     if (loading) return <AdminAnalyticsSkeleton />;
 
-    if (!metrics) {
-        return (
-            <div className="rounded-xl border border-border bg-card p-6">
-                <p className="text-sm text-muted-foreground">Analytics unavailable.</p>
-                {error && <p className="mt-1 text-xs text-amber-600">{error}</p>}
-            </div>
-        );
-    }
+    return (
+        <div className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-6 text-center max-w-2xl mx-auto my-12">
+            <h2 className="text-lg font-semibold text-yellow-800 dark:text-yellow-400">Analytics temporarily offline/disabled</h2>
+            <p className="mt-2 text-sm text-yellow-700 dark:text-yellow-300">
+                To optimize backend resources, Postgres-based heavy analytics have been suspended. Authentication, health checks, and standard opportunity operations remain fully functional.
+            </p>
+        </div>
+    );
+}
+
+const unused_render = null;
+if (unused_render) {
+    const metrics: MetricsV2 = null as any;
+    /*
 
     return (
         <div className="space-y-6 pb-10">
@@ -126,3 +134,8 @@ function Row({ label, value }: { label: string; value: number }) {
         </div>
     );
 }
+*/
+}
+
+
+

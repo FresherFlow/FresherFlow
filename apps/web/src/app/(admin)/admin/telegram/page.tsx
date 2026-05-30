@@ -11,8 +11,8 @@ export default function AdminTelegramPage() {
     return (
         <div className="space-y-6">
             <div className="space-y-1">
-                <h1 className="text-3xl font-bold tracking-tight">Channel Broadcasts</h1>
-                <p className="text-muted-foreground">
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Channel Broadcasts</h1>
+                <p className="text-sm text-muted-foreground hidden md:block">
                     Telegram and Social channel posting status, failures, and retry controls.
                 </p>
             </div>
@@ -23,10 +23,13 @@ export default function AdminTelegramPage() {
                 </p>
             </div>
 
-            <DeliveryControlsPanel />
-            <TelegramBroadcastPanel />
-            <div className="pt-6 border-t">
-                <SocialBroadcastPanel />
+            {/* <DeliveryControlsPanel /> */}
+            {/* <TelegramBroadcastPanel /> */}
+            {/* <div className="pt-6 border-t"> */}
+            {/*     <SocialBroadcastPanel /> */}
+            {/* </div> */}
+            <div className="bg-yellow-500/10 border border-yellow-500/20 text-yellow-600 dark:text-yellow-400 p-4 rounded-lg">
+                Broadcast panels are temporarily offline/disabled.
             </div>
         </div>
     );

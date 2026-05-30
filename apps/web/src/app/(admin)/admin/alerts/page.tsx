@@ -88,42 +88,42 @@ export default function AdminAlertsPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-1">
-        <h1 className="text-3xl font-bold tracking-tight">Alerts Health</h1>
-        <p className="text-muted-foreground">Dispatch totals, reason breakdown, and raw delivery logs.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Alerts Health</h1>
+        <p className="text-sm text-muted-foreground hidden md:block">Dispatch totals, reason breakdown, and raw delivery logs.</p>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-6 rounded-lg border bg-card p-4">
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Status</span>
-          <select className="w-full rounded border bg-background px-2 py-1" value={status} onChange={(e) => setStatus(e.target.value as DispatchStatus | 'ALL')}>
+          <select className="w-full rounded border bg-secondary/20 px-2 py-1" value={status} onChange={(e) => setStatus(e.target.value as DispatchStatus | 'ALL')}>
             {STATUS_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Kind</span>
-          <select className="w-full rounded border bg-background px-2 py-1" value={kind} onChange={(e) => setKind(e.target.value as DispatchKind | 'ALL')}>
+          <select className="w-full rounded border bg-secondary/20 px-2 py-1" value={kind} onChange={(e) => setKind(e.target.value as DispatchKind | 'ALL')}>
             {KIND_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Channel</span>
-          <select className="w-full rounded border bg-background px-2 py-1" value={channel} onChange={(e) => setChannel(e.target.value as DispatchChannel | 'ALL')}>
+          <select className="w-full rounded border bg-secondary/20 px-2 py-1" value={channel} onChange={(e) => setChannel(e.target.value as DispatchChannel | 'ALL')}>
             {CHANNEL_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Reason</span>
-          <select className="w-full rounded border bg-background px-2 py-1" value={reason} onChange={(e) => setReason(e.target.value as DispatchReason | 'ALL')}>
+          <select className="w-full rounded border bg-secondary/20 px-2 py-1" value={reason} onChange={(e) => setReason(e.target.value as DispatchReason | 'ALL')}>
             {REASON_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Since hours</span>
-          <input className="w-full rounded border bg-background px-2 py-1" type="number" min={1} max={720} value={sinceHours} onChange={(e) => setSinceHours(Number(e.target.value) || 24)} />
+          <input className="w-full rounded border bg-secondary/20 px-2 py-1" type="number" min={1} max={720} value={sinceHours} onChange={(e) => setSinceHours(Number(e.target.value) || 24)} />
         </label>
         <label className="text-sm space-y-1">
           <span className="text-muted-foreground">Correlation ID</span>
-          <input className="w-full rounded border bg-background px-2 py-1" value={correlationId} onChange={(e) => setCorrelationId(e.target.value)} placeholder="optional" />
+          <input className="w-full rounded border bg-secondary/20 px-2 py-1" value={correlationId} onChange={(e) => setCorrelationId(e.target.value)} placeholder="optional" />
         </label>
         <div className="md:col-span-2 lg:col-span-6 flex justify-end">
           <button onClick={() => void load()} className="rounded border px-3 py-1.5 text-sm font-semibold hover:bg-muted">Refresh</button>

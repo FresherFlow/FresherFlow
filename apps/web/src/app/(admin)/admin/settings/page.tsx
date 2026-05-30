@@ -11,27 +11,38 @@ export default function AdminSettingsPage() {
     return (
         <div className="space-y-6">
             <div className="flex flex-col gap-1">
-                <h1 className="text-3xl font-bold tracking-tight">Admin settings</h1>
+                <h1 className="text-2xl font-semibold tracking-tight text-foreground">Admin settings</h1>
                 <p className="text-muted-foreground">
                     Manage security, notifications, and account preferences.
                 </p>
             </div>
 
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                {/* Security Section */}
-                <div className="space-y-6 md:col-span-2">
-                    <div className="space-y-2">
+            <div className="grid gap-8 md:grid-cols-2">
+                {/* Left Column: Two-Factor Setup */}
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-xl font-semibold">Security</h2>
-                            <Badge variant="outline" className="border-green-500/50 text-green-500 text-[10px] tracking-wider font-bold">ACTIVE</Badge>
+                            <h2 className="text-xl font-bold tracking-tight">Two-factor authentication</h2>
+                            <Badge variant="outline" className="border-emerald-500/50 text-emerald-500 text-[9px] font-bold tracking-wider uppercase">TOTP</Badge>
                         </div>
-                        <p className="text-sm text-muted-foreground w-full max-w-lg">
-                            FresherFlow uses passkeys and TOTP for secure access.
-                            Add multiple devices as backups.
+                        <p className="text-xs text-muted-foreground leading-normal max-w-md">
+                            Secure your admin account using dynamic time-based one-time passcodes from apps like Google Authenticator or Authy.
                         </p>
                     </div>
-
                     <TwoFactorSetup />
+                </div>
+
+                {/* Right Column: Passkey Manager */}
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-xl font-bold tracking-tight">Passkeys</h2>
+                            <Badge variant="outline" className="border-indigo-500/50 text-indigo-500 text-[9px] font-bold tracking-wider uppercase">FIDO2</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-normal max-w-md">
+                            Log in securely using biometric authentication (Face ID, Touch ID, Windows Hello) or physical security keys.
+                        </p>
+                    </div>
                     <PasskeyManager />
                 </div>
             </div>
