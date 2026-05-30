@@ -89,50 +89,31 @@ export const ADMIN_WEB_HOST = normalizeHost(
 );
 
 const DEFAULT_CDN_HOST = 'https://cdn.fresherflow.in';
+export const CDN_URL = normalizeUrl(process.env.NEXT_PUBLIC_CDN_URL, DEFAULT_CDN_HOST);
 
 export const BOOTSTRAP_FEED_URL =
     process.env.NEXT_PUBLIC_BOOTSTRAP_FEED_URL ||
     process.env.BOOTSTRAP_FEED_URL ||
-    (process.env.NEXT_PUBLIC_CDN_URL
-        ? `${process.env.NEXT_PUBLIC_CDN_URL}/bootstrap-feed.min.json`
-        : `${DEFAULT_CDN_HOST}/bootstrap-feed.min.json`);
+    `${CDN_URL}/bootstrap-feed.min.json`;
 
 export const EXPIRED_FEED_URL =
     process.env.NEXT_PUBLIC_EXPIRED_FEED_URL ||
     process.env.EXPIRED_FEED_URL ||
-    (process.env.NEXT_PUBLIC_CDN_URL
-        ? `${process.env.NEXT_PUBLIC_CDN_URL}/expired-feed.min.json`
-        : `${DEFAULT_CDN_HOST}/expired-feed.min.json`);
+    `${CDN_URL}/expired-feed.min.json`;
 
-export const FEED_VERSION_URL =
-    process.env.NEXT_PUBLIC_CDN_URL
-        ? `${process.env.NEXT_PUBLIC_CDN_URL}/feed-version.json`
-        : `${DEFAULT_CDN_HOST}/feed-version.json`;
+export const FEED_VERSION_URL = `${CDN_URL}/feed-version.json`;
 
 export const SITEMAP_DATA_URL =
     process.env.NEXT_PUBLIC_SITEMAP_DATA_URL ||
     process.env.SITEMAP_DATA_URL ||
-    (process.env.NEXT_PUBLIC_CDN_URL
-        ? `${process.env.NEXT_PUBLIC_CDN_URL}/sitemap-data.json`
-        : `${DEFAULT_CDN_HOST}/sitemap-data.json`);
+    `${CDN_URL}/sitemap-data.json`;
 
 export const GET_CATEGORY_SHARD_URL = (id: string) =>
-    process.env.NEXT_PUBLIC_CDN_URL
-        ? `${process.env.NEXT_PUBLIC_CDN_URL}/categories/${id}.json`
-        : `${DEFAULT_CDN_HOST}/categories/${id}.json`;
+    `${CDN_URL}/categories/${id}.json`;
 
-export const EDUCATION_METADATA_URL =
-    process.env.NEXT_PUBLIC_CDN_URL
-        ? `${process.env.NEXT_PUBLIC_CDN_URL}/education.json`
-        : `${DEFAULT_CDN_HOST}/education.json`;
+export const EDUCATION_METADATA_URL = `${CDN_URL}/education.json`;
 
-export const SKILLS_METADATA_URL =
-    process.env.NEXT_PUBLIC_CDN_URL
-        ? `${process.env.NEXT_PUBLIC_CDN_URL}/skills.json`
-        : `${DEFAULT_CDN_HOST}/skills.json`;
+export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;
 
-export const CITIES_METADATA_URL =
-    process.env.NEXT_PUBLIC_CDN_URL
-        ? `${process.env.NEXT_PUBLIC_CDN_URL}/cities.json`
-        : `${DEFAULT_CDN_HOST}/cities.json`;
+export const CITIES_METADATA_URL = `${CDN_URL}/cities.json`;
 
