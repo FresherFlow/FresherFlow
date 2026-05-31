@@ -188,6 +188,11 @@ const nextConfig: NextConfig = {
         destination: "/",
         permanent: true,
       },
+      {
+        source: "/app",
+        destination: "/download",
+        permanent: true,
+      },
     ];
   },
   webpack: (config, { isServer }) => {
