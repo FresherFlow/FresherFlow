@@ -111,6 +111,9 @@ export const SITEMAP_DATA_URL =
 export const GET_CATEGORY_SHARD_URL = (id: string) =>
     `${CDN_URL}/categories/${id}.json`;
 
+export const GET_COMPANY_SHARD_URL = (slug: string) =>
+    `${CDN_URL}/companies/${slug}.json`;
+
 export const EDUCATION_METADATA_URL = `${CDN_URL}/education.json`;
 
 export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;

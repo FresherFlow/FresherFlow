@@ -64,34 +64,10 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         permanentRedirect(`/companies/${encodeURIComponent(slug)}`);
     }
 
-    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    const feed = await fetchBootstrapFeed();
+    const { fetchCompanyShard } = await import('@/lib/api/cdnFeed');
+    const feed = await fetchCompanyShard(slug);
     
-    const allOpportunities = feed?.opportunities || [];
-
-    // Match by domain first, or fall back to company name matching to ensure the page always resolves correctly
-    const companyJobs = allOpportunities.filter(opp => {
-        const domain = getCompanyDomain({
-            companyWebsite: opp.companyWebsite,
-            applyLink: opp.applyLink,
-            sourceLink: opp.sourceLink,
-        });
-        
-        const slugLower = slug.toLowerCase().trim();
-        
-        // 1. Match by domain
-        if (domain && domain.toLowerCase() === slugLower) return true;
-        
-        // 2. Match by company name directly
-        if (opp.company?.toLowerCase().trim() === slugLower) return true;
-        
-        // 3. Fallback: handle clean matches (e.g. slugified versions or without spaces)
-        const cleanSlug = slugLower.replace(/[^a-z0-9]/g, '');
-        const cleanOppName = opp.company?.toLowerCase().replace(/[^a-z0-9]/g, '');
-        if (cleanSlug && cleanSlug === cleanOppName) return true;
-        
-        return false;
-    });
+    const companyJobs = feed?.opportunities || [];
 
     if (companyJobs.length === 0) {
         notFound();

@@ -130,16 +130,20 @@ const fetchWithTimeout = async (
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
-  const signals = [controller.signal];
-  if (externalSignal) signals.push(externalSignal);
+  const onAbort = () => controller.abort();
+  if (externalSignal) {
+    if (externalSignal.aborted) {
+      controller.abort();
+    } else {
+      externalSignal.addEventListener("abort", onAbort);
+    }
+  }
 
   try {
-    const CustomAbortSignal = AbortSignal as unknown as AbortSignalConstructorExt;
     const requestInit: RequestInit & { next?: { revalidate: number } } = {
       method: "GET",
       cache: options?.cacheMode ?? "force-cache",
-      // Link signals if AbortSignal.any is available (Edge runtime) or manually fallback
-      signal: typeof CustomAbortSignal.any === 'function' ? CustomAbortSignal.any(signals) : controller.signal,
+      signal: controller.signal,
       headers: {
         "Origin": process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.com",
       },
@@ -157,6 +161,9 @@ const fetchWithTimeout = async (
     return null;
   } finally {
     clearTimeout(timer);
+    if (externalSignal) {
+      externalSignal.removeEventListener("abort", onAbort);
+    }
   }
 };
 

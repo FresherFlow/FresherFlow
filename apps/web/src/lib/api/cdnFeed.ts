@@ -4,6 +4,7 @@ import {
     EXPIRED_FEED_URL,
     FEED_VERSION_URL,
     GET_CATEGORY_SHARD_URL, 
+    GET_COMPANY_SHARD_URL,
     SITE_URL, 
     EDUCATION_METADATA_URL, 
     SKILLS_METADATA_URL,
@@ -225,6 +226,25 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
         return await res.json() as BootstrapFeedResponse;
     } catch (err) {
         console.warn(`Failed to fetch shard ${id}:`, err);
+        return null;
+    }
+}
+
+/**
+ * Fetches a specific company shard (e.g. google, microsoft)
+ */
+export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResponse | null> {
+    try {
+        const url = signUrlIfServer(GET_COMPANY_SHARD_URL(slug));
+
+        const res = await fetch(url, getCDNFetchOptions({
+            next: { revalidate: 3600 }
+        }));
+
+        if (!res.ok) return null;
+        return await res.json() as BootstrapFeedResponse;
+    } catch (err) {
+        console.warn(`Failed to fetch company shard ${slug}:`, err);
         return null;
     }
 }

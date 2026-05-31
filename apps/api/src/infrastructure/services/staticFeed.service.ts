@@ -250,22 +250,49 @@ export class StaticFeedService {
      */
     static async generateCompanyShards() {
         return this.withDbRetry(async () => {
-            const companies = await prisma.opportunity.groupBy({
-                by: ['company'],
-                where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
+            const opportunities = await prisma.opportunity.findMany({
+                where: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: new Date() } }
+                    ]
+                },
+                orderBy: { postedAt: 'desc' },
+                select: this.getFeedSelectFields(),
             });
 
-            const shards: Array<{ slug: string; data: Record<string, unknown> }> = [];
-            for (const { company } of companies) {
-                const slug = this.slugify(company);
-                const opportunities = await prisma.opportunity.findMany({
-                    where: { company, status: OpportunityStatus.PUBLISHED, deletedAt: null },
-                    orderBy: { postedAt: 'desc' },
-                    take: 100, // Top 100 per company is enough for static shard
-                    select: { id: true, slug: true, title: true, locations: true, type: true, postedAt: true, tags: true }
-                });
+            const mappedOpportunities = this.mapFeedOpportunities(opportunities);
+            
+            // Group in-memory
+            interface MappedFeedOpportunity {
+                [key: string]: unknown;
+                company?: string | null;
+                isReferral: boolean;
+                referredByUsername?: string;
+            }
+            const grouped = new Map<string, MappedFeedOpportunity[]>();
+            for (const opp of mappedOpportunities as MappedFeedOpportunity[]) {
+                if (!opp.company) continue;
+                const key = opp.company.trim();
+                const list = grouped.get(key) || [];
+                list.push(opp);
+                grouped.set(key, list);
+            }
 
-                shards.push({ slug, data: { company, opportunities, count: opportunities.length, timestamp: Date.now() } });
+            const shards: Array<{ slug: string; data: Record<string, unknown> }> = [];
+            for (const [company, jobs] of grouped.entries()) {
+                const slug = this.slugify(company);
+                shards.push({
+                    slug,
+                    data: {
+                        company,
+                        opportunities: jobs,
+                        count: jobs.length,
+                        timestamp: Date.now()
+                    }
+                });
             }
             return shards;
         });
@@ -496,14 +523,14 @@ export class StaticFeedService {
             logger.info('Starting full static asset regeneration...');
 
             // 1. Ensure dirs
-            [this.PUBLIC_ROOT].forEach(d => {
+            [this.PUBLIC_ROOT, this.COMPANIES_DIR].forEach(d => {
                 if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
             });
 
             // 2. Generate data
             const bootstrap = await this.generateBootstrapFeed();
             const expired = await this.generateExpiredFeed();
-            // const companyShards = await this.generateCompanyShards();
+            const companyShards = await this.generateCompanyShards();
             // const categoryShards = await this.generateCategoryShards();
             const stats = await this.generateStats();
             const sitemap = await this.generateSitemap();
@@ -540,13 +567,13 @@ export class StaticFeedService {
             fs.writeFileSync(this.USERNAMES_PATH, usernamesBody);
             await this.uploadToR2('taken-usernames.min.json', usernamesBody, 'application/json');
 
-            /*
             for (const s of companyShards) {
                 const body = JSON.stringify(s.data);
                 fs.writeFileSync(path.join(this.COMPANIES_DIR, `${s.slug}.json`), body);
                 await this.uploadToR2(`companies/${s.slug}.json`, body, 'application/json');
             }
 
+            /*
             for (const s of categoryShards) {
                 const body = JSON.stringify(s.data);
                 fs.writeFileSync(path.join(this.CATEGORIES_DIR, `${s.id}.json`), body);
@@ -555,7 +582,7 @@ export class StaticFeedService {
             */
 
             logger.info('Static shards regenerated successfully', {
-                // companies: companyShards.length,
+                companies: companyShards.length,
                 // categories: categoryShards.length,
                 jobsInBootstrap: bootstrap.opportunities.length,
                 usernamesCount: usernames.length
