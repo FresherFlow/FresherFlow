@@ -10,9 +10,14 @@ import { EligibilityMatcher } from '@/features/landing/EligibilityMatcher';
 import { Opportunity } from '@fresherflow/types';
 
 export const metadata: Metadata = {
-    title: 'FresherFlow - Verified Fresher Jobs & Internships in India',
+    title: {
+        absolute: 'FresherFlow - Verified Fresher Jobs & Internships in India',
+    },
     description: 'Discover manually verified off-campus jobs, internships, and walk-ins for freshers across India. No fake listings. Direct official apply links.',
     keywords: ['verified off campus jobs', 'fresher jobs', 'internships', 'walk-ins', 'off campus drives', 'entry level jobs'],
+    alternates: {
+        canonical: '/',
+    },
     openGraph: {
         siteName: 'FresherFlow',
         title: 'FresherFlow - Verified Fresher Jobs & Internships in India',

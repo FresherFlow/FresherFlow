@@ -7,9 +7,12 @@ import { OpportunitiesFeedClient } from '@/features/jobs/components/Opportunitie
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-    title: 'Job Opportunities Feed | FresherFlow',
+    title: 'Job Opportunities Feed',
     description: 'A verified feed of off-campus jobs, internships, and walk-in drives for fresh graduates. Every link is checked. No spam.',
     keywords: 'fresher jobs, internships, walk-ins, off campus drives, verified jobs, job feed',
+    alternates: {
+        canonical: '/opportunities',
+    },
 };
 
 export default async function OpportunitiesPage() {

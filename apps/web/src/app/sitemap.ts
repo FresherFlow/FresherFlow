@@ -23,7 +23,21 @@ function getBaseUrl(): string {
 }
 
 const BASE_URL = getBaseUrl();
-const STATIC_ROUTES = ['/', '/opportunities', '/jobs', '/internships', '/walk-ins'];
+const STATIC_ROUTES = [
+  '/',
+  '/opportunities',
+  '/jobs',
+  '/internships',
+  '/walk-ins',
+  '/about',
+  '/blog',
+  '/contact',
+  '/privacy',
+  '/terms',
+  '/feedback',
+  '/submit-link',
+  '/download',
+];
 
 function getPathByType(type: SitemapOpportunity['type']): string {
   if (type === 'INTERNSHIP') return '/internships/';

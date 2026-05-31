@@ -42,9 +42,6 @@ export const metadata: Metadata = {
     template: "%s | FresherFlow",
   },
   description: "The community-driven fresher job network. Share verified opportunities with zero redirect spam.",
-  alternates: {
-    canonical: "/",
-  },
   openGraph: {
     type: "website",
     siteName: "FresherFlow",
