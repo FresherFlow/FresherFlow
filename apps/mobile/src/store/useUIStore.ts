@@ -8,6 +8,14 @@ interface ActionSheetState {
   close: () => void;
 }
 
+interface ShareSheetState {
+  isOpen: boolean;
+  opportunity: Opportunity | null;
+  fromScreen: 'inside' | 'outside';
+  open: (opportunity: Opportunity, fromScreen?: 'inside' | 'outside') => void;
+  close: () => void;
+}
+
 export interface PersistedExploreFilters {
   types: OpportunityType[];
   workModes: WorkMode[];
@@ -18,6 +26,7 @@ export interface PersistedExploreFilters {
 
 interface UIState {
   actionSheet: ActionSheetState;
+  shareSheet: ShareSheetState;
   exploreFilters: PersistedExploreFilters;
   usernameNudgeDismissed: boolean;
   setUsernameNudgeDismissed: (dismissed: boolean) => void;
@@ -42,6 +51,17 @@ export const useUIStore = create<UIState>((set) => ({
     })),
     close: () => set((state) => ({ 
       actionSheet: { ...state.actionSheet, isOpen: false, opportunity: null } 
+    })),
+  },
+  shareSheet: {
+    isOpen: false,
+    opportunity: null,
+    fromScreen: 'outside',
+    open: (opportunity, fromScreen = 'outside') => set((state) => ({ 
+      shareSheet: { ...state.shareSheet, isOpen: true, opportunity, fromScreen } 
+    })),
+    close: () => set((state) => ({ 
+      shareSheet: { ...state.shareSheet, isOpen: false, opportunity: null } 
     })),
   },
   exploreFilters: initialFilters,

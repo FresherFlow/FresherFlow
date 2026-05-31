@@ -102,6 +102,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     setSearchQuery,
     isBootstrapping,
     hasProfileData,
+    error,
   } = useFeed(tabFeedType);
 
   // Sync search query from prop
@@ -241,6 +242,16 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
   
   return (
     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+        {error ? (
+            <View style={[styles.syncErrorRow, { backgroundColor: alpha(currentTheme.colors.error, 0.08) }]}>
+                <Text style={[styles.syncErrorText, { color: currentTheme.colors.text }]} numberOfLines={1}>
+                    Showing saved jobs. Refresh failed.
+                </Text>
+                <TouchableOpacity onPress={onRefresh} style={styles.syncRetryButton}>
+                    <Text style={[styles.syncRetryText, { color: currentTheme.colors.primary }]}>Retry</Text>
+                </TouchableOpacity>
+            </View>
+        ) : null}
         <FlashList<FeedItem>
             ref={listRef}
             data={listData}
@@ -366,9 +377,11 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const [tabLayouts, setTabLayouts] = useState<{[key: number]: {x: number, width: number, center: number}}>({});
 
   const feeds = [
+    { id: 'latest', label: 'Latest' },
     { id: null, label: 'For You' },
     // { id: 'profile', label: 'Profile' },
     { id: 'trending', label: 'Trending' },
+    { id: 'closing_soon', label: 'Closing Soon' },
     { id: 'remote', label: 'Remote' },
     { id: '2026', label: '2026 Batch' },
     { id: 'internships', label: 'Internships' },
@@ -730,6 +743,26 @@ const styles = StyleSheet.create({
         fontSize: mScale(11),
         fontWeight: '800',
         letterSpacing: 0.5,
+    },
+    syncErrorRow: {
+        minHeight: 38,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: SPACING.lg,
+        gap: SPACING.sm,
+    },
+    syncErrorText: {
+        flex: 1,
+        fontSize: mScale(12),
+        fontWeight: '700',
+    },
+    syncRetryButton: {
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: SPACING.xs,
+    },
+    syncRetryText: {
+        fontSize: mScale(12),
+        fontWeight: '900',
     },
     skeletonCard: {
         height: mScale(140),

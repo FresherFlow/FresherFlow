@@ -248,48 +248,39 @@ export const useFeed = (initialFeedType: string | null = null) => {
             };
         });
 
-        // Expiry, Applied, and Seen management: partition into unseen active, seen active, applied active, ineligible, and expired
-        const unseenActive: typeof scored = [];
-        const seenActive: typeof scored = [];
-        const appliedActive: typeof scored = [];
-        const ineligibleActive: typeof scored = [];
-        const expired: typeof scored = [];
-        
-        const activeSeenIds = snapshot.seenIds || seenIds;
-        const activeAppliedIds = snapshot.appliedIds || appliedIds;
+        const activeItems = scored.filter(j => !j.expiresAt || new Date(j.expiresAt).getTime() > now);
 
-        for (const j of scored) {
-            if (j.expiresAt && new Date(j.expiresAt).getTime() <= now) {
-                expired.push(j);
-            } else if (!j.isEligible) {
-                ineligibleActive.push(j);
-            } else if (activeAppliedIds.has(j.id)) {
-                appliedActive.push(j);
-            } else if (activeSeenIds.has(j.id)) {
-                seenActive.push(j);
-            } else {
-                unseenActive.push(j);
-            }
+        if (feedType === 'closing_soon') {
+            return scored
+                .filter(j => Boolean(j.expiresAt) && new Date(j.expiresAt as string).getTime() > now)
+                .sort((a, b) => new Date(a.expiresAt as string).getTime() - new Date(b.expiresAt as string).getTime());
         }
-        
-        const sortByRelevance = (a: typeof scored[0], b: typeof scored[0]) => {
-            if (feedType === 'trending') {
-                const tScoreA = ((a.clicksCount || 0) * 1.5) + ((a.appliedCount || 0) * 4.0) + ((a.savesCount || 0) * 3.0) + (a.trendingScore || 0);
-                const tScoreB = ((b.clicksCount || 0) * 1.5) + ((b.appliedCount || 0) * 4.0) + ((b.savesCount || 0) * 3.0) + (b.trendingScore || 0);
-                return tScoreB - tScoreA;
-            }
-            return b.relevanceScore - a.relevanceScore;
-        };
-        
-        unseenActive.sort(sortByRelevance);
-        seenActive.sort(sortByRelevance);
-        appliedActive.sort(sortByRelevance);
-        ineligibleActive.sort(sortByRelevance);
 
-        // Expired sorted by expiry time (newest first)
-        expired.sort((a, b) => new Date(b.expiresAt || 0).getTime() - new Date(a.expiresAt || 0).getTime());
-        
-        return [...unseenActive, ...seenActive, ...appliedActive, ...ineligibleActive, ...expired];
+        if (feedType === 'latest') {
+            return activeItems.sort((a, b) => {
+                const dateA = a.postedAt ? new Date(a.postedAt).getTime() : 0;
+                const dateB = b.postedAt ? new Date(b.postedAt).getTime() : 0;
+                return dateB - dateA;
+            });
+        }
+
+        if (feedType === 'trending') {
+            const trendScore = (item: typeof scored[0]) =>
+                ((item.clicksCount || 0) * 1.5) +
+                ((item.appliedCount || 0) * 4.0) +
+                ((item.savesCount || 0) * 3.0) +
+                (item.trendingScore || 0);
+
+            return activeItems.sort((a, b) => trendScore(b) - trendScore(a));
+        }
+
+        if (feedType === null && hasProfileData) {
+            return activeItems
+                .filter(j => j.isEligible && (j.matchScore || 0) > 0)
+                .sort((a, b) => b.relevanceScore - a.relevanceScore);
+        }
+
+        return activeItems.sort((a, b) => b.relevanceScore - a.relevanceScore);
     }, [cachedItems, fuseIndex, searchQuery, activeFilter, feedType, snapshot, recentKeywords, followSets, localProfile, openedIds]);
 
     const profileMatchedOpportunities = useMemo(() => {
