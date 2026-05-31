@@ -317,50 +317,68 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                             ref={tabListRef}
                             horizontal 
                             showsHorizontalScrollIndicator={false} 
-                            contentContainerStyle={styles.tabScroll}
+                            contentContainerStyle={styles.pipelineScroll}
                         >
                             {STATUS_ORDER.map((status, index) => {
                                 const isActive = activeStatus === status;
+                                const isPast = STATUS_ORDER.indexOf(activeStatus) > index;
                                 const count = grouped[status]?.length || 0;
+                                const isLast = index === STATUS_ORDER.length - 1;
+
                                 return (
-                                    <TouchableOpacity
-                                        key={status}
-                                        activeOpacity={0.8}
-                                        onLayout={(e) => {
-                                            const { x, width } = e.nativeEvent.layout;
-                                            setTabLayouts(prev => ({ ...prev, [index]: { x, width } }));
-                                        }}
-                                        onPress={() => handleTabPress(status, index)}
-                                        style={styles.tab}
-                                    >
-                                        <View style={styles.tabContent}>
+                                    <View key={status} style={styles.pipelineNodeContainer}>
+                                        <TouchableOpacity
+                                            activeOpacity={0.8}
+                                            onLayout={(e) => {
+                                                const { x, width } = e.nativeEvent.layout;
+                                                setTabLayouts(prev => ({ ...prev, [index]: { x, width } }));
+                                            }}
+                                            onPress={() => handleTabPress(status, index)}
+                                            style={styles.pipelineNodeClickable}
+                                        >
+                                            {/* Circular Node */}
+                                            <View style={[
+                                                styles.pipelineCircle,
+                                                { 
+                                                    backgroundColor: isActive 
+                                                        ? currentTheme.colors.primary 
+                                                        : (isPast ? alpha(currentTheme.colors.primary, 0.2) : alpha(currentTheme.colors.text, 0.05)),
+                                                    borderColor: isActive ? currentTheme.colors.background : 'transparent',
+                                                    borderWidth: isActive ? 2 : 0,
+                                                    shadowColor: isActive ? currentTheme.colors.primary : 'transparent',
+                                                    shadowOpacity: isActive ? 0.3 : 0,
+                                                    shadowRadius: 4,
+                                                    elevation: isActive ? 4 : 0,
+                                                }
+                                            ]}>
+                                                <Text style={[
+                                                    styles.pipelineCountText,
+                                                    { color: isActive ? '#fff' : (isPast ? currentTheme.colors.primary : currentTheme.colors.textMuted) }
+                                                ]}>
+                                                    {count}
+                                                </Text>
+                                            </View>
+
+                                            {/* Label Below Node */}
                                             <Text style={[
-                                                styles.tabText, 
+                                                styles.pipelineLabel, 
                                                 { 
                                                     color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted,
-                                                    opacity: isActive ? 1 : 0.6
+                                                    opacity: isActive ? 1 : 0.7,
                                                 }
                                             ]}>
                                                 {STATUS_LABEL[status]}
                                             </Text>
-                                            {count > 0 && (
-                                                <View style={[
-                                                    styles.countBadge, 
-                                                    { backgroundColor: isActive ? alpha(currentTheme.colors.primary, 0.08) : alpha(currentTheme.colors.text, 0.04) }
-                                                ]}>
-                                                    <Text style={[
-                                                        styles.countText, 
-                                                        { color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted }
-                                                    ]}>
-                                                        {count}
-                                                    </Text>
-                                                </View>
-                                            )}
-                                        </View>
-                                        {isActive && (
-                                            <View style={[styles.activeLine, { backgroundColor: currentTheme.colors.primary }]} />
+                                        </TouchableOpacity>
+
+                                        {/* Connecting Line (except for last node) */}
+                                        {!isLast && (
+                                            <View style={[
+                                                styles.pipelineConnector,
+                                                { backgroundColor: isPast ? alpha(currentTheme.colors.primary, 0.3) : alpha(currentTheme.colors.border, 0.5) }
+                                            ]} />
                                         )}
-                                    </TouchableOpacity>
+                                    </View>
                                 );
                             })}
                         </ScrollView>
@@ -478,44 +496,44 @@ const styles = StyleSheet.create({
         paddingVertical: 0,
         borderBottomWidth: 1,
     },
-    tabScroll: {
+    pipelineScroll: {
         paddingHorizontal: 20,
-        gap: 16,
-    },
-    tab: {
-        paddingVertical: 12,
+        paddingVertical: 16,
         alignItems: 'center',
-        justifyContent: 'center',
     },
-    tabContent: {
+    pipelineNodeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        paddingBottom: 4,
     },
-    tabText: {
-        fontSize: 14,
-        fontWeight: '800',
-        letterSpacing: 0.5,
-    },
-    activeLine: {
-        position: 'absolute',
-        bottom: 0,
-        height: 2,
-        width: '100%',
-        borderRadius: 1,
-    },
-    countBadge: {
-        minWidth: 20,
-        height: 20,
-        borderRadius: 10,
+    pipelineNodeClickable: {
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: 4,
+        width: 65,
     },
-    countText: {
-        fontSize: 10,
+    pipelineCircle: {
+        width: 34,
+        height: 34,
+        borderRadius: 17,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 8,
+        zIndex: 2,
+    },
+    pipelineCountText: {
+        fontSize: 12,
         fontWeight: '900',
+    },
+    pipelineLabel: {
+        fontSize: 11,
+        fontWeight: '800',
+        textAlign: 'center',
+    },
+    pipelineConnector: {
+        width: 30,
+        height: 3,
+        marginBottom: 20,
+        borderRadius: 2,
+        zIndex: 1,
     },
     listContent: {
         padding: 20,

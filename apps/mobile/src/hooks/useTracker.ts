@@ -38,7 +38,7 @@ export const useTracker = () => {
             return;
         }
 
-        setLoading(true);
+        if (items.length === 0) setLoading(true);
         const unsubscribe = subscribeToFirebaseTracker(user.id, async (trackerMap) => {
             try {
                 const cachedOpportunities = useFeedStore.getState().cachedItems;
