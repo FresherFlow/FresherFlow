@@ -43,6 +43,13 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
   const { user } = useAuthStore();
   const { follows, follow, unfollow, isFollowing } = useFollows();
   const cachedItems = useFeedStore(s => s.cachedItems);
+  const hydrate = useFeedStore(s => s.hydrate);
+  const hasHydrated = useFeedStore(s => s.hasHydrated);
+  React.useEffect(() => {
+    if (!hasHydrated) {
+      void hydrate();
+    }
+  }, [hasHydrated, hydrate]);
   const isAnonymous = !user || user.isAnonymous;
   const listRef = useRef<any>(null);
   useScrollToTop(listRef);

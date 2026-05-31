@@ -225,7 +225,7 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                         <View style={{ flex: 1, paddingVertical: 8 }}>
                                             <Text style={{ fontSize: 12, fontWeight: '700', color: currentTheme.colors.textMuted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Suggested skills (Tap to add):</Text>
                                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                                                {['Communication', 'TypeScript', 'React Native', 'JavaScript', 'Node.js'].map(skill => (
+                                                {metadataSkills.slice(0, 16).map(skill => (
                                                     <TouchableOpacity
                                                         key={skill}
                                                         activeOpacity={0.7}

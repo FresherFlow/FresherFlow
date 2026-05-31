@@ -244,7 +244,7 @@ export const OpportunityCard = memo(({
                     ? formatListToTitleCase(locs) 
                     : `${toTitleCase(locs[0])}, ${toTitleCase(locs[1])} +${locs.length - 2}`));
 
-          const salaryLabel = formatSalary(opportunity);
+          const salaryLabel = formatSalary(opportunity, true);
 
           return (
             <View style={styles.metaRow}>

@@ -36,6 +36,12 @@ import {
   Eye,
   MoreVertical,
   Award,
+  Copy,
+  Linkedin,
+  Twitter,
+  Send,
+  Instagram,
+  MessageCircle,
 } from 'lucide-react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -46,6 +52,7 @@ import { alpha } from '@/theme';
 import { useFollows } from '@/hooks/useFollows';
 import { RootStackParamList } from '@/navigation/types';
 import { useOpportunityDetail } from '@/hooks/useOpportunityDetail';
+import { useProfile } from '@/hooks/useProfile';
 import { renderFormattedDescription } from '@/system/components/DescriptionParser';
 import { markJobAsSeen } from '@/utils/seenJobs';
 import { formatSalary } from '@/utils/formatters';
@@ -54,10 +61,20 @@ import { openExternalURL } from '@/utils/browser';
 import { useNotifications } from '@repo/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useUIStore } from '@/store/useUIStore';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { differenceInCalendarDays } from 'date-fns';
 import * as StoreReview from 'expo-store-review';
+import { 
+    BottomSheetModal, 
+    BottomSheetView, 
+    BottomSheetBackdrop,
+    BottomSheetBackdropProps 
+} from '@gorhom/bottom-sheet';
+import * as Clipboard from 'expo-clipboard';
+import { Share, Linking } from 'react-native';
+import { WhatsAppIcon, DiscordIcon } from '@/screens/settings/AboutScreen';
 
 
 import { TYPOGRAPHY } from '@/system/constants/typography';
@@ -67,14 +84,13 @@ import { toTitleCase, formatListToTitleCase } from '@/utils/text';
 import { Screen, Section } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { ReportActionSheet, ReportActionSheetRef } from '@/system/components/ReportActionSheet';
-import { FeedbackReason } from '@fresherflow/types';
+import { FeedbackReason, ActionType, Opportunity } from '@fresherflow/types';
 import { MatchScoreGauge } from '@/system/components/MatchScoreGauge';
 import { CompanyLogo } from '@repo/ui';
-import { mScale, SPACING } from '../../system/constants/dimensions';
+import { mScale, SPACING, RADIUS } from '../../system/constants/dimensions';
 import { CommentSection } from '@/system/components/CommentSection';
 import { TrackerStatusSheet, TrackerStatusSheetRef } from '@/system/components/TrackerStatusSheet';
 import { PremiumActionSheet } from '@/system/components/PremiumActionSheet';
-import { ActionType } from '@fresherflow/types';
 import { SuccessModal } from '@/system/components/SuccessModal';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
@@ -84,6 +100,11 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
   const { currentTheme } = useTheme();
   const { user } = useAuthStore();
   const isAnonymous = !user || user.isAnonymous;
+
+  const { profile } = useProfile();
+  const userProfileSkills = useMemo(() => {
+      return (profile?.skills || []).map(s => s.toLowerCase());
+  }, [profile?.skills]);
 
   const { isFollowing, follow, unfollow } = useFollows();
   const insets = useSafeAreaInsets();
@@ -120,6 +141,13 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
   const { showSuccess } = useToast();
   const { showToast } = useNotifications();
+
+  const handleOpenShare = useCallback(() => {
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      if (opportunity) {
+          useUIStore.getState().shareSheet.open(opportunity, 'inside');
+      }
+  }, [opportunity]);
 
   const reportSheetRef = useRef<ReportActionSheetRef>(null);
   const scrollY = React.useRef(new Animated.Value(0)).current;
@@ -336,7 +364,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'}
                 />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleShare} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+            <TouchableOpacity onPress={handleOpenShare} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
                 <Share2 size={20} color={currentTheme.colors.text} />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setMenuVisible(true)} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
@@ -696,13 +724,29 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                     <Text style={[styles.reqLabel, { color: currentTheme.colors.textMuted, marginBottom: 0 }]}>Key Skills</Text>
                                 </View>
                                 <View style={styles.tagCloud}>
-                                    {opportunity.requiredSkills.map((skill, idx) => (
-                                        <View key={idx} style={[styles.skillTag, { backgroundColor: alpha(currentTheme.colors.text, 0.04), borderColor: alpha(currentTheme.colors.border, 0.3) }]}>
-                                            <Text style={[styles.skillTagText, { color: currentTheme.colors.text }]}>
-                                                {toTitleCase(skill)}
-                                            </Text>
-                                        </View>
-                                    ))}
+                                    {opportunity.requiredSkills.map((skill, idx) => {
+                                        const isMatched = userProfileSkills.includes(skill.toLowerCase());
+                                        return (
+                                            <TouchableOpacity 
+                                                key={idx} 
+                                                onPress={() => navigation.push('SkillSearch', { skill })}
+                                                style={[
+                                                    styles.skillTag, 
+                                                    { 
+                                                        backgroundColor: isMatched ? alpha(currentTheme.colors.success, 0.1) : alpha(currentTheme.colors.text, 0.04), 
+                                                        borderColor: isMatched ? alpha(currentTheme.colors.success, 0.3) : alpha(currentTheme.colors.border, 0.3) 
+                                                    }
+                                                ]}
+                                            >
+                                                <Text style={[
+                                                    styles.skillTagText, 
+                                                    { color: isMatched ? currentTheme.colors.success : currentTheme.colors.text }
+                                                ]}>
+                                                    {toTitleCase(skill)}
+                                                </Text>
+                                            </TouchableOpacity>
+                                        );
+                                    })}
                                 </View>
                             </View>
                         )}
@@ -1051,7 +1095,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             onPress={() => {
               setMenuVisible(false);
               setTimeout(() => {
-                handleShare();
+                handleOpenShare();
               }, 250);
             }}
           >
@@ -1060,7 +1104,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
               Share Opportunity
             </Text>
           </TouchableOpacity>
-
+ 
           <TouchableOpacity
             style={[styles.menuItem, { borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.05) }]}
             onPress={() => {
@@ -1668,6 +1712,59 @@ const styles = StyleSheet.create({
     menuItemText: {
         fontSize: 16,
         fontWeight: '600',
+    },
+    shareSheetContent: {
+        flex: 1,
+        paddingHorizontal: 24,
+        paddingTop: 8,
+    },
+    shareSheetTitle: {
+        fontSize: 20,
+        fontWeight: '900',
+        letterSpacing: -0.5,
+    },
+    shareSheetSubtitle: {
+        fontSize: 14,
+        marginTop: 4,
+        opacity: 0.7,
+        marginBottom: 24,
+    },
+    shareGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+        rowGap: 22,
+    },
+    shareItem: {
+        alignItems: 'center',
+        width: '22%',
+        gap: 6,
+    },
+    shareIconBox: {
+        width: 58,
+        height: 58,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    shareItemLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        textAlign: 'center',
+        width: '100%',
+    },
+    logoContainer: {
+        width: mScale(80),
+        height: mScale(80),
+        borderRadius: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.1,
+        shadowRadius: 12,
+        elevation: 3,
     },
 });
 
