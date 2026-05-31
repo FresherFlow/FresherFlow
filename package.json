@@ -5,7 +5,8 @@
   "private": true,
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "firebase/functions"
   ],
   "scripts": {
     "postinstall": "npx prisma generate --schema=packages/database/prisma/schema.prisma",
@@ -28,7 +29,13 @@
     "dev:mobile": "pnpm --filter ./apps/mobile start",
     "android:admin-mobile": "pnpm --filter ./apps/admin-mobile android",
     "android:admin-mobile:offline": "pnpm --filter ./apps/admin-mobile android:offline",
+    "android:dev": "pnpm android:mobile",
     "android:mobile": "pnpm --filter ./apps/mobile android",
+    "android:staging": "pnpm --filter ./apps/mobile android:staging",
+    "apk:staging": "pnpm --filter ./apps/mobile apk:staging",
+    "apk:production": "pnpm --filter ./apps/mobile apk:production",
+    "firebase:functions:typecheck": "pnpm --filter fresherflow-firebase-functions typecheck",
+    "firebase:functions:deploy": "pnpm --filter fresherflow-firebase-functions deploy",
     "android:mobile:offline": "pnpm --filter ./apps/mobile android:offline",
     "build": "turbo run build",
     "build:api": "turbo run build --filter=fresherflow-api",
@@ -53,11 +60,11 @@
     "typecheck:mobile": "turbo run typecheck --filter=mobile",
     "test": "turbo run test",
     "tree": "node docs/update_tree.js",
-    "android": "expo run:android",
+    "android": "pnpm android:dev",
     "ios": "expo run:ios"
   },
   "dependencies": {
-    "expo": "~54.0.34",
+    "expo": "~54.0.35",
     "react": "19.1.0",
     "react-native": "0.81.5",
     "react-native-gesture-handler": "~2.28.0",

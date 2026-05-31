@@ -55,6 +55,8 @@ coverage/
 
 # Misc
 .cache/
+.eslintcache
+.pnpm-store/
 .temp/
 .tmp/
 
@@ -80,5 +82,5 @@ apps/web/public/dummy-feed.json
 # Types package build outputs
 packages/types/index.d.ts
 packages/types/*.map
-
+assets/*
 
