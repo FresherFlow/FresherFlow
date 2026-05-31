@@ -2,8 +2,11 @@ import { Router, Request, Response } from 'express';
 import { enqueuePushNotification } from '@fresherflow/queue';
 import prisma from '../../infrastructure/database/prisma';
 import { logger } from '@fresherflow/logger';
+import { requireAdmin } from '../../middleware/auth';
 
 const router = Router();
+
+router.use(requireAdmin);
 
 router.post('/broadcast', async (req: Request, res: Response) => {
     try {

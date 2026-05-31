@@ -10,7 +10,7 @@ import TelegramService from '../infrastructure/services/telegram.service';
 import { AppError } from '../middleware/errorHandler';
 import { Profile } from '@fresherflow/types';
 import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/domain';
-import { normalizeOpportunityUrl } from '@fresherflow/utils';
+import { areOpportunityUrlsEquivalent, getOpportunityUrlAliases, normalizeOpportunityUrl } from '@fresherflow/utils';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
 import { FirebaseDbService } from '../infrastructure/services/firebaseDb.service';
 
@@ -364,11 +364,12 @@ router.post('/shares', requireAuth, validate(contributionSchema), async (req: Re
         const url = rawUrl ? normalizeOpportunityUrl(rawUrl) : null;
 
         if (url) {
+            const aliases = getOpportunityUrlAliases(url);
             // Robust duplicate check: search for the normalized URL OR
             // if it's a major platform, search for the unique ID part
             const searchConditions: Prisma.OpportunityWhereInput[] = [
-                { sourceLink: url },
-                { applyLink: url }
+                { sourceLink: { in: aliases } },
+                { applyLink: { in: aliases } }
             ];
 
             // For LinkedIn, also try to match the ID pattern to catch unnormalized old data
@@ -386,23 +387,33 @@ router.post('/shares', requireAuth, validate(contributionSchema), async (req: Re
             }
 
             // Check for existing opportunity
-            const existingOp = await prisma.opportunity.findFirst({
+            const existingOpCandidates = await prisma.opportunity.findMany({
                 where: {
                     OR: searchConditions,
                     deletedAt: null
-                }
+                },
+                take: 25,
             });
+            const existingOp = existingOpCandidates.find(candidate =>
+                (candidate.sourceLink && areOpportunityUrlsEquivalent(candidate.sourceLink, url)) ||
+                (candidate.applyLink && areOpportunityUrlsEquivalent(candidate.applyLink, url))
+            );
 
             if (existingOp) {
                 return res.status(409).json({ error: 'This opportunity is already live on FresherFlow' });
             }
 
             // Check for existing raw contribution
-            const existingRaw = await prisma.rawOpportunity.findFirst({
+            const existingRawCandidates = await prisma.rawOpportunity.findMany({
                 where: {
                     OR: searchConditions as Prisma.RawOpportunityWhereInput[]
-                }
+                },
+                take: 25,
             });
+            const existingRaw = existingRawCandidates.find(candidate =>
+                (candidate.sourceLink && areOpportunityUrlsEquivalent(candidate.sourceLink, url)) ||
+                (candidate.applyLink && areOpportunityUrlsEquivalent(candidate.applyLink, url))
+            );
 
             if (existingRaw) {
                 return res.status(409).json({ error: 'This link has already been submitted and is under review' });

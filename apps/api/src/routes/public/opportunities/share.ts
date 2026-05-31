@@ -1,6 +1,6 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
-import { normalizeOpportunityUrl } from '@fresherflow/utils';
+import { areOpportunityUrlsEquivalent, getOpportunityUrlAliases, normalizeOpportunityUrl } from '@fresherflow/utils';
 import { requireAuth } from '../../../middleware/auth';
 import { updateOpportunityEngagement } from '../../../application/opportunity/engagement';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
@@ -21,6 +21,7 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
         }
 
         const normalizedUrl = normalizeOpportunityUrl(url);
+        const normalizedAliases = getOpportunityUrlAliases(normalizedUrl);
 
         // Resolve or create User Shares IngestionSource (violates FK constraint if not present)
         let ingestionSource = await prisma.ingestionSource.findFirst({
@@ -41,15 +42,20 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
         const sourceId = ingestionSource?.id || '';
 
         // 1. Check for existing opportunities with this URL
-        const existing = await prisma.opportunity.findFirst({
+        const existingCandidates = await prisma.opportunity.findMany({
             where: {
                 OR: [
-                    { sourceLink: normalizedUrl },
-                    { applyLink: normalizedUrl }
+                    { sourceLink: { in: normalizedAliases } },
+                    { applyLink: { in: normalizedAliases } }
                 ],
                 deletedAt: null
-            }
+            },
+            take: 25,
         });
+        const existing = existingCandidates.find(candidate =>
+            (candidate.sourceLink && areOpportunityUrlsEquivalent(candidate.sourceLink, normalizedUrl)) ||
+            (candidate.applyLink && areOpportunityUrlsEquivalent(candidate.applyLink, normalizedUrl))
+        );
 
         if (existing) {
             // Still record the share for popularity signaling
@@ -83,12 +89,16 @@ router.post('/share', requireAuth, async (req: Request, res: Response, next: Nex
 
 
         // 2. Check for existing raw/pending ingestion
-        const existingRaw = await prisma.rawOpportunity.findFirst({
+        const existingRawCandidates = await prisma.rawOpportunity.findMany({
             where: {
-                sourceLink: normalizedUrl,
+                sourceLink: { in: normalizedAliases },
                 status: { in: ['FETCHED', 'DRAFT_CREATED'] }
-            }
+            },
+            take: 25,
         });
+        const existingRaw = existingRawCandidates.find(candidate =>
+            candidate.sourceLink && areOpportunityUrlsEquivalent(candidate.sourceLink, normalizedUrl)
+        );
 
         if (existingRaw) {
             return res.status(409).json({
