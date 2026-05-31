@@ -72,7 +72,7 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
         { href: '/submit-link', label: 'Submit Job Link', icon: LinkIcon },
         { href: '/referral', label: 'Invite Friends', icon: UserGroupIcon },
         { href: '/alerts', label: 'Alerts', icon: BellIcon },
-        { href: '/account/feedback', label: 'Feedback', icon: PaperAirplaneIcon },
+        { href: '/feedback', label: 'Feedback', icon: PaperAirplaneIcon },
     ];
 
     const renderMenuItem = (item: { href: string; label: string; icon: React.ElementType }) => {

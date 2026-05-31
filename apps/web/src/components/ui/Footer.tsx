@@ -48,7 +48,7 @@ export function Footer({ className }: FooterProps) {
         { href: '/submit-link', label: 'Post a Job' },
         { href: '/privacy', label: 'Privacy' },
         { href: '/terms', label: 'Terms & Conditions' },
-        { href: '/account/feedback', label: 'Feedback' },
+        { href: '/feedback', label: 'Feedback' },
         { href: '/sitemap.xml', label: 'Sitemap' },
     ] as const;
     const socialLinks = [

@@ -4,6 +4,9 @@ import Link from 'next/link';
 export const metadata: Metadata = {
     title: 'Contact FresherFlow',
     description: 'Contact FresherFlow for support, feedback, listing questions, or collaboration.',
+    alternates: {
+        canonical: '/contact',
+    },
 };
 
 const contactItems = [
@@ -50,7 +53,7 @@ export default function ContactPage() {
             <section className="rounded-3xl border border-border bg-card p-6 md:p-8 space-y-4">
                 <h2 className="text-2xl font-bold text-foreground">Fastest ways to reach us inside the app</h2>
                 <div className="grid gap-3 md:grid-cols-2">
-                    <Link href="/account/feedback" className="rounded-2xl border border-border px-5 py-4 hover:border-primary/30 transition-colors">
+                    <Link href="/feedback" className="rounded-2xl border border-border px-5 py-4 hover:border-primary/30 transition-colors">
                         <div className="font-semibold text-foreground">Feedback page</div>
                         <div className="text-sm text-muted-foreground mt-1">Share bugs, missing features, or product suggestions directly.</div>
                     </Link>

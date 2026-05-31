@@ -27,7 +27,7 @@ function getMobileTitle(pathname: string, mode: "private" | "govt"): string {
     if (pathname.startsWith('/opportunities/')) return 'Opportunity';
     if (pathname === '/profile') return 'Profile';
     if (pathname === '/alerts' || pathname === '/account/alerts') return 'Alerts';
-    if (pathname === '/account/feedback') return 'Feedback';
+    if (pathname === '/feedback') return 'Feedback';
     return 'FresherFlow';
 }
 
