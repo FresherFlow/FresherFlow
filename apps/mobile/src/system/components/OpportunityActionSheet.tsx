@@ -9,6 +9,7 @@ import {
     Dimensions,
     Pressable,
     Share,
+    Linking,
     PanResponder
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -18,6 +19,10 @@ import {
     Copy,
     Flag,
     X,
+    Linkedin,
+    Twitter,
+    Send,
+    Instagram,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
@@ -31,11 +36,13 @@ import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import { feedbackApi, actionsApi } from '@fresherflow/api-client';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/contexts/ToastContext';
+import { useUIStore } from '@/store/useUIStore';
 import { submitFirebaseOpportunityFeedback, checkFirebaseOpportunityReported } from '@/utils/firebaseFeedbackDb';
 import { isJobReportedLocally, saveReportedJobLocally } from '@/utils/offlineCache';
 import { ActivityIndicator } from 'react-native';
 import { ChevronLeft, Ban, Info, Link, AlertTriangle, Trash2, ChevronRight } from 'lucide-react-native';
 import { openExternalURL } from '@/utils/browser';
+import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/screens/settings/AboutScreen';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -74,16 +81,23 @@ export const OpportunityActionSheetContent: React.FC<{
     })();
 
     const handleShare = async () => {
-        await Share.share({
-            message: `Check out this ${activeOpportunity.title} at ${activeOpportunity.company} on FresherFlow! \n\nLink: ${fresherflowLink}`
-        });
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         onClose();
+        useUIStore.getState().shareSheet.open(activeOpportunity, 'outside');
     };
 
     const handleCopy = async () => {
         await Clipboard.setStringAsync(fresherflowLink);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         showSuccess('Opportunity link copied to clipboard!');
+        onClose();
+    };
+
+    const handleCopyApplyLink = async () => {
+        if (!activeOpportunity.applyLink) return;
+        await Clipboard.setStringAsync(activeOpportunity.applyLink);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        showSuccess('Apply link copied to clipboard!');
         onClose();
     };
 
@@ -96,7 +110,7 @@ export const OpportunityActionSheetContent: React.FC<{
 
     const { user } = useAuthStore();
     const { showSuccess, showError } = useToast();
-    const [step, setStep] = React.useState(0); // 0: Actions, 1: Report Reasons
+    const [step, setStep] = React.useState(0); // 0: Actions, 1: Report Reasons, 2: Share Grid
     const [loading, setLoading] = React.useState(false);
 
     const handleSave = () => {
@@ -163,6 +177,8 @@ export const OpportunityActionSheetContent: React.FC<{
         { id: 'duplicate', label: 'Duplicate Entry', icon: Trash2, reason: FeedbackReason.DUPLICATE },
     ];
 
+
+
     return (
         <View style={styles.contentContainer}>
             {step === 0 ? (
@@ -176,7 +192,7 @@ export const OpportunityActionSheetContent: React.FC<{
                             size={mScale(52)}
                         />
                         <View style={styles.headerText}>
-                            <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={1}>
+                            <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={2}>
                                 {activeOpportunity.title}
                             </Text>
                             <Text style={[styles.company, { color: currentTheme.colors.textMuted }]}>
@@ -194,15 +210,15 @@ export const OpportunityActionSheetContent: React.FC<{
                     {activeOpportunity.applyLink && (
                         <TouchableOpacity
                             activeOpacity={0.7}
-                            onPress={handleCopy}
+                            onPress={handleCopyApplyLink}
                             style={[styles.linkPreview, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.1) }]}
                         >
                             <View style={styles.linkIconBox}>
                                 <Copy size={16} color={currentTheme.colors.primary} />
                             </View>
                             <View style={{ flex: 1 }}>
-                                <Text style={[styles.linkLabel, { color: currentTheme.colors.textMuted }]}>APPLY LINK</Text>
-                                <Text style={[styles.linkText, { color: currentTheme.colors.primary }]} numberOfLines={3}>
+                                <Text style={[styles.linkLabel, { color: currentTheme.colors.textMuted }]}>APPLY LINK (TAP TO COPY)</Text>
+                                <Text style={[styles.linkText, { color: currentTheme.colors.primary }]} numberOfLines={2}>
                                     {activeOpportunity.applyLink}
                                 </Text>
                             </View>
@@ -240,7 +256,7 @@ export const OpportunityActionSheetContent: React.FC<{
                         />
                     </View>
                 </>
-            ) : (
+            ) : step === 1 ? (
                 <View style={{ paddingVertical: 10 }}>
                     <View style={styles.reportHeader}>
                         <TouchableOpacity 
@@ -271,7 +287,7 @@ export const OpportunityActionSheetContent: React.FC<{
                         ))}
                     </View>
                 </View>
-            )}
+            ) : null}
         </View>
     );
 };
@@ -468,5 +484,35 @@ const styles = StyleSheet.create({
         flex: 1,
         fontSize: 14,
         fontWeight: '700',
-    }
+    },
+    shareGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 4,
+        rowGap: 20,
+    },
+    shareItem: {
+        alignItems: 'center',
+        width: '22%',
+        gap: 6,
+    },
+    shareIconBox: {
+        width: 58,
+        height: 58,
+        borderRadius: 18,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    shareItemLabel: {
+        fontSize: 11,
+        fontWeight: '700',
+        textAlign: 'center',
+        width: '100%',
+    },
+    logoContainer: {
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
 });

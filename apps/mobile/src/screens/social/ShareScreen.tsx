@@ -33,8 +33,7 @@ import { profileApi } from '@fresherflow/api-client';
 import { useProfile } from '@/hooks/useProfile';
 import { Analytics, EventNames } from '@/utils/analytics';
 import { readSharesCache, saveSharesCache } from '@/utils/offlineCache';
-import { getBoolean, setBoolean, getJSON } from '@/utils/storage';
-import { normalizeOpportunityUrl } from '@fresherflow/utils';
+import { getBoolean, setBoolean, getJSON, setJSON } from '@/utils/storage';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -195,17 +194,6 @@ const ShareScreen: React.FC = () => {
                     if (isNew || !urlRef.current) {
                         lastSeenClipboardUrl.current = content;
                         if (content.startsWith('http://') || content.startsWith('https://')) {
-                            // Skip showing clipboard promo if the link has already been submitted
-                            try {
-                                const normalized = normalizeOpportunityUrl(content);
-                                const submitted = getJSON<string[]>('fresherflow_submitted_links') || [];
-                                if (submitted.includes(normalized)) {
-                                    setClipboardLink(null);
-                                    return;
-                                }
-                            } catch {
-                                // ignore normalization errors for random/invalid URLs in clipboard
-                            }
                             setClipboardLink(content);
                         }
                     }
@@ -249,9 +237,20 @@ const ShareScreen: React.FC = () => {
     }
   }, [params?.url, setValue, handleParse]);
 
-  const [prevTotalShared, setPrevTotalShared] = useState(0);
+  const [prevTotalShared, setPrevTotalShared] = useState(() => {
+      return getJSON<number>('fresherflow_persistent_total_shared_count') || 0;
+  });
   const [animatedCount, setAnimatedCount] = useState(0);
   const [animationStep, setAnimationStep] = useState(0); // 0: old center, 1: tick center, 2: shift left & show text
+ 
+  // Sync with MMKV whenever shareStats totalShared loads
+  useEffect(() => {
+      if (shareResult) return; // DO NOT update prevTotalShared while celebration card is active!
+      if (shareStats.totalShared !== undefined && shareStats.totalShared !== null) {
+          setJSON('fresherflow_persistent_total_shared_count', shareStats.totalShared);
+          setPrevTotalShared(shareStats.totalShared);
+      }
+  }, [shareStats.totalShared, shareResult]);
 
   useEffect(() => {
       if (shareResult) {
@@ -263,31 +262,35 @@ const ShareScreen: React.FC = () => {
               setAnimatedCount(prevTotalShared + 1);
               setAnimationStep(1);
           }, 600);
-
+ 
           // Step 2: Shift to the left and show text after 1300ms
           const timer2 = setTimeout(() => {
               setAnimationStep(2);
           }, 1300);
-
+ 
           return () => {
               clearTimeout(timer1);
               clearTimeout(timer2);
           };
       }
   }, [shareResult, prevTotalShared]);
-
+ 
   const onConfirm = handleSubmit(async (data: ShareFormData) => {
       let result;
-      const currentCount = shareStats.totalShared;
+      const currentCount = getJSON<number>('fresherflow_persistent_total_shared_count') ?? shareStats.totalShared ?? 0;
       setPrevTotalShared(currentCount);
-
+ 
       if (mode === 'SHARE') {
         result = await handleShare();
       } else {
         result = await handleReferral(data);
       }
-
+ 
       if (result) {
+          const newCount = currentCount + 1;
+          setJSON('fresherflow_persistent_total_shared_count', newCount);
+          setPrevTotalShared(currentCount); // Keep the previous count for the tick animation!
+
           // Clear inputs immediately!
           reset();
           setPreview(null);
@@ -296,7 +299,7 @@ const ShareScreen: React.FC = () => {
           setShareResult(result);
           void fetchRecentShares();
           void fetchStats();
-
+          
           // Auto-dismiss the celebration card after 5 seconds
           if (successCardTimerRef.current) {
               clearTimeout(successCardTimerRef.current);
@@ -304,7 +307,7 @@ const ShareScreen: React.FC = () => {
           successCardTimerRef.current = setTimeout(() => {
               setShareResult(null);
           }, 5000);
-
+ 
           // Track contribution
           Analytics.trackEvent(mode === 'SHARE' ? EventNames.JOB_SHARED : EventNames.REFERRAL_OFFERED, {
               isNew: !result.existing,
@@ -528,19 +531,22 @@ const ShareScreen: React.FC = () => {
                                                     setClipboardLink(null);
                                                     if (clipboardLink) lastSeenClipboardUrl.current = clipboardLink; // Mark as dismissed
                                                 }}
-                                                style={{ position: 'absolute', right: 12, top: 12, padding: 4, zIndex: 10 }}
+                                                style={{ position: 'absolute', right: 12, top: 12, padding: 6, zIndex: 10 }}
                                             >
-                                                <X size={14} color={currentTheme.colors.textMuted} />
+                                                <X size={16} color={currentTheme.colors.textMuted} />
                                             </TouchableOpacity>
 
-                                            <View style={styles.promoHeader}>
-                                                <LinkIcon size={14} color={currentTheme.colors.primary} />
-                                                <Text style={[styles.promoTitle, { color: currentTheme.colors.text }]}>Link detected in clipboard</Text>
+                                            <View style={{ width: '100%', paddingRight: 24 }}>
+                                                <View style={styles.promoHeader}>
+                                                    <LinkIcon size={14} color={currentTheme.colors.primary} />
+                                                    <Text style={[styles.promoTitle, { color: currentTheme.colors.text }]}>Link detected in clipboard</Text>
+                                                </View>
+                                                <Text style={[styles.promoUrl, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                                                    {clipboardLink}
+                                                </Text>
                                             </View>
-                                            <Text style={[styles.promoUrl, { color: currentTheme.colors.textMuted, marginRight: 24 }]} numberOfLines={1}>
-                                                {clipboardLink}
-                                            </Text>
-                                            <View style={styles.promoActions}>
+
+                                            <View style={[styles.promoActions, { justifyContent: 'flex-end', width: '100%' }]}>
                                                 <TouchableOpacity
                                                     activeOpacity={0.8}
                                                     style={[styles.promoUseBtn, { backgroundColor: currentTheme.colors.primary }]}
@@ -887,14 +893,12 @@ const ShareScreen: React.FC = () => {
                   {/* The text label sliding/fading in on the right with zero collision */}
                   <MotiView
                       animate={{
-                          opacity: animationStep === 2 ? 1 : 0,
-                          width: animationStep === 2 ? 170 : 0,
-                          marginLeft: animationStep === 2 ? 14 : 0,
+                          opacity: 1,
+                          transform: [{ translateX: 0 }],
                       }}
-                      transition={{ type: 'spring', damping: 18, stiffness: 180 }}
-                      style={{ overflow: 'hidden' }}
+                      style={{ flex: 1, marginLeft: 14 }}
                   >
-                      <View style={{ width: 170 }}>
+                      <View style={{ width: '100%' }}>
                           <Text style={{ fontSize: mScale(13.5), fontWeight: '900', color: currentTheme.colors.text }} numberOfLines={1}>
                               {shareResult.existing ? 'Opportunity Ranked' : 'Opportunity Shared'}
                           </Text>

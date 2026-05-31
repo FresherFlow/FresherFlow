@@ -152,3 +152,59 @@ export const normalizeOpportunityUrl = (url: string): string => {
         return url.trim();
     }
 };
+
+const TRAILING_NOISE_MIN_LENGTH = 3;
+const TRAILING_NOISE_MAX_LENGTH = 12;
+
+/**
+ * Builds conservative aliases for URLs that have short mixed alpha-numeric junk
+ * appended to the end. The aliases are only used while comparing against URLs
+ * that already exist in our data; the submitted URL itself remains unchanged.
+ */
+export const getOpportunityUrlAliases = (url: string): string[] => {
+    const normalized = normalizeOpportunityUrl(url);
+    if (!normalized) return [];
+
+    const aliases = new Set([normalized]);
+
+    try {
+        const urlObj = new URL(normalized);
+        const pathname = urlObj.pathname;
+
+        for (let length = TRAILING_NOISE_MIN_LENGTH; length <= TRAILING_NOISE_MAX_LENGTH; length++) {
+            if (pathname.length <= length + 1) break;
+
+            const suffix = pathname.slice(-length);
+            if (!/[a-z]/i.test(suffix) || !/\d/.test(suffix)) continue;
+
+            const basePath = pathname.slice(0, -length).replace(/\/+$/, '');
+            if (!basePath || basePath === '/') continue;
+
+            const alias = new URL(urlObj.toString());
+            alias.pathname = basePath;
+            aliases.add(normalizeOpportunityUrl(alias.toString()));
+        }
+    } catch {
+        // normalizeOpportunityUrl already returned the safest available value.
+    }
+
+    return [...aliases];
+};
+
+export const areOpportunityUrlsEquivalent = (left: string, right: string): boolean => {
+    const normalizedLeft = normalizeOpportunityUrl(left);
+    const normalizedRight = normalizeOpportunityUrl(right);
+    if (normalizedLeft === normalizedRight) return true;
+
+    const [shorter, longer] = normalizedLeft.length < normalizedRight.length
+        ? [normalizedLeft, normalizedRight]
+        : [normalizedRight, normalizedLeft];
+    if (!longer.startsWith(shorter)) return false;
+
+    const suffix = longer.slice(shorter.length);
+    return suffix.length >= TRAILING_NOISE_MIN_LENGTH
+        && suffix.length <= TRAILING_NOISE_MAX_LENGTH
+        && /^[a-z0-9]+$/i.test(suffix)
+        && /[a-z]/i.test(suffix)
+        && /\d/.test(suffix);
+};
