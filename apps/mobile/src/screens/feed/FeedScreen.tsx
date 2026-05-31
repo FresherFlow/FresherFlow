@@ -29,6 +29,7 @@ import {
     ChevronUp,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { haptic } from '@/utils/haptics';
 import { useSaved } from '@repo/frontend-core';
 
 import { useFeed } from '@/hooks/useFeed';
@@ -104,6 +105,15 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     hasProfileData,
     error,
   } = useFeed(tabFeedType);
+
+  // Haptic confirmation when pull-to-refresh completes
+  const prevRefreshing = useRef(false);
+  useEffect(() => {
+    if (prevRefreshing.current && !refreshing) {
+      haptic.light();
+    }
+    prevRefreshing.current = refreshing;
+  }, [refreshing]);
 
   // Sync search query from prop
   useEffect(() => {

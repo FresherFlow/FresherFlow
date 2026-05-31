@@ -3,7 +3,8 @@ import { Platform, Animated, View, StyleSheet, TouchableOpacity, Text, ActivityI
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, Compass, PlusCircle, Bookmark, User } from 'lucide-react-native';
-
+import { haptic } from '@/utils/haptics';
+import { ScreenErrorBoundary } from '@/system/components/ScreenErrorBoundary';
 
 import FeedScreen from '@/screens/feed/FeedScreen';
 import ExploreScreen from '@/screens/feed/ExploreScreen';
@@ -41,6 +42,7 @@ import { useUI } from '@/contexts/UIContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 import { RootStackParamList } from './types';
 export type { RootStackParamList };
@@ -61,7 +63,7 @@ const TabIcon = React.memo(({ focused, color, IconComponent }: {
       toValue: focused ? 1.2 : 1,
       useNativeDriver: true,
       friction: 8,
-      tension: 100
+      tension: 100,
     }).start();
   }, [focused]);
 
@@ -69,49 +71,59 @@ const TabIcon = React.memo(({ focused, color, IconComponent }: {
     <Animated.View style={{
       alignItems: 'center',
       justifyContent: 'center',
-      transform: [{ scale: scaleAnim }]
+      transform: [{ scale: scaleAnim }],
     }}>
       <IconComponent color={color} size={focused ? 24 : 22} />
     </Animated.View>
   );
 });
 
+// Each tab is wrapped in its own ScreenErrorBoundary so a crash in one tab
+// doesn't kill the entire app — users can still switch to other tabs.
 const FeedStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="FeedList" component={FeedScreen} />
-  </Stack.Navigator>
+  <ScreenErrorBoundary>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="FeedList" component={FeedScreen} />
+    </Stack.Navigator>
+  </ScreenErrorBoundary>
 );
 
 const ExploreStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="ExploreMain" component={ExploreScreen} />
-  </Stack.Navigator>
+  <ScreenErrorBoundary>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ExploreMain" component={ExploreScreen} />
+    </Stack.Navigator>
+  </ScreenErrorBoundary>
 );
 
 const ShareStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="ShareMain" component={ShareScreen} />
-  </Stack.Navigator>
+  <ScreenErrorBoundary>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="ShareMain" component={ShareScreen} />
+    </Stack.Navigator>
+  </ScreenErrorBoundary>
 );
 
 const SavedStack = () => (
-  <Stack.Navigator screenOptions={{ headerShown: false }}>
-    <Stack.Screen name="SavedList" component={SavedScreen} />
-  </Stack.Navigator>
+  <ScreenErrorBoundary>
+    <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="SavedList" component={SavedScreen} />
+    </Stack.Navigator>
+  </ScreenErrorBoundary>
 );
 
 const ProfileStack = () => (
+  <ScreenErrorBoundary>
     <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-        <Stack.Screen name="ProfileMain" component={SettingsScreen} />
+      <Stack.Screen name="ProfileMain" component={SettingsScreen} />
     </Stack.Navigator>
+  </ScreenErrorBoundary>
 );
-
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { currentTheme } = useTheme();
   const { tabBarTranslateY, isKeyboardVisible } = useUI();
-  const unseenFeedCount = useNotificationStore(state => state.unseenFeedCount);
+  const unseenFeedCount = useNotificationStore(s => s.unseenFeedCount);
   useNotifications();
 
   const isDark = currentTheme.mode === 'dark';
@@ -126,7 +138,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
         backgroundColor: currentTheme.colors.background,
         borderTopWidth: 1,
         borderTopColor: isDark ? alpha(currentTheme.colors.text, 0.1) : alpha(currentTheme.colors.border, 0.2),
-      }
+      },
     ]}>
       <View style={styles.tabBarInner}>
         {state.routes.map((route, index) => {
@@ -147,6 +159,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
             });
 
             if (!isFocused && !event.defaultPrevented) {
+              haptic.light();
               navigation.navigate(route.name);
             }
           };
@@ -165,7 +178,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
               activeOpacity={0.7}
             >
               <View>
-                <TabIcon focused={isFocused} color={isFocused ? currentTheme.colors.primary : currentTheme.colors.textMuted} IconComponent={Icon} />
+                <TabIcon
+                  focused={isFocused}
+                  color={isFocused ? currentTheme.colors.primary : currentTheme.colors.textMuted}
+                  IconComponent={Icon}
+                />
                 {route.name === 'Feed' && unseenFeedCount > 0 ? (
                   <View style={[styles.feedBadge, { backgroundColor: currentTheme.colors.error }]}>
                     <Text style={[styles.feedBadgeText, { color: currentTheme.colors.background }]}>
@@ -176,7 +193,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
               </View>
               <Text style={[
                 styles.tabLabel,
-                { color: isFocused ? currentTheme.colors.primary : currentTheme.colors.textMuted }
+                { color: isFocused ? currentTheme.colors.primary : currentTheme.colors.textMuted },
               ]}>
                 {label}
               </Text>
@@ -188,69 +205,65 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
   );
 };
 
-const TabNavigator = () => {
-  return (
-    <Tab.Navigator
-      tabBar={props => <CustomTabBar {...props} />}
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Tab.Screen name="Feed" component={FeedStack} options={{ tabBarLabel: 'Feed' }} />
-      <Tab.Screen name="Explore" component={ExploreStack} options={{ tabBarLabel: 'Explore' }} />
-      <Tab.Screen name="Share" component={ShareStack} options={{ tabBarLabel: 'Share' }} />
-      <Tab.Screen name="Saved" component={SavedStack} options={{ tabBarLabel: 'Saved' }} />
-      <Tab.Screen name="Profile" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
-    </Tab.Navigator>
-  );
-};
+const TabNavigator = () => (
+  <Tab.Navigator
+    tabBar={props => <CustomTabBar {...props} />}
+    screenOptions={{ headerShown: false }}
+  >
+    <Tab.Screen name="Feed" component={FeedStack} options={{ tabBarLabel: 'Feed' }} />
+    <Tab.Screen name="Explore" component={ExploreStack} options={{ tabBarLabel: 'Explore' }} />
+    <Tab.Screen name="Share" component={ShareStack} options={{ tabBarLabel: 'Share' }} />
+    <Tab.Screen name="Saved" component={SavedStack} options={{ tabBarLabel: 'Saved' }} />
+    <Tab.Screen name="Profile" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
+  </Tab.Navigator>
+);
 
 const styles = StyleSheet.create({
-    tabBarContainer: {
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: Platform.OS === 'ios' ? 80 : 64,
-        elevation: 0,
-        overflow: 'hidden',
-    },
-    tabBarInner: {
-        flex: 1,
-        flexDirection: 'row',
-        paddingBottom: Platform.OS === 'ios' ? 16 : 0,
-    },
-    tabItem: {
-        flex: 1,
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 4,
-    },
-    tabLabel: {
-        fontSize: 11,
-        fontWeight: '800',
-        letterSpacing: 0.5,
-    },
-    feedBadge: {
-        position: 'absolute',
-        top: -7,
-        right: -12,
-        minWidth: 17,
-        height: 17,
-        borderRadius: 9,
-        paddingHorizontal: 4,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    feedBadgeText: {
-        fontSize: 9,
-        fontWeight: '900',
-    },
+  tabBarContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: Platform.OS === 'ios' ? 80 : 64,
+    elevation: 0,
+    overflow: 'hidden',
+  },
+  tabBarInner: {
+    flex: 1,
+    flexDirection: 'row',
+    paddingBottom: Platform.OS === 'ios' ? 16 : 0,
+  },
+  tabItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  feedBadge: {
+    position: 'absolute',
+    top: -7,
+    right: -12,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  feedBadgeText: {
+    fontSize: 9,
+    fontWeight: '900',
+  },
 });
 
 // --- Full app stack (anonymous + authenticated users) ---
 // Auth is a modal inside here — guest users can navigate to it contextually.
-const AppStack = ({ initialRouteName = "Main" }: { initialRouteName?: keyof RootStackParamList }) => (
+const AppStack = ({ initialRouteName = 'Main' }: { initialRouteName?: keyof RootStackParamList }) => (
   <Stack.Navigator
     screenOptions={{ headerShown: false, animation: 'fade' }}
     initialRouteName={initialRouteName}
@@ -271,7 +284,6 @@ const AppStack = ({ initialRouteName = "Main" }: { initialRouteName?: keyof Root
     <Stack.Screen name="MyShares" component={MySharesScreen} />
     <Stack.Screen name="FollowedCompanies" component={FollowedCompaniesScreen} />
     <Stack.Screen name="ContributorProfile" component={ContributorProfileScreen} />
-
     <Stack.Screen name="About" component={AboutScreen} />
     <Stack.Screen name="CompanyDetail" component={CompanyScreen} />
     <Stack.Screen name="AlertSettings" component={AlertSettingsScreen} />
@@ -301,7 +313,7 @@ const AppLoading = () => {
 };
 
 export const AppNavigator = () => {
-  const { isSyncing, isSkipLoaded } = useAuthStore();
+  const { isSkipLoaded } = useAuthStore();
   const [isOnboardingCompleted, setIsOnboardingCompleted] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
@@ -316,5 +328,5 @@ export const AppNavigator = () => {
     return <AppLoading />;
   }
 
-  return <AppStack initialRouteName={isOnboardingCompleted ? "Main" : "Onboarding"} />;
+  return <AppStack initialRouteName={isOnboardingCompleted ? 'Main' : 'Onboarding'} />;
 };
