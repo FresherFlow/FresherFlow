@@ -252,16 +252,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
   
   return (
     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
-        {error ? (
-            <View style={[styles.syncErrorRow, { backgroundColor: alpha(currentTheme.colors.error, 0.08) }]}>
-                <Text style={[styles.syncErrorText, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                    Showing saved jobs. Refresh failed.
-                </Text>
-                <TouchableOpacity onPress={onRefresh} style={styles.syncRetryButton}>
-                    <Text style={[styles.syncRetryText, { color: currentTheme.colors.primary }]}>Retry</Text>
-                </TouchableOpacity>
-            </View>
-        ) : null}
+        {/* Error banner removed per user request */}
         <FlashList<FeedItem>
             ref={listRef}
             data={listData}
