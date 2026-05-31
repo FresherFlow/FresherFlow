@@ -3,11 +3,16 @@ import { APP_LINKS } from '@/config/links';
 import DownloadMockup from '@/components/site/DownloadMockup';
 
 export const metadata = {
-    title: 'Download FresherFlow Android App - Instant Off-Campus Job Alerts',
+    title: {
+        absolute: 'Download FresherFlow Android App',
+    },
     description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
+    alternates: {
+        canonical: '/download',
+    },
     openGraph: {
         type: 'website',
-        title: 'Download FresherFlow Android App - Instant Off-Campus Job Alerts',
+        title: 'Download FresherFlow Android App',
         description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
         images: [
             {
@@ -15,13 +20,13 @@ export const metadata = {
                 width: 1200,
                 height: 630,
                 type: 'image/png',
-                alt: 'Download FresherFlow Android App - Instant Off-Campus Job Alerts',
+                alt: 'Download FresherFlow Android App',
             },
         ],
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Download FresherFlow Android App - Instant Off-Campus Job Alerts',
+        title: 'Download FresherFlow Android App',
         description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
         images: ['/download/twitter-image'],
     }
@@ -29,7 +34,7 @@ export const metadata = {
 
 export default function DownloadPage() {
     return (
-        <div className="w-full flex-1 pt-6 pb-2 px-4 sm:px-5 md:pt-12 md:pb-4 md:px-8 space-y-12 md:space-y-14 max-w-6xl mx-auto selection:bg-primary/20">
+        <div className="w-full flex-1 pt-3 pb-2 px-4 sm:px-5 md:pt-4 md:pb-4 md:px-8 space-y-12 md:space-y-14 max-w-6xl mx-auto selection:bg-primary/20">
             {/* Hero Section */}
             <div className="flex flex-col lg:grid lg:grid-cols-[1.18fr_0.82fr] gap-6 lg:gap-8 items-center">
                 {/* Content Column */}
@@ -78,7 +83,7 @@ export default function DownloadPage() {
                     </div>
 
                     {/* 2. Interactive Mockup on Mobile (Order 3 below LG, Hidden in this column on LG) */}
-                    <div className="order-3 lg:hidden w-full pt-2 pb-7 flex justify-center">
+                    <div className="order-3 lg:hidden w-full pt-1 pb-1 flex justify-center">
                         <DownloadMockup />
                     </div>
 
