@@ -4,11 +4,17 @@ import { Opportunity, SalaryPeriod } from '@fresherflow/types';
  * Formats salary or stipend based on period and available values.
  * Standardizes output to include "LPA" for yearly and "/month" for monthly.
  */
-export const formatSalary = (opportunity: Opportunity): string | null => {
+export const formatSalary = (opportunity: Opportunity, isShortForm = false): string | null => {
     const { salaryRange, salaryMin, salaryMax, salaryPeriod, stipend } = opportunity;
     
     // If it's an internship and stipend string exists, use it as primary
     if (opportunity.type === 'INTERNSHIP' && stipend) {
+        if (isShortForm) {
+            // Hide purely text stipends or very long strings
+            if (!/\d/.test(stipend) || stipend.length > 20) {
+                return null;
+            }
+        }
         if (!stipend.toLowerCase().includes('month') && !stipend.toLowerCase().includes('/m')) {
             return `${stipend}/month`;
         }
@@ -27,6 +33,8 @@ export const formatSalary = (opportunity: Opportunity): string | null => {
             // Monthly: 25000 -> 25k, 25 -> 25k (if we assume simplified entry)
             // But let's stay safe: only divide if >= 1000
             if (v >= 1000) return `${(v / 1000).toString().replace(/\.0$/, '')}k`;
+            // If they entered 25 (meaning 25k), we assume < 100 means thousands
+            if (v > 0 && v < 100) return `${v}k`;
             return v.toString();
         }
     };

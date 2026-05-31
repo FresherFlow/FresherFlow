@@ -43,10 +43,12 @@ const SENT_ALERT_IDS_KEY  = 'ff:sent_alert_ids_v2';      // jobId → never re-f
 const NOTIF_DAY_KEY       = 'ff:notif_day';            // YYYY-MM-DD
 
 const NOTIF_DAY_COUNT_KEY = 'ff:notif_day_count';      // pushes fired today
+const LAST_OS_PUSH_KEY     = 'ff:last_os_push_timestamp';
 const MAX_LOCAL_ALERTS    = 50;
 const MAX_ALERTS_PER_SYNC = 10;                       // max new jobs to add to list at once
 const CLOSING_WINDOW_MS   = 48 * 60 * 60 * 1000;  // 48h
 const JOB_FRESHNESS_DAYS  = 7;
+const OS_PUSH_COOLDOWN_MS = 4 * 60 * 60 * 1000;
 
 // ─── Free-Time Windows (device local time) ────────────────────────────────────
 // PRIME TIME: notifications preferred here, allow more per day
@@ -91,6 +93,17 @@ function incrementTodayPushCount(): void {
   const count = day === today ? parseInt(getString(NOTIF_DAY_COUNT_KEY) || '0', 10) : 0;
   setString(NOTIF_DAY_KEY, today);
   setString(NOTIF_DAY_COUNT_KEY, String(count + 1));
+}
+
+function canFireOsPush(): boolean {
+  if (getTodayPushCount() >= getDailyCapForNow()) return false;
+  const lastPush = parseInt(getString(LAST_OS_PUSH_KEY) || '0', 10);
+  return !lastPush || Date.now() - lastPush >= OS_PUSH_COOLDOWN_MS;
+}
+
+function recordOsPush(): void {
+  setString(LAST_OS_PUSH_KEY, String(Date.now()));
+  incrementTodayPushCount();
 }
 
 // ─── Sent-IDs registry ────────────────────────────────────────────────────────
@@ -155,6 +168,7 @@ async function firePush(
   let title: string;
   let body: string;
   let data: any = {};
+  let companyLogoUrl: string | undefined;
 
   if (kind === 'GROUPED' && 'count' in job) {
     title = `You have ${job.count} new matches`;
@@ -177,7 +191,8 @@ async function firePush(
       title = `${hasScore ? scoreLabel : 'New role'} at ${job.company}`;
       body  = `${job.title}${job.matchScore ? ` — ${job.matchScore}% profile match` : ''}`;
     }
-    data = { jobId: job.id };
+    data = { jobId: job.id, companyLogoUrl: job.companyLogoUrl || undefined };
+    companyLogoUrl = job.companyLogoUrl || undefined;
   } else {
     return;
   }
@@ -193,7 +208,7 @@ async function firePush(
       android: {
         channelId,
         smallIcon: '@drawable/notification_icon',
-        largeIcon: null,
+        largeIcon: companyLogoUrl,
       },
     } as any,
     trigger: null,
@@ -376,27 +391,20 @@ export async function diffAndNotify(freshJobs: Opportunity[]): Promise<number> {
       sentNow.push(job.id);
     }
 
-    // Step 2: Fire exactly 1 push for the pushable queue
-    const canPushToday = getTodayPushCount() < getDailyCapForNow();
-    if (pushableToProcess.length > 0 && canPushToday) {
-      if (pushableToProcess.length === 1) {
+    // Step 2: Fire at most 1 OS notification. Closing-soon wins priority.
+    if (canFireOsPush()) {
+      if (closingSoon.length > 0) {
+        await firePush(closingSoon[0], 'CLOSING_SOON');
+        recordOsPush();
+        pushFiredCount++;
+      } else if (pushableToProcess.length === 1) {
         const { job: heroJob, kind: heroKind } = pushableToProcess[0];
         await firePush(heroJob, heroKind);
-      } else {
+        recordOsPush();
+        pushFiredCount++;
+      } else if (pushableToProcess.length > 1) {
         await firePush({ count: pushableToProcess.length, kind: 'GROUPED' }, 'GROUPED');
-      }
-      incrementTodayPushCount();
-      pushFiredCount++;
-    }
-
-    // Step 3: 1 closing-soon push if it's urgent and we haven't used up both slots
-    if (closingSoon.length > 0 && getTodayPushCount() < getDailyCapForNow()) {
-      // Only fire closing-soon push if it's a different job from the hero (or no hero push)
-      const heroId = pushableToProcess.length === 1 ? pushableToProcess[0]?.job.id : null;
-      const soonest = closingSoon[0];
-      if (soonest.id !== heroId) {
-        await firePush(soonest, 'CLOSING_SOON');
-        incrementTodayPushCount();
+        recordOsPush();
         pushFiredCount++;
       }
     }
@@ -452,9 +460,6 @@ export async function processNextDripAlertIfNeeded(): Promise<boolean> {
     await saveLocalAlerts([nextOpportunity], kind);
     await markAsSent([nextOpportunity.id]);
     await recordDripTrigger();
-    await firePush(nextOpportunity, kind);
-    incrementTodayPushCount();
-
     return true;
   } catch (error) {
     console.error('[localNotifications] Drip processing failed:', error);

@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
-import Constants from 'expo-constants';
 import { Platform } from 'react-native';
-import { profileApi } from '@fresherflow/api-client';
 
 export * from './toast/toast';
 
@@ -22,7 +20,7 @@ export interface ToastPayload {
 }
 
 interface NotificationContextType {
-  expoPushToken: string | undefined;
+  nativePushToken: string | undefined;
   notification: Notifications.Notification | undefined;
   requestPushPermission: () => Promise<void>;
   showToast: (message: string, tone?: 'info' | 'success' | 'error') => void;
@@ -31,8 +29,42 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
-export const NotificationProvider: React.FC<{ children: React.ReactNode, userId?: string }> = ({ children, userId }) => {
-  const [expoPushToken, setExpoPushToken] = useState<string | undefined>(undefined);
+type FirebaseDatabase = {
+  ref(path: string): {
+    set(value: unknown): Promise<void>;
+  };
+};
+
+let databaseInstance: FirebaseDatabase | null | undefined;
+
+function getDb(databaseUrl?: string): FirebaseDatabase | null {
+  if (databaseInstance !== undefined) return databaseInstance;
+  if (!databaseUrl) return null;
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const firebase = require('@react-native-firebase/app').default;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require('@react-native-firebase/database');
+    databaseInstance = firebase.app().database(databaseUrl) as FirebaseDatabase;
+  } catch (error) {
+    console.warn('[NotificationProvider] Firebase Database unavailable:', error);
+    databaseInstance = null;
+  }
+
+  return databaseInstance;
+}
+
+function getTokenKey(token: string): string {
+  return token.replace(new RegExp('[.#$\\[\\]/]', 'g'), '_');
+}
+
+export const NotificationProvider: React.FC<{
+  children: React.ReactNode,
+  firebaseUserId?: string,
+  firebaseDatabaseUrl?: string
+}> = ({ children, firebaseUserId, firebaseDatabaseUrl }) => {
+  const [nativePushToken, setNativePushToken] = useState<string | undefined>(undefined);
   const [notification, setNotification] = useState<Notifications.Notification | undefined>(undefined);
   const [toast, setToast] = useState<ToastPayload | null>(null);
   const notificationListener = useRef<Notifications.Subscription | null>(null);
@@ -41,7 +73,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode, userId?
 
   const requestPushPermission = async () => {
     const token = await registerForPushNotificationsAsync();
-    setExpoPushToken(token);
+    setNativePushToken(token);
   };
 
   const showToast = (message: string, tone: 'info' | 'success' | 'error' = 'info') => {
@@ -72,14 +104,21 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode, userId?
   }, []);
 
   useEffect(() => {
-    if (userId && expoPushToken) {
-      void profileApi.registerPushToken(expoPushToken, 'expo')
-        .catch((err: unknown) => console.warn('Failed to register push token with backend', err));
+    if (firebaseUserId && nativePushToken && firebaseDatabaseUrl) {
+      const db = getDb(firebaseDatabaseUrl);
+      if (!db) return;
+
+      void db.ref(`/users/${firebaseUserId}/pushTokens/${getTokenKey(nativePushToken)}`).set({
+        token: nativePushToken,
+        platform: Platform.OS,
+        provider: Platform.OS === 'android' ? 'fcm' : 'apns',
+        updatedAt: Date.now(),
+      }).catch((err: unknown) => console.warn('Failed to register Firebase push token', err));
     }
-  }, [userId, expoPushToken]);
+  }, [firebaseDatabaseUrl, firebaseUserId, nativePushToken]);
 
   return (
-    <NotificationContext.Provider value={{ expoPushToken, notification, requestPushPermission, showToast, toast }}>
+    <NotificationContext.Provider value={{ nativePushToken, notification, requestPushPermission, showToast, toast }}>
       {children}
     </NotificationContext.Provider>
   );
@@ -117,13 +156,7 @@ async function registerForPushNotificationsAsync() {
     }
 
     try {
-      const projectId =
-        Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-      if (!projectId) {
-        token = (await Notifications.getExpoPushTokenAsync()).data;
-      } else {
-        token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-      }
+      token = String((await Notifications.getDevicePushTokenAsync()).data);
     } catch (e) {
       console.warn('Could not get push token', e);
     }
