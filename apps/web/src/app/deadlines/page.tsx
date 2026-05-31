@@ -5,8 +5,11 @@ import DeadlinesClientPage from './DeadlinesClientPage';
 export const revalidate = 3600;
 
 export const metadata: Metadata = {
-    title: 'Deadline Radar | FresherFlow',
+    title: 'Jobs Closing Soon',
     description: 'Track and apply to entry-level jobs and fresher opportunities closing soon.',
+    alternates: {
+        canonical: '/deadlines',
+    },
 };
 
 export default async function DeadlinesPage() {

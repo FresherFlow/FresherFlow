@@ -49,7 +49,7 @@ export default function DeadlinesClientPage({ initialOpportunities }: DeadlinesC
                             <ArrowLeftIcon className="w-3.5 h-3.5" />
                             Back
                         </Link>
-                        <h1 className="text-sm md:text-base font-bold tracking-tight">Deadline Radar</h1>
+                        <h1 className="text-sm md:text-base font-bold tracking-tight">Jobs Closing Soon</h1>
                         <span className="text-xs md:text-sm font-bold capitalize tracking-widest text-foreground dark:text-amber-300">{sorted.length} active</span>
                     </div>
 
