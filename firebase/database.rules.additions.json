@@ -1,0 +1,20 @@
+{
+  "rules": {
+    "notificationCampaignRequests": {
+      ".read": "auth != null && auth.token.admin === true",
+      ".write": "auth != null && auth.token.admin === true"
+    },
+    "notificationCampaignDeliveries": {
+      ".read": "auth != null && auth.token.admin === true",
+      ".write": false
+    },
+    "acceptedShareEvents": {
+      ".read": "auth != null && auth.token.admin === true",
+      ".write": "auth != null && auth.token.admin === true"
+    },
+    "leaderboards": {
+      ".read": true,
+      ".write": false
+    }
+  }
+}
