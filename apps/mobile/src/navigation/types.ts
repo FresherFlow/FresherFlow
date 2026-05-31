@@ -39,4 +39,5 @@ export type RootStackParamList = {
   OTAUpdates: undefined;
   FollowedCompanies: undefined;
   Onboarding: undefined;
+  SkillSearch: { skill: string };
 };

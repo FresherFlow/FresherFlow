@@ -4,10 +4,9 @@ import {
     View,
     Text,
     TouchableOpacity,
-    StatusBar,
-    SafeAreaView
+    StatusBar
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
@@ -24,7 +23,6 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding' | any>;
 
 export const OnboardingScreen: React.FC<Props> = ({ navigation, route }) => {
     const { currentTheme } = useTheme();
-    const insets = useSafeAreaInsets();
     const { user, isAuthenticated, skipUsernameSetup, loginAnonymously, skipUsername } = useAuthStore() as any;
 
     const [step, setStep] = useState<number>(0);
@@ -35,11 +33,13 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation, route }) => {
         if (step === 0 && user) {
             if (user.isAnonymous) {
                 void handleFinishOnboarding();
+            } else if (user.username?.trim() || skipUsernameSetup) {
+                void handleFinishOnboarding();
             } else if (isAuthenticated) {
                 setStep(1);
             }
         }
-    }, [isAuthenticated, user, step]);
+    }, [isAuthenticated, skipUsernameSetup, user, step]);
 
     // Step 1 -> Finish: Complete onboarding when user has a handle or chooses to skip handle setup
     useEffect(() => {

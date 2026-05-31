@@ -76,7 +76,6 @@ import { FirstRunGate } from './src/system/components/FirstRunGate';
 import { useAuthStore, AuthManager } from './src/store/useAuthStore';
 import { useAuthHandshake } from './src/hooks/useAuthHandshake';
 import { useEmailLinkSignIn } from './src/hooks/useEmailLinkSignIn';
-import { registerForPushNotificationsAsync } from './src/utils/pushNotifications';
 
 // Configure API client
 configureClient(API_URL, secureStorage, {
@@ -102,7 +101,10 @@ const AuthBridge = ({ children }: { children: React.ReactNode }) => {
   // RTDB paths are keyed by Firebase UID (auth.uid), NOT the Postgres UUID (user.id)
   const rtdbUserId = firebaseUser?.uid ?? user?.id;
   return (
-    <NotificationProvider userId={user?.id}>
+    <NotificationProvider
+      firebaseUserId={firebaseUser?.uid}
+      firebaseDatabaseUrl={getFirebaseDatabaseUrl()}
+    >
       <SavedProvider 
         userId={rtdbUserId} 
         anonSessionId={null} 
@@ -151,7 +153,6 @@ const AppContent = () => {
   React.useEffect(() => {
     // Initialize Google Sign-In & Firebase Auth listeners after native bridge boots
     void AuthManager.initialize();
-    void registerForPushNotificationsAsync();
   }, []);
 
   // OTA Updates: Listen for downloaded updates and prompt user to reload
@@ -187,8 +188,6 @@ const AppContent = () => {
 
     return () => clearTimeout(timer);
   }, []);
-
-
 
   // Handle push notification clicks
   const lastNotificationResponse = Notifications.useLastNotificationResponse();

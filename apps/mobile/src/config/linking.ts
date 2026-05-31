@@ -91,6 +91,15 @@ export const linking: LinkingOptions<RootStackParamList> = {
       // Redirect to Feed or Auth depending on where we want the user to land
       rewrittenPath = '/feed'; 
     }
-    return getStateFromPath(rewrittenPath, options);
+    const state = getStateFromPath(rewrittenPath, options);
+    if (state && state.routes) {
+      const hasMain = state.routes.some(r => r.name === 'Main');
+      if (!hasMain) {
+        state.routes.unshift({
+          name: 'Main'
+        } as any);
+      }
+    }
+    return state;
   },
 };

@@ -9,6 +9,7 @@ import FeedScreen from '@/screens/feed/FeedScreen';
 import ExploreScreen from '@/screens/feed/ExploreScreen';
 import ShareScreen from '@/screens/social/ShareScreen';
 import JobDetailScreen from '@/screens/discovery/JobDetailScreen';
+import SkillSearchScreen from '@/screens/discovery/SkillSearchScreen';
 import SavedScreen from '@/screens/feed/SavedScreen';
 import SettingsScreen from '@/screens/profile/SettingsScreen';
 import MySharesScreen from '@/screens/social/MySharesScreen';
@@ -39,6 +40,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useUI } from '@/contexts/UIContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 import { RootStackParamList } from './types';
 export type { RootStackParamList };
@@ -109,6 +111,7 @@ import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { currentTheme } = useTheme();
   const { tabBarTranslateY, isKeyboardVisible } = useUI();
+  const unseenFeedCount = useNotificationStore(state => state.unseenFeedCount);
   useNotifications();
 
   const isDark = currentTheme.mode === 'dark';
@@ -163,6 +166,13 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
             >
               <View>
                 <TabIcon focused={isFocused} color={isFocused ? currentTheme.colors.primary : currentTheme.colors.textMuted} IconComponent={Icon} />
+                {route.name === 'Feed' && unseenFeedCount > 0 ? (
+                  <View style={[styles.feedBadge, { backgroundColor: currentTheme.colors.error }]}>
+                    <Text style={[styles.feedBadgeText, { color: currentTheme.colors.background }]}>
+                      {unseenFeedCount > 9 ? '9+' : unseenFeedCount}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
               <Text style={[
                 styles.tabLabel,
@@ -221,6 +231,21 @@ const styles = StyleSheet.create({
         fontWeight: '800',
         letterSpacing: 0.5,
     },
+    feedBadge: {
+        position: 'absolute',
+        top: -7,
+        right: -12,
+        minWidth: 17,
+        height: 17,
+        borderRadius: 9,
+        paddingHorizontal: 4,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    feedBadgeText: {
+        fontSize: 9,
+        fontWeight: '900',
+    },
 });
 
 // --- Full app stack (anonymous + authenticated users) ---
@@ -233,6 +258,7 @@ const AppStack = ({ initialRouteName = "Main" }: { initialRouteName?: keyof Root
     <Stack.Screen name="Main" component={TabNavigator} />
     <Stack.Screen name="Onboarding" component={OnboardingScreen} />
     <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+    <Stack.Screen name="SkillSearch" component={SkillSearchScreen} />
     <Stack.Screen name="Appearance" component={AppearanceScreen} />
     <Stack.Screen name="Dashboard" component={DashboardScreen} />
     <Stack.Screen name="Invite" component={InviteScreen} />

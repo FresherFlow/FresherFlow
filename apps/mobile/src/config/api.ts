@@ -3,6 +3,7 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 
 const DEV_LOCAL_URL = 'http://localhost:5000';
+const DEFAULT_CDN_URL = 'https://cdn.fresherflow.in';
 
 function resolveLocalUrl(envUrl: string | undefined, defaultUrl: string): string {
     let baseUrl = defaultUrl;
@@ -55,16 +56,33 @@ export const API_URL = resolveLocalUrl(process.env.EXPO_PUBLIC_API_URL, DEV_LOCA
 function resolveCdnUrl(): string {
     const envCdnUrl = process.env.EXPO_PUBLIC_CDN_URL;
     if (envCdnUrl) {
-        return resolveLocalUrl(envCdnUrl, envCdnUrl);
+        const resolvedEnvCdnUrl = resolveLocalUrl(envCdnUrl, envCdnUrl);
+        const allowLocalCdn = process.env.EXPO_PUBLIC_USE_LOCAL_CDN === 'true';
+
+        try {
+            const host = new URL(resolvedEnvCdnUrl).hostname;
+            const isLocalCdn =
+                host === 'localhost' ||
+                host === '127.0.0.1' ||
+                host === '10.0.2.2' ||
+                /^192\.168\./.test(host) ||
+                /^10\./.test(host) ||
+                /^172\.(1[6-9]|2\d|3[0-1])\./.test(host);
+
+            if (isLocalCdn && !allowLocalCdn) {
+                console.warn('[mobile] Ignoring local CDN URL. Set EXPO_PUBLIC_USE_LOCAL_CDN=true to use it:', resolvedEnvCdnUrl);
+                return DEFAULT_CDN_URL;
+            }
+        } catch {
+            return DEFAULT_CDN_URL;
+        }
+
+        return resolvedEnvCdnUrl;
     }
 
-    // In development, the local API server handles serving the CDN files dynamically
-    if (__DEV__) {
-        return API_URL;
-    }
-
-    // Fallback to normal production CDN if not configured in environment
-    return 'https://cdn.fresherflow.in';
+    // CDN reads must not depend on the API process. Use EXPO_PUBLIC_CDN_URL
+    // only when intentionally testing local static feed files through Express.
+    return DEFAULT_CDN_URL;
 }
 
 export const CDN_URL = resolveCdnUrl();

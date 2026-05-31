@@ -5,7 +5,7 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon-1024.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "scheme": "fresherflow",
     "backgroundColor": "#0D0D0D",
     "newArchEnabled": true,
@@ -15,15 +15,13 @@
       "backgroundColor": "#000000"
     },
     "ios": {
-      "supportsTablet": true,
-      "bundleIdentifier": "in.fresherflow.app"
+      "supportsTablet": true
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0F1115"
       },
-      "package": "in.fresherflow.app",
       "googleServicesFile": "./google-services.json",
       "intentFilters": [
         {
@@ -68,6 +66,17 @@
         }
       ],
       "edgeToEdgeEnabled": true,
+      "queries": {
+        "schemes": [
+          "whatsapp",
+          "twitter",
+          "tg",
+          "linkedin",
+          "discord",
+          "instagram",
+          "arattai"
+        ]
+      },
       "softwareKeyboardLayoutMode": "pan",
       "statusBar": {
         "barStyle": "light-content",
