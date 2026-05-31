@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@fresherflow/config": "*",
+        "@fresherflow/database": "*",
         "@fresherflow/constants": "*",
         "@fresherflow/domain": "*",
         "@fresherflow/logger": "*",

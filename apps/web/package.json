@@ -6,7 +6,7 @@
     "prune:web": "turbo prune fresherflow-web --docker",
     "dev": "next dev",
     "build:deps": "turbo run build --filter=fresherflow-web^...",
-    "build": "npm run build:deps && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "test:smoke": "playwright test"

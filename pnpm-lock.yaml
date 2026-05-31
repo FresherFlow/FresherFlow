@@ -455,6 +455,9 @@ importers:
       '@fresherflow/constants':
         specifier: '*'
         version: link:../../packages/constants
+      '@fresherflow/database':
+        specifier: '*'
+        version: link:../../packages/database
       '@fresherflow/domain':
         specifier: '*'
         version: link:../../packages/domain
