@@ -504,7 +504,7 @@ const DatePickerField = ({
     const { currentTheme } = useTheme();
     const [show, setShow] = useState(false);
 
-    const handleDateChange = (event: any, selectedDate?: Date) => {
+    const handleDateChange = (event: unknown, selectedDate?: Date) => {
         if (Platform.OS === 'android') {
             setShow(false);
         }

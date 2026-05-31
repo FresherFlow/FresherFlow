@@ -1,5 +1,6 @@
 import React, { useCallback } from 'react';
-import { ActivityIndicator, RefreshControl, View, ScrollView } from 'react-native';
+import { ActivityIndicator, RefreshControl, View, ScrollView, Text, TouchableOpacity } from 'react-native';
+import { BellRing } from 'lucide-react-native';
 import { useFocusEffect, useNavigation, type NavigationProp } from '@react-navigation/native';
 import { AlertsControlCard } from './components/AlertsControlCard';
 import { ChannelStatusCard } from './components/ChannelStatusCard';
@@ -14,7 +15,7 @@ import {
     Section,
 } from '../system/layout/Layout';
 import { SimpleHeader } from '../system/components/SimpleHeader';
-import { SPACING } from '../../theme/dimensions';
+import { RADIUS, SPACING, mScale } from '../../theme/dimensions';
 
 export const SystemScreen = () => {
     const navigation = useNavigation<{ 
@@ -104,6 +105,24 @@ export const SystemScreen = () => {
                                 runningRefresh={runningRefresh}
                                 onRefreshMetrics={refreshMetrics}
                             />
+                            <TouchableOpacity
+                                onPress={() => navigation.navigate('PushComposer')}
+                                style={{
+                                    marginTop: SPACING.md,
+                                    minHeight: 48,
+                                    borderRadius: RADIUS.md,
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexDirection: 'row',
+                                    gap: SPACING.sm,
+                                    backgroundColor: currentTheme.colors.primary,
+                                }}
+                            >
+                                <BellRing size={17} color={currentTheme.colors.background} />
+                                <Text style={{ color: currentTheme.colors.background, fontSize: mScale(14), fontWeight: '800' }}>
+                                    Compose Firebase Push
+                                </Text>
+                            </TouchableOpacity>
                         </Section>
 
                         <Section title="Active Dispatch Logs">

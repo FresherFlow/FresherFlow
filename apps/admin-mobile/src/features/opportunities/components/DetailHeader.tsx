@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Linking } from 'react-native';
-import { CheckCircle2, Clock, Edit3, ExternalLink, MessageSquare, RotateCcw, Trash2, Copy, MoreHorizontal } from 'lucide-react-native';
+import { Edit3, ExternalLink, MessageSquare, MoreHorizontal } from 'lucide-react-native';
 import { CompanyLogo } from '@repo/ui';
 import { useTheme } from '../../../theme/ThemeProvider';
 import { alpha } from '../../../theme';

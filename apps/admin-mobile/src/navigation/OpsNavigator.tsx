@@ -4,12 +4,14 @@ import { useTheme } from '../theme/ThemeProvider';
 import { SystemScreen } from '../features/system/SystemScreen';
 import { TelegramScreen } from '../features/telegram/TelegramScreen';
 import { SocialPostsScreen } from '../features/social/SocialPostsScreen';
+import { PushComposerScreen } from '../features/system/PushComposerScreen';
 import { createStackScreenOptions } from './options';
 
 export type OpsStackParamList = {
     SystemOverview: undefined;
     TelegramBroadcasts: undefined;
     SocialPosts: undefined;
+    PushComposer: undefined;
 };
 
 const Stack = createNativeStackNavigator<OpsStackParamList>();
@@ -33,6 +35,11 @@ export const OpsNavigator = () => {
                 name="SocialPosts"
                 component={SocialPostsScreen}
                 options={{ title: 'Social Operations' }}
+            />
+            <Stack.Screen
+                name="PushComposer"
+                component={PushComposerScreen}
+                options={{ headerShown: false }}
             />
         </Stack.Navigator>
     );
