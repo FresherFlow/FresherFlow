@@ -2,6 +2,7 @@
 
 import { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
+import { slugify } from '@fresherflow/utils';
 import { cn } from '@repo/ui/utils/cn';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
@@ -239,7 +240,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                     <div className="mt-1 shrink-0"><CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} companyLogoUrl={job.companyLogoUrl} applyLink={job.applyLink} priority={priority} /></div>
                     <div className="min-w-0">
                         <Link
-                            href={`/companies/${encodeURIComponent(job.company)}`}
+                            href={`/companies/${slugify(job.company)}`}
                             onClick={(e: React.MouseEvent) => e.stopPropagation()}
                             className="relative z-20 text-xs font-medium text-muted-foreground line-clamp-1 hover:text-primary transition-colors cursor-pointer block"
                         >

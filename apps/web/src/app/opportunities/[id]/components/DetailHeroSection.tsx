@@ -1,6 +1,7 @@
 import { Opportunity } from '@fresherflow/types';
 import { cn } from '@/shared/ui/cn';
 import CompanyLogo from '@/components/ui/CompanyLogo';
+import { slugify } from '@fresherflow/utils';
 import Link from 'next/link';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
@@ -149,7 +150,7 @@ export function DetailHeroSection({
                         <div>
                             <div className="flex flex-wrap items-center gap-1.5">
                                 <h2 className="text-base font-semibold text-foreground tracking-tight leading-none">
-                                    <Link href={`/companies/${encodeURIComponent(opp.company)}`} className="hover:text-primary transition-colors">
+                                    <Link href={`/companies/${slugify(opp.company)}`} className="hover:text-primary transition-colors">
                                         {opp.company}
                                     </Link>
                                 </h2>

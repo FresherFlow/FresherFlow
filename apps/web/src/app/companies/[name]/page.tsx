@@ -21,9 +21,10 @@ export async function generateMetadata(
     { params }: { params: Promise<{ name: string }> }
 ): Promise<Metadata> {
     const { name: encodedName } = await params;
-    const slug = decodeURIComponent(encodedName).toLowerCase().trim();
+    const { slugify } = await import('@fresherflow/utils');
+    const slug = slugify(decodeURIComponent(encodedName));
     const base = (SITE_URL || 'https://fresherflow.in').replace(/\/+$/, '');
-    const canonicalUrl = `${base}/companies/${encodeURIComponent(slug)}`;
+    const canonicalUrl = `${base}/companies/${slug}`;
 
     return {
         alternates: { canonical: canonicalUrl },
@@ -34,12 +35,14 @@ export async function generateMetadata(
 export default async function CompanyProfilePage({ params }: { params: Promise<{ name: string }> }) {
     const { name: encodedName } = await params;
     const rawName = decodeURIComponent(encodedName);
-    const slug = rawName.toLowerCase().trim();
+    
+    const { slugify } = await import('@fresherflow/utils');
+    const slug = slugify(rawName);
 
-    // If the requested URL has mixed-case (e.g. /companies/Honeywell),
-    // 301 redirect to the lowercase version to fix Google Search Console 404s.
-    if (rawName !== slug) {
-        permanentRedirect(`/companies/${encodeURIComponent(slug)}`);
+    // If the requested URL is not a perfectly clean slug (legacy %20 or uppercase),
+    // 301 redirect to the clean slugified version to fix Google Search Console 404s and SEO.
+    if (encodedName !== slug) {
+        permanentRedirect(`/companies/${slug}`);
     }
 
     const { fetchCompanyShard } = await import('@/lib/api/cdnFeed');
