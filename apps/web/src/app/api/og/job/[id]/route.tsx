@@ -79,7 +79,8 @@ const fetchWithTimeout = async (
     if (externalSignal.aborted) {
       controller.abort();
     } else {
-      externalSignal.addEventListener("abort", onAbort);
+      // @ts-ignore - Edge runtime handles onabort more reliably than addEventListener for cleanup
+      externalSignal.onabort = onAbort;
     }
   }
 
@@ -106,7 +107,8 @@ const fetchWithTimeout = async (
   } finally {
     clearTimeout(timer);
     if (externalSignal) {
-      externalSignal.removeEventListener("abort", onAbort);
+      // @ts-ignore
+      externalSignal.onabort = null;
     }
   }
 };
@@ -344,10 +346,10 @@ export async function GET(
   // Fetch static lightweight links feed from CDN only if cache is empty or stale
   if (!cachedLinks || (now - lastFetchTime > CACHE_TTL_MS)) {
     try {
-      const response = await fetch(LINKS_FEED_URL, {
-        next: { revalidate: 60 } // Edge CDN caching
+      const response = await fetchWithTimeout(LINKS_FEED_URL, 3500, undefined, {
+        revalidateSeconds: 60
       });
-      if (response.ok) {
+      if (response && response.ok) {
         const payload = await response.json();
         cachedLinks = (payload?.opportunities || []) as OpportunityDto[];
         lastFetchTime = now;
