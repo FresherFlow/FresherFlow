@@ -36,7 +36,16 @@ export const WhatsAppIcon = ({ size = 22, color }: { size?: number, color?: stri
 export const DiscordIcon = ({ size = 22, color }: { size?: number, color?: string }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path
-            d="M19.27 4.73a16.14 16.14 0 0 0-3.97-1.23.08.08 0 0 0-.08.04c-.17.3-.37.72-.5 1.03a14.88 14.88 0 0 0-5.44 0c-.13-.31-.33-.73-.5-1.03a.08.08 0 0 0-.08-.04 16.14 16.14 0 0 0-3.97 1.23.08.08 0 0 0-.03.03C1.66 9.77.92 14.67 1.3 19.54a.08.08 0 0 0 .03.05 16.27 16.27 0 0 0 4.9 2.48.08.08 0 0 0 .09-.03c.38-.52.72-1.07 1-1.66a.08.08 0 0 0-.04-.1 10.74 10.74 0 0 1-1.53-.73.08.08 0 0 1-.01-.13c.1-.07.2-.15.3-.23a.08.08 0 0 1 .08-.01c3.2 1.47 6.67 1.47 9.8 0a.08.08 0 0 1 .08.01c.1.08.2.16.3.23a.08.08 0 0 1-.01.13c-.48.28-.99.53-1.53.73a.08.08 0 0 0-.04.1c.29.59.63 1.14 1 1.66a.08.08 0 0 0 .09.03 16.26 16.26 0 0 0 4.9-2.48.08.08 0 0 0 .03-.05c.46-5.59-.78-10.45-3.32-14.78a.08.08 0 0 0-.03-.03zM8.52 14.83c-.92 0-1.69-.85-1.69-1.9s.75-1.89 1.69-1.89c.95 0 1.71.85 1.7 1.9-.01 1.05-.76 1.9-1.7 1.9zm6.97 0c-.93 0-1.69-.85-1.69-1.9s.75-1.89 1.69-1.89c.95 0 1.71.85 1.7 1.9-.01 1.05-.76 1.9-1.7 1.9z"
+            d="M19.27 4.73a16.14 16.14 0 0 0-3.97-1.23.08.08 0 0 0-.08.04c-.17.3-.37.72-.5 1.03a14.88 14.88 0 0 0-5.44 0c-.13-.31-.33-.73-.5-1.03a.08.08 0 0 0-.08-.04 16.14 16.14 0 0 0-3.97 1.23.08.08 0 0 0-.03.03C1.66 9.77.92 14.67 1.3 19.54a.08.08 0 0 0 .03.05 16.27 16.27 0 0 0 4.9 2.48.08.08 0 0 0 .09-.03c.38-.52.72-1.07 1-1.66a.08.08 0 0 0-.04-.1 10.74 10.74 0 0 1-1.53-.73.08.08 0 0 1-.01-.13c.1-.07.2-.15.3-.23a.08.08 0 0 1 .08-.01c3.2 1.47 6.67 1.47 9.8 0a.08.08 0 0 1 .08.01c.1.08.2.16.3.23a.08.08 0 0 1-.01.13c-.48.28-.99.53-1.53.73a.08.08 0 0 0-.04.1c.29.59.63 1.14 1 1.66a.08.08 0 0 0 .09-.03 16.26 16.26 0 0 0 4.9-2.48.08.08 0 0 0 .03-.05c.46-5.59-.78-10.45-3.32-14.78a.08.08 0 0 0-.03-.03zM8.52 14.83c-.92 0-1.69-.85-1.69-1.9s.75-1.89 1.69-1.89c.95 0 1.71.85 1.7 1.9-.01 1.05-.76 1.9-1.7 1.9zm6.97 0c-.93 0-1.69-.85-1.69-1.9s.75-1.89 1.69-1.89c.95 0 1.71.85 1.7 1.9-.01 1.05-.76 1.9-1.7 1.9z"
+            fill={color}
+        />
+    </Svg>
+);
+
+export const ArattaiIcon = ({ size = 22, color }: { size?: number, color?: string }) => (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+        <Path
+            d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 11c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm8 0c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"
             fill={color}
         />
     </Svg>
@@ -75,24 +84,53 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const startAutoScroll = useCallback(() => {
         if (isInteracting.value) return;
         
+        cancelAnimation(translateX);
+
         // Wrap translateX to be within [-totalWidth, 0] cleanly
         let currentX = translateX.value % totalWidth;
         if (currentX > 0) currentX -= totalWidth;
         translateX.value = currentX;
 
-        translateX.value = withRepeat(
-            withTiming(currentX - totalWidth, { 
-                duration: 20000, 
-                easing: Easing.linear 
-            }),
-            -1,
-            false
-        );
+        // Calculate remaining distance and proportional duration
+        const targetX = currentX - totalWidth;
+        const remainingDistance = Math.abs(targetX - currentX);
+        const fraction = remainingDistance / totalWidth;
+        const duration = Math.max(100, 20000 * fraction);
+
+        // Animate the rest of this cycle smoothly, then start the infinite loop
+        translateX.value = withTiming(targetX, {
+            duration: duration,
+            easing: Easing.linear
+        }, (finished) => {
+            if (finished && !isInteracting.value) {
+                translateX.value = 0;
+                translateX.value = withRepeat(
+                    withTiming(-totalWidth, { 
+                        duration: 20000, 
+                        easing: Easing.linear 
+                    }),
+                    -1,
+                    false
+                );
+            }
+        });
     }, [totalWidth]);
 
     React.useEffect(() => {
         startAutoScroll();
-        return () => cancelAnimation(translateX);
+        
+        // Safety guard: check every 3 seconds to ensure the marquee never gets stuck stopped
+        const interval = setInterval(() => {
+            if (isInteracting.value) {
+                isInteracting.value = false;
+                startAutoScroll();
+            }
+        }, 3000);
+
+        return () => {
+            cancelAnimation(translateX);
+            clearInterval(interval);
+        };
     }, [startAutoScroll]);
 
     const onGestureEvent = (event: PanGestureHandlerGestureEvent) => {
@@ -166,24 +204,6 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     </Text>
                 </View>
 
-                <SurfaceCard style={styles.groupCard}>
-                    <MenuRow
-                        icon={MessageSquare}
-                        label="Share Feedback & Support"
-                        subtitle="Report a bug, suggest features or share love"
-                        onPress={() => navigation.navigate('Feedback')}
-                        currentTheme={currentTheme}
-                    />
-                    <MenuRow
-                        icon={ShieldCheck}
-                        label="Privacy & Terms"
-                        subtitle="Data usage and community guidelines"
-                        onPress={() => navigation.navigate('Legal')}
-                        currentTheme={currentTheme}
-                        isLast
-                    />
-                </SurfaceCard>
-
                 <View style={styles.missionSection}>
                     <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Our Mission</Text>
                     <Text style={[styles.missionText, { color: currentTheme.colors.text }]}>
@@ -245,6 +265,24 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     </View>
                     <ExternalLink size={18} color={alpha(currentTheme.colors.textMuted, 0.4)} />
                 </TouchableOpacity>
+
+                <SurfaceCard style={styles.groupCard}>
+                    <MenuRow
+                        icon={MessageSquare}
+                        label="Share Feedback & Support"
+                        subtitle="Report a bug, suggest features or share love"
+                        onPress={() => navigation.navigate('Feedback')}
+                        currentTheme={currentTheme}
+                    />
+                    <MenuRow
+                        icon={ShieldCheck}
+                        label="Privacy & Terms"
+                        subtitle="Data usage and community guidelines"
+                        onPress={() => navigation.navigate('Legal')}
+                        currentTheme={currentTheme}
+                        isLast
+                    />
+                </SurfaceCard>
 
                 <View style={styles.footer}>
                     <Text style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
@@ -309,7 +347,7 @@ const styles = StyleSheet.create({
     groupCard: {
         padding: 0,
         borderRadius: 16,
-        marginBottom: 32,
+        marginBottom: 40,
     },
     sectionLabel: {
         fontSize: 12,
@@ -355,7 +393,7 @@ const styles = StyleSheet.create({
         padding: 20,
         borderRadius: 16,
         borderWidth: 1,
-        marginBottom: 40,
+        marginBottom: 16,
     },
     githubLeft: {
         flexDirection: 'row',
