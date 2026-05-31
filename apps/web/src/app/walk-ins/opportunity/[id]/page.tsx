@@ -7,7 +7,8 @@ type LegacyWalkInRouteProps = {
     }>;
 };
 
-export const revalidate = 3600;
+// On-Demand Revalidation is used for this route via /api/revalidate
+export const revalidate = false;
 export const dynamicParams = true;
 export const generateStaticParams = generateOpportunityStaticParams;
 

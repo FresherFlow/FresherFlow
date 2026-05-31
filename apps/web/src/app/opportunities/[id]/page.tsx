@@ -18,8 +18,8 @@ type Props = {
     params: Promise<{ id: string }>;
 };
 
-// ISR for public detail pages to absorb bot/preview traffic at CDN.
-export const revalidate = 3600;
+// On-Demand Revalidation is used for this route via /api/revalidate
+export const revalidate = false;
 
 // Allow dynamic rendering and ISR caching for newly published opportunities using the CDN JSON feed
 export const dynamicParams = true;

@@ -33,6 +33,29 @@ export async function invalidatePublicOpportunityCache(options?: {
             for (const value of idsOrSlugs) {
                 await deleteByPattern(`opportunity_detail|v3|*|id:${value}`);
             }
+
+            // Ping Vercel to revalidate the specific ISR paths for these jobs/internships
+            const pathsToRevalidate = idsOrSlugs.flatMap(slug => [
+                `/jobs/${slug}`,
+                `/internships/${slug}`,
+                `/opportunities/${slug}`,
+                `/walk-ins/details/${slug}`,
+                `/walk-ins/opportunity/${slug}`
+            ]);
+
+            const secret = process.env.REVALIDATE_SECRET_TOKEN;
+            const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';
+            if (secret && webUrl) {
+                try {
+                    await fetch(`${webUrl}/api/revalidate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ secret, paths: pathsToRevalidate })
+                    });
+                } catch (e) {
+                    logger.warn('[Revalidate] Failed to ping Vercel for on-demand revalidation', { error: e instanceof Error ? e.message : String(e) });
+                }
+            }
         }
         logger.debug('Invalidated public opportunity cache', { idsOrSlugs, purgeFeed });
     } catch (error: unknown) {

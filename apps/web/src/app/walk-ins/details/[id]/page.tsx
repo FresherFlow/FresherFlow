@@ -3,7 +3,8 @@ import OpportunityDetailPage, {
     generateStaticParams as generateOpportunityStaticParams
 } from '../../../opportunities/[id]/page';
 
-export const revalidate = 3600;
+// On-Demand Revalidation is used for this route via /api/revalidate
+export const revalidate = false;
 export const dynamicParams = true;
 
 export const generateMetadata = generateOpportunityMetadata;
