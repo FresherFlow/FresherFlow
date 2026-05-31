@@ -14,29 +14,7 @@ export const revalidate = 21600;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    const feed = await fetchBootstrapFeed();
-    
-    if (!feed?.opportunities) return [];
-    
-    // Only emit lowercase slugs — avoids duplicate routes (e.g. Accenture + accenture)
-    // which Google marks as "Alternate page with proper canonical tag".
-    const names = new Set<string>();
-    feed.opportunities.forEach(opp => {
-        if (opp.company) {
-            names.add(opp.company.toLowerCase().trim());
-        }
-        const domain = getCompanyDomain({
-            companyWebsite: opp.companyWebsite,
-            applyLink: opp.applyLink,
-            sourceLink: opp.sourceLink,
-        });
-        if (domain) {
-            names.add(domain.toLowerCase());
-        }
-    });
-    
-    return Array.from(names).map(name => ({ name }));
+    return [];
 }
 
 export async function generateMetadata(

@@ -162,7 +162,7 @@ export default function CaptionsTool() {
 ⭕️ Apply Now:
 https://fresherflow.in/opportunities/${opp.slug}
 
-📱 More jobs: fresherflow.in/download`;
+📱 More jobs: fresherflow.in/app`;
         }
 
         if (platform === 'twitter') {
@@ -195,7 +195,7 @@ ${twHashtags}`;
 Apply:
 https://fresherflow.in/opportunities/${opp.slug}
 
-📱 More jobs: fresherflow.in/download
+📱 More jobs: fresherflow.in/app
 
 ${liHashtags}`;
         }
@@ -214,7 +214,7 @@ ${liHashtags}`;
 ⭕️ *Apply Now:*
 https://fresherflow.in/opportunities/${opp.slug}
 
-📱 *More jobs on FresherFlow:* fresherflow.in/download`;
+📱 *More jobs on FresherFlow:* fresherflow.in/app`;
     };
 
     const formatBulkCaption = () => {
@@ -227,7 +227,7 @@ https://fresherflow.in/opportunities/${opp.slug}
                 const numEmoji = getNumberEmoji(index + 1);
                 body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 https://fresherflow.in/opportunities/${opp.slug}\n\n`;
             });
-            body += `📱 *More jobs:* fresherflow.in/download`;
+            body += `📱 *More jobs:* fresherflow.in/app`;
             return body;
         }
 
@@ -237,7 +237,7 @@ https://fresherflow.in/opportunities/${opp.slug}
                 const numEmoji = getNumberEmoji(index + 1);
                 body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 https://fresherflow.in/opportunities/${opp.slug}\n\n`;
             });
-            body += `📱 More jobs: fresherflow.in/download`;
+            body += `📱 More jobs: fresherflow.in/app`;
             return body;
         }
 

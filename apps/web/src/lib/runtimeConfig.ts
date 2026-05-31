@@ -108,6 +108,11 @@ export const SITEMAP_DATA_URL =
     process.env.SITEMAP_DATA_URL ||
     `${CDN_URL}/sitemap-data.json`;
 
+export const LINKS_FEED_URL =
+    process.env.NEXT_PUBLIC_LINKS_FEED_URL ||
+    process.env.LINKS_FEED_URL ||
+    `${CDN_URL}/links.min.json`;
+
 export const GET_CATEGORY_SHARD_URL = (id: string) =>
     `${CDN_URL}/categories/${id}.json`;
 

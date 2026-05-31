@@ -39,6 +39,7 @@ export class StaticFeedService {
     private static readonly SITEMAP_PATH = path.join(this.PUBLIC_ROOT, 'sitemap.xml');
     private static readonly USERNAMES_PATH = path.join(this.PUBLIC_ROOT, 'taken-usernames.min.json');
     private static readonly SITEMAP_DATA_PATH = path.join(this.PUBLIC_ROOT, 'sitemap-data.json');
+    private static readonly LINKS_PATH = path.join(this.PUBLIC_ROOT, 'links.min.json');
 
     /**
      * Slugify a string for use as a filename/path.
@@ -424,6 +425,50 @@ export class StaticFeedService {
     }
 
     /**
+     * LIGHTWEIGHT LINKS FEED (No descriptions/notes, used for ultra-fast, zero-sleep social images)
+     */
+    static async generateLinksFeed() {
+        return this.withDbRetry(async () => {
+            const opportunities = await prisma.opportunity.findMany({
+                where: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: new Date() } }
+                    ]
+                },
+                orderBy: { postedAt: 'desc' },
+                select: {
+                    id: true,
+                    slug: true,
+                    title: true,
+                    company: true,
+                    type: true,
+                    locations: true,
+                    experienceMin: true,
+                    experienceMax: true,
+                    salaryRange: true,
+                    salaryMin: true,
+                    salaryMax: true,
+                    salaryPeriod: true,
+                    expiresAt: true,
+                    companyWebsite: true,
+                    applyLink: true,
+                    companyLogoUrl: true,
+                    events: {
+                        select: {
+                            eventType: true,
+                            eventDate: true
+                        }
+                    }
+                }
+            });
+            return { opportunities, timestamp: Date.now(), count: opportunities.length };
+        });
+    }
+
+    /**
      * 5. LANDING PAGE STATS (LPS)
      */
     static async generateStats() {
@@ -536,6 +581,7 @@ export class StaticFeedService {
             const sitemap = await this.generateSitemap();
             const sitemapData = await this.generateSitemapData();
             const usernames = await this.generateTakenUsernames();
+            const linksFeed = await this.generateLinksFeed();
 
             // 3. Write files & upload to R2
             const bootstrapBody = JSON.stringify(bootstrap);
@@ -566,6 +612,10 @@ export class StaticFeedService {
             const usernamesBody = JSON.stringify(usernames);
             fs.writeFileSync(this.USERNAMES_PATH, usernamesBody);
             await this.uploadToR2('taken-usernames.min.json', usernamesBody, 'application/json');
+
+            const linksBody = JSON.stringify(linksFeed);
+            fs.writeFileSync(this.LINKS_PATH, linksBody);
+            await this.uploadToR2('links.min.json', linksBody, 'application/json');
 
             for (const s of companyShards) {
                 const body = JSON.stringify(s.data);

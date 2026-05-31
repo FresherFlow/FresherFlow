@@ -1,6 +1,5 @@
 import { ImageResponse } from "next/og";
-import { BOOTSTRAP_FEED_URL } from "@/lib/runtimeConfig";
-
+import { LINKS_FEED_URL } from "@/lib/runtimeConfig";
 export const runtime = "edge";
 export const revalidate = 86400; // 24 hours — job details don't change within minutes
 
@@ -8,61 +7,6 @@ const size = {
   width: 1200,
   height: 630,
 };
-
-async function signPathname(pathname: string, secret: string): Promise<{ t: number; sig: string }> {
-  // Round timestamp to a 2-minute (120-second) window to make signed URLs stable for caching,
-  // while remaining safely within the Cloudflare Worker's 5-minute (300-second) replay attack window.
-  const t = Math.floor(Date.now() / 1000 / 120) * 120;
-  const message = `${pathname}:${t}`;
-
-  const encoder = new TextEncoder();
-  const keyData = encoder.encode(secret);
-  const messageData = encoder.encode(message);
-
-  const cryptoObj = globalThis.crypto;
-  const key = await cryptoObj.subtle.importKey(
-    "raw",
-    keyData,
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"]
-  );
-
-  const signature = await cryptoObj.subtle.sign(
-    "HMAC",
-    key,
-    messageData
-  );
-
-  const hashArray = Array.from(new Uint8Array(signature));
-  const sig = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
-
-  return { t, sig };
-}
-
-async function getSignedUrl(url: string): Promise<string> {
-  const secret = process.env.CDN_SIGNATURE_SECRET;
-  if (secret) {
-    try {
-      const parsedUrl = new URL(url, "https://cdn.fresherflow.in");
-      const pathname = parsedUrl.pathname;
-      const isProtected = pathname === "/bootstrap-feed.min.json" ||
-                          pathname === "/taken-usernames.min.json" ||
-                          pathname === "/companies-directory.min.json" ||
-                          pathname.startsWith("/categories/");
-
-      if (isProtected) {
-        const { t, sig } = await signPathname(pathname, secret);
-        parsedUrl.searchParams.set("t", t.toString());
-        parsedUrl.searchParams.set("sig", sig);
-        return parsedUrl.toString();
-      }
-    } catch (err) {
-      console.error("Failed to sign CDN url in OG route:", err);
-    }
-  }
-  return url;
-}
 
 type OpportunityDto = {
   id: string;
@@ -385,36 +329,35 @@ const renderFallbackCard = (title: string, subtitle: string) =>
     }
   );
 
+// Global in-memory cache persisted across warm Edge invocations
+let cachedLinks: OpportunityDto[] | null = null;
+let lastFetchTime = 0;
+const CACHE_TTL_MS = 60000; // Cache in memory for 60 seconds
+
 export async function GET(
   _: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  const apiBase = getApiBase();
+  const now = Date.now();
 
-  let opportunity: OpportunityDto | null = null;
-
-  // 1. Try to fetch from the secure CDN feed first (100% Vercel-side)
-  try {
-    const signedUrl = await getSignedUrl(BOOTSTRAP_FEED_URL);
-    const cdnResponse = await fetchWithTimeout(
-      signedUrl,
-      5000,
-      undefined,
-      { 
-        cacheMode: "force-cache", 
-        revalidateSeconds: 300 
+  // Fetch static lightweight links feed from CDN only if cache is empty or stale
+  if (!cachedLinks || (now - lastFetchTime > CACHE_TTL_MS)) {
+    try {
+      const response = await fetch(LINKS_FEED_URL, {
+        next: { revalidate: 60 } // Edge CDN caching
+      });
+      if (response.ok) {
+        const payload = await response.json();
+        cachedLinks = (payload?.opportunities || []) as OpportunityDto[];
+        lastFetchTime = now;
       }
-    );
-
-    if (cdnResponse && cdnResponse.ok) {
-      const payload = await cdnResponse.json();
-      const allOpportunities = (payload?.opportunities || []) as OpportunityDto[];
-      opportunity = allOpportunities.find((o) => o.id === id || o.slug === id) || null;
+    } catch (err) {
+      console.warn("Failed to fetch static links feed in OG route:", err);
     }
-  } catch (cdnError) {
-    console.warn("CDN preview fetch failed:", cdnError);
   }
+
+  const opportunity = cachedLinks?.find((o) => o.id === id || o.slug === id) || null;
 
   if (!opportunity) {
     return renderFallbackCard("Opportunity preview", "This listing is unavailable.");
