@@ -6,7 +6,9 @@ import {
     TextInput,
     TouchableOpacity,
     ActivityIndicator,
+    Keyboard,
 } from 'react-native';
+import { useRef, useEffect } from 'react';
 import * as Haptics from 'expo-haptics';
 import { Send, Trash2, MessageSquare, ShieldCheck } from 'lucide-react-native';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
@@ -39,6 +41,14 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
     const { user, isAnonymous } = useAuthStore();
     const { showToast } = useNotifications();
     const [inputText, setInputText] = useState('');
+    const inputRef = useRef<TextInput>(null);
+
+    useEffect(() => {
+        const sub = Keyboard.addListener('keyboardDidHide', () => {
+            inputRef.current?.blur();
+        });
+        return () => sub.remove();
+    }, []);
 
     const handleSubmit = async () => {
         if (!inputText.trim() || posting) return;
@@ -102,6 +112,7 @@ export const CommentSection: React.FC<CommentSectionProps> = ({ opportunityId })
                 {user?.username ? (
                     <SurfaceCard style={styles.inputContainer}>
                         <TextInput
+                            ref={inputRef}
                             style={[styles.input, { color: currentTheme.colors.text }]}
                             placeholder="Add a helpful comment..."
                             placeholderTextColor={currentTheme.colors.textMuted}

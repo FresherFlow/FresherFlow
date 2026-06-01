@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import {
     StyleSheet,
     Text,
@@ -21,6 +21,7 @@ import { useSaved } from '@repo/frontend-core';
 import { CompanyLogo } from '@repo/ui';
 import { FlashList } from '@shopify/flash-list';
 import { Opportunity } from '@fresherflow/types';
+import { slugify } from '@fresherflow/utils';
 import { CommonActions } from '@react-navigation/native';
 import { 
     BottomSheetModal, 
@@ -36,6 +37,8 @@ import { shareToInstalledApp } from '@/utils/shareTargets';
 import { Screen } from '@/system/layout/Layout';
 import { SPACING, mScale, RADIUS } from '@/system/constants/dimensions';
 import { useCompany } from '@/hooks/useCompany';
+import { useFollows } from '@/hooks/useFollows';
+import { useAuthStore } from '@/store/useAuthStore';
 import { SecondaryHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
@@ -53,11 +56,17 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
     const { currentTheme } = useTheme();
     const { isSaved, toggleSave } = useSaved();
     const { jobs, loading, refreshing, onRefresh } = useCompany(companyName, currentJob);
+    const { isFollowing, follow, unfollow } = useFollows();
+    const { user } = useAuthStore();
+    const isAnonymous = !user || user.isAnonymous;
     const { showSuccess } = useToast();
     const fabAnim = React.useRef(new Animated.Value(0)).current;
     const shareSheetRef = React.useRef<BottomSheetModal>(null);
 
-    const shareUrl = `https://fresherflow.in/company/${encodeURIComponent(companyName)}`;
+    const companyKey = React.useMemo(() => website || companyName, [website, companyName]);
+    const followingCompany = isFollowing('COMPANY', companyKey);
+
+    const shareUrl = `https://fresherflow.in/companies/${slugify(companyName)}`;
 
     React.useEffect(() => {
         Animated.sequence([
@@ -78,6 +87,34 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
         showSuccess(wasSaved ? 'Opportunity removed from saves' : 'Opportunity saved successfully!');
     };
 
+    const handleToggleFollow = async () => {
+        if (isAnonymous) {
+            await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+            showSuccess('Please sign in to follow companies');
+            navigation.navigate('Auth');
+            return;
+        }
+
+        try {
+            await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            if (followingCompany) {
+                const success = await unfollow('COMPANY', companyKey);
+                if (success) {
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    showSuccess(`Alerts disabled for ${companyName}`);
+                }
+            } else {
+                const success = await follow('COMPANY', companyKey);
+                if (success) {
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                    showSuccess(`You will now get alerts for ${companyName}`);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to toggle follow:', error);
+        }
+    };
+
     const handleOpenShare = () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         shareSheetRef.current?.present();
@@ -91,25 +128,25 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
     };
 
     const handleWhatsApp = async () => {
-        const text = `Hey! Check out active opportunities at ${companyName} on FresherFlow: ${shareUrl}`;
+        const text = `Hey! Check out active opportunities at ${companyName} on FresherFlow:\n${shareUrl}`;
         await shareToInstalledApp({ target: 'whatsapp', message: text, url: shareUrl });
         shareSheetRef.current?.dismiss();
     };
 
     const handleLinkedIn = async () => {
-        const message = `Check out active opportunities at ${companyName} on FresherFlow: ${shareUrl}`;
+        const message = `Check out active opportunities at ${companyName} on FresherFlow:\n${shareUrl}`;
         await shareToInstalledApp({ target: 'linkedin', message, url: shareUrl });
         shareSheetRef.current?.dismiss();
     };
 
     const handleTwitter = async () => {
-        const text = `Check out active opportunities at ${companyName} on @Fresherflow: ${shareUrl}`;
+        const text = `Check out active opportunities at ${companyName} on @Fresherflow:\n${shareUrl}`;
         await shareToInstalledApp({ target: 'twitter', message: text, url: shareUrl });
         shareSheetRef.current?.dismiss();
     };
 
     const handleTelegram = async () => {
-        const text = `Check out active opportunities at ${companyName} on FresherFlow: ${shareUrl}`;
+        const text = `Check out active opportunities at ${companyName} on FresherFlow:\n${shareUrl}`;
         await shareToInstalledApp({ target: 'telegram', message: text, url: shareUrl });
         shareSheetRef.current?.dismiss();
     };
@@ -120,6 +157,19 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
         await shareToInstalledApp({ target: 'discord', message: shareUrl, url: shareUrl });
         shareSheetRef.current?.dismiss();
     };
+
+    const handleBack = useCallback(() => {
+        if (navigation.canGoBack()) {
+            navigation.goBack();
+        } else {
+            navigation.dispatch(
+                CommonActions.reset({
+                    index: 0,
+                    routes: [{ name: 'Main' }],
+                })
+            );
+        }
+    }, [navigation]);
 
     const handleInstagram = async () => {
         await Clipboard.setStringAsync(shareUrl);
@@ -138,7 +188,7 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
     const handleSystemShare = async () => {
         try {
             await Share.share({
-                message: `Check out active opportunities at ${companyName} on FresherFlow: ${shareUrl}`,
+                message: `Check out active opportunities at ${companyName} on FresherFlow:\n${shareUrl}`,
                 url: shareUrl,
             });
         } catch (error) {
@@ -168,11 +218,11 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                 <SecondaryHeader
                     title=""
                     showBack={true}
-                    onBack={() => navigation.goBack()}
+                    onBack={handleBack}
                     rightSlot={
                         <TouchableOpacity
                             onPress={handleOpenShare}
-                            style={[styles.actionBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}
+                            style={[styles.actionBtn, { backgroundColor: 'transparent' }]}
                         >
                             <Share2 size={20} color={currentTheme.colors.text} />
                         </TouchableOpacity>
@@ -191,40 +241,64 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                 showsVerticalScrollIndicator={false}
                 ListHeaderComponent={
                     <View style={styles.companyHero}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 }}>
-                            <View style={{ flex: 1 }}>
-                                <Text style={[styles.companyTitle, { color: currentTheme.colors.text }]}>
-                                    {companyName}
-                                </Text>
-
-                                <View style={styles.badgeRow}>
-                                    <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
-                                        <Text style={[styles.badgeText, { color: currentTheme.colors.success }]}>OFFICIAL SOURCE</Text>
-                                    </View>
-                                    {website && (
-                                        <TouchableOpacity 
-                                            activeOpacity={0.7}
-                                            onPress={() => {
-                                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                void openExternalURL(website, currentTheme.colors);
-                                            }}
-                                            style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
-                                        >
-                                            <Globe size={10} color={currentTheme.colors.primary} />
-                                            <Text style={[styles.badgeText, { color: currentTheme.colors.primary }]}>WEBSITE</Text>
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                            </View>
-
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
                             <View style={[styles.logoContainer, { backgroundColor: currentTheme.colors.surface, shadowColor: '#000000', marginBottom: 0 }]}>
                                 <CompanyLogo
                                     name={companyName}
                                     logoUrl={companyLogoUrl}
                                     website={website}
-                                    size={mScale(72)}
+                                    size={mScale(56)}
                                 />
                             </View>
+
+                            <View style={{ flex: 1 }}>
+                                <Text style={[styles.companyTitle, { color: currentTheme.colors.text }]}>
+                                    {companyName}
+                                </Text>
+                            </View>
+
+                            <TouchableOpacity 
+                                activeOpacity={0.7}
+                                onPress={handleToggleFollow}
+                                style={[
+                                    styles.badge, 
+                                    { 
+                                        backgroundColor: followingCompany 
+                                            ? currentTheme.colors.primary 
+                                            : alpha(currentTheme.colors.primary, 0.1) 
+                                    }
+                                ]}
+                            >
+                                <Text style={[
+                                    styles.badgeText, 
+                                    { 
+                                        color: followingCompany 
+                                            ? currentTheme.colors.background 
+                                            : currentTheme.colors.primary 
+                                    }
+                                ]}>
+                                    {followingCompany ? 'Following' : 'Follow'}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={[styles.badgeRow, { flexWrap: 'wrap', marginTop: 12 }]}>
+                            <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
+                                <Text style={[styles.badgeText, { color: currentTheme.colors.success }]}>OFFICIAL SOURCE</Text>
+                            </View>
+                            {website && (
+                                <TouchableOpacity 
+                                    activeOpacity={0.7}
+                                    onPress={() => {
+                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        void openExternalURL(website, currentTheme.colors);
+                                    }}
+                                    style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                                >
+                                    <Globe size={10} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.badgeText, { color: currentTheme.colors.primary }]}>WEBSITE</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
 
                         <Text style={[styles.companyBio, { color: currentTheme.colors.textMuted }]}>

@@ -16,6 +16,7 @@ import {
   TextInput,
   Animated,
   InteractionManager,
+  Keyboard,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -39,6 +40,7 @@ import { Analytics, EventNames } from '@/utils/analytics';
 import { clearUnseenCount } from '@/utils/localNotifications';
 import { Opportunity } from '@fresherflow/types';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useNotificationStore } from '@/store/useNotificationStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 
@@ -82,11 +84,13 @@ interface FeedTabContentProps {
 const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, isSaved, toggleSave, handleScroll, searchQuery, savedJobs }: FeedTabContentProps) => {
   const insets = useSafeAreaInsets();
   const listRef = useRef<any>(null);
+  const scrollOffset = useRef<number>(0);
   useScrollToTop(listRef);
   const [showScrollTop, setShowScrollTop] = useState(false);
 
   const localHandleScroll = useCallback((event: any) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
+    scrollOffset.current = currentOffset;
     setShowScrollTop(currentOffset > 600);
     if (handleScroll) {
       handleScroll(event);
@@ -114,6 +118,12 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     }
     prevRefreshing.current = refreshing;
   }, [refreshing]);
+
+  const handleRefresh = useCallback(() => {
+      // Prevent accidental Android ghost-refreshes when layout shifts while scrolled down
+      if (scrollOffset.current > 10) return;
+      onRefresh();
+  }, [onRefresh]);
 
   // Sync search query from prop
   useEffect(() => {
@@ -273,9 +283,10 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
             onEndReached={loadMore}
             onScroll={localHandleScroll}
             scrollEventThrottle={16}
-            keyboardShouldPersistTaps="always"
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
             refreshControl={
-                <PremiumRefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+                <PremiumRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
             ListHeaderComponent={
                 <UsernameNudgeCard />
@@ -315,6 +326,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const { isSaved, toggleSave, savedJobs } = useSaved();
   const { hideTabBar, showTabBar } = useUI();
   const { unreadCount } = useNotifications();
+  const unseenFeedCount = useNotificationStore(s => s.unseenFeedCount);
   const [activeTab, setActiveTab] = useState(0);
   const activeTabRef = useRef(0);
   const pagerRef = useRef<PagerView>(null);
@@ -337,6 +349,13 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     }
   }, [searchQuery]);
 
+  useEffect(() => {
+      const sub = Keyboard.addListener('keyboardDidHide', () => {
+          searchInputRef.current?.blur();
+      });
+      return () => sub.remove();
+  }, []);
+
   const toggleSearch = useCallback(() => {
     if (isSearching) {
         setSearchQuery('');
@@ -351,6 +370,10 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   useFocusEffect(
     useCallback(() => {
         void clearUnseenCount();
+        
+        // Ensure tab bar is visible when returning from an inner screen
+        isTabBarVisible.current = true;
+        showTabBar();
 
         // Handle back button to exit app on feed
         let backPressCount = 0;
@@ -551,6 +574,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         const tabKey = `tab-${feed.id || 'all'}-${index}`;
                         
                         const tabColor = isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted;
+                        const showBadge = feed.id === 'latest' && unseenFeedCount > 0;
 
                         return (
                             <TouchableOpacity
@@ -560,7 +584,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                     const { x, width } = e.nativeEvent.layout;
                                     setTabLayouts(prev => ({ ...prev, [index]: { x, width, center: x + width / 2 - 0.5 } }));
                                 }}
-                                style={styles.feedTab}
+                                style={[styles.feedTab, { flexDirection: 'row', alignItems: 'center', gap: 6 }]}
                                 onPress={() => handleTabPress(index)}
                             >
                                 <Text style={[
@@ -572,6 +596,25 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 ]}>
                                     {feed.label}
                                 </Text>
+                                {showBadge && (
+                                    <View style={{
+                                        backgroundColor: currentTheme.colors.error,
+                                        paddingHorizontal: 4,
+                                        paddingVertical: 1,
+                                        borderRadius: 8,
+                                        minWidth: 16,
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                    }}>
+                                        <Text style={{
+                                            color: currentTheme.colors.background,
+                                            fontSize: 10,
+                                            fontWeight: 'bold',
+                                        }}>
+                                            {unseenFeedCount > 9 ? '9+' : unseenFeedCount}
+                                        </Text>
+                                    </View>
+                                )}
                             </TouchableOpacity>
                         );
                     })}

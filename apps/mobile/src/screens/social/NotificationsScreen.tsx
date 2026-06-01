@@ -1,5 +1,6 @@
 import React, { memo, useMemo, useCallback, useRef, useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Animated, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Animated, Platform, LayoutAnimation } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
 import * as Haptics from 'expo-haptics';
@@ -146,17 +147,32 @@ const AlertRow = memo(({
     onDelete: (id: string) => void;
 }) => {
     const { currentTheme } = useTheme();
-    const swipeAnim = useRef(new Animated.Value(0)).current;
-
     const isUnread = !alert.readAt;
 
     const handleDelete = () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        Animated.timing(swipeAnim, {
-            toValue: -500,
-            duration: 300,
-            useNativeDriver: true,
-        }).start(() => onDelete(alert.id));
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        onDelete(alert.id);
+    };
+
+    const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+        const scale = dragX.interpolate({
+            inputRange: [-80, 0],
+            outputRange: [1, 0.5],
+            extrapolate: 'clamp',
+        });
+        
+        return (
+            <Animated.View style={[styles.deleteAction, { backgroundColor: currentTheme.colors.error, transform: [{ scale }] }]}>
+                <TouchableOpacity
+                    activeOpacity={0.8}
+                    onPress={handleDelete}
+                    style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+                >
+                    <Trash2 size={24} color="#fff" />
+                </TouchableOpacity>
+            </Animated.View>
+        );
     };
 
     const handlePress = () => {
@@ -165,10 +181,14 @@ const AlertRow = memo(({
     };
 
     return (
-        <Animated.View style={[
-            styles.alertRowContainer,
-            { transform: [{ translateX: swipeAnim }] }
-        ]}>
+        <Swipeable 
+            renderRightActions={renderRightActions}
+            friction={1.5}
+            rightThreshold={40}
+            overshootRight={false}
+            activeOffsetX={[-10, 10]}
+            containerStyle={styles.alertRowContainer}
+        >
             <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={handlePress}
@@ -176,7 +196,7 @@ const AlertRow = memo(({
                     styles.alertRow,
                     {
                         backgroundColor: currentTheme.colors.surface,
-                        borderColor: alpha(currentTheme.colors.border, 0.3),
+                        borderColor: alpha(currentTheme.colors.border, 0.2),
                         shadowColor: currentTheme.colors.shadowLight,
                     }
                 ]}
@@ -214,9 +234,9 @@ const AlertRow = memo(({
                             {alert.opportunity.company} · {toTitleCase(alert.opportunity.locations?.[0] || 'Remote')} · Posted {getPostedDateString(alert.opportunity.postedAt || alert.sentAt)}
                         </Text>
 
-                        {/* Match Score Badge */}
-                        {alert.opportunity.matchScore !== undefined && alert.opportunity.matchScore > 0 && (
-                            <View style={styles.badgeRow}>
+                        {/* Consolidated Match & Badges */}
+                        <View style={styles.badgeRow}>
+                            {alert.opportunity.matchScore !== undefined && alert.opportunity.matchScore > 0 && (
                                 <View style={[
                                     styles.pillBadge,
                                     { backgroundColor: alpha(currentTheme.colors.success, 0.08) }
@@ -225,6 +245,21 @@ const AlertRow = memo(({
                                         {alert.opportunity.matchScore}% Match
                                     </Text>
                                 </View>
+                            )}
+                            
+                            {alert.opportunity.matchReason && alert.opportunity.matchReason !== 'Eligible to apply' && (
+                                <Text 
+                                    style={[styles.insightText, { color: currentTheme.colors.textMuted }]}
+                                    numberOfLines={1}
+                                >
+                                    • {alert.opportunity.matchReason.replace('💡', '').trim()}
+                                </Text>
+                            )}
+                        </View>
+                        
+                        {/* Additional status badges */}
+                        {(alert.kind === 'CLOSING_SOON' || alert.kind === 'FOLLOWED_COMPANY') && (
+                            <View style={[styles.badgeRow, { marginTop: 4 }]}>
                                 {alert.kind === 'CLOSING_SOON' && (
                                     <View style={[styles.pillBadge, { backgroundColor: alpha(currentTheme.colors.warning, 0.1) }]}>
                                         <Text style={[styles.pillText, { color: currentTheme.colors.warning }]}>⏰ Closing Soon</Text>
@@ -237,32 +272,10 @@ const AlertRow = memo(({
                                 )}
                             </View>
                         )}
-
-                        {/* AI Match Insights */}
-                        {alert.opportunity.matchReason && alert.opportunity.matchReason !== 'Eligible to apply' && (
-                            <View style={[
-                                styles.insightContainer,
-                                { borderTopColor: alpha(currentTheme.colors.border, 0.05) }
-                            ]}>
-                                <Text 
-                                    style={[styles.insightText, { color: currentTheme.colors.textMuted }]}
-                                    numberOfLines={2}
-                                >
-                                    💡 {alert.opportunity.matchReason}
-                                </Text>
-                            </View>
-                        )}
                     </View>
                 </View>
-
-                <TouchableOpacity
-                    onPress={handleDelete}
-                    style={styles.deleteBtn}
-                >
-                    <Trash2 size={16} color={currentTheme.colors.error} />
-                </TouchableOpacity>
             </TouchableOpacity>
-        </Animated.View>
+        </Swipeable>
     );
 });
 
@@ -270,24 +283,8 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const { alerts, unreadCount, refreshing, markRead, markAllRead, deleteAlert, refresh } = useNotifications();
-    const [profile, setProfile] = useState<Profile | null>(null);
-    const [isLoadingProfile, setIsLoadingProfile] = useState(true);
-    const { user } = useProfile();
+    const { user, profile, loadingProfile: isLoadingProfile } = useProfile();
     const isAnonymous = !user || user.isAnonymous;
-
-    const loadProfile = useCallback(async () => {
-        setIsLoadingProfile(true);
-        const p = await getLocalProfile(user?.id);
-        setProfile(p);
-        setIsLoadingProfile(false);
-    }, [user?.id]);
-
-
-    useFocusEffect(
-        useCallback(() => {
-            void loadProfile();
-        }, [loadProfile])
-    );
 
     const isSetup = useMemo(() => isProfileSetupComplete(profile), [profile]);
 
@@ -434,7 +431,7 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                     subtitleRightSlot={
                         unreadCount > 0 ? (
                             <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
-                                <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Clear</Text>
+                                <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Clear All</Text>
                             </TouchableOpacity>
                         ) : undefined
                     }
@@ -473,15 +470,14 @@ const styles = StyleSheet.create({
         marginBottom: SPACING.xs,
     },
     alertRowContainer: {
-        width: '100%',
+        marginHorizontal: SPACING.md,
+        marginBottom: SPACING.sm,
     },
     alertRow: {
         flexDirection: 'row',
         alignItems: 'center',
         paddingVertical: SPACING.md,
         paddingHorizontal: SPACING.lg,
-        marginHorizontal: SPACING.md,
-        marginBottom: SPACING.sm,
         borderRadius: RADIUS.lg,
         borderWidth: 1,
         elevation: 1,
@@ -529,11 +525,11 @@ const styles = StyleSheet.create({
         borderRadius: 5.5,
         borderWidth: 1.8,
     },
-    deleteBtn: {
-        padding: SPACING.lg,
+    deleteAction: {
+        width: 80,
         marginLeft: SPACING.sm,
-        marginRight: -SPACING.sm,
-        alignSelf: 'center',
+        borderRadius: RADIUS.lg,
+        overflow: 'hidden',
     },
     emptyContainer: {
         flex: 1,
@@ -585,6 +581,7 @@ const styles = StyleSheet.create({
     clearBtn: {
         paddingVertical: 4,
         paddingHorizontal: 8,
+        marginTop: 6, // Moved down away from settings icon
     },
     settingsBtn: {
         width: mScale(44),
@@ -660,15 +657,8 @@ const styles = StyleSheet.create({
         fontWeight: '600',
     },
     // Insight matching text
-    insightContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginTop: 8,
-        paddingTop: 8,
-        borderTopWidth: 0.5,
-    },
     insightText: {
-        fontSize: mScale(11),
+        fontSize: mScale(11.5),
         fontWeight: '500',
         flex: 1,
     },

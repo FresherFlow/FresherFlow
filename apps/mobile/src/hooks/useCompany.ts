@@ -15,7 +15,9 @@ export function useCompany(companyName: string, initialJob?: Opportunity) {
     }) : null;
 
     const loadData = useCallback(async () => {
-        setLoading(true);
+        if (!initialJob) {
+            setLoading(true);
+        }
         try {
             const localJobs = await findJobsByCompanyLocally(companyName, companyDomain);
 

@@ -42,9 +42,11 @@ import {
   Send,
   Instagram,
   MessageCircle,
+  Check,
 } from 'lucide-react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { CommonActions } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -148,6 +150,19 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
           useUIStore.getState().shareSheet.open(opportunity, 'inside');
       }
   }, [opportunity]);
+
+  const handleBack = useCallback(() => {
+      if (navigation.canGoBack()) {
+          navigation.goBack();
+      } else {
+          navigation.dispatch(
+              CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: 'Main' }],
+              })
+          );
+      }
+  }, [navigation]);
 
   const reportSheetRef = useRef<ReportActionSheetRef>(null);
   const scrollY = React.useRef(new Animated.Value(0)).current;
@@ -266,8 +281,16 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
     const [successModalVisible, setSuccessModalVisible] = React.useState(false);
     const [menuVisible, setMenuVisible] = React.useState(false);
+    const [isTransitioning, setIsTransitioning] = React.useState(true);
     const [isScrolled, setIsScrolled] = React.useState(false);
     const isScrolledRef = React.useRef(false);
+
+    React.useEffect(() => {
+        const task = InteractionManager.runAfterInteractions(() => {
+            setIsTransitioning(false);
+        });
+        return () => task.cancel();
+    }, []);
 
     const openTrackerSheet = useCallback(() => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -301,7 +324,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         };
     }, [opportunity?.expiresAt, currentTheme]);
 
-  if (!opportunity && loading) {
+  if ((!opportunity && loading) || isTransitioning) {
     return (
       <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
         <ActivityIndicator size="large" color={currentTheme.colors.primary} />
@@ -340,7 +363,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             compact
             titleStyle={{ fontSize: mScale(24), fontWeight: '900', lineHeight: 28 }}
             showBack
-            onBack={() => navigation.goBack()}
+            onBack={handleBack}
             rightSlot={
                 <View style={{ flexDirection: 'row', gap: mScale(4), alignItems: 'center' }}>
                     <TouchableOpacity onPress={() => setMenuVisible(true)} style={styles.iconBtn}>
@@ -353,21 +376,21 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
       {/* Static Overlays (Buttons always visible) */}
       <View style={[styles.staticControls, { top: insets.top + 10 }]}>
-         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+         <TouchableOpacity onPress={handleBack} style={[styles.controlBtn, { backgroundColor: 'transparent' }]}>
             <ChevronLeft size={24} color={currentTheme.colors.text} />
          </TouchableOpacity>
          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity onPress={handleToggleSave} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+            <TouchableOpacity onPress={handleToggleSave} style={[styles.controlBtn, { backgroundColor: 'transparent' }]}>
                 <Bookmark
                     size={20}
                     color={isSaved(opportunity.id) ? currentTheme.colors.primary : currentTheme.colors.text}
                     fill={isSaved(opportunity.id) ? currentTheme.colors.primary : 'transparent'}
                 />
             </TouchableOpacity>
-            <TouchableOpacity onPress={handleOpenShare} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+            <TouchableOpacity onPress={handleOpenShare} style={[styles.controlBtn, { backgroundColor: 'transparent' }]}>
                 <Share2 size={20} color={currentTheme.colors.text} />
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setMenuVisible(true)} style={[styles.controlBtn, { backgroundColor: alpha(currentTheme.colors.background, 0.5) }]}>
+            <TouchableOpacity onPress={() => setMenuVisible(true)} style={[styles.controlBtn, { backgroundColor: 'transparent' }]}>
                 <MoreVertical size={20} color={currentTheme.colors.text} />
             </TouchableOpacity>
          </View>
@@ -396,6 +419,8 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         onScrollEndDrag={expandFab}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         contentContainerStyle={styles.scrollContent}
       >
         <View style={styles.container}>
@@ -488,13 +513,20 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             style={[
                                 styles.followButton,
                                 {
-                                    backgroundColor: isFollowing('COMPANY', opportunity.companyWebsite || opportunity.company) ? 'transparent' : alpha(currentTheme.colors.primary, 0.1),
-                                    borderColor: currentTheme.colors.primary,
-                                    borderWidth: isFollowing('COMPANY', opportunity.companyWebsite || opportunity.company) ? 1 : 0
+                                    backgroundColor: isFollowing('COMPANY', opportunity.companyWebsite || opportunity.company) 
+                                        ? currentTheme.colors.primary 
+                                        : alpha(currentTheme.colors.primary, 0.1),
                                 }
                             ]}
                         >
-                            <Text style={[styles.followButtonText, { color: currentTheme.colors.primary }]}>
+                            <Text style={[
+                                styles.followButtonText, 
+                                { 
+                                    color: isFollowing('COMPANY', opportunity.companyWebsite || opportunity.company) 
+                                        ? currentTheme.colors.background 
+                                        : currentTheme.colors.primary 
+                                }
+                            ]}>
                                 {isFollowing('COMPANY', opportunity.companyWebsite || opportunity.company) ? 'Following' : 'Follow'}
                             </Text>
                         </TouchableOpacity>
@@ -602,32 +634,82 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         </View>
                     </View>
 
-                    {(opportunity.jobFunction || opportunity.normalizedRole) && (
-                        <>
-                            <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
-                            <View style={styles.detailItem}>
-                                <ShieldCheck size={20} color={currentTheme.colors.primary} />
-                                <View style={styles.detailContent}>
-                                    <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Functional Role</Text>
-                                    <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
-                                        {toTitleCase(opportunity.jobFunction || opportunity.normalizedRole)}
-                                    </Text>
+                    {(() => {
+                        const roleText = opportunity.jobFunction || opportunity.normalizedRole;
+                        const hasRole = !!roleText;
+                        const isRoleSmall = hasRole && roleText.length <= 18;
+                        const locationText = formatListToTitleCase(opportunity.locations) || 'Remote';
+                        const isLocationSmall = locationText.length <= 18;
+                        const canCombine = hasRole && isRoleSmall && isLocationSmall;
+
+                        if (canCombine) {
+                            return (
+                                <>
+                                    <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
+                                    <View style={styles.detailRow}>
+                                        <View style={styles.detailItemHalf}>
+                                            <ShieldCheck size={20} color={currentTheme.colors.primary} />
+                                            <View style={styles.detailContent}>
+                                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>Functional Role</Text>
+                                                <Text 
+                                                    style={[styles.detailValue, { color: currentTheme.colors.text }]}
+                                                    numberOfLines={1} 
+                                                    adjustsFontSizeToFit
+                                                >
+                                                    {toTitleCase(roleText)}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                        <View style={[styles.detailDividerVertical, { backgroundColor: currentTheme.colors.border }]} />
+                                        <View style={styles.detailItemHalf}>
+                                            <MapPin size={20} color={currentTheme.colors.primary} />
+                                            <View style={styles.detailContent}>
+                                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>Location</Text>
+                                                <Text 
+                                                    style={[styles.detailValue, { color: currentTheme.colors.text }]}
+                                                    numberOfLines={1} 
+                                                    adjustsFontSizeToFit
+                                                >
+                                                    {locationText}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </View>
+                                </>
+                            );
+                        }
+
+                        return (
+                            <>
+                                {hasRole && (
+                                    <>
+                                        <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
+                                        <View style={styles.detailItem}>
+                                            <ShieldCheck size={20} color={currentTheme.colors.primary} />
+                                            <View style={styles.detailContent}>
+                                                <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Functional Role</Text>
+                                                <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
+                                                    {toTitleCase(roleText)}
+                                                </Text>
+                                            </View>
+                                        </View>
+                                    </>
+                                )}
+
+                                <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
+
+                                <View style={styles.detailItem}>
+                                    <MapPin size={20} color={currentTheme.colors.primary} />
+                                    <View style={styles.detailContent}>
+                                        <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Location</Text>
+                                        <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
+                                            {locationText}
+                                        </Text>
+                                    </View>
                                 </View>
-                            </View>
-                        </>
-                    )}
-
-                    <View style={[styles.detailDivider, { backgroundColor: currentTheme.colors.border }]} />
-
-                    <View style={styles.detailItem}>
-                        <MapPin size={20} color={currentTheme.colors.primary} />
-                        <View style={styles.detailContent}>
-                            <Text style={[styles.detailLabel, { color: currentTheme.colors.textMuted }]}>Location</Text>
-                            <Text style={[styles.detailValue, { color: currentTheme.colors.text }]}>
-                                {formatListToTitleCase(opportunity.locations) || 'Remote'}
-                            </Text>
-                        </View>
-                    </View>
+                            </>
+                        );
+                    })()}
 
                 </SurfaceCard>
             </Animated.View>
@@ -738,6 +820,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                                     }
                                                 ]}
                                             >
+                                                {isMatched && (
+                                                    <Check size={12} color={currentTheme.colors.success} strokeWidth={3} />
+                                                )}
                                                 <Text style={[
                                                     styles.skillTagText, 
                                                     { color: isMatched ? currentTheme.colors.success : currentTheme.colors.text }
@@ -1202,7 +1287,7 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 34,
         fontWeight: '900',
-        letterSpacing: -1.5,
+        letterSpacing: -0.5,
         lineHeight: 40,
     },
     matchIndicator: {
@@ -1453,6 +1538,9 @@ const styles = StyleSheet.create({
         gap: 8,
     },
     skillTag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
         paddingHorizontal: 12,
         paddingVertical: 6,
         borderRadius: 10,

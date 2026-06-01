@@ -359,6 +359,8 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 keyExtractor={(item) => item.key}
                 onScroll={handleScroll}
                 scrollEventThrottle={16}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
                 renderItem={({ item, index }) => {
 
                     if (item.type === 'discovery') {

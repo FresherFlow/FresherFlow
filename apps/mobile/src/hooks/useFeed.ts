@@ -243,10 +243,18 @@ export const useFeed = (initialFeedType: string | null = null) => {
                 isEligible: matchResult.isEligible,
                 matchScore: matchResult.score,
                 matchReason: matchResult.reason,
-                clicksCount: openedIds.has(job.id) ? Math.max(job.clicksCount || 0, 1) : (job.clicksCount || 0),
+                clicksCount: job.clicksCount || 0,
                 relevanceScore: Math.round(score)
             };
         });
+
+        const sortByEligibleAndDate = (a: any, b: any) => {
+            if (a.isEligible && !b.isEligible) return -1;
+            if (!a.isEligible && b.isEligible) return 1;
+            const dateA = a.postedAt ? new Date(a.postedAt).getTime() : 0;
+            const dateB = b.postedAt ? new Date(b.postedAt).getTime() : 0;
+            return dateB - dateA;
+        };
 
         const activeItems = scored.filter(j => !j.expiresAt || new Date(j.expiresAt).getTime() > now);
 
@@ -277,11 +285,11 @@ export const useFeed = (initialFeedType: string | null = null) => {
         if (feedType === null && hasProfileData) {
             return activeItems
                 .filter(j => j.isEligible && (j.matchScore || 0) > 0)
-                .sort((a, b) => b.relevanceScore - a.relevanceScore);
+                .sort(sortByEligibleAndDate);
         }
 
-        return activeItems.sort((a, b) => b.relevanceScore - a.relevanceScore);
-    }, [cachedItems, fuseIndex, searchQuery, activeFilter, feedType, snapshot, recentKeywords, followSets, localProfile, openedIds]);
+        return activeItems.sort(sortByEligibleAndDate);
+    }, [cachedItems, fuseIndex, searchQuery, activeFilter, feedType, snapshot, recentKeywords, followSets, localProfile]);
 
     const profileMatchedOpportunities = useMemo(() => {
         return filteredOpportunities.filter(j => j.isEligible && (j.matchScore || 0) > 0);
