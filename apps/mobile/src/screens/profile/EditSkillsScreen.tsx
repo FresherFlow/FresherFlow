@@ -186,43 +186,9 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             </View>
 
                             <SurfaceCard style={styles.card}>
-                                <View style={[styles.inputContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: errors.skills ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1) }]}>
-                                    <TextInput
-                                        style={[styles.input, { color: currentTheme.colors.text }]}
-                                        placeholder="Add a skill..."
-                                        placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.5)}
-                                        value={skillInput}
-                                        onChangeText={(text) => { setSkillInput(text); setShowSuggestions(true); }}
-                                        onSubmitEditing={() => addSkill(skillInput)}
-                                        blurOnSubmit={false}
-                                    />
-                                    {skillInput.length > 0 && (
-                                        <TouchableOpacity onPress={() => addSkill(skillInput)} style={[styles.addInlineBtn, { backgroundColor: currentTheme.colors.primary }]}>
-                                            <Plus size={16} color={currentTheme.colors.background} />
-                                        </TouchableOpacity>
-                                    )}
-                                </View>
-                                {errors.skills && <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{errors.skills.message}</Text>}
-
-                                {showSuggestions && skillInput.length > 0 && suggestions.length > 0 && (
-                                    <View style={styles.suggestionsContainer}>
-                                        {suggestions.map(sug => (
-                                            <TouchableOpacity
-                                                key={sug}
-                                                activeOpacity={0.7}
-                                                onPress={() => { addSkill(sug); setSkillInput(''); }}
-                                                style={[styles.suggestionItem, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}
-                                            >
-                                                <Text style={[styles.suggestionText, { color: currentTheme.colors.primary }]}>{sug}</Text>
-                                                <Plus size={12} color={currentTheme.colors.primary} />
-                                            </TouchableOpacity>
-                                        ))}
-                                    </View>
-                                )}
-
-                                <View style={styles.tagContainer}>
+                                <View style={[styles.tagContainer, { marginTop: 0, marginBottom: 16 }]}>
                                     {skills.length === 0 ? (
-                                        <View style={{ flex: 1, paddingVertical: 8 }}>
+                                        <View style={{ flex: 1, paddingBottom: 4 }}>
                                             <Text style={{ fontSize: 12, fontWeight: '700', color: currentTheme.colors.textMuted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 }}>Suggested skills (Tap to add):</Text>
                                             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                                                 {metadataSkills.slice(0, 16).map(skill => (
@@ -255,6 +221,40 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                         ))
                                     )}
                                 </View>
+
+                                <View style={[styles.inputContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: errors.skills ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.1) }]}>
+                                    <TextInput
+                                        style={[styles.input, { color: currentTheme.colors.text }]}
+                                        placeholder="Type a skill..."
+                                        placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.5)}
+                                        value={skillInput}
+                                        onChangeText={(text) => { setSkillInput(text); setShowSuggestions(true); }}
+                                        onSubmitEditing={() => addSkill(skillInput)}
+                                        blurOnSubmit={false}
+                                    />
+                                    {skillInput.length > 0 && (
+                                        <TouchableOpacity onPress={() => addSkill(skillInput)} style={[styles.addInlineBtn, { backgroundColor: currentTheme.colors.primary }]}>
+                                            <Plus size={16} color={currentTheme.colors.background} />
+                                        </TouchableOpacity>
+                                    )}
+                                </View>
+                                {errors.skills && <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{errors.skills.message}</Text>}
+
+                                {showSuggestions && skillInput.length > 0 && suggestions.length > 0 && (
+                                    <View style={styles.suggestionsContainer}>
+                                        {suggestions.map(sug => (
+                                            <TouchableOpacity
+                                                key={sug}
+                                                activeOpacity={0.7}
+                                                onPress={() => { addSkill(sug); setSkillInput(''); }}
+                                                style={[styles.suggestionItem, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}
+                                            >
+                                                <Text style={[styles.suggestionText, { color: currentTheme.colors.primary }]}>{sug}</Text>
+                                                <Plus size={12} color={currentTheme.colors.primary} />
+                                            </TouchableOpacity>
+                                        ))}
+                                    </View>
+                                )}
                             </SurfaceCard>
                         </View>
 
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
     scrollContent: { paddingBottom: 60 },
     content: { paddingHorizontal: 20 },
     heroSection: { marginTop: 20, marginBottom: 32 },
-    heroTitle: { fontSize: 32, fontWeight: '900', letterSpacing: -1.5, lineHeight: 36 },
+    heroTitle: { fontSize: 32, fontWeight: '900', letterSpacing: -0.5, lineHeight: 36 },
     heroSub: { fontSize: 15, marginTop: 12, lineHeight: 22 },
     section: { marginBottom: 32 },
     viewSection: { marginBottom: 28, marginTop: 20 },

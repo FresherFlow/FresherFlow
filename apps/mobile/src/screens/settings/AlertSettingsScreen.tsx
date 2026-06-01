@@ -21,6 +21,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useAlertSettings } from '@/hooks/useAlertSettings';
+import { useFeedStore, getLogoCacheKey } from '@/store/useFeedStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -157,28 +159,68 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     </SurfaceCard>
 
                     <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Diagnostics</Text>
-                    <TouchableOpacity 
-                        style={[styles.testButton, { backgroundColor: currentTheme.colors.primary }]}
-                        onPress={async () => {
-                            await Notifications.scheduleNotificationAsync({
-                                content: {
-                                    title: "Test Match from FresherFlow",
-                                    body: "If you see this, your push notifications are working perfectly locally.",
-                                    sound: true,
-                                    android: {
-                                        channelId: 'matches',
-                                        smallIcon: '@drawable/notification_icon',
-                                        largeIcon: null,
-                                    },
-                                } as any,
-                                trigger: null, // Fire immediately
-                            });
-                        }}
-                    >
-                        <Text style={[styles.testButtonText, { color: currentTheme.colors.background }]}>
-                            Test Push Notification
-                        </Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <TouchableOpacity 
+                            style={[styles.testButton, { backgroundColor: currentTheme.colors.primary, flex: 1 }]}
+                            onPress={async () => {
+                                await Notifications.scheduleNotificationAsync({
+                                    content: {
+                                        title: "System Test",
+                                        body: "Basic push notifications are working.",
+                                        sound: true,
+                                        android: { channelId: 'matches' },
+                                    } as any,
+                                    trigger: null,
+                                });
+                            }}
+                        >
+                            <Text style={[styles.testButtonText, { color: currentTheme.colors.background }]}>
+                                Basic Push
+                            </Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity 
+                            style={[styles.testButton, { backgroundColor: currentTheme.colors.text, flex: 1 }]}
+                            onPress={async () => {
+                                const jobs = useFeedStore.getState().cachedItems || [];
+                                let job: (typeof jobs[0] & { matchScore?: number }) | null = null;
+                                if (jobs.length > 0) {
+                                    job = jobs[Math.floor(Math.random() * Math.min(10, jobs.length))];
+                                }
+                                
+                                const matchScore = job?.matchScore || 95;
+                                const title = job ? `${job.title} (${matchScore}% Match)` : `Frontend Developer (${matchScore}% Match)`;
+                                const company = job ? job.company : `Arattai`;
+                                const body = `${company} is hiring. Your profile strongly matches this role.`;
+                                
+                                let cachedLogo = null;
+                                if (job) {
+                                    try {
+                                        cachedLogo = await AsyncStorage.getItem(`logo_${getLogoCacheKey(job)}`);
+                                    } catch (e) {}
+                                }
+                                const largeIcon = cachedLogo || `https://ui-avatars.com/api/?name=${company}&background=random&color=fff&size=256`;
+
+                                await Notifications.scheduleNotificationAsync({
+                                    content: {
+                                        title,
+                                        body,
+                                        sound: true,
+                                        data: { type: 'new_job', opportunityId: job?.id || 'test-123' },
+                                        android: { 
+                                            channelId: 'matches',
+                                            largeIcon,
+                                        },
+                                    } as any,
+                                    trigger: null,
+                                });
+                            }}
+                        >
+                            <Text style={[styles.testButtonText, { color: currentTheme.colors.background }]}>
+                                Job Push
+                            </Text>
+                        </TouchableOpacity>
+                    </View>
 
                 </View>
             </ScrollView>
@@ -205,8 +247,8 @@ const styles = StyleSheet.create({
     inputRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
     inputLabelContainer: { flex: 1 },
     input: { width: 60, height: 40, borderRadius: 12, textAlign: 'center', fontWeight: '800', fontSize: 15 },
-    testButton: { marginTop: 8, padding: 16, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-    testButtonText: { fontSize: 16, fontWeight: '800' },
+    testButton: { marginTop: 8, paddingVertical: 14, paddingHorizontal: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+    testButtonText: { fontSize: 14, fontWeight: '800' },
     footerInfo: { marginTop: 32, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8, paddingBottom: 40 },
     footerText: { fontSize: 12, fontWeight: '700' }
 });

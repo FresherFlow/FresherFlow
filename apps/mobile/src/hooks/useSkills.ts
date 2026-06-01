@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Availability } from '@fresherflow/types';
 import { useProfile } from './useProfile';
 import { useToast } from '@/contexts/ToastContext';
+import { useFeedStore } from '@/store/useFeedStore';
 
 
 const skillsSchema = z.object({
@@ -71,6 +72,8 @@ export const useSkills = () => {
                 availability: data.availability as Availability,
                 skills: data.skills,
             });
+            // Instantly trigger feed refresh to recalculate match scores
+            useFeedStore.getState().recalculateScores();
         } catch (error: unknown) {
             showError((error as Error).message || 'Failed to update skills');
         } finally {

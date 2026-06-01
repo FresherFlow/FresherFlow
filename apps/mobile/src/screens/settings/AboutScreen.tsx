@@ -65,13 +65,13 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const logo = currentTheme.mode === 'dark' ? logoWhite : logoBlack;
 
     const SOCIAL_DATA = useMemo(() => [
-        { icon: Linkedin, color: currentTheme.colors.social.linkedin, url: 'https://www.linkedin.com/company/fresherflow-in' },
-        { icon: Twitter, color: currentTheme.colors.social.twitter, url: 'https://twitter.com/Fresherflow' },
         { icon: DiscordIcon, color: '#5865F2', url: 'https://discord.gg/CcPAnWSHD' },
-        { icon: WhatsAppIcon, color: '#25D366', url: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D' },
-        { icon: Instagram, color: currentTheme.colors.social.instagram, url: 'https://instagram.com/fresherflow' },
         { icon: Facebook, color: currentTheme.colors.social.facebook, url: 'https://www.facebook.com/FresherFlow.in' },
+        { icon: Instagram, color: currentTheme.colors.social.instagram, url: 'https://instagram.com/fresherflow' },
+        { icon: Linkedin, color: currentTheme.colors.social.linkedin, url: 'https://www.linkedin.com/company/fresherflow-in' },
         { icon: Send, color: currentTheme.colors.social.telegram, url: 'https://t.me/fresherflowin' },
+        { icon: Twitter, color: currentTheme.colors.social.twitter, url: 'https://twitter.com/Fresherflow' },
+        { icon: WhatsAppIcon, color: '#25D366', url: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D' },
     ], [currentTheme]);
 
     // Interactive Marquee Animation

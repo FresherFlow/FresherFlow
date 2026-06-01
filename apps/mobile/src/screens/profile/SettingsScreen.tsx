@@ -47,6 +47,8 @@ import { RADIUS, mScale, SPACING } from '@/system/constants/dimensions';
 import { TYPOGRAPHY } from '@/system/constants/typography';
 import { useUI } from '@/contexts/UIContext';
 import { getDisplayHandle } from '@fresherflow/utils';
+import { ShareAppBottomSheet } from '@/components/ShareAppBottomSheet';
+import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
 
@@ -95,15 +97,11 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     navigation.navigate(isAnonymous ? ('Auth' as never) : (screen as never));
   };
 
-  const handleShareApp = useCallback(async () => {
-    try {
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-      await Share.share({
-        message: `Hey! Check out FresherFlow — the ultimate app to track, discover, and apply for premium fresher opportunities, internships, and remote jobs! 🚀\n\nDownload it here: https://fresherflow.in/download`,
-      });
-    } catch (error) {
-      console.error('Failed to share app', error);
-    }
+  const shareSheetRef = useRef<BottomSheetModal>(null);
+
+  const handleShareApp = useCallback(() => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    shareSheetRef.current?.present();
   }, []);
 
   return (
@@ -300,6 +298,7 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
           </View>
       </ScrollView>
 
+      <ShareAppBottomSheet ref={shareSheetRef} />
     </Screen>
   );
 });

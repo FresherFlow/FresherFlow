@@ -353,7 +353,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                                             ]}>
                                                 <Text style={[
                                                     styles.pipelineCountText,
-                                                    { color: isActive ? '#fff' : (isPast ? currentTheme.colors.primary : currentTheme.colors.textMuted) }
+                                                    { color: isActive ? currentTheme.colors.background : (isPast ? currentTheme.colors.primary : currentTheme.colors.textMuted) }
                                                 ]}>
                                                     {count}
                                                 </Text>

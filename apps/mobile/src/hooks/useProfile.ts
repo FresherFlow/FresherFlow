@@ -238,13 +238,15 @@ export const useProfile = () => {
 
 
         // 3. Background sync to API (Neon DB for backend matching)
-        try {
-            await profileApi.updateEducation(data);
-            lastProfileFetchTime = 0;
-        } catch (e) {
-            console.warn('[useProfile] Education API sync failed, queued for retry', e);
-            if (user?.id) enqueueProfileSync(user.id, 'education', data);
-        }
+        void (async () => {
+            try {
+                await profileApi.updateEducation(data);
+                lastProfileFetchTime = 0;
+            } catch (e) {
+                console.warn('[useProfile] Education API sync failed, queued for retry', e);
+                if (user?.id) enqueueProfileSync(user.id, 'education', data);
+            }
+        })();
     }, [fullProfile, isAnonymous, user?.id]);
 
 
@@ -270,13 +272,15 @@ export const useProfile = () => {
         if (firebaseUid) void writeFirebaseProfile(firebaseUid, merged);
 
         // 3. Background sync to API
-        try {
-            await profileApi.updatePreferences(data);
-            lastProfileFetchTime = 0;
-        } catch (e) {
-            console.warn('[useProfile] Preferences API sync failed, queued for retry', e);
-            if (user?.id) enqueueProfileSync(user.id, 'preferences', data);
-        }
+        void (async () => {
+            try {
+                await profileApi.updatePreferences(data);
+                lastProfileFetchTime = 0;
+            } catch (e) {
+                console.warn('[useProfile] Preferences API sync failed, queued for retry', e);
+                if (user?.id) enqueueProfileSync(user.id, 'preferences', data);
+            }
+        })();
     }, [fullProfile, isAnonymous, user?.id]);
 
 
@@ -298,13 +302,15 @@ export const useProfile = () => {
         if (firebaseUid) void writeFirebaseProfile(firebaseUid, merged);
 
         // 3. Background sync to API
-        try {
-            await profileApi.updateReadiness(data);
-            lastProfileFetchTime = 0;
-        } catch (e) {
-            console.warn('[useProfile] Readiness API sync failed, queued for retry', e);
-            if (user?.id) enqueueProfileSync(user.id, 'readiness', data);
-        }
+        void (async () => {
+            try {
+                await profileApi.updateReadiness(data);
+                lastProfileFetchTime = 0;
+            } catch (e) {
+                console.warn('[useProfile] Readiness API sync failed, queued for retry', e);
+                if (user?.id) enqueueProfileSync(user.id, 'readiness', data);
+            }
+        })();
     }, [fullProfile, isAnonymous, user?.id]);
 
 
