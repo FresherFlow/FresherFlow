@@ -4,7 +4,7 @@ import { useNotifications, useSaved } from '@repo/frontend-core';
 import { useFollows } from '@/hooks/useFollows';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
-import { getLocalProfile } from '@/utils/localProfile';
+import { getLocalProfile } from '@/utils/cache/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
 import Fuse from 'fuse.js';
 

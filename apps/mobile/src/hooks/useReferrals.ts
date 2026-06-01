@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { referralApi } from '@fresherflow/api-client';
-import { readInvitesCache, saveInvitesCache } from '@/utils/offlineCache';
+import { readInvitesCache, saveInvitesCache } from '@/utils/cache/offlineCache';
 
 export interface ReferralStats {
   totalClicks: number;

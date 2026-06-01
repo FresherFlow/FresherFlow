@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import * as Haptics from 'expo-haptics';
 
-import { getLocalAlertPrefs, saveLocalAlertPrefs, AlertPreference } from '@/utils/localAlerts';
+import { getLocalAlertPrefs, saveLocalAlertPrefs, AlertPreference } from '@/utils/cache/localAlerts';
 
 const alertSettingsSchema = z.object({
     enabled: z.boolean(),

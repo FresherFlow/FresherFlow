@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { ActionType, Opportunity } from '@fresherflow/types';
-import { readTrackerCacheSync, saveTrackerCache, readDetailCache } from '@/utils/offlineCache';
+import { readTrackerCacheSync, saveTrackerCache, readDetailCache } from '@/utils/cache/offlineCache';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
 import { subscribeToFirebaseTracker, writeFirebaseTrackerItem, removeFirebaseTrackerItem } from '@/utils/firebaseTrackerDb';

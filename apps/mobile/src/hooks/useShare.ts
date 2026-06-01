@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { opportunitiesApi, profileApi } from '@fresherflow/api-client';
 import { ParsedJob, Opportunity } from '@fresherflow/types';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
-import { readFeedCache } from '@/utils/offlineCache';
+import { readFeedCache } from '@/utils/cache/offlineCache';
 import { getJSON, setJSON, setBoolean } from '@/utils/storage';
 import { queueShare } from '../utils/shareQueue';
 

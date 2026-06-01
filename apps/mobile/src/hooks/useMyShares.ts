@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { profileApi } from '@fresherflow/api-client';
 import { useAuthStore } from '@/store/useAuthStore';
-import { saveSharesCache, readSharesCache } from '@/utils/offlineCache';
+import { saveSharesCache, readSharesCache } from '@/utils/cache/offlineCache';
 import { getShareQueue, QueuedShare, syncShareQueue } from '@/utils/shareQueue';
 import { getBoolean, setBoolean } from '@/utils/storage';
 

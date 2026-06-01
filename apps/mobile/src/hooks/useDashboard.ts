@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { dashboardApi, savedApi, opportunitiesApi, actionsApi } from '@fresherflow/api-client';
 import { Opportunity } from '@fresherflow/types';
-import { readFeedCache } from '@/utils/offlineCache';
+import { readFeedCache } from '@/utils/cache/offlineCache';
 import { useAuthStore } from '@/store/useAuthStore';
 
 interface Highlights {

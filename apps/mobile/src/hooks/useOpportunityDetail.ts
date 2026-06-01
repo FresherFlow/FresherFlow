@@ -8,13 +8,13 @@ import { useNotifications, useSaved, enqueueOfflineReport, enqueueOfflineClickTr
 import { useAuthStore } from '@/store/useAuthStore';
 import { Analytics, EventNames } from '@/utils/analytics';
 import { useTracker } from '@/hooks/useTracker';
-import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache, isJobReportedLocally, saveReportedJobLocally } from '@/utils/offlineCache';
-import { markJobAsSeen, isJobOpened, markJobAsOpened } from '@/utils/seenJobs';
-import { getLocalProfile } from '@/utils/localProfile';
+import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, readFeedCache, isJobReportedLocally, saveReportedJobLocally } from '@/utils/cache/offlineCache';
+import { markJobAsSeen, isJobOpened, markJobAsOpened } from '@/utils/cache/seenJobs';
+import { getLocalProfile } from '@/utils/cache/localProfile';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import { BOOTSTRAP_FEED_URL } from '@/config/api';
 import { calculateMatchScore } from '@/utils/matchScoring';
-import { MOBILE_SITE_URL } from '@/config/runtime';
+import { MOBILE_SITE_URL } from '@/utils/runtime';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useTheme } from '@/contexts/ThemeContext';

@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { Opportunity, OpportunityType, WorkMode, Profile, ActionType } from '@fresherflow/types';
-import { readFeedCache, saveFeedCache, saveLastSyncTimestamp, readTrackerCacheSync } from '@/utils/offlineCache';
+import { readFeedCache, saveFeedCache, saveLastSyncTimestamp, readTrackerCacheSync } from '@/utils/cache/offlineCache';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import debounce from 'lodash.debounce';
 import Fuse from 'fuse.js';
@@ -10,9 +10,9 @@ import { normalizeQuery } from '@/utils/text';
 import { useUIStore } from '@/store/useUIStore';
 import { useSaved } from '@repo/frontend-core';
 import { getRecentSearchKeywords, saveRecentSearchKeyword } from '@/utils/userBehavior';
-import { getLocalProfile } from '@/utils/localProfile';
+import { getLocalProfile } from '@/utils/cache/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
-import { getOpenedIds } from '@/utils/seenJobs';
+import { getOpenedIds } from '@/utils/cache/seenJobs';
 import { useAuthStore } from '@/store/useAuthStore';
 
 
@@ -261,6 +261,7 @@ export function useExplore() {
         const currentOpenedData = openedJobsDataRef.current;
         const currentKeywords = recentKeywordsRef.current;
         const currentAppliedIds = appliedIdsRef.current;
+        const now = Date.now();
 
         // Map and compute relevance scores for all items in result
         const scored = items.map(job => {
@@ -335,6 +336,16 @@ export function useExplore() {
                 score += 10;
             }
 
+            // 6. Recency Boost (Very strong boost for fresh jobs)
+            if (job.postedAt) {
+                const daysOld = Math.floor((now - new Date(job.postedAt).getTime()) / (1000 * 60 * 60 * 24));
+                if (daysOld <= 1) score += 100;
+                else if (daysOld <= 3) score += 60;
+                else if (daysOld <= 7) score += 30;
+                else if (daysOld <= 14) score += 10;
+                else score -= (daysOld * 2); // Demote old jobs
+            }
+
             return {
                 ...job,
                 clicksCount: openedIds.has(job.id) ? Math.max(job.clicksCount || 0, 1) : (job.clicksCount || 0),
@@ -355,7 +366,6 @@ export function useExplore() {
             const active: typeof scored = [];
             const applied: typeof scored = [];
             const expired: typeof scored = [];
-            const now = Date.now();
 
             for (const j of scored) {
                 if (j.expiresAt && new Date(j.expiresAt).getTime() <= now) {

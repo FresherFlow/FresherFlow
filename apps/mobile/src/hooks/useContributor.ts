@@ -2,7 +2,7 @@ import { useCallback, useState, useEffect, useMemo } from 'react';
 import { contributorsApi } from '@fresherflow/api-client';
 import { Opportunity } from '@fresherflow/types';
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { readContributionsCache, saveContributionsCache } from '@/utils/offlineCache';
+import { readContributionsCache, saveContributionsCache } from '@/utils/cache/offlineCache';
 
 export interface ContributorStats {
     totalContributed: number;

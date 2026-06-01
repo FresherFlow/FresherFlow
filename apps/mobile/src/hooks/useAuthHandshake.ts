@@ -4,7 +4,7 @@ import { authApi, profileApi } from '@fresherflow/api-client';
 import { AuthResponse } from '@fresherflow/types';
 import { flushOfflineActions, secureStorage } from '@repo/frontend-core';
 import { flushOnboardingSyncQueue } from '@/utils/onboardingState';
-import { saveLocalProfile } from '@/utils/localProfile';
+import { saveLocalProfile } from '@/utils/cache/localProfile';
 import { readFirebaseProfile, writeFirebaseProfile } from '@/utils/firebaseProfileDb';
 
 

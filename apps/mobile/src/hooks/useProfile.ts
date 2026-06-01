@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
 import { useSaved } from '@repo/frontend-core';
 import { Profile } from '@fresherflow/types';
-import { saveLocalProfile, getLocalProfile } from '@/utils/localProfile';
+import { saveLocalProfile, getLocalProfile } from '@/utils/cache/localProfile';
 import { enqueueProfileSync } from '@/utils/onboardingState';
 import { calculateProfileCompletion } from '@/utils/profileCompletion';
 import { readFirebaseProfile, writeFirebaseProfile } from '@/utils/firebaseProfileDb';

@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
+import { InteractionManager } from 'react-native';
 import { Opportunity } from '@fresherflow/types';
 import { getCompanyDomain } from '@fresherflow/utils';
-import { findJobsByCompanyLocally } from '@/utils/offlineCache';
+import { findJobsByCompanyLocally } from '@/utils/cache/offlineCache';
 
 export function useCompany(companyName: string, initialJob?: Opportunity) {
     const [jobs, setJobs] = useState<Opportunity[]>(initialJob ? [initialJob] : []);
@@ -37,7 +38,10 @@ export function useCompany(companyName: string, initialJob?: Opportunity) {
     }, [companyName, initialJob]);
 
     useEffect(() => {
-        void loadData();
+        const task = InteractionManager.runAfterInteractions(() => {
+            void loadData();
+        });
+        return () => task.cancel();
     }, [loadData]);
 
     return {
