@@ -20,8 +20,8 @@ import { alpha } from '@/theme';
 import { StatusBar as ExpoStatusBar } from 'expo-status-bar';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import LogoImage from '@/assets/logo.png';
-import LogoWhiteImage from '@/assets/logo-white.png';
+import LogoImage from '../../../assets/logo.png';
+import LogoWhiteImage from '../../../assets/logo-white.png';
 
 const FIRST_RUN_KEY = 'ff_first_run_done';
 

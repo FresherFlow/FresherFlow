@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View, Animated } from 'react-native';
-import LogoWhiteImage from '@/assets/logo-white.png';
+import LogoWhiteImage from '../../../assets/logo-white.png';
 import * as SplashScreen from 'expo-splash-screen';
 
 export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () => void }> = ({ onComplete }) => {

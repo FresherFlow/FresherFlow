@@ -38,7 +38,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/contexts/ToastContext';
 import { useUIStore } from '@/store/useUIStore';
 import { submitFirebaseOpportunityFeedback, checkFirebaseOpportunityReported } from '@/utils/firebaseFeedbackDb';
-import { isJobReportedLocally, saveReportedJobLocally } from '@/utils/offlineCache';
+import { isJobReportedLocally, saveReportedJobLocally } from '@/utils/cache/offlineCache';
 import { ActivityIndicator } from 'react-native';
 import { ChevronLeft, Ban, Info, Link, AlertTriangle, Trash2, ChevronRight } from 'lucide-react-native';
 import { openExternalURL } from '@/utils/browser';

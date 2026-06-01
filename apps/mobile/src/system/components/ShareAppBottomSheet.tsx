@@ -124,7 +124,7 @@ export const ShareAppBottomSheet = forwardRef<BottomSheetModal>((props, ref) => 
             <BottomSheetView style={[styles.shareSheetContent, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 24 }}>
                     <View style={[styles.logoContainer, { width: 52, height: 52, borderRadius: 16, backgroundColor: currentTheme.colors.surface, shadowColor: '#000000', marginBottom: 0, shadowOffset: { width: 0, height: 4 }, shadowRadius: 8, elevation: 2, overflow: 'hidden' }]}>
-                        <Image source={require('../../assets/icon.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
+                        <Image source={require('../../../assets/icon.png')} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
                     </View>
                     <View style={{ flex: 1 }}>
                         <Text style={[styles.shareSheetTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>FresherFlow</Text>
