@@ -40,8 +40,13 @@ export async function invalidatePublicOpportunityCache(options?: {
                 `/internships/${slug}`,
                 `/opportunities/${slug}`,
                 `/walk-ins/details/${slug}`,
-                `/walk-ins/opportunity/${slug}`
+                `/walk-ins/opportunity/${slug}`,
             ]);
+
+            // Also revalidate the company page for each affected job's company slug
+            // We can't easily map job slug → company slug here, so we revalidate /companies/ layout
+            // The actual per-company purge happens when the backend knows the company slug (see lifecycle routes)
+            pathsToRevalidate.push('/companies');
 
             const secret = process.env.REVALIDATE_SECRET_TOKEN;
             const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';

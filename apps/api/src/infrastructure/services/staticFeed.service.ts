@@ -445,16 +445,9 @@ export class StaticFeedService {
                     title: true,
                     company: true,
                     type: true,
+                    status: true,
                     locations: true,
-                    experienceMin: true,
-                    experienceMax: true,
-                    salaryRange: true,
-                    salaryMin: true,
-                    salaryMax: true,
-                    salaryPeriod: true,
                     expiresAt: true,
-                    companyWebsite: true,
-                    applyLink: true,
                     companyLogoUrl: true,
                     events: {
                         select: {
