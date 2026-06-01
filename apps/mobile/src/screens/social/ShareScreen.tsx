@@ -461,6 +461,7 @@ const ShareScreen: React.FC = () => {
                         contentContainerStyle={styles.scrollContent}
                         showsVerticalScrollIndicator={false}
                         keyboardShouldPersistTaps="handled"
+                        keyboardDismissMode="on-drag"
                     >
                         <View style={styles.container}>
                             {item.id === 'SHARE' ? (

@@ -18,13 +18,13 @@ type ShareTargetOptions = {
 const buildDeepLink = ({ target, message, url }: ShareTargetOptions): string => {
   switch (target) {
     case 'whatsapp':
-      return `whatsapp://send?text=${encodeURIComponent(message)}`;
+      return `https://wa.me/?text=${encodeURIComponent(message)}`;
     case 'linkedin':
-      return `linkedin://shareActive?text=${encodeURIComponent(message)}`;
+      return `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
     case 'twitter':
-      return `twitter://post?message=${encodeURIComponent(message)}`;
+      return `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
     case 'telegram':
-      return `tg://msg_url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(message)}`;
+      return `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(message)}`;
     case 'discord':
       return 'discord://';
     case 'instagram':
@@ -38,12 +38,13 @@ export async function shareToInstalledApp(options: ShareTargetOptions): Promise<
   const deepLink = buildDeepLink(options);
 
   try {
-    if (await Linking.canOpenURL(deepLink)) {
-      await Linking.openURL(deepLink);
-      return;
-    }
+    // Universal links (https://) will always attempt to open.
+    // If the app is installed, the OS intercepts it. Otherwise, it opens the browser.
+    // For custom schemes (discord://), if it fails, it will fall through to Share.share.
+    await Linking.openURL(deepLink);
+    return;
   } catch {
-    // Fall through to the native share chooser.
+    // Fall through to the native share chooser if Linking fails.
   }
 
   await Share.share({

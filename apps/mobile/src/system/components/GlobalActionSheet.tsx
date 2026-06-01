@@ -175,28 +175,28 @@ const GlobalShareSheet = () => {
 
     const handleWhatsApp = async () => {
         if (!opportunity || !shareUrl) return;
-        const text = `Hey! Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow: ${shareUrl}`;
+        const text = `Hey! Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow:\n${shareUrl}`;
         await shareToInstalledApp({ target: 'whatsapp', message: text, url: shareUrl });
         close();
     };
 
     const handleLinkedIn = async () => {
         if (!opportunity || !shareUrl) return;
-        const text = `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow: ${shareUrl}`;
+        const text = `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow:\n${shareUrl}`;
         await shareToInstalledApp({ target: 'linkedin', message: text, url: shareUrl });
         close();
     };
 
     const handleTwitter = async () => {
         if (!opportunity || !shareUrl) return;
-        const text = `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on @Fresherflow: ${shareUrl}`;
+        const text = `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on @Fresherflow:\n${shareUrl}`;
         await shareToInstalledApp({ target: 'twitter', message: text, url: shareUrl });
         close();
     };
 
     const handleTelegram = async () => {
         if (!opportunity || !shareUrl) return;
-        const text = `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow: ${shareUrl}`;
+        const text = `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow:\n${shareUrl}`;
         await shareToInstalledApp({ target: 'telegram', message: text, url: shareUrl });
         close();
     };
@@ -229,7 +229,7 @@ const GlobalShareSheet = () => {
         if (!opportunity || !shareUrl) return;
         try {
             await Share.share({
-                message: `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow: ${shareUrl}`,
+                message: `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow:\n${shareUrl}`,
                 url: shareUrl,
             });
         } catch (error) {
@@ -254,13 +254,13 @@ const GlobalShareSheet = () => {
     if (!opportunity) return null;
 
     const shareItems = [
-        { label: 'WhatsApp', icon: WhatsAppIcon, color: '#25D366', onPress: handleWhatsApp },
-        { label: 'LinkedIn', icon: Linkedin, color: '#0077B5', onPress: handleLinkedIn },
-        { label: 'Twitter / X', icon: Twitter, color: currentTheme.colors.social?.twitter || '#1DA1F2', onPress: handleTwitter },
-        { label: 'Telegram', icon: Send, color: currentTheme.colors.social?.telegram || '#0088cc', onPress: handleTelegram },
+        { label: 'Arattai', icon: ArattaiIcon, color: '#F9B21D', onPress: handleArattai },
         { label: 'Discord', icon: DiscordIcon, color: '#5865F2', onPress: handleDiscord },
         { label: 'Instagram', icon: Instagram, color: currentTheme.colors.social?.instagram || '#E1306C', onPress: handleInstagram },
-        { label: 'Arattai', icon: ArattaiIcon, color: '#F9B21D', onPress: handleArattai },
+        { label: 'LinkedIn', icon: Linkedin, color: '#0077B5', onPress: handleLinkedIn },
+        { label: 'Telegram', icon: Send, color: currentTheme.colors.social?.telegram || '#0088cc', onPress: handleTelegram },
+        { label: 'Twitter / X', icon: Twitter, color: currentTheme.colors.social?.twitter || '#1DA1F2', onPress: handleTwitter },
+        { label: 'WhatsApp', icon: WhatsAppIcon, color: '#25D366', onPress: handleWhatsApp },
         { label: 'More', icon: Share2, color: currentTheme.colors.primary, onPress: handleSystemShare },
     ];
 
