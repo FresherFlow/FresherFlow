@@ -16,17 +16,29 @@ export function UIProvider({ children }: { children: ReactNode }) {
   const [isKeyboardVisible, setIsKeyboardVisible] = React.useState(false);
 
   React.useEffect(() => {
-    const showEvt = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
-    const hideEvt = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+    const handleShow = () => {
+      setIsKeyboardVisible(true);
+      tabBarTranslateY.setValue(100);
+    };
+    const handleHide = () => {
+      setIsKeyboardVisible(false);
+      tabBarTranslateY.setValue(0);
+    };
 
-    const showSub = Keyboard.addListener(showEvt, () => setIsKeyboardVisible(true));
-    const hideSub = Keyboard.addListener(hideEvt, () => setIsKeyboardVisible(false));
+    const subs = [
+      Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow', handleShow),
+      Keyboard.addListener(Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide', handleHide),
+      // Also add willShow for Android if supported to prevent jumps
+      ...(Platform.OS === 'android' ? [
+        Keyboard.addListener('keyboardWillShow', handleShow),
+        Keyboard.addListener('keyboardWillHide', handleHide)
+      ] : [])
+    ];
 
     return () => {
-      showSub.remove();
-      hideSub.remove();
+      subs.forEach(sub => sub.remove());
     };
-  }, []);
+  }, [tabBarTranslateY]);
 
   const hideTabBar = React.useCallback(() => {
     Animated.timing(tabBarTranslateY, {

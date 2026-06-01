@@ -9,6 +9,8 @@ import {
 import { Search, X } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { BlurView } from 'expo-blur';
+import { Keyboard } from 'react-native';
+import { useRef, useEffect } from 'react';
 
 interface PremiumSearchBarProps {
     value: string;
@@ -26,6 +28,16 @@ export const PremiumSearchBar: React.FC<PremiumSearchBarProps> = memo(({
     onClear
 }) => {
     const { currentTheme } = useTheme();
+    const inputRef = useRef<TextInput>(null);
+
+    useEffect(() => {
+        const hideSubscription = Keyboard.addListener('keyboardDidHide', () => {
+            inputRef.current?.blur();
+        });
+        return () => {
+            hideSubscription.remove();
+        };
+    }, []);
 
     const handleClear = () => {
         onChangeText('');
@@ -50,6 +62,7 @@ export const PremiumSearchBar: React.FC<PremiumSearchBarProps> = memo(({
 
                 <Search size={18} color={currentTheme.colors.primary} style={styles.icon} />
                 <TextInput
+                    ref={inputRef}
                     value={value}
                     onChangeText={onChangeText}
                     placeholder={placeholder}

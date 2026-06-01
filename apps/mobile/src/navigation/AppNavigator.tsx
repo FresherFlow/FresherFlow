@@ -183,13 +183,6 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
                   color={isFocused ? currentTheme.colors.primary : currentTheme.colors.textMuted}
                   IconComponent={Icon}
                 />
-                {route.name === 'Feed' && unseenFeedCount > 0 ? (
-                  <View style={[styles.feedBadge, { backgroundColor: currentTheme.colors.error }]}>
-                    <Text style={[styles.feedBadgeText, { color: currentTheme.colors.background }]}>
-                      {unseenFeedCount > 9 ? '9+' : unseenFeedCount}
-                    </Text>
-                  </View>
-                ) : null}
               </View>
               <Text style={[
                 styles.tabLabel,

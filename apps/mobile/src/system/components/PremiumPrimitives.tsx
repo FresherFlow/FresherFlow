@@ -452,6 +452,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginLeft: -12,
         marginRight: 4,
+        backgroundColor: 'transparent',
     },
     backBtnHeader: {
         width: 48,
@@ -461,6 +462,7 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         marginLeft: -12,
         marginRight: 4,
+        backgroundColor: 'transparent',
     },
     toggleRow: {
         flexDirection: 'row',
