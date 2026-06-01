@@ -1,7 +1,7 @@
 import * as Linking from 'expo-linking';
 import { LinkingOptions, getStateFromPath } from '@react-navigation/native';
 import { RootStackParamList } from '@/navigation/types';
-import { MOBILE_LINKING_PREFIXES } from '@/config/runtime';
+import { MOBILE_LINKING_PREFIXES } from '@/utils/runtime';
 
 export const linking: LinkingOptions<RootStackParamList> = {
   prefixes: [Linking.createURL('/'), 'fresherflow://', ...MOBILE_LINKING_PREFIXES],
