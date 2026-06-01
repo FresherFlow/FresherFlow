@@ -19,9 +19,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Opportunity, Profile } from '@fresherflow/types';
 import { getLocalProfile } from './localProfile';
 import { getLocalAlertPrefs } from './localAlerts';
-import { calculateMatchScore } from './matchScoring';
+import { calculateMatchScore } from '../matchScoring';
 import { getSeenIds } from './seenJobs';
-import { getJSON, setJSON, getString, setString } from './storage';
+import { getJSON, setJSON, getString, setString } from '../storage';
 import { useAuthStore } from '@/store/useAuthStore';
 import * as Notifications from 'expo-notifications';
 
@@ -32,7 +32,7 @@ import {
   shouldTriggerDrip,
   recordDripTrigger,
   AlertOpportunity
-} from './dripQueue';
+} from '../dripQueue';
 
 export { AlertOpportunity };
 

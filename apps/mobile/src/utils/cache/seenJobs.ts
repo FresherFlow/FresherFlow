@@ -1,4 +1,4 @@
-import { mutateJSON, getJSON } from './storage';
+import { mutateJSON, getJSON } from '../storage';
 
 const SEEN_KEY = 'ff:seen_job_ids';
 const OPENED_KEY = 'ff:opened_job_ids';

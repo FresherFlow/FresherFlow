@@ -7,7 +7,7 @@ import {
     deleteLocalAlert,
     processNextDripAlertIfNeeded,
     LocalAlert
-} from '@/utils/localNotifications';
+} from '@/utils/cache/localNotifications';
 
 interface NotificationState {
     alerts: LocalAlert[];

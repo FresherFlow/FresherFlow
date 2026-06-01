@@ -1,6 +1,6 @@
 import { Opportunity } from '@fresherflow/types';
 import { getCompanyDomain } from '@fresherflow/utils';
-import { getJSON, getString, setJSON, setString, remove, storage } from './storage';
+import { getJSON, getString, setJSON, setString, remove, storage } from '../storage';
 
 const FEED_INDEX_KEY = 'fresherflow_feed_index';
 const JOB_PREFIX = 'fresherflow_job_';

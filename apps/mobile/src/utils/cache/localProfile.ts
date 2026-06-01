@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Profile } from '@fresherflow/types';
-import { saveOnboardingProfile, readOnboardingSnapshot } from './onboardingState';
+import { saveOnboardingProfile, readOnboardingSnapshot } from '../onboardingState';
 
 const PROFILE_KEY = 'ff:local_profile';
 const PROFILE_PREFIX = 'ff:local_profile:';
