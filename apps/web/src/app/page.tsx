@@ -130,7 +130,7 @@ export default async function LandingPage() {
                                         Open Feed
                                         <ArrowRightIcon className="w-4 h-4 ml-1" />
                                     </Link>
-                                    <Link href="/download" className="premium-button-outline w-full sm:w-auto px-7 py-3 text-[12px] uppercase tracking-widest shadow-sm text-center justify-center flex items-center">
+                                    <Link href="/app" className="premium-button-outline w-full sm:w-auto px-7 py-3 text-[12px] uppercase tracking-widest shadow-sm text-center justify-center flex items-center">
                                         Get App
                                     </Link>
                                 </div>
@@ -261,7 +261,7 @@ export default async function LandingPage() {
                                 Join thousands of students getting fast, direct redirection to authentic, manual-checked career openings.
                             </p>
                             <div className="flex justify-center pt-2">
-                                <Link href="/download" className="premium-button px-9 text-[12px] uppercase tracking-widest shadow-md">
+                                <Link href="/app" className="premium-button px-9 text-[12px] uppercase tracking-widest shadow-md">
                                     Download App
                                 </Link>
                             </div>

@@ -1,677 +1,157 @@
 import { ImageResponse } from "next/og";
 import { LINKS_FEED_URL } from "@/lib/runtimeConfig";
-export const runtime = "edge";
-export const revalidate = 86400; // 24 hours — job details don't change within minutes
 
-const size = {
-  width: 1200,
-  height: 630,
-};
+export const runtime = "edge";
+export const revalidate = 86400;
+
+const size = { width: 1200, height: 630 };
 
 type OpportunityDto = {
-  id: string;
-  slug?: string | null;
-  title: string;
-  company: string;
-  type?: "JOB" | "INTERNSHIP" | "WALKIN";
-  status?: string;
-  locations?: string[];
-  experienceMin?: number;
-  experienceMax?: number;
-  salaryRange?: string | null;
-  salaryMin?: number | null;
-  salaryMax?: number | null;
-  salaryPeriod?: "MONTHLY" | "YEARLY" | null;
-  expiresAt?: string | null;
-  companyWebsite?: string | null;
-  applyLink?: string | null;
-  companyLogoUrl?: string | null;
-  events?: Array<{
-    eventType:
-    | "NOTIFICATION"
-    | "REG_START"
-    | "REG_END"
-    | "EXAM_DATE"
-    | "RESULT"
-    | "INTERVIEW"
-    | "DOC_VERIFICATION"
-    | "OTHER";
-    eventDate: string;
-  }>;
+  id: string; slug?: string | null; title: string; company: string;
+  type?: "JOB" | "INTERNSHIP" | "WALKIN"; status?: string;
+  locations?: string[]; expiresAt?: string | null; companyLogoUrl?: string | null;
+  events?: Array<{ eventType: string; eventDate: string }>;
 };
 
-const getApiBase = () =>
-  process.env.API_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "https://api.fresherflow.in";
-
-const sanitizeDomain = (raw: string) => {
-  try {
-    const host = new URL(raw).hostname.toLowerCase().replace(/^www\./, "");
-    const parts = host.split(".").filter(Boolean);
-    if (parts.length >= 2) return parts.slice(-2).join(".");
-    return host;
-  } catch {
-    return "";
-  }
-};
-
-interface AbortSignalConstructorExt {
-  any?: (iterable: Iterable<AbortSignal>) => AbortSignal;
-}
-
-type FetchWithTimeoutOptions = {
-  cacheMode?: RequestCache;
-  revalidateSeconds?: number;
-};
-
-const fetchWithTimeout = async (
-  url: string,
-  timeoutMs = 15000,
-  externalSignal?: AbortSignal,
-  options?: FetchWithTimeoutOptions
-) => {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
-
-  const onAbort = () => controller.abort();
-  if (externalSignal) {
-    if (externalSignal.aborted) {
-      controller.abort();
-    } else {
-      // @ts-ignore - Edge runtime handles onabort more reliably than addEventListener for cleanup
-      externalSignal.onabort = onAbort;
-    }
-  }
-
-  try {
-    const requestInit: RequestInit & { next?: { revalidate: number } } = {
-      method: "GET",
-      cache: options?.cacheMode ?? "force-cache",
-      signal: controller.signal,
-      headers: {
-        "Origin": process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.com",
-      },
-    };
-
-    if (typeof options?.revalidateSeconds === "number") {
-      requestInit.next = { revalidate: options.revalidateSeconds };
-    }
-
-    const response = await fetch(url, {
-      ...requestInit,
-    });
-    return response;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timer);
-    if (externalSignal) {
-      // @ts-ignore
-      externalSignal.onabort = null;
-    }
-  }
-};
-
-const inferDomain = (opportunity: OpportunityDto) => {
-  const fromWebsite = sanitizeDomain(opportunity.companyWebsite || "");
-  if (fromWebsite) return fromWebsite;
-
-  const fromApply = sanitizeDomain(opportunity.applyLink || "");
-  if (fromApply) return fromApply;
-
-  const fromCompany = opportunity.company
-    .toLowerCase()
-    .replace(/[^a-z0-9 ]/g, "")
-    .trim()
-    .replace(/\s+/g, "");
-  return fromCompany ? `${fromCompany}.com` : "";
-};
-
-const getLogoCandidates = (opportunity: OpportunityDto) => {
-  const domain = inferDomain(opportunity);
-  if (!domain) return [];
-  return [
-    `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
-    `https://logo.clearbit.com/${domain}?size=256`,
-    `https://icons.duckduckgo.com/ip3/${domain}.ico`,
-  ];
-};
-
-const resolveLogoUrl = async (opportunity: OpportunityDto) => {
-  if (opportunity.companyLogoUrl) {
-    return opportunity.companyLogoUrl;
-  }
-
-  const candidates = getLogoCandidates(opportunity);
-  if (!candidates.length) return "";
-
-  const globalAbort = new AbortController();
-  const timeout = new Promise<string>((resolve) =>
-    setTimeout(() => {
-      globalAbort.abort();
-      resolve("");
-    }, 800)
-  );
-
-  const checks = candidates.map(async (url) => {
-    try {
-      const response = await fetchWithTimeout(url, 1500, globalAbort.signal);
-      if (!response || !response.ok) throw new Error();
-
-      const contentType = (response.headers.get("content-type") || "").toLowerCase();
-      if (!/(png|jpeg|jpg|svg)/.test(contentType)) throw new Error();
-
-      const buffer = await response.arrayBuffer();
-      if (buffer.byteLength < 500) throw new Error();
-
-      // Cancel others once we find one
-      globalAbort.abort();
-      return url;
-    } catch (e) {
-      throw e;
-    }
-  });
-
-  const firstValid = Promise.any(checks).catch(() => "");
-
-  return Promise.race([firstValid, timeout]);
-};
-
-const getTypeLabel = (type?: string) => {
-  if (type === "INTERNSHIP") return "INTERNSHIP";
-  if (type === "WALKIN") return "WALK-IN";
-  return "JOB";
-};
-
-const findEventDate = (opportunity: OpportunityDto, eventType: string) => {
-  const events = opportunity.events || [];
-  const matching = events
-    .filter((event) => event.eventType === eventType)
-    .map((event) => new Date(event.eventDate))
-    .filter((date) => !Number.isNaN(date.getTime()));
-  return matching[0] ?? null;
-};
-
-const isCampusDrive = (opportunity: OpportunityDto) => {
-  const title = (opportunity.title || "").toLowerCase();
-  const hasKeyword = title.includes("nqt") || title.includes("campus drive");
-  const hasTimelineEvents = (opportunity.events || []).some((event) =>
-    ["REG_START", "REG_END", "EXAM_DATE"].includes(event.eventType)
-  );
-  return hasKeyword || hasTimelineEvents;
-};
-
-const truncate = (value: string, max: number) => {
-  if (!value) return "";
-  return value.length > max ? `${value.slice(0, max - 3)}...` : value;
-};
-
-const formatExperience = (opportunity: OpportunityDto) => {
-  const min = opportunity.experienceMin;
-  const max = opportunity.experienceMax;
-  if (min == null && max == null) {
-    if (opportunity.type === "INTERNSHIP") return "Fresher";
-    return "Fresher+";
-  }
-  const finalMin = min ?? 0;
-  if (finalMin === 0 && max === 0) return "Fresher";
-  if (max == null) return finalMin <= 0 ? "Fresher+" : `${finalMin}+ yrs`;
-  if (finalMin === max) return `${max} yr`;
-  return `${finalMin}-${max} yrs`;
-};
-
-const formatSalary = (opportunity: OpportunityDto) => {
-  if (opportunity.salaryRange) return truncate(opportunity.salaryRange, 24);
-  const min = opportunity.salaryMin;
-  const max = opportunity.salaryMax;
-  if (min == null && max == null) return "Not disclosed";
-  const monthly = opportunity.salaryPeriod === "MONTHLY";
-  const suffix = monthly ? "k/month" : " LPA";
-  const toDisplay = (v: number) =>
-    monthly ? (Math.round(v / 1000).toString()) : (Math.floor(v / 10000) / 10).toString().replace(/\.0$/, "");
-  if (min != null && max != null) {
-    if (min === max) return `${toDisplay(min)}${suffix}`;
-    return `${toDisplay(min)}-${toDisplay(max)}${suffix}`;
-  }
-  if (min != null) return `${toDisplay(min)}${suffix}`;
-  return `Up to ${toDisplay(max as number)}${suffix}`;
-};
-
-const getCompactDriveSalary = (opportunity: OpportunityDto, driveMode: boolean) => {
-  if (!driveMode) return null;
-  const title = (opportunity.title || "").toLowerCase();
-  const company = (opportunity.company || "").toLowerCase();
-  const isTcsNqt = title.includes("nqt") && company.includes("tata");
-  if (!isTcsNqt) return null;
-  return "7-12 LPA";
-};
-
-const getDaysUntilExpiry = (targetDate: Date | null) => {
-  if (!targetDate) return null;
-  const now = new Date();
-  const diff = targetDate.getTime() - now.getTime();
-  return Math.ceil(diff / (24 * 60 * 60 * 1000));
-};
-
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-
-const formatDateLabel = (dt: Date | null) => {
-  if (!dt || Number.isNaN(dt.getTime())) return "Open";
-  return `${String(dt.getDate()).padStart(2, "0")} ${MONTHS[dt.getMonth()]}`;
-};
-
-const formatFullDateLabel = (dt: Date | null) => {
-  if (!dt || Number.isNaN(dt.getTime())) return null;
-  return `${String(dt.getDate()).padStart(2, "0")} ${MONTHS[dt.getMonth()]} ${dt.getFullYear()}`;
-};
-
-const renderFallbackCard = (title: string, subtitle: string) =>
-  new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "space-between",
-          background:
-            "linear-gradient(135deg, #0b1329 0%, #132b55 48%, #1e3a78 100%)",
-          color: "#f8fafc",
-          padding: "52px",
-          fontFamily:
-            "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-        }}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
-          <div
-            style={{
-              borderRadius: "999px",
-              border: "1px solid rgba(148, 163, 184, 0.35)",
-              background: "rgba(15, 23, 42, 0.4)",
-              padding: "10px 18px",
-              fontSize: "20px",
-              color: "#bfdbfe",
-            }}
-          >
-            FresherFlow
-          </div>
-          <div
-            style={{
-              borderRadius: "999px",
-              border: "1px solid rgba(251, 191, 36, 0.45)",
-              background: "rgba(120, 53, 15, 0.38)",
-              color: "#fde68a",
-              fontSize: "18px",
-              fontWeight: 700,
-              letterSpacing: "0.04em",
-              padding: "10px 16px",
-            }}
-          >
-            PREVIEW
-          </div>
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-          <div style={{ fontSize: "58px", lineHeight: 1.08, fontWeight: 800 }}>
-            {title}
-          </div>
-          <div style={{ fontSize: "28px", color: "#cbd5e1" }}>{subtitle}</div>
-        </div>
-        <div style={{ fontSize: "22px", color: "#bfdbfe" }}>
-          Explore active opportunities at fresherflow.in
-        </div>
-      </div>
-    ),
-    {
-      ...size,
-      headers: {
-        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
-      },
-    }
-  );
-
-// Global in-memory cache persisted across warm Edge invocations
 let cachedLinks: OpportunityDto[] | null = null;
 let lastFetchTime = 0;
-const CACHE_TTL_MS = 60000; // Cache in memory for 60 seconds
+const CACHE_TTL_MS = 60_000;
 
-export async function GET(
-  _: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
+// Pre-fetch logo as ArrayBuffer so ImageResponse gets a real image, not a redirect or SVG
+async function logoToDataUrl(url: string): Promise<string | null> {
+  try {
+    const ctrl = new AbortController();
+    setTimeout(() => ctrl.abort(), 800);
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) return null;
+    const ct = res.headers.get('content-type') || '';
+    // Only accept raster images — SVG breaks ImageResponse
+    if (!/image\/(png|jpe?g|webp|gif)/.test(ct)) return null;
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength < 500) return null; // too small = placeholder/error
+    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
+    return `data:${ct.split(';')[0]};base64,${b64}`;
+  } catch {
+    return null;
+  }
+}
+
+const truncate = (v: string, max: number) => v.length > max ? `${v.slice(0, max - 1)}\u2026` : v;
+const getTypeLabel = (t?: string) => t === "INTERNSHIP" ? "INTERNSHIP" : t === "WALKIN" ? "WALK-IN" : "JOB";
+const getBadgeColors = (t?: string) => t === "INTERNSHIP"
+  ? { bg: "rgba(124,58,237,0.22)", border: "rgba(167,139,250,0.4)", color: "#c4b5fd" }
+  : t === "WALKIN"
+  ? { bg: "rgba(5,150,105,0.22)", border: "rgba(52,211,153,0.4)", color: "#6ee7b7" }
+  : { bg: "rgba(37,99,235,0.22)", border: "rgba(96,165,250,0.4)", color: "#93c5fd" };
+
+const isCampusDrive = (o: OpportunityDto) => {
+  const t = (o.title || "").toLowerCase();
+  return t.includes("nqt") || t.includes("campus drive") ||
+    (o.events || []).some(e => ["REG_START","REG_END","EXAM_DATE"].includes(e.eventType));
+};
+
+const getDays = (d?: string | null) => {
+  if (!d) return null;
+  const t = new Date(d); if (isNaN(t.getTime())) return null;
+  return Math.ceil((t.getTime() - Date.now()) / 86_400_000);
+};
+
+const urgencyLabel = (days: number | null) =>
+  days == null ? null : days <= 0 ? "Closing Today" : days <= 3 ? `Closing in ${days}d` : days <= 7 ? `${days} days left` : null;
+
+const fallback = (title: string, sub: string) => new ImageResponse(
+  <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", justifyContent:"space-between", background:"#020404", color:"#F5F7F8", padding:"60px", fontFamily:"ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" }}>
+    <div style={{ fontSize:22, fontWeight:700, color:"rgba(245,247,248,0.4)" }}>FresherFlow</div>
+    <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+      <div style={{ fontSize:64, fontWeight:900, lineHeight:1.08 }}>{title}</div>
+      <div style={{ fontSize:28, color:"rgba(245,247,248,0.45)" }}>{sub}</div>
+    </div>
+    <div style={{ fontSize:20, color:"rgba(245,247,248,0.28)" }}>fresherflow.in</div>
+  </div>,
+  { ...size, headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } }
+);
+
+export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const now = Date.now();
-
-  // Fetch static lightweight links feed from CDN only if cache is empty or stale
-  if (!cachedLinks || (now - lastFetchTime > CACHE_TTL_MS)) {
+  if (!cachedLinks || now - lastFetchTime > CACHE_TTL_MS) {
     try {
-      const response = await fetchWithTimeout(LINKS_FEED_URL, 3500, undefined, {
-        revalidateSeconds: 60
-      });
-      if (response && response.ok) {
-        const payload = await response.json();
-        cachedLinks = (payload?.opportunities || []) as OpportunityDto[];
-        lastFetchTime = now;
-      }
-    } catch (err) {
-      console.warn("Failed to fetch static links feed in OG route:", err);
-    }
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 3500);
+      const res = await fetch(LINKS_FEED_URL, { cache: "force-cache", signal: ctrl.signal, next: { revalidate: 60 }, headers: { Origin: process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in" } } as RequestInit & { next?: { revalidate: number } });
+      clearTimeout(t);
+      if (res.ok) { cachedLinks = ((await res.json())?.opportunities || []) as OpportunityDto[]; lastFetchTime = now; }
+    } catch { /* stale ok */ }
   }
 
-  const opportunity = cachedLinks?.find((o) => o.id === id || o.slug === id) || null;
+  const opp = cachedLinks?.find(o => o.id === id || o.slug === id) ?? null;
+  if (!opp) return fallback("Opportunity Preview", "This listing is unavailable.");
+  if (opp.status === "EXPIRED") return fallback("Listing Archived", "This opportunity has expired.");
 
-  if (!opportunity) {
-    return renderFallbackCard("Opportunity preview", "This listing is unavailable.");
+  const isDrive = isCampusDrive(opp);
+  const typeLabel = isDrive ? "CAMPUS DRIVE" : getTypeLabel(opp.type);
+  const badge = getBadgeColors(isDrive ? undefined : opp.type);
+  const title = truncate(opp.title || "Opportunity", 65);
+  const company = truncate(opp.company || "Company", 34);
+  const location = truncate(opp.locations?.[0] || "India", 24);
+  const urgency = urgencyLabel(getDays(opp.expiresAt));
+  let finalLogoUrl = opp.companyLogoUrl;
+  if (finalLogoUrl?.includes('logo.clearbit.com/')) {
+    const domain = finalLogoUrl.split('logo.clearbit.com/')[1];
+    finalLogoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
   }
-
-  if (opportunity.status === "EXPIRED") {
-    return renderFallbackCard(
-      "Listing archived",
-      "This opportunity has expired. Discover active roles on FresherFlow."
-    );
-  }
-
-  const logoUrl = await resolveLogoUrl(opportunity);
-  const title = truncate(opportunity.title || "Opportunity", 80);
-  const company = truncate(opportunity.company || "Company", 42);
-  const location = truncate(opportunity.locations?.[0] || "India", 24);
-  const driveMode = isCampusDrive(opportunity);
-  const compactDriveSalary = getCompactDriveSalary(opportunity, driveMode);
-  const regEndDate = findEventDate(opportunity, "REG_END");
-  const examDate = findEventDate(opportunity, "EXAM_DATE");
-  const expiryDate = opportunity.expiresAt ? new Date(opportunity.expiresAt) : null;
-  const validExpiryDate = expiryDate && !Number.isNaN(expiryDate.getTime()) ? expiryDate : null;
-  const effectiveDeadlineDate =
-    regEndDate ?? validExpiryDate;
-  const typeLabel = driveMode ? "CAMPUS DRIVE" : getTypeLabel(opportunity.type);
-  const experienceLabel = formatExperience(opportunity);
-  const salaryLabel = compactDriveSalary || formatSalary(opportunity);
-  const deadlineLabel = formatDateLabel(effectiveDeadlineDate);
-  const applyBeforeLabel = formatFullDateLabel(validExpiryDate);
-  const daysUntilExpiry = getDaysUntilExpiry(effectiveDeadlineDate);
-  const urgencyLabel =
-    daysUntilExpiry != null && daysUntilExpiry <= 3
-      ? daysUntilExpiry <= 0
-        ? "Closing today"
-        : `Closing in ${daysUntilExpiry}d`
-      : null;
+  const logoUrl = finalLogoUrl ? await logoToDataUrl(finalLogoUrl) : null;
+  // Long titles shrink — short titles fill space
+  const titleSize = title.length > 52 ? 52 : title.length > 38 ? 62 : 74;
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in";
+  const siteLogoUrl = `${siteUrl}/logo-white-optimized.png`;
 
   return new ImageResponse(
-    (
-      <div
-        style={{
-          width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column",
-          background:
-            "linear-gradient(135deg, #07142d 0%, #0e274f 40%, #153872 100%)",
-          color: "#f8fafc",
-          padding: "40px",
-          fontFamily:
-            "Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
-        }}
-      >
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "14px",
-              background: "rgba(15, 23, 42, 0.45)",
-              border: "1px solid rgba(148, 163, 184, 0.25)",
-              borderRadius: "16px",
-              padding: "10px 14px",
-            }}
-          >
-            {logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={logoUrl}
-                alt="Company logo"
-                width={50}
-                height={50}
-                style={{
-                  borderRadius: "10px",
-                  background: "#ffffff",
-                  objectFit: "contain",
-                  padding: "6px",
-                }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: "50px",
-                  height: "50px",
-                  borderRadius: "10px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: "#1e293b",
-                  color: "#e2e8f0",
-                  fontWeight: 700,
-                }}
-              >
-                {company.slice(0, 1).toUpperCase()}
-              </div>
-            )}
-            <div style={{ display: "flex", flexDirection: "column" }}>
-              <span
-                style={{
-                  fontSize: "17px",
-                  color: "#cbd5e1",
-                  letterSpacing: "0.03em",
-                }}
-              >
-                Hiring at
-              </span>
-              <span style={{ fontSize: "30px", fontWeight: 700 }}>{company}</span>
-            </div>
-          </div>
+    <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", justifyContent:"space-between", background:"#020404", color:"#F5F7F8", padding:"52px 60px", fontFamily:"ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" }}>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "10px",
-              borderRadius: "999px",
-              background: "rgba(2, 6, 23, 0.5)",
-              border: "1px solid rgba(148, 163, 184, 0.28)",
-              padding: "8px 14px",
-            }}
-          >
-            <span
-              style={{
-                width: "24px",
-                height: "24px",
-                borderRadius: "999px",
-                background: "#f8fafc",
-                color: "#0f172a",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 800,
-                fontSize: "13px",
-              }}
-            >
-              F
-            </span>
-            <span style={{ fontSize: "20px", fontWeight: 700 }}>FresherFlow</span>
+      {/* TOP: Company + FresherFlow */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:20 }}>
+          {logoUrl
+            ? <img src={logoUrl} alt={company} width={100} height={100} style={{ borderRadius:24, background:"#fff", objectFit:"contain", padding:10 }} />
+            : <div style={{ width:100, height:100, borderRadius:24, display:"flex", alignItems:"center", justifyContent:"center", background:"#1c1c1c", border:"1px solid rgba(245,247,248,0.1)", fontSize:40, fontWeight:900 }}>{company[0]}</div>
+          }
+          <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
+            <div style={{ fontSize:22, color:"rgba(245,247,248,0.38)", fontWeight:600, letterSpacing:"0.08em", textTransform:"uppercase" }}>Hiring at</div>
+            <div style={{ fontSize:48, fontWeight:800, color:"#F5F7F8", letterSpacing:"-0.5px" }}>{company}</div>
           </div>
         </div>
-
-        <div
-          style={{
-            marginTop: "32px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "14px",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-            }}
-          >
-            <span
-              style={{
-                borderRadius: "999px",
-                border: "1px solid rgba(186, 230, 253, 0.45)",
-                background: "rgba(14, 116, 144, 0.24)",
-                color: "#e0f2fe",
-                fontSize: "18px",
-                fontWeight: 700,
-                letterSpacing: "0.06em",
-                padding: "8px 14px",
-              }}
-            >
-              {typeLabel}
-            </span>
-            <span
-              style={{
-                borderRadius: "999px",
-                border: "1px solid rgba(186, 230, 253, 0.25)",
-                background: "rgba(15, 23, 42, 0.35)",
-                color: "#e2e8f0",
-                fontSize: "18px",
-                fontWeight: 600,
-                padding: "8px 14px",
-              }}
-            >
-              {location}
-            </span>
-            {urgencyLabel ? (
-              <span
-                style={{
-                  borderRadius: "999px",
-                  border: "1px solid rgba(251, 191, 36, 0.5)",
-                  background: "rgba(120, 53, 15, 0.38)",
-                  color: "#fde68a",
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  letterSpacing: "0.03em",
-                  padding: "8px 14px",
-                }}
-              >
-                {urgencyLabel}
-              </span>
-            ) : null}
-          </div>
-          {applyBeforeLabel ? (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginTop: "4px",
-              }}
-            >
-              <span
-                style={{
-                  borderRadius: "999px",
-                  border: "1px solid rgba(253, 230, 138, 0.55)",
-                  background: "rgba(120, 53, 15, 0.35)",
-                  color: "#fde68a",
-                  fontSize: "16px",
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
-                  padding: "6px 12px",
-                }}
-              >
-                APPLY BEFORE {applyBeforeLabel.toUpperCase()}
-              </span>
-            </div>
-          ) : null}
-
-          <div
-            style={{
-              fontSize: "56px",
-              lineHeight: 1.08,
-              fontWeight: 800,
-              maxWidth: "1100px",
-            }}
-          >
-            {title}
-          </div>
-        </div>
-
-        <div
-          style={{
-            marginTop: "auto",
-            display: "flex",
-            alignItems: "stretch",
-            gap: "12px",
-          }}
-        >
-          {[
-            { label: "Experience", value: experienceLabel },
-            { label: "Compensation", value: salaryLabel },
-            { label: driveMode ? "Reg Ends" : "Apply by", value: deadlineLabel },
-          ].map((item) => (
-            <div
-              key={item.label}
-              style={{
-                flex: 1,
-                borderRadius: "14px",
-                border: "1px solid rgba(148, 163, 184, 0.22)",
-                background: "rgba(2, 6, 23, 0.42)",
-                padding: "12px 14px",
-                display: "flex",
-                flexDirection: "column",
-                gap: "5px",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: "14px",
-                  color: "#cbd5e1",
-                  letterSpacing: "0.03em",
-                  textTransform: "uppercase",
-                  fontWeight: 600,
-                }}
-              >
-                {item.label}
-              </span>
-              <span
-                style={{
-                  fontSize: "24px",
-                  lineHeight: 1.2,
-                  fontWeight: 700,
-                  color: "#f8fafc",
-                }}
-              >
-                {item.value}
-              </span>
-            </div>
-          ))}
-        </div>
-        <div
-          style={{
-            color: "#bfdbfe",
-            fontSize: "18px",
-            letterSpacing: "0.02em",
-            marginTop: "10px",
-          }}
-        >
-          {driveMode && examDate
-            ? `Test from ${formatDateLabel(examDate)} - Verified listing on fresherflow.in`
-            : "Verified listing on fresherflow.in"}
+        <div style={{ display:"flex", alignItems:"center", gap:10, background:"rgba(245,247,248,0.07)", border:"1px solid rgba(245,247,248,0.12)", borderRadius:12, padding:"10px 20px" }}>
+          <img src={siteLogoUrl} alt="FresherFlow" width={26} height={26} style={{ objectFit: "contain" }} />
+          <div style={{ fontSize:20, fontWeight:700, color:"#F5F7F8" }}>FresherFlow</div>
         </div>
       </div>
-    ),
-    {
-      ...size,
-      headers: {
-        "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800",
-      },
-    }
+
+      {/* MIDDLE: Title */}
+      <div style={{ fontSize:titleSize, fontWeight:900, lineHeight:1.1, color:"#F5F7F8", letterSpacing:"-1px", maxWidth:"1080px" }}>
+        {title}
+      </div>
+
+      {/* BOTTOM: Badges */}
+      <div style={{ display:"flex", alignItems:"center", gap:16 }}>
+        <div style={{ display:"flex", borderRadius:12, padding:"16px 28px", background:badge.bg, border:`1px solid ${badge.border}`, fontSize:24, fontWeight:700, letterSpacing:"0.07em", color:badge.color }}>
+          {typeLabel}
+        </div>
+        <div style={{ display:"flex", borderRadius:12, padding:"16px 28px", background:"rgba(245,247,248,0.07)", border:"1px solid rgba(245,247,248,0.11)", fontSize:24, fontWeight:600, color:"rgba(245,247,248,0.65)" }}>
+          📍 {location}
+        </div>
+        {urgency && (
+          <div style={{ display:"flex", borderRadius:12, padding:"16px 28px", background:"rgba(239,68,68,0.16)", border:"1px solid rgba(239,68,68,0.35)", fontSize:24, fontWeight:700, color:"#fca5a5" }}>
+            ⚡ {urgency}
+          </div>
+        )}
+        <div style={{ display:"flex", alignItems:"center", gap:10, marginLeft:"auto" }}>
+          <div style={{ width:12, height:12, borderRadius:999, background:"#4ade80", display:"flex" }} />
+          <div style={{ fontSize:22, fontWeight:600, color:"rgba(245,247,248,0.32)" }}>Verified · fresherflow.in</div>
+        </div>
+      </div>
+
+    </div>,
+    { ...size, headers: { "Cache-Control": "public, s-maxage=86400, stale-while-revalidate=604800" } }
   );
 }

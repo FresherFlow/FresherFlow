@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import type { Metadata } from 'next';
-import { permanentRedirect, notFound } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 import { Opportunity } from '@fresherflow/types';
 import { getCompanyDomain } from '@fresherflow/utils';
 import JobCard from '@/features/opportunities/components/JobCard';
@@ -10,7 +10,7 @@ import Link from 'next/link';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import { SITE_URL } from '@/lib/runtimeConfig';
 
-export const revalidate = 21600;
+export const revalidate = false;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
@@ -26,9 +26,33 @@ export async function generateMetadata(
     const base = (SITE_URL || 'https://fresherflow.in').replace(/\/+$/, '');
     const canonicalUrl = `${base}/companies/${slug}`;
 
+    // Fetch shard to build accurate metadata
+    const { fetchCompanyShard } = await import('@/lib/api/cdnFeed');
+    const feed = await fetchCompanyShard(slug);
+    const companyName = feed?.opportunities?.[0]?.company || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const count = feed?.opportunities?.length ?? 0;
+
+    const title = `${companyName} Jobs & Internships 2026 | FresherFlow`;
+    const description = count > 0
+        ? `${count} active job${count > 1 ? 's' : ''} at ${companyName}. Apply to verified fresher opportunities at ${companyName} on FresherFlow.`
+        : `Explore opportunities at ${companyName} on FresherFlow. Get notified when ${companyName} posts new fresher roles.`;
+
     return {
+        title,
+        description,
         alternates: { canonical: canonicalUrl },
         robots: { index: true, follow: true },
+        openGraph: {
+            title,
+            description,
+            url: canonicalUrl,
+            type: 'website',
+        },
+        twitter: {
+            card: 'summary',
+            title,
+            description,
+        },
     };
 }
 
@@ -50,18 +74,29 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     
     const companyJobs = feed?.opportunities || [];
 
+    const companyName = companyJobs[0]?.company ||
+        slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+    // Empty state: company exists in sitemap but currently has no active listings.
+    // Return a proper page (not 404) so Google keeps it indexed.
     if (companyJobs.length === 0) {
-        notFound();
+        return (
+            <div className="min-h-screen bg-background pb-20">
+                <main className="max-w-5xl mx-auto px-4 py-16 text-center space-y-4">
+                    <h1 className="text-3xl font-black tracking-tight text-foreground">{companyName}</h1>
+                    <p className="text-muted-foreground">No active listings right now. Check back soon.</p>
+                    <a href="/" className="inline-block mt-4 text-sm font-semibold text-primary hover:underline">Browse all opportunities →</a>
+                </main>
+            </div>
+        );
     }
 
     const firstJob = companyJobs[0];
     const profile = {
         name: firstJob.company,
         logo: firstJob.companyLogoUrl,
-        website: firstJob.companyWebsite, // if available in the feed
-        stats: {
-            activeJobs: companyJobs.length,
-        }
+        website: firstJob.companyWebsite,
+        stats: { activeJobs: companyJobs.length }
     };
 
     return (

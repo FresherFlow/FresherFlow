@@ -108,12 +108,12 @@ export function MobileTopNav() {
                                 </div>
                             </button>
                         </div>
-                    ) : pathname !== '/download' ? (
+                    ) : pathname !== '/app' ? (
                         <Link
-                            href="/download"
+                            href="/app"
                             target="_self"
                             onClick={(event) => {
-                                if (pathname === '/download') event.preventDefault();
+                                if (pathname === '/app') event.preventDefault();
                             }}
                             className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-85 transition-all shadow-sm shrink-0"
                         >
