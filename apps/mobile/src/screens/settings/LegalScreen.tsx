@@ -6,6 +6,8 @@ import { Screen } from '@/system/layout/Layout';
 import { SecondaryHeader } from '@/system/components/PremiumPrimitives';
 import { SPACING } from '@/system/constants/dimensions';
 import { TYPOGRAPHY } from '@/system/constants/typography';
+import Constants from 'expo-constants';
+import { version as appVersion } from '../../../package.json';
 
 const LegalScreen: React.FC = memo(() => {
     const insets = useSafeAreaInsets();
@@ -47,7 +49,7 @@ const LegalScreen: React.FC = memo(() => {
 
                 <View style={styles.footer}>
                     <Text style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
-                        Version 1.0.4  ·  Last Updated: May 2026
+                        Version {Constants.expoConfig?.version || appVersion}  ·  Last Updated: May 2026
                     </Text>
                     <Text style={[styles.copyright, { color: currentTheme.colors.textMuted }]}>
                         © 2026 FresherFlow Team. All rights reserved.

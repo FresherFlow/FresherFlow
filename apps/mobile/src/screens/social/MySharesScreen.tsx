@@ -15,7 +15,7 @@ import { useMyShares } from '@/hooks/useMyShares';
 import { Screen } from '@/system/layout/Layout';
 import { SecondaryHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
 import { ContributionPreviewCard } from '@/system/components/ContributionPreviewCard';
-import { saveDetailCache } from '@/utils/offlineCache';
+import { saveDetailCache } from '@/utils/cache/offlineCache';
 import { SPACING, mScale } from '@/system/constants/dimensions';
 import { Zap } from 'lucide-react-native';
 

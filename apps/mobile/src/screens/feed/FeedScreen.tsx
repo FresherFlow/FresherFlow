@@ -34,10 +34,10 @@ import { haptic } from '@/utils/haptics';
 import { useSaved } from '@repo/frontend-core';
 
 import { useFeed } from '@/hooks/useFeed';
-import { saveDetailCache } from '@/utils/offlineCache';
-import { markJobAsSeen } from '@/utils/seenJobs';
+import { saveDetailCache } from '@/utils/cache/offlineCache';
+import { markJobAsSeen } from '@/utils/cache/seenJobs';
 import { Analytics, EventNames } from '@/utils/analytics';
-import { clearUnseenCount } from '@/utils/localNotifications';
+import { clearUnseenCount } from '@/utils/cache/localNotifications';
 import { Opportunity } from '@fresherflow/types';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNotificationStore } from '@/store/useNotificationStore';
@@ -85,8 +85,19 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
   const insets = useSafeAreaInsets();
   const listRef = useRef<any>(null);
   const scrollOffset = useRef<number>(0);
-  useScrollToTop(listRef);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const smoothScrollToTop = useCallback(() => {
+    if (!listRef.current) return;
+    if (scrollOffset.current > 2000) {
+      listRef.current.scrollToOffset({ offset: 0, animated: false });
+    } else {
+      listRef.current.scrollToOffset({ offset: 0, animated: true });
+    }
+  }, []);
+
+  const scrollToTopRef = useRef({ scrollToTop: smoothScrollToTop });
+  useScrollToTop(scrollToTopRef);
 
   const localHandleScroll = useCallback((event: any) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
@@ -301,7 +312,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                 activeOpacity={0.8}
                 onPress={() => {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+                    smoothScrollToTop();
                 }}
                 style={[
                     styles.scrollTopBtn,

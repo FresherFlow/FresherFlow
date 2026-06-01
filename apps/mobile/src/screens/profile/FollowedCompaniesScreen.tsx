@@ -52,11 +52,25 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
   }, [hasHydrated, hydrate]);
   const isAnonymous = !user || user.isAnonymous;
   const listRef = useRef<any>(null);
-  useScrollToTop(listRef);
+  
+  const scrollOffset = useRef(0);
   const [showScrollTop, setShowScrollTop] = useState(false);
+
+  const smoothScrollToTop = useCallback(() => {
+    if (!listRef.current) return;
+    if (scrollOffset.current > 2000) {
+      listRef.current.scrollToOffset({ offset: 0, animated: false });
+    } else {
+      listRef.current.scrollToOffset({ offset: 0, animated: true });
+    }
+  }, []);
+
+  const scrollToTopRef = useRef({ scrollToTop: smoothScrollToTop });
+  useScrollToTop(scrollToTopRef);
 
   const handleScroll = useCallback((event: any) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
+    scrollOffset.current = currentOffset;
     setShowScrollTop(currentOffset > 600);
   }, []);
 
@@ -318,7 +332,7 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
           activeOpacity={0.8}
           onPress={() => {
             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            listRef.current?.scrollToOffset({ offset: 0, animated: true });
+            smoothScrollToTop();
           }}
           style={[
             styles.scrollTopBtn,

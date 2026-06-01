@@ -35,6 +35,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { Screen } from '@/system/layout/Layout';
 import { SurfaceCard, SecondaryHeader } from '@/system/components/PremiumPrimitives';
 import { alpha } from '@/theme';
+import { version as appVersion } from '../../../package.json';
 
 type UpdateState = 'idle' | 'checking' | 'available' | 'downloading' | 'ready' | 'no-update' | 'error';
 
@@ -102,7 +103,7 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
                 stopSpinner();
                 setStatus('available');
                 setUpdateMetadata({
-                    version: '1.0.4-ota (simulated)',
+                    version: `${Constants.expoConfig?.version || appVersion}-ota (simulated)`,
                     createdAt: new Date().toLocaleDateString(undefined, { dateStyle: 'medium' }),
                     changelog: [
                         '⚡ High-Performance profile MMKV initialization.',
@@ -133,7 +134,7 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
                 setStatus('available');
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const manifest = check.manifest as any;
-                const version = manifest?.metadata?.version || manifest?.extra?.expoClient?.version || '1.0.0';
+                const version = manifest?.metadata?.version || manifest?.extra?.expoClient?.version || Constants.expoConfig?.version || appVersion;
                 const createdAt = manifest?.createdAt 
                     ? new Date(manifest.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })
                     : new Date().toLocaleDateString(undefined, { dateStyle: 'medium' });

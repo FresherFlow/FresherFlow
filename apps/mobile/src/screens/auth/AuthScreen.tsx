@@ -46,9 +46,9 @@ const GoogleIcon = ({ size = 20 }: { size?: number }) => (
 );
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const logoBlack = require('../../assets/logo.png');
+const logoBlack = require('../../../assets/logo.png');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const logoWhite = require('../../assets/logo-white.png');
+const logoWhite = require('../../../assets/logo-white.png');
 
 const AuthScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
     const insets = useSafeAreaInsets();

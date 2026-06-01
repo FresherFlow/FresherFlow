@@ -20,7 +20,7 @@ import { useScrollToTop } from '@react-navigation/native';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
 import { Opportunity } from '@fresherflow/types';
 import { JobCard } from '@/system/components/OpportunityCard';
-import { saveDetailCache } from '@/utils/offlineCache';
+import { saveDetailCache } from '@/utils/cache/offlineCache';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { mScale, SPACING, RADIUS } from '@/system/constants/dimensions';
@@ -52,11 +52,22 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { isSaved, toggleSave } = useSaved();
     const { showSuccess } = useToast();
     const flashListRef = useRef<any>(null);
-    useScrollToTop(flashListRef);
-    const [showScrollTop, setShowScrollTop] = React.useState(false);
-
+    
     // Track scroll position for hide/show tab bar
     const scrollOffset = useRef(0);
+    const [showScrollTop, setShowScrollTop] = React.useState(false);
+
+    const smoothScrollToTop = useCallback(() => {
+        if (!flashListRef.current) return;
+        if (scrollOffset.current > 2000) {
+            flashListRef.current.scrollToOffset({ offset: 0, animated: false });
+        } else {
+            flashListRef.current.scrollToOffset({ offset: 0, animated: true });
+        }
+    }, []);
+
+    const scrollToTopRef = useRef({ scrollToTop: smoothScrollToTop });
+    useScrollToTop(scrollToTopRef);
 
     const handleToggleSave = useCallback((opportunity: Opportunity) => {
         const wasSaved = isSaved(opportunity.id);
@@ -190,7 +201,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     activeOpacity={0.8}
                     onPress={() => {
                         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
+                        smoothScrollToTop();
                     }}
                     style={[
                         styles.scrollTopBtn,

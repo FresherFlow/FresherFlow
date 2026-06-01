@@ -56,7 +56,7 @@ import { RootStackParamList } from '@/navigation/types';
 import { useOpportunityDetail } from '@/hooks/useOpportunityDetail';
 import { useProfile } from '@/hooks/useProfile';
 import { renderFormattedDescription } from '@/system/components/DescriptionParser';
-import { markJobAsSeen } from '@/utils/seenJobs';
+import { markJobAsSeen } from '@/utils/cache/seenJobs';
 import { formatSalary } from '@/utils/formatters';
 import { openExternalURL } from '@/utils/browser';
 
@@ -493,7 +493,9 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                     const sharedBy = opportunity.referredByUsername || (opportunity.user as any)?.username || (opportunity.rawIngestions?.[0] as any)?.creator?.username;
                                     if (!sharedBy) return null;
                                     
-                                    const badgeColor = isReferral ? currentTheme.colors.success : currentTheme.colors.warning;
+                                    // Use a darker yellow/orange for light mode or fallback to primary if yellow is completely unreadable
+                                    const warningColor = currentTheme.mode === 'dark' ? currentTheme.colors.warning : '#A16207';
+                                    const badgeColor = isReferral ? currentTheme.colors.success : warningColor;
                                     const badgeText = isReferral ? `Referred by @${sharedBy}` : `Shared by @${sharedBy}`;
                                     return (
                                         <View style={[styles.verifiedBadge, { backgroundColor: alpha(badgeColor, 0.1), borderColor: alpha(badgeColor, 0.2), borderWidth: 1 }]}>

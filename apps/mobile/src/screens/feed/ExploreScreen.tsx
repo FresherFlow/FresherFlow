@@ -11,6 +11,7 @@ import {
     Animated,
     ScrollView,
     Platform,
+    InteractionManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Compass, Filter, Building2, ChevronRight, X, ChevronUp } from 'lucide-react-native';
@@ -18,7 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { useScrollToTop } from '@react-navigation/native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
-import { saveDetailCache } from '@/utils/offlineCache';
+import { saveDetailCache } from '@/utils/cache/offlineCache';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useSaved } from '@repo/frontend-core';
@@ -115,18 +116,35 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const filterSheetRef = React.useRef<FilterSheetRef>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const flashListRef = React.useRef<any>(null);
-    useScrollToTop(flashListRef);
+    
+    // Track scroll position for animations and tab bar
+    const scrollOffset = useRef(0);
+
+    const smoothScrollToTop = useCallback(() => {
+        if (!flashListRef.current) return;
+        
+        if (scrollOffset.current > 2000) {
+            flashListRef.current.scrollToOffset({ offset: 0, animated: false });
+        } else {
+            flashListRef.current.scrollToOffset({ offset: 0, animated: true });
+        }
+    }, []);
+
+    const scrollToTopRef = useRef({ scrollToTop: smoothScrollToTop });
+    useScrollToTop(scrollToTopRef);
+    
     const [showScrollTop, setShowScrollTop] = React.useState(false);
     const [viewMode, setViewMode] = React.useState<'opportunities' | 'companies'>('opportunities');
 
     // Scroll back to top on search query, filter change, or view mode toggle
     React.useEffect(() => {
         try {
-            flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
+            smoothScrollToTop();
         } catch {
             // Guard against unmounted/loading state
         }
-    }, [filters, viewMode, searchQuery]);
+    }, [filters, viewMode, searchQuery, smoothScrollToTop]);
+
 
 
 
@@ -153,9 +171,6 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     }, [results]);
 
     const { showSuccess } = useToast();
-
-    // Track scroll position for animations and tab bar
-    const scrollOffset = useRef(0);
 
     const handleScroll = useCallback((event: any) => {
         const currentOffset = event.nativeEvent.contentOffset.y;
@@ -514,11 +529,13 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 theme={currentTheme}
                                 onPress={() => {
                                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    navigation.navigate('CompanyDetail', {
-                                        companyName: item.data.name,
-                                        companyLogoUrl: item.data.logoUrl,
-                                        website: item.data.website,
-                                        currentJob: item.data.firstOpp
+                                    InteractionManager.runAfterInteractions(() => {
+                                        navigation.navigate('CompanyDetail', {
+                                            companyName: item.data.name,
+                                            companyLogoUrl: item.data.logoUrl,
+                                            website: item.data.website,
+                                            currentJob: item.data.firstOpp
+                                        });
                                     });
                                 }}
                             />

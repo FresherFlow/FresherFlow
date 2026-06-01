@@ -14,7 +14,7 @@ import { Share2, Globe, Building2, Home, Copy, Linkedin, Twitter, Send, Instagra
 import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/screens/settings/AboutScreen';
 import { useTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
-import { saveDetailCache } from '@/utils/offlineCache';
+import { saveDetailCache } from '@/utils/cache/offlineCache';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useSaved } from '@repo/frontend-core';
@@ -247,7 +247,7 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                                     name={companyName}
                                     logoUrl={companyLogoUrl}
                                     website={website}
-                                    size={mScale(56)}
+                                    size={mScale(96)}
                                 />
                             </View>
 
@@ -256,7 +256,27 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                                     {companyName}
                                 </Text>
                             </View>
+                        </View>
 
+                        <View style={[styles.badgeRow, { marginTop: 12, justifyContent: 'space-between', alignItems: 'center' }]}>
+                            <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap', flex: 1 }}>
+                                <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
+                                    <Text style={[styles.badgeText, { color: currentTheme.colors.success }]}>OFFICIAL</Text>
+                                </View>
+                                {website && (
+                                    <TouchableOpacity 
+                                        activeOpacity={0.7}
+                                        onPress={() => {
+                                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                            void openExternalURL(website, currentTheme.colors);
+                                        }}
+                                        style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                                    >
+                                        <Globe size={10} color={currentTheme.colors.primary} />
+                                        <Text style={[styles.badgeText, { color: currentTheme.colors.primary }]}>WEBSITE</Text>
+                                    </TouchableOpacity>
+                                )}
+                            </View>
                             <TouchableOpacity 
                                 activeOpacity={0.7}
                                 onPress={handleToggleFollow}
@@ -265,7 +285,8 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                                     { 
                                         backgroundColor: followingCompany 
                                             ? currentTheme.colors.primary 
-                                            : alpha(currentTheme.colors.primary, 0.1) 
+                                            : alpha(currentTheme.colors.primary, 0.1),
+                                        marginLeft: 12
                                     }
                                 ]}
                             >
@@ -280,25 +301,6 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                                     {followingCompany ? 'Following' : 'Follow'}
                                 </Text>
                             </TouchableOpacity>
-                        </View>
-
-                        <View style={[styles.badgeRow, { flexWrap: 'wrap', marginTop: 12 }]}>
-                            <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.success, 0.1) }]}>
-                                <Text style={[styles.badgeText, { color: currentTheme.colors.success }]}>OFFICIAL SOURCE</Text>
-                            </View>
-                            {website && (
-                                <TouchableOpacity 
-                                    activeOpacity={0.7}
-                                    onPress={() => {
-                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                        void openExternalURL(website, currentTheme.colors);
-                                    }}
-                                    style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
-                                >
-                                    <Globe size={10} color={currentTheme.colors.primary} />
-                                    <Text style={[styles.badgeText, { color: currentTheme.colors.primary }]}>WEBSITE</Text>
-                                </TouchableOpacity>
-                            )}
                         </View>
 
                         <Text style={[styles.companyBio, { color: currentTheme.colors.textMuted }]}>
@@ -536,8 +538,8 @@ const styles = StyleSheet.create({
         paddingBottom: 24,
     },
     logoContainer: {
-        width: mScale(80),
-        height: mScale(80),
+        width: mScale(96),
+        height: mScale(96),
         borderRadius: 24,
         alignItems: 'center',
         justifyContent: 'center',

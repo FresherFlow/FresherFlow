@@ -32,7 +32,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { profileApi } from '@fresherflow/api-client';
 import { useProfile } from '@/hooks/useProfile';
 import { Analytics, EventNames } from '@/utils/analytics';
-import { readSharesCache, saveSharesCache } from '@/utils/offlineCache';
+import { readSharesCache, saveSharesCache } from '@/utils/cache/offlineCache';
 import { getBoolean, setBoolean, getJSON, setJSON } from '@/utils/storage';
 
 // Premium System

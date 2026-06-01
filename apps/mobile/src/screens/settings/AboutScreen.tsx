@@ -23,6 +23,7 @@ import { PanGestureHandler, PanGestureHandlerGestureEvent } from 'react-native-g
 import { alpha } from '@/theme';
 import Svg, { Path } from 'react-native-svg';
 import Constants from 'expo-constants';
+import { version as appVersion } from '../../../package.json';
 
 export const WhatsAppIcon = ({ size = 22, color }: { size?: number, color?: string }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
@@ -52,9 +53,9 @@ export const ArattaiIcon = ({ size = 22, color }: { size?: number, color?: strin
 );
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const logoBlack = require('../../assets/logo.png');
+const logoBlack = require('../../../assets/logo.png');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const logoWhite = require('../../assets/logo-white.png');
+const logoWhite = require('../../../assets/logo-white.png');
 
 
 type Props = NativeStackScreenProps<RootStackParamList, 'About'>;
@@ -179,7 +180,7 @@ const AboutScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             <View style={{ paddingTop: insets.top + 10 }}>
                 <SecondaryHeader 
                     title="About" 
-                    subtitle={`FresherFlow v${Constants.expoConfig?.version || '1.0.0'}`}
+                    subtitle={`FresherFlow v${Constants.expoConfig?.version || appVersion}`}
                     onBack={() => {
                         if (navigation.canGoBack()) {
                             navigation.goBack();

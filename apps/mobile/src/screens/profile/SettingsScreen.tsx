@@ -47,7 +47,7 @@ import { RADIUS, mScale, SPACING } from '@/system/constants/dimensions';
 import { TYPOGRAPHY } from '@/system/constants/typography';
 import { useUI } from '@/contexts/UIContext';
 import { getDisplayHandle } from '@fresherflow/utils';
-import { ShareAppBottomSheet } from '@/components/ShareAppBottomSheet';
+import { ShareAppBottomSheet } from '@/system/components/ShareAppBottomSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
