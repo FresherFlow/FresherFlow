@@ -2,14 +2,12 @@
   "name": "@repo/ui",
   "version": "1.0.0",
   "type": "module",
-  "main": "./dist/index.js",
+  "main": "./src/index.tsx",
   "types": "./src/index.tsx",
   "exports": {
     ".": {
       "types": "./src/index.tsx",
-      "import": "./dist/index.js",
-      "require": "./dist/index.js",
-      "default": "./dist/index.js"
+      "default": "./src/index.tsx"
     }
   },
   "peerDependencies": {
@@ -26,7 +24,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dompurify": "^3.3.3",
-    "expo-file-system": "^56.0.7",
+    "expo-file-system": "~19.0.23",
     "expo-image": "*",
     "lucide-react": "^0.563.0",
     "lucide-react-native": "*",
