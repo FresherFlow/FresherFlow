@@ -4,9 +4,7 @@ import { useAdmin } from '@/features/admin/AdminContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-// Components
 import { FormHeader } from './OpportunityForm/components/FormHeader';
-import { ShareListingBanner } from './OpportunityForm/components/ShareListingBanner';
 import { DuplicateCheck } from './OpportunityForm/DuplicateCheck';
 import { TypeSelection } from './OpportunityForm/sections/TypeSelection';
 import { JobInfoSection } from './OpportunityForm/sections/JobInfoSection';
@@ -89,16 +87,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                 />
             </div>
 
-            {form.publishedListing && (
-                <div className="mb-8 animate-in fade-in slide-in-from-top-4 duration-500">
-                    <ShareListingBanner
-                        title={form.publishedListing.title}
-                        company={form.publishedListing.company}
-                        onCopyCaption={handleCopyCaption as (text: string) => void}
-                        onCopyFullPack={handleCopyFullPack}
-                    />
-                </div>
-            )}
+
 
             {/* {isEditMode && form.socialPosts?.length > 0 && (
                 <div className="mb-8 animate-in zoom-in-95 duration-200">
@@ -337,7 +326,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                     <button
                         type="submit"
                         disabled={form.isLoading}
-                        className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-bold capitalize tracking-widest text-primary-foreground shadow-lg shadow-primary/20 transition-all hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus:ring-2 focus:ring-offset-2 w-full md:w-auto order-1 md:order-2"
+                        className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-bold capitalize tracking-widest text-primary-foreground transition-all hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus:ring-2 focus:ring-offset-2 w-full md:w-auto order-1 md:order-2"
                     >
                         {form.isLoading ? (
                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
