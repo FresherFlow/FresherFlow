@@ -94,7 +94,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
     const firstJob = companyJobs[0];
     const profile = {
-        name: firstJob.company,
+        name: companyName,
         logo: firstJob.companyLogoUrl,
         website: firstJob.companyWebsite,
         stats: { activeJobs: companyJobs.length }
@@ -148,6 +148,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                                 key={job.id}
                                 job={{
                                     ...job,
+                                    company: companyName,
                                     normalizedRole: job.title,
                                     salary: (job.salaryMin !== undefined && job.salaryMax !== undefined) ? { min: job.salaryMin, max: job.salaryMax } : undefined,
                                 }}

@@ -201,6 +201,8 @@ export default function DownloadOpenGraphImage() {
                             <img
                                 src={screenshotUrl}
                                 alt="App Screenshot"
+                                width={270}
+                                height={560}
                                 style={{
                                     width: '100%',
                                     height: '100%',
