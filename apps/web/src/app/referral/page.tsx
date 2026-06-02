@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 export default function FrozenReferralRoute() {
-  redirect('/download');
+  redirect('/app');
 }
 
 // WEB PIVOT: old referral implementation preserved below for later restoration.

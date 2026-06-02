@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 export default function FrozenAccountRoute() {
-  redirect('/download');
+  redirect('/app');
 }
 
 // /* WEB PIVOT: old account implementation preserved below for later restoration.

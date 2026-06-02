@@ -8,7 +8,7 @@ export const metadata = {
 
 export default function AccountPage() {
     // TEMPORARY PIVOT: Redirect web users to download page
-    redirect('/download');
+    redirect('/app');
 
     // return <RedirectToApp title="Account Settings moved to Mobile" />;
 }

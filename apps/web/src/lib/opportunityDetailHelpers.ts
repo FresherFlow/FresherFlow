@@ -68,7 +68,7 @@ export function buildLoginFromDetailHref(path: string, source?: string | null, r
   params.set('redirect', path);
   if (source) params.set('source', source);
   if (ref) params.set('ref', ref);
-  return `/download?${params.toString()}`;
+  return `/app?${params.toString()}`;
 }
 
 export function getDetailShareUrl(rawUrl: string) {

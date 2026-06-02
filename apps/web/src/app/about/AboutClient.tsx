@@ -381,7 +381,7 @@ export function AboutClient() {
                 </h2>
                 <div className="flex flex-wrap gap-3 shrink-0">
                     <Link
-                        href="/download"
+                        href="/app"
                         className="h-11 px-6 rounded-xl bg-foreground text-background text-sm font-semibold inline-flex items-center justify-center hover:opacity-85 transition-all active:scale-95"
                     >
                         Download App

@@ -38,7 +38,7 @@ export function handleAuth(req: NextRequest) {
     //     return NextResponse.redirect(loginUrl, 307);
     // }
     if (isUserPath(pathname) && hostRole !== 'admin') {
-        return NextResponse.redirect(new URL('/download', req.url), 307);
+        return NextResponse.redirect(new URL('/app', req.url), 307);
     }
 
     // if (pathname === "/login" && loggedIn && hostRole !== 'admin') {

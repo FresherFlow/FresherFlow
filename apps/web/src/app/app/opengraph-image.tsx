@@ -146,7 +146,7 @@ export default function DownloadOpenGraphImage() {
                             Get Android App
                         </div>
                         <div style={{ display: 'flex', fontSize: 16, fontWeight: 700, color: 'rgba(245, 247, 248, 0.4)' }}>
-                            fresherflow.in/download
+                            fresherflow.in/app
                         </div>
                     </div>
                 </div>

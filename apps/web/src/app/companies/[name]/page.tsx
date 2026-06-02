@@ -14,7 +14,11 @@ export const revalidate = false;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-    return [];
+    const { fetchSitemapData } = await import('@/lib/api/cdnFeed');
+    const data = await fetchSitemapData();
+    if (!data?.companies) return [];
+    
+    return data.companies.map((c) => ({ name: c.slug }));
 }
 
 export async function generateMetadata(

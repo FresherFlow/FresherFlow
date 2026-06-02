@@ -36,7 +36,7 @@ const STATIC_ROUTES = [
   '/terms',
   '/feedback',
   '/submit-link',
-  '/download',
+  '/app',
 ];
 
 function getPathByType(type: SitemapOpportunity['type']): string {
@@ -71,7 +71,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
       companyEntries = (sitemapData.companies || []).map((c) => ({
         url: `${BASE_URL}/companies/${c.slug}`,
-        lastModified: new Date(),
+        lastModified: STATIC_LAST_MODIFIED,
       }));
     } else {
       console.warn('Sitemap data fetch returned null, falling back to bootstrap feed.');

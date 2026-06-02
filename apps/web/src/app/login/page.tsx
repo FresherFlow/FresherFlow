@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 export default function FrozenUserRoute() {
-  redirect('/download');
+  redirect('/app');
 }
 
 // /* WEB PIVOT: old user route implementation preserved below for later restoration.

@@ -8,7 +8,7 @@ export const metadata = {
     },
     description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
     alternates: {
-        canonical: '/download',
+        canonical: '/app',
     },
     openGraph: {
         type: 'website',
@@ -16,7 +16,7 @@ export const metadata = {
         description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
         images: [
             {
-                url: '/download/opengraph-image',
+                url: '/app/opengraph-image',
                 width: 1200,
                 height: 630,
                 type: 'image/png',
@@ -28,7 +28,7 @@ export const metadata = {
         card: 'summary_large_image',
         title: 'Download FresherFlow Android App',
         description: 'Join the fresher job sharing community. Share verified off-campus opportunities and get instant apply alerts with zero redirect spam.',
-        images: ['/download/twitter-image'],
+        images: ['/app/twitter-image'],
     }
 };
 

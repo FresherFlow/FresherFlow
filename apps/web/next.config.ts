@@ -189,8 +189,8 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
-        source: "/app",
-        destination: "/download",
+        source: "/download",
+        destination: "/app",
         permanent: true,
       },
     ];

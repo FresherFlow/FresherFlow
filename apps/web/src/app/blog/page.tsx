@@ -158,7 +158,7 @@ export default function BlogPage() {
                                         ))}
                                     </div>
                                     <div className="pt-6 mt-6 border-t border-border/40 flex justify-between items-center">
-                                        <Link href="/download" className="text-xs font-bold text-primary hover:underline">
+                                        <Link href="/app" className="text-xs font-bold text-primary hover:underline">
                                             Try the FresherFlow App &rarr;
                                         </Link>
                                         <button 
