@@ -20,7 +20,7 @@ import LoadingScreen from '@/components/ui/LoadingScreen';
 
 declare global {
     interface Window {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         google: any;
         __ffGoogleGsiInitialized?: boolean;
     }
@@ -76,7 +76,7 @@ function LoginContent() {
     }, []);
 
     useEffect(() => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const isLoggingOut = typeof window !== 'undefined' && (window as any).__isLoggingOut;
         if (user && !isLoading && !isLoggingOut) {
             navigateAfterLogin();
@@ -101,7 +101,7 @@ function LoginContent() {
         return () => { if (timeoutId) clearTimeout(timeoutId); };
     }, []);
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const handleGoogleCallback = useCallback(async (response: any) => {
         setIsProcessing(true);
         try {

@@ -30,13 +30,9 @@ export async function generateStaticParams() {
     
     if (!feed?.opportunities) return [];
     
-    const params: { id: string }[] = [];
-    for (const opp of feed.opportunities) {
-        if (opp.slug) params.push({ id: opp.slug });
-        if (opp.id) params.push({ id: opp.id });
-    }
-    
-    return params;
+    // Only emit the canonical slug (or id as fallback) — never both.
+    // Emitting both doubles ISR cache entries and burns write quota.
+    return feed.opportunities.map((opp) => ({ id: opp.slug ?? opp.id }));
 }
 
 // Generate dynamic SEO metadata
@@ -84,6 +80,9 @@ export default async function OpportunityDetailPage({ params }: Props) {
         }
 
         // Server-Side Related Opportunities Resolution
+        // fetchOpportunityForPage already fetched the bootstrap feed internally.
+        // Re-use it via a second call — Next.js deduplicates identical fetch() calls
+        // within the same render pass (same URL + options = cache hit, no extra network I/O).
         const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
         const feed = await fetchBootstrapFeed();
         if (feed?.opportunities) {

@@ -2,7 +2,6 @@ import { ImageResponse } from "next/og";
 import { LINKS_FEED_URL } from "@/lib/runtimeConfig";
 
 export const runtime = "edge";
-export const revalidate = 86400;
 
 const size = { width: 1200, height: 630 };
 
@@ -15,7 +14,7 @@ type OpportunityDto = {
 
 let cachedLinks: OpportunityDto[] | null = null;
 let lastFetchTime = 0;
-const CACHE_TTL_MS = 60_000;
+const CACHE_TTL_MS = 300_000; // 5 minutes — reduces CDN fetches within warm edge instances
 
 // Pre-fetch logo as ArrayBuffer so ImageResponse gets a real image, not a redirect or SVG
 async function logoToDataUrl(url: string): Promise<string | null> {
@@ -29,8 +28,14 @@ async function logoToDataUrl(url: string): Promise<string | null> {
     if (!/image\/(png|jpe?g|webp|gif)/.test(ct)) return null;
     const buf = await res.arrayBuffer();
     if (buf.byteLength < 500) return null; // too small = placeholder/error
-    const b64 = btoa(String.fromCharCode(...new Uint8Array(buf)));
-    return `data:${ct.split(';')[0]};base64,${b64}`;
+    if (buf.byteLength > 65536) return null; // >64KB logo — too expensive to base64 on edge
+    // Chunked btoa — spreading the full buffer as args causes stack overflow on large images
+    const bytes = new Uint8Array(buf);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1024) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 1024));
+    }
+    return `data:${ct.split(';')[0]};base64,${btoa(binary)}`;
   } catch {
     return null;
   }
@@ -78,7 +83,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
     try {
       const ctrl = new AbortController();
       const t = setTimeout(() => ctrl.abort(), 3500);
-      const res = await fetch(LINKS_FEED_URL, { cache: "force-cache", signal: ctrl.signal, next: { revalidate: 60 }, headers: { Origin: process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in" } } as RequestInit & { next?: { revalidate: number } });
+      // On edge runtime, next: { revalidate } is ignored. Freshness is managed by
+      // the in-memory CACHE_TTL_MS guard above (300s). Use no-store so we always
+      // get a fresh response from the CDN when the in-memory cache expires.
+      const res = await fetch(LINKS_FEED_URL, { cache: "no-store", signal: ctrl.signal, headers: { Origin: process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in" } });
       clearTimeout(t);
       if (res.ok) { cachedLinks = ((await res.json())?.opportunities || []) as OpportunityDto[]; lastFetchTime = now; }
     } catch { /* stale ok */ }

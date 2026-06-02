@@ -9,6 +9,7 @@
     "build": "npm run build:deps && next build",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test:smoke": "playwright test"
   },
   "dependencies": {

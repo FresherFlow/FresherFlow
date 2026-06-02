@@ -59,19 +59,24 @@ export function useOpportunityDetail(
 
         try {
             // CDN-first single-source-of-truth detail resolver
-            const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+            const { fetchBootstrapFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
             const feed = await fetchBootstrapFeed();
-            if (!feed?.opportunities) {
-                throw new Error('Failed to load listings from CDN.');
-            }
-
-            const opportunity = feed.opportunities.find(
+            
+            let opportunity = feed?.opportunities?.find(
                 (opp) => opp.slug === id || opp.id === id
             );
 
+            // Fallback: Check expired feed if not in active feed
+            if (!opportunity) {
+                const expiredFeed = await fetchExpiredFeed();
+                opportunity = expiredFeed?.opportunities?.find(
+                    (opp) => opp.slug === id || opp.id === id
+                );
+            }
+
             if (!opportunity) {
                 // Set fallback related jobs for the 404 page
-                if (!initialRelatedData || initialRelatedData.length === 0) {
+                if (feed?.opportunities && (!initialRelatedData || initialRelatedData.length === 0)) {
                     setRelatedOpps(feed.opportunities.slice(0, 6));
                 }
                 
@@ -104,7 +109,9 @@ export function useOpportunityDetail(
             const errorMessage = (err as Error)?.message || 'Listing not found.';
             setError(errorMessage);
 
-            if (!hasShownNotFoundRef.current) {
+            // Don't show toast error for clean 404s (listing not found / no longer available)
+            const isClean404 = errorMessage === 'Listing not found.' || errorMessage === 'Opportunity no longer available.';
+            if (!hasShownNotFoundRef.current && !isClean404) {
                 hasShownNotFoundRef.current = true;
                 toastError(err, 'Listing not found.');
             }
@@ -305,7 +312,7 @@ export function useOpportunityDetail(
                 toast.success('Link copied to clipboard!');
             }
         } catch {
-            console.error('Share failed');
+            // Share cancelled or not supported
         }
     };
 

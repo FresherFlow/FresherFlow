@@ -127,7 +127,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
                 try {
                     setBulkActionPending(true);
                     setBulkActionLabel(labels[action]);
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                     
                     const res = await adminApi.bulkAction(selectedIds, action) as any;
                     setLastBulkResult({ 
                         action, 

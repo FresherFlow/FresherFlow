@@ -54,7 +54,7 @@ export default function TermsPage() {
                     <section className="space-y-3">
                         <h2 className="text-xl font-bold text-foreground">5. Limitation of Liability</h2>
                         <p>
-                            To the maximum extent permitted by law, FresherFlow is provided "as is" and shall not be liable for any indirect, incidental, or consequential damages resulting from your use of the platform.
+                            To the maximum extent permitted by law, FresherFlow is provided &quot;as is&quot; and shall not be liable for any indirect, incidental, or consequential damages resulting from your use of the platform.
                         </p>
                     </section>
 

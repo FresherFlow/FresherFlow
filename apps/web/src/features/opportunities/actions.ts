@@ -22,7 +22,7 @@ async function getClient() {
 }
 
 export interface CreateOpportunityPayload extends Partial<Opportunity> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     walkInDetails?: any;
 }
 

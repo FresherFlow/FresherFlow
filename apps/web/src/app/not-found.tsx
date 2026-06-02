@@ -1,6 +1,10 @@
 import Link from 'next/link';
 import { Briefcase, GraduationCap, MapPin, ArrowRight } from 'lucide-react';
 
+// Static page — never changes. Permanently cache after first render to avoid
+// compute charges on every bot hit against unknown/expired URLs.
+export const revalidate = false;
+
 export default function NotFoundPage() {
     return (
         <div className="min-h-screen bg-background text-foreground">

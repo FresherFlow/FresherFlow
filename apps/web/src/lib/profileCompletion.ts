@@ -14,7 +14,7 @@ export interface ProfileCompletionResult {
     };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export function calculateProfileCompletion(profile: any): ProfileCompletionResult {
     let completion = 0;
     const missingFields: string[] = [];
@@ -93,12 +93,12 @@ export function calculateProfileCompletion(profile: any): ProfileCompletionResul
     };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export function isProfileComplete(profile: any): boolean {
     return calculateProfileCompletion(profile).percentage === 100;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export function getMissingFieldsMessage(profile: any): string {
     const result = calculateProfileCompletion(profile);
 

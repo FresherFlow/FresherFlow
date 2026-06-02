@@ -26,16 +26,13 @@ export async function generateMetadata(
     const base = (SITE_URL || 'https://fresherflow.in').replace(/\/+$/, '');
     const canonicalUrl = `${base}/companies/${slug}`;
 
-    // Fetch shard to build accurate metadata
-    const { fetchCompanyShard } = await import('@/lib/api/cdnFeed');
-    const feed = await fetchCompanyShard(slug);
-    const companyName = feed?.opportunities?.[0]?.company || slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-    const count = feed?.opportunities?.length ?? 0;
+    // Derive company name from slug only — no CDN fetch here.
+    // The page component fetches the shard once for the actual content rendering.
+    // Fetching again in generateMetadata was causing 2x CDN calls per bot request.
+    const companyName = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     const title = `${companyName} Jobs & Internships 2026 | FresherFlow`;
-    const description = count > 0
-        ? `${count} active job${count > 1 ? 's' : ''} at ${companyName}. Apply to verified fresher opportunities at ${companyName} on FresherFlow.`
-        : `Explore opportunities at ${companyName} on FresherFlow. Get notified when ${companyName} posts new fresher roles.`;
+    const description = `Explore verified fresher jobs and internships at ${companyName} on FresherFlow. Direct official apply links, no fake listings.`;
 
     return {
         title,
@@ -85,7 +82,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                 <main className="max-w-5xl mx-auto px-4 py-16 text-center space-y-4">
                     <h1 className="text-3xl font-black tracking-tight text-foreground">{companyName}</h1>
                     <p className="text-muted-foreground">No active listings right now. Check back soon.</p>
-                    <a href="/" className="inline-block mt-4 text-sm font-semibold text-primary hover:underline">Browse all opportunities →</a>
+                    <Link href="/" className="inline-block mt-4 text-sm font-semibold text-primary hover:underline">Browse all opportunities →</Link>
                 </main>
             </div>
         );

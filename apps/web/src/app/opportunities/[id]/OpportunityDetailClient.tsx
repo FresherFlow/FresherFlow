@@ -87,6 +87,47 @@ export default function OpportunityDetailClient({
     if (isLoading) return <OpportunityDetailSkeleton />;
 
     if (error) {
+        const isClean404 = error === 'Listing not found.' || error === 'Opportunity no longer available.';
+
+        if (isClean404) {
+            return (
+                <div className="min-h-[70vh] flex flex-col items-center justify-center p-4 md:p-8 text-center space-y-6">
+                    <div className="flex items-center gap-3">
+                        <span className="text-5xl font-black tracking-tight text-primary md:text-6xl">404</span>
+                        <div className="h-8 w-px bg-border md:h-10" />
+                        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Listing Not Found</span>
+                    </div>
+                    <div className="space-y-2 max-w-md">
+                        <h2 className="text-2xl font-extrabold text-foreground leading-tight md:text-3xl">
+                            This opportunity has moved or expired.
+                        </h2>
+                        <p className="text-muted-foreground text-sm leading-relaxed">
+                            The job listing you are looking for is no longer active on FresherFlow. But don't worry, we have plenty of other active opportunities for you!
+                        </p>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Link href="/opportunities">
+                            <Button className="min-w-40 h-11 rounded-full">
+                                Browse Opportunities
+                            </Button>
+                        </Link>
+                        <Link href="/jobs">
+                            <Button variant="outline" className="min-w-40 h-11 rounded-full">
+                                Go to Dashboard
+                            </Button>
+                        </Link>
+                    </div>
+                    
+                    {relatedForMode.length > 0 && (
+                        <div className="w-full max-w-4xl mt-12 pt-8 border-t border-border text-left">
+                            <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        // Technical / network error
         return (
             <div className="min-h-[60vh] flex flex-col items-center justify-center p-4 space-y-4">
                 <div className="p-4 bg-destructive/10 rounded-full">

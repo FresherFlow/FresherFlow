@@ -101,7 +101,7 @@ export default function BlogPage() {
                         Behind the Scenes.
                     </h1>
                     <p className="max-w-2xl text-base md:text-lg text-muted-foreground leading-relaxed mt-2">
-                        Engineering details, product design decisions, and launch notes from the team building India's cleanest fresher platform.
+                        Engineering details, product design decisions, and launch notes from the team building India&apos;s cleanest fresher platform.
                     </p>
                 </div>
             </header>

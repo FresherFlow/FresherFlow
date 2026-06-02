@@ -19,7 +19,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         // Sync with the class applied by ThemeScript (which runs before hydration)
         const isDark = document.documentElement.classList.contains('dark');
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         setTheme(isDark ? 'dark' : 'light');
 
         // Ensure state and storage are consistent

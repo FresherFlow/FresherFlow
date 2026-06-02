@@ -46,9 +46,8 @@ export const revalidate = 86400;
 
 
 export default async function LandingPage() {
-     
-    const start = Date.now();
-    
+
+
     // ZERO-BLOCKING STRATEGY:
     // We race the data fetching against a 500ms timeout.
     // If the data takes longer than 500ms, we render with defaults to stop the "circling" hang.
@@ -85,8 +84,8 @@ export default async function LandingPage() {
         console.error('[Landing] Critical data resolution failure:', err);
     }
     
-     
-    console.log(`[Landing] Page data resolved in ${Date.now() - start}ms (mode: ${mode}, count: ${liveCount}, opportunities: ${opportunities.length})`);
+
+
 
     if ((mode as string) === 'govt') {
         return <GovtLandingPage liveCount={liveCount} />;

@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { Opportunity } from '@fresherflow/types';
 
 export interface CreateOpportunityPayload extends Partial<Opportunity> {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     walkInDetails?: any;
     // Add other properties that might be on payload but not on Opportunity type
 }

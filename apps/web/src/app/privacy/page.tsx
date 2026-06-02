@@ -40,7 +40,7 @@ export default function PrivacyPage() {
                     <section className="space-y-3">
                         <h2 className="text-xl font-bold text-foreground">3. Third-Party Services</h2>
                         <p>
-                            FresherFlow integrates with Firebase (Google) for authentication and push notifications. Your use of these features is subject to Google's privacy policies. We do not sell your personal data to advertisers.
+                            FresherFlow integrates with Firebase (Google) for authentication and push notifications. Your use of these features is subject to Google&apos;s privacy policies. We do not sell your personal data to advertisers.
                         </p>
                     </section>
 

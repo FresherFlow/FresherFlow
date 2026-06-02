@@ -26,7 +26,7 @@ export const ConfirmModal = ({
     const [reason, setReason] = useState('');
 
     useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+         
         if (!show) setReason('');
     }, [show]);
 

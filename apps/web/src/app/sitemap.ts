@@ -46,9 +46,13 @@ function getPathByType(type: SitemapOpportunity['type']): string {
 }
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  // Fixed date for static routes — these pages don't change frequently.
+  // Using new Date() here tells Googlebot every static page updated every 24h,
+  // causing aggressive re-crawling and more ISR compute hits.
+  const STATIC_LAST_MODIFIED = new Date('2026-05-01');
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((path) => ({
     url: `${BASE_URL}${path}`,
-    lastModified: new Date(),
+    lastModified: STATIC_LAST_MODIFIED,
   }));
 
   try {

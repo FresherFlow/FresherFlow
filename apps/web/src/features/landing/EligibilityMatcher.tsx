@@ -74,21 +74,21 @@ export function EligibilityMatcher({
   // Keep selected states in sync when selection lists change
   React.useEffect(() => {
     if (degreesOptions.length > 0 && !degreesOptions.includes(selectedDegree)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setSelectedDegree(degreesOptions[0] || "B.Tech");
     }
   }, [degreesOptions, selectedDegree]);
 
   React.useEffect(() => {
     if (gradYearsOptions.length > 0 && !gradYearsOptions.includes(selectedGradYear)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setSelectedGradYear(gradYearsOptions[0] || currentYear);
     }
   }, [gradYearsOptions, selectedGradYear, currentYear]);
 
   React.useEffect(() => {
     if (skillsOptions.length > 0 && !skillsOptions.includes(selectedSkill)) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
+       
       setSelectedSkill(skillsOptions[0] || "React");
     }
   }, [skillsOptions, selectedSkill]);

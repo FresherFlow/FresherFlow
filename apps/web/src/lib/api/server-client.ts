@@ -37,7 +37,7 @@ function shouldBypassCache(endpoint: string, method: string) {
     return privatePrefixes.some((prefix) => endpoint.startsWith(prefix));
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 export async function serverApiClient<T = any>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const { cookies, headers } = await import('next/headers');
     const cookieStore = await cookies();

@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { profileApi } from '@/shared/api/client';
 import { validateEducationData } from '@fresherflow/domain';
 
-export function useProfileUpdateHandlers(form: any, refreshUser: () => Promise<void>) { // eslint-disable-line @typescript-eslint/no-explicit-any
+export function useProfileUpdateHandlers(form: any, refreshUser: () => Promise<void>) {  
     const [saving, setSaving] = useState<string | null>(null);
     const [editingSection, setEditingSection] = useState<string | null>(null);
 
