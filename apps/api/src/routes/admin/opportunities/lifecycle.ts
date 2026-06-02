@@ -43,7 +43,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
             void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
@@ -82,6 +82,7 @@ router.post(
             void invalidatePublicOpportunityCache({
                 idsOrSlugs: [existing.id as string, existing.slug as string, opportunity.id as string, opportunity.slug as string],
                 purgeFeed: true,
+                type: existing.type as string,
             });
             void StaticFeedService.scheduleRefresh();
         } catch (error) {
@@ -125,7 +126,7 @@ router.delete(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
             void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
@@ -198,7 +199,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
             void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
@@ -236,7 +237,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
             void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);

@@ -17,9 +17,17 @@ async function deleteByPattern(pattern: string) {
     }
 }
 
+function getCanonicalPath(slugOrId: string, type?: string): string {
+    if (type === 'INTERNSHIP') return `/internships/${slugOrId}`;
+    if (type === 'WALKIN') return `/walk-ins/details/${slugOrId}`;
+    // JOB or unknown — /opportunities is the universal canonical
+    return `/opportunities/${slugOrId}`;
+}
+
 export async function invalidatePublicOpportunityCache(options?: {
     idsOrSlugs?: string[];
     purgeFeed?: boolean;
+    type?: string; // 'JOB' | 'INTERNSHIP' | 'WALKIN' — narrows ISR path to revalidate
 }) {
     const idsOrSlugs = Array.from(new Set((options?.idsOrSlugs || []).filter(Boolean)));
     const purgeFeed = options?.purgeFeed !== false;
@@ -34,19 +42,13 @@ export async function invalidatePublicOpportunityCache(options?: {
                 await deleteByPattern(`opportunity_detail|v3|*|id:${value}`);
             }
 
-            // Ping Vercel to revalidate the specific ISR paths for these jobs/internships
-            const pathsToRevalidate = idsOrSlugs.flatMap(slug => [
-                `/jobs/${slug}`,
-                `/internships/${slug}`,
-                `/opportunities/${slug}`,
-                `/walk-ins/details/${slug}`,
-                `/walk-ins/opportunity/${slug}`,
-            ]);
-
-            // Also revalidate the company page for each affected job's company slug
-            // We can't easily map job slug → company slug here, so we revalidate /companies/ layout
-            // The actual per-company purge happens when the backend knows the company slug (see lifecycle routes)
-            pathsToRevalidate.push('/companies');
+            // Revalidate only the canonical path for this opportunity type.
+            // Previously 5 paths were fired per slug regardless of type — that caused
+            // ~5x unnecessary ISR writes on every publish/expire/delete action.
+            // Use slug (canonical) if available; the UUID fallback is still included
+            // since redirect logic in the page handles UUID → slug.
+            const slug = idsOrSlugs.find(v => !v.match(/^[0-9a-f-]{36}$/i)) ?? idsOrSlugs[0];
+            const pathsToRevalidate = [getCanonicalPath(slug, options?.type)];
 
             const secret = process.env.REVALIDATE_SECRET_TOKEN;
             const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';
@@ -67,3 +69,4 @@ export async function invalidatePublicOpportunityCache(options?: {
         logger.error('[Redis] Failed to invalidate public opportunity cache', { error: error instanceof Error ? error.message : String(error) });
     }
 }
+
