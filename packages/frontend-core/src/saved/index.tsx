@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import type { Opportunity } from '@fresherflow/types';
+import { OpportunityType, type Opportunity } from '@fresherflow/types';
 import { 
   readSavedJobs, 
   saveSavedJobs, 
@@ -47,8 +47,9 @@ export const SavedProvider: React.FC<{
   children: React.ReactNode,
   userId?: string,
   anonSessionId?: string | null,
-  firebaseDatabaseUrl?: string
-}> = ({ children, userId, firebaseDatabaseUrl }) => {
+  firebaseDatabaseUrl?: string,
+  feedItems?: Opportunity[]
+}> = ({ children, userId, firebaseDatabaseUrl, feedItems }) => {
   const [savedJobs, setSavedJobs] = useState<(Opportunity & { needsSync?: boolean })[]>([]);
   const [hasPendingSync, setHasPendingSync] = useState(false);
 
@@ -70,9 +71,15 @@ export const SavedProvider: React.FC<{
       }
 
       // Reconstruct full Opportunity objects from local feed cache/CDN JSON
-      const feedCache = await readNativeFeedCache();
-      const allJobs: Opportunity[] = feedCache?.items || [];
+      const allJobs: Opportunity[] = feedItems || [];
+      if (allJobs.length === 0) {
+        const feedCache = await readNativeFeedCache();
+        if (feedCache?.items) {
+          allJobs.push(...feedCache.items);
+        }
+      }
 
+      const currentSaved = await readSavedJobs();
       const updatedJobs: Opportunity[] = [];
       for (const id of ids) {
         const found = allJobs.find((j: Opportunity) => j.id === id);
@@ -83,7 +90,19 @@ export const SavedProvider: React.FC<{
           if (cachedDetail) {
             updatedJobs.push(cachedDetail);
           } else {
-            updatedJobs.push({ id, title: 'Saved Job', companyName: 'Details loading...', expiresAt: '' } as unknown as Opportunity);
+            const existing = currentSaved.find((j) => j.id === id);
+            if (existing && existing.title && existing.title !== 'Saved Job') {
+              updatedJobs.push(existing);
+            } else {
+              updatedJobs.push({
+                id,
+                title: 'Saved Job',
+                company: 'Details loading...',
+                type: OpportunityType.JOB,
+                locations: ['Remote'],
+                expiresAt: '',
+              } as unknown as Opportunity);
+            }
           }
         }
       }
@@ -103,7 +122,7 @@ export const SavedProvider: React.FC<{
       void syncSavedJobs();
     };
     void bootstrap();
-  }, [userId, firebaseDatabaseUrl]);
+  }, [userId, firebaseDatabaseUrl, feedItems]);
 
   const toggleSave = async (job: Opportunity) => {
     setSavedJobs((prev) => {
