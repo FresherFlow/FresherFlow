@@ -32,6 +32,13 @@
     "android:dev": "pnpm android:mobile",
     "android:mobile": "pnpm --filter ./apps/mobile android",
     "android:staging": "pnpm --filter ./apps/mobile android:staging",
+    "android:production": "pnpm --filter ./apps/mobile android:production",
+    "gradle:assemble:dev": "pnpm --filter ./apps/mobile gradle:assemble:dev",
+    "gradle:assemble:staging": "pnpm --filter ./apps/mobile gradle:assemble:staging",
+    "gradle:assemble:production": "pnpm --filter ./apps/mobile gradle:assemble:production",
+    "eas:build:dev": "pnpm --filter ./apps/mobile eas:build:dev",
+    "eas:build:staging": "pnpm --filter ./apps/mobile eas:build:staging",
+    "eas:build:production": "pnpm --filter ./apps/mobile eas:build:production",
     "apk:staging": "pnpm --filter ./apps/mobile apk:staging",
     "apk:production": "pnpm --filter ./apps/mobile apk:production",
     "firebase:functions:typecheck": "pnpm --filter fresherflow-firebase-functions typecheck",
@@ -98,6 +105,8 @@
   "author": "",
   "license": "MIT",
   "overrides": {
-    "tar": "^7.5.7"
+    "tar": "^7.5.7",
+    "react-native-safe-area-context": "~5.6.2",
+    "react-dom": "19.1.0"
   }
 }

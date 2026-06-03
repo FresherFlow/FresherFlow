@@ -660,6 +660,9 @@ importers:
       react:
         specifier: 19.1.0
         version: 19.1.0
+      react-dom:
+        specifier: 19.1.0
+        version: 19.1.0(react@19.1.0)
       react-hook-form:
         specifier: ^7.75.0
         version: 7.76.1(react@19.1.0)
@@ -688,8 +691,8 @@ importers:
         specifier: 15.12.1
         version: 15.12.1(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       zod:
-        specifier: ^4.4.3
-        version: 4.4.3
+        specifier: ^3.24.1
+        version: 3.25.76
       zustand:
         specifier: ^5.0.13
         version: 5.0.13(@types/react@19.1.17)(immer@11.1.8)(react@19.1.0)(use-sync-external-store@1.6.0(react@19.1.0))
@@ -1419,7 +1422,7 @@ importers:
         version: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
       react-native-safe-area-context:
         specifier: '*'
-        version: 5.8.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
+        version: 5.6.2(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)
       tailwind-merge:
         specifier: ^3.4.0
         version: 3.6.0
@@ -9067,12 +9070,6 @@ packages:
 
   react-native-safe-area-context@5.6.2:
     resolution: {integrity: sha512-4XGqMNj5qjUTYywJqpdWZ9IG8jgkS3h06sfVjfw5yZQZfWnRFXczi0GnYyFyCc2EBps/qFmoCH8fez//WumdVg==}
-    peerDependencies:
-      react: '*'
-      react-native: '*'
-
-  react-native-safe-area-context@5.8.0:
-    resolution: {integrity: sha512-t+ZsAVzY/wWzzx34vqGbo3/as9EEESJdbyZNL7Yg5EYX+toYMtMqFoDDCvqZUi35eeGVsXc6pAaEk4edMwbuCQ==}
     peerDependencies:
       react: '*'
       react-native: '*'
@@ -20521,11 +20518,6 @@ snapshots:
       semver: 7.8.1
 
   react-native-safe-area-context@5.6.2(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
-    dependencies:
-      react: 19.1.0
-      react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
-
-  react-native-safe-area-context@5.8.0(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0):
     dependencies:
       react: 19.1.0
       react-native: 0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0)
