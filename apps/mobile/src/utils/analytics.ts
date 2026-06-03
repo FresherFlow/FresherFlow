@@ -1,4 +1,10 @@
-import * as Sentry from '@sentry/react-native';
+// import * as Sentry from '@sentry/react-native';
+const Sentry = {
+    setUser: (user: any) => {},
+    addBreadcrumb: (breadcrumb: any) => {},
+    captureMessage: (msg: string, options?: any) => {},
+    captureException: (err: any, options?: any) => {},
+};
 import { User } from '@fresherflow/types';
 
 /**

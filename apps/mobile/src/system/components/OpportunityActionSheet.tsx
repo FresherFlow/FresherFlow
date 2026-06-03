@@ -42,7 +42,7 @@ import { isJobReportedLocally, saveReportedJobLocally } from '@/utils/cache/offl
 import { ActivityIndicator } from 'react-native';
 import { ChevronLeft, Ban, Info, Link, AlertTriangle, Trash2, ChevronRight } from 'lucide-react-native';
 import { openExternalURL } from '@/utils/browser';
-import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/screens/settings/AboutScreen';
+import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/system/components/SocialIcons';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;

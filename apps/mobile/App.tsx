@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
-import * as Sentry from '@sentry/react-native';
+// import * as Sentry from '@sentry/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-Sentry.init({
-  dsn: 'https://e23ea3b19c0247d5f0366941f9e490c8@o4511002230849536.ingest.us.sentry.io/4511449039175680',
-  environment: process.env.APP_ENV || process.env.EXPO_PUBLIC_APP_ENV || 'development',
-  enableNative: true,
-  tracesSampleRate: 1.0,
-});
+// Sentry.init({
+//   dsn: 'https://e23ea3b19c0247d5f0366941f9e490c8@o4511002230849536.ingest.us.sentry.io/4511449039175680',
+//   environment: process.env.APP_ENV || process.env.EXPO_PUBLIC_APP_ENV || 'development',
+//   enableNative: true,
+//   tracesSampleRate: 1.0,
+// });
 import { NavigationContainer, DarkTheme, DefaultTheme, useNavigationContainerRef } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -74,6 +74,7 @@ import { ErrorBoundary } from './src/system/components/ErrorBoundary';
 import { FirstRunGate } from './src/system/components/FirstRunGate';
 
 import { useAuthStore, AuthManager } from './src/store/useAuthStore';
+import { useFeedStore } from './src/store/useFeedStore';
 import { useAuthHandshake } from './src/hooks/useAuthHandshake';
 import { useEmailLinkSignIn } from './src/hooks/useEmailLinkSignIn';
 
@@ -98,6 +99,7 @@ import { getFirebaseDatabaseUrl } from './src/config/firebase';
 // while the mobile app remains "Zustand-first".
 const AuthBridge = ({ children }: { children: React.ReactNode }) => {
   const { user, firebaseUser } = useAuthStore();
+  const feedItems = useFeedStore(state => state.cachedItems);
   // RTDB paths are keyed by Firebase UID (auth.uid), NOT the Postgres UUID (user.id)
   const rtdbUserId = firebaseUser?.uid ?? user?.id;
   return (
@@ -109,6 +111,7 @@ const AuthBridge = ({ children }: { children: React.ReactNode }) => {
         userId={rtdbUserId} 
         anonSessionId={null} 
         firebaseDatabaseUrl={getFirebaseDatabaseUrl()}
+        feedItems={feedItems}
       >
         {/* @ts-expect-error - ReactNode version mismatch in monorepo */}
         {children}
@@ -117,8 +120,6 @@ const AuthBridge = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-
-import { useFeedStore } from './src/store/useFeedStore';
 
 const AppContent = () => {
   useAuthHandshake(); // Background handshake logic
@@ -233,8 +234,6 @@ const AppContent = () => {
     <View style={{ flex: 1, backgroundColor: currentTheme.colors.background }}>
       <StatusBar 
         style={isDark ? "light" : "dark"} 
-        backgroundColor="transparent" 
-        translucent={true}
       />
       <FirstRunGate onDismiss={() => {
         const { isAuthenticated } = useAuthStore.getState();

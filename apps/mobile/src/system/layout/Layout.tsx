@@ -30,8 +30,6 @@ export const Screen: React.FC<ScreenProps> = ({ children, style, safe = true, bg
         >
             <StatusBar 
                 barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} 
-                backgroundColor="transparent" 
-                translucent 
             />
             {children}
         </View>
@@ -42,16 +40,18 @@ export interface SectionProps {
     title?: string;
     children: React.ReactNode;
     style?: ViewStyle;
+    rightElement?: React.ReactNode;
 }
 
-export const Section: React.FC<SectionProps> = ({ title, children, style }) => {
+export const Section: React.FC<SectionProps> = ({ title, children, style, rightElement }) => {
     const { currentTheme } = useTheme();
     return (
         <View style={[styles.section, style]}>
-            {title && (
+            {(title || rightElement) && (
                 <View style={styles.sectionHeader}>
-                    <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>{title}</Text>
-                    <View style={[styles.sectionLine, { backgroundColor: alpha(currentTheme.colors.border, 0.2) }]} />
+                    {title && <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>{title}</Text>}
+                    {title && <View style={[styles.sectionLine, { backgroundColor: alpha(currentTheme.colors.border, 0.2) }]} />}
+                    {rightElement}
                 </View>
             )}
             {children}

@@ -207,8 +207,6 @@ export const FirstRunGate: React.FC<FirstRunGateProps> = ({ children, onDismiss 
             <View style={[styles.container, { backgroundColor: currentTheme.colors.background, paddingTop: insets.top }]}>
                 <ExpoStatusBar 
                     style={currentTheme.mode === 'dark' ? "light" : "dark"} 
-                    backgroundColor="transparent" 
-                    translucent={true}
                 />
                 <TouchableOpacity 
                     style={[styles.skipBtn, { top: insets.top + SPACING.sm }]}

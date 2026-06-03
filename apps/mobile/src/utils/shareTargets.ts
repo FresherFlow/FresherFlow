@@ -20,11 +20,11 @@ const buildDeepLink = ({ target, message, url }: ShareTargetOptions): string => 
     case 'whatsapp':
       return `https://wa.me/?text=${encodeURIComponent(message)}`;
     case 'linkedin':
-      return `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`;
+      return `linkedin://share?url=${encodeURIComponent(url)}`;
     case 'twitter':
       return `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}`;
     case 'telegram':
-      return `https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(message)}`;
+      return `tg://msg_url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(message)}`;
     case 'discord':
       return 'discord://';
     case 'instagram':

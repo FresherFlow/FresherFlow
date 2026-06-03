@@ -11,7 +11,7 @@ import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { useToast } from '@/contexts/ToastContext';
 import { CompanyLogo } from '@repo/ui';
-import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/screens/settings/AboutScreen';
+import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/system/components/SocialIcons';
 import { Copy, Linkedin, Twitter, Send, Instagram, Share2, X } from 'lucide-react-native';
 import { Opportunity } from '@fresherflow/types';
 import { shareToInstalledApp } from '@/utils/shareTargets';
