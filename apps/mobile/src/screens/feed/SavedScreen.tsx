@@ -77,8 +77,15 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const handleScroll = useCallback((event: any) => {
         const currentOffset = event.nativeEvent.contentOffset.y;
-        setShowScrollTop(currentOffset > 600);
         const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
+
+        if (currentOffset > 600) {
+            if (Math.abs(currentOffset - scrollOffset.current) > 10) {
+                setShowScrollTop(direction === 'up');
+            }
+        } else {
+            setShowScrollTop(false);
+        }
 
         if (Math.abs(currentOffset - scrollOffset.current) > 20) {
             if (direction === 'down' && currentOffset > 100) {

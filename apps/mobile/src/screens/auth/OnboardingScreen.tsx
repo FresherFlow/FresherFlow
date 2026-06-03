@@ -23,7 +23,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'Onboarding' | any>;
 
 export const OnboardingScreen: React.FC<Props> = ({ navigation, route }) => {
     const { currentTheme } = useTheme();
-    const { user, isAuthenticated, skipUsernameSetup, loginAnonymously, skipUsername } = useAuthStore() as any;
+    const { user, isAuthenticated, skipUsernameSetup, isSyncing, loginAnonymously, skipUsername } = useAuthStore() as any;
 
     const [step, setStep] = useState<number>(0);
     const [skippingAuth, setSkippingAuth] = useState(false);
@@ -31,6 +31,10 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation, route }) => {
     // Step 0 -> Step 1: Advance when user successfully authenticates, or complete if anonymous guest
     useEffect(() => {
         if (step === 0 && user) {
+            if (isSyncing) {
+                // Wait for the Firebase sync/hydration to resolve the username before navigating
+                return;
+            }
             if (user.isAnonymous) {
                 void handleFinishOnboarding();
             } else if (user.username?.trim() || skipUsernameSetup) {
@@ -39,7 +43,7 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation, route }) => {
                 setStep(1);
             }
         }
-    }, [isAuthenticated, skipUsernameSetup, user, step]);
+    }, [isAuthenticated, skipUsernameSetup, user, isSyncing, step]);
 
     // Step 1 -> Finish: Complete onboarding when user has a handle or chooses to skip handle setup
     useEffect(() => {

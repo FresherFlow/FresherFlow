@@ -11,7 +11,7 @@ import {
 import { openExternalURL } from '@/utils/browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Share2, Globe, Building2, Home, Copy, Linkedin, Twitter, Send, Instagram } from 'lucide-react-native';
-import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/screens/settings/AboutScreen';
+import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/system/components/SocialIcons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { saveDetailCache } from '@/utils/cache/offlineCache';

@@ -152,7 +152,7 @@ export default function SkillSearchScreen({ navigation, route }: Props) {
                         onBack={() => navigation.goBack()}
                     />
                     
-                    <View style={[styles.header, { borderBottomWidth: 0, paddingRight: 20, marginTop: -12, paddingBottom: 6 }]}>
+                    <View style={[styles.header, { borderBottomWidth: 0, paddingRight: 20, marginTop: -12, paddingBottom: 16 }]}>
                         <View style={[styles.inlineSearchContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.05), marginLeft: 20 }]}>
                             <Search size={18} color={currentTheme.colors.textMuted} />
                             <TextInput

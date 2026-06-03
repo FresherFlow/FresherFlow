@@ -33,6 +33,7 @@ import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useFeedStore } from '@/store/useFeedStore';
 import { useFollows } from '@/hooks/useFollows';
 import { useNotifications } from '@/hooks/useNotifications';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -59,6 +60,19 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const { user, completionPercentage, fetchProfile, fetchStats } = useProfile();
   const firebaseUser = useAuthStore(s => s.firebaseUser);
   const isFocused = useIsFocused();
+  
+  const cachedItems = useFeedStore(s => s.cachedItems);
+  const uniqueCompanies = React.useMemo(() => {
+     if (!cachedItems || cachedItems.length === 0) return 0;
+     const set = new Set<string>();
+     cachedItems.forEach(item => {
+        if (item.company) set.add(item.company);
+     });
+     return set.size;
+  }, [cachedItems]);
+
+  const jobsStr = cachedItems?.length > 0 ? cachedItems.length.toString() : '- -';
+  const compStr = uniqueCompanies > 0 ? uniqueCompanies.toString() : '- -';
 
   useEffect(() => {
     if (isFocused && user && !user.isAnonymous) {
@@ -260,11 +274,32 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                       />
                   </SurfaceCard>
 
+                  {/* CDN Stats Card */}
+                  <SurfaceCard style={{ marginTop: 24, padding: 20, flexDirection: 'row', justifyContent: 'space-around', alignItems: 'center' }}>
+                      <View style={{ alignItems: 'center' }}>
+                          <Text style={{ fontSize: 28, fontWeight: '900', color: currentTheme.colors.text, letterSpacing: -1 }}>
+                              {jobsStr}
+                          </Text>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: currentTheme.colors.textMuted, marginTop: 4, letterSpacing: 0.5 }}>
+                              Active Jobs
+                          </Text>
+                      </View>
+                      <View style={{ width: 1, height: 40, backgroundColor: alpha(currentTheme.colors.border, 0.5) }} />
+                      <View style={{ alignItems: 'center' }}>
+                          <Text style={{ fontSize: 28, fontWeight: '900', color: currentTheme.colors.text, letterSpacing: -1 }}>
+                              {compStr}
+                          </Text>
+                          <Text style={{ fontSize: 12, fontWeight: '700', color: currentTheme.colors.textMuted, marginTop: 4, letterSpacing: 0.5 }}>
+                              Companies
+                          </Text>
+                      </View>
+                  </SurfaceCard>
+
                   {/* Community Impact Card */}
                   <SurfaceCard style={{ marginTop: 24, marginBottom: 24, padding: 24, alignItems: 'center', justifyContent: 'center' }}>
                       <View style={{ marginBottom: 2 }}>
                           <Text style={{ fontSize: 34, lineHeight: 40, fontWeight: '900', color: currentTheme.colors.text, letterSpacing: -1.2 }}>
-                              {globalStats.downloads.toLocaleString()}
+                              {globalStats.downloads > 0 ? globalStats.downloads.toLocaleString() : '- -'}
                           </Text>
                       </View>
                       

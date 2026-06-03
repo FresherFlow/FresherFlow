@@ -101,8 +101,17 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
 
   const localHandleScroll = useCallback((event: any) => {
     const currentOffset = event.nativeEvent.contentOffset.y;
+    const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
+
+    if (currentOffset > 600) {
+        if (Math.abs(currentOffset - scrollOffset.current) > 10) {
+            setShowScrollTop(direction === 'up');
+        }
+    } else {
+        setShowScrollTop(false);
+    }
+
     scrollOffset.current = currentOffset;
-    setShowScrollTop(currentOffset > 600);
     if (handleScroll) {
       handleScroll(event);
     }
@@ -243,15 +252,45 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                 <View style={[styles.skeletonLine, { width: '100%', marginTop: 20, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
             </MotiView>
         );
-      case 'empty':
+      case 'empty': {
+        const isForYouTab = tabFeedType === null;
+        
+        let title = searchQuery ? "No results found" : "Community is quiet right now";
+        let sub = searchQuery ? `We couldn't find anything for "${searchQuery}".` : "No live opportunities have been shared today yet.";
+        let showProfileCta = false;
+        let ctaText = "";
+        let onCtaPress = () => {};
+
+        if (!searchQuery && isForYouTab) {
+            if (!hasProfileData) {
+                title = "Personalize Your Feed";
+                sub = "Complete your Career Profile to unlock matches tailored specifically to your degree, skills, and passout year.";
+                showProfileCta = true;
+                ctaText = "Set Up Career Profile";
+                onCtaPress = () => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    navigation.navigate('CareerProfile');
+                };
+            } else {
+                title = "No Matches Found Yet";
+                sub = "We couldn't find any jobs matching your profile details right now. Try adding more skills or adjusting your preferences.";
+                showProfileCta = true;
+                ctaText = "Manage Career Profile";
+                onCtaPress = () => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                    navigation.navigate('CareerProfile');
+                };
+            }
+        }
+
         return (
             <View style={styles.emptyContainer}>
                 <Compass size={mScale(48)} color={currentTheme.colors.textMuted} />
                 <Text style={[styles.emptyTitle, { color: currentTheme.colors.text, textAlign: 'center' }]}>
-                    {searchQuery ? "No results found" : "Community is quiet right now"}
+                    {title}
                 </Text>
                 <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
-                    {searchQuery ? `We couldn't find anything for "${searchQuery}".` : "No live opportunities have been shared today yet."}
+                    {sub}
                 </Text>
                 
                 {searchQuery && (
@@ -263,8 +302,19 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                         <Text style={[styles.ctaText, { color: currentTheme.colors.background }]}>Share what you found</Text>
                     </TouchableOpacity>
                 )}
+
+                {!searchQuery && showProfileCta && (
+                    <TouchableOpacity
+                        activeOpacity={0.8}
+                        style={[styles.ctaBtn, { backgroundColor: currentTheme.colors.primary, marginTop: 20 }]}
+                        onPress={onCtaPress}
+                    >
+                        <Text style={[styles.ctaText, { color: currentTheme.colors.background }]}>{ctaText}</Text>
+                    </TouchableOpacity>
+                )}
             </View>
         );
+      }
       default:
         return null;
     }

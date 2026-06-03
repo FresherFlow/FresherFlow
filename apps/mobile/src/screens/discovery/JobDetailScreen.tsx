@@ -12,6 +12,7 @@ import {
   Easing,
   Dimensions,
   InteractionManager,
+  LayoutAnimation,
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -43,6 +44,9 @@ import {
   Instagram,
   MessageCircle,
   Check,
+  AlertCircle,
+  ChevronRight,
+  ChevronDown,
 } from 'lucide-react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -76,7 +80,7 @@ import {
 } from '@gorhom/bottom-sheet';
 import * as Clipboard from 'expo-clipboard';
 import { Share, Linking } from 'react-native';
-import { WhatsAppIcon, DiscordIcon } from '@/screens/settings/AboutScreen';
+import { WhatsAppIcon, DiscordIcon } from '@/system/components/SocialIcons';
 
 
 import { TYPOGRAPHY } from '@/system/constants/typography';
@@ -167,6 +171,8 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
   const reportSheetRef = useRef<ReportActionSheetRef>(null);
   const scrollY = React.useRef(new Animated.Value(0)).current;
   const fabAnim = React.useRef(new Animated.Value(1)).current;
+  
+  const [isSelectionExpanded, setIsSelectionExpanded] = React.useState(false);
 
   const shrinkFab = () => {
     Animated.timing(fabAnim, {
@@ -744,11 +750,14 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             {/* Incentives / Perks (Conditional) */}
             {opportunity.incentives && (
                 <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-                    <View style={[styles.perksBox, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderColor: alpha(currentTheme.colors.success, 0.1) }]}>
-                        <Trophy size={16} color={currentTheme.colors.success} />
-                        <Text style={[styles.perksText, { color: currentTheme.colors.success }]}>
-                            Perks: {opportunity.incentives}
-                        </Text>
+                    <View style={[styles.perksBox, { backgroundColor: alpha(currentTheme.colors.success, 0.05), borderColor: alpha(currentTheme.colors.success, 0.1), alignItems: 'flex-start', flexDirection: 'column', gap: 6 }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Trophy size={16} color={currentTheme.colors.success} />
+                            <Text style={{ color: currentTheme.colors.success, fontWeight: '700', fontSize: 14 }}>Perks & Incentives</Text>
+                        </View>
+                        <View style={{ width: '100%', paddingLeft: 2 }}>
+                            {renderFormattedDescription(opportunity.incentives, { theme: currentTheme })}
+                        </View>
                     </View>
                 </Animated.View>
             )}
@@ -844,11 +853,111 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             {/* Selection Process (NEW) */}
             {opportunity.selectionProcess && (
                 <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-                    <Section title="Selection Process">
+                        {(() => {
+                            const rawProcess = (opportunity.selectionProcess || '').replace(/\\n/g, '\n');
+                            const steps = rawProcess
+                                .split(/,|\n/)
+                                .map(s => s.trim().replace(/^\d+[\.)\]]?\s*/, ''))
+                                .filter(Boolean);
+                            
+                            if (steps.length === 0) return null;
+
+                            return (
+                                <Section 
+                                    title="Selection Process"
+                                    rightElement={
+                                        <TouchableOpacity 
+                                            activeOpacity={0.7}
+                                            onPress={() => {
+                                                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                                setIsSelectionExpanded(!isSelectionExpanded);
+                                            }}
+                                            style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                                        >
+                                            <View style={{ backgroundColor: alpha(currentTheme.colors.primary, 0.1), paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
+                                                <Text style={{ fontSize: 11, fontWeight: '800', color: currentTheme.colors.primary }}>{steps.length} Rounds</Text>
+                                            </View>
+                                            <View style={{ transform: [{ rotate: isSelectionExpanded ? '180deg' : '0deg' }] }}>
+                                                <ChevronDown size={20} color={currentTheme.colors.textMuted} />
+                                            </View>
+                                        </TouchableOpacity>
+                                    }
+                                >
+
+                                    {isSelectionExpanded && (
+                                        <SurfaceCard style={styles.selectionCard}>
+                                            <View style={{ paddingVertical: 8 }}>
+                                                {steps.map((step, idx) => {
+                                                    const isLeft = idx % 2 === 0;
+                                                    return (
+                                                        <View key={idx} style={{ flexDirection: 'row', minHeight: 60 }}>
+                                                            {/* Left Branch */}
+                                                            <View style={{ flex: 1, alignItems: 'flex-end', justifyContent: 'flex-start', paddingTop: 2 }}>
+                                                                {isLeft && (
+                                                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                                        <View style={{ backgroundColor: alpha(currentTheme.colors.text, 0.02), paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: alpha(currentTheme.colors.textMuted, 0.2) }}>
+                                                                            <Text style={{ fontSize: 13, fontWeight: '500', color: currentTheme.colors.textMuted, textAlign: 'center' }}>{toTitleCase(step)}</Text>
+                                                                        </View>
+                                                                        <View style={{ width: 14, height: 2, backgroundColor: alpha(currentTheme.colors.primary, 0.3), marginRight: -2 }} />
+                                                                    </View>
+                                                                )}
+                                                            </View>
+
+                                                            {/* Central Trunk */}
+                                                            <View style={{ width: 36, alignItems: 'center' }}>
+                                                                <View style={{ 
+                                                                    width: 28, 
+                                                                    height: 28, 
+                                                                    borderRadius: 14, 
+                                                                    backgroundColor: alpha(currentTheme.colors.textMuted, 0.1),
+                                                                    alignItems: 'center', 
+                                                                    justifyContent: 'center',
+                                                                    marginTop: 6,
+                                                                    zIndex: 2,
+                                                                }}>
+                                                                    <Text style={{ fontSize: 12, fontWeight: '800', color: currentTheme.colors.text }}>{idx + 1}</Text>
+                                                                </View>
+                                                                {idx < steps.length - 1 && (
+                                                                    <View style={{ 
+                                                                        width: 2, 
+                                                                        flex: 1, 
+                                                                        backgroundColor: alpha(currentTheme.colors.primary, 0.3),
+                                                                        marginTop: -2,
+                                                                        marginBottom: -6,
+                                                                        zIndex: 1
+                                                                    }} />
+                                                                )}
+                                                            </View>
+
+                                                            {/* Right Branch */}
+                                                            <View style={{ flex: 1, alignItems: 'flex-start', justifyContent: 'flex-start', paddingTop: 2 }}>
+                                                                {!isLeft && (
+                                                                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                                                                        <View style={{ width: 14, height: 2, backgroundColor: alpha(currentTheme.colors.primary, 0.3), marginLeft: -2 }} />
+                                                                        <View style={{ backgroundColor: alpha(currentTheme.colors.text, 0.02), paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, borderColor: alpha(currentTheme.colors.textMuted, 0.2) }}>
+                                                                            <Text style={{ fontSize: 13, fontWeight: '500', color: currentTheme.colors.textMuted, textAlign: 'center' }}>{toTitleCase(step)}</Text>
+                                                                        </View>
+                                                                    </View>
+                                                                )}
+                                                            </View>
+                                                        </View>
+                                                    );
+                                                })}
+                                            </View>
+                                        </SurfaceCard>
+                                    )}
+                                </Section>
+                            );
+                        })()}
+                </Animated.View>
+            )}
+
+            {/* Notes / Highlights (NEW) */}
+            {opportunity.notesHighlights && (
+                <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <Section title="Important Notes & Highlights">
                         <SurfaceCard style={styles.selectionCard}>
-                            <Text style={[styles.selectionText, { color: currentTheme.colors.text }]}>
-                                {opportunity.selectionProcess}
-                            </Text>
+                            {renderFormattedDescription(opportunity.notesHighlights, { theme: currentTheme })}
                         </SurfaceCard>
                     </Section>
                 </Animated.View>
@@ -1691,9 +1800,9 @@ const styles = StyleSheet.create({
         marginBottom: 24,
     },
     perksText: {
-        fontSize: 12,
-        fontWeight: '800',
-        letterSpacing: 0.5,
+        fontSize: 13,
+        fontWeight: '400',
+        letterSpacing: 0.2,
         flex: 1,
     },
     timelineCard: {
@@ -1746,7 +1855,7 @@ const styles = StyleSheet.create({
     selectionText: {
         fontSize: 14,
         lineHeight: 22,
-        fontWeight: '500',
+        fontWeight: '400',
     },
     staticControls: {
         position: 'absolute',

@@ -174,8 +174,15 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const handleScroll = useCallback((event: any) => {
         const currentOffset = event.nativeEvent.contentOffset.y;
-        setShowScrollTop(currentOffset > 600);
         const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
+
+        if (currentOffset > 600) {
+            if (Math.abs(currentOffset - scrollOffset.current) > 10) {
+                setShowScrollTop(direction === 'up');
+            }
+        } else {
+            setShowScrollTop(false);
+        }
 
         if (Math.abs(currentOffset - scrollOffset.current) > 20) {
             if (direction === 'down' && currentOffset > 100) {
@@ -195,7 +202,6 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     }, [isSaved, toggleSave, showSuccess]);
 
     const resultsCount = results.length;
-
     const activeFilterCount = (filters.types?.length || 0) + (filters.workModes?.length || 0) + (filters.batchYears?.length || 0) + (filters.tag ? 1 : 0);
 
     const renderEmpty = useCallback(() => (
@@ -204,25 +210,27 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 <ActivityIndicator size="large" color={currentTheme.colors.primary} />
             ) : (
                 <>
-                    <View style={[styles.emptyIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
-                        <Compass size={48} color={currentTheme.colors.primary} />
+                    <View style={{ paddingHorizontal: 40, alignItems: 'center', width: '100%' }}>
+                        <View style={[styles.emptyIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
+                            <Compass size={48} color={currentTheme.colors.primary} />
+                        </View>
+                        <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No Results Found</Text>
+                        <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
+                            Try adjusting your search or filters to find what you're looking for.
+                        </Text>
+                        {(activeFilterCount > 0 || searchQuery.trim() !== '') && (
+                            <TouchableOpacity 
+                                style={[styles.clearEmptyBtn, { borderColor: currentTheme.colors.primary }]}
+                                onPress={() => {
+                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    setFilters({ types: [], tag: null, workModes: [], batchYears: [] });
+                                    setSearchQuery('');
+                                }}
+                            >
+                                <Text style={{ color: currentTheme.colors.primary, fontWeight: '700' }}>Clear search & filters</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
-                    <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>No Results Found</Text>
-                    <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
-                        Try adjusting your search or filters to find what you're looking for.
-                    </Text>
-                    {(activeFilterCount > 0 || searchQuery.trim() !== '') && (
-                        <TouchableOpacity 
-                            style={[styles.clearEmptyBtn, { borderColor: currentTheme.colors.primary }]}
-                            onPress={() => {
-                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                                setFilters({ types: [], tag: null, workModes: [], batchYears: [] });
-                                setSearchQuery('');
-                            }}
-                        >
-                            <Text style={{ color: currentTheme.colors.primary, fontWeight: '700' }}>Clear all filters</Text>
-                        </TouchableOpacity>
-                    )}
 
                     {suggestions.length > 0 && (
                         <View style={{ marginTop: 40, width: '100%' }}>
@@ -692,7 +700,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         paddingTop: 60,
-        paddingHorizontal: 40,
+        // paddingHorizontal removed so suggested JobCards can stretch to full width
     },
     clearEmptyBtn: {
         marginTop: 20,
