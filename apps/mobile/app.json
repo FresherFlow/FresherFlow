@@ -2,7 +2,7 @@
   "expo": {
     "name": "FresherFlow",
     "slug": "fresherflow",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/icon-1024.png",
     "userInterfaceStyle": "automatic",
@@ -12,7 +12,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#0D0D0D"
     },
     "ios": {
       "supportsTablet": true
@@ -66,27 +66,7 @@
         }
       ],
       "edgeToEdgeEnabled": true,
-      "queries": {
-        "schemes": [
-          "whatsapp",
-          "twitter",
-          "tg",
-          "linkedin",
-          "discord",
-          "instagram",
-          "arattai"
-        ]
-      },
-      "softwareKeyboardLayoutMode": "pan",
-      "statusBar": {
-        "barStyle": "light-content",
-        "backgroundColor": "#00000000",
-        "translucent": true
-      },
-      "navigationBar": {
-        "barStyle": "light-content",
-        "backgroundColor": "#000000"
-      }
+      "softwareKeyboardLayoutMode": "pan"
     },
     "notification": {
       "icon": "./assets/notification-icon.png",
@@ -112,7 +92,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 30000
     },
-    "runtimeVersion": "1.0.0",
+    "runtimeVersion": "1.1.0",
     "extra": {
       "apiUrl": "https://api.fresherflow.in",
       "eas": {

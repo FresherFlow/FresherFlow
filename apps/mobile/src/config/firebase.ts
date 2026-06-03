@@ -1,4 +1,4 @@
-import type { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import firebaseAuth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 import Constants from 'expo-constants';
@@ -18,10 +18,8 @@ let nativeAuthModule: NativeFirebaseAuthModule | null | undefined;
 function loadNativeAuthModule(): NativeFirebaseAuthModule | null {
   if (nativeAuthModule !== undefined) return nativeAuthModule;
   try {
-    // Native Firebase is only available in a dev client or Android/iOS build.
-    // Expo Go does not contain this native module.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    nativeAuthModule = require('@react-native-firebase/auth') as NativeFirebaseAuthModule;
+    // Statically imported to guarantee standard CJS/ESM interop under Hermes
+    nativeAuthModule = firebaseAuth as unknown as NativeFirebaseAuthModule;
   } catch (error) {
     console.warn('[Firebase] Native Firebase auth unavailable. Use an Expo dev client or Android build.', error);
     nativeAuthModule = null;
@@ -30,7 +28,8 @@ function loadNativeAuthModule(): NativeFirebaseAuthModule | null {
 }
 
 export function isFirebaseAuthAvailable(): boolean {
-  return Boolean(loadNativeAuthModule()?.default);
+  const module = loadNativeAuthModule();
+  return Boolean(module && (typeof module === 'function' || typeof module.default === 'function'));
 }
 
 const getGoogleWebClientId = () => {
@@ -72,7 +71,8 @@ export const initializeAuth = () => {
 };
 
 const auth = (): FirebaseAuthTypes.Module => {
-  const authFactory = loadNativeAuthModule()?.default;
+  const module = loadNativeAuthModule();
+  const authFactory = module && (typeof module === 'function' ? module : module.default);
   if (!authFactory) {
     throw new Error('Firebase native auth is unavailable. Run a development client or Android build, not Expo Go.');
   }

@@ -5,6 +5,9 @@ const projectRoot = __dirname;
 const workspaceRoot = path.resolve(projectRoot, '../..');
 
 const config = getDefaultConfig(projectRoot);
+config.projectRoot = projectRoot;
+
+
 
 
 // 1. Prefer platform/native files before generic TS/JS.
@@ -18,6 +21,7 @@ config.resolver.sourceExts = [
 
 // 2. Watch all files within the monorepo that mobile depends on
 config.watchFolders = [
+  ...(config.watchFolders || []),
   path.resolve(workspaceRoot, 'packages'),
   path.resolve(workspaceRoot, 'node_modules'),
 ];
@@ -28,8 +32,8 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
-// 4. Enable Package Exports for React 19 / Firebase v24 support
-config.resolver.unstable_enablePackageExports = true;
+// 4. Disable experimental Package Exports to prevent resolution conflicts in Firebase and other third-party native modules
+config.resolver.unstable_enablePackageExports = false;
 
 // 5. Prioritize React Native entry points
 config.resolver.resolverMainFields = ['react-native', 'browser', 'main'];
@@ -46,6 +50,33 @@ config.resolver.extraNodeModules = {
 
 const defaultResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
+  // Explicitly resolve ESM-only packages that lack a legacy 'main' field in package.json
+  if (moduleName === 'copy-anything') {
+    return {
+      type: 'sourceFile',
+      filePath: path.resolve(workspaceRoot, 'node_modules/copy-anything/dist/index.js'),
+    };
+  }
+
+  if (moduleName === 'is-what') {
+    return {
+      type: 'sourceFile',
+      filePath: path.resolve(workspaceRoot, 'node_modules/is-what/dist/index.js'),
+    };
+  }
+
+  // Redirect Gradle build's relative entry file (../../index.js or parent index.js) to correct path in mobile directory
+  const resolvedPath = path.resolve(
+    context.originModulePath ? path.dirname(context.originModulePath) : projectRoot,
+    moduleName
+  );
+  if (resolvedPath === path.resolve(workspaceRoot, 'index.js')) {
+    return {
+      type: 'sourceFile',
+      filePath: path.resolve(__dirname, 'index.js'),
+    };
+  }
+
   if (
     platform !== 'web' &&
     moduleName === './ensureNativeModulesAreInstalled' &&
