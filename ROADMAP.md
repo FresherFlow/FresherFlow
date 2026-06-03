@@ -15,7 +15,7 @@ Our target is to ship a stable, high-performance mobile application for job/walk
 ### 2. Core Social & Community Features
 - [x] Public, ungated feed viewing.
 - [x] Basic profile verification (academic batch, degree, skills).
-- [ ] Direct applying / clipboard-sharing of verified links.
+- [x] Direct applying / clipboard-sharing of verified links.
 - [ ] Post moderation & contributor workflows.
 
 ### 3. Polish & Optimization
