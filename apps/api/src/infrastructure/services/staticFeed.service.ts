@@ -40,6 +40,7 @@ export class StaticFeedService {
     private static readonly USERNAMES_PATH = path.join(this.PUBLIC_ROOT, 'taken-usernames.min.json');
     private static readonly SITEMAP_DATA_PATH = path.join(this.PUBLIC_ROOT, 'sitemap-data.json');
     private static readonly LINKS_PATH = path.join(this.PUBLIC_ROOT, 'links.min.json');
+    private static readonly RESOURCES_PATH = path.join(this.PUBLIC_ROOT, 'resources-feed.json');
 
     /**
      * Slugify a string for use as a filename/path.
@@ -350,9 +351,23 @@ export class StaticFeedService {
     static async generateSitemap() {
         return this.withDbRetry(async () => {
             const baseUrl = (process.env.FRONTEND_URL || 'https://fresherflow.in').replace(/\/+$/, '');
-            const now = new Date().toISOString();
+            const staticDate = '2026-05-01'; // Stable modified date for static and company indexes to curb crawl pressure
 
-            const staticRoutes = ['', '/opportunities', '/jobs', '/internships', '/walk-ins'];
+            const staticRoutes = [
+                '',
+                '/opportunities',
+                '/jobs',
+                '/internships',
+                '/walk-ins',
+                '/about',
+                '/blog',
+                '/contact',
+                '/privacy',
+                '/terms',
+                '/feedback',
+                '/submit-link',
+                '/app'
+            ];
 
             const companies = await prisma.opportunity.findMany({
                 where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
@@ -363,19 +378,21 @@ export class StaticFeedService {
             const opportunities = await prisma.opportunity.findMany({
                 where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
                 orderBy: { postedAt: 'desc' },
-                take: 500, // More for sitemap
-                select: { id: true, slug: true, type: true }
+                take: 1000, // Sync with dynamic sitemap scale
+                select: { id: true, slug: true, type: true, postedAt: true, updatedAt: true }
             });
 
             let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
             xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
 
-            staticRoutes.forEach(r => xml += `  <url><loc>${baseUrl}${r}</loc><lastmod>${now}</lastmod></url>\n`);
-            companies.forEach(c => xml += `  <url><loc>${baseUrl}/companies/${this.slugify(c.company)}</loc><changefreq>daily</changefreq></url>\n`);
+            staticRoutes.forEach(r => xml += `  <url><loc>${baseUrl}${r}</loc><lastmod>${staticDate}</lastmod></url>\n`);
+            companies.forEach(c => xml += `  <url><loc>${baseUrl}/companies/${this.slugify(c.company)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
             opportunities.forEach(opp => {
                 const slugOrId = opp.slug || opp.id;
                 const prefix = opp.type === 'INTERNSHIP' ? '/internships/' : opp.type === 'WALKIN' ? '/walk-ins/details/' : '/jobs/';
-                xml += `  <url><loc>${baseUrl}${prefix}${encodeURIComponent(slugOrId)}</loc><changefreq>weekly</changefreq></url>\n`;
+                const rawDate = opp.updatedAt || opp.postedAt;
+                const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
+                xml += `  <url><loc>${baseUrl}${prefix}${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
             });
 
             xml += '</urlset>';
@@ -494,9 +511,30 @@ export class StaticFeedService {
         });
     }
 
-    /**
-     * Upload regenerated content directly to Cloudflare R2 bucket.
-     */
+    /* TEMPORARILY DISABLED
+    static async generateResourcesFeed() {
+        return this.withDbRetry(async () => {
+            const resources = await prisma.sharedResource.findMany({
+                where: {
+                    status: 'APPROVED'
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                },
+                take: 500
+            });
+            return {
+                metadata: {
+                    version: '1.0',
+                    updatedAt: Date.now()
+                },
+                resources,
+                companyMetadata: {}
+            };
+        });
+    }
+    */
+
     private static async uploadToR2(key: string, body: string, contentType: string) {
         const endpoint = process.env.R2_ENDPOINT;
         const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -575,6 +613,7 @@ export class StaticFeedService {
             const sitemapData = await this.generateSitemapData();
             const usernames = await this.generateTakenUsernames();
             const linksFeed = await this.generateLinksFeed();
+            // const resourcesFeed = await this.generateResourcesFeed();
 
             // 3. Write files & upload to R2
             const bootstrapBody = JSON.stringify(bootstrap);
@@ -609,6 +648,10 @@ export class StaticFeedService {
             const linksBody = JSON.stringify(linksFeed);
             fs.writeFileSync(this.LINKS_PATH, linksBody);
             await this.uploadToR2('links.min.json', linksBody, 'application/json');
+
+            // const resourcesBody = JSON.stringify(resourcesFeed);
+            // fs.writeFileSync(this.RESOURCES_PATH, resourcesBody);
+            // await this.uploadToR2('resources-feed.json', resourcesBody, 'application/json');
 
             for (const s of companyShards) {
                 const body = JSON.stringify(s.data);

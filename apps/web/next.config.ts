@@ -169,17 +169,24 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    // Note: We don't rewrite /api/* to localhost:5000 in production 
-    // because it shadows internal Next.js routes like /api/og.
-    // The API client uses absolute URLs (NEXT_PUBLIC_API_URL) so this is redundant.
-    if (process.env.NODE_ENV === 'production') return [];
-
-    return [
+    const cdnUrl = (process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in').replace(/\/+$/, '');
+    const rewritesList = [
       {
-        source: "/api/:path*",
-        destination: `${DEV_API_ORIGIN}/api/:path*`,
+        source: "/sitemap.xml",
+        destination: `${cdnUrl}/sitemap.xml`,
       },
     ];
+
+    if (process.env.NODE_ENV === 'production') {
+      return rewritesList;
+    }
+
+    rewritesList.push({
+      source: "/api/:path*",
+      destination: `${DEV_API_ORIGIN}/api/:path*`,
+    });
+
+    return rewritesList;
   },
   async redirects() {
     return [
