@@ -4,7 +4,7 @@
     "description": "Background worker service for FresherFlow",
     "main": "dist/index.js",
     "scripts": {
-        "dev": "nodemon --exec \"npx ts-node\" src/index.ts",
+        "dev": "nodemon --exec \"ts-node\" src/index.ts",
         "build": "tsc",
         "start": "node dist/index.js",
         "db:generate": "prisma generate --schema=../../packages/database/prisma/schema.prisma",

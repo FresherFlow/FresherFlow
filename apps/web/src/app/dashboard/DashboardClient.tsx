@@ -13,8 +13,7 @@ import { OfflineError } from '@/shared/api/client';
 import { ProfileCompletionBanner } from '@/components/dashboard/DashboardBanners';
 import { Button } from '@/features/system/components/ui/Button';
 import { calculateProfileCompletion } from '@/lib/profileCompletion';
-import { useSiteMode } from '@/contexts/SiteModeContext';
-import { filterOpportunitiesForSiteMode } from '@/lib/opportunityMode';
+
 
 // Components
 import { DashboardHeader } from './components/DashboardHeader';
@@ -106,7 +105,6 @@ const hasAppliedAction = (opp: Opportunity): boolean =>
 
 export default function DashboardClient() {
     const { user, profile, isLoading: authLoading } = useAuth();
-    const { mode } = useSiteMode();
     const profileCompletion = calculateProfileCompletion(profile).percentage;
     const [recentOpps, setRecentOpps] = useState<Opportunity[]>([]);
     const [isLoadingOpps, setIsLoadingOpps] = useState<boolean>(true);
@@ -266,14 +264,11 @@ export default function DashboardClient() {
             });
         };
 
-        const modeRecentOpps = filterOpportunitiesForSiteMode(recentOpps, mode);
+        const modeRecentOpps = recentOpps;
         const modeDriveFeatured = uniqueById(
-            filterOpportunitiesForSiteMode(
-                (highlights?.driveMilestones || []).map((milestone) => milestone.opportunity),
-                mode
-            )
+            (highlights?.driveMilestones || []).map((milestone) => milestone.opportunity)
         ).filter((opp) => !opp.expiresAt || new Date(opp.expiresAt) > new Date());
-        const modeNewSinceLastVisit = filterOpportunitiesForSiteMode(highlights?.newSinceLastVisit || [], mode)
+        const modeNewSinceLastVisit = (highlights?.newSinceLastVisit || [])
             .filter(o => !o.expiresAt || new Date(o.expiresAt) > new Date());
 
         const active = modeRecentOpps
@@ -332,7 +327,7 @@ export default function DashboardClient() {
         const currentItems = tabMap[activeTab] || featured;
 
         return { activeItems: currentItems, latestBadgeCount: latestCount };
-    }, [recentOpps, highlights, dashboardVisitCounter, profile, activeTab, mode]);
+    }, [recentOpps, highlights, dashboardVisitCounter, profile, activeTab]);
 
     const tabs: { key: TabKey; title: string }[] = [
         { key: 'featured', title: 'Featured' },

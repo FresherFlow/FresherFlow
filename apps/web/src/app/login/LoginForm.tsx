@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams } from 'next/navigation';
@@ -305,9 +306,9 @@ function LoginContent() {
                                 <span>Verified Infrastructure</span>
                             </div>
                             <div className="flex items-center gap-3 text-[10px] font-semibold capitalize tracking-widest text-muted-foreground">
-                                <a href="/privacy" className="hover:text-foreground transition-colors">Privacy</a>
+                                <Link href="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
                                 <span className="text-muted-foreground/40">|</span>
-                                <a href="/terms" className="hover:text-foreground transition-colors">Terms</a>
+                                <Link href="/terms" className="hover:text-foreground transition-colors">Terms</Link>
                             </div>
                         </div>
                     </div>

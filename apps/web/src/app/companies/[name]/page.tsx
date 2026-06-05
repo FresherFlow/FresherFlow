@@ -11,6 +11,7 @@ import CompanyLogo from '@/components/ui/CompanyLogo';
 import { SITE_URL } from '@/lib/runtimeConfig';
 
 export const revalidate = false;
+// Same as /[slug] — dynamicParams = true to support dynamically loaded new company profiles.
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
@@ -110,6 +111,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                             companyWebsite={profile.website}
                             companyLogoUrl={profile.logo}
                             applyLink={firstJob.applyLink}
+                            isGovernment={firstJob.type === 'GOVERNMENT' || Boolean(firstJob.governmentJobDetails)}
                             className="w-14 h-14 md:w-16 md:h-16 rounded-[1.25rem]"
                         />
                         <div className="space-y-2 pt-1">

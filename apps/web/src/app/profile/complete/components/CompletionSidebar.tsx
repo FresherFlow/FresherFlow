@@ -1,4 +1,5 @@
 import React from 'react';
+import Link from 'next/link';
 import { cn } from '@repo/ui/utils/cn';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 
@@ -93,9 +94,9 @@ export const CompletionSidebar = ({
                     </div>
                 </div>
 
-                <a href="/logout" className="text-[14px] font-semibold tracking-normal text-muted-foreground hover:text-foreground transition-colors mt-auto pt-4 text-center">
+                <Link href="/logout" className="text-[14px] font-semibold tracking-normal text-muted-foreground hover:text-foreground transition-colors mt-auto pt-4 text-center">
                     Logout From Account
-                </a>
+                </Link>
             </div>
         </aside>
     );

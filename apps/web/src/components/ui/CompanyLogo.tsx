@@ -16,14 +16,24 @@ interface CompanyLogoProps {
     className?: string;
     /** Pass true for the first 1-2 above-fold cards to improve LCP */
     priority?: boolean;
+    isGovernment?: boolean;
 }
 
-export default function CompanyLogo({ companyName, companyWebsite, companyLogoUrl, applyLink, className, priority = false }: CompanyLogoProps) {
+export default function CompanyLogo({ companyName, companyWebsite, companyLogoUrl, applyLink, className, priority = false, isGovernment }: CompanyLogoProps) {
     const [attemptIndex, setAttemptIndex] = useState(0);
     const [imgError, setImgError] = useState(false);
 
     const normalizedName = (companyName || '').toLowerCase().trim();
     const isTcsBrand = normalizedName.includes('tata consultancy services') || normalizedName.includes(' tcs') || normalizedName === 'tcs';
+
+    const isGovDetected = useMemo(() => {
+        if (isGovernment) return true;
+        const nameClean = normalizedName;
+        const hasGovKeyword = nameClean.includes('commission') || nameClean.includes('board') || nameClean.includes('police') || nameClean.includes('railway') || nameClean.includes('air force') || nameClean.includes('navy') || nameClean.includes('army') || nameClean.includes('ministry');
+        const hasGovDomain = (companyWebsite && (companyWebsite.includes('.gov.in') || companyWebsite.includes('.nic.in') || companyWebsite.includes('tgprb.in') || companyWebsite.includes('cdac.in'))) ||
+                             (applyLink && (applyLink.includes('.gov.in') || applyLink.includes('.nic.in') || applyLink.includes('tgprb.in') || applyLink.includes('cdac.in')));
+        return !!(hasGovKeyword || hasGovDomain);
+    }, [isGovernment, normalizedName, companyWebsite, applyLink]);
 
     const candidates = useMemo(() => {
         const urls: string[] = [];
@@ -31,6 +41,11 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         // 1. Explicit Logo URL (highest priority)
         if (companyLogoUrl) {
             urls.push(`${companyLogoUrl}${companyLogoUrl.includes('?') ? '&' : '?'}size=80`);
+        }
+
+        if (isGovDetected && !companyLogoUrl) {
+            // Do not query third party favicons for government sites if explicit logo is missing
+            return [];
         }
 
         // 2. Resolve Domain
@@ -60,7 +75,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         });
 
         return Array.from(new Set(urls));
-    }, [companyLogoUrl, companyWebsite, applyLink, normalizedName]);
+    }, [companyLogoUrl, companyWebsite, applyLink, normalizedName, isGovDetected]);
 
     // Use cached URL if available for instant load
     const cacheKey = candidates.join('|');
@@ -103,6 +118,15 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
     };
 
     if (!currentSrc || imgError) {
+        if (isGovDetected) {
+            return (
+                <div className={cn("w-12 h-12 rounded bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-500", className)}>
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                </div>
+            );
+        }
         if (isTcsBrand) {
             return (
                 <div className={cn("w-12 h-12 bg-[#005a9c] border border-[#005a9c] rounded flex items-center justify-center shrink-0", className)}>

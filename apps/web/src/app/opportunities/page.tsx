@@ -4,7 +4,9 @@ import { FeedPageSkeleton } from '@/components/ui/Skeleton';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import { OpportunitiesFeedClient } from '@/features/jobs/components/OpportunitiesFeedClient';
 
-export const revalidate = 3600;
+// On-demand revalidation via /api/revalidate — called when jobs are published/expired.
+// No time-based revalidation: avoids hourly ISR writes when the feed hasn't changed.
+export const revalidate = false;
 
 export const metadata: Metadata = {
     title: 'Job Opportunities Feed',

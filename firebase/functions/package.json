@@ -3,7 +3,7 @@
   "private": true,
   "main": "lib/index.js",
   "engines": {
-    "node": "22"
+    "node": "22 || >=24.0.0"
   },
   "scripts": {
     "build": "tsc",

@@ -3,7 +3,8 @@ import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 
-export const revalidate = 3600;
+// On-demand revalidation via /api/revalidate — called when jobs are published/expired.
+export const revalidate = false;
 
 export const metadata: Metadata = {
     title: 'Walk-in Interview Drives',

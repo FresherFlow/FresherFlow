@@ -229,7 +229,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             {/* Header: Company + Title + Save */}
             <div className="flex justify-between items-start">
                 <div className="flex items-start gap-3 min-w-0 flex-1">
-                    <div className="mt-1 shrink-0"><CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} companyLogoUrl={job.companyLogoUrl} applyLink={job.applyLink} priority={priority} /></div>
+                    <div className="mt-1 shrink-0"><CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} companyLogoUrl={job.companyLogoUrl} applyLink={job.applyLink} priority={priority} isGovernment={job.type === 'GOVERNMENT' || Boolean(job.governmentJobDetails)} /></div>
                     <div className="min-w-0">
                         <Link
                             href={`/companies/${slugify(job.company)}`}

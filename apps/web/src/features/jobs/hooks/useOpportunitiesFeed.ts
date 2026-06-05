@@ -8,8 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { readFeedCache, saveFeedCache } from '@/lib/offline/opportunitiesFeedCache';
 import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
 import { enqueueOfflineSaveToggle } from '@/lib/offline/actionQueue';
-import { useSiteMode } from '@/contexts/SiteModeContext';
-import { filterOpportunitiesForSiteMode } from '@/lib/opportunityMode';
+
 
 const WEB_STATIC_DISCOVERY = true;
 
@@ -45,7 +44,6 @@ export function useOpportunitiesFeed({
     initialData
 }: UseOpportunitiesFeedOptions) {
     const { user, profile, isLoading: authLoading } = useAuth();
-    const { mode } = useSiteMode();
 
     // Compute the initial cache scope synchronously
     const normalizedType = (type || 'all').toLowerCase();
@@ -250,9 +248,16 @@ export function useOpportunitiesFeed({
     }, [loadOpportunities, authLoading, user, showOnlySaved, !!initialData]);
 
     const filteredOpps = useMemo(() => {
-        const modeFiltered = filterOpportunitiesForSiteMode(opportunities, mode);
+        const modeFiltered = opportunities;
 
         const filtered = modeFiltered.filter(opp => {
+            // Segregate government jobs from normal feeds
+            const isGovOpp = opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails);
+            const isGovFeed = type === 'GOVERNMENT';
+            if (isGovOpp !== isGovFeed) {
+                return false;
+            }
+
             const matchesSearch = !normalizedSearch || [
                 opp.title,
                 opp.normalizedRole,
@@ -337,7 +342,7 @@ export function useOpportunitiesFeed({
 
             return (a.id || '').localeCompare(b.id || '');
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile, mode, normalizedSearch]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile, normalizedSearch]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {

@@ -160,7 +160,7 @@ export default function CaptionsTool() {
 📍 Location: ${locations}${tgSkills}${tgSalary}
 
 ⭕️ Apply Now:
-https://fresherflow.in/opportunities/${opp.slug}
+https://fresherflow.in/${opp.slug}
 
 📱 More jobs: fresherflow.in/app`;
         }
@@ -175,7 +175,7 @@ ${twBatch}
 📍 ${locations}
 
 Apply 👇
-https://fresherflow.in/opportunities/${opp.slug}
+https://fresherflow.in/${opp.slug}
 
 ${twHashtags}`;
         }
@@ -193,7 +193,7 @@ ${twHashtags}`;
 📍 Location: ${locations}${liSkills}${liSalary}
 
 Apply:
-https://fresherflow.in/opportunities/${opp.slug}
+https://fresherflow.in/${opp.slug}
 
 📱 More jobs: fresherflow.in/app
 
@@ -212,7 +212,7 @@ ${liHashtags}`;
 > 📍 *Location:* ${locations}${waSkills}${waSalary}
 
 ⭕️ *Apply Now:*
-https://fresherflow.in/opportunities/${opp.slug}
+https://fresherflow.in/${opp.slug}
 
 📱 *More jobs on FresherFlow:* fresherflow.in/app`;
     };
@@ -225,7 +225,7 @@ https://fresherflow.in/opportunities/${opp.slug}
             let body = `🚨 *Today's Job Updates*\n\n`;
             selectedOpps.forEach((opp, index) => {
                 const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 https://fresherflow.in/opportunities/${opp.slug}\n\n`;
+                body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 https://fresherflow.in/${opp.slug}\n\n`;
             });
             body += `📱 *More jobs:* fresherflow.in/app`;
             return body;
@@ -235,7 +235,7 @@ https://fresherflow.in/opportunities/${opp.slug}
             let body = `🚨 Today's Job Updates\n\n`;
             selectedOpps.forEach((opp, index) => {
                 const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 https://fresherflow.in/opportunities/${opp.slug}\n\n`;
+                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 https://fresherflow.in/${opp.slug}\n\n`;
             });
             body += `📱 More jobs: fresherflow.in/app`;
             return body;

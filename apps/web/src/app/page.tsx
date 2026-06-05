@@ -2,9 +2,8 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
-import { GovtLandingPage } from '@/features/landing/GovtLandingPage';
 import { fetchBootstrapFeed, fetchEducationMetadata, fetchSkillsMetadata, EducationMetadata } from '@/lib/api/cdnFeed';
-import { SiteMode } from '@/lib/siteMode';
+import { redirect } from 'next/navigation';
 
 import { EligibilityMatcher } from '@/features/landing/EligibilityMatcher';
 import { Opportunity } from '@fresherflow/types';
@@ -52,7 +51,6 @@ export default async function LandingPage() {
     // We race the data fetching against a 500ms timeout.
     // If the data takes longer than 500ms, we render with defaults to stop the "circling" hang.
     let liveCount = 0;
-    let mode: SiteMode = 'private';
     let opportunities: Opportunity[] = [];
     let educationMetadata: EducationMetadata | null = null;
     let skillsMetadata: string[] | null = null;
@@ -73,7 +71,6 @@ export default async function LandingPage() {
         );
 
         const [resolvedFeed, resolvedEdu, resolvedSkills] = await Promise.race([dataPromise, timeoutPromise]);
-        mode = 'private';
         if (resolvedFeed) {
             opportunities = resolvedFeed.opportunities || [];
             liveCount = resolvedFeed.count || opportunities.length || 0;
@@ -87,9 +84,7 @@ export default async function LandingPage() {
 
 
 
-    if ((mode as string) === 'govt') {
-        return <GovtLandingPage liveCount={liveCount} />;
-    }
+
 
     return (
         <>
