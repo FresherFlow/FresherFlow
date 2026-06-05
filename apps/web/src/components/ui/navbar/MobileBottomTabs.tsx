@@ -6,15 +6,14 @@ import { useContext, useEffect, useState } from 'react';
 import { AuthContext } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { getNavRoutes } from './routeConfig';
-import { useSiteMode } from '@/contexts/SiteModeContext';
+
 
 export function MobileBottomTabs() {
     const pathname = usePathname();
     const context = useContext(AuthContext);
     const user = context?.user;
     const [isVisible, setIsVisible] = useState(true);
-    const { mode } = useSiteMode();
-    const mobileTabs = getNavRoutes(mode).filter(r => r.showInMobileTabs);
+    const mobileTabs = getNavRoutes().filter(r => r.showInMobileTabs);
 
     useEffect(() => {
         if (!user) return;

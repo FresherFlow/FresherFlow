@@ -7,7 +7,7 @@ import type {
     AuthenticationResponseJSON
 } from '@simplewebauthn/browser';
 import { markDetailSyncedNow, markFeedSyncedNow } from '@/lib/offline/syncStatus';
-import { getSiteModeClient } from '@/lib/siteMode';
+
 
 // Thrown when a request is made with no network connectivity.
 // Callers can check `err instanceof OfflineError` to skip toast notifications.
@@ -749,11 +749,6 @@ export const opportunityClicksApi = {
         }),
 };
 
-function appendSiteModeQuery(query: URLSearchParams) {
-    if (typeof window === 'undefined') return;
-    query.set('siteMode', getSiteModeClient());
-}
-
 // Opportunities API calls
 export const opportunitiesApi = {
     list: (params?: { type?: string; city?: string; company?: string; closingSoon?: boolean; minSalary?: number; maxSalary?: number; page?: number; limit?: number; sort?: string }) => {
@@ -767,7 +762,7 @@ export const opportunitiesApi = {
         if (params?.page) query.append('page', String(params.page));
         if (params?.limit) query.append('limit', String(params.limit));
         if (params?.sort) query.append('sort', params.sort);
-        appendSiteModeQuery(query);
+
 
         const queryString = query.toString();
         return apiClient(`/api/opportunities${queryString ? `?${queryString}` : ''}`);
@@ -779,13 +774,13 @@ export const opportunitiesApi = {
         if (params.city) query.append('city', params.city);
         if (params.page) query.append('page', String(params.page));
         if (params.limit) query.append('limit', String(params.limit));
-        appendSiteModeQuery(query);
+
         return apiClient(`/api/opportunities/search?${query.toString()}`);
     },
 
     getById: (id: string) => {
         const query = new URLSearchParams();
-        appendSiteModeQuery(query);
+
         const queryString = query.toString();
         return apiClient(`/api/opportunities/${id}${queryString ? `?${queryString}` : ''}`);
     }
@@ -898,6 +893,11 @@ export const alertsApi = {
             method: 'DELETE'
         }),
     seedTest: () => apiClient('/api/alerts/seed-test', { method: 'POST' }),
+};
+
+export const governmentJobsApi = {
+    list: () => apiClient<any[]>('/api/public/government-jobs'),
+    get: (jobId: string) => apiClient<any>(`/api/public/government-jobs/${jobId}`),
 };
 
 export const referralApi = {

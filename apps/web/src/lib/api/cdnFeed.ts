@@ -8,7 +8,8 @@ import {
     SITE_URL, 
     EDUCATION_METADATA_URL, 
     SKILLS_METADATA_URL,
-    SITEMAP_DATA_URL
+    SITEMAP_DATA_URL,
+    API_URL
 } from '../runtimeConfig';
 import crypto from 'node:crypto';
 
@@ -124,6 +125,14 @@ export async function fetchFeedVersion(): Promise<string> {
 export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFeedResponse | null> {
     try {
         if (process.env.NODE_ENV === 'development' && !forceLive) {
+            try {
+                const res = await fetch(`${API_URL}/bootstrap-feed.min.json`, { cache: 'no-store' });
+                if (res.ok) {
+                    return await res.json() as BootstrapFeedResponse;
+                }
+            } catch (err) {
+                console.warn('Failed to fetch live bootstrap feed from local API server, falling back to dummy-feed.json:', err);
+            }
             const res = await fetch(`${SITE_URL || 'http://localhost:3000'}/dummy-feed.json`, { cache: 'no-store' });
             return await res.json() as BootstrapFeedResponse;
         }
@@ -218,10 +227,15 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
     try {
         const url = signUrlIfServer(GET_CATEGORY_SHARD_URL(id));
 
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+
         const res = await fetch(url, getCDNFetchOptions({
-            next: { revalidate: 3600 }
+            next: { revalidate: 3600 },
+            signal: controller.signal,
         }));
 
+        clearTimeout(timeoutId);
         if (!res.ok) return null;
         return await res.json() as BootstrapFeedResponse;
     } catch (err) {
@@ -237,10 +251,17 @@ export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResp
     try {
         const url = signUrlIfServer(GET_COMPANY_SHARD_URL(slug));
 
+        const controller = new AbortController();
+        // 3.5s hard cap — bots hitting non-existent company slugs were hanging the
+        // serverless function until Vercel's ~9s ceiling, burning compute the entire time.
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
+
         const res = await fetch(url, getCDNFetchOptions({
-            next: { revalidate: 3600 }
+            next: { revalidate: 3600 },
+            signal: controller.signal,
         }));
 
+        clearTimeout(timeoutId);
         if (!res.ok) return null;
         return await res.json() as BootstrapFeedResponse;
     } catch (err) {

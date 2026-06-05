@@ -13,12 +13,12 @@ import { useUnreadNotifications } from '@/features/notifications/hooks/useUnread
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
 import { useInstallPrompt } from '@/contexts/InstallPromptContext';
 import { getNavRoutes } from './routeConfig';
-import { useSiteMode } from '@/contexts/SiteModeContext';
+
 
 const MobileNavMenu = dynamic(() => import('../MobileNavMenu'), { ssr: false });
 
-function getMobileTitle(pathname: string, mode: "private" | "govt"): string {
-    const navRoutes = getNavRoutes(mode);
+function getMobileTitle(pathname: string): string {
+    const navRoutes = getNavRoutes();
     const match = navRoutes.find(r => pathname === r.href || pathname.startsWith(`${r.href}/`));
     if (match?.mobileTitle) return match.mobileTitle;
     if (pathname.startsWith('/jobs/')) return 'Job';
@@ -40,8 +40,7 @@ export function MobileTopNav() {
     const [menuOpen, setMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const { canInstall, promptInstall } = useInstallPrompt();
-    const { mode } = useSiteMode();
-    const mobileTitle = getMobileTitle(pathname, mode);
+    const mobileTitle = getMobileTitle(pathname);
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 8);

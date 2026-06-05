@@ -11,14 +11,12 @@ import { NavigationWrapper } from "@/components/providers/NavigationWrapper";
 // import { ThemeScript } from "@/components/providers/ThemeScript";
 // import OfflineNotification from "@/components/ui/OfflineNotification";
 import InstallAppBanner from "@/components/ui/InstallAppBanner";
-import { SiteModeProvider } from "@/contexts/SiteModeContext";
 import { PageTransitionWrapper } from "@/components/providers/PageTransitionWrapper";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { GoogleAnalytics } from "@next/third-parties/google";
 import { HeadInjections } from "@/components/providers/HeadInjections";
 import { SITE_URL } from "@/lib/runtimeConfig";
-import { SiteMode } from "@/lib/siteMode";
 import { AuthFormDataProvider } from "@/contexts/AuthFormDataContext";
 import { ErrorBoundary } from "@/components/providers/ErrorBoundary";
 
@@ -80,7 +78,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialSiteMode: SiteMode = 'private';
   const gaId = process.env.NEXT_PUBLIC_GA_ID || '';
   const enableVercelAnalytics = process.env.NEXT_PUBLIC_ENABLE_VERCEL_ANALYTICS === 'true';
   const enableSpeedInsights = process.env.NEXT_PUBLIC_ENABLE_SPEED_INSIGHTS === 'true';
@@ -113,7 +110,6 @@ export default async function RootLayout({
       </head>
       <body className="antialiased bg-background text-foreground selection:bg-primary/20" suppressHydrationWarning>
         <ThemeProvider>
-          <SiteModeProvider initialMode={initialSiteMode}>
             <PageTransitionWrapper>
               <AuthFormDataProvider>
                 <ConditionalAuthProvider>
@@ -130,7 +126,6 @@ export default async function RootLayout({
                 </ConditionalAuthProvider>
               </AuthFormDataProvider>
             </PageTransitionWrapper>
-          </SiteModeProvider>
         </ThemeProvider>
         {/* WEB PIVOT: disabled service worker/offline runtime. */}
         {/* <ServiceWorkerRegister /> */}

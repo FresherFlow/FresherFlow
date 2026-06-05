@@ -14,81 +14,7 @@ export type NavRoute = {
     mobileLabel?: string;
 };
 
-export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
-    if (mode === "govt") {
-        return [
-            {
-                href: '/dashboard',
-                label: 'Dashboard',
-                mobileTitle: 'FresherFlow',
-                mobileLabel: 'Home',
-                showInDesktop: true,
-                showInMobileTabs: true,
-                icon: HomeIcon,
-            },
-            {
-                href: '/jobs',
-                label: 'Latest Govt',
-                mobileTitle: 'Latest Govt',
-                mobileLabel: 'Latest',
-                showInDesktop: true,
-                showInMobileTabs: true,
-                icon: BriefcaseIcon,
-            },
-            {
-                href: '/jobs?sector=central',
-                label: 'Central Govt',
-                mobileTitle: 'Central Govt',
-                mobileLabel: 'Central',
-                showInDesktop: true,
-                showInMobileTabs: true,
-                icon: AcademicCapIcon,
-            },
-            {
-                href: '/jobs?sector=state',
-                label: 'State Govt',
-                mobileTitle: 'State Govt',
-                mobileLabel: 'State',
-                showInDesktop: true,
-                showInMobileTabs: true,
-                icon: AcademicCapIcon,
-            },
-            {
-                href: '/jobs?sector=bank',
-                label: 'Bank',
-                mobileTitle: 'Bank',
-                mobileLabel: 'Bank',
-                showInDesktop: true,
-                showInMobileTabs: false,
-                icon: BriefcaseIcon,
-            },
-            {
-                href: '/jobs?sector=railway',
-                label: 'Railway',
-                mobileTitle: 'Railway',
-                mobileLabel: 'Railway',
-                showInDesktop: true,
-                showInMobileTabs: false,
-                icon: BriefcaseIcon,
-            },
-            {
-                href: '/jobs?sector=defence',
-                label: 'Defence',
-                mobileTitle: 'Defence',
-                mobileLabel: 'Defence',
-                showInDesktop: true,
-                showInMobileTabs: false,
-                icon: BriefcaseIcon,
-            },
-            {
-                href: '/account/saved',
-                label: 'Saved',
-                mobileTitle: 'Saved',
-                showInDesktop: true,
-            },
-        ];
-    }
-
+export function getNavRoutes(): NavRoute[] {
     return [
         /* TEMPORARY PIVOT: Hide personalized routes on web */
         /*
@@ -137,6 +63,15 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
             showInDesktop: true,
             showInMobileTabs: true,
             icon: BriefcaseIcon,
+        },
+        {
+            href: '/government-jobs',
+            label: 'Govt Jobs',
+            mobileTitle: 'Govt Jobs',
+            mobileLabel: 'Govt',
+            showInDesktop: true,
+            showInMobileTabs: true,
+            icon: AcademicCapIcon,
         },
         /*
         {

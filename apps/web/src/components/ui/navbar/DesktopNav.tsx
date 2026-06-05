@@ -13,8 +13,8 @@ import { useUnreadNotifications } from '@/features/notifications/hooks/useUnread
 import { useOfflineActionQueue } from '@/lib/offline/useOfflineActionQueue';
 import { getNavRoutes } from './routeConfig';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useSiteMode } from '@/contexts/SiteModeContext';
-import { ModeSwitch } from '@/components/site/ModeSwitch';
+
+import CaptionsTool from '@/components/CaptionsTool';
 
 export function DesktopNav() {
     const context = useContext(AuthContext);
@@ -25,8 +25,7 @@ export function DesktopNav() {
     const pendingSyncCount = useOfflineActionQueue(user?.id);
     const [scrolled, setScrolled] = useState(false);
     const { theme, toggleTheme } = useTheme();
-    const { mode } = useSiteMode();
-    const desktopRoutes = getNavRoutes(mode).filter(r => r.showInDesktop);
+    const desktopRoutes = getNavRoutes().filter(r => r.showInDesktop);
 
     useEffect(() => {
         const onScroll = () => setScrolled(window.scrollY > 20);
@@ -75,7 +74,7 @@ export function DesktopNav() {
                                     }}
                                     aria-current={isActive ? 'page' : undefined}
                                     className={cn(
-                                        'px-3.5 py-1.5 text-[15px] font-medium transition-colors duration-150 relative after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[2px] after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:origin-left',
+                                        'px-3.5 py-1.5 text-[15px] font-medium whitespace-nowrap transition-colors duration-150 relative after:absolute after:bottom-0 after:left-3 after:right-3 after:h-[2px] after:rounded-full after:bg-foreground/40 after:transition-transform after:duration-300 after:origin-left',
                                         isActive
                                             ? 'text-foreground after:scale-x-100'
                                             : 'text-muted-foreground hover:text-foreground after:scale-x-0'
@@ -96,7 +95,7 @@ export function DesktopNav() {
                         </span>
                     )}
 
-                    {!isLoading && user && <ModeSwitch className="mr-1" />}
+                    {!isLoading && user && <CaptionsTool />}
                     <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
 
                     {!isLoading && (
