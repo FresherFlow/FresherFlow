@@ -34,6 +34,38 @@ enum OpportunityStatus {
   ARCHIVED
 }
 
+enum GovernmentApplicationStatus {
+  UPCOMING
+  OPEN
+  CLOSED
+  EXAM_SCHEDULED
+  ADMIT_CARD_RELEASED
+  ANSWER_KEY_RELEASED
+  RESULT_DECLARED
+  COUNSELLING
+  DOCUMENT_VERIFICATION
+  COMPLETED
+  CANCELLED
+}
+
+enum GovernmentLevel {
+  CENTRAL
+  STATE
+  PSU
+  BANKING
+  DEFENCE
+  JUDICIARY
+  EDUCATION
+}
+
+enum VacancyNature {
+  PERMANENT
+  TEMPORARY
+  CONTRACT
+  APPRENTICESHIP
+  DEPUTATION
+}
+
 enum ActionType {
   APPLIED
   PLANNED
@@ -193,6 +225,19 @@ enum UserTrustLevel {
   CONTRIBUTOR
   MODERATOR
   BANNED
+}
+
+enum ResourceItemType {
+  YOUTUBE
+  GOOGLE_DRIVE
+  WEBSITE
+  ROADMAP
+  LINK
+}
+
+enum ResourceItemStatus {
+  PENDING_REVIEW
+  APPROVED
 }
 
 // ============================================================================
@@ -514,29 +559,75 @@ model GovernmentJobDetails {
   officialWebsiteUrl     String?
   officialNotificationUrl String?
   advertisementNumber    String?
-  postName               String?
+  notificationIssuedDate String?
+  
   applicationMode        String?
-  applicationModes       String[] @default([])
+  applicationStatus      GovernmentApplicationStatus?
+  governmentLevel        GovernmentLevel?
+  jobCategory            String[] @default([])
+  
   vacancyCount           Int?
-  vacancies              Json?
+  vacancyNature          VacancyNature?
+  vacancyBreakdown       Json?
+  categoryVacancies      Json?
+  
+  payLevel               String?
+  basicPay               Int?
+  allowances             String[] @default([])
+  
   applicationFee         String?  @db.Text
   applicationFeeDetails  Json?
+  feeBreakdown           Json?
+  
   ageMin                 Int?
   ageMax                 Int?
   ageRelaxation          String?  @db.Text
+  ageRelaxationRules     Json?
+  
   eligibilityDetails     Json?
+  qualificationDetails   Json?
+  physicalStandards      Json?
+  
+  cadreDetails           Json?
+  postPreferences        Json?
+  serviceBond            Json?
+  
   reservationNotes       String?  @db.Text
+  reservationDetails     Json?
   importantInstructions  String?  @db.Text
+  
   applicationStartDate   String?
   applicationEndDate     String?
   examDate               String?
   examDates              Json?
+  examStages             Json?
+  importantDates         Json?
   admitCardDate          String?
   resultDate             String?
-  selectionStages        String[] @default([])
+  
+  examCenters            String[] @default([])
+  examPattern            Json?
+  selectionStages        Json?
+  skillTests             Json?
+  
   requiredDocuments      String[] @default([])
   requiredDocumentDetails Json?
+  
+  referenceLinks         Json?
+  officialSourceVerified Boolean? @default(false)
+  sourceLastCheckedAt    DateTime?
+  notificationPdfUrl     String?
+  admitCardUrl           String?
+  resultUrl              String?
+  answerKeyUrl           String?
+  syllabusUrl            String?
+  previousPapersUrl      String?
+  
+  extraMetadata          Json?
   seoTags                String[] @default([])
+  
+  extractionConfidence   Float?
+  
   createdAt              DateTime @default(now())
   updatedAt              DateTime @updatedAt
 
@@ -930,4 +1021,22 @@ model OpportunityComment {
 
   @@index([opportunityId, createdAt])
   @@index([userId])
+}
+
+model SharedResource {
+  id              String             @id @default(uuid())
+  title           String
+  type            ResourceItemType
+  url             String             @unique
+  company         String?
+  skills          String[]           @default([])
+  addedByUserId   String?
+  addedByUsername String?
+  status          ResourceItemStatus @default(PENDING_REVIEW)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([company])
+  @@index([skills], type: Gin)
+  @@index([status])
 }

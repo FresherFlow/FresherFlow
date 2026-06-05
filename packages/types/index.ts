@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // Shared Types - Single Source of Truth
 // Apps can import from here. This package NEVER imports from apps.
 
@@ -12,6 +13,38 @@ export enum OpportunityType {
     REMOTE = 'REMOTE',
     GOVERNMENT = 'GOVERNMENT',
     HACKATHONS = 'HACKATHONS'
+}
+
+export enum GovernmentApplicationStatus {
+    UPCOMING = 'UPCOMING',
+    OPEN = 'OPEN',
+    CLOSED = 'CLOSED',
+    EXAM_SCHEDULED = 'EXAM_SCHEDULED',
+    ADMIT_CARD_RELEASED = 'ADMIT_CARD_RELEASED',
+    ANSWER_KEY_RELEASED = 'ANSWER_KEY_RELEASED',
+    RESULT_DECLARED = 'RESULT_DECLARED',
+    COUNSELLING = 'COUNSELLING',
+    DOCUMENT_VERIFICATION = 'DOCUMENT_VERIFICATION',
+    COMPLETED = 'COMPLETED',
+    CANCELLED = 'CANCELLED'
+}
+
+export enum GovernmentLevel {
+    CENTRAL = 'CENTRAL',
+    STATE = 'STATE',
+    PSU = 'PSU',
+    BANKING = 'BANKING',
+    DEFENCE = 'DEFENCE',
+    JUDICIARY = 'JUDICIARY',
+    EDUCATION = 'EDUCATION'
+}
+
+export enum VacancyNature {
+    PERMANENT = 'PERMANENT',
+    TEMPORARY = 'TEMPORARY',
+    CONTRACT = 'CONTRACT',
+    APPRENTICESHIP = 'APPRENTICESHIP',
+    DEPUTATION = 'DEPUTATION'
 }
 
 export enum Role {
@@ -324,6 +357,12 @@ export interface GovernmentExamDates {
     other?: string;
 }
 
+export interface GovernmentExamStage {
+    name: string;
+    date?: string;
+    notes?: string;
+}
+
 export interface GovernmentRequiredDocument {
     name: string;
     mandatory?: boolean;
@@ -350,30 +389,75 @@ export interface GovernmentJobDetails {
     officialWebsiteUrl?: string;
     officialNotificationUrl?: string;
     advertisementNumber?: string;
-    postName?: string;
+    notificationIssuedDate?: string;
     applicationMode?: string;
-    applicationModes?: string[];
+    applicationStatus?: GovernmentApplicationStatus;
+    governmentLevel?: GovernmentLevel;
+    jobCategory?: string[];
+    
     vacancyCount?: number;
-    vacancies?: GovernmentVacancy[];
+    vacancyNature?: VacancyNature;
+    vacancyBreakdown?: any; // Replace with specific type if needed
+    categoryVacancies?: any;
+    
+    payLevel?: string;
+    basicPay?: number;
+    allowances?: string[];
+    
     applicationFee?: string;
-    applicationFeeDetails?: GovernmentApplicationFee;
+    applicationFeeDetails?: any;
+    feeBreakdown?: any;
+    
     ageMin?: number;
     ageMax?: number;
     ageRelaxation?: string;
-    eligibilityDetails?: GovernmentEligibilityDetails;
+    ageRelaxationRules?: any;
+    
+    eligibilityDetails?: any;
+    qualificationDetails?: any;
+    physicalStandards?: any;
+    
+    cadreDetails?: any;
+    postPreferences?: any;
+    serviceBond?: any;
+    
     reservationNotes?: string;
+    reservationDetails?: any;
     importantInstructions?: string;
+    
     applicationStartDate?: string;
     applicationEndDate?: string;
     examDate?: string;
-    examDates?: GovernmentExamDates;
+    examDates?: any;
+    examStages?: any;
+    importantDates?: any;
     admitCardDate?: string;
     resultDate?: string;
-    selectionStages?: string[];
+    
+    examCenters?: string[];
+    examPattern?: any;
+    selectionStages?: any;
+    skillTests?: any;
+    
     requiredDocuments?: string[];
-    requiredDocumentDetails?: GovernmentRequiredDocument[];
+    requiredDocumentDetails?: any;
+    
+    referenceLinks?: any;
+    officialSourceVerified?: boolean;
+    sourceLastCheckedAt?: string | Date;
+    notificationPdfUrl?: string;
+    admitCardUrl?: string;
+    resultUrl?: string;
+    answerKeyUrl?: string;
+    syllabusUrl?: string;
+    previousPapersUrl?: string;
+    
+    extraMetadata?: any;
     seoTags?: string[];
+    
+    extractionConfidence?: number;
 }
+
 
 export interface SocialPost {
     id: string;
@@ -673,3 +757,56 @@ export interface AlertFeedResponse {
     total: number;
     hasMore: boolean;
 }
+
+// ========================================
+// RESOURCE SHARING TYPES
+// ========================================
+
+export interface CreateSharedResourceRequest {
+    title?: string;
+    url: string;
+    company?: string;
+    skills?: string[];
+}
+
+export enum ResourceItemType {
+    YOUTUBE = 'YOUTUBE',
+    GOOGLE_DRIVE = 'GOOGLE_DRIVE',
+    WEBSITE = 'WEBSITE',
+    ROADMAP = 'ROADMAP',
+    LINK = 'LINK'
+}
+
+export enum ResourceItemStatus {
+    PENDING_REVIEW = 'PENDING_REVIEW',
+    APPROVED = 'APPROVED'
+}
+
+export interface SharedResource {
+    id: string;
+    title: string;
+    type: ResourceItemType;
+    url: string;
+    company?: string | null;
+    skills: string[];
+    addedByUserId?: string | null;
+    addedByUsername?: string | null;
+    status: ResourceItemStatus;
+    createdAt: string | Date;
+    updatedAt: string | Date;
+}
+
+export interface CompanyResourceMetadata {
+    logoUrl?: string | null;
+    website?: string | null;
+}
+
+export interface ResourcesFeed {
+    metadata: {
+        version: string;
+        updatedAt: number;
+    };
+    resources: SharedResource[];
+    companyMetadata: Record<string, CompanyResourceMetadata>;
+}
+
