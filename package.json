@@ -9,7 +9,7 @@
     "firebase/functions"
   ],
   "scripts": {
-    "postinstall": "npx prisma generate --schema=packages/database/prisma/schema.prisma",
+    "postinstall": "pnpm exec prisma generate --schema=packages/database/prisma/schema.prisma",
     "prune:api": "turbo prune fresherflow-api --docker",
     "prune:web": "turbo prune fresherflow-web --docker",
     "kill:port": "powershell -Command \"$p = (Get-NetTCPConnection -LocalPort 5000 -EA SilentlyContinue).OwningProcess | Select-Object -First 1; if ($p) { taskkill /F /PID $p } else { Write-Host 'Port 5000 is free' }\"",
@@ -93,8 +93,7 @@
   },
   "packageManager": "pnpm@9.1.0",
   "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=8.0.0"
+    "node": "22.x"
   },
   "keywords": [
     "monorepo",
