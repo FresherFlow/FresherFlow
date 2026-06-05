@@ -62,7 +62,7 @@
     "react-native-screens": "~4.16.0",
     "react-native-svg": "15.12.1",
     "react-native-web": "^0.21.0",
-    "zod": "^4.4.3",
+    "zod": "^3.24.1",
     "zustand": "^5.0.13"
   },
   "devDependencies": {
