@@ -3,6 +3,7 @@
 import { useAdmin } from '@/features/admin/AdminContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import toast from 'react-hot-toast';
 
 import { FormHeader } from './OpportunityForm/components/FormHeader';
 import { DuplicateCheck } from './OpportunityForm/DuplicateCheck';
@@ -115,8 +116,13 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                             isParsing={form.isParsing}
                             handleAutoFill={() => void form.handleAutoFill(form.pastedText)}
                             applyJsonToForm={() => {
-                                form.applyJsonData(JSON.parse(form.pastedJson));
-                                form.setShowParser(false);
+                                try {
+                                    const parsed = JSON.parse(form.pastedJson);
+                                    form.applyJsonData(parsed);
+                                    form.setShowParser(false);
+                                } catch (err) {
+                                    toast.error('Invalid JSON: Please check the pasted JSON structure.');
+                                }
                             }}
                             jsonReport={null}
                             closeParser={() => form.setShowParser(false)}
@@ -159,6 +165,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                             selectionProcess={form.selectionProcess} setSelectionProcess={form.setSelectionProcess}
                             notesHighlights={form.notesHighlights} setNotesHighlights={form.setNotesHighlights}
                             description={form.description} setDescription={form.setDescription}
+                            customSlug={form.customSlug} setCustomSlug={form.setCustomSlug}
                             duplicateCheckComponent={
                                 <DuplicateCheck
                                     checking={form.checkingDuplicates}
@@ -212,12 +219,12 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                                 setPostName={form.setPostName}
                                 applicationMode={form.applicationMode}
                                 setApplicationMode={form.setApplicationMode}
-                                applicationModes={form.applicationModes}
-                                setApplicationModes={form.setApplicationModes}
+                                notificationIssuedDate={form.notificationIssuedDate}
+                                setNotificationIssuedDate={form.setNotificationIssuedDate}
                                 vacancyCount={form.vacancyCount}
                                 setVacancyCount={form.setVacancyCount}
-                                vacanciesJson={form.vacanciesJson}
-                                setVacanciesJson={form.setVacanciesJson}
+                                vacancyBreakdownJson={form.vacancyBreakdownJson}
+                                setVacancyBreakdownJson={form.setVacancyBreakdownJson}
                                 applicationFee={form.applicationFee}
                                 setApplicationFee={form.setApplicationFee}
                                 applicationFeeJson={form.applicationFeeJson}
@@ -252,6 +259,50 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                                 setGovernmentRequiredDocuments={form.setGovernmentRequiredDocuments}
                                 governmentRequiredDocumentsJson={form.governmentRequiredDocumentsJson}
                                 setGovernmentRequiredDocumentsJson={form.setGovernmentRequiredDocumentsJson}
+                                
+                                // New fields wired to UI
+                                examCenters={form.examCenters}
+                                setExamCenters={form.setExamCenters}
+                                examPatternJson={form.examPatternJson}
+                                setExamPatternJson={form.setExamPatternJson}
+                                skillTestsJson={form.skillTestsJson}
+                                setSkillTestsJson={form.setSkillTestsJson}
+                                examStagesJson={form.examStagesJson}
+                                setExamStagesJson={form.setExamStagesJson}
+                                importantDatesJson={form.importantDatesJson}
+                                setImportantDatesJson={form.setImportantDatesJson}
+                                qualificationDetailsJson={form.qualificationDetailsJson}
+                                setQualificationDetailsJson={form.setQualificationDetailsJson}
+                                physicalStandardsJson={form.physicalStandardsJson}
+                                setPhysicalStandardsJson={form.setPhysicalStandardsJson}
+                                extraMetadataJson={form.extraMetadataJson}
+                                setExtraMetadataJson={form.setExtraMetadataJson}
+                                feeBreakdownJson={form.feeBreakdownJson}
+                                setFeeBreakdownJson={form.setFeeBreakdownJson}
+                                ageRelaxationRulesJson={form.ageRelaxationRulesJson}
+                                setAgeRelaxationRulesJson={form.setAgeRelaxationRulesJson}
+                                officialSourceVerified={form.officialSourceVerified}
+                                setOfficialSourceVerified={form.setOfficialSourceVerified}
+                                notificationPdfUrl={form.notificationPdfUrl}
+                                setNotificationPdfUrl={form.setNotificationPdfUrl}
+                                admitCardUrl={form.admitCardUrl}
+                                setAdmitCardUrl={form.setAdmitCardUrl}
+                                resultUrl={form.resultUrl}
+                                setResultUrl={form.setResultUrl}
+                                answerKeyUrl={form.answerKeyUrl}
+                                setAnswerKeyUrl={form.setAnswerKeyUrl}
+                                syllabusUrl={form.syllabusUrl}
+                                setSyllabusUrl={form.setSyllabusUrl}
+                                previousPapersUrl={form.previousPapersUrl}
+                                setPreviousPapersUrl={form.setPreviousPapersUrl}
+                                applicationStatus={form.applicationStatus}
+                                setApplicationStatus={form.setApplicationStatus}
+                                governmentLevel={form.governmentLevel}
+                                setGovernmentLevel={form.setGovernmentLevel}
+                                vacancyNature={form.vacancyNature}
+                                setVacancyNature={form.setVacancyNature}
+                                jobCategory={form.jobCategory}
+                                setJobCategory={form.setJobCategory}
                             />
                         )}
 
@@ -293,7 +344,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                         )}
                     </div>
 
-                    <div className="lg:col-span-4 space-y-6 md:space-y-8 lg:sticky lg:top-8 self-start">
+                    <div className={`lg:col-span-4 space-y-6 md:space-y-8 ${form.isGovernmentJob ? '' : 'lg:sticky lg:top-8 self-start'}`}>
 
                         <LogisticsSection
                             type={form.type}

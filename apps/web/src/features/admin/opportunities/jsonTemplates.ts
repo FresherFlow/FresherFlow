@@ -115,9 +115,8 @@ export const GOVERNMENT_JOB_TEMPLATE = `{
     "advertisementNumber": "SSB/2026/TRADESMAN",
     "postName": "Constable Tradesman and Driver",
     "applicationMode": "Online",
-    "applicationModes": ["Online"],
     "vacancyCount": 827,
-    "vacancies": [
+    "vacancyBreakdown": [
       {
         "postName": "Constable (Driver)",
         "total": 553

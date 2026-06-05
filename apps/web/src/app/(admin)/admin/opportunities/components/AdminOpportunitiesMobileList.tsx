@@ -69,7 +69,9 @@ export const AdminOpportunitiesMobileList = ({
                             <CompanyLogo
                                 companyName={opp.company}
                                 companyWebsite={opp.companyWebsite}
+                                companyLogoUrl={opp.companyLogoUrl}
                                 applyLink={opp.applyLink}
+                                isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
                                 className="w-9 h-9 rounded-md flex-shrink-0"
                             />
                             <div>

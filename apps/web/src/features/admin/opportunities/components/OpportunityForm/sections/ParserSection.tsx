@@ -1,4 +1,5 @@
-import { BoltIcon } from '@heroicons/react/24/outline';
+import { useState } from 'react';
+import { BoltIcon, DocumentDuplicateIcon, CheckIcon } from '@heroicons/react/24/outline';
 
 interface ParserSectionProps {
     pastedText: string;
@@ -31,6 +32,19 @@ export function ParserSection({
     closeParser,
     jobTemplate, internshipTemplate, walkinTemplate, governmentTemplate
 }: ParserSectionProps) {
+    const [copiedType, setCopiedType] = useState<'job' | 'internship' | 'walkin' | 'govt' | null>(null);
+
+    const handleCopy = (text: string, type: 'job' | 'internship' | 'walkin' | 'govt') => {
+        navigator.clipboard.writeText(text)
+            .then(() => {
+                setCopiedType(type);
+                setTimeout(() => setCopiedType(null), 2000);
+            })
+            .catch((err) => {
+                console.error('Failed to copy text: ', err);
+            });
+    };
+
     return (
         <div className="bg-muted/30 border border-border rounded-lg p-4 md:p-5 shadow-sm animate-in slide-in-from-top-2 duration-300">
             <div className="space-y-4">
@@ -77,32 +91,72 @@ export function ParserSection({
                         <div className="flex flex-wrap gap-2">
                             <button
                                 type="button"
-                                onClick={() => setPastedJson(jobTemplate)}
-                                className="px-2.5 py-1 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                                onClick={() => handleCopy(jobTemplate, 'job')}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150"
                             >
-                                Insert Job
+                                {copiedType === 'job' ? (
+                                    <>
+                                        <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span>Copied!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+                                        <span>Job JSON</span>
+                                    </>
+                                )}
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setPastedJson(internshipTemplate)}
-                                className="px-2.5 py-1 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                                onClick={() => handleCopy(internshipTemplate, 'internship')}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150"
                             >
-                                Insert Internship
+                                {copiedType === 'internship' ? (
+                                    <>
+                                        <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span>Copied!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+                                        <span>Internship JSON</span>
+                                    </>
+                                )}
                             </button>
                             <button
                                 type="button"
-                                onClick={() => setPastedJson(walkinTemplate)}
-                                className="px-2.5 py-1 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted"
+                                onClick={() => handleCopy(walkinTemplate, 'walkin')}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150"
                             >
-                                Insert Walk-in
+                                {copiedType === 'walkin' ? (
+                                    <>
+                                        <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                        <span>Copied!</span>
+                                    </>
+                                ) : (
+                                    <>
+                                        <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+                                        <span>Walk-in JSON</span>
+                                    </>
+                                )}
                             </button>
                             {governmentTemplate && (
                                 <button
                                     type="button"
-                                    onClick={() => setPastedJson(governmentTemplate)}
-                                    className="px-2.5 py-1 rounded-md text-[10px] font-bold capitalize tracking-widest bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15"
+                                    onClick={() => handleCopy(governmentTemplate, 'govt')}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold capitalize tracking-widest bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15 transition-all duration-150"
                                 >
-                                    Insert Govt Job
+                                    {copiedType === 'govt' ? (
+                                        <>
+                                            <CheckIcon className="w-3.5 h-3.5 text-emerald-500" />
+                                            <span>Copied!</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <DocumentDuplicateIcon className="w-3.5 h-3.5" />
+                                            <span>Govt Job JSON</span>
+                                        </>
+                                    )}
                                 </button>
                             )}
                         </div>

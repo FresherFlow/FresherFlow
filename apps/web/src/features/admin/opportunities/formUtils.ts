@@ -60,9 +60,12 @@ export interface ParsedJob {
         advertisementNumber?: string;
         postName?: string;
         applicationMode?: string;
-        applicationModes?: string[];
+        governmentLevel?: string;
+        vacancyNature?: string;
+        applicationStatus?: string;
+        jobCategory?: string[];
         vacancyCount?: number | string;
-        vacancies?: Array<{
+        vacancyBreakdown?: Array<{
             postName: string;
             total?: number;
             categoryBreakup?: Record<string, number>;
@@ -94,6 +97,7 @@ export interface ParsedJob {
         applicationStartDate?: string;
         applicationEndDate?: string;
         examDate?: string;
+        notificationIssuedDate?: string;
         examDates?: {
             prelims?: string;
             mains?: string;
@@ -113,6 +117,23 @@ export interface ParsedJob {
             notes?: string;
         }>;
         seoTags?: string[];
+        examCenters?: string[];
+        examPattern?: any;
+        skillTests?: any;
+        examStages?: any;
+        importantDates?: any;
+        qualificationDetails?: any;
+        physicalStandards?: any;
+        extraMetadata?: any;
+        feeBreakdown?: any;
+        ageRelaxationRules?: any;
+        officialSourceVerified?: boolean;
+        notificationPdfUrl?: string;
+        admitCardUrl?: string;
+        resultUrl?: string;
+        answerKeyUrl?: string;
+        syllabusUrl?: string;
+        previousPapersUrl?: string;
     };
     walkInDetails?: {
         dateRange?: string;
@@ -281,7 +302,17 @@ const normalizeDegreeValue = (degree: string) => {
 };
 
 export const toStringArray = (values: unknown) => {
-    if (Array.isArray(values)) return values.map((value) => String(value));
+    if (Array.isArray(values)) {
+        return values.map((value) => {
+            if (value && typeof value === 'object') {
+                const valObj = value as Record<string, unknown>;
+                if (typeof valObj.name === 'string') return valObj.name;
+                if (typeof valObj.title === 'string') return valObj.title;
+                if (typeof valObj.label === 'string') return valObj.label;
+            }
+            return String(value);
+        });
+    }
     if (typeof values === 'string') {
         return values.split(',').map((value) => value.trim()).filter(Boolean);
     }

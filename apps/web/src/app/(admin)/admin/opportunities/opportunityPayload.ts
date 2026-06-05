@@ -28,14 +28,17 @@ export type OpportunityFormValues = {
     governmentDepartment: string;
     governmentOrganization: string;
     recruitingBody: string;
+    applicationStatus: string;
+    governmentLevel: string;
+    vacancyNature: string;
+    jobCategory: string;
     officialWebsiteUrl: string;
     officialNotificationUrl: string;
     advertisementNumber: string;
     postName: string;
     applicationMode: string;
-    applicationModes: string;
     vacancyCount: string;
-    vacanciesJson: string;
+    vacancyBreakdownJson: string;
     applicationFee: string;
     applicationFeeJson: string;
     ageMin: string;
@@ -53,6 +56,23 @@ export type OpportunityFormValues = {
     selectionStages: string;
     governmentRequiredDocuments: string;
     governmentRequiredDocumentsJson: string;
+    examCenters: string;
+    examPatternJson: string;
+    skillTestsJson: string;
+    examStagesJson: string;
+    importantDatesJson: string;
+    qualificationDetailsJson: string;
+    physicalStandardsJson: string;
+    extraMetadataJson: string;
+    feeBreakdownJson: string;
+    ageRelaxationRulesJson: string;
+    officialSourceVerified: boolean;
+    notificationPdfUrl: string;
+    admitCardUrl: string;
+    resultUrl: string;
+    answerKeyUrl: string;
+    syllabusUrl: string;
+    previousPapersUrl: string;
     experienceMin: string;
     experienceMax: string;
     sourceLink: string;
@@ -69,6 +89,7 @@ export type OpportunityFormValues = {
     endDate: string;
     startTime: string;
     endTime: string;
+    customSlug: string;
 };
 
 const toCsvList = (value: string) =>
@@ -170,6 +191,7 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         sourceLink: normalizedSourceLink || null,
         applyLink: normalizedApplyLink || normalizedSourceLink || null,
         expiresAt: values.expiresAt || derivedWalkInExpiry || null,
+        customSlug: values.customSlug || null,
     };
 
     if (values.type === 'WALKIN') {
@@ -193,14 +215,16 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
             department: values.governmentDepartment || undefined,
             organization: values.governmentOrganization || undefined,
             recruitingBody: values.recruitingBody || undefined,
+            applicationStatus: values.applicationStatus || undefined,
+            governmentLevel: values.governmentLevel || undefined,
+            vacancyNature: values.vacancyNature || undefined,
+            jobCategory: toCsvList(values.jobCategory),
             officialWebsiteUrl: values.officialWebsiteUrl || undefined,
             officialNotificationUrl: values.officialNotificationUrl || undefined,
             advertisementNumber: values.advertisementNumber || undefined,
-            postName: values.postName || undefined,
             applicationMode: values.applicationMode || undefined,
-            applicationModes: toCsvList(values.applicationModes),
             vacancyCount: values.vacancyCount ? parseInt(values.vacancyCount, 10) : undefined,
-            vacancies: parseJsonInput(values.vacanciesJson),
+            vacancyBreakdown: parseJsonInput(values.vacancyBreakdownJson),
             applicationFee: values.applicationFee || undefined,
             applicationFeeDetails: parseJsonInput(values.applicationFeeJson),
             ageMin: values.ageMin ? parseInt(values.ageMin, 10) : undefined,
@@ -219,6 +243,23 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
             requiredDocuments: toCsvList(values.governmentRequiredDocuments),
             requiredDocumentDetails: parseJsonInput(values.governmentRequiredDocumentsJson),
             seoTags: toCsvList(values.governmentTags),
+            examCenters: toCsvList(values.examCenters),
+            examPattern: parseJsonInput(values.examPatternJson),
+            skillTests: parseJsonInput(values.skillTestsJson),
+            examStages: parseJsonInput(values.examStagesJson),
+            importantDates: parseJsonInput(values.importantDatesJson),
+            qualificationDetails: parseJsonInput(values.qualificationDetailsJson),
+            physicalStandards: parseJsonInput(values.physicalStandardsJson),
+            extraMetadata: parseJsonInput(values.extraMetadataJson),
+            feeBreakdown: parseJsonInput(values.feeBreakdownJson),
+            ageRelaxationRules: parseJsonInput(values.ageRelaxationRulesJson),
+            officialSourceVerified: values.officialSourceVerified || undefined,
+            notificationPdfUrl: values.notificationPdfUrl || undefined,
+            admitCardUrl: values.admitCardUrl || undefined,
+            resultUrl: values.resultUrl || undefined,
+            answerKeyUrl: values.answerKeyUrl || undefined,
+            syllabusUrl: values.syllabusUrl || undefined,
+            previousPapersUrl: values.previousPapersUrl || undefined,
         };
     } else {
         payload.governmentJobDetails = null;

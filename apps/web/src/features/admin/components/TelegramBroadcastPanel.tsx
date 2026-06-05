@@ -226,7 +226,7 @@ export default function TelegramBroadcastPanel() {
                                     <div className="shrink-0 flex items-center gap-2">
                                         <Badge variant="outline">{post.sends}x</Badge>
                                         <Button asChild size="sm" variant="outline" className="h-7 px-2 text-[10px]">
-                                            <a href={`/opportunities/${post.slug}`} target="_blank" rel="noreferrer">
+                                            <a href={`/${post.slug}`} target="_blank" rel="noreferrer">
                                                 Open
                                             </a>
                                         </Button>

@@ -110,7 +110,9 @@ export const AdminOpportunitiesTable = ({
                                     <CompanyLogo
                                         companyName={opp.company}
                                         companyWebsite={opp.companyWebsite}
+                                        companyLogoUrl={opp.companyLogoUrl}
                                         applyLink={opp.applyLink}
+                                        isGovernment={opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails)}
                                         className="w-8 h-8 rounded-md flex-shrink-0"
                                     />
                                     <div>
