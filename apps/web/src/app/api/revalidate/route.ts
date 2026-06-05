@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 
+// These list pages use revalidate = false (on-demand only).
+// Always revalidate them alongside any specific job path so the feed stays current.
+const LIST_PAGES = ['/jobs', '/internships', '/walk-ins', '/opportunities'];
+
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
@@ -22,15 +26,21 @@ export async function POST(request: NextRequest) {
 
         const revalidatedPaths: string[] = [];
 
-        // Revalidate specific literal paths (e.g. ['/opportunities/job-123'])
+        // Revalidate specific literal paths (e.g. ['/software-engineer-at-google-abc123'])
         if (Array.isArray(paths)) {
             for (const path of paths) {
                 if (typeof path === 'string') {
-                    // Revalidate the literal path
                     revalidatePath(path);
                     revalidatedPaths.push(path);
                 }
             }
+        }
+
+        // Always revalidate list pages — they use revalidate = false so they only
+        // update when explicitly triggered here, not on a timer.
+        for (const listPath of LIST_PAGES) {
+            revalidatePath(listPath);
+            revalidatedPaths.push(listPath);
         }
 
         return NextResponse.json({
@@ -38,7 +48,7 @@ export async function POST(request: NextRequest) {
             now: Date.now(),
             paths: revalidatedPaths
         });
-    } catch (err) {
+    } catch {
         return NextResponse.json({ message: 'Error parsing request body' }, { status: 400 });
     }
 }

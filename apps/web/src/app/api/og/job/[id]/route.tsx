@@ -1,6 +1,8 @@
 import { ImageResponse } from "next/og";
 import { LINKS_FEED_URL } from "@/lib/runtimeConfig";
 
+// Edge runtime: faster cold starts than Node.js, lower timeout ceiling, optimised for ImageResponse.
+// Data caching uses force-cache (Vercel edge CDN) + module-level TTL guard for warm instances.
 export const runtime = "edge";
 
 const size = { width: 1200, height: 630 };
@@ -12,9 +14,10 @@ type OpportunityDto = {
   events?: Array<{ eventType: string; eventDate: string }>;
 };
 
+// Module-level cache shared across warm edge instances in the same region.
 let cachedLinks: OpportunityDto[] | null = null;
 let lastFetchTime = 0;
-const CACHE_TTL_MS = 300_000; // 5 minutes — reduces CDN fetches within warm edge instances
+const CACHE_TTL_MS = 300_000; // 5 min — re-fetch after TTL expires on warm instances
 
 // Pre-fetch logo as ArrayBuffer so ImageResponse gets a real image, not a redirect or SVG
 async function logoToDataUrl(url: string): Promise<string | null> {
@@ -79,17 +82,21 @@ const fallback = (title: string, sub: string) => new ImageResponse(
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const now = Date.now();
+
   if (!cachedLinks || now - lastFetchTime > CACHE_TTL_MS) {
     try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 3500);
-      // On edge runtime, next: { revalidate } is ignored. Freshness is managed by
-      // the in-memory CACHE_TTL_MS guard above (300s). Use no-store so we always
-      // get a fresh response from the CDN when the in-memory cache expires.
-      const res = await fetch(LINKS_FEED_URL, { cache: "no-store", signal: ctrl.signal, headers: { Origin: process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in" } });
-      clearTimeout(t);
-      if (res.ok) { cachedLinks = ((await res.json())?.opportunities || []) as OpportunityDto[]; lastFetchTime = now; }
-    } catch { /* stale ok */ }
+      // force-cache: Vercel edge CDN caches this response between cold starts in the same region.
+      // No AbortSignal here — passing a signal alongside a cache directive causes Next.js
+      // to skip the cache entirely, resulting in a raw network fetch on every invocation.
+      const res = await fetch(LINKS_FEED_URL, {
+        cache: "force-cache",
+        headers: { Origin: process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in" }
+      });
+      if (res.ok) {
+        cachedLinks = ((await res.json())?.opportunities || []) as OpportunityDto[];
+        lastFetchTime = now;
+      }
+    } catch { /* stale ok — serve whatever is in cachedLinks */ }
   }
 
   const opp = cachedLinks?.find(o => o.id === id || o.slug === id) ?? null;
