@@ -1,5 +1,5 @@
 {
   "framework": "nextjs",
-  "buildCommand": "npm run build --workspace=apps/web",
+  "buildCommand": "pnpm --filter fresherflow-web build",
   "outputDirectory": "apps/web/.next"
 }

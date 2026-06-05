@@ -191,6 +191,31 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/opportunities/:slug",
+        destination: "/:slug",
+        permanent: true,
+      },
+      {
+        source: "/jobs/:slug",
+        destination: "/:slug",
+        permanent: true,
+      },
+      {
+        source: "/internships/:slug",
+        destination: "/:slug",
+        permanent: true,
+      },
+      {
+        source: "/walk-ins/details/:slug",
+        destination: "/:slug",
+        permanent: true,
+      },
+      {
+        source: "/walk-ins/opportunity/:slug",
+        destination: "/:slug",
+        permanent: true,
+      },
+      {
         source: "/index",
         destination: "/",
         permanent: true,
