@@ -27,6 +27,7 @@ export { commentsApi, type Comment } from './public/comments';
 export { contributorsApi, type Contributor } from './public/contributors';
 export { followsApi } from './public/follows';
 export { usernameApi } from './public/username';
+export { governmentJobsApi } from './public/governmentJobs';
 export { publicApi } from './public/index';
 
 export * from './apiClient';
