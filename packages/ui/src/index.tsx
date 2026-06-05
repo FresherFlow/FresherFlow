@@ -4,3 +4,6 @@ export * from './Input';
 export * from './Card';
 export * from './Badge';
 export * from './CompanyLogo';
+export * from './components/Timeline';
+export * from './components/DataTable';
+export * from './components/Tabs';
