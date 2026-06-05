@@ -17,11 +17,8 @@ async function deleteByPattern(pattern: string) {
     }
 }
 
-function getCanonicalPath(slugOrId: string, type?: string): string {
-    if (type === 'INTERNSHIP') return `/internships/${slugOrId}`;
-    if (type === 'WALKIN') return `/walk-ins/details/${slugOrId}`;
-    // JOB or unknown — /opportunities is the universal canonical
-    return `/opportunities/${slugOrId}`;
+function getCanonicalPath(slugOrId: string): string {
+    return `/${slugOrId}`;
 }
 
 export async function invalidatePublicOpportunityCache(options?: {
@@ -48,7 +45,7 @@ export async function invalidatePublicOpportunityCache(options?: {
             // Use slug (canonical) if available; the UUID fallback is still included
             // since redirect logic in the page handles UUID → slug.
             const slug = idsOrSlugs.find(v => !v.match(/^[0-9a-f-]{36}$/i)) ?? idsOrSlugs[0];
-            const pathsToRevalidate = [getCanonicalPath(slug, options?.type)];
+            const pathsToRevalidate = [getCanonicalPath(slug)];
 
             const secret = process.env.REVALIDATE_SECRET_TOKEN;
             const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';

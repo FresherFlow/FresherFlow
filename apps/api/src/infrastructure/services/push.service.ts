@@ -22,7 +22,7 @@ function getFrontendOrigin() {
 }
 
 function buildOpportunityUrl(opportunitySlug: string) {
-    const url = new URL(`/opportunities/${opportunitySlug}`, getFrontendOrigin());
+    const url = new URL(`/${opportunitySlug}`, getFrontendOrigin());
     url.searchParams.set('source', 'push_notification');
     url.searchParams.set('ref', 'push');
     return url.toString();

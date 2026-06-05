@@ -1,5 +1,6 @@
-import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus } from '@fresherflow/database';
-import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
+import { Prisma, OpportunityEventType, OpportunityStatus as DbOpportunityStatus, GovernmentLevel, VacancyNature, GovernmentApplicationStatus } from '@fresherflow/database';
+import { OpportunityStatus, OpportunityType, EducationLevel } from '@fresherflow/types';
+import { extractDegreesFromQualifications, deriveGovtLocations } from '@fresherflow/constants';
 import { normalizeEducationBuckets } from '@fresherflow/domain';
 import { AdminOpportunityRequest } from '../../../types/admin';
 
@@ -82,17 +83,50 @@ export function deriveOpportunityExpiryDate(data: AdminOpportunityRequest, type:
     return endDate;
 }
 
-export function normalizeEducationRequirements(data: AdminOpportunityRequest) {
+// ── Govt education / location extraction ─────────────────────────────────────
+
+/**
+ * Maps freetext qualification strings from qualificationDetails[]
+ * to the EducationLevel enum values used for profile matching.
+ * The MINIMUM qualification across all posts is always included so
+ * the widest possible candidate pool can see the listing.
+ */
+/** Delegates to govtTaxonomy — single source of truth in packages/constants */
+export function extractGovtDegrees(qualificationDetails: unknown[]): EducationLevel[] {
+    return extractDegreesFromQualifications(qualificationDetails);
+}
+
+/** Delegates to govtTaxonomy — single source of truth in packages/constants */
+export function extractGovtLocations(
+    details: { governmentLevel?: string; examCenters?: string[]; recruitingBody?: string } | undefined,
+    existingLocations: string[]
+): string[] {
+    return deriveGovtLocations(details?.governmentLevel, details?.examCenters, existingLocations);
+}
+
+export function normalizeEducationRequirements(
+    data: AdminOpportunityRequest,
+    govtDetails?: { qualificationDetails?: unknown[] }
+) {
     const normalized = normalizeEducationBuckets(
         data.allowedCourses || [],
         data.allowedSpecializations || []
     );
+
+    // If admin didn't provide explicit degrees AND this is a govt job,
+    // auto-extract from qualificationDetails for profile matching
+    let degrees: EducationLevel[] = Array.isArray(data.allowedDegrees) ? data.allowedDegrees as EducationLevel[] : [];
+    if (degrees.length === 0 && govtDetails?.qualificationDetails?.length) {
+        degrees = extractGovtDegrees(govtDetails.qualificationDetails);
+    }
+
     return {
-        allowedDegrees: Array.isArray(data.allowedDegrees) ? data.allowedDegrees : [],
+        allowedDegrees: degrees,
         allowedCourses: normalized.allowedCourses,
         allowedSpecializations: normalized.allowedSpecializations,
     };
 }
+
 
 export function buildWalkInCreate(data: AdminOpportunityRequest) {
     const walkInDetails = data.walkInDetails || {};
@@ -158,12 +192,14 @@ export function buildGovernmentTags(data: AdminOpportunityRequest) {
     const explicitTags = compactStringArray(data.tags);
     const details = data.governmentJobDetails;
     if (!details && explicitTags.length === 0) return [];
-    const detailTags = compactStringArray(data.governmentJobDetails?.seoTags);
+    
+    const detailTags = compactStringArray(details?.seoTags || []);
+    
     const autoTags = compactStringArray([
         'Government Job',
-        details?.department,
-        details?.organization,
-        details?.applicationMode,
+        details?.recruitingBody || details?.organization,
+        'CENTRAL',
+        details?.applicationModes?.[0] || 'ONLINE',
         data.jobFunction,
     ]);
 
@@ -174,40 +210,81 @@ export function buildGovernmentJobDetailsCreate(data: AdminOpportunityRequest) {
     const details = data.governmentJobDetails;
     if (!details) return undefined;
 
+    // Map legacy payload fields to new Prisma schema
     const payload = {
-        department: compactString(details.department),
-        organization: compactString(details.organization),
-        recruitingBody: compactString(details.recruitingBody),
-        officialWebsiteUrl: compactString(details.officialWebsiteUrl),
-        officialNotificationUrl: compactString(details.officialNotificationUrl),
+        recruitingBody: compactString(details.recruitingBody) || compactString(details.organization) || undefined,
         advertisementNumber: compactString(details.advertisementNumber),
-        postName: compactString(details.postName),
-        applicationMode: compactString(details.applicationMode),
-        applicationModes: compactStringArray(details.applicationModes),
-        vacancyCount: typeof details.vacancyCount === 'number' ? details.vacancyCount : undefined,
-        vacancies: Array.isArray(details.vacancies) && details.vacancies.length > 0
-            ? (details.vacancies as unknown as Prisma.InputJsonValue)
-            : undefined,
+        governmentLevel: (details.governmentLevel && Object.values(GovernmentLevel).includes(details.governmentLevel as GovernmentLevel)
+            ? (details.governmentLevel as GovernmentLevel)
+            : 'CENTRAL' as GovernmentLevel),
+        vacancyNature: (details.vacancyNature && Object.values(VacancyNature).includes(details.vacancyNature as VacancyNature)
+            ? (details.vacancyNature as VacancyNature)
+            : 'PERMANENT' as VacancyNature),
+        importantDates: details.importantDates 
+            ? (details.importantDates as unknown as Prisma.InputJsonValue) 
+            : (details.examDates 
+                ? (details.examDates as unknown as Prisma.InputJsonValue) 
+                : {
+                    applicationStartDate: details.applicationStartDate,
+                    applicationEndDate: details.applicationEndDate,
+                    examDate: details.examDate,
+                    admitCardDate: details.admitCardDate,
+                    resultDate: details.resultDate
+                } as unknown as Prisma.InputJsonValue),
+        examStages: details.examStages ? (details.examStages as unknown as Prisma.InputJsonValue) : undefined,
         applicationFee: compactString(details.applicationFee),
-        applicationFeeDetails: compactJsonObject(details.applicationFeeDetails) as Prisma.InputJsonValue | undefined,
+        applicationFeeDetails: details.applicationFeeDetails ? (details.applicationFeeDetails as unknown as Prisma.InputJsonValue) : undefined,
+        feeBreakdown: details.feeBreakdown ? (details.feeBreakdown as unknown as Prisma.InputJsonValue) : undefined,
+        vacancyCount: typeof details.vacancyCount === 'number' ? details.vacancyCount : undefined,
+        vacancyBreakdown: (details.vacancyBreakdown || details.vacancies) ? ((details.vacancyBreakdown || details.vacancies) as unknown as Prisma.InputJsonValue) : undefined,
         ageMin: typeof details.ageMin === 'number' ? details.ageMin : undefined,
         ageMax: typeof details.ageMax === 'number' ? details.ageMax : undefined,
-        ageRelaxation: compactString(details.ageRelaxation),
-        eligibilityDetails: compactJsonObject(details.eligibilityDetails) as Prisma.InputJsonValue | undefined,
-        reservationNotes: compactString(details.reservationNotes),
-        importantInstructions: compactString(details.importantInstructions),
-        applicationStartDate: compactString(details.applicationStartDate),
-        applicationEndDate: compactString(details.applicationEndDate),
-        examDate: compactString(details.examDate),
-        examDates: compactJsonObject(details.examDates) as Prisma.InputJsonValue | undefined,
-        admitCardDate: compactString(details.admitCardDate),
-        resultDate: compactString(details.resultDate),
-        selectionStages: compactStringArray(details.selectionStages),
+        ageRelaxationRules: (details.ageRelaxationRules || (details.ageRelaxation ? [{ category: "General", rule: details.ageRelaxation }] : undefined)) as unknown as Prisma.InputJsonValue | undefined,
+        qualificationDetails: (details.qualificationDetails || details.eligibilityDetails) ? ((details.qualificationDetails || details.eligibilityDetails) as unknown as Prisma.InputJsonValue) : undefined,
+        physicalStandards: details.physicalStandards ? (details.physicalStandards as unknown as Prisma.InputJsonValue) : undefined,
+        selectionStages: (details.selectionStages && Array.isArray(details.selectionStages)) 
+            ? details.selectionStages 
+            : compactStringArray(details.selectionStages),
+        skillTests: details.skillTests ? (details.skillTests as unknown as Prisma.InputJsonValue) : undefined,
+        examPattern: details.examPattern ? (details.examPattern as unknown as Prisma.InputJsonValue) : undefined,
+        basicPay: undefined as number | undefined,
+        payLevel: undefined as string | undefined,
+        examCenters: compactStringArray(details.examCenters),
         requiredDocuments: compactStringArray(details.requiredDocuments),
-        requiredDocumentDetails: Array.isArray(details.requiredDocumentDetails) && details.requiredDocumentDetails.length > 0
-            ? (details.requiredDocumentDetails.filter((item) => compactString(item?.name)) as unknown as Prisma.InputJsonValue)
-            : undefined,
-        seoTags: compactStringArray(details.seoTags),
+        requiredDocumentDetails: details.requiredDocumentDetails ? (details.requiredDocumentDetails as unknown as Prisma.InputJsonValue) : undefined,
+        applicationMode: (compactString(details.applicationMode) || (compactStringArray(details.applicationModes)?.[0] || 'ONLINE')) as string,
+        importantInstructions: compactString(details.importantInstructions),
+        notificationPdfUrl: compactString(details.notificationPdfUrl),
+        officialNotificationUrl: compactString(details.officialNotificationUrl),
+        admitCardUrl: compactString(details.admitCardUrl),
+        resultUrl: compactString(details.resultUrl),
+        answerKeyUrl: compactString(details.answerKeyUrl),
+        syllabusUrl: compactString(details.syllabusUrl),
+        previousPapersUrl: compactString(details.previousPapersUrl),
+        applicationStatus: (details.applicationStatus && Object.values(GovernmentApplicationStatus).includes(details.applicationStatus as GovernmentApplicationStatus)
+            ? (details.applicationStatus as GovernmentApplicationStatus)
+            : 'UPCOMING' as GovernmentApplicationStatus),
+        jobCategory: details.jobCategory || [],
+        extraMetadata: (details.extraMetadata && typeof details.extraMetadata === 'object'
+            ? {
+                department: details.department,
+                postName: details.postName,
+                reservationNotes: details.reservationNotes,
+                requiredDocuments: details.requiredDocuments,
+                requiredDocumentDetails: details.requiredDocumentDetails,
+                seoTags: details.seoTags,
+                officialWebsiteUrl: details.officialWebsiteUrl,
+                ...(details.extraMetadata as Record<string, unknown>)
+              }
+            : {
+                department: details.department,
+                postName: details.postName,
+                reservationNotes: details.reservationNotes,
+                requiredDocuments: details.requiredDocuments,
+                requiredDocumentDetails: details.requiredDocumentDetails,
+                seoTags: details.seoTags,
+                officialWebsiteUrl: details.officialWebsiteUrl
+            }) as unknown as Prisma.InputJsonValue,
     };
 
     const hasValue = Object.values(payload).some((value) => Array.isArray(value) ? value.length > 0 : value !== undefined);

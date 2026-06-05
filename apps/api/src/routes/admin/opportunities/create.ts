@@ -6,11 +6,12 @@ import { adminRateLimit } from '../../../middleware/adminRateLimit';
 import { withAdminAudit } from '../../../middleware/adminAudit';
 import { validate } from '../../../middleware/validate';
 import { opportunitySchema } from '../../../utils/validation';
-import { generateSlug, generateCompanyLogoUrl, normalizeSkills } from '@fresherflow/utils';
+import { generateSlug, generateCompanyLogoUrl, normalizeSkills, sanitizeCustomSlug, resolveUniqueSlug } from '@fresherflow/utils';
 import { normalizeOpportunityLinks } from '../../../utils/opportunityLinks';
 import {
     normalizeEducationRequirements, buildWalkInCreate,
-    deriveOpportunityExpiryDate, buildGovernmentJobDetailsCreate, buildGovernmentJobDetailsUpsert, buildGovernmentTags,
+    deriveOpportunityExpiryDate, buildGovernmentJobDetailsCreate, buildGovernmentJobDetailsUpsert,
+    buildGovernmentTags, extractGovtLocations,
 } from './_helpers';
 import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
 import { Opportunity } from '@fresherflow/types';
@@ -51,8 +52,24 @@ router.post(
             const governmentJobCreate = buildGovernmentJobDetailsCreate(data);
 
             const tempId = crypto.randomUUID();
-            const slug = generateSlug(data.title, data.company, tempId);
-            const education = normalizeEducationRequirements(data);
+            const isGovt = type === 'GOVERNMENT';
+            let slug: string;
+            if (data.customSlug) {
+                const base = sanitizeCustomSlug(data.customSlug);
+                const slugMatches = await prisma.opportunity.findMany({ where: { slug: { startsWith: base } }, select: { slug: true } });
+                slug = resolveUniqueSlug(base, new Set(slugMatches.map(o => o.slug)));
+            } else if (isGovt) {
+                const base = generateSlug(data.title, data.company, undefined, { isGovt: true });
+                const slugMatches = await prisma.opportunity.findMany({ where: { slug: { startsWith: base } }, select: { slug: true } });
+                slug = resolveUniqueSlug(base, new Set(slugMatches.map(o => o.slug)));
+            } else {
+                slug = generateSlug(data.title, data.company, tempId);
+            }
+            const govtDetails = data.governmentJobDetails;
+            const education = normalizeEducationRequirements(data, govtDetails ?? undefined);
+            const locations = isGovt
+                ? extractGovtLocations(govtDetails ?? undefined, data.locations ?? [])
+                : (data.locations ?? []);
 
             let contributorId: string | undefined = undefined;
             if (data.rawOpportunityId) {
@@ -77,7 +94,7 @@ router.post(
                     allowedSpecializations: education.allowedSpecializations,
                     allowedPassoutYears: data.allowedPassoutYears,
                     requiredSkills: normalizeSkills(data.requiredSkills),
-                    locations: data.locations, workMode: data.workMode,
+                    locations: locations, workMode: data.workMode,
                     salaryRange: data.salaryRange, stipend: data.stipend,
                     employmentType: data.employmentType,
                     salaryMin: data.salaryMin || (data.salaryRange ? parseInt(data.salaryRange) : undefined),
@@ -170,8 +187,24 @@ router.post(
             const governmentJobCreate = buildGovernmentJobDetailsCreate(data);
 
             const tempId = crypto.randomUUID();
-            const slug = generateSlug(data.title, data.company, tempId);
-            const education = normalizeEducationRequirements(data);
+            const isGovt = type === 'GOVERNMENT';
+            let slug: string;
+            if (data.customSlug) {
+                const base = sanitizeCustomSlug(data.customSlug);
+                const existing = await prisma.opportunity.findMany({ where: { slug: { startsWith: base } }, select: { slug: true } });
+                slug = resolveUniqueSlug(base, new Set(existing.map(o => o.slug)));
+            } else if (isGovt) {
+                const base = generateSlug(data.title, data.company, undefined, { isGovt: true });
+                const existing = await prisma.opportunity.findMany({ where: { slug: { startsWith: base } }, select: { slug: true } });
+                slug = resolveUniqueSlug(base, new Set(existing.map(o => o.slug)));
+            } else {
+                slug = generateSlug(data.title, data.company, tempId);
+            }
+            const govtDetails = data.governmentJobDetails;
+            const education = normalizeEducationRequirements(data, govtDetails ?? undefined);
+            const locations = isGovt
+                ? extractGovtLocations(govtDetails ?? undefined, data.locations ?? [])
+                : (data.locations ?? []);
 
             let contributorId: string | undefined = undefined;
             if (data.rawOpportunityId) {
@@ -196,7 +229,7 @@ router.post(
                     allowedSpecializations: education.allowedSpecializations,
                     allowedPassoutYears: data.allowedPassoutYears,
                     requiredSkills: normalizeSkills(data.requiredSkills),
-                    locations: data.locations, workMode: data.workMode,
+                    locations: locations, workMode: data.workMode,
                     salaryRange: data.salaryRange, stipend: data.stipend,
                     employmentType: data.employmentType,
                     salaryMin: data.salaryMin || (data.salaryRange ? parseInt(data.salaryRange) : undefined),
@@ -275,7 +308,11 @@ router.put(
                 ? undefined
                 : buildGovernmentJobDetailsUpsert(data);
 
-            const education = normalizeEducationRequirements(data);
+            const govtDetailsUpdate = data.governmentJobDetails;
+            const education = normalizeEducationRequirements(data, govtDetailsUpdate ?? undefined);
+            const locations = type === 'GOVERNMENT'
+                ? extractGovtLocations(govtDetailsUpdate ?? undefined, data.locations ?? [])
+                : (data.locations ?? []);
             const { sourceLink, applyLink } = normalizeOpportunityLinks(data.sourceLink, data.applyLink);
             if (type !== OpportunityType.WALKIN && !applyLink) {
                 return res.status(400).json({ message: 'At least one sourceLink or applyLink is required' });
@@ -289,7 +326,7 @@ router.put(
                 description: data.description,
                 allowedPassoutYears: data.allowedPassoutYears,
                 requiredSkills: normalizeSkills(data.requiredSkills),
-                locations: data.locations, workMode: data.workMode,
+                locations: locations, workMode: data.workMode,
                 salaryMin: data.salaryMin, salaryMax: data.salaryMax,
                 salaryPeriod: data.salaryPeriod, incentives: data.incentives,
                 jobFunction: data.jobFunction, selectionProcess: data.selectionProcess,
@@ -305,8 +342,19 @@ router.put(
                 ...(governmentJobUpdate && { governmentJobDetails: governmentJobUpdate }),
             };
 
-            if (data.title !== existing.title || data.company !== existing.company) {
-                updateData.slug = generateSlug(data.title as string, data.company as string, existing.id as string);
+            if (data.title !== existing.title || data.company !== existing.company || data.customSlug) {
+                const isGovtUpdate = type === 'GOVERNMENT';
+                if (data.customSlug) {
+                    const base = sanitizeCustomSlug(data.customSlug);
+                    const others = await prisma.opportunity.findMany({ where: { slug: { startsWith: base }, id: { not: existing.id as string } }, select: { slug: true } });
+                    updateData.slug = resolveUniqueSlug(base, new Set(others.map(o => o.slug)));
+                } else if (isGovtUpdate) {
+                    const base = generateSlug(data.title as string, data.company as string, undefined, { isGovt: true });
+                    const others = await prisma.opportunity.findMany({ where: { slug: { startsWith: base }, id: { not: existing.id as string } }, select: { slug: true } });
+                    updateData.slug = resolveUniqueSlug(base, new Set(others.map(o => o.slug)));
+                } else {
+                    updateData.slug = generateSlug(data.title as string, data.company as string, existing.id as string);
+                }
             }
 
             const opportunity = await prisma.opportunity.update({

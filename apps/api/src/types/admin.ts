@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { OpportunityType, OpportunityStatus, EducationLevel, WorkMode, SalaryPeriod } from '@fresherflow/types';
 import type {
     GovernmentApplicationFee,
@@ -15,6 +16,7 @@ export interface AdminOpportunityRequest {
     category?: 'job' | 'internship' | 'walk-in';
     title: string;
     company: string;
+    customSlug?: string;           // If provided, used as-is (sanitized) instead of auto-generating
     companyWebsite?: string;
     description?: string;
     allowedDegrees?: EducationLevel[];
@@ -48,7 +50,6 @@ export interface AdminOpportunityRequest {
         officialNotificationUrl?: string;
         advertisementNumber?: string;
         postName?: string;
-        applicationMode?: string;
         applicationModes?: string[];
         vacancyCount?: number;
         vacancies?: GovernmentVacancy[];
@@ -70,6 +71,28 @@ export interface AdminOpportunityRequest {
         requiredDocuments?: string[];
         requiredDocumentDetails?: GovernmentRequiredDocument[];
         seoTags?: string[];
+        examCenters?: string[];
+        examPattern?: any;
+        skillTests?: any;
+        examStages?: any;
+        importantDates?: any;
+        qualificationDetails?: any;
+        physicalStandards?: any;
+        extraMetadata?: any;
+        feeBreakdown?: any;
+        ageRelaxationRules?: any;
+        governmentLevel?: string;
+        vacancyNature?: string;
+        applicationStatus?: string;
+        jobCategory?: string[];
+        applicationMode?: string;
+        notificationPdfUrl?: string;
+        admitCardUrl?: string;
+        resultUrl?: string;
+        answerKeyUrl?: string;
+        syllabusUrl?: string;
+        previousPapersUrl?: string;
+        vacancyBreakdown?: any;
     } | null;
     walkInDetails?: {
         date?: string;

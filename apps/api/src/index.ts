@@ -64,8 +64,12 @@ import followsRoutes from './routes/follows';
 import joblinksRoutes from './routes/public/joblinks';
 import usernameRoutes from './routes/username';
 import publicStatsRoutes from './routes/public/stats';
+import resourcesRoutes from './routes/resources';
 import { StaticFeedService } from './infrastructure/services/staticFeed.service';
 import { initializeQueueListeners } from './infrastructure/services/push-notification.service';
+
+import adminGovernmentJobsRoutes from './routes/admin/governmentJobs';
+import publicGovernmentJobsRoutes from './routes/public/governmentJobs';
 
 const app: Application = express();
 const PORT = env.PORT || 5000;
@@ -391,6 +395,8 @@ if (isUserMode) {
     app.use('/api/public/contributors', contributorsRoutes);
     app.use('/api/follows', followsRoutes);
     app.use('/api/username', usernameRoutes);
+    app.use('/api/resources', resourcesRoutes);
+    app.use('/api/public/government-jobs', publicGovernmentJobsRoutes);
 }
 
 if (isAdminMode) {
@@ -409,6 +415,7 @@ if (isAdminMode) {
     app.use('/api/admin/queues', restrictAdmin, adminQueuesRoutes);
     app.use('/api/admin/push', restrictAdmin, adminPushRoutes);
     app.use('/api/admin/users', restrictAdmin, adminUsersRoutes);
+    app.use('/api/admin/government-jobs', restrictAdmin, adminGovernmentJobsRoutes);
 }
 
 // ============================================================================

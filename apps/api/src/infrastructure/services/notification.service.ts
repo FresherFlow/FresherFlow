@@ -331,7 +331,7 @@ export async function sendNewJobAlerts(opportunityId: string): Promise<NewJobNot
                     title: opportunity.title,
                     company: opportunity.company,
                     location: opportunity.locations?.[0] || null,
-                    applyUrl: `${frontendUrl.replace(/\/$/, '')}/opportunities/${opportunity.slug}`,
+                    applyUrl: `${frontendUrl.replace(/\/$/, '')}/${opportunity.slug}`,
                 });
                 emailsSent++;
                 deliveriesToCreate.push({
