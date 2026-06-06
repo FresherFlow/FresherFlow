@@ -5,18 +5,28 @@ import { SITE_URL } from '@/lib/runtimeConfig';
 export const revalidate = false; // on-demand only — busted via revalidateTag on publish
 export const dynamicParams = true;
 
-const COMMON_CITIES = [
-    'ahmedabad', 'bengaluru', 'bangalore', 'bhopal', 'bhubaneswar',
-    'chandigarh', 'chennai', 'coimbatore', 'delhi', 'faridabad',
-    'gandhinagar', 'ghaziabad', 'gurgaon', 'gurugram', 'guwahati',
-    'hyderabad', 'indore', 'jaipur', 'kanpur', 'kochi', 'kolkata',
-    'lucknow', 'mumbai', 'mysuru', 'nagpur', 'noida', 'patna',
-    'pune', 'ranchi', 'surat', 'thane', 'trivandrum', 'thiruvananthapuram',
-    'vadodara', 'visakhapatnam'
-];
-
 export async function generateStaticParams() {
-    return COMMON_CITIES.map((city) => ({ city }));
+    // Only pre-build cities that actually have walk-in data.
+    // When there are zero walk-ins, returns [] — no wasted ISR entries.
+    try {
+        const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+        const feed = await fetchBootstrapFeed();
+        if (!feed?.opportunities) return [];
+
+        const cities = new Set<string>();
+        for (const opp of feed.opportunities) {
+            if (opp.type !== 'WALKIN') continue;
+            for (const loc of opp.locations ?? []) {
+                const city = loc.trim().toLowerCase().replace(/\s+/g, '-');
+                if (city && city !== 'pan-india' && city !== 'remote' && city !== 'worldwide') {
+                    cities.add(city);
+                }
+            }
+        }
+        return Array.from(cities).map((city) => ({ city }));
+    } catch {
+        return [];
+    }
 }
 
 const formatLabel = (value: string) =>
