@@ -85,18 +85,24 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   if (!cachedLinks || now - lastFetchTime > CACHE_TTL_MS) {
     try {
-      // force-cache: Vercel edge CDN caches this response between cold starts in the same region.
-      // No AbortSignal here — passing a signal alongside a cache directive causes Next.js
-      // to skip the cache entirely, resulting in a raw network fetch on every invocation.
-      const res = await fetch(LINKS_FEED_URL, {
-        cache: "force-cache",
-        headers: { Origin: process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in" }
-      });
+      // force-cache: Vercel edge CDN caches this between cold starts in the same region.
+      // Promise.race guards against slow CDN responses on a cache miss — edge has no AbortSignal
+      // issue with force-cache (unlike next:{revalidate} which bypasses cache when signal is set).
+      const timeout = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('timeout')), 4000)
+      );
+      const res = await Promise.race([
+        fetch(LINKS_FEED_URL, {
+          cache: "force-cache",
+          headers: { Origin: process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in" }
+        }),
+        timeout,
+      ]);
       if (res.ok) {
         cachedLinks = ((await res.json())?.opportunities || []) as OpportunityDto[];
         lastFetchTime = now;
       }
-    } catch { /* stale ok — serve whatever is in cachedLinks */ }
+    } catch { /* stale ok — serve whatever is in cachedLinks or fallback below */ }
   }
 
   const opp = cachedLinks?.find(o => o.id === id || o.slug === id) ?? null;

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SITE_URL } from '@/lib/runtimeConfig';
 
-export const revalidate = 3600;
+export const revalidate = false; // on-demand only — busted via revalidateTag on publish
 export const dynamicParams = true;
 
 const COMMON_CITIES = [

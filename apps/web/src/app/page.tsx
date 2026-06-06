@@ -40,7 +40,7 @@ export const metadata: Metadata = {
 };
 
 // Revalidate once per day so the count stays reasonably fresh
-export const revalidate = 86400;
+export const revalidate = false; // on-demand only — busted via revalidateTag on publish
 
 
 

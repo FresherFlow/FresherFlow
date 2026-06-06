@@ -87,35 +87,29 @@ function getCDNFetchOptions(options: RequestInit = {}): RequestInit {
     };
 }
 
-let cachedVersion: string | null = null;
-let lastVersionFetch = 0;
 
 /**
  * Fetches the centrally stored R2 feed version without caching.
  */
 export async function fetchFeedVersion(): Promise<string> {
-    const now = Date.now();
-    // Cache the version in-memory for 1 minute to avoid redundant fetches in the same render loop
-    if (cachedVersion && (now - lastVersionFetch < 60000)) {
-        return cachedVersion;
-    }
     try {
+        // revalidate: false = cache indefinitely. Tags allow explicit invalidation via
+        // revalidateTag('feed-version') in /api/revalidate when a job is published.
+        // Previously used next: { revalidate: 3600 }, which forced EVERY page that calls
+        // fetchBootstrapFeed to show "1h" in the build route table — causing hourly ISR writes
+        // on every list/detail page regardless of whether the feed changed.
         const res = await fetch(FEED_VERSION_URL, {
-            next: { revalidate: 3600 },
+            next: { revalidate: false, tags: ['feed-version'] },
         });
         if (res.ok) {
             const data = await res.json() as { version?: string };
-            if (data && data.version) {
-                cachedVersion = data.version;
-                lastVersionFetch = now;
-                return data.version;
-            }
+            if (data?.version) return data.version;
         }
     } catch (err) {
         console.warn('Failed to fetch feed version, using timestamp:', err instanceof Error ? err.message : err);
     }
     // Fallback to a rounded 5-minute timestamp if R2 is down or unpopulated
-    return Math.floor(now / 300000).toString();
+    return Math.floor(Date.now() / 300000).toString();
 }
 
 /**
@@ -150,7 +144,9 @@ export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFe
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
-            next: { revalidate: 3600 },
+            // Signed URLs are version-pinned (immutable until next publish).
+            // force-cache holds forever — no hourly ISR writes.
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 
@@ -196,7 +192,8 @@ export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> 
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
-            next: { revalidate: 3600 },
+            // Signed URLs are version-pinned (immutable until next publish).
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 
@@ -231,7 +228,8 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
         const res = await fetch(url, getCDNFetchOptions({
-            next: { revalidate: 3600 },
+            // Signed URLs: immutable per feed version.
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 
@@ -257,7 +255,8 @@ export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResp
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
         const res = await fetch(url, getCDNFetchOptions({
-            next: { revalidate: 3600 },
+            // Signed URLs: immutable per feed version.
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 
@@ -283,7 +282,7 @@ export async function fetchEducationMetadata(): Promise<EducationMetadata | null
     try {
         const url = signUrlIfServer(EDUCATION_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
-            next: { revalidate: 86400 } // 24 hours cache
+            cache: 'force-cache', // Static metadata — changes rarely, no hourly/daily timer
         }));
         if (!res.ok) return null;
         return await res.json() as EducationMetadata;
@@ -300,7 +299,7 @@ export async function fetchSkillsMetadata(): Promise<string[] | null> {
     try {
         const url = signUrlIfServer(SKILLS_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
-            next: { revalidate: 86400 } // 24 hours cache
+            cache: 'force-cache', // Static metadata — changes rarely, no hourly/daily timer
         }));
         if (!res.ok) return null;
         return await res.json() as string[];
@@ -333,7 +332,8 @@ export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
         const timeoutId = setTimeout(() => controller.abort(), 15000); 
 
         const res = await fetch(url, getCDNFetchOptions({
-            next: { revalidate: 3600 },
+            // Sitemap data also version-signed — cache indefinitely.
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 

@@ -2,7 +2,7 @@ import { Metadata } from 'next';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import DeadlinesClientPage from './DeadlinesClientPage';
 
-export const revalidate = 3600;
+export const revalidate = false; // on-demand only — busted via revalidateTag on publish
 
 export const metadata: Metadata = {
     title: 'Jobs Closing Soon',
