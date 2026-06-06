@@ -3,6 +3,8 @@
     "version":  "1.0.0",
     "description":  "Shared constants for Job Platform",
     "main":  "./dist/index.js",
+    "react-native": "./src/index.ts",
+    "source": "./src/index.ts",
     "types":  "./src/index.ts",
 
     "scripts":  {

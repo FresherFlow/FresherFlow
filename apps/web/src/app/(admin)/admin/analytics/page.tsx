@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useEffect, useState, ReactNode } from 'react';
-import { adminApi } from '@/shared/api/admin';
+import { useCallback, useEffect, useState } from 'react';
+// import { adminApi } from '@/shared/api/admin';
 import { AdminAnalyticsSkeleton } from '@/features/system/components/ui/Skeleton';
 
 type MetricsV2 = {
@@ -32,19 +32,19 @@ type MetricsV2 = {
 
 export default function AdminAnalyticsPage() {
     const [loading, setLoading] = useState(true);
-    const [metrics, setMetrics] = useState<MetricsV2 | null>(null);
-    const [error, setError] = useState<string | null>(null);
+    // const [metrics, setMetrics] = useState<MetricsV2 | null>(null);
+    // const [error, setError] = useState<string | null>(null);
 
     const load = useCallback(async () => {
         setLoading(true);
-        setError(null);
+        // setError(null);
         try {
             // Comment out system metrics call
             // const response = await adminApi.getSystemMetricsV2('30d');
             // setMetrics(response as MetricsV2);
-            setMetrics(null);
+            // setMetrics(null);
         } catch (err: unknown) {
-            setError((err as Error).message || 'Failed to load analytics');
+            // setError((err as Error).message || 'Failed to load analytics');
         } finally {
             setLoading(false);
         }
@@ -66,9 +66,9 @@ export default function AdminAnalyticsPage() {
     );
 }
 
-const unused_render = null;
-if (unused_render) {
-    const metrics: MetricsV2 = null as any;
+// const unused_render = null;
+// if (unused_render) {
+//     const metrics: MetricsV2 = null as any;
     /*
 
     return (
@@ -117,7 +117,7 @@ function MetricCard({ label, value, hint }: { label: string; value: string; hint
     );
 }
 
-function Panel({ title, children }: { title: string; children: ReactNode }) {
+function Panel({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <div className="rounded-xl border border-border bg-card p-4">
             <h3 className="mb-3 text-sm font-semibold">{title}</h3>
@@ -135,7 +135,4 @@ function Row({ label, value }: { label: string; value: number }) {
     );
 }
 */
-}
-
-
-
+// }

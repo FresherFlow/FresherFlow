@@ -178,16 +178,6 @@ function compactStringArray(values: unknown) {
     return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
 }
 
-function compactJsonObject<T extends object>(value: T | undefined) {
-    if (!value) return undefined;
-    const hasValue = Object.values(value).some((entry) => {
-        if (Array.isArray(entry)) return entry.length > 0;
-        if (entry && typeof entry === 'object') return Object.keys(entry as object).length > 0;
-        return entry !== undefined && entry !== null && String(entry).trim() !== '';
-    });
-    return hasValue ? value : undefined;
-}
-
 export function buildGovernmentTags(data: AdminOpportunityRequest) {
     const explicitTags = compactStringArray(data.tags);
     const details = data.governmentJobDetails;

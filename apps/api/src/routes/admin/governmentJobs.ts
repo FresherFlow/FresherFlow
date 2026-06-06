@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { prisma } from '@fresherflow/database';
 import { requireAdmin } from '../../middleware/auth';
 import { logger } from '@fresherflow/logger';
-import { z } from 'zod';
 
 const router = Router();
 

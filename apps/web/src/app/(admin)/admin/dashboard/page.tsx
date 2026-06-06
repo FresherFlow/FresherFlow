@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { cn } from '@repo/ui/utils/cn';
 import {
     BriefcaseIcon,
     UsersIcon,
@@ -16,8 +15,6 @@ import { database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
 import {
-    BOOTSTRAP_FEED_URL,
-    FEED_VERSION_URL,
     CITIES_METADATA_URL,
     SKILLS_METADATA_URL,
 } from '@/lib/runtimeConfig';

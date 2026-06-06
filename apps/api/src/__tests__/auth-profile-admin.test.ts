@@ -69,6 +69,18 @@ vi.mock('../infrastructure/services/email.service', () => ({
     },
 }));
 
+vi.mock('../lib/firebase', () => ({
+    auth: {
+        createCustomToken: vi.fn().mockResolvedValue('mocked-firebase-custom-token'),
+    },
+    default: {
+        auth: () => ({
+            createCustomToken: vi.fn().mockResolvedValue('mocked-firebase-custom-token'),
+        }),
+    },
+}));
+
+
 describe('auth and profile gate', () => {
     beforeEach(() => {
         vi.clearAllMocks();
@@ -124,17 +136,17 @@ describe('middleware: requireAuth, requireAdmin, profileGate', () => {
 
     it('requireAuth blocks when no token', async () => {
         const { requireAuth } = await import('../middleware/auth');
-        const req = { cookies: {} } as Partial<Request>;
+        const req = { cookies: {}, headers: {} } as Partial<Request>;
         const res = {} as Partial<Response>;
         const next = vi.fn();
 
-        requireAuth(req as Request, res as Response, next);
+        await requireAuth(req as Request, res as Response, next);
         expect(next).toHaveBeenCalled();
     });
 
     it('requireAdmin blocks when no admin token', async () => {
         const { requireAdmin } = await import('../middleware/auth');
-        const req = { cookies: {} } as Partial<Request>;
+        const req = { cookies: {}, headers: {} } as Partial<Request>;
         const res = {} as Partial<Response>;
         const next = vi.fn();
 

@@ -20,7 +20,7 @@ declare global {
  * Returns the userId (existing or newly created).
  */
 async function resolveAnonymousUser(req: express.Request): Promise<string | null> {
-    const anonId = req.headers['x-fresherflow-anon-id'] as string | undefined;
+    const anonId = req.headers?.['x-fresherflow-anon-id'] as string | undefined;
     if (!anonId) return null;
 
     try {
@@ -55,7 +55,7 @@ async function resolveAnonymousUser(req: express.Request): Promise<string | null
 
 // Optional User Authentication Middleware
 export async function optionalAuth(req: express.Request, res: Response, next: NextFunction) {
-    const authHeader = req.headers.authorization;
+    const authHeader = req.headers?.authorization;
     const bearerToken =
         authHeader && authHeader.toLowerCase().startsWith('bearer ')
             ? authHeader.slice(7).trim()
@@ -88,7 +88,7 @@ export async function optionalAuth(req: express.Request, res: Response, next: Ne
 
 // User Authentication Middleware
 export async function requireAuth(req: express.Request, res: Response, next: NextFunction) {
-    const authHeader = req.headers.authorization;
+    const authHeader = req.headers?.authorization;
     const bearerToken =
         authHeader && authHeader.toLowerCase().startsWith('bearer ')
             ? authHeader.slice(7).trim()
@@ -125,7 +125,7 @@ export async function requireAuth(req: express.Request, res: Response, next: Nex
 // Accepts both cookie (web) and Authorization Bearer header (mobile app)
 export function requireAdmin(req: express.Request, res: Response, next: NextFunction) {
     const cookieToken = req.cookies?.adminAccessToken as string | undefined;
-    const authHeader = req.headers ? req.headers.authorization : undefined;
+    const authHeader = req.headers?.authorization;
     const bearerToken =
         authHeader && authHeader.toLowerCase().startsWith('bearer ')
             ? authHeader.slice(7).trim()
