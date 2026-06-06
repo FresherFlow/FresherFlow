@@ -10,7 +10,7 @@ const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^[
 const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
 
 const TARGET_SITES = [
-    { url: 'https://jobsaddafreshers.com/', name: 'jobsaddafreshers' },
+    { url: 'https://jobsaddafreshers.com/category/freshers/', name: 'jobsaddafreshers' },
     { url: 'https://internshipss.com/', name: 'internshipss' },
     { url: 'https://www.freshersvoice.com/', name: 'freshersvoice' },
     { url: 'https://placementdrive.in/', name: 'placementdrive' },
@@ -92,12 +92,7 @@ const EXPERIENCED_PHRASES = [
     "minimum 2 years",
     "minimum 1",
     "min 1 year",
-    "min 2 year",
-    "senior",
-    "lead",
-    "staff",
-    "principal",
-    "manager"
+    "min 2 year"
 ];
 
 // Helper to sign the CDN URL
@@ -358,17 +353,37 @@ async function run() {
             
             const siteDomain = new URL(site.url).hostname;
             const jobLinks = [...new Set(allLinks
-                .filter(l => l.href.includes(siteDomain) && (l.href.includes('job') || l.href.includes('hiring') || l.href.includes('recruitment')))
+                .filter(l => {
+                    try {
+                        const u = new URL(l.href);
+                        // Prevent category/tag pages from being scraped as job posts
+                        if (
+                            u.pathname === '/' || 
+                            u.pathname === '/jobs/' ||
+                            u.pathname === '/freshers/' ||
+                            u.pathname.includes('/category/') || 
+                            u.pathname.includes('/tag/') ||
+                            u.pathname.includes('/recruitment/') ||
+                            u.pathname.includes('/jobs-by-location/') ||
+                            u.pathname.includes('-batch-jobs') ||
+                            u.pathname.endsWith('-jobs/') ||
+                            u.pathname.endsWith('-jobs')
+                        ) return false;
+                        
+                        return u.hostname.includes(siteDomain) && 
+                               (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('careers') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher'));
+                    } catch {
+                        return false;
+                    }
+                })
                 .map(l => l.href))];
 
             console.log(`Found ${jobLinks.length} potential job posts on ${site.name} homepage.`);
 
-            for (const jobLink of jobLinks.slice(0, 20)) { // Limit to 20 for now
-                if (visited[site.name].includes(jobLink)) {
-                    console.log(`Skipping visited: ${jobLink}`);
-                    continue;
-                }
+            const unvisitedLinks = jobLinks.filter(link => !visited[site.name].includes(link));
+            console.log(`Found ${unvisitedLinks.length} new unvisited jobs.`);
 
+            for (const jobLink of unvisitedLinks.slice(0, 20)) { // Process up to 20 NEW jobs per run
                 console.log(`Checking: ${jobLink}`);
                 visited[site.name].push(jobLink);
 
@@ -391,9 +406,12 @@ async function run() {
 
                 const normalizedApplyLink = normalizeUrl(applyLink);
                 if (knownLinks.has(normalizedApplyLink)) {
-                    console.log(`  -> Skipping: Already in our CDN (${normalizedApplyLink})`);
+                    console.log(`  -> Skipping: Already seen (${normalizedApplyLink})`);
                     continue;
                 }
+
+                // Add to knownLinks immediately to prevent duplicates in the SAME run!
+                knownLinks.add(normalizedApplyLink);
 
                 console.log(`  -> Checking if actual link is live: ${applyLink}`);
                 const isLive = await isJobLive(page, applyLink);
