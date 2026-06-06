@@ -45,6 +45,7 @@ const EXPIRED_PHRASES = [
     "position has been filled",
     "position closed",
     "no longer accepting applications",
+    "this job is no longer accepting applications",
     "job has expired",
     "job is no longer active",
     "this job is closed",

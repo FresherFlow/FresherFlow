@@ -28,6 +28,7 @@ const EXPIRED_PHRASES = [
     "position has been filled",
     "position closed",
     "no longer accepting applications",
+    "this job is no longer accepting applications",
     "job has expired",
     "job is no longer active",
     "this job is closed",
@@ -206,34 +207,41 @@ async function isJobLive(page: Page, url: string): Promise<boolean> {
     }
 }
 
+function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
+    try {
+        const u = new URL(urlStr);
+        const targetHost = u.hostname.replace(/^www\./, '').toLowerCase();
+        const baseHost = currentDomain.replace(/^www\./, '').toLowerCase();
+        
+        if (targetHost === baseHost) return false;
+        if (u.protocol.includes('mailto')) return false;
+        
+        const blacklistedDomains = [
+            'facebook.com', 'twitter.com', 'x.com', 'linkedin.com', 'whatsapp.com', 
+            'telegram.org', 't.me', 'youtube.com', 'instagram.com', 'foundit.in', 
+            'naukri.com', 'cloudflare.com', 'play.google.com', 'apps.apple.com',
+            'pinterest.com', 'reddit.com', 'github.com/MukeshCheekatla',
+            'freshershunt.in', 'jobsaddafreshers.com', 'internshipss.com', 'placementdrive.in',
+            'freshersvoice.com', 'freshersnow.com', 'offcampusjobs4u.com', 'freshhiring.com', 
+            'recruitnxt.com', 'fresheropenings.com'
+        ];
+        
+        for (const domain of blacklistedDomains) {
+            if (targetHost.includes(domain)) return false;
+        }
+        
+        return true;
+    } catch {
+        return false;
+    }
+}
+
 // Find actual ATS link
 async function findActualApplyLink(page: Page, context: BrowserContext, currentDomain: string): Promise<string | null> {
     try {
         // Collect all external links
         const links = await page.$$eval('a', anchors => anchors.map(a => a.href));
-        const externalLinks = links.filter(l => {
-            try {
-                const u = new URL(l);
-                const targetHost = u.hostname.replace(/^www\./, '');
-                const baseHost = currentDomain.replace(/^www\./, '');
-                // Exclude links that just go to the same domain, or to social media/ads
-                return targetHost !== baseHost 
-                    && !u.protocol.includes('mailto')
-                    && !u.hostname.includes('facebook')
-                    && !u.hostname.includes('twitter')
-                    && !u.hostname.includes('x.com')
-                    && !u.hostname.includes('linkedin')
-                    && !u.hostname.includes('whatsapp')
-                    && !u.hostname.includes('telegram')
-                    && !u.hostname.includes('youtube')
-                    && !u.hostname.includes('instagram')
-                    && !u.hostname.includes('foundit')
-                    && !u.hostname.includes('naukri')
-                    && !u.hostname.includes('cloudflare.com');
-            } catch {
-                return false;
-            }
-        });
+        const externalLinks = links.filter(l => isValidApplyLink(l, currentDomain));
 
         // Heuristic: If we see a known ATS link, return it immediately
         for (const link of externalLinks) {
@@ -251,21 +259,7 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
             if (href) {
                 try {
                     const u = new URL(href, page.url());
-                    const targetHost = u.hostname.replace(/^www\./, '');
-                    const baseHost = currentDomain.replace(/^www\./, '');
-                    if (targetHost !== baseHost && 
-                        !u.protocol.includes('mailto') &&
-                        !u.hostname.includes('facebook') && 
-                        !u.hostname.includes('twitter') && 
-                        !u.hostname.includes('x.com') && 
-                        !u.hostname.includes('linkedin') && 
-                        !u.hostname.includes('whatsapp') && 
-                        !u.hostname.includes('telegram') &&
-                        !u.hostname.includes('youtube') &&
-                        !u.hostname.includes('instagram') &&
-                        !u.hostname.includes('foundit') &&
-                        !u.hostname.includes('naukri') &&
-                        !u.hostname.includes('cloudflare.com')) {
+                    if (isValidApplyLink(u.href, currentDomain)) {
                         return u.href;
                     }
                 } catch {
@@ -286,19 +280,16 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
                 await newPage.waitForLoadState();
                 const url = newPage.url();
                 await newPage.close();
-                return url;
+                if (isValidApplyLink(url, currentDomain)) {
+                    return url;
+                }
             } else {
                 // If it redirected the current page
                 await page.waitForTimeout(3000);
                 const currentUrl = page.url();
-                try {
-                    const u = new URL(currentUrl);
-                    const targetHost = u.hostname.replace(/^www\./, '');
-                    const baseHost = currentDomain.replace(/^www\./, '');
-                    if (targetHost !== baseHost) {
-                        return currentUrl;
-                    }
-                } catch {}
+                if (isValidApplyLink(currentUrl, currentDomain)) {
+                    return currentUrl;
+                }
             }
         }
         
@@ -365,6 +356,11 @@ async function run() {
                             u.pathname.includes('/tag/') ||
                             u.pathname.includes('/recruitment/') ||
                             u.pathname.includes('/jobs-by-location/') ||
+                            u.pathname.includes('/jobs-by-batch-year/') ||
+                            u.pathname.includes('/jobs-by-batch/') ||
+                            u.pathname.includes('/off-campus-drive-jobs/') ||
+                            u.pathname.includes('/work-from-home/') ||
+                            u.pathname.includes('/internship/') ||
                             u.pathname.includes('-batch-jobs') ||
                             u.pathname.endsWith('-jobs/') ||
                             u.pathname.endsWith('-jobs')

@@ -13,7 +13,11 @@
         "CDN_BUILD_TOKEN",
         "CDN_SIGNATURE_SECRET",
         "DATABASE_URL",
-        "NODE_ENV"
+        "NODE_ENV",
+        "FIREBASE_PROJECT_ID",
+        "FIREBASE_CLIENT_EMAIL",
+        "FIREBASE_PRIVATE_KEY",
+        "REVALIDATE_SECRET_TOKEN"
     ],
     "tasks": {
         "build": {

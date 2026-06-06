@@ -189,7 +189,6 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     const canonicalId = opportunity.slug || opportunity.id;
     const canonicalPath = getOpportunityPath(opportunity.type, canonicalId);
     const url = `${SITE_URL}${canonicalPath}`;
-    const ogImageUrl = `${SITE_URL}/api/og/job/${encodeURIComponent(canonicalId)}`;
 
     return {
         title: seoTitle,
@@ -213,20 +212,11 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
             url,
             siteName: 'FresherFlow',
             type: 'website',
-            images: [
-                {
-                    url: ogImageUrl,
-                    width: 1200,
-                    height: 630,
-                    alt: `${opportunity.title} at ${opportunity.company}`,
-                },
-            ],
         },
         twitter: {
             card: 'summary_large_image',
             title: seoTitle,
             description,
-            images: [ogImageUrl],
         },
         alternates: {
             canonical: url,
