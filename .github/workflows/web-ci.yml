@@ -35,3 +35,7 @@ jobs:
 
       - name: Build web
         run: pnpm --filter fresherflow-web build
+
+      - name: Trigger Vercel Deploy Hook
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: curl -X POST ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}

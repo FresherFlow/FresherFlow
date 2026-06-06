@@ -1,5 +1,8 @@
 {
   "framework": "nextjs",
   "buildCommand": "pnpm --filter fresherflow-web build",
-  "outputDirectory": "apps/web/.next"
+  "outputDirectory": "apps/web/.next",
+  "git": {
+    "deploymentEnabled": false
+  }
 }
