@@ -49,7 +49,9 @@ const EXPIRED_PHRASES = [
     "job is no longer active",
     "this job is closed",
     "requisition is closed",
-    "the page you are looking for doesn't exist"
+    "the page you are looking for doesn't exist",
+    "the job you requested was not found",
+    "job not found"
 ];
 
 async function checkJob(page: Page, url: string): Promise<boolean> {
@@ -140,8 +142,12 @@ async function run() {
     // Message 2: Results
     if (expiredJobs.length > 0) {
         let msg = `🚨 <b>Found ${expiredJobs.length} Expired Jobs</b> 🚨\n\n`;
-        for (const job of expiredJobs) {
+        const displayJobs = expiredJobs.slice(0, 15);
+        for (const job of displayJobs) {
             msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  ID: <code>${job.id}</code>\n`;
+        }
+        if (expiredJobs.length > 15) {
+            msg += `...and ${expiredJobs.length - 15} more!\n\n`;
         }
         msg += `\nPlease delete these from the Admin Dashboard.`;
         console.log("Sending Telegram message:", msg);

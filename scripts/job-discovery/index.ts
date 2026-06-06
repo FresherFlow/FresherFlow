@@ -13,9 +13,7 @@ const TARGET_SITES = [
     { url: 'https://jobsaddafreshers.com/', name: 'jobsaddafreshers' },
     { url: 'https://internshipss.com/', name: 'internshipss' },
     { url: 'https://www.freshersvoice.com/', name: 'freshersvoice' },
-    { url: 'https://www.freshersnow.com/', name: 'freshersnow' },
     { url: 'https://placementdrive.in/', name: 'placementdrive' },
-    { url: 'https://offcampusjobs4u.com/', name: 'offcampusjobs4u' },
     { url: 'https://freshershunt.in/', name: 'freshershunt' },
     { url: 'https://freshhiring.com/', name: 'freshhiring' },
     { url: 'https://recruitnxt.com/', name: 'recruitnxt' },
@@ -34,7 +32,9 @@ const EXPIRED_PHRASES = [
     "job is no longer active",
     "this job is closed",
     "requisition is closed",
-    "the page you are looking for doesn't exist"
+    "the page you are looking for doesn't exist",
+    "the job you requested was not found",
+    "job not found"
 ];
 
 // Phrases indicating it's a fresher job
@@ -71,10 +71,28 @@ const EXPERIENCED_PHRASES = [
     "3+ years",
     "4+ years",
     "5+ years",
+    "1+ exp",
+    "2+ exp",
+    "3+ exp",
+    "4+ exp",
+    "1-2 years",
+    "1-3 years",
+    "2-3 years",
+    "2-4 years",
+    "3-5 years",
+    "1 - 3 years",
+    "2 - 4 years",
+    "1 to 3 years",
+    "2 to 4 years",
+    "1 year of experience",
+    "2 years of experience",
     "1 year experience",
     "2 years experience",
     "minimum 1 year",
     "minimum 2 years",
+    "minimum 1",
+    "min 1 year",
+    "min 2 year",
     "senior",
     "lead",
     "staff",
@@ -178,6 +196,15 @@ async function isJobLive(page: Page, url: string): Promise<boolean> {
                 return false;
             }
         }
+
+        // Also check if the ACTUAL ATS page requires 2+ years of experience
+        for (const phrase of EXPERIENCED_PHRASES) {
+            if (lowerText.includes(phrase)) {
+                console.log(`  -> False positive caught! ATS page mentions: ${phrase}`);
+                return false;
+            }
+        }
+
         return true;
     } catch (err) {
         return true; // Better false positive than false negative
@@ -192,13 +219,22 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
         const externalLinks = links.filter(l => {
             try {
                 const u = new URL(l);
+                const targetHost = u.hostname.replace(/^www\./, '');
+                const baseHost = currentDomain.replace(/^www\./, '');
                 // Exclude links that just go to the same domain, or to social media/ads
-                return u.hostname !== currentDomain 
+                return targetHost !== baseHost 
+                    && !u.protocol.includes('mailto')
                     && !u.hostname.includes('facebook')
                     && !u.hostname.includes('twitter')
+                    && !u.hostname.includes('x.com')
                     && !u.hostname.includes('linkedin')
                     && !u.hostname.includes('whatsapp')
-                    && !u.hostname.includes('telegram');
+                    && !u.hostname.includes('telegram')
+                    && !u.hostname.includes('youtube')
+                    && !u.hostname.includes('instagram')
+                    && !u.hostname.includes('foundit')
+                    && !u.hostname.includes('naukri')
+                    && !u.hostname.includes('cloudflare.com');
             } catch {
                 return false;
             }
@@ -220,12 +256,21 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
             if (href) {
                 try {
                     const u = new URL(href, page.url());
-                    if (u.hostname !== currentDomain && 
+                    const targetHost = u.hostname.replace(/^www\./, '');
+                    const baseHost = currentDomain.replace(/^www\./, '');
+                    if (targetHost !== baseHost && 
+                        !u.protocol.includes('mailto') &&
                         !u.hostname.includes('facebook') && 
                         !u.hostname.includes('twitter') && 
+                        !u.hostname.includes('x.com') && 
                         !u.hostname.includes('linkedin') && 
                         !u.hostname.includes('whatsapp') && 
-                        !u.hostname.includes('telegram')) {
+                        !u.hostname.includes('telegram') &&
+                        !u.hostname.includes('youtube') &&
+                        !u.hostname.includes('instagram') &&
+                        !u.hostname.includes('foundit') &&
+                        !u.hostname.includes('naukri') &&
+                        !u.hostname.includes('cloudflare.com')) {
                         return u.href;
                     }
                 } catch {
@@ -253,7 +298,9 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
                 const currentUrl = page.url();
                 try {
                     const u = new URL(currentUrl);
-                    if (u.hostname !== currentDomain) {
+                    const targetHost = u.hostname.replace(/^www\./, '');
+                    const baseHost = currentDomain.replace(/^www\./, '');
+                    if (targetHost !== baseHost) {
                         return currentUrl;
                     }
                 } catch {}
@@ -375,8 +422,12 @@ async function run() {
 
     if (newJobsFound.length > 0) {
         let msg = `🔥 <b>Job Discovery Bot Found ${newJobsFound.length} New Fresher Jobs!</b> 🔥\n\n`;
-        for (const job of newJobsFound) {
+        const displayJobs = newJobsFound.slice(0, 15);
+        for (const job of displayJobs) {
             msg += `- <b>${job.title}</b> (via ${job.source})\n  Link: ${job.applyLink}\n\n`;
+        }
+        if (newJobsFound.length > 15) {
+            msg += `...and ${newJobsFound.length - 15} more!\n\n`;
         }
         msg += `Please add these to the Admin Dashboard.`;
         console.log("Sending Telegram message:", msg);
