@@ -10,9 +10,16 @@ const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^[
 const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
 
 const TARGET_SITES = [
-    { url: 'https://job4freshers.co.in/', name: 'job4freshers' },
     { url: 'https://jobsaddafreshers.com/', name: 'jobsaddafreshers' },
-    { url: 'https://internshipss.com/', name: 'internshipss' }
+    { url: 'https://internshipss.com/', name: 'internshipss' },
+    { url: 'https://www.freshersvoice.com/', name: 'freshersvoice' },
+    { url: 'https://www.freshersnow.com/', name: 'freshersnow' },
+    { url: 'https://placementdrive.in/', name: 'placementdrive' },
+    { url: 'https://offcampusjobs4u.com/', name: 'offcampusjobs4u' },
+    { url: 'https://freshershunt.in/', name: 'freshershunt' },
+    { url: 'https://freshhiring.com/', name: 'freshhiring' },
+    { url: 'https://recruitnxt.com/', name: 'recruitnxt' },
+    { url: 'https://fresheropenings.com/', name: 'fresheropenings' }
 ];
 
 const VISITED_FILE = path.join(process.cwd(), 'visited_urls.json');
@@ -38,7 +45,23 @@ const FRESHER_PHRASES = [
     "freshers",
     "experience: 0",
     "entry level",
-    "entry-level"
+    "entry-level",
+    "intern",
+    "internship",
+    "graduate",
+    "graduate engineer",
+    "graduate trainee",
+    "trainee",
+    "associate",
+    "junior",
+    "campus hiring",
+    "off campus",
+    "software engineer i",
+    "sde 1",
+    "analyst",
+    "business analyst",
+    "data analyst",
+    "apprentice"
 ];
 
 // Phrases indicating it's NOT a fresher job (we skip if we see these AND we don't see fresher phrases)
@@ -46,10 +69,17 @@ const EXPERIENCED_PHRASES = [
     "1+ years",
     "2+ years",
     "3+ years",
+    "4+ years",
+    "5+ years",
     "1 year experience",
     "2 years experience",
     "minimum 1 year",
-    "minimum 2 years"
+    "minimum 2 years",
+    "senior",
+    "lead",
+    "staff",
+    "principal",
+    "manager"
 ];
 
 // Helper to sign the CDN URL
@@ -176,13 +206,35 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
 
         // Heuristic: If we see a known ATS link, return it immediately
         for (const link of externalLinks) {
-            if (link.includes('workday') || link.includes('greenhouse') || link.includes('lever') || link.includes('myworkdayjobs')) {
+            const lowerLink = link.toLowerCase();
+            if (lowerLink.includes('workday') || lowerLink.includes('greenhouse') || lowerLink.includes('lever') || lowerLink.includes('myworkdayjobs') || lowerLink.includes('taleo') || lowerLink.includes('icims') || lowerLink.includes('smartrecruiters') || lowerLink.includes('forms.gle') || lowerLink.includes('eightfold') || lowerLink.includes('careers.') || lowerLink.includes('jobs.') || lowerLink.includes('oraclecloud.com') || lowerLink.includes('infosysapps.com') || lowerLink.includes('phenompro.com') || lowerLink.includes('ashbyhq.com') || lowerLink.includes('jobvite.com')) {
                 return link;
             }
         }
 
-        // If no direct ATS, try to click a button that looks like "Apply"
-        const applyButtons = await page.$$('a:text-matches("(?i)apply")');
+        // If no direct ATS, try to find an "Apply" button with an external href
+        const applyButtons = await page.$$('a >> text=/(apply|register|click here|submit)/i');
+        
+        for (const btn of applyButtons) {
+            const href = await btn.getAttribute('href');
+            if (href) {
+                try {
+                    const u = new URL(href, page.url());
+                    if (u.hostname !== currentDomain && 
+                        !u.hostname.includes('facebook') && 
+                        !u.hostname.includes('twitter') && 
+                        !u.hostname.includes('linkedin') && 
+                        !u.hostname.includes('whatsapp') && 
+                        !u.hostname.includes('telegram')) {
+                        return u.href;
+                    }
+                } catch {
+                    // Ignore invalid URLs
+                }
+            }
+        }
+
+        // If no explicit apply link with an external href was found, try clicking the first apply button
         if (applyButtons.length > 0) {
             // Wait for potential new tab
             const [newPage] = await Promise.all([
@@ -264,7 +316,7 @@ async function run() {
 
             console.log(`Found ${jobLinks.length} potential job posts on ${site.name} homepage.`);
 
-            for (const jobLink of jobLinks.slice(0, 10)) { // Limit to 10 for now
+            for (const jobLink of jobLinks.slice(0, 20)) { // Limit to 20 for now
                 if (visited[site.name].includes(jobLink)) {
                     console.log(`Skipping visited: ${jobLink}`);
                     continue;
@@ -331,6 +383,20 @@ async function run() {
         await sendTelegramMessage(msg);
     } else {
         console.log("No new jobs found this run.");
+    }
+
+    // Write summary for GitHub Actions
+    if (process.env.GITHUB_STEP_SUMMARY) {
+        let summary = `## Job Discovery Bot Results\n\nChecked target sites. Found ${newJobsFound.length} new jobs.\n\n`;
+        if (newJobsFound.length > 0) {
+            summary += `### New Jobs\n`;
+            newJobsFound.forEach(j => {
+                summary += `- **${j.title}** (via ${j.source}): ${j.applyLink}\n`;
+            });
+        } else {
+            summary += `No new fresher jobs were found during this run.`;
+        }
+        await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
     }
 }
 
