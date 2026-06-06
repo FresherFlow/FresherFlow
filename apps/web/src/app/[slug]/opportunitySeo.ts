@@ -115,12 +115,6 @@ function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
 // feed JSON separately. With cache(), the second call is free.
 export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {
     try {
-        // TEMPORARY FOR TESTING: Fetch directly from the API backend first (essential for local production testing/builds)
-        const directOpportunity = await fetchOpportunityForPageOld(slugOrId);
-        if (directOpportunity) {
-            return directOpportunity;
-        }
-
         // Optimized: Fetch the complete opportunity list from the CDN JSON instead of querying the Render database backend.
         // This prevents Render backend wake-ups, OOMs, and database connection limits during Vercel builds or revalidations.
         const { fetchBootstrapFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
@@ -151,25 +145,6 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
         return null;
     }
 });
-
-// ORIGINAL CODE (RENAMED TO BYPASS RENDER BACKEND FETCH):
-export async function fetchOpportunityForPageOld(slugOrId: string): Promise<ExtendedOpportunity | null> {
-    try {
-        const response = await fetch(`${API_BASE}/api/opportunities/${encodeURIComponent(slugOrId)}`, {
-            method: 'GET',
-            headers: {
-                'X-Requested-From': 'fresherflow-web',
-            },
-            cache: 'no-store',
-        });
-
-        if (!response.ok) return null;
-        const payload = await response.json() as { opportunity?: ExtendedOpportunity };
-        return payload.opportunity || null;
-    } catch {
-        return null;
-    }
-}
 
 export async function generateOpportunityMetadata(opportunity: ExtendedOpportunity): Promise<Metadata> {
     const expiry = getExpiryState(opportunity);
