@@ -76,7 +76,7 @@ const AuthScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
         AppleAuthentication.isAvailableAsync().then(setIsAppleAvailable);
     }, []);
 
-    const { isAuthenticated, user, skipUsernameSetup, isSyncing } = useAuthStore();
+    const { isAuthenticated, user, skipUsernameSetup, isSyncing, isHandshaking } = useAuthStore();
     const isOnboarding = route.params?.isOnboarding;
     const [guestLoading, setGuestLoading] = React.useState(false);
     const handleContinueAsGuest = async () => {
@@ -115,11 +115,15 @@ const AuthScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
                     navigation.replace('Main');
                 }
             } else {
+                // If a backend handshake is running, wait for it to complete or fail
+                // to see if we can resolve the user's username before prompting for a new one.
+                if (isHandshaking || user.isOptimistic) return;
+
                 // New user without a handle — redirect to setup
                 navigation.replace('ProfileChooseUsername', isOnboarding ? { isOnboarding: true } : undefined);
             }
         }
-    }, [isAuthenticated, user, skipUsernameSetup, isSyncing, navigation, isOnboarding]);
+    }, [isAuthenticated, user, skipUsernameSetup, isSyncing, isHandshaking, navigation, isOnboarding]);
 
     const showEmail = false;
 

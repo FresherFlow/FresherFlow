@@ -33,7 +33,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'ChooseUsername' | 'Prof
 
 export const ChooseUsernameScreen: React.FC<Props> = ({ route, navigation }) => {
     const { currentTheme } = useTheme();
-    const { updateUser, skipUsername } = useAuthStore();
+    const { user, skipUsernameSetup, isSyncing, updateUser, skipUsername } = useAuthStore();
     const isOnboarding = route.params?.isOnboarding;
     
     const [username, setUsername] = useState('');
@@ -56,22 +56,39 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ route, navigation }) => 
         };
     }, []);
 
+    // Self-healing effect: If user.username gets populated or skipped in the background
+    // (e.g. via background RTDB sync or API handshake), automatically dismiss this screen.
+    useEffect(() => {
+        // If rendered inline inside OnboardingScreen, let the parent component control navigation
+        if ((route.name as string) === 'Onboarding') return;
+
+        if (!isSyncing && user && !user.isAnonymous) {
+            const hasUsername = Boolean(user.username?.trim());
+            if (hasUsername || skipUsernameSetup) {
+                if (isOnboarding) {
+                    navigation.replace('Main');
+                } else if (navigation.canGoBack()) {
+                    navigation.goBack();
+                } else {
+                    navigation.replace('Main');
+                }
+            }
+        }
+    }, [user, skipUsernameSetup, isSyncing, isOnboarding, navigation, route.name]);
+
     // Pre-fetch the list of occupied usernames from CDN edge on mount for zero-latency local checks
     useEffect(() => {
         const loadTakenUsernames = async () => {
             try {
                 const signatureParams = generateCdnSignature('/taken-usernames.min.json');
                 const signedUrl = `${TAKEN_USERNAMES_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
-                console.log('[ChooseUsername] Fetching taken usernames from CDN:', signedUrl);
                 const res = await axios.get(signedUrl, { 
                     timeout: 4000
                 });
                 if (Array.isArray(res.data)) {
-                    console.log('[ChooseUsername] Pre-fetched taken usernames successfully. Total count:', res.data.length);
                     setTakenUsernames(res.data.map((u: string) => u.toLowerCase()));
                 }
             } catch (e) {
-                console.warn('[ChooseUsername] CDN usernames pre-fetch failed. Falling back to live API:', (e as Error).message);
             }
         };
         void loadTakenUsernames();
@@ -108,7 +125,6 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ route, navigation }) => 
                     setError(null);
                 }
             } catch (err) {
-                console.error('Failed to check username:', err);
                 // Offline Optimistic Fallback: If API is down and CDN wasn't loaded, assume available
                 setIsAvailable(true);
                 setError(null);
@@ -154,13 +170,11 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ route, navigation }) => 
             // 3. Fire the claim request in the background (tolerating sleeping Render cold start)
             void usernameApi.claim(username)
                 .then(() => {
-                    console.log('[ChooseUsername] Background username claim succeeded on server:', username);
                     // Clear the queue item — no need for the flush to re-send it
                     const s = useAuthStore.getState();
                     removeUsernameClaim(s.user?.id ?? '', s.firebaseUser?.uid);
                 })
                 .catch((err) => {
-                    console.error('[ChooseUsername] Background username claim failed on server:', err.message || err);
                     // Queue item stays — flush will retry on next handshake
                 });
             

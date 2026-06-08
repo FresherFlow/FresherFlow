@@ -31,8 +31,8 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation, route }) => {
     // Step 0 -> Step 1: Advance when user successfully authenticates, or complete if anonymous guest
     useEffect(() => {
         if (step === 0 && user) {
-            if (isSyncing) {
-                // Wait for the Firebase sync/hydration to resolve the username before navigating
+            if (isSyncing || user.isOptimistic) {
+                // Wait for the Firebase sync/hydration and backend handshake to resolve the username before navigating
                 return;
             }
             if (user.isAnonymous) {
