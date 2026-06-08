@@ -12,7 +12,9 @@ export const contentType = 'image/png';
 // Uses the same links.min.json already fetched during the render — force-cache = single CDN hit.
 export async function generateStaticParams() {
     try {
-        const res = await fetch(LINKS_FEED_URL, { cache: 'force-cache' });
+        const { fetchFeedVersion } = await import('@/lib/api/cdnFeed');
+        const version = await fetchFeedVersion();
+        const res = await fetch(`${LINKS_FEED_URL}?v=${version}`, { cache: 'force-cache' });
         if (!res.ok) return [];
         const data = await res.json();
         return (data?.opportunities ?? []).map((o: { slug?: string; id: string }) => ({
@@ -73,11 +75,13 @@ async function logoToDataUrl(url: string): Promise<string | null> {
 export default async function OpengraphImage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = await params;
 
-    // force-cache: pulled from Next.js data cache — same cache already warmed by the page render.
-    // In Node.js runtime this is instant; no timeout guard needed.
+    // append ?v=version so Next.js data cache treats it as a new URL when jobs are published.
+    // fetchFeedVersion is correctly cache-invalidated by /api/revalidate
     let opportunities: OpportunityDto[] = [];
     try {
-        const res = await fetch(LINKS_FEED_URL, { cache: 'force-cache' });
+        const { fetchFeedVersion } = await import('@/lib/api/cdnFeed');
+        const version = await fetchFeedVersion();
+        const res = await fetch(`${LINKS_FEED_URL}?v=${version}`, { cache: 'force-cache' });
         if (res.ok) opportunities = (await res.json())?.opportunities ?? [];
     } catch { /* serve fallback */ }
 
