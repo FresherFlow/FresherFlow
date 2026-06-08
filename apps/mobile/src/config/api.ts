@@ -97,7 +97,6 @@ export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;
 export const CITIES_METADATA_URL = `${CDN_URL}/cities.json`;
 export const RESOURCES_FEED_URL = `${CDN_URL}/resources-feed.json`;
 export const GOVERNMENT_FEED_URL = `${CDN_URL}/government-feed.json`;
-export const GOVERNMENT_RESOURCES_FEED_URL = `${CDN_URL}/government-resources-feed.json`;
 
 export function getApiUrlForSector(sector: string | null): string {
     if (sector === 'GOVERNMENT') {

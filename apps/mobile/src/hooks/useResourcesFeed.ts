@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { RESOURCES_FEED_URL, GOVERNMENT_RESOURCES_FEED_URL } from '@/config/api';
+import { RESOURCES_FEED_URL } from '@/config/api';
 import { SharedResource, ResourcesFeed, ResourceItemType, ResourceItemStatus, CompanyResourceMetadata } from '@fresherflow/types';
 import { useSectorStore } from '@/store/useSectorStore';
 
@@ -9,12 +9,11 @@ const MOCK_COMPANY_METADATA: Record<string, CompanyResourceMetadata> = {};
 
 export function useResourcesFeed() {
   const { sector } = useSectorStore();
-  const url = sector === 'GOVERNMENT' ? GOVERNMENT_RESOURCES_FEED_URL : RESOURCES_FEED_URL;
 
   const { data, isLoading, error } = useQuery<ResourcesFeed>({
     queryKey: ['resourcesFeed', sector],
     queryFn: async () => {
-      const response = await fetch(url);
+      const response = await fetch(RESOURCES_FEED_URL);
       if (!response.ok) throw new Error('CDN Feed offline or unavailable');
       return response.json();
     },
