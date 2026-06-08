@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
     return (
-        <main className="max-w-6xl mx-auto px-4 md:px-8 py-6">
+        <main className="max-w-4xl mx-auto px-4 md:px-8 py-6">
             <AboutClient />
         </main>
     );

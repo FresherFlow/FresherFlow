@@ -1,4 +1,4 @@
-import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
+// import HomeIcon from '@heroicons/react/24/outline/HomeIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
@@ -56,10 +56,10 @@ export function getNavRoutes(): NavRoute[] {
             icon: AcademicCapIcon,
         },
         {
-            href: '/walk-ins',
-            label: 'Walk-ins',
-            mobileTitle: 'Walk-ins',
-            mobileLabel: 'Walk-ins',
+            href: '/remote',
+            label: 'Remote',
+            mobileTitle: 'Remote',
+            mobileLabel: 'Remote',
             showInDesktop: true,
             showInMobileTabs: true,
             icon: BriefcaseIcon,

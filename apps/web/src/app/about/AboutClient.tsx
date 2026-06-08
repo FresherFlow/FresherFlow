@@ -198,7 +198,7 @@ export function AboutClient() {
 
                 {/* Pillar 1 */}
                 <div className="grid grid-cols-1 lg:grid-cols-[80px_1fr_340px] gap-6 lg:gap-12 items-start">
-                    <div className="text-7xl font-black text-foreground/8 leading-none select-none hidden lg:block">01</div>
+                    <div className="text-7xl font-black text-foreground/10 leading-none select-none hidden lg:block">01</div>
                     <div className="space-y-3">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg border border-border bg-muted/40 flex items-center justify-center shrink-0">
@@ -229,7 +229,7 @@ export function AboutClient() {
 
                 {/* Pillar 2 */}
                 <div className="grid grid-cols-1 lg:grid-cols-[80px_1fr_340px] gap-6 lg:gap-12 items-start">
-                    <div className="text-7xl font-black text-foreground/8 leading-none select-none hidden lg:block">02</div>
+                    <div className="text-7xl font-black text-foreground/10 leading-none select-none hidden lg:block">02</div>
                     <div className="space-y-3">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg border border-border bg-muted/40 flex items-center justify-center shrink-0">
@@ -292,7 +292,7 @@ export function AboutClient() {
 
                 {/* Pillar 3 */}
                 <div className="grid grid-cols-1 lg:grid-cols-[80px_1fr_340px] gap-6 lg:gap-12 items-start">
-                    <div className="text-7xl font-black text-foreground/8 leading-none select-none hidden lg:block">03</div>
+                    <div className="text-7xl font-black text-foreground/10 leading-none select-none hidden lg:block">03</div>
                     <div className="space-y-3">
                         <div className="flex items-center gap-3">
                             <div className="w-8 h-8 rounded-lg border border-border bg-muted/40 flex items-center justify-center shrink-0">

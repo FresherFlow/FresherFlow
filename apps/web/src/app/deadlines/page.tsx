@@ -1,3 +1,4 @@
+import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import DeadlinesClientPage from './DeadlinesClientPage';
@@ -13,8 +14,5 @@ export const metadata: Metadata = {
 };
 
 export default async function DeadlinesPage() {
-    const bootstrapData = await fetchBootstrapFeed();
-    const opportunities = bootstrapData ? bootstrapData.opportunities : [];
-
-    return <DeadlinesClientPage initialOpportunities={opportunities} />;
+    notFound();
 }
