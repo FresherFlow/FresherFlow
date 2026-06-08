@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { OpportunityType, type Opportunity } from '@fresherflow/types';
+import { OpportunityType, ResourceItemType, ResourceItemStatus, type Opportunity, type SharedResource } from '@fresherflow/types';
 import { 
   readSavedJobs, 
   saveSavedJobs, 
@@ -12,9 +12,9 @@ import {
 
 interface SavedContextType {
   savedJobs: (Opportunity & { needsSync?: boolean })[];
-  savedResources: any[];
+  savedResources: SharedResource[];
   toggleSave: (job: Opportunity) => void;
-  toggleSaveResource: (res: any) => void;
+  toggleSaveResource: (res: SharedResource) => void;
   isSaved: (jobId: string) => boolean;
   isSavedResource: (id: string) => boolean;
   hasPendingSync: boolean;
@@ -57,7 +57,7 @@ export const SavedProvider: React.FC<{
   feedItems?: Opportunity[]
 }> = ({ children, userId, firebaseDatabaseUrl, feedItems }) => {
   const [savedJobs, setSavedJobs] = useState<(Opportunity & { needsSync?: boolean })[]>([]);
-  const [savedResources, setSavedResources] = useState<any[]>([]);
+  const [savedResources, setSavedResources] = useState<SharedResource[]>([]);
   const [hasPendingSync, setHasPendingSync] = useState(false);
 
   const syncSavedJobs = async () => {
@@ -140,18 +140,21 @@ export const SavedProvider: React.FC<{
       }
 
       const currentSaved = await readSavedResources() || [];
-      const updatedResources: any[] = [];
+      const updatedResources: SharedResource[] = [];
       for (const id of ids) {
-        const existing = currentSaved.find((r: any) => r.id === id);
+        const existing = currentSaved.find((r: SharedResource) => r.id === id);
         if (existing && existing.title && existing.title !== 'Saved Resource') {
           updatedResources.push(existing);
         } else {
           updatedResources.push({
             id,
             title: 'Saved Resource',
-            type: 'LINK',
+            type: ResourceItemType.LINK,
             url: '',
             skills: [],
+            status: ResourceItemStatus.APPROVED,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
           });
         }
       }
@@ -211,9 +214,9 @@ export const SavedProvider: React.FC<{
 
   const isSaved = (jobId: string) => savedJobs.some((j) => j.id === jobId);
 
-  const toggleSaveResource = async (res: any) => {
+  const toggleSaveResource = async (res: SharedResource) => {
     setSavedResources((prev) => {
-      let updated: any[];
+      let updated: SharedResource[];
       const isAlreadySaved = prev.some((r) => r.id === res.id);
 
       if (isAlreadySaved) {

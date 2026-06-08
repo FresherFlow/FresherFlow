@@ -10,7 +10,7 @@ import {
     TrashIcon,
     ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
-import LoadingScreen from '@/components/ui/LoadingScreen';
+
 import { toast } from 'react-hot-toast';
 
 export default function AdminResourcesClient() {

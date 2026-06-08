@@ -4,12 +4,10 @@ import { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
 import { slugify } from '@fresherflow/utils';
 import { cn } from '@repo/ui/utils/cn';
-import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
-import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import FireIcon from '@heroicons/react/24/outline/FireIcon';
@@ -50,7 +48,7 @@ type JobWithActions = Opportunity & {
 };
 
 
-export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin, priority = false, variant = 'default' }: JobCardProps) {
+export default function JobCard({ job, onClick, isApplied = false, isAdmin, priority = false, variant = 'default' }: JobCardProps) {
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
 
@@ -64,14 +62,6 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
         ['APPLIED', 'PLANNED', 'SAVED_FOR_LATER', 'INTERVIEWING', 'OFFERED', 'REJECTED'].includes(a.actionType)
     );
     const trackerStatus: string | null = trackerAction?.actionType ?? null;
-
-
-    const handleSaveClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (onToggleSave) {
-            onToggleSave();
-        }
-    };
 
     const handleShareClick = async (e: React.MouseEvent) => {
         e.stopPropagation();

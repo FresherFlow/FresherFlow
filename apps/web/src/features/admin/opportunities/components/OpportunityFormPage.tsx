@@ -11,7 +11,6 @@ import { TypeSelection } from './OpportunityForm/sections/TypeSelection';
 import { JobInfoSection } from './OpportunityForm/sections/JobInfoSection';
 import { LogisticsSection } from './OpportunityForm/sections/LogisticsSection';
 import { EligibilitySection } from './OpportunityForm/sections/EligibilitySection';
-import { SocialStatusSection } from './OpportunityForm/sections/SocialStatusSection';
 import { SalarySection } from './OpportunityForm/sections/SalarySection';
 import { ApplyLinkSection } from './OpportunityForm/sections/ApplyLinkSection';
 import { ApplicationDetailsSection } from './OpportunityForm/sections/ApplicationDetailsSection';
@@ -50,9 +49,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
     } = useOpportunityFormDerived(form);
 
     const {
-        handleSubmit,
-        handleCopyCaption,
-        handleCopyFullPack
+        handleSubmit
     } = useOpportunityFormHandlers(form, mode, opportunityId);
 
     useEffect(() => {
@@ -121,7 +118,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                                     const parsed = JSON.parse(form.pastedJson);
                                     form.applyJsonData(parsed);
                                     form.setShowParser(false);
-                                } catch (err) {
+                                } catch {
                                     toast.error('Invalid JSON: Please check the pasted JSON structure.');
                                 }
                             }}

@@ -46,8 +46,6 @@ export function useOpportunitiesFeed({
     qualification,
     course,
     initialData,
-    minSalary,
-    maxSalary
 }: UseOpportunitiesFeedOptions) {
     const { user, profile, isLoading: authLoading } = useAuth();
 
@@ -236,22 +234,23 @@ export function useOpportunitiesFeed({
                 setIsLoading(false);
             }
         }
-    }, [type, selectedLoc, user, authLoading, showOnlySaved, sector, qualification, course, closingSoon, cacheScope, normalizedSearch, shouldUseBackendSearch, initialData]);
+    }, [type, user, authLoading, showOnlySaved, cacheScope, shouldUseBackendSearch, initialData]);
 
+    const hasOpportunities = !!initialData?.opportunities?.length;
+    const hasInitialData = !!initialData;
     useEffect(() => {
         if (!authLoading) {
             // If we have initial data, we already rendered. 
             // We only need to trigger a background sync if we're not searching
             // or if the initial data is old.
-            const hasInitialData = !!initialData?.opportunities?.length;
-            if (hasInitialData && !shouldUseBackendSearch) {
+            if (hasOpportunities && !shouldUseBackendSearch) {
                 // Background sync (SWR)
                 loadOpportunities(1, false);
             } else {
                 loadOpportunities();
             }
         }
-    }, [loadOpportunities, authLoading, user, showOnlySaved, !!initialData]);
+    }, [loadOpportunities, authLoading, user, showOnlySaved, hasOpportunities, shouldUseBackendSearch, hasInitialData]);
 
     const filteredOpps = useMemo(() => {
         const modeFiltered = opportunities;
@@ -350,7 +349,7 @@ export function useOpportunitiesFeed({
 
             return (a.id || '').localeCompare(b.id || '');
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch, type]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {

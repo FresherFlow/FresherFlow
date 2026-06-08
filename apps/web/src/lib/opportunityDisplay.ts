@@ -216,7 +216,6 @@ export const getOpportunityDisplaySalary = (opportunity: Opportunity): string | 
             // But only extract it if the outside DOES NOT contain the monetary value, 
             // OR if the inside explicitly has currency symbols while the outside doesn't.
             const outsideText = cleaned.replace(/\s*\([^)]*\)/g, '');
-            const outsideHasMoney = /₹|Rs|\d{4,}/i.test(outsideText);
             const insideHasCurrency = moneyInParens ? /₹|Rs|LPA|lakh/i.test(moneyInParens[1]) : false;
 
             if (moneyInParens && insideHasCurrency && !/₹|Rs/i.test(outsideText)) {

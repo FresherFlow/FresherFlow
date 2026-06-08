@@ -1,7 +1,5 @@
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
-import DeadlinesClientPage from './DeadlinesClientPage';
 
 export const revalidate = false; // on-demand only — busted via revalidateTag on publish
 

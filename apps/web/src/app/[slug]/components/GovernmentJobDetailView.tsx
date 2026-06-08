@@ -1,6 +1,6 @@
 'use client';
 
-import { ActionType, type Opportunity, type User, type GovernmentVacancy, type GovernmentExamStage } from '@fresherflow/types';
+import { ActionType, type Opportunity, type User, type GovernmentExamStage } from '@fresherflow/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
@@ -14,7 +14,6 @@ import DocumentDuplicateIcon from '@heroicons/react/24/outline/DocumentDuplicate
 import CheckCircleIcon from '@heroicons/react/24/outline/CheckCircleIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
-import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
@@ -24,7 +23,6 @@ import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircle
 import CompanyLogo from '@/components/ui/CompanyLogo';
 
 import React from 'react';
-import Link from 'next/link';
 
 // Import reusable UI components directly from files to avoid client-side package issues
 import { Timeline } from '@repo/ui/components/Timeline';
@@ -47,19 +45,7 @@ interface GovernmentJobDetailViewProps {
     formatDeadline: (opp: Opportunity) => string | null;
 }
 
-const parseSalary = (salaryStr?: string) => {
-    if (!salaryStr) return 0;
-    const numbers = salaryStr.replace(/,/g, '').match(/\d+/g);
-    if (!numbers || numbers.length === 0) return 0;
-    return Math.max(...numbers.map(Number));
-};
 
-const parseAge = (ageStr?: string) => {
-    if (!ageStr) return 0;
-    const numbers = ageStr.match(/\d+/g);
-    if (!numbers || numbers.length === 0) return 0;
-    return Math.max(...numbers.map(Number));
-};
 
 // Collapsible FAQ accordion
 const FaqAccordion = ({ faqs }: { faqs: Array<{ question?: string; q?: string; answer?: string; a?: string }> }) => {
@@ -345,11 +331,9 @@ export function GovernmentJobDetailView({
     handleSetAction,
     hasApplyLink,
     handleApply,
-    handleToggleSave,
     handleShare,
     handleCopyLink,
     listingState,
-    formatDeadline
 }: GovernmentJobDetailViewProps) {
     const details = opp.governmentJobDetails || {} as any;
     const hasSalaryInfo = Boolean(details.basicPay || details.payLevel || (details.allowances && details.allowances.length > 0) || details.extraMetadata?.promotionPath || details.extraMetadata?.careerGrowth || details.extraMetadata?.promotionOpportunities);
@@ -655,7 +639,6 @@ export function GovernmentJobDetailView({
             : [];
     }, [details.requiredDocumentDetails]);
 
-    const hasChecklist = validRequiredDocuments.length > 0 || validRequiredDocumentDetails.length > 0;
     const instructionBullets = parseInstructions(details.importantInstructions);
 
     const { documents, instructions } = React.useMemo(() => {
@@ -786,21 +769,7 @@ export function GovernmentJobDetailView({
         );
     };
 
-    // Status phase badge for top of portal card
-    const PHASE_BADGE: Record<string, { label: string; className: string }> = {
-        UPCOMING:              { label: 'Upcoming',         className: 'bg-blue-500/10 border-blue-400/30 text-blue-700 dark:text-blue-300' },
-        OPEN:                  { label: 'Apply Now',         className: 'bg-emerald-500/10 border-emerald-400/30 text-emerald-700 dark:text-emerald-300' },
-        CLOSED:                { label: 'Closed',           className: 'bg-muted border-border text-muted-foreground' },
-        EXAM_SCHEDULED:        { label: 'Exam Scheduled',   className: 'bg-amber-500/10 border-amber-400/30 text-amber-700 dark:text-amber-300' },
-        ADMIT_CARD_RELEASED:   { label: 'Admit Card Out',   className: 'bg-violet-500/10 border-violet-400/30 text-violet-700 dark:text-violet-300' },
-        ANSWER_KEY_RELEASED:   { label: 'Answer Key Out',   className: 'bg-indigo-500/10 border-indigo-400/30 text-indigo-700 dark:text-indigo-300' },
-        RESULT_DECLARED:       { label: 'Result Declared',  className: 'bg-orange-500/10 border-orange-400/30 text-orange-700 dark:text-orange-300' },
-        COUNSELLING:           { label: 'Counselling',       className: 'bg-teal-500/10 border-teal-400/30 text-teal-700 dark:text-teal-300' },
-        DOCUMENT_VERIFICATION: { label: 'Doc Verification', className: 'bg-cyan-500/10 border-cyan-400/30 text-cyan-700 dark:text-cyan-300' },
-        COMPLETED:             { label: 'Completed',         className: 'bg-muted border-border text-muted-foreground' },
-        CANCELLED:             { label: 'Cancelled',         className: 'bg-destructive/10 border-destructive/30 text-destructive' },
-    };
-    const phaseBadge = applicationStatus ? PHASE_BADGE[applicationStatus] : undefined;
+
 
     const renderApplyPortal = () => (
         <div id="important-links" className="bg-card border-2 border-primary/20 rounded-xl overflow-hidden shadow-sm scroll-mt-24">

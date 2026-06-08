@@ -1,4 +1,4 @@
-import type { Opportunity, Profile } from '@fresherflow/types';
+import type { Opportunity } from '@fresherflow/types';
 import { ActionType } from '@fresherflow/types';
 import { buildShareUrl } from '@/lib/share';
 
@@ -33,7 +33,7 @@ export function getListingState(opp: Opportunity) {
   return 'active';
 }
 
-export function buildEligibilitySnapshot(opp: Opportunity, _profile: Profile | null) {
+export function buildEligibilitySnapshot(opp: Opportunity) {
   return {
     years: opp.allowedPassoutYears || [],
     degrees: opp.allowedDegrees || [],

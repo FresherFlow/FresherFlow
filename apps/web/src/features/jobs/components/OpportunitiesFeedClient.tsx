@@ -1,8 +1,7 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useState, Suspense, useEffect } from 'react';
+import { useState } from 'react';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
@@ -10,7 +9,6 @@ import FunnelIcon from '@heroicons/react/24/outline/FunnelIcon';
 import { Input } from '@/components/ui/Input';
 import { useOpportunitiesFeed } from '@/features/jobs/hooks/useOpportunitiesFeed';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatSyncTime } from '@/lib/offline/syncStatus';
 import dynamic from 'next/dynamic';
 import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
 import { SITE_URL } from '@/lib/runtimeConfig';
@@ -79,17 +77,11 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         (filters.salary ? 1 : 0) +
         (filters.year ? 1 : 0);
 
-    const [isOnline, setIsOnline] = useState<boolean>(() =>
-        typeof window !== 'undefined' ? window.navigator.onLine : true
-    );
-
     const {
         filteredOpps,
         totalCount,
         isLoading,
         error,
-        usingCachedFeed,
-        cachedAt,
         profileIncomplete,
         toggleSave,
         reload,
@@ -106,18 +98,6 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         maxSalary: null,
         initialData,
     });
-
-    useEffect(() => {
-        if (typeof window === 'undefined') return;
-        const handleOnline = () => setIsOnline(true);
-        const handleOffline = () => setIsOnline(false);
-        window.addEventListener('online', handleOnline);
-        window.addEventListener('offline', handleOffline);
-        return () => {
-            window.removeEventListener('online', handleOnline);
-            window.removeEventListener('offline', handleOffline);
-        };
-    }, []);
 
     const updateType = (type: string | null) => {
         const params = new URLSearchParams(searchParams.toString());

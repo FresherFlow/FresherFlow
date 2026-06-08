@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 // import { adminApi } from '@/shared/api/admin';
 import { AdminAnalyticsSkeleton } from '@/features/system/components/ui/Skeleton';
 
+/*
 type MetricsV2 = {
     generatedAt: string;
     cacheTtlSeconds: number;
@@ -29,6 +30,7 @@ type MetricsV2 = {
         notifiedUsers14d: number;
     };
 };
+*/
 
 export default function AdminAnalyticsPage() {
     const [loading, setLoading] = useState(true);
@@ -43,7 +45,7 @@ export default function AdminAnalyticsPage() {
             // const response = await adminApi.getSystemMetricsV2('30d');
             // setMetrics(response as MetricsV2);
             // setMetrics(null);
-        } catch (err: unknown) {
+        } catch {
             // setError((err as Error).message || 'Failed to load analytics');
         } finally {
             setLoading(false);

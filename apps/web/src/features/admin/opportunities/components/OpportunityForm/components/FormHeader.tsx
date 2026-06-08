@@ -1,4 +1,3 @@
-import Link from 'next/link';
 import { BoltIcon } from '@heroicons/react/24/outline';
 
 interface FormHeaderProps {
@@ -13,8 +12,6 @@ export function FormHeader({
     isEditMode, 
     showParser, 
     setShowParser,
-    isGovernmentJob = false,
-    setIsGovernmentJob
 }: FormHeaderProps) {
     return (
         <div className="space-y-3">

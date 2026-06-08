@@ -1,11 +1,7 @@
-import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import { permanentRedirect } from 'next/navigation';
-import { Opportunity } from '@fresherflow/types';
-import { getCompanyDomain } from '@fresherflow/utils';
 import JobCard from '@/features/opportunities/components/JobCard';
-import { SkeletonJobCard } from '@/components/ui/Skeleton';
-import { ArrowLeftIcon, GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
+import { GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import { SITE_URL } from '@/lib/runtimeConfig';

@@ -1,7 +1,7 @@
 'use client';
 
 import { cn } from '@repo/ui/utils/cn';
-import { useState, Suspense, useEffect, useMemo, useRef } from 'react';
+import { useState, Suspense, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
@@ -19,8 +19,6 @@ import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
 import KeyIcon from '@heroicons/react/24/outline/KeyIcon';
 import TrophyIcon from '@heroicons/react/24/outline/TrophyIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
-import DevicePhoneMobileIcon from '@heroicons/react/24/outline/DevicePhoneMobileIcon';
-import StarIcon from '@heroicons/react/24/solid/StarIcon';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { FeedPageSkeleton, SkeletonJobCard } from '@/components/ui/Skeleton';

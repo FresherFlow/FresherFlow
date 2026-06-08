@@ -1,7 +1,6 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { growthApi } from '@/lib/api/client';
 import { AuthContext } from './AuthContext';
 import { ADMIN_WEB_HOST, APP_WEB_HOST } from '@/lib/runtimeConfig';
 

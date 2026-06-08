@@ -1,4 +1,3 @@
-import React from 'react';
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
 import { API_URL } from '@/lib/runtimeConfig';

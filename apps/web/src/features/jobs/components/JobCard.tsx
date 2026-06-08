@@ -4,15 +4,12 @@ import { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
 import { slugify } from '@fresherflow/utils';
 import { cn } from '@/lib/utils';
-import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
-import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
-import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
 import CompanyLogo from '@/components/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
@@ -48,34 +45,15 @@ type JobWithActions = Opportunity & {
     matchReason?: string;
 };
 
-// Strips verbose prefixes for compact display in the card
-const formatMatchReason = (reason: string): string => {
-    if (reason === 'Your preferred city') return 'Preferred city';
-    const inner = reason.match(/^Not eligible \((.+)\)$/);
-    if (inner) return inner[1];
-    return reason;
-};
-
-export default function JobCard({ job, onClick, isSaved = false, isApplied = false, onToggleSave, isAdmin, priority = false, variant = 'default' }: JobCardProps) {
+export default function JobCard({ job, onClick, isApplied = false, isAdmin, priority = false, variant = 'default' }: JobCardProps) {
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
-    const displayMatchScore = typeof job.matchScore === 'number'
-        ? Math.max(0, Math.min(100, Math.round(job.matchScore)))
-        : undefined;
 
     // Derive tracker status from actions array if available
     const trackerAction = (job as JobWithActions).actions?.find?.((a: JobAction) =>
         ['APPLIED', 'PLANNED', 'SAVED_FOR_LATER', 'INTERVIEWING', 'OFFERED', 'REJECTED'].includes(a.actionType)
     );
     const trackerStatus: string | null = trackerAction?.actionType ?? null;
-
-
-    const handleSaveClick = (e: React.MouseEvent) => {
-        e.stopPropagation();
-        if (onToggleSave) {
-            onToggleSave();
-        }
-    };
 
     const handleShareClick = async (e: React.MouseEvent) => {
         e.stopPropagation();

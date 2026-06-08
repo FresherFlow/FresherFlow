@@ -25,7 +25,7 @@ export default function DownloadOpenGraphImage() {
     const siteOrigin = resolveSiteOrigin();
     const logoUrl = siteOrigin ? `${siteOrigin}/logo-white-optimized.png` : null;
     const screenshotUrl = siteOrigin ? `${siteOrigin}/screenshots/discover.png` : null;
-    const displayHost = siteOrigin ? new URL(siteOrigin).hostname : 'fresherflow.in';
+
 
     return new ImageResponse(
         (

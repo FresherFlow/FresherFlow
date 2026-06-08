@@ -1,6 +1,6 @@
-import TelegramBroadcastPanel from "@/components/admin/TelegramBroadcastPanel";
-import SocialBroadcastPanel from "@/components/admin/SocialBroadcastPanel";
-import DeliveryControlsPanel from "@/features/admin/components/DeliveryControlsPanel";
+// import TelegramBroadcastPanel from "@/components/admin/TelegramBroadcastPanel";
+// import SocialBroadcastPanel from "@/components/admin/SocialBroadcastPanel";
+// import DeliveryControlsPanel from "@/features/admin/components/DeliveryControlsPanel";
 
 export const metadata = {
     title: "Broadcasts | FresherFlow Admin",

@@ -91,7 +91,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         });
 
         return Array.from(new Set(urls));
-    }, [companyLogoUrl, companyWebsite, applyLink, normalizedName, isGovDetected]);
+    }, [companyLogoUrl, companyWebsite, applyLink, normalizedName, isGovDetected, companyName]);
 
     // Use cached URL if available for instant load
     const cacheKey = candidates.join('|');

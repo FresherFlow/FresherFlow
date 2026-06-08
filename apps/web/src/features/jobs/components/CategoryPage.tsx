@@ -1,6 +1,5 @@
 'use client';
 
-import { cn } from '@/lib/utils';
 import { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
@@ -95,7 +94,6 @@ function CategoryPageContent({ type }: CategoryPageProps) {
 
     const {
         filteredOpps,
-        totalCount,
         isLoading,
         error,
         profileIncomplete,

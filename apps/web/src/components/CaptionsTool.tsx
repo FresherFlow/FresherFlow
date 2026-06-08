@@ -8,16 +8,13 @@ import {
     ShareIcon,
     SparklesIcon,
     ChevronDownIcon,
-    ChevronRightIcon,
-    ArrowDownTrayIcon
+    ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import CompanyLogo from '@/components/ui/CompanyLogo';
-import { useInstallPrompt } from '@/contexts/InstallPromptContext';
 
 export default function CaptionsTool() {
-    const { canInstall, promptInstall } = useInstallPrompt();
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');

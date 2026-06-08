@@ -2,11 +2,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { isUserPath } from "./paths";
 import { getHostRole, redirectWithMethodAwareness, resolveHosts } from "./utils";
 
-function getSafeRedirectTarget(raw: string | null): string {
-    if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
-    if (raw === '/login' || raw.startsWith('/login?')) return '/dashboard';
-    return raw;
-}
+// function getSafeRedirectTarget(raw: string | null): string {
+//     if (!raw || !raw.startsWith('/') || raw.startsWith('//')) return '/dashboard';
+//     if (raw === '/login' || raw.startsWith('/login?')) return '/dashboard';
+//     return raw;
+// }
 
 export function handleAuth(req: NextRequest) {
     const { pathname, hostname } = req.nextUrl;
@@ -17,7 +17,7 @@ export function handleAuth(req: NextRequest) {
         ? `/admin${pathname === '/' ? '' : pathname}`
         : pathname;
 
-    const loggedIn = req.cookies.has("accessToken") || req.cookies.has("ff_logged_in");
+    // const loggedIn = req.cookies.has("accessToken") || req.cookies.has("ff_logged_in");
     const adminLoggedIn = req.cookies.has("adminAccessToken") || req.cookies.has("ff_admin_logged_in");
 
     // Admin Auth

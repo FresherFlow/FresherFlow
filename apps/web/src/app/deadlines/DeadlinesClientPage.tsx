@@ -6,7 +6,6 @@ import { savedApi } from '@/shared/api/client';
 import type { Opportunity } from '@fresherflow/types';
 import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
 import JobCard from '@/features/opportunities/components/JobCard';
-import { Button } from '@/features/system/components/ui/Button';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 
 type JobCardOpportunity = Opportunity & { matchScore?: number; matchReason?: string };

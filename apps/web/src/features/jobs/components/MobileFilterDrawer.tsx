@@ -115,12 +115,9 @@ export function MobileFilterDrawer({
     draftYear,
     setDraftYear,
     draftClosingSoon,
-    setDraftClosingSoon,
     draftShowOnlySaved,
-    setDraftShowOnlySaved,
     draftMinSalary,
     setDraftMinSalary,
-    isLoggedIn,
     onApply,
     onClear,
 }: MobileFilterDrawerProps) {

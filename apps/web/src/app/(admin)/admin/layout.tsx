@@ -9,8 +9,6 @@ import {
     BriefcaseIcon,
     ChatBubbleBottomCenterTextIcon,
     PlusCircleIcon,
-    ChartBarIcon,
-    BellAlertIcon,
     ArrowRightOnRectangleIcon,
     Bars3Icon,
     XMarkIcon,
@@ -21,19 +19,18 @@ import {
 import AdminBottomNav from '@/shared/components/navigation/AdminBottomNav';
 import { ThemeToggle } from '@repo/ui/ThemeToggle';
 import LoadingScreen from '@/components/ui/LoadingScreen';
-import { adminApi } from '@/lib/api/admin';
 import { getApiBaseForEndpoint } from '@/lib/api/client';
 import { useTheme } from '@/contexts/ThemeContext';
 
 const ADMIN_FEEDBACK_SEEN_KEY = 'ff_admin_feedback_last_seen_at';
-const ADMIN_ALERT_POLL_MS = Number(process.env.NEXT_PUBLIC_ADMIN_ALERT_POLL_MS || 180000);
+// const ADMIN_ALERT_POLL_MS = Number(process.env.NEXT_PUBLIC_ADMIN_ALERT_POLL_MS || 180000);
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
     const { logout, isAuthenticated, isLoading } = useAdmin();
     const pathname = usePathname();
     const router = useRouter();
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-    const [feedbackAlertCount, setFeedbackAlertCount] = useState(0);
+    const feedbackAlertCount = 0;
     const { theme, toggleTheme } = useTheme();
     const [apiStatus, setApiStatus] = useState<'live' | 'down' | 'checking'>('checking');
 

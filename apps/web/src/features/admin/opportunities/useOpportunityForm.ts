@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { adminApi } from '@/shared/api/admin';
-import { Opportunity, SocialPost, ApplicationDetails } from '@fresherflow/types';
+import { Opportunity, SocialPost } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import {
     type OpportunityKind,

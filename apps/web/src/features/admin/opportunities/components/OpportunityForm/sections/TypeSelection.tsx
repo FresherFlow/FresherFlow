@@ -1,4 +1,4 @@
-import { InformationCircleIcon } from '@heroicons/react/24/outline';
+
 
 interface TypeSelectionProps {
     type: 'JOB' | 'INTERNSHIP' | 'WALKIN';

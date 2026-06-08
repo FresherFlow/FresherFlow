@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from 'next/og';
 export const runtime = 'edge';
 const size = { width: 1200, height: 630 };
@@ -25,7 +26,6 @@ function renderCard(mode: 'job' | 'drive') {
     <div style={{ width:'100%', height:'100%', display:'flex', flexDirection:'column', justifyContent:'space-between', background:'#020404', color:'#F5F7F8', padding:'52px 60px', fontFamily:'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' }}>
       <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div style={{ display:'flex', alignItems:'center', gap:20 }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={logoUrl} alt={company} width={100} height={100} style={{ borderRadius:24, background:'#fff', objectFit:'contain', padding:10 }} />
           <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
             <div style={{ fontSize:22, color:'rgba(245,247,248,0.38)', fontWeight:600, letterSpacing:'0.08em', textTransform:'uppercase' }}>Hiring at</div>

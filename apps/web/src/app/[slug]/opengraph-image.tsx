@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from 'next/og';
 import { LINKS_FEED_URL } from '@/lib/runtimeConfig';
 

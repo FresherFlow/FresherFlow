@@ -14,10 +14,7 @@ import {
 import { database } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
-import {
-    CITIES_METADATA_URL,
-    SKILLS_METADATA_URL,
-} from '@/lib/runtimeConfig';
+
 
 interface DashboardState {
     totalUsers: number;

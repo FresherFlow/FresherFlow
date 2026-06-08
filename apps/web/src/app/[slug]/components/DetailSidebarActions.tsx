@@ -6,7 +6,6 @@ import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRight
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
-import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import Link from 'next/link';
 
 interface DetailSidebarActionsProps {
@@ -41,10 +40,8 @@ export function DetailSidebarActions({
     timelineEvents,
     jumpToTimeline,
     handleApply,
-    handleToggleSave,
     handleShare,
     handleCopyLink,
-    loginFromDetailHref,
     listingState,
     formatDeadline
 }: DetailSidebarActionsProps) {

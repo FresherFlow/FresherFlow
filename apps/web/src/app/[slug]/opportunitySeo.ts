@@ -4,7 +4,7 @@ import { cache } from 'react';
 import { getOpportunityPath } from '@/lib/opportunityPath';
 import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
 import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
-import { API_URL, SITE_URL } from '@/lib/runtimeConfig';
+import { SITE_URL } from '@/lib/runtimeConfig';
 
 
 export interface ExtendedOpportunity extends Opportunity {
@@ -18,7 +18,6 @@ type ParsedSalary = {
     unitText: 'MONTH' | 'YEAR';
 };
 
-const API_BASE = API_URL;
 const EXPIRED_GRACE_DAYS = 45;
 
 export function getExpiryState(opportunity: ExtendedOpportunity) {

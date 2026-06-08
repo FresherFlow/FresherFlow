@@ -1,4 +1,4 @@
-import { ArrowDownTrayIcon, DevicePhoneMobileIcon, CheckBadgeIcon, BellIcon, ClockIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
+import { ArrowDownTrayIcon, DevicePhoneMobileIcon, CheckBadgeIcon, ClockIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { APP_LINKS } from '@/config/links';
 import DownloadMockup from '@/components/site/DownloadMockup';
 

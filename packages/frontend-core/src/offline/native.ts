@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { Opportunity } from '@fresherflow/types';
+import type { Opportunity, SharedResource } from '@fresherflow/types';
 
 const FEED_CACHE_KEY = 'ff_mobile_feed_cache_v1';
 const DETAIL_CACHE_PREFIX = 'ff_mobile_detail_';
@@ -60,15 +60,15 @@ export async function readSavedJobs(): Promise<Opportunity[]> {
   }
 }
 
-export async function saveSavedResources(items: any[]) {
+export async function saveSavedResources(items: SharedResource[]) {
   await AsyncStorage.setItem(SAVED_RESOURCES_CACHE_KEY, JSON.stringify(items));
 }
 
-export async function readSavedResources(): Promise<any[]> {
+export async function readSavedResources(): Promise<SharedResource[]> {
   const raw = await AsyncStorage.getItem(SAVED_RESOURCES_CACHE_KEY);
   if (!raw) return [];
   try {
-    const parsed = JSON.parse(raw) as any[];
+    const parsed = JSON.parse(raw) as SharedResource[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];

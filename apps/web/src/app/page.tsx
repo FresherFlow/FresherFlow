@@ -3,9 +3,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import { fetchBootstrapFeed, fetchEducationMetadata, fetchSkillsMetadata, EducationMetadata } from '@/lib/api/cdnFeed';
-import { redirect } from 'next/navigation';
-
 import { EligibilityMatcher } from '@/features/landing/EligibilityMatcher';
+import { LandingStats } from '@/features/landing/LandingStats';
 import { Opportunity } from '@fresherflow/types';
 import IdentificationIcon from '@heroicons/react/24/outline/IdentificationIcon';
 import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
@@ -17,7 +16,6 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CpuChipIcon from '@heroicons/react/24/outline/CpuChipIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import DevicePhoneMobileIcon from '@heroicons/react/24/outline/DevicePhoneMobileIcon';
-import StarIcon from '@heroicons/react/24/solid/StarIcon';
 import { cn } from '@repo/ui/utils/cn';
 
 export const metadata: Metadata = {
@@ -153,18 +151,7 @@ export default async function LandingPage() {
                                         Get App
                                     </Link>
                                 </div>
-                                <div className="grid grid-cols-3 gap-2.5 sm:gap-4 pt-6">
-                                    {[
-                                        { label: 'Active Jobs', value: liveCount > 0 ? liveCount.toString() : '- -' },
-                                        { label: 'Companies', value: (opportunities?.length > 0) ? new Set(opportunities.map(o => o.company).filter(Boolean)).size.toString() : '- -' },
-                                        { label: 'Fake Listings', value: '0' },
-                                    ].map((stat) => (
-                                        <div key={stat.label} className="rounded-xl sm:rounded-2xl border border-border bg-card/65 backdrop-blur p-2.5 sm:p-4.5 shadow-sm text-center flex flex-col justify-center">
-                                          <div className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight text-foreground">{stat.value}</div>
-                                          <div className="text-[8px] sm:text-[10px] uppercase tracking-wide sm:tracking-widest text-muted-foreground font-bold mt-0.5 sm:mt-1 leading-tight text-center">{stat.label}</div>
-                                        </div>
-                                    ))}
-                                </div>
+                                <LandingStats initialLiveCount={liveCount} initialOpportunities={opportunities} />
                             </div>
 
                              <div className="hidden lg:block relative rounded-3xl overflow-hidden shadow-xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20 w-full h-[480px]">

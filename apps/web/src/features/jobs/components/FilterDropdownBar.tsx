@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
-import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
-import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import ChevronDownIcon from '@heroicons/react/24/outline/ChevronDownIcon';
 import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
@@ -67,7 +65,7 @@ const chipBase = 'h-9 px-3.5 rounded-xl border text-[12px] font-medium flex item
 const chipDefault = 'bg-background border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground';
 const chipActive = 'bg-primary/10 text-primary border-primary/30';
 
-export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedType, onTypeChange }: FilterDropdownBarProps) {
+export function FilterDropdownBar({ filters, setFilters, selectedType, onTypeChange }: FilterDropdownBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
     const barRef = useRef<HTMLDivElement>(null);
 

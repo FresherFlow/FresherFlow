@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useMemo, useRef } from 'react';
+import { useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { type Opportunity } from '@fresherflow/types';
 // removed unused toast imports

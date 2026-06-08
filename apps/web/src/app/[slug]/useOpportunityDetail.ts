@@ -118,7 +118,7 @@ export function useOpportunityDetail(
         } finally {
             setIsLoading(false);
         }
-    }, [id, initialData]);
+    }, [id, initialData, initialRelatedData]);
 
     useEffect(() => {
         if (!initialData && id && !hasAttemptedLoadRef.current) {

@@ -1,7 +1,6 @@
 import { type Opportunity, type User } from '@fresherflow/types';
 import { TimelineEventView } from '../detailUtils';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/shared/ui/cn';
 import { Button } from '@/components/ui/Button';
 // removed bookmark icons
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
@@ -26,17 +25,13 @@ interface DetailActionMobileProps {
 
 export function DetailActionMobile({
     user,
-    opp,
     isCampusDrive,
     timelineEvents,
     hasApplyLink,
     handleApply,
-    handleToggleSave,
     handleShare,
     handleCopyLink,
     jumpToTimeline,
-    loginFromDetailHref,
-    router
 }: DetailActionMobileProps) {
     return (
         <div className="lg:hidden bg-card p-4 rounded-xl border border-border shadow-sm space-y-3">

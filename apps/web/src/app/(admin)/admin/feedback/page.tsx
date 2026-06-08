@@ -23,7 +23,7 @@ import {
 import { database } from '@/lib/firebase';
 import { ref, onValue, remove } from 'firebase/database';
 import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+
 
 interface UserProfile {
     fullName?: string;
