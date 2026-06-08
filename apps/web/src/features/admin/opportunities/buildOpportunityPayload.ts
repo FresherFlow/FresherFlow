@@ -7,6 +7,7 @@ export type BuildOpportunityPayloadInput = {
     title: string;
     company: string;
     companyWebsite: string;
+    companyLogoUrl: string;
     description: string;
     allowedDegrees: string[];
     allowedCourses: string[];
@@ -66,6 +67,7 @@ export function buildOpportunityPayload(input: BuildOpportunityPayloadInput): Re
         title: input.title,
         company: input.company,
         companyWebsite: input.companyWebsite || undefined,
+        companyLogoUrl: input.companyLogoUrl || undefined,
         description: input.description,
         allowedDegrees: input.allowedDegrees,
         allowedCourses: input.allowedCourses,

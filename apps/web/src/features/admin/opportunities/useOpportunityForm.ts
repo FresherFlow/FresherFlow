@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { adminApi } from '@/shared/api/admin';
-import { Opportunity, SocialPost } from '@fresherflow/types';
+import { Opportunity, SocialPost, ApplicationDetails } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 import {
     type OpportunityKind,
@@ -18,6 +18,30 @@ import {
     normalizeWorkModeValue,
     toStringArray
 } from './formUtils';
+
+function parseExpiryDateTime(val: string | Date) {
+    const expiresAtStr = typeof val === 'string' ? val : val.toISOString();
+    const hasTime = /[T\s]/.test(expiresAtStr) && /:/.test(expiresAtStr) && !expiresAtStr.includes('T00:00:00');
+    const dateObj = new Date(val);
+    if (isNaN(dateObj.getTime())) return null;
+
+    if (!hasTime) {
+        const y = dateObj.getUTCFullYear();
+        const m = String(dateObj.getUTCMonth() + 1).padStart(2, '0');
+        const d = String(dateObj.getUTCDate()).padStart(2, '0');
+        return { date: `${y}-${m}-${d}`, time: '' };
+    }
+
+    const tzOffset = dateObj.getTimezoneOffset() * 60000;
+    const localObj = new Date(dateObj.getTime() - tzOffset);
+    const isoStr = localObj.toISOString();
+    const datePart = isoStr.slice(0, 10);
+    const timePart = isoStr.slice(11, 16);
+    return {
+        date: datePart,
+        time: timePart === '23:59' ? '' : timePart
+    };
+}
 
 export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportunityId?: string) {
     const router = useRouter();
@@ -60,6 +84,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
     const [title, setTitle] = useState('');
     const [company, setCompany] = useState('');
     const [companyWebsite, setCompanyWebsite] = useState('');
+    const [companyLogoUrl, setCompanyLogoUrl] = useState('');
     const [description, setDescription] = useState('');
     const [allowedDegrees, setAllowedDegrees] = useState<string[]>([]);
     const [allowedCourses, setAllowedCourses] = useState<string[]>([]);
@@ -72,7 +97,9 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
     const [salaryAmount, setSalaryAmount] = useState('');
     const [sourceLink, setSourceLink] = useState('');
     const [applyLink, setApplyLink] = useState('');
-    const [expiresAt, setExpiresAt] = useState('');
+    const [showUrlError, setShowUrlError] = useState(false);
+    const [expiryDate, setExpiryDate] = useState('');
+    const [expiryTime, setExpiryTime] = useState('');
     const [jobFunction, setJobFunction] = useState('');
     const [employmentType, setEmploymentType] = useState('');
     const [incentives, setIncentives] = useState('');
@@ -133,6 +160,17 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
     const [answerKeyUrl, setAnswerKeyUrl] = useState('');
     const [syllabusUrl, setSyllabusUrl] = useState('');
     const [previousPapersUrl, setPreviousPapersUrl] = useState('');
+    const [examName, setExamName] = useState('');
+    const [categoryVacanciesJson, setCategoryVacanciesJson] = useState('');
+    const [cadreDetailsJson, setCadreDetailsJson] = useState('');
+    const [postPreferencesJson, setPostPreferencesJson] = useState('');
+    const [serviceBondJson, setServiceBondJson] = useState('');
+    const [reservationDetailsJson, setReservationDetailsJson] = useState('');
+    const [referenceLinksJson, setReferenceLinksJson] = useState('');
+    const [cutOffMarksJson, setCutOffMarksJson] = useState('');
+    const [basicPay, setBasicPay] = useState('');
+    const [payLevel, setPayLevel] = useState('');
+    const [allowances, setAllowances] = useState('');
 
     // Walk-in specific
     const [venueAddress, setVenueAddress] = useState('');
@@ -142,6 +180,12 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
     const [requiredDocuments, setRequiredDocuments] = useState('');
     const [contactPerson, setContactPerson] = useState('');
     const [contactPhone, setContactPhone] = useState('');
+
+    // Application Details (Complexity)
+    const [appMethod, setAppMethod] = useState<'DIRECT' | 'FORM' | 'ASSESSMENT'>('DIRECT');
+    const [appPlatform, setAppPlatform] = useState('');
+    const [appDuration, setAppDuration] = useState('');
+    const [appRequiredItems, setAppRequiredItems] = useState<string[]>([]);
 
     // Picker states
     const [startDate, setStartDate] = useState('');
@@ -166,16 +210,19 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         }
     }, [searchParams, isEditMode]);
 
+    useEffect(() => {
+        if (sourceLink.trim() || applyLink.trim()) {
+            setShowUrlError(false);
+        }
+    }, [sourceLink, applyLink]);
+
     const onToggleAmPm = (target: 'AM' | 'PM') => {
-        if (!expiresAt) return;
-        const [datePart, timePart] = expiresAt.split('T');
-        if (!timePart) return;
+        const timePart = expiryTime || '23:59';
         const [hourPart, minutePart] = timePart.split(':');
         let hours = parseInt(hourPart, 10);
         if (target === 'AM' && hours >= 12) hours -= 12;
         if (target === 'PM' && hours < 12) hours += 12;
-        const newTime = `${String(hours).padStart(2, '0')}:${minutePart}`;
-        setExpiresAt(`${datePart}T${newTime}`);
+        setExpiryTime(`${String(hours).padStart(2, '0')}:${minutePart}`);
     };
 
     // Duplicate check logic
@@ -232,6 +279,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
             setTitle(opp.title);
             setCompany(opp.company);
             setCompanyWebsite(opp.companyWebsite || '');
+            setCompanyLogoUrl(opp.companyLogoUrl || '');
             setDescription(opp.description || '');
             setLocations((opp.locations || []).join(', '));
             setRequiredSkills((opp.requiredSkills || []).join(', '));
@@ -252,7 +300,19 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
             setGovernmentTags((opp.tags || []).join(', '));
             setSourceLink(opp.sourceLink || '');
             setApplyLink(opp.applyLink || '');
-            setExpiresAt(opp.expiresAt ? toLocalISOString(opp.expiresAt) : '');
+            if (opp.expiresAt) {
+                const parsedResult = parseExpiryDateTime(opp.expiresAt);
+                if (parsedResult) {
+                    setExpiryDate(parsedResult.date);
+                    setExpiryTime(parsedResult.time);
+                } else {
+                    setExpiryDate('');
+                    setExpiryTime('');
+                }
+            } else {
+                setExpiryDate('');
+                setExpiryTime('');
+            }
             setCustomSlug(opp.slug || '');
 
             if (opp.governmentJobDetails) {
@@ -305,6 +365,17 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
                 setAnswerKeyUrl(opp.governmentJobDetails.answerKeyUrl || '');
                 setSyllabusUrl(opp.governmentJobDetails.syllabusUrl || '');
                 setPreviousPapersUrl(opp.governmentJobDetails.previousPapersUrl || '');
+                setExamName(opp.governmentJobDetails.examName || '');
+                setCategoryVacanciesJson(opp.governmentJobDetails.categoryVacancies ? JSON.stringify(opp.governmentJobDetails.categoryVacancies, null, 2) : '');
+                setCadreDetailsJson(opp.governmentJobDetails.cadreDetails ? JSON.stringify(opp.governmentJobDetails.cadreDetails, null, 2) : '');
+                setPostPreferencesJson(opp.governmentJobDetails.postPreferences ? JSON.stringify(opp.governmentJobDetails.postPreferences, null, 2) : '');
+                setServiceBondJson(opp.governmentJobDetails.serviceBond ? JSON.stringify(opp.governmentJobDetails.serviceBond, null, 2) : '');
+                setReservationDetailsJson(opp.governmentJobDetails.reservationDetails ? JSON.stringify(opp.governmentJobDetails.reservationDetails, null, 2) : '');
+                setReferenceLinksJson(opp.governmentJobDetails.referenceLinks ? JSON.stringify(opp.governmentJobDetails.referenceLinks, null, 2) : '');
+                setCutOffMarksJson(opp.governmentJobDetails.cutOffMarks ? JSON.stringify(opp.governmentJobDetails.cutOffMarks, null, 2) : '');
+                setBasicPay(opp.governmentJobDetails.basicPay?.toString() || '');
+                setPayLevel(opp.governmentJobDetails.payLevel || '');
+                setAllowances((opp.governmentJobDetails.allowances || []).join(', '));
             } else {
                 setIsGovernmentJob(false);
             }
@@ -327,6 +398,18 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
 
             if (opp.socialPosts) {
                 setSocialPosts(opp.socialPosts);
+            }
+
+            if (opp.applicationDetails) {
+                setAppMethod(opp.applicationDetails.method || 'DIRECT');
+                setAppPlatform(opp.applicationDetails.platform || '');
+                setAppDuration(opp.applicationDetails.estimatedMinutes?.toString() || '');
+                setAppRequiredItems(opp.applicationDetails.requiredItems || []);
+            } else {
+                setAppMethod('DIRECT');
+                setAppPlatform('');
+                setAppDuration('');
+                setAppRequiredItems([]);
             }
         } catch (err: unknown) {
             toast.error(`Failed to load listing: ${(err as Error).message}`);
@@ -465,7 +548,13 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
             if (parsed.allowedPassoutYears?.length) setPassoutYears(normalizePassoutYears(parsed.allowedPassoutYears));
             if (parsed.sourceLink) setSourceLink(parsed.sourceLink);
             if (parsed.applyLink) setApplyLink(parsed.applyLink);
-            if (parsed.expiresAt) setExpiresAt(parsed.expiresAt);
+            if (parsed.expiresAt) {
+                const parsedResult = parseExpiryDateTime(parsed.expiresAt);
+                if (parsedResult) {
+                    setExpiryDate(parsedResult.date);
+                    setExpiryTime(parsedResult.time);
+                }
+            }
 
             setDescription(text);
 
@@ -498,6 +587,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         if (data.title) setTitle(data.title);
         if (data.company) setCompany(data.company);
         if (data.companyWebsite) setCompanyWebsite(data.companyWebsite);
+        if ((data as any).companyLogoUrl) setCompanyLogoUrl((data as any).companyLogoUrl);
         if (data.description) setDescription(String(data.description));
         const parsedEducation = normalizeEducationPayload(data.allowedDegrees, data.allowedCourses, data.allowedSpecializations);
         setAllowedDegrees(parsedEducation.degrees);
@@ -532,7 +622,13 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         if (data.experienceMax !== undefined) setExperienceMax(String(data.experienceMax));
         if (data.sourceLink) setSourceLink(String(data.sourceLink));
         if (data.applyLink) setApplyLink(String(data.applyLink));
-        if (data.expiresAt) setExpiresAt(data.expiresAt);
+        if (data.expiresAt) {
+            const parsedResult = parseExpiryDateTime(data.expiresAt);
+            if (parsedResult) {
+                setExpiryDate(parsedResult.date);
+                setExpiryTime(parsedResult.time);
+            }
+        }
         if ((data as any).slug) setCustomSlug(String((data as any).slug));
         if ((data as any).customSlug) setCustomSlug(String((data as any).customSlug));
         if (data.venueAddress) setVenueAddress(String(data.venueAddress));
@@ -606,6 +702,18 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
             if (data.governmentJobDetails.answerKeyUrl) setAnswerKeyUrl(String(data.governmentJobDetails.answerKeyUrl));
             if (data.governmentJobDetails.syllabusUrl) setSyllabusUrl(String(data.governmentJobDetails.syllabusUrl));
             if (data.governmentJobDetails.previousPapersUrl) setPreviousPapersUrl(String(data.governmentJobDetails.previousPapersUrl));
+            if (data.governmentJobDetails.examName) setExamName(String(data.governmentJobDetails.examName));
+            if (data.governmentJobDetails.categoryVacancies) setCategoryVacanciesJson(JSON.stringify(data.governmentJobDetails.categoryVacancies, null, 2));
+            if (data.governmentJobDetails.cadreDetails) setCadreDetailsJson(JSON.stringify(data.governmentJobDetails.cadreDetails, null, 2));
+            if (data.governmentJobDetails.postPreferences) setPostPreferencesJson(JSON.stringify(data.governmentJobDetails.postPreferences, null, 2));
+            if (data.governmentJobDetails.serviceBond) setServiceBondJson(JSON.stringify(data.governmentJobDetails.serviceBond, null, 2));
+            if (data.governmentJobDetails.reservationDetails) setReservationDetailsJson(JSON.stringify(data.governmentJobDetails.reservationDetails, null, 2));
+            if (data.governmentJobDetails.referenceLinks) setReferenceLinksJson(JSON.stringify(data.governmentJobDetails.referenceLinks, null, 2));
+            if (data.governmentJobDetails.cutOffMarks) setCutOffMarksJson(JSON.stringify(data.governmentJobDetails.cutOffMarks, null, 2));
+            if (data.governmentJobDetails.basicPay !== undefined) setBasicPay(String(data.governmentJobDetails.basicPay));
+            if (data.governmentJobDetails.payLevel) setPayLevel(String(data.governmentJobDetails.payLevel));
+            const allowanceValues = toStringArray((data.governmentJobDetails as any).allowances);
+            if (allowanceValues.length > 0) setAllowances(allowanceValues.join(', '));
         }
 
         if (data.walkInDetails) {
@@ -624,6 +732,14 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
                 setEndDate(new Date(sorted[sorted.length - 1]).toISOString().split('T')[0]);
             }
         }
+
+        const appDetails = (data as any).applicationDetails;
+        if (appDetails) {
+            if (appDetails.method) setAppMethod(appDetails.method);
+            if (appDetails.platform) setAppPlatform(appDetails.platform);
+            if (appDetails.estimatedMinutes !== undefined) setAppDuration(String(appDetails.estimatedMinutes));
+            if (appDetails.requiredItems) setAppRequiredItems(appDetails.requiredItems);
+        }
     };
 
     const clearAllFields = () => {
@@ -631,6 +747,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         setTitle('');
         setCompany('');
         setCompanyWebsite('');
+        setCompanyLogoUrl('');
         setDescription('');
         setAllowedDegrees([]);
         setAllowedCourses([]);
@@ -643,7 +760,8 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         setSalaryAmount('');
         setSourceLink('');
         setApplyLink('');
-        setExpiresAt('');
+        setExpiryDate('');
+        setExpiryTime('');
         setCustomSlug('');
         setJobFunction('');
         setEmploymentType('');
@@ -656,8 +774,15 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         setIsGovernmentJob(false);
         setGovernmentTags('');
         setGovernmentDepartment('');
-        setGovernmentOrganization('');
         setRecruitingBody('');
+        setExamName('');
+        setCategoryVacanciesJson('');
+        setCadreDetailsJson('');
+        setPostPreferencesJson('');
+        setServiceBondJson('');
+        setReservationDetailsJson('');
+        setReferenceLinksJson('');
+        setCutOffMarksJson('');
         setApplicationStatus('OPEN');
         setGovernmentLevel('CENTRAL');
         setVacancyNature('PERMANENT');
@@ -702,6 +827,9 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         setAnswerKeyUrl('');
         setSyllabusUrl('');
         setPreviousPapersUrl('');
+        setBasicPay('');
+        setPayLevel('');
+        setAllowances('');
         setVenueAddress('');
         setWalkInDateRange('');
         setWalkInTimeRange('');
@@ -715,6 +843,11 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         setEndTime('13:00');
         setPastedText('');
         setPastedJson('');
+        setAppMethod('DIRECT');
+        setAppPlatform('');
+        setAppDuration('');
+        setAppRequiredItems([]);
+        setShowUrlError(false);
     };
 
     return {
@@ -724,6 +857,7 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         title, setTitle,
         company, setCompany,
         companyWebsite, setCompanyWebsite,
+        companyLogoUrl, setCompanyLogoUrl,
         description, setDescription,
         allowedDegrees, setAllowedDegrees,
         allowedCourses, setAllowedCourses,
@@ -736,7 +870,9 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         salaryAmount, setSalaryAmount,
         sourceLink, setSourceLink,
         applyLink, setApplyLink,
-        expiresAt, setExpiresAt,
+        showUrlError, setShowUrlError,
+        expiryDate, setExpiryDate,
+        expiryTime, setExpiryTime,
         customSlug, setCustomSlug,
         jobFunction, setJobFunction,
         employmentType, setEmploymentType,
@@ -797,6 +933,17 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         answerKeyUrl, setAnswerKeyUrl,
         syllabusUrl, setSyllabusUrl,
         previousPapersUrl, setPreviousPapersUrl,
+        examName, setExamName,
+        categoryVacanciesJson, setCategoryVacanciesJson,
+        cadreDetailsJson, setCadreDetailsJson,
+        postPreferencesJson, setPostPreferencesJson,
+        serviceBondJson, setServiceBondJson,
+        reservationDetailsJson, setReservationDetailsJson,
+        referenceLinksJson, setReferenceLinksJson,
+        cutOffMarksJson, setCutOffMarksJson,
+        basicPay, setBasicPay,
+        payLevel, setPayLevel,
+        allowances, setAllowances,
         venueAddress, setVenueAddress,
         walkInDateRange, setWalkInDateRange,
         walkInTimeRange, setWalkInTimeRange,
@@ -808,6 +955,12 @@ export function useOpportunityForm(mode: 'create' | 'edit' = 'create', opportuni
         endDate, setEndDate,
         startTime, setStartTime,
         endTime, setEndTime,
+
+        // Application Details (Complexity)
+        appMethod, setAppMethod,
+        appPlatform, setAppPlatform,
+        appDuration, setAppDuration,
+        appRequiredItems, setAppRequiredItems,
 
         // UI State
         isLoading, setIsLoading,

@@ -13,11 +13,18 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
 
+        if (form.type !== 'WALKIN' && !form.sourceLink.trim() && !form.applyLink.trim()) {
+            form.setShowUrlError(true);
+            toast.error('At least one of Source URL or Apply URL is required.');
+            return;
+        }
+
         const payload = buildOpportunityPayload({
             type: form.type,
             title: form.title,
             company: form.company,
             companyWebsite: form.companyWebsite,
+            companyLogoUrl: form.companyLogoUrl,
             description: form.description,
             locations: form.locations,
             requiredSkills: form.requiredSkills,
@@ -84,11 +91,15 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
             answerKeyUrl: form.answerKeyUrl,
             syllabusUrl: form.syllabusUrl,
             previousPapersUrl: form.previousPapersUrl,
+            basicPay: form.basicPay,
+            payLevel: form.payLevel,
+            allowances: form.allowances,
             experienceMin: form.experienceMin,
             experienceMax: form.experienceMax,
             sourceLink: form.sourceLink,
             applyLink: form.applyLink,
-            expiresAt: form.expiresAt,
+            expiryDate: form.expiryDate,
+            expiryTime: form.expiryTime,
             venueAddress: form.venueAddress,
             venueLink: form.venueLink,
             walkInDateRange: form.walkInDateRange,
@@ -100,7 +111,11 @@ export function useOpportunityFormHandlers(form: ReturnType<typeof useOpportunit
             endDate: form.endDate,
             startTime: form.startTime,
             endTime: form.endTime,
-            customSlug: form.customSlug
+            customSlug: form.customSlug,
+            appMethod: form.appMethod,
+            appPlatform: form.appPlatform,
+            appDuration: form.appDuration,
+            appRequiredItems: form.appRequiredItems
         });
 
         form.setIsLoading(true);

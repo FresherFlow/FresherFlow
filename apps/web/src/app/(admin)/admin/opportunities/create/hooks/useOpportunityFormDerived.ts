@@ -12,13 +12,15 @@ export function useOpportunityFormDerived(form: ReturnType<typeof useOpportunity
     const visibleCourseOptions = useMemo(() => {
         const selected = new Set(form.allowedCourses as string[]);
         const defaults = ['B.E', 'B.Tech', 'BCA', 'B.Sc', 'M.E', 'M.Tech', 'MCA', 'M.Sc', 'MBA'];
-        return Array.from(new Set([...selected, ...defaults])).filter(c => (ALL_COURSE_OPTIONS as unknown as string[]).includes(c));
+        const validDefaults = defaults.filter(c => (ALL_COURSE_OPTIONS as unknown as string[]).includes(c));
+        return Array.from(new Set([...selected, ...validDefaults]));
     }, [form.allowedCourses]);
 
     const visibleSpecializationOptions = useMemo(() => {
         const selected = new Set((form.allowedSpecializations || []) as string[]);
         const defaults = ['CS', 'IT', 'ECE', 'EEE', 'Mechanical', 'Civil', 'Any'];
-        return Array.from(new Set([...selected, ...defaults])).filter(s => (ALL_SPECIALIZATION_OPTIONS as unknown as string[]).includes(s));
+        const validDefaults = defaults.filter(s => (ALL_SPECIALIZATION_OPTIONS as unknown as string[]).includes(s));
+        return Array.from(new Set([...selected, ...validDefaults]));
     }, [form.allowedSpecializations]);
 
     return {
@@ -28,8 +30,3 @@ export function useOpportunityFormDerived(form: ReturnType<typeof useOpportunity
         visibleSpecializationOptions
     };
 }
-
-
-
-
-

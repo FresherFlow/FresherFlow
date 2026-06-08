@@ -60,6 +60,24 @@ interface GovernmentJobSectionProps {
     governmentRequiredDocumentsJson: string;
     setGovernmentRequiredDocumentsJson: (value: string) => void;
 
+    // Missing Props
+    examName: string;
+    setExamName: (value: string) => void;
+    categoryVacanciesJson: string;
+    setCategoryVacanciesJson: (value: string) => void;
+    cadreDetailsJson: string;
+    setCadreDetailsJson: (value: string) => void;
+    postPreferencesJson: string;
+    setPostPreferencesJson: (value: string) => void;
+    serviceBondJson: string;
+    setServiceBondJson: (value: string) => void;
+    reservationDetailsJson: string;
+    setReservationDetailsJson: (value: string) => void;
+    referenceLinksJson: string;
+    setReferenceLinksJson: (value: string) => void;
+    cutOffMarksJson: string;
+    setCutOffMarksJson: (value: string) => void;
+
     // New Fields
     examCenters: string;
     setExamCenters: (value: string) => void;
@@ -125,6 +143,7 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     <Field label="Department" value={props.department} onChange={props.setDepartment} placeholder="e.g. Central Government" />
                     <Field label="Organization" value={props.organization} onChange={props.setOrganization} placeholder="e.g. Staff Selection Commission" />
                     <Field label="Recruiting Body" value={props.recruitingBody} onChange={props.setRecruitingBody} placeholder="e.g. SSC / IBPS / RRB" />
+                    <Field label="Exam Name" value={props.examName} onChange={props.setExamName} placeholder="e.g. SSC CGL 2026" />
                     <Field label="Post Name" value={props.postName} onChange={props.setPostName} placeholder="e.g. CGL / Constable" />
                     <SelectField
                         label="Application Status"
@@ -195,6 +214,10 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     <div className="md:col-span-2">
                         <JsonArea label="Vacancy Breakdown (JSON)" value={props.vacancyBreakdownJson} onChange={props.setVacancyBreakdownJson} rows={6} placeholder={`[\n  {\n    "postName": "Constable (Driver)",\n    "total": 553,\n    "categoryBreakup": { "general": 230, "obc": 149, "sc": 83, "st": 41 }\n  }\n]`} help="Post-wise vacancy breakdown is the real govt-job structure." />
                     </div>
+                    <JsonArea label="Category Vacancies (JSON)" value={props.categoryVacanciesJson} onChange={props.setCategoryVacanciesJson} rows={6} placeholder={`{ "general": 230, "obc": 149 }`} help="Top-level category vacancies." />
+                    <JsonArea label="Cadre Details (JSON)" value={props.cadreDetailsJson} onChange={props.setCadreDetailsJson} rows={6} placeholder={`[]`} help="Cadre allocations." />
+                    <JsonArea label="Post Preferences (JSON)" value={props.postPreferencesJson} onChange={props.setPostPreferencesJson} rows={6} placeholder={`[]`} help="Available preferences." />
+                    <JsonArea label="Service Bond (JSON)" value={props.serviceBondJson} onChange={props.setServiceBondJson} rows={6} placeholder={`{ "amount": 50000, "durationYears": 3 }`} help="Service bond terms." />
                 </div>
             </div>
 
@@ -219,6 +242,7 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     <Field label="Age Max" type="number" value={props.ageMax} onChange={props.setAgeMax} placeholder="27" />
                     <Area label="Age Relaxation" value={props.ageRelaxation} onChange={props.setAgeRelaxation} placeholder="As per official rules for reserved categories." rows={3} />
                     <Area label="Reservation Notes" value={props.reservationNotes} onChange={props.setReservationNotes} placeholder="Category-wise reservation / domicile notes / women reservation." rows={3} />
+                    <JsonArea label="Reservation Details (JSON)" value={props.reservationDetailsJson} onChange={props.setReservationDetailsJson} rows={6} placeholder={`{ "categories": ["OBC", "SC", "ST"] }`} help="Detailed reservation criteria." />
                     <JsonArea label="Age Relaxation Rules (JSON)" value={props.ageRelaxationRulesJson} onChange={props.setAgeRelaxationRulesJson} rows={6} placeholder={`[]`} help="Rules for reserved categories." />
                     <JsonArea label="Eligibility Details (JSON)" value={props.eligibilityDetailsJson} onChange={props.setEligibilityDetailsJson} rows={6} placeholder={`{\n  "education": ["10th Pass / Matriculation"],\n  "age": { "min": 18, "max": 27 },\n  "additional": ["Trade skill varies by post"]\n}`} help="Use this instead of burying eligibility inside description." />
                     <JsonArea label="Qualification Details (JSON)" value={props.qualificationDetailsJson} onChange={props.setQualificationDetailsJson} rows={6} placeholder={`[\n  { "post": "JSO", "requirement": "Bachelor's Degree in Statistics" }\n]`} help="Post-wise education details." />
@@ -238,6 +262,7 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     <JsonArea label="Exam Pattern (JSON)" value={props.examPatternJson} onChange={props.setExamPatternJson} rows={6} placeholder={`{\n  "tiers": [\n    {\n      "name": "Tier I",\n      "mode": "CBT",\n      "durationMinutes": 60,\n      "totalQuestions": 100,\n      "totalMarks": 200\n    }\n  ]\n}`} help="Structure of exams/sections/syllabus." />
                     <JsonArea label="Skill Tests (JSON)" value={props.skillTestsJson} onChange={props.setSkillTestsJson} rows={6} placeholder={`[\n  {\n    "name": "Data Entry Speed Test",\n    "mandatory": false,\n    "qualifying": true,\n    "durationMinutes": 15\n  }\n]`} help="Typing or physical tests required." />
                     <JsonArea label="Exam Stages (JSON)" value={props.examStagesJson} onChange={props.setExamStagesJson} rows={6} placeholder={`[]`} help="Stage-by-stage date details." />
+                    <JsonArea label="Cut Off Marks (JSON)" value={props.cutOffMarksJson} onChange={props.setCutOffMarksJson} rows={6} placeholder={`[\n  { "year": "2025", "category": "General", "marks": 130 }\n]`} help="Previous cut-off marks for this exam." />
                     <JsonArea label="Important Dates (JSON)" value={props.importantDatesJson} onChange={props.setImportantDatesJson} rows={6} placeholder={`[\n  { "label": "Apply Online Starts", "date": "2026-05-21" }\n]`} help="Key timeline dates breakdown." />
                 </div>
             </div>
@@ -268,6 +293,7 @@ export function GovernmentJobSection(props: GovernmentJobSectionProps) {
                     
                     <Area label="Required Documents" value={props.governmentRequiredDocuments} onChange={props.setGovernmentRequiredDocuments} placeholder="Photo ID, Degree certificate, Category certificate" rows={3} />
                     <JsonArea label="Required Documents (JSON)" value={props.governmentRequiredDocumentsJson} onChange={props.setGovernmentRequiredDocumentsJson} rows={6} placeholder={`[\n  { "name": "10th Certificate", "mandatory": true },\n  { "name": "Category Certificate", "mandatory": false }\n]`} help="Structured docs help us show mandatory vs conditional proof properly." />
+                    <JsonArea label="Reference Links (JSON)" value={props.referenceLinksJson} onChange={props.setReferenceLinksJson} rows={6} placeholder={`[\n  { "title": "Apply Here", "url": "..." }\n]`} help="Useful external references." />
                     <JsonArea label="Extra Metadata (JSON)" value={props.extraMetadataJson} onChange={props.setExtraMetadataJson} rows={6} placeholder={`{\n  "changesIn2026": [],\n  "vacancyTrend": {}\n}`} help="Any other structured parameters." />
                     <Area label="SEO / Search Tags" value={props.governmentTags} onChange={props.setGovernmentTags} placeholder="Government Job, SSC Vacancy, Graduate Jobs, Central Government" rows={6} help="Comma-separated tags like Government Job, SSC, Graduate Jobs, Central Government." />
                 </div>

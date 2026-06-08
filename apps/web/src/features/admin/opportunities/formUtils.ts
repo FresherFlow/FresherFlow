@@ -134,6 +134,17 @@ export interface ParsedJob {
         answerKeyUrl?: string;
         syllabusUrl?: string;
         previousPapersUrl?: string;
+        examName?: string;
+        categoryVacancies?: any;
+        cadreDetails?: any;
+        postPreferences?: any;
+        serviceBond?: any;
+        reservationDetails?: any;
+        referenceLinks?: any;
+        cutOffMarks?: any;
+        basicPay?: number | string;
+        payLevel?: string;
+        allowances?: string[];
     };
     walkInDetails?: {
         dateRange?: string;

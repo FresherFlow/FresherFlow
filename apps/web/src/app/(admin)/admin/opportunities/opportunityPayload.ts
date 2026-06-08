@@ -7,6 +7,7 @@ export type OpportunityFormValues = {
     title: string;
     company: string;
     companyWebsite: string;
+    companyLogoUrl: string;
     description: string;
     allowedDegrees: string[];
     allowedCourses: string[];
@@ -73,11 +74,15 @@ export type OpportunityFormValues = {
     answerKeyUrl: string;
     syllabusUrl: string;
     previousPapersUrl: string;
+    basicPay: string;
+    payLevel: string;
+    allowances: string;
     experienceMin: string;
     experienceMax: string;
     sourceLink: string;
     applyLink: string;
-    expiresAt: string;
+    expiryDate: string;
+    expiryTime: string;
     venueAddress: string;
     walkInDateRange: string;
     walkInTimeRange: string;
@@ -90,6 +95,10 @@ export type OpportunityFormValues = {
     startTime: string;
     endTime: string;
     customSlug: string;
+    appMethod: 'DIRECT' | 'FORM' | 'ASSESSMENT';
+    appPlatform: string;
+    appDuration: string;
+    appRequiredItems: string[];
 };
 
 const toCsvList = (value: string) =>
@@ -165,11 +174,22 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
     const derivedWalkInExpiry = values.type === 'WALKIN' ? toEndOfDayIso(walkInEndDate) : undefined;
     const normalizedSourceLink = values.sourceLink.trim();
     const normalizedApplyLink = values.applyLink.trim();
+
+    let expiresAtPayload: string | null = null;
+    if (values.expiryDate) {
+        const timePart = values.expiryTime ? values.expiryTime : '23:59';
+        const dateObj = new Date(`${values.expiryDate}T${timePart}`);
+        if (!isNaN(dateObj.getTime())) {
+            expiresAtPayload = dateObj.toISOString();
+        }
+    }
+
     const payload: Record<string, unknown> = {
         type: values.type,
         title: values.title,
         company: values.company,
         companyWebsite: values.companyWebsite || null,
+        companyLogoUrl: values.companyLogoUrl || null,
         description: values.description,
         allowedDegrees: values.allowedDegrees,
         allowedCourses: values.allowedCourses,
@@ -190,8 +210,14 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         experienceMax: toFloat(values.experienceMax) ?? null,
         sourceLink: normalizedSourceLink || null,
         applyLink: normalizedApplyLink || normalizedSourceLink || null,
-        expiresAt: values.expiresAt || derivedWalkInExpiry || null,
+        expiresAt: expiresAtPayload || derivedWalkInExpiry || null,
         customSlug: values.customSlug || null,
+        applicationDetails: values.isGovernmentJob ? null : {
+            method: values.appMethod,
+            platform: (values.appMethod !== 'DIRECT' && values.appPlatform) ? values.appPlatform : undefined,
+            estimatedMinutes: (values.appMethod !== 'DIRECT' && values.appDuration && parseInt(values.appDuration, 10) > 0) ? parseInt(values.appDuration, 10) : undefined,
+            requiredItems: (values.appMethod !== 'DIRECT') ? values.appRequiredItems : undefined,
+        }
     };
 
     if (values.type === 'WALKIN') {
@@ -260,6 +286,9 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
             answerKeyUrl: values.answerKeyUrl || undefined,
             syllabusUrl: values.syllabusUrl || undefined,
             previousPapersUrl: values.previousPapersUrl || undefined,
+            basicPay: values.basicPay ? parseInt(values.basicPay, 10) : undefined,
+            payLevel: values.payLevel || undefined,
+            allowances: toCsvList(values.allowances),
         };
     } else {
         payload.governmentJobDetails = null;

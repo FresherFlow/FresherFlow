@@ -25,7 +25,6 @@ export function LogisticsSection({
             <div className="space-y-2">
                 <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Locations</label>
                 <input
-                    required
                     value={locations}
                     onChange={(e) => setLocations(e.target.value)}
                     className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all shadow-sm"

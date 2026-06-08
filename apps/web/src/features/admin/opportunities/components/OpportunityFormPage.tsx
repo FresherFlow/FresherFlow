@@ -14,6 +14,7 @@ import { EligibilitySection } from './OpportunityForm/sections/EligibilitySectio
 import { SocialStatusSection } from './OpportunityForm/sections/SocialStatusSection';
 import { SalarySection } from './OpportunityForm/sections/SalarySection';
 import { ApplyLinkSection } from './OpportunityForm/sections/ApplyLinkSection';
+import { ApplicationDetailsSection } from './OpportunityForm/sections/ApplicationDetailsSection';
 import { ExpirationSection } from './OpportunityForm/sections/ExpirationSection';
 import { WalkInDetailsSection } from './OpportunityForm/sections/WalkInDetailsSection';
 import { GovernmentJobSection } from './OpportunityForm/sections/GovernmentJobSection';
@@ -77,7 +78,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
     };
 
     return (
-        <div className="max-w-6xl mx-auto px-4 pt-0 pb-8 md:pt-0 md:pb-12">
+        <div className="max-w-6xl mx-auto px-4 pt-0 pb-24 md:pt-0 md:pb-32">
             <div className="mb-8">
                 <FormHeader
                     isEditMode={isEditMode}
@@ -140,13 +141,13 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
             <button
                 type="button"
                 onClick={() => form.setShowParser(true)}
-                className="fixed bottom-20 right-6 z-40 md:hidden flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-2xl shadow-primary/40 hover:bg-primary/90 hover:scale-105 active:scale-95 transition-all outline-none"
+                className="fixed bottom-20 right-4 z-50 md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all outline-none"
                 aria-label="Auto-fill helper"
             >
                 <BoltIcon className="w-6 h-6 animate-pulse" />
             </button>
 
-            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6 md:space-y-8">
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6 md:space-y-8 pb-32 md:pb-20">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                     <div className="lg:col-span-8 space-y-6 md:space-y-8">
                         <TypeSelection
@@ -159,6 +160,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                             title={form.title} setTitle={form.setTitle}
                             company={form.company} setCompany={form.setCompany}
                             companyWebsite={form.companyWebsite} setCompanyWebsite={form.setCompanyWebsite}
+                            companyLogoUrl={form.companyLogoUrl} setCompanyLogoUrl={form.setCompanyLogoUrl}
                             jobFunction={form.jobFunction} setJobFunction={form.setJobFunction}
                             employmentType={form.employmentType} setEmploymentType={form.setEmploymentType}
                             incentives={form.incentives} setIncentives={form.setIncentives}
@@ -196,7 +198,21 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                             sourceLink={form.sourceLink} setSourceLink={form.setSourceLink}
                             applyLink={form.applyLink} setApplyLink={form.setApplyLink}
                             type={form.type}
+                            showUrlError={form.showUrlError}
                         />
+
+                        {!form.isGovernmentJob && (
+                            <ApplicationDetailsSection
+                                appMethod={form.appMethod}
+                                setAppMethod={form.setAppMethod}
+                                appPlatform={form.appPlatform}
+                                setAppPlatform={form.setAppPlatform}
+                                appDuration={form.appDuration}
+                                setAppDuration={form.setAppDuration}
+                                appRequiredItems={form.appRequiredItems}
+                                setAppRequiredItems={form.setAppRequiredItems}
+                            />
+                        )}
 
 
                         {form.isGovernmentJob && (
@@ -217,6 +233,8 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                                 setAdvertisementNumber={form.setAdvertisementNumber}
                                 postName={form.postName}
                                 setPostName={form.setPostName}
+                                examName={form.examName}
+                                setExamName={form.setExamName}
                                 applicationMode={form.applicationMode}
                                 setApplicationMode={form.setApplicationMode}
                                 notificationIssuedDate={form.notificationIssuedDate}
@@ -225,6 +243,8 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                                 setVacancyCount={form.setVacancyCount}
                                 vacancyBreakdownJson={form.vacancyBreakdownJson}
                                 setVacancyBreakdownJson={form.setVacancyBreakdownJson}
+                                categoryVacanciesJson={form.categoryVacanciesJson}
+                                setCategoryVacanciesJson={form.setCategoryVacanciesJson}
                                 applicationFee={form.applicationFee}
                                 setApplicationFee={form.setApplicationFee}
                                 applicationFeeJson={form.applicationFeeJson}
@@ -295,6 +315,18 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                                 setSyllabusUrl={form.setSyllabusUrl}
                                 previousPapersUrl={form.previousPapersUrl}
                                 setPreviousPapersUrl={form.setPreviousPapersUrl}
+                                cadreDetailsJson={form.cadreDetailsJson}
+                                setCadreDetailsJson={form.setCadreDetailsJson}
+                                postPreferencesJson={form.postPreferencesJson}
+                                setPostPreferencesJson={form.setPostPreferencesJson}
+                                serviceBondJson={form.serviceBondJson}
+                                setServiceBondJson={form.setServiceBondJson}
+                                reservationDetailsJson={form.reservationDetailsJson}
+                                setReservationDetailsJson={form.setReservationDetailsJson}
+                                referenceLinksJson={form.referenceLinksJson}
+                                setReferenceLinksJson={form.setReferenceLinksJson}
+                                cutOffMarksJson={form.cutOffMarksJson}
+                                setCutOffMarksJson={form.setCutOffMarksJson}
                                 applicationStatus={form.applicationStatus}
                                 setApplicationStatus={form.setApplicationStatus}
                                 governmentLevel={form.governmentLevel}
@@ -361,32 +393,35 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
 
 
                         <ExpirationSection
-                            expiresAt={form.expiresAt} setExpiresAt={form.setExpiresAt}
+                            expiryDate={form.expiryDate} setExpiryDate={form.setExpiryDate}
+                            expiryTime={form.expiryTime} setExpiryTime={form.setExpiryTime}
                             onToggleAmPm={form.onToggleAmPm}
                         />
                     </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-center justify-end gap-3 pt-5 border-t border-border/50">
+                {/* Compact floating action pill */}
+                <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-background border border-border rounded-full shadow-lg px-2 py-2">
                     <Link
-                        href="/opportunities"
-                        className="inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-6 text-sm font-semibold text-muted-foreground transition-all hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus:ring-ring focus:ring-offset-2 w-full md:w-auto order-2 md:order-1"
+                        href="/admin/opportunities"
+                        className="inline-flex h-9 items-center justify-center rounded-full border border-input bg-background px-5 text-sm font-semibold text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                         Cancel
                     </Link>
                     <button
                         type="submit"
                         disabled={form.isLoading}
-                        className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-8 text-sm font-bold capitalize tracking-widest text-primary-foreground transition-all hover:bg-primary/90 hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:pointer-events-none focus-visible:outline-none focus:ring-2 focus:ring-offset-2 w-full md:w-auto order-1 md:order-2"
+                        className="inline-flex h-9 items-center justify-center rounded-full bg-primary px-6 text-sm font-bold text-primary-foreground hover:bg-primary/90 active:scale-95 disabled:opacity-50 disabled:pointer-events-none transition-all"
                     >
                         {form.isLoading ? (
                             <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
                         ) : (
                             <PaperAirplaneIcon className="w-4 h-4 mr-2" />
                         )}
-                        {form.isLoading ? (isEditMode ? 'Updating...' : 'Publishing...') : (isEditMode ? 'Update listing' : 'Publish listing')}
+                        {form.isLoading ? (isEditMode ? 'Updating...' : 'Publishing...') : (isEditMode ? 'Update' : 'Publish')}
                     </button>
                 </div>
+
             </form>
         </div>
     );
