@@ -53,7 +53,9 @@ const EXPIRED_PHRASES = [
     "requisition is closed",
     "the page you are looking for doesn't exist",
     "the job you requested was not found",
-    "job not found"
+    "job not found",
+    "page not found",
+    "an error has occurred"
 ];
 
 async function checkJob(page: Page, url: string): Promise<boolean> {

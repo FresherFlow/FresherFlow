@@ -37,7 +37,9 @@ const EXPIRED_PHRASES = [
     "requisition is closed",
     "the page you are looking for doesn't exist",
     "the job you requested was not found",
-    "job not found"
+    "job not found",
+    "page not found",
+    "an error has occurred"
 ];
 
 // Phrases indicating it's a fresher job
@@ -324,6 +326,9 @@ async function run() {
     console.log(`Loaded ${knownLinks.size} known links from CDN.`);
     
     const visited = await loadVisited();
+    if (!visited["__discovered_apply_links__"]) {
+        visited["__discovered_apply_links__"] = [];
+    }
     const newJobsFound: { title: string, applyLink: string, source: string }[] = [];
 
     const browser = await chromium.launch({ headless: true });
@@ -402,8 +407,8 @@ async function run() {
                 }
 
                 const normalizedApplyLink = normalizeUrl(applyLink);
-                if (knownLinks.has(normalizedApplyLink)) {
-                    console.log(`  -> Skipping: Already seen (${normalizedApplyLink})`);
+                if (knownLinks.has(normalizedApplyLink) || visited["__discovered_apply_links__"].includes(normalizedApplyLink)) {
+                    console.log(`  -> Skipping: Already seen/discovered (${normalizedApplyLink})`);
                     continue;
                 }
 
@@ -429,6 +434,11 @@ async function run() {
                         applyLink: applyLink,
                         source: site.name
                     });
+                    
+                    visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                    if (visited["__discovered_apply_links__"].length > 2000) {
+                        visited["__discovered_apply_links__"] = visited["__discovered_apply_links__"].slice(-2000);
+                    }
                 } else {
                     console.log(`  -> Job appears expired.`);
                 }
