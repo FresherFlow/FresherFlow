@@ -52,6 +52,7 @@ export const AdminOpportunitiesFilters = ({
                         <option value="JOB">Jobs</option>
                         <option value="INTERNSHIP">Internships</option>
                         <option value="WALKIN">Walk-ins</option>
+                        <option value="GOVERNMENT">Govt Jobs</option>
                     </select>
 
                     <select

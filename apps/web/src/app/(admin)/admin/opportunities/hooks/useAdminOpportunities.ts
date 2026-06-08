@@ -50,7 +50,8 @@ export function useAdminOpportunities(pageSize: number = 20) {
         setIsLoading(true);
         try {
             const data = (await adminApi.getOpportunities({
-                type: filters.typeFilter || undefined,
+                type: filters.typeFilter === 'GOVERNMENT' ? undefined : (filters.typeFilter || undefined),
+                sector: filters.typeFilter === 'GOVERNMENT' ? 'GOVERNMENT' : undefined,
                 status: filters.statusFilter || undefined,
                 linkHealth: filters.linkHealthFilter || undefined,
                 activeOnly: filters.activeOnly || undefined,
