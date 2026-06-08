@@ -23,16 +23,16 @@ export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () =>
   }, []);
 
   useEffect(() => {
-    // Elegant Telegram-style transition: Scale up slightly & fade out smoothly
+    // Fast exit: scale-up + fade, then reveal app immediately
     Animated.parallel([
       Animated.timing(scaleAnim, {
-        toValue: 1.12,
-        duration: 550,
+        toValue: 1.1,
+        duration: 150,
         useNativeDriver: true,
       }),
       Animated.timing(opacityAnim, {
         toValue: 0,
-        duration: 500,
+        duration: 120,
         useNativeDriver: true,
       })
     ]).start(() => {

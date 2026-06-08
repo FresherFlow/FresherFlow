@@ -8,8 +8,12 @@ import { ScreenErrorBoundary } from '@/system/components/ScreenErrorBoundary';
 
 import FeedScreen from '@/screens/feed/FeedScreen';
 import ExploreScreen from '@/screens/feed/ExploreScreen';
+import GovtFeedScreen from '@/screens/feed/GovtFeedScreen';
+import GovtExploreScreen from '@/screens/feed/GovtExploreScreen';
 import ShareScreen from '@/screens/social/ShareScreen';
 import JobDetailScreen from '@/screens/discovery/JobDetailScreen';
+import GovtJobDetailScreen from '@/screens/discovery/GovtJobDetailScreen';
+import GovtVacancyDetailScreen from '@/screens/discovery/GovtVacancyDetailScreen';
 import SkillSearchScreen from '@/screens/discovery/SkillSearchScreen';
 import SavedScreen from '@/screens/feed/SavedScreen';
 import SettingsScreen from '@/screens/profile/SettingsScreen';
@@ -35,12 +39,19 @@ import ChooseUsernameScreen from '@/screens/auth/ChooseUsernameScreen';
 import AboutScreen from '@/screens/settings/AboutScreen';
 import OTAUpdatesScreen from '@/screens/settings/OTAUpdatesScreen';
 import OnboardingScreen from '@/screens/auth/OnboardingScreen';
+import SectorSelectionScreen from '@/screens/auth/SectorSelectionScreen';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+
+// Prep Resources Screens
+import { ResourcesDirectoryScreen } from '@/screens/resources/ResourcesDirectoryScreen';
+import { ResourceGroupDetailScreen } from '@/screens/resources/ResourceGroupDetailScreen';
+
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUI } from '@/contexts/UIContext';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSectorStore } from '@/store/useSectorStore';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
@@ -80,10 +91,25 @@ const TabIcon = React.memo(({ focused, color, IconComponent }: {
 
 // Each tab is wrapped in its own ScreenErrorBoundary so a crash in one tab
 // doesn't kill the entire app — users can still switch to other tabs.
+
+// Stable wrapper components: The `component` prop on Stack.Screen MUST be a stable reference.
+// If we passed `sector === 'GOVERNMENT' ? GovtFeedScreen : FeedScreen` directly to the component prop,
+// React Navigation would unmount + remount the screen every time sector changes.
+// Instead, these routers are always the same component reference and read sector internally.
+const FeedRouter = (props: any) => {
+  const { sector } = useSectorStore();
+  return sector === 'GOVERNMENT' ? <GovtFeedScreen {...props} /> : <FeedScreen {...props} />;
+};
+
+const ExploreRouter = (props: any) => {
+  const { sector } = useSectorStore();
+  return sector === 'GOVERNMENT' ? <GovtExploreScreen {...props} /> : <ExploreScreen {...props} />;
+};
+
 const FeedStack = () => (
   <ScreenErrorBoundary>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="FeedList" component={FeedScreen} />
+      <Stack.Screen name="FeedList" component={FeedRouter} />
     </Stack.Navigator>
   </ScreenErrorBoundary>
 );
@@ -91,7 +117,7 @@ const FeedStack = () => (
 const ExploreStack = () => (
   <ScreenErrorBoundary>
     <Stack.Navigator screenOptions={{ headerShown: false }}>
-      <Stack.Screen name="ExploreMain" component={ExploreScreen} />
+      <Stack.Screen name="ExploreMain" component={ExploreRouter} />
     </Stack.Navigator>
   </ScreenErrorBoundary>
 );
@@ -263,7 +289,10 @@ const AppStack = ({ initialRouteName = 'Main' }: { initialRouteName?: keyof Root
   >
     <Stack.Screen name="Main" component={TabNavigator} />
     <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+    <Stack.Screen name="SectorSelection" component={SectorSelectionScreen} />
     <Stack.Screen name="JobDetail" component={JobDetailScreen} />
+    <Stack.Screen name="GovtJobDetail" component={GovtJobDetailScreen} />
+    <Stack.Screen name="GovtVacancyDetail" component={GovtVacancyDetailScreen} />
     <Stack.Screen name="SkillSearch" component={SkillSearchScreen} />
     <Stack.Screen name="Appearance" component={AppearanceScreen} />
     <Stack.Screen name="Dashboard" component={DashboardScreen} />
@@ -286,6 +315,8 @@ const AppStack = ({ initialRouteName = 'Main' }: { initialRouteName?: keyof Root
     <Stack.Screen name="ProfileChooseUsername" component={ChooseUsernameScreen} />
     <Stack.Screen name="ChooseUsername" component={ChooseUsernameScreen} />
     <Stack.Screen name="OTAUpdates" component={OTAUpdatesScreen} />
+    <Stack.Screen name="ResourcesDirectory" component={ResourcesDirectoryScreen} />
+    <Stack.Screen name="ResourceGroupDetail" component={ResourceGroupDetailScreen} />
     {/* Auth is a contextual modal — anonymous users land here when they try an auth-gated action */}
     <Stack.Screen name="Auth" component={AuthScreen} options={{ presentation: 'modal' }} />
   </Stack.Navigator>
@@ -307,19 +338,34 @@ const AppLoading = () => {
 
 export const AppNavigator = () => {
   const { isSkipLoaded } = useAuthStore();
+  const { sector, hasHydrated, hydrate } = useSectorStore();
+  
+  // Default to null so we block rendering until we know for sure
   const [isOnboardingCompleted, setIsOnboardingCompleted] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
+    hydrate();
+    // Check onboarding state in the background
     AsyncStorage.getItem('ff_onboarding_completed').then((val) => {
       setIsOnboardingCompleted(val === 'true');
     }).catch(() => {
-      setIsOnboardingCompleted(true);
+      // If AsyncStorage fails, assume they need to onboard just to be safe
+      setIsOnboardingCompleted(false);
     });
-  }, []);
+  }, [hydrate]);
 
-  if (!isSkipLoaded || isOnboardingCompleted === null) {
+  // Block rendering until auth store, sector, and onboarding state are resolved
+  if (!isSkipLoaded || !hasHydrated || isOnboardingCompleted === null) {
     return <AppLoading />;
   }
 
-  return <AppStack initialRouteName={isOnboardingCompleted ? 'Main' : 'Onboarding'} />;
+  let initialRouteName: keyof RootStackParamList = 'Main';
+  if (!isOnboardingCompleted) {
+    initialRouteName = 'Onboarding';
+  } else if (!sector) {
+    initialRouteName = 'SectorSelection';
+  }
+
+  return <AppStack initialRouteName={initialRouteName} />;
 };
+

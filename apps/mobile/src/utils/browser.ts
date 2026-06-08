@@ -18,7 +18,7 @@ const ensureDefaults = () => {
   if (defaultsInitialized) return;
   defaultsInitialized = true;
   // Only write if the key has truly never been set (undefined means no value stored)
-  const existing = getBoolean('use_in_app_browser', false);
+  const existing = getBoolean('use_in_app_browser', true);
   // getBoolean already returns the default, but we need to persist it so future reads work
   // after cold restarts before hydration re-populates the cache from AsyncStorage.
   // We only write if the raw MMKV call returned undefined (i.e., not yet set).
@@ -49,7 +49,7 @@ export const openExternalURL = async (url: string, colors?: ThemeColors): Promis
   const target = hasScheme ? trimmed : `https://${trimmed}`;
 
   ensureDefaults();
-  const useInApp = getBoolean('use_in_app_browser', false);
+  const useInApp = getBoolean('use_in_app_browser', true);
 
   console.log(`[browser] useInApp=${useInApp} url=${target}`);
 

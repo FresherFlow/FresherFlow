@@ -15,13 +15,16 @@ export type RootStackParamList = {
   SavedList: undefined;
   ProfileMain: undefined;
   JobDetail: { opportunity?: Opportunity; job?: Opportunity; opportunityId?: string };
+  GovtJobDetail: { opportunity?: Opportunity; job?: Opportunity; opportunityId?: string };
+  GovtVacancyDetail: { vacancyTableData: { columns: string[]; rows: any[][]; notes?: string }; title?: string };
+  SectorSelection: undefined;
   Auth: { prefilledEmail?: string; isOnboarding?: boolean } | undefined;
   Main: undefined;
   EditEducation: { startInEditMode?: boolean; isOnboarding?: boolean } | undefined;
   EditSkills: { startInEditMode?: boolean; isOnboarding?: boolean } | undefined;
   EditPreferences: { startInEditMode?: boolean; isOnboarding?: boolean } | undefined;
   CareerProfile: { isOnboarding?: boolean } | undefined;
-  MyShares: undefined;
+  MyShares: { initialTab?: 'JOBS' | 'RESOURCES' } | undefined;
   Dashboard: undefined;
   Invite: undefined;
   Appearance: undefined;
@@ -29,7 +32,7 @@ export type RootStackParamList = {
   Notifications: undefined;
   ContributorProfile: { userId: string };
   About: undefined;
-  CompanyDetail: { companyName: string; companyLogoUrl?: string; website?: string; currentJob?: Opportunity };
+  CompanyDetail: { companyName: string; companyLogoUrl?: string; website?: string; currentJob?: Opportunity; initialTab?: 'JOBS' | 'RESOURCES' };
   AlertSettings: undefined;
   ApplicationTracker: undefined;
   Feedback: undefined;
@@ -40,4 +43,6 @@ export type RootStackParamList = {
   FollowedCompanies: undefined;
   Onboarding: undefined;
   SkillSearch: { skill: string };
+  ResourcesDirectory: undefined;
+  ResourceGroupDetail: { groupType: 'COMPANY' | 'SKILL'; groupId: string; groupName: string; logoUrl?: string };
 };

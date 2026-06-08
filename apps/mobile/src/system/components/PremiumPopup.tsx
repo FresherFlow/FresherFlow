@@ -91,7 +91,6 @@ export const PremiumPopup: React.FC<PremiumPopupProps> = ({
                             borderColor: alpha(currentTheme.colors.border, 0.5),
                             opacity: opacityAnim,
                             transform: [{ scale: scaleAnim }],
-                            shadowColor: currentTheme.colors.text,
                         },
                     ]}
                 >
@@ -118,8 +117,8 @@ export const PremiumPopup: React.FC<PremiumPopupProps> = ({
                                     style={[
                                         styles.actionButton,
                                         index < actions.length - 1 && {
-                                            borderBottomWidth: 1,
-                                            borderBottomColor: alpha(currentTheme.colors.border, 0.05),
+                                            borderRightWidth: 1,
+                                            borderRightColor: alpha(currentTheme.colors.border, 0.1),
                                         },
                                     ]}
                                     onPress={() => {
@@ -165,17 +164,6 @@ const styles = StyleSheet.create({
         borderRadius: RADIUS.xl,
         borderWidth: 1,
         overflow: 'hidden',
-        ...Platform.select({
-            ios: {
-                // shadowColor removed as it is overridden dynamically
-                shadowOffset: { width: 0, height: 12 },
-                shadowOpacity: 0.25,
-                shadowRadius: 24,
-            },
-            android: {
-                elevation: 12,
-            },
-        }),
     },
     content: {
         padding: SPACING.xl,
@@ -197,12 +185,14 @@ const styles = StyleSheet.create({
     },
     actionsContainer: {
         borderTopWidth: 1,
+        flexDirection: 'row',
     },
     actionButton: {
-        height: 60,
+        flex: 1,
+        height: 56,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: SPACING.lg,
+        paddingHorizontal: SPACING.md,
     },
     actionText: {
         fontSize: mScale(13),
