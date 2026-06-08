@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@/shared/ui/cn';
+import { cn } from '@/lib/utils';
 import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
 import PlusCircleIcon from '@heroicons/react/24/outline/PlusCircleIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
-import ChartBarIcon from '@heroicons/react/24/outline/ChartBarIcon';
+import ChatBubbleBottomCenterTextIcon from '@heroicons/react/24/outline/ChatBubbleBottomCenterTextIcon';
+import BookOpenIcon from '@heroicons/react/24/outline/BookOpenIcon';
 
 const NAV_ITEMS = [
     {
@@ -25,18 +26,34 @@ const NAV_ITEMS = [
         icon: PlusCircleIcon,
     },
     {
-        label: 'Analytics',
-        href: '/admin/analytics',
-        icon: ChartBarIcon,
+        label: 'Feedback',
+        href: '/admin/feedback',
+        icon: ChatBubbleBottomCenterTextIcon,
+    },
+    {
+        label: 'Resources',
+        href: '/admin/resources',
+        icon: BookOpenIcon,
     }
 ];
 
 export default function AdminBottomNav() {
     const pathname = usePathname();
 
+    // Hide on form pages that have their own bottom action bar
+    const isFormPage =
+        pathname === '/admin/opportunities/create' ||
+        pathname === '/admin/opportunities/new' ||
+        pathname === '/admin/government-jobs/create' ||
+        pathname === '/admin/jobs/new' ||
+        pathname === '/admin/walkins/new' ||
+        pathname.includes('/edit');
+
+    if (isFormPage) return null;
+
     return (
         <nav className={cn(
-            "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden transition-all duration-300 pb-safe shadow-2xl",
+            "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden transition-all duration-300 pb-safe",
             "translate-y-0 opacity-100"
         )}>
             <div className="flex justify-around items-center h-16 px-2">
@@ -46,17 +63,17 @@ export default function AdminBottomNav() {
                     if (item.label === 'Dashboard') {
                         isActive = pathname === '/dashboard' || pathname === '/admin' || pathname === '/admin/dashboard';
                     } else if (item.label === 'Post') {
-                        // Active ONLY for create page
                         isActive = pathname === '/opportunities/create' || pathname === '/admin/opportunities/create';
                     } else if (item.label === 'Search') {
-                        // Active for opportunities list, but NOT create page
                         isActive =
                             pathname === '/opportunities' ||
                             (pathname.startsWith('/opportunities/') && pathname !== '/opportunities/create') ||
                             pathname === '/admin/opportunities' ||
                             (pathname.startsWith('/admin/opportunities/') && pathname !== '/admin/opportunities/create');
-                    } else if (item.label === 'Analytics') {
-                        isActive = pathname === '/analytics' || pathname.startsWith('/admin/analytics');
+                    } else if (item.label === 'Feedback') {
+                        isActive = pathname === '/feedback' || pathname.startsWith('/admin/feedback');
+                    } else if (item.label === 'Resources') {
+                        isActive = pathname === '/resources' || pathname.startsWith('/admin/resources');
                     }
 
                     return (
@@ -87,4 +104,3 @@ export default function AdminBottomNav() {
         </nav>
     );
 }
-

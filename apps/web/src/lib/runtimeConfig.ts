@@ -101,6 +101,11 @@ export const EXPIRED_FEED_URL =
     process.env.EXPIRED_FEED_URL ||
     `${CDN_URL}/expired-feed.min.json`;
 
+export const GOVERNMENT_FEED_URL =
+    process.env.NEXT_PUBLIC_GOVERNMENT_FEED_URL ||
+    process.env.GOVERNMENT_FEED_URL ||
+    `${CDN_URL}/government-feed.json`;
+
 export const FEED_VERSION_URL = `${CDN_URL}/feed-version.json`;
 
 export const SITEMAP_DATA_URL =

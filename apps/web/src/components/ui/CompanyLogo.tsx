@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
+import ShieldCheckIcon from '@heroicons/react/24/solid/ShieldCheckIcon';
 
 // Global in-memory cache for instant resolution
 const logoCache = new Map<string, string>();
@@ -40,12 +41,27 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
 
         // 1. Explicit Logo URL (highest priority)
         if (companyLogoUrl) {
-            urls.push(`${companyLogoUrl}${companyLogoUrl.includes('?') ? '&' : '?'}size=80`);
+            urls.push(companyLogoUrl);
         }
 
         if (isGovDetected && !companyLogoUrl) {
-            // Do not query third party favicons for government sites if explicit logo is missing
-            return [];
+            // Check for an acronym in parentheses: e.g. "Railway Recruitment Board (RRB)" -> "rrb"
+            const match = companyName.match(/\(([^)]+)\)/);
+            if (match && match[1]) {
+                const acronym = match[1].toLowerCase().trim();
+                // Ensure it's just letters
+                if (/^[a-z]+$/.test(acronym)) {
+                    urls.push(`https://cdn.fresherflow.in/logos/${acronym}.png`);
+                }
+            } else {
+                // If no parenthesis, check if the whole name is just an acronym
+                const cleanName = companyName.toLowerCase().trim();
+                if (/^[a-z]+$/.test(cleanName) && cleanName.length <= 6) {
+                    urls.push(`https://cdn.fresherflow.in/logos/${cleanName}.png`);
+                }
+            }
+            // Do not query third party favicons for government sites
+            return urls;
         }
 
         // 2. Resolve Domain
@@ -120,10 +136,8 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
     if (!currentSrc || imgError) {
         if (isGovDetected) {
             return (
-                <div className={cn("w-12 h-12 rounded bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-500", className)}>
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                    </svg>
+                <div className={cn("w-16 h-16 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-500", className)}>
+                    <ShieldCheckIcon className="w-16 h-16" />
                 </div>
             );
         }
@@ -142,18 +156,24 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
     }
 
     return (
-        <div className={cn("relative w-12 h-12 bg-muted/40 dark:bg-transparent border border-border rounded overflow-hidden shrink-0 flex items-center justify-center p-1", className)}>
+        <div className={cn(
+            isGovDetected
+                ? "relative w-16 h-16 shrink-0 flex items-center justify-center"
+                : "relative w-12 h-12 bg-muted/40 dark:bg-transparent border border-border rounded overflow-hidden shrink-0 flex items-center justify-center p-1",
+            className
+        )}>
             <Image
                 src={currentSrc}
                 alt={`${companyName} logo`}
-                width={48}
-                height={48}
+                width={isGovDetected ? 64 : 48}
+                height={isGovDetected ? 64 : 48}
                 className="object-contain w-full h-full"
                 onError={handleError}
                 onLoad={handleLoad}
                 priority={priority}
                 loading={priority ? undefined : 'lazy'}
                 unoptimized
+                referrerPolicy="no-referrer"
             />
         </div>
     );

@@ -41,63 +41,131 @@ function DiscordBrandIcon({ className }: IconProps) {
 
 export function Footer({ className }: FooterProps) {
     const currentYear = new Date().getFullYear();
-    const footerLinks = [
-        { href: '/about', label: 'About Us' },
-        { href: '/blog', label: 'Blog' },
-        { href: '/contact', label: 'Contact Us' },
-        { href: '/submit-link', label: 'Post a Job' },
-        { href: '/privacy', label: 'Privacy' },
-        { href: '/terms', label: 'Terms & Conditions' },
-        { href: '/feedback', label: 'Feedback' },
+
+    const topCategories = [
+        { href: '/government-jobs', label: 'Government Jobs' },
+        { href: '/jobs', label: 'Off-Campus Drives' },
+        { href: '/walk-ins', label: 'Walk-in Interviews' },
+        { href: '/internships', label: 'Student Internships' },
+    ];
+
+    const resources = [
+        { href: '/blog', label: 'Career Blog' },
         { href: '/sitemap.xml', label: 'Sitemap' },
-    ] as const;
+    ];
+
+    const company = [
+        { href: '/about', label: 'About FresherFlow' },
+        { href: '/contact', label: 'Contact Us' },
+        { href: '/feedback', label: 'Provide Feedback' },
+        { href: '/privacy', label: 'Privacy Policy' },
+        { href: '/terms', label: 'Terms of Service' },
+    ];
+
     const socialLinks = [
-        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon },
-        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon },
-        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon },
-        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon },
-        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon },
-        { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon },
-        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon },
-    ] as const;
+        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'text-[#229ED9] bg-[#229ED9]/10 border-[#229ED9]/20 hover:bg-[#229ED9] hover:text-white' },
+        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'text-[#25D366] bg-[#25D366]/10 border-[#25D366]/20 hover:bg-[#25D366] hover:text-white' },
+        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'text-[#0A66C2] bg-[#0A66C2]/10 border-[#0A66C2]/20 hover:bg-[#0A66C2] hover:text-white' },
+        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon, colorClass: 'text-foreground bg-foreground/10 border-foreground/20 hover:bg-foreground hover:text-background' },
+        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'text-[#5865F2] bg-[#5865F2]/10 border-[#5865F2]/20 hover:bg-[#5865F2] hover:text-white' },
+        { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon, colorClass: 'text-[#E1306C] bg-[#E1306C]/10 border-[#E1306C]/20 hover:bg-[#E1306C] hover:text-white' },
+        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'text-[#1877F2] bg-[#1877F2]/10 border-[#1877F2]/20 hover:bg-[#1877F2] hover:text-white' },
+    ];
 
     return (
-        <footer className={cn("border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 py-6 md:py-8 mt-auto", className)}>
-            <div className="container px-4 md:px-6 flex flex-col items-center justify-center gap-5 text-center mx-auto">
-                <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-sm font-semibold text-muted-foreground">
-                    {footerLinks.map((link) => (
-                        <Link
-                            key={link.href}
-                            href={link.href}
-                            className="hover:text-foreground transition-colors"
-                        >
-                            {link.label}
-                        </Link>
-                    ))}
+        <footer className={cn("bg-card border-t border-border mt-auto", className)}>
+            {/* Top Footer */}
+            <div className="container px-4 md:px-6 mx-auto py-10 md:py-16">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10 lg:gap-8">
+                    
+                    {/* Brand Column */}
+                    <div className="col-span-2 md:col-span-4 lg:col-span-2 space-y-6">
+                        <div>
+                            <Link href="/" className="inline-block">
+                                <span className="text-2xl font-black tracking-tighter text-primary">FresherFlow<span className="text-foreground">.in</span></span>
+                            </Link>
+                            <p className="mt-4 text-sm text-muted-foreground leading-relaxed max-w-sm">
+                                Your ultimate destination for Government Jobs, Off-Campus Drives, and Walk-in Interviews. We empower job seekers with verified, up-to-date career opportunities.
+                            </p>
+                        </div>
+                        
+                        <div className="space-y-3">
+                            <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">Connect With Us</h4>
+                            <div className="flex flex-wrap gap-2.5">
+                                {socialLinks.map(({ href, label, Icon, colorClass }) => (
+                                    <a
+                                        key={label}
+                                        href={href}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        aria-label={label}
+                                        className={cn(
+                                            "h-10 w-10 rounded-full border flex items-center justify-center transition-all duration-300",
+                                            colorClass
+                                        )}
+                                    >
+                                        <Icon className="h-4 w-4" />
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Links Columns */}
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold text-foreground">Opportunities</h4>
+                        <ul className="space-y-2">
+                            {topCategories.map((link) => (
+                                <li key={link.href}>
+                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-block">
+                                        {link.label}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold text-foreground">Resources</h4>
+                        <ul className="space-y-2">
+                            {resources.map((link) => (
+                                <li key={link.href}>
+                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-block">
+                                        {link.label}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold text-foreground">FresherFlow</h4>
+                        <ul className="space-y-2">
+                            {company.map((link) => (
+                                <li key={link.href}>
+                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-block">
+                                        {link.label}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
                 </div>
-                <div className="flex flex-wrap items-center justify-center gap-2">
-                    {socialLinks.map(({ href, label, Icon }) => (
-                        <a
-                            key={label}
-                            href={href}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={label}
-                            className="h-8 w-8 rounded-lg border border-border bg-background flex items-center justify-center text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
-                        >
-                            <Icon className="h-4 w-4" />
-                        </a>
-                    ))}
+            </div>
+
+            {/* Bottom Footer */}
+            <div className="border-t border-border bg-muted/20">
+                <div className="container px-4 md:px-6 mx-auto py-6">
+                    <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+                        <p className="text-sm text-muted-foreground">
+                            &copy; {currentYear} FresherFlow.in. All rights reserved.
+                        </p>
+                        <p className="text-xs text-muted-foreground max-w-xl md:text-right">
+                            <span className="font-semibold text-foreground">Disclaimer:</span> We aggregate information from official sources for educational purposes. We are not affiliated with any government organization.
+                        </p>
+                    </div>
                 </div>
-                <div className="text-sm text-muted-foreground/90 max-w-md space-y-1">
-                    <p>
-                        Company names and logos are trademarks of their respective owners.
-                        FresherFlow is not affiliated with or endorsed by these companies.
-                    </p>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                    &copy; {currentYear} FresherFlow. All rights reserved.
-                </p>
             </div>
         </footer>
     );

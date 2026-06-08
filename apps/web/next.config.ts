@@ -95,6 +95,12 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
+        hostname: 'cdn.fresherflow.in',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'logo.clearbit.com',
         port: '',
         pathname: '/**',

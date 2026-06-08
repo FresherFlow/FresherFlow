@@ -27,9 +27,10 @@ export const adminApi = {
         }),
 
     // Get all opportunities (with filters)
-    getOpportunities: (filters?: { type?: string; status?: string; linkHealth?: 'HEALTHY' | 'RETRYING' | 'BROKEN'; activeOnly?: boolean; limit?: number; offset?: number; q?: string; sort?: string }) => {
+    getOpportunities: (filters?: { type?: string; sector?: string; status?: string; linkHealth?: 'HEALTHY' | 'RETRYING' | 'BROKEN'; activeOnly?: boolean; limit?: number; offset?: number; q?: string; sort?: string }) => {
         const query = new URLSearchParams();
         if (filters?.type) query.append('type', filters.type);
+        if (filters?.sector) query.append('sector', filters.sector);
         if (filters?.status) query.append('status', filters.status);
         if (filters?.linkHealth) query.append('linkHealth', filters.linkHealth);
         if (filters?.activeOnly) query.append('activeOnly', 'true');
@@ -224,5 +225,26 @@ export const adminApi = {
             method: 'POST',
             body: JSON.stringify({ ids, action, reason })
         }),
+
+    adminResourcesApi: {
+        getResources: (params?: { page?: number; limit?: number; status?: string; search?: string }) => {
+            const query = new URLSearchParams();
+            if (params?.page) query.append('page', String(params.page));
+            if (params?.limit) query.append('limit', String(params.limit));
+            if (params?.status) query.append('status', params.status);
+            if (params?.search) query.append('search', params.search);
+            const queryString = query.toString();
+            return apiClient<import('@fresherflow/types').AdminGetResourcesResponse>(`/api/admin/resources${queryString ? `?${queryString}` : ''}`);
+        },
+        updateResource: (id: string, data: any) =>
+            apiClient<{ resource: import('@fresherflow/types').SharedResource }>(`/api/admin/resources/${id}`, {
+                method: 'PATCH',
+                body: JSON.stringify(data)
+            }),
+        deleteResource: (id: string) =>
+            apiClient<void>(`/api/admin/resources/${id}`, {
+                method: 'DELETE'
+            })
+    }
 
 };

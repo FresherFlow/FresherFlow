@@ -9,7 +9,8 @@ import {
     EDUCATION_METADATA_URL, 
     SKILLS_METADATA_URL,
     SITEMAP_DATA_URL,
-    API_URL
+    API_URL,
+    GOVERNMENT_FEED_URL
 } from '../runtimeConfig';
 import crypto from 'node:crypto';
 
@@ -213,6 +214,57 @@ export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> 
         return data;
     } catch (err) {
         console.warn('Expired CDN fetch failed:', err instanceof Error ? err.message : err);
+        return null;
+    }
+}
+
+/**
+ * Fetches the static government jobs feed from the CDN.
+ */
+export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapFeedResponse | null> {
+    try {
+        if (process.env.NODE_ENV === 'development' && !forceLive) {
+            try {
+                const res = await fetch(`${API_URL}/government-feed.json`, { cache: 'no-store' });
+                if (res.ok) {
+                    return await res.json() as BootstrapFeedResponse;
+                }
+            } catch (err) {
+                console.warn('Failed to fetch live government feed from local API server, falling back:', err);
+            }
+        }
+
+        const version = await fetchFeedVersion();
+        const IS_SERVER = typeof window === 'undefined';
+        const signedUrl = IS_SERVER
+            ? signUrlWithVersion(GOVERNMENT_FEED_URL, version)
+            : `${GOVERNMENT_FEED_URL}?v=${version}`;
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+        const res = await fetch(signedUrl, getCDNFetchOptions({
+            cache: 'force-cache',
+            signal: controller.signal,
+        }));
+
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            console.error(`Failed to fetch government feed: ${res.status} ${res.statusText}`);
+            return null;
+        }
+
+        const data = await res.json() as BootstrapFeedResponse;
+        
+        if (!data || !Array.isArray(data.opportunities)) {
+            console.error('Invalid government feed format');
+            return null;
+        }
+
+        return data;
+    } catch (err) {
+        console.warn('Government CDN fetch failed:', err instanceof Error ? err.message : err);
         return null;
     }
 }

@@ -7,6 +7,18 @@ import { redirect } from 'next/navigation';
 
 import { EligibilityMatcher } from '@/features/landing/EligibilityMatcher';
 import { Opportunity } from '@fresherflow/types';
+import IdentificationIcon from '@heroicons/react/24/outline/IdentificationIcon';
+import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
+import KeyIcon from '@heroicons/react/24/outline/KeyIcon';
+import TrophyIcon from '@heroicons/react/24/outline/TrophyIcon';
+import BuildingLibraryIcon from '@heroicons/react/24/outline/BuildingLibraryIcon';
+import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
+import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
+import CpuChipIcon from '@heroicons/react/24/outline/CpuChipIcon';
+import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
+import DevicePhoneMobileIcon from '@heroicons/react/24/outline/DevicePhoneMobileIcon';
+import StarIcon from '@heroicons/react/24/solid/StarIcon';
+import { cn } from '@repo/ui/utils/cn';
 
 export const metadata: Metadata = {
     title: {
@@ -42,7 +54,20 @@ export const metadata: Metadata = {
 // Revalidate once per day so the count stays reasonably fresh
 export const revalidate = false; // on-demand only — busted via revalidateTag on publish
 
+const PHASE_GROUPS = [
+    { key: 'APPLY_NOW',  label: 'Latest Govt Jobs',    Icon: CheckCircleIcon,    urgency: 'high',   statuses: ['OPEN'] },
+    { key: 'ADMIT_CARD', label: 'Admit Card Out',      Icon: IdentificationIcon, urgency: 'high',   statuses: ['ADMIT_CARD_RELEASED'] },
+    { key: 'RESULT',     label: 'Result Declared',     Icon: TrophyIcon,         urgency: 'medium', statuses: ['RESULT_DECLARED'] },
+    { key: 'ANSWER_KEY', label: 'Answer Keys',         Icon: KeyIcon,            urgency: 'normal', statuses: ['ANSWER_KEY_RELEASED'] },
+];
 
+const EXAM_CATEGORIES = [
+    { title: 'Banking & Insurance', icon: BuildingLibraryIcon, href: '/government-jobs?category=Banking', color: 'text-blue-500', bg: 'bg-blue-500/10' },
+    { title: 'SSC & Railway Exams', icon: TrophyIcon, href: '/government-jobs?category=SSC', color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    { title: 'Teaching & UGC', icon: AcademicCapIcon, href: '/government-jobs?category=Teaching', color: 'text-amber-500', bg: 'bg-amber-500/10' },
+    { title: 'State Level Exams', icon: MapPinIcon, href: '/government-jobs?category=State', color: 'text-violet-500', bg: 'bg-violet-500/10' },
+    { title: 'Engineering & ITI', icon: CpuChipIcon, href: '/government-jobs?category=Engineering', color: 'text-rose-500', bg: 'bg-rose-500/10' },
+];
 
 export default async function LandingPage() {
 
@@ -130,9 +155,9 @@ export default async function LandingPage() {
                                 </div>
                                 <div className="grid grid-cols-3 gap-2.5 sm:gap-4 pt-6">
                                     {[
-                                        { label: 'Verified Apply Links', value: 'Manual' },
-                                        { label: 'Opportunities Updated', value: 'Daily' },
-                                        { label: 'Fake Listings', value: 'Filtered' },
+                                        { label: 'Active Jobs', value: liveCount > 0 ? liveCount.toString() : '- -' },
+                                        { label: 'Companies', value: (opportunities?.length > 0) ? new Set(opportunities.map(o => o.company).filter(Boolean)).size.toString() : '- -' },
+                                        { label: 'Fake Listings', value: '0' },
                                     ].map((stat) => (
                                         <div key={stat.label} className="rounded-xl sm:rounded-2xl border border-border bg-card/65 backdrop-blur p-2.5 sm:p-4.5 shadow-sm text-center flex flex-col justify-center">
                                           <div className="text-base sm:text-xl md:text-2xl font-extrabold tracking-tight text-foreground">{stat.value}</div>
@@ -158,35 +183,57 @@ export default async function LandingPage() {
 
 
 
-                    {/* Pillar 2: Smart Fit Dynamic Sandbox */}
-                    <section className="hidden md:block py-10 md:py-14 px-6 border-t border-border/40">
-                        <div className="max-w-6xl mx-auto space-y-10">
-                            <div className="max-w-2xl mx-auto text-center space-y-3">
-                                <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-                                    Check eligibility instantly.
-                                </h2>
-                                <p className="text-sm md:text-base text-muted-foreground">
-                                    Stop reading endless text blocks to check if your graduation year or degree qualifies. Instantly check if you are eligible based on your batch, degree, and skills.
-                                </p>
+                    {/* Pillar 2: Smart Fit Dynamic Sandbox (Temporarily Hidden) */}
+                    {false && (
+                        <section className="hidden md:block py-10 md:py-14 px-6 border-t border-border/40">
+                            <div className="max-w-6xl mx-auto space-y-10">
+                                <div className="max-w-2xl mx-auto text-center space-y-3">
+                                    <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
+                                        Check eligibility instantly.
+                                    </h2>
+                                    <p className="text-sm md:text-base text-muted-foreground">
+                                        Stop reading endless text blocks to check if your graduation year or degree qualifies. Instantly check if you are eligible based on your batch, degree, and skills.
+                                    </p>
+                                </div>
+                                <EligibilityMatcher 
+                                    opportunities={opportunities} 
+                                    educationMetadata={educationMetadata || undefined}
+                                    skillsMetadata={skillsMetadata || undefined}
+                                />
                             </div>
-                            <EligibilityMatcher 
-                                opportunities={opportunities} 
-                                educationMetadata={educationMetadata || undefined}
-                                skillsMetadata={skillsMetadata || undefined}
-                            />
-                        </div>
-                    </section>
+                        </section>
+                    )}
 
                     {/* Pillar 3: Trust ledger */}
                     <section className="py-10 md:py-14 px-6 border-t border-border/40 bg-muted/10">
                         <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-[0.45fr_1fr] gap-10 items-start">
-                            <div className="space-y-4">
-                                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
-                                    Built for a better job search.
-                                </h2>
-                                <p className="text-sm text-muted-foreground leading-relaxed">
-                                    Most job boards are flooded with expired postings, affiliate redirects, and fake company profiles. We built FresherFlow to give students a reliable, clean, and direct application experience.
-                                </p>
+                            <div className="flex flex-col h-full">
+                                <div className="space-y-4">
+                                    <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
+                                        Built for a better job search.
+                                    </h2>
+                                    <p className="text-sm text-muted-foreground leading-relaxed">
+                                        Most job boards are flooded with expired postings, affiliate redirects, and fake company profiles. We built FresherFlow to give students a reliable, clean, and direct application experience.
+                                    </p>
+                                </div>
+                                
+                                <div className="mt-8 pt-8 border-t border-border/60 space-y-6">
+                                    <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold tracking-widest uppercase border border-primary/20">
+                                        <DevicePhoneMobileIcon className="w-4 h-4" />
+                                        Native Mobile Experience
+                                    </div>
+                                    <div className="space-y-3">
+                                        <h3 className="text-xl font-extrabold tracking-tight">Available on Android</h3>
+                                        <p className="text-xs md:text-sm text-muted-foreground leading-relaxed max-w-sm">
+                                            Get the full experience with our Android app. Featuring zero-latency feeds, immediate offline saves, and instant push notifications.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                                        <Link href="/download" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-foreground text-background font-bold text-sm hover:bg-foreground/90 transition-colors">
+                                            Download APK
+                                        </Link>
+                                    </div>
+                                </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {[
@@ -204,15 +251,121 @@ export default async function LandingPage() {
                         </div>
                     </section>
 
-                    {/* Curated Story-Driven Collections */}
-                    <section className="py-10 md:py-14 px-6 border-t border-border/40">
+                    {/* Explore by Exams - Govt Categories */}
+                    <section className="py-10 md:py-14 px-6 border-t border-border/40 bg-muted/5">
+                        <div className="max-w-6xl mx-auto space-y-8">
+                            <div className="text-center space-y-2 max-w-2xl mx-auto">
+                                <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                                    Explore by Exams
+                                </h2>
+                                <p className="text-muted-foreground text-sm">
+                                    Find verified notifications and updates for top Government exams in India.
+                                </p>
+                            </div>
+                            <div className="flex flex-wrap justify-center gap-4">
+                                {EXAM_CATEGORIES.map((cat) => (
+                                    <Link key={cat.title} href={cat.href} className="flex items-center gap-3 bg-card border border-border/80 hover:border-primary/40 hover:-translate-y-0.5 shadow-sm rounded-xl p-4 w-full sm:w-[280px] transition-all group">
+                                        <div className={cn("w-12 h-12 rounded-lg flex items-center justify-center shrink-0", cat.bg)}>
+                                            <cat.icon className={cn("w-6 h-6", cat.color)} />
+                                        </div>
+                                        <div className="flex-1 font-bold text-foreground group-hover:text-primary transition-colors text-sm">
+                                            {cat.title}
+                                        </div>
+                                        <ChevronRightIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                                    </Link>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Latest Govt Updates Notice Board */}
+                    {opportunities.length > 0 && (
+                        <section className="py-10 md:py-14 px-6 border-t border-border/40">
+                            <div className="max-w-7xl mx-auto space-y-8">
+                                <div className="space-y-2">
+                                    <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+                                        Latest Govt Updates
+                                    </h2>
+                                    <p className="text-muted-foreground text-sm">
+                                        Real-time tracking of Admit Cards, Results, and New Job Notifications.
+                                    </p>
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 items-start">
+                                    {PHASE_GROUPS.map(group => {
+                                        // Filter opportunities for this phase group
+                                        const groupOpps = opportunities.filter(o => {
+                                            const s = (o.governmentJobDetails as any)?.applicationStatus;
+                                            return s && group.statuses.includes(s);
+                                        });
+                                        if (groupOpps.length === 0) return null;
+                                        return (
+                                            <div key={group.key} className="flex flex-col bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm">
+                                                <div className={cn(
+                                                    "px-4 py-3 border-b flex items-center gap-2",
+                                                    group.urgency === 'high' ? 'bg-destructive/10 border-destructive/20' :
+                                                    group.urgency === 'medium' ? 'bg-amber-500/10 border-amber-500/20' :
+                                                    'bg-muted/50 border-border'
+                                                )}>
+                                                    <group.Icon className={cn(
+                                                        "w-5 h-5",
+                                                        group.urgency === 'high' ? 'text-destructive' :
+                                                        group.urgency === 'medium' ? 'text-amber-600' :
+                                                        'text-foreground'
+                                                    )} />
+                                                    <h3 className="text-sm font-extrabold uppercase tracking-widest flex-1">
+                                                        {group.label}
+                                                    </h3>
+                                                </div>
+                                                <div className="flex-1 p-2">
+                                                    <ul className="space-y-1">
+                                                        {groupOpps.slice(0, 10).map((opp: any) => {
+                                                            const isNew = opp.createdAt && (Date.now() - new Date(opp.createdAt).getTime() < 3 * 24 * 60 * 60 * 1000);
+                                                            return (
+                                                                <li key={opp.id}>
+                                                                    <Link
+                                                                        href={`/${opp.slug}`}
+                                                                        className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-xs font-semibold leading-tight group/link"
+                                                                    >
+                                                                        <ChevronRightIcon className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground group-hover/link:text-primary" />
+                                                                        <span className="group-hover/link:text-primary transition-colors line-clamp-2">
+                                                                            {opp.title}
+                                                                            {isNew && (
+                                                                                <span className="inline-block ml-2 text-[9px] font-extrabold text-destructive animate-pulse uppercase">
+                                                                                    New
+                                                                                </span>
+                                                                            )}
+                                                                        </span>
+                                                                    </Link>
+                                                                </li>
+                                                            );
+                                                        })}
+                                                    </ul>
+                                                </div>
+                                                {groupOpps.length > 10 && (
+                                                    <Link
+                                                        href="/government"
+                                                        className="block p-3 text-xs font-bold text-center text-primary bg-primary/5 hover:bg-primary/10 transition-colors border-t border-border/50"
+                                                    >
+                                                        View All Updates
+                                                    </Link>
+                                                )}
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </section>
+                    )}
+
+                    {/* Corporate Collections */}
+                    <section className="py-10 md:py-14 px-6 border-t border-border/40 bg-muted/10">
                         <div className="max-w-6xl mx-auto space-y-10">
                             <div className="text-center space-y-3 max-w-2xl mx-auto">
                                 <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                                    Browse Opportunities
+                                    Private Sector
                                 </span>
                                 <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-                                    Find jobs by category.
+                                    Corporate Jobs & Internships
                                 </h2>
                                 <p className="text-muted-foreground text-sm md:text-base">
                                     Verified opportunities grouped cleanly by career path to save you time.

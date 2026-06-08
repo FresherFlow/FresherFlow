@@ -7,6 +7,7 @@ import Squares2X2Icon from '@heroicons/react/24/outline/Squares2X2Icon';
 import PlusCircleIcon from '@heroicons/react/24/outline/PlusCircleIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import ChatBubbleBottomCenterTextIcon from '@heroicons/react/24/outline/ChatBubbleBottomCenterTextIcon';
+import BookOpenIcon from '@heroicons/react/24/outline/BookOpenIcon';
 
 const NAV_ITEMS = [
     {
@@ -28,15 +29,31 @@ const NAV_ITEMS = [
         label: 'Feedback',
         href: '/admin/feedback',
         icon: ChatBubbleBottomCenterTextIcon,
+    },
+    {
+        label: 'Resources',
+        href: '/admin/resources',
+        icon: BookOpenIcon,
     }
 ];
 
 export default function AdminBottomNav() {
     const pathname = usePathname();
 
+    // Hide on form pages that have their own bottom action bar
+    const isFormPage =
+        pathname === '/admin/opportunities/create' ||
+        pathname === '/admin/opportunities/new' ||
+        pathname === '/admin/government-jobs/create' ||
+        pathname === '/admin/jobs/new' ||
+        pathname === '/admin/walkins/new' ||
+        pathname.includes('/edit');
+
+    if (isFormPage) return null;
+
     return (
         <nav className={cn(
-            "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden transition-all duration-300 pb-safe shadow-2xl",
+            "fixed bottom-0 left-0 right-0 bg-card border-t border-border z-50 md:hidden transition-all duration-300 pb-safe",
             "translate-y-0 opacity-100"
         )}>
             <div className="flex justify-around items-center h-16 px-2">
@@ -55,6 +72,8 @@ export default function AdminBottomNav() {
                             (pathname.startsWith('/admin/opportunities/') && pathname !== '/admin/opportunities/create');
                     } else if (item.label === 'Feedback') {
                         isActive = pathname === '/feedback' || pathname.startsWith('/admin/feedback');
+                    } else if (item.label === 'Resources') {
+                        isActive = pathname === '/resources' || pathname.startsWith('/admin/resources');
                     }
 
                     return (

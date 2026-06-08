@@ -108,7 +108,7 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased bg-background text-foreground selection:bg-primary/20" suppressHydrationWarning>
+      <body className="min-h-screen flex flex-col antialiased bg-background text-foreground selection:bg-primary/20" suppressHydrationWarning>
         <ThemeProvider>
             <PageTransitionWrapper>
               <AuthFormDataProvider>

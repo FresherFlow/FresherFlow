@@ -34,22 +34,23 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
                     <Navbar />
                 </Suspense>
             )}
+
             <main className={cn(
-                "relative w-full overflow-x-hidden",
+                "relative w-full overflow-x-hidden flex-1 flex flex-col",
                 !isAdminRoute && "pt-[calc(3.75rem+env(safe-area-inset-top))] md:pt-[4.75rem]",
-                !isAdminRoute && !isHomePage && "pb-4 md:pb-8",
-                isAdminRoute && "min-h-screen flex flex-col"
+                !isAdminRoute && !isHomePage && isAuthenticated && "pb-20 md:pb-8",
+                !isAdminRoute && !isHomePage && !isAuthenticated && "pb-4 md:pb-8",
+                isAdminRoute && "min-h-screen"
             )}>
                 <div className={cn(
-                    "flex-1 flex flex-col",
-                    !isAdminRoute && "min-h-[calc(100vh-10rem)]"
+                    "flex-1 flex flex-col"
                 )}>
                     {children}
                 </div>
-                {!isAdminRoute && !isAuthRoute && (
-                    <Footer className={cn(isAuthenticated && "hidden md:block")} />
-                )}
             </main>
+            {!isAdminRoute && !isAuthRoute && (
+                <Footer />
+            )}
             {!hideNav && (
                 <Suspense fallback={null}>
                     <MobileNav />

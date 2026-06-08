@@ -469,6 +469,8 @@ export async function apiClient<T = unknown>(
                 throw new UnauthorizedError(errorMessage);
             }
 
+            console.error(`API request failed: ${method} ${endpoint} (${response.status}) - ${errorMessage}`, errorData);
+
             const httpError = new Error(errorMessage) as Error & {
                 statusCode?: number;
                 data?: typeof errorData;
