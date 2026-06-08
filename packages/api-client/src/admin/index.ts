@@ -40,3 +40,4 @@ export * from './system';
 export * from './analytics';
 export * from './feedback';
 export * from './users';
+export * from './resources';

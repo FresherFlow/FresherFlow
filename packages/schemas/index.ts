@@ -95,6 +95,13 @@ export const walkInDetailsSchema = z.object({
     contactPhone: z.string().optional()
 });
 
+export const applicationDetailsSchema = z.object({
+    method: z.enum(['DIRECT', 'FORM', 'ASSESSMENT']).optional(),
+    platform: z.string().optional(),
+    estimatedMinutes: z.number().int().positive().optional(),
+    requiredItems: z.array(z.string()).optional()
+});
+
 export const opportunitySchema = z.object({
     type: z.nativeEnum(OpportunityType).optional(),
     status: z.nativeEnum(OpportunityStatus).optional(),
@@ -109,7 +116,7 @@ export const opportunitySchema = z.object({
     allowedPassoutYears: z.array(z.number()).default([]),
     requiredSkills: z.array(z.string()).default([]),
 
-    locations: z.array(z.string()).min(1, 'At least one location is required'),
+    locations: z.array(z.string()).default([]),
     workMode: z.nativeEnum(WorkMode).optional(),
 
     salaryMin: z.number().optional(),
@@ -124,7 +131,8 @@ export const opportunitySchema = z.object({
     applyLink: z.string().url().optional().or(z.string().length(0)),
     expiresAt: z.string().optional(),
 
-    walkInDetails: walkInDetailsSchema.optional()
+    walkInDetails: walkInDetailsSchema.optional(),
+    applicationDetails: applicationDetailsSchema.optional().nullable()
 });
 
 // ========================================
@@ -173,6 +181,7 @@ export type EducationInput = z.infer<typeof educationSchema>;
 export type PreferencesInput = z.infer<typeof preferencesSchema>;
 export type ReadinessInput = z.infer<typeof readinessSchema>;
 export type OpportunityInput = z.infer<typeof opportunitySchema>;
+export type ApplicationDetailsInput = z.infer<typeof applicationDetailsSchema>;
 export type TrackActionInput = z.infer<typeof trackActionSchema>;
 export type SubmitFeedbackInput = z.infer<typeof submitFeedbackSchema>;
 export type AppFeedbackInput = z.infer<typeof appFeedbackSchema>;

@@ -4,6 +4,7 @@ import type { Opportunity } from '@fresherflow/types';
 const FEED_CACHE_KEY = 'ff_mobile_feed_cache_v1';
 const DETAIL_CACHE_PREFIX = 'ff_mobile_detail_';
 const SAVED_CACHE_KEY = 'ff_mobile_saved_v1';
+const SAVED_RESOURCES_CACHE_KEY = 'ff_mobile_saved_resources_v1';
 
 export interface FeedCachePayload {
   cachedAt: number;
@@ -53,6 +54,21 @@ export async function readSavedJobs(): Promise<Opportunity[]> {
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as Opportunity[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export async function saveSavedResources(items: any[]) {
+  await AsyncStorage.setItem(SAVED_RESOURCES_CACHE_KEY, JSON.stringify(items));
+}
+
+export async function readSavedResources(): Promise<any[]> {
+  const raw = await AsyncStorage.getItem(SAVED_RESOURCES_CACHE_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw) as any[];
     return Array.isArray(parsed) ? parsed : [];
   } catch {
     return [];

@@ -5,6 +5,7 @@ export * from './admin/system';
 export * from './admin/analytics';
 export * from './admin/feedback';
 export * from './admin/users';
+export * from './admin/resources';
 
 // Public APIs
 export { authApi } from './public/auth';
@@ -28,6 +29,8 @@ export { contributorsApi, type Contributor } from './public/contributors';
 export { followsApi } from './public/follows';
 export { usernameApi } from './public/username';
 export { governmentJobsApi } from './public/governmentJobs';
+export { deviceTokenApi } from './public/deviceToken';
+export { resourcesApi } from './public/resources';
 export { publicApi } from './public/index';
 
 export * from './apiClient';

@@ -5,15 +5,21 @@ import {
   saveSavedJobs, 
   readNativeFeedCache, 
   readDetailCache, 
-  saveDetailCache 
+  saveDetailCache,
+  saveSavedResources,
+  readSavedResources
 } from '../offline';
 
 interface SavedContextType {
   savedJobs: (Opportunity & { needsSync?: boolean })[];
+  savedResources: any[];
   toggleSave: (job: Opportunity) => void;
+  toggleSaveResource: (res: any) => void;
   isSaved: (jobId: string) => boolean;
+  isSavedResource: (id: string) => boolean;
   hasPendingSync: boolean;
   syncSavedJobs: () => Promise<void>;
+  syncSavedResources: () => Promise<void>;
 }
 
 const SavedContext = createContext<SavedContextType | undefined>(undefined);
@@ -51,6 +57,7 @@ export const SavedProvider: React.FC<{
   feedItems?: Opportunity[]
 }> = ({ children, userId, firebaseDatabaseUrl, feedItems }) => {
   const [savedJobs, setSavedJobs] = useState<(Opportunity & { needsSync?: boolean })[]>([]);
+  const [savedResources, setSavedResources] = useState<any[]>([]);
   const [hasPendingSync, setHasPendingSync] = useState(false);
 
   const syncSavedJobs = async () => {
@@ -115,11 +122,57 @@ export const SavedProvider: React.FC<{
     }
   };
 
+  const syncSavedResources = async () => {
+    if (!userId || !firebaseDatabaseUrl) return;
+    try {
+      const db = getDb(firebaseDatabaseUrl);
+      if (!db) return;
+
+      const ref = db.ref(`/users/${userId}/savedResources`);
+      const snapshot = await ref.once('value');
+      const savedIds = snapshot.val() as Record<string, boolean> | string[] | null;
+
+      let ids: string[] = [];
+      if (Array.isArray(savedIds)) {
+        ids = savedIds.filter(Boolean);
+      } else if (savedIds && typeof savedIds === 'object') {
+        ids = Object.keys(savedIds).filter(key => savedIds[key]);
+      }
+
+      const currentSaved = await readSavedResources() || [];
+      const updatedResources: any[] = [];
+      for (const id of ids) {
+        const existing = currentSaved.find((r: any) => r.id === id);
+        if (existing && existing.title && existing.title !== 'Saved Resource') {
+          updatedResources.push(existing);
+        } else {
+          updatedResources.push({
+            id,
+            title: 'Saved Resource',
+            type: 'LINK',
+            url: '',
+            skills: [],
+          });
+        }
+      }
+
+      setSavedResources(updatedResources);
+      void saveSavedResources(updatedResources);
+    } catch (err) {
+      console.warn('[Saved] Firebase resources sync failed:', err);
+    }
+  };
+
   useEffect(() => {
     const bootstrap = async () => {
       const cached = await readSavedJobs();
       setSavedJobs(cached);
+      
+      const cachedResources = await readSavedResources();
+      setSavedResources(cachedResources);
+      
       void syncSavedJobs();
+      void syncSavedResources();
     };
     void bootstrap();
   }, [userId, firebaseDatabaseUrl, feedItems]);
@@ -158,8 +211,40 @@ export const SavedProvider: React.FC<{
 
   const isSaved = (jobId: string) => savedJobs.some((j) => j.id === jobId);
 
+  const toggleSaveResource = async (res: any) => {
+    setSavedResources((prev) => {
+      let updated: any[];
+      const isAlreadySaved = prev.some((r) => r.id === res.id);
+
+      if (isAlreadySaved) {
+        updated = prev.filter((r) => r.id !== res.id);
+      } else {
+        updated = [...prev, res];
+      }
+
+      void saveSavedResources(updated);
+      
+      // We keep Firebase simple and just save the map under savedResources
+      if (userId && firebaseDatabaseUrl) {
+        const db = getDb(firebaseDatabaseUrl);
+        if (db) {
+          const ref = db.ref(`/users/${userId}/savedResources`);
+          const map: Record<string, boolean> = {};
+          updated.forEach(r => {
+            map[r.id] = true;
+          });
+          ref.set(map).catch(() => {});
+        }
+      }
+
+      return updated;
+    });
+  };
+
+  const isSavedResource = (id: string) => savedResources.some((r) => r.id === id);
+
   return (
-    <SavedContext.Provider value={{ savedJobs, toggleSave, isSaved, hasPendingSync, syncSavedJobs }}>
+    <SavedContext.Provider value={{ savedJobs, savedResources, toggleSave, toggleSaveResource, isSaved, isSavedResource, hasPendingSync, syncSavedJobs, syncSavedResources }}>
       {children}
     </SavedContext.Provider>
   );

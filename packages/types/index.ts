@@ -314,6 +314,7 @@ export interface Opportunity {
     // Walk-in Details (only if type === WALKIN)
     walkInDetails?: WalkInDetails;
     governmentJobDetails?: GovernmentJobDetails;
+    applicationDetails?: ApplicationDetails | null;
     events?: OpportunityEvent[];
     socialPosts?: SocialPost[];
     shareCount?: number;
@@ -394,11 +395,14 @@ export interface GovernmentJobDetails {
     applicationStatus?: GovernmentApplicationStatus;
     governmentLevel?: GovernmentLevel;
     jobCategory?: string[];
+    examName?: string;        // e.g. "SSC CGL", "RRB ALP"
+    postName?: string;        // e.g. "Assistant Section Officer"
     
     vacancyCount?: number;
     vacancyNature?: VacancyNature;
     vacancyBreakdown?: any; // Replace with specific type if needed
     categoryVacancies?: any;
+    cutOffMarks?: any;       // [{ year, category, marks }]
     
     payLevel?: string;
     basicPay?: number;
@@ -456,6 +460,13 @@ export interface GovernmentJobDetails {
     seoTags?: string[];
     
     extractionConfidence?: number;
+}
+
+export interface ApplicationDetails {
+    method?: 'DIRECT' | 'FORM' | 'ASSESSMENT';
+    platform?: string;
+    estimatedMinutes?: number;
+    requiredItems?: string[];
 }
 
 
@@ -763,8 +774,8 @@ export interface AlertFeedResponse {
 // ========================================
 
 export interface CreateSharedResourceRequest {
-    title?: string;
     url: string;
+    title?: string;
     company?: string;
     skills?: string[];
 }
@@ -810,3 +821,20 @@ export interface ResourcesFeed {
     companyMetadata: Record<string, CompanyResourceMetadata>;
 }
 
+export interface AdminGetResourcesResponse {
+    resources: SharedResource[];
+    pagination: {
+        total: number;
+        page: number;
+        limit: number;
+        pages: number;
+    };
+}
+
+export interface AdminUpdateResourceRequest {
+    title?: string;
+    company?: string | null;
+    skills?: string[];
+    sector?: string;
+    status?: ResourceItemStatus;
+}

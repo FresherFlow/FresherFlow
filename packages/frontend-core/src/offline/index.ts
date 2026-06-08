@@ -5,6 +5,8 @@ export {
   readDetailCache,
   saveSavedJobs,
   readSavedJobs,
+  saveSavedResources,
+  readSavedResources,
 } from './native';
 export * from './actionQueue';
 export * from './opportunitiesFeedCache';

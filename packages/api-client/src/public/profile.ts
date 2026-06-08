@@ -70,6 +70,15 @@ export const profileApi = {
                     savesCount: number;
                 } | null;
             }>;
+            resources: Array<{
+                id: string;
+                title: string;
+                url: string;
+                status: string;
+                company?: string | null;
+                sector: string;
+                createdAt: string;
+            }>;
             stats: {
                 totalShared: number;
                 totalPublished: number;
@@ -77,6 +86,7 @@ export const profileApi = {
             };
             page: number;
             total: number;
+            totalResources: number;
             hasMore: boolean;
         }>(`/api/profile/shares?page=${page}`),
 

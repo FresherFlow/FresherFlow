@@ -17,9 +17,10 @@ interface Props {
     /** Company name — used to generate initials fallback */
     name: string;
     size?: number;
+    isGovernment?: boolean;
 }
 
-export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink, size = 40 }: Props) => {
+export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink, size = 40, isGovernment }: Props) => {
     const { colors } = useUITheme();
     const [attemptIndex, setAttemptIndex] = useState(0);
     const [imgError, setImgError] = useState(false);
@@ -27,9 +28,36 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
     const normalizedName = (name || '').toLowerCase().trim();
     const isTcsBrand = normalizedName.includes('tata consultancy services') || normalizedName.includes(' tcs') || normalizedName === 'tcs';
 
+    const isGovDetected = useMemo(() => {
+        if (isGovernment) return true;
+        const nameClean = normalizedName;
+        const hasGovKeyword = nameClean.includes('commission') || nameClean.includes('board') || nameClean.includes('police') || nameClean.includes('railway') || nameClean.includes('air force') || nameClean.includes('navy') || nameClean.includes('army') || nameClean.includes('ministry');
+        const hasGovDomain = (website && (website.includes('.gov.in') || website.includes('.nic.in') || website.includes('tgprb.in') || website.includes('cdac.in'))) ||
+                             (applyLink && (applyLink.includes('.gov.in') || applyLink.includes('.nic.in') || applyLink.includes('tgprb.in') || applyLink.includes('cdac.in')));
+        return !!(hasGovKeyword || hasGovDomain);
+    }, [isGovernment, normalizedName, website, applyLink]);
+
     const candidates = useMemo(() => {
         const urls: string[] = [];
         if (explicitLogoUrl) urls.push(`${explicitLogoUrl}${explicitLogoUrl.includes('?') ? '&' : '?'}size=80`);
+
+        if (isGovDetected && !explicitLogoUrl) {
+            // Check for acronym in parentheses: e.g. "Railway Recruitment Board (RRB)" -> "rrb"
+            const match = name.match(/\(([^)]+)\)/);
+            if (match && match[1]) {
+                const acronym = match[1].toLowerCase().trim();
+                if (/^[a-z]+$/.test(acronym)) {
+                    urls.push(`https://cdn.fresherflow.in/logos/${acronym}.png`);
+                }
+            } else {
+                // Check if name itself is a short acronym
+                const cleanName = name.toLowerCase().trim();
+                if (/^[a-z]+$/.test(cleanName) && cleanName.length <= 6) {
+                    urls.push(`https://cdn.fresherflow.in/logos/${cleanName}.png`);
+                }
+            }
+            return urls;
+        }
 
         const websiteDomain = website ? getRootDomain(website) : null;
         const applyDomain = applyLink ? getRootDomain(applyLink) : null;
@@ -56,7 +84,7 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
         });
 
         return Array.from(new Set(urls));
-    }, [explicitLogoUrl, website, applyLink, normalizedName]);
+    }, [explicitLogoUrl, website, applyLink, name, normalizedName, isGovDetected]);
 
     // Global in-memory cache for instant resolution
     const memCache = useMemo(() => {

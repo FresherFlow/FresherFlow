@@ -6,6 +6,7 @@ export interface OpportunityListParams {
     limit?: number;
     status?: string;
     type?: string;
+    sector?: string;
     q?: string;
     sort?: string;
 }
