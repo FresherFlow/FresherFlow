@@ -114,16 +114,25 @@ export const readinessSchema = z.object({
     skills: z.array(z.string()).min(1, 'Add at least one skill')
 });
 
+const applicationDetailsSchema = z.object({
+    method: z.enum(['DIRECT', 'FORM', 'ASSESSMENT']).optional(),
+    platform: z.string().optional(),
+    estimatedMinutes: z.number().int().positive().optional(),
+    requiredItems: z.array(z.string()).optional()
+});
+
 // Admin Schemas
 export const opportunitySchema = z.object({
     type: z.nativeEnum(OpportunityType).optional(), // Backend
     status: z.nativeEnum(OpportunityStatus).optional(),
     category: z.enum(['job', 'internship', 'walk-in']).optional(), // Frontend alias
     rawOpportunityId: z.string().optional(),
+    applicationDetails: applicationDetailsSchema.nullable().optional(),
 
     title: z.string().min(1, 'Title is required'),
     company: z.string().min(1, 'Company is required'),
     companyWebsite: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
+    companyLogoUrl: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
     description: z.string().min(10, 'Description must be at least 10 characters').nullable().optional(),
 
     // Core Filters
@@ -132,7 +141,7 @@ export const opportunitySchema = z.object({
     allowedSpecializations: z.array(z.string()).optional().default([]),
     allowedPassoutYears: z.array(z.number().int()).optional().default([]),
     requiredSkills: z.array(z.string()).default([]),
-    locations: z.array(z.string()).min(1, 'Add at least one location'),
+    locations: z.array(z.string()).optional().default([]),
 
     // Job/Internship Fields
     workMode: z.nativeEnum(WorkMode).nullable().optional(),
@@ -145,8 +154,8 @@ export const opportunitySchema = z.object({
     jobFunction: z.string().nullable().optional(),
     selectionProcess: z.string().nullable().optional(),
     notesHighlights: z.string().nullable().optional(),
-    experienceMin: z.number().int().nullable().optional(),
-    experienceMax: z.number().int().nullable().optional(),
+    experienceMin: z.number().nullable().optional(),
+    experienceMax: z.number().nullable().optional(),
     employmentType: z.string().nullable().optional(), // New
     tags: z.array(z.string()).optional().default([]),
     sourceLink: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),

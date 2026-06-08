@@ -65,10 +65,12 @@ import joblinksRoutes from './routes/public/joblinks';
 import usernameRoutes from './routes/username';
 import publicStatsRoutes from './routes/public/stats';
 import resourcesRoutes from './routes/resources';
+import deviceTokenRoutes from './routes/deviceToken';
 import { StaticFeedService } from './infrastructure/services/staticFeed.service';
 import { initializeQueueListeners } from './infrastructure/services/push-notification.service';
 
 import adminGovernmentJobsRoutes from './routes/admin/governmentJobs';
+import adminResourcesRoutes from './routes/admin/resources';
 import publicGovernmentJobsRoutes from './routes/public/governmentJobs';
 
 const app: Application = express();
@@ -327,6 +329,16 @@ app.get('/bootstrap-feed.min.json', async (req, res) => {
     }
 });
 
+app.get('/government-feed.json', async (_req, res) => {
+    try {
+        const results = await StaticFeedService.generateGovernmentFeed();
+        res.json(results);
+    } catch (error) {
+        logger.error('Failed to serve government feed', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.get('/companies-directory.min.json', async (req, res) => {
     try {
         const filePath = path.join(process.cwd(), 'public', 'companies-directory.min.json');
@@ -396,6 +408,7 @@ if (isUserMode) {
     app.use('/api/follows', followsRoutes);
     app.use('/api/username', usernameRoutes);
     app.use('/api/resources', resourcesRoutes);
+    app.use('/api/device-token', deviceTokenRoutes);
     app.use('/api/public/government-jobs', publicGovernmentJobsRoutes);
 }
 
@@ -416,6 +429,7 @@ if (isAdminMode) {
     app.use('/api/admin/push', restrictAdmin, adminPushRoutes);
     app.use('/api/admin/users', restrictAdmin, adminUsersRoutes);
     app.use('/api/admin/government-jobs', restrictAdmin, adminGovernmentJobsRoutes);
+    app.use('/api/admin/resources', restrictAdmin, adminResourcesRoutes);
 }
 
 // ============================================================================
