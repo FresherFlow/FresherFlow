@@ -4,6 +4,8 @@
     "description": "Shared job parsing logic for FresherFlow",
     "type": "module",
     "main": "./dist/index.js",
+    "react-native": "./src/index.ts",
+    "source": "./src/index.ts",
     "types": "./dist/index.d.ts",
     "exports": {
         ".": {
