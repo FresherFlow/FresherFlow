@@ -42,6 +42,7 @@ async function sendTelegramMessage(text: string) {
 // Key phrases that ATS systems use when a job is closed
 const EXPIRED_PHRASES = [
     "no longer available",
+    "the job you are trying to apply for is no longer available",
     "position has been filled",
     "position closed",
     "no longer accepting applications",

@@ -10,6 +10,7 @@ const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^[
 const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
 
 const TARGET_SITES = [
+    { url: 'https://job4freshers.co.in/', name: 'job4freshers' },
     { url: 'https://jobsaddafreshers.com/category/freshers/', name: 'jobsaddafreshers' },
     { url: 'https://internshipss.com/', name: 'internshipss' },
     { url: 'https://www.freshersvoice.com/', name: 'freshersvoice' },
@@ -25,6 +26,7 @@ const VISITED_FILE = path.join(process.cwd(), 'visited_urls.json');
 // Phrases indicating the job is no longer active
 const EXPIRED_PHRASES = [
     "no longer available",
+    "the job you are trying to apply for is no longer available",
     "position has been filled",
     "position closed",
     "no longer accepting applications",
@@ -158,19 +160,17 @@ async function saveVisited(visited: Record<string, string[]>) {
 function isFresherJob(text: string): boolean {
     const lowerText = text.toLowerCase();
     
-    // If it explicitly says fresher, it is.
-    for (const phrase of FRESHER_PHRASES) {
-        if (lowerText.includes(phrase)) return true;
-    }
-
-    // If it doesn't say fresher, and it explicitly asks for experience, it isn't.
+    // If it explicitly asks for experience (e.g. 3+ years), it is NOT a fresher job.
     for (const phrase of EXPERIENCED_PHRASES) {
         if (lowerText.includes(phrase)) return false;
     }
 
-    // Default to false to avoid noise, or true to be aggressive?
-    // Let's default to false unless we're sure it's an entry level/fresher job based on the site context,
-    // actually since these sites are literally named "job4freshers", we might want to default true if no experienced phrases are found.
+    // If it explicitly says fresher/entry-level/intern, it is.
+    for (const phrase of FRESHER_PHRASES) {
+        if (lowerText.includes(phrase)) return true;
+    }
+
+    // Default to true to avoid missing potential entry level/fresher jobs
     return true; 
 }
 
@@ -386,6 +386,7 @@ async function run() {
                 await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
                 await page.waitForTimeout(2000);
                 
+                const aggregatorTitle = await page.locator('h1').first().innerText().catch(() => "");
                 const bodyText = await page.locator('body').innerText().catch(() => "");
                 
                 if (!isFresherJob(bodyText)) {
@@ -414,9 +415,17 @@ async function run() {
 
                 if (isLive) {
                     console.log(`  ✅ FOUND NEW LIVE JOB: ${applyLink}`);
-                    const titleMatch = bodyText.split('\n').find(l => l.trim().length > 10 && l.length < 100) || "Job Title Unknown";
+                    let jobTitle = await page.title().catch(() => "");
+                    jobTitle = jobTitle
+                        .replace(/( - Workday| - Lever| - Greenhouse| Careers| - Jobs| \| .*)$/i, '')
+                        .trim();
+                    
+                    if (!jobTitle || jobTitle.length < 4 || /^(login|sign in|welcome|job details|careers|opportunities|skip to content)$/i.test(jobTitle)) {
+                        jobTitle = aggregatorTitle.trim() || "Job Title Unknown";
+                    }
+                    
                     newJobsFound.push({
-                        title: titleMatch,
+                        title: jobTitle,
                         applyLink: applyLink,
                         source: site.name
                     });
