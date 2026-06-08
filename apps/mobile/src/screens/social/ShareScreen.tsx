@@ -1,4 +1,4 @@
-import React, { useEffect, memo, useState, useCallback, useRef } from 'react';
+import React, { useEffect, memo, useState, useCallback, useRef, useMemo } from 'react';
 import { MotiView } from 'moti';
 import {
   StyleSheet,
@@ -19,7 +19,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { Clock, Link as LinkIcon, AlertCircle, Info, Sparkles, Briefcase, GraduationCap, X, Trophy } from 'lucide-react-native';
+import { Clock, Link as LinkIcon, AlertCircle, Info, Sparkles, Briefcase, GraduationCap, X, Trophy, Plus } from 'lucide-react-native';
 import { useTheme } from '@/contexts/ThemeContext';
 import { theme } from '@/theme';
 import { useRoute, useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -35,11 +35,18 @@ import { Analytics, EventNames } from '@/utils/analytics';
 import { readSharesCache, saveSharesCache } from '@/utils/cache/offlineCache';
 import { getBoolean, setBoolean, getJSON, setJSON } from '@/utils/storage';
 
+import Fuse from 'fuse.js';
+import { useSkillsMetadata } from '@/hooks/useSkillsMetadata';
+import { postFirebaseResourceSuggestion } from '@/utils/firebaseResourcesDb';
+import { queueShare } from '@/utils/shareQueue';
+import { resourcesApi } from '@fresherflow/api-client';
+
 // Premium System
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { mScale, SCREEN_WIDTH } from '@/system/constants/dimensions';
 import { ContributionPreviewCard } from '@/system/components/ContributionPreviewCard';
+import { ResourcePreviewCard } from '@/system/components/ResourcePreviewCard';
 
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
@@ -117,10 +124,63 @@ const ShareScreen: React.FC = () => {
   const tabs = [
     { id: 'SHARE', label: 'Share Link' },
     { id: 'REFER', label: 'Offer Referral' },
+    { id: 'RESOURCE', label: 'Prep Resource' },
   ];
 
-  const mode = tabs[activeTab].id as 'SHARE' | 'REFER';
+  const mode = tabs[activeTab].id as 'SHARE' | 'REFER' | 'RESOURCE';
   const [clipboardLink, setClipboardLink] = useState<string | null>(null);
+
+  // Prep Resource Form State
+  const [resUrl, setResUrl] = useState('');
+  const [resSubmitting, setResSubmitting] = useState(false);
+  const [resError, setResError] = useState<string | null>(null);
+
+  const handleShareResource = async () => {
+    const isValid = /^https?:\/\/.+\..+/.test(resUrl.trim());
+    if (!isValid) { setResError('Please paste a valid link'); return; }
+    try {
+      setResSubmitting(true);
+      setResError(null);
+      try {
+        await resourcesApi.submit(resUrl.trim());
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        
+        const currentCount = getJSON<number>('fresherflow_persistent_total_shared_count') ?? shareStats.totalShared ?? 0;
+        setPrevTotalShared(currentCount);
+        setJSON('fresherflow_persistent_total_shared_count', currentCount + 1);
+        setShareResult({ success: true, id: 'res_' + Date.now() });
+        
+        if (successCardTimerRef.current) {
+            clearTimeout(successCardTimerRef.current);
+        }
+        successCardTimerRef.current = setTimeout(() => {
+            setShareResult(null);
+        }, 5000);
+
+        setResUrl('');
+        setResError(null);
+        void fetchRecentShares();
+        void fetchStats();
+      } catch (apiErr: unknown) {
+        // 409 = duplicate, treat as success
+        if ((apiErr as { status?: number }).status === 409) {
+          showToast('This resource is already in our library!', 'info');
+          setResUrl('');
+          return;
+        }
+        // Offline — queue it
+        await queueShare('RESOURCE', { url: resUrl.trim() });
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+        showToast('Saved offline, will sync when back online.', 'info');
+        setResUrl('');
+        setResError(null);
+      }
+    } catch {
+      setResError('Something went wrong. Please try again.');
+    } finally {
+      setResSubmitting(false);
+    }
+  };
 
   const [recentShares, setRecentShares] = useState<Awaited<ReturnType<typeof profileApi.getShares>>['shares']>([]);
 
@@ -153,7 +213,7 @@ const ShareScreen: React.FC = () => {
 
       const response = await profileApi.getShares(1);
       setRecentShares(response.shares.slice(0, 5));
-      void saveSharesCache(response.shares, response.stats);
+      void saveSharesCache(response.shares, [], response.stats);
       setBoolean('fresherflow_shares_dirty', false); // Clear dirty flag
       lastSharesScreenFetchTime = Date.now();
     } catch (err: unknown) {
@@ -282,7 +342,7 @@ const ShareScreen: React.FC = () => {
  
       if (mode === 'SHARE') {
         result = await handleShare();
-      } else {
+      } else if (mode === 'REFER') {
         result = await handleReferral(data);
       }
  
@@ -642,7 +702,7 @@ const ShareScreen: React.FC = () => {
                                         </TouchableOpacity>
                                     )}
                                 </>
-                            ) : (
+                            ) : item.id === 'REFER' ? (
                                 <View style={styles.referralForm}>
                                     <View style={[styles.heroSection, { marginTop: 16, marginBottom: 20 }]}>
                                         <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>
@@ -801,6 +861,108 @@ const ShareScreen: React.FC = () => {
                                         )}
                                     </TouchableOpacity>
                                 </View>
+                            ) : (
+                                <View style={styles.referralForm}>
+                                    <View style={[styles.heroSection, { marginTop: 16, marginBottom: 20 }]}>
+                                        <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>
+                                            Share Prep Resource.
+                                        </Text>
+                                        <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
+                                            Paste any YouTube, PDF, blog, or website link. Our team will review it.
+                                        </Text>
+                                    </View>
+
+                                    {/* URL only */}
+                                    <SurfaceCard style={[styles.inputCard, resError && { borderColor: currentTheme.colors.error }]}>
+                                        <View style={styles.inputHeader}>
+                                            <LinkIcon size={16} color={currentTheme.colors.primary} />
+                                            <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>Resource Link</Text>
+                                        </View>
+                                        <TextInput
+                                            style={[styles.cleanInput, { color: currentTheme.colors.text, minHeight: 40 }]}
+                                            placeholder="https://youtube.com/..."
+                                            placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
+                                            value={resUrl}
+                                            onChangeText={(t) => { setResUrl(t); setResError(null); }}
+                                            autoCapitalize="none"
+                                            autoCorrect={false}
+                                            keyboardType="url"
+                                        />
+                                    </SurfaceCard>
+
+                                    {/^https?:\/\/.+\..+/.test(resUrl.trim()) && (
+                                        <View style={{ marginTop: 12 }}>
+                                            <ResourcePreviewCard url={resUrl.trim()} />
+                                        </View>
+                                    )}
+
+                                    {clipboardLink && !resUrl && (
+                                        <View style={[styles.clipboardPromo, { marginTop: 12, backgroundColor: alpha(currentTheme.colors.primary, 0.03), position: 'relative' }]}>
+                                            <TouchableOpacity
+                                                activeOpacity={0.7}
+                                                onPress={() => {
+                                                    setClipboardLink(null);
+                                                    if (clipboardLink) lastSeenClipboardUrl.current = clipboardLink; // Mark as dismissed
+                                                }}
+                                                style={{ position: 'absolute', right: 12, top: 12, padding: 6, zIndex: 10 }}
+                                            >
+                                                <X size={16} color={currentTheme.colors.textMuted} />
+                                            </TouchableOpacity>
+
+                                            <View style={{ width: '100%', paddingRight: 24 }}>
+                                                <View style={styles.promoHeader}>
+                                                    <LinkIcon size={14} color={currentTheme.colors.primary} />
+                                                    <Text style={[styles.promoTitle, { color: currentTheme.colors.text }]}>Link detected in clipboard</Text>
+                                                </View>
+                                                <Text style={[styles.promoUrl, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
+                                                    {clipboardLink}
+                                                </Text>
+                                            </View>
+
+                                            <View style={[styles.promoActions, { justifyContent: 'flex-end', width: '100%' }]}>
+                                                <TouchableOpacity
+                                                    activeOpacity={0.8}
+                                                    style={[styles.promoUseBtn, { backgroundColor: currentTheme.colors.primary }]}
+                                                    onPress={() => {
+                                                        setResUrl(clipboardLink || '');
+                                                        if (clipboardLink) lastSeenClipboardUrl.current = clipboardLink; // Mark as used
+                                                        setClipboardLink(null);
+                                                        showToast("Link used from clipboard");
+                                                    }}
+                                                >
+                                                    <Text style={[styles.promoUseText, { color: currentTheme.colors.background }]}>Use Link</Text>
+                                                </TouchableOpacity>
+                                            </View>
+                                        </View>
+                                    )}
+
+                                    {/* HIDDEN FIELDS — uncomment when admin review UI is ready */}
+                                    {/*
+                                    <SurfaceCard style={[styles.inputCard, { marginTop: 12 }]}>
+                                        ... title, company, skills fields ...
+                                    </SurfaceCard>
+                                    */}
+
+                                    {resError && (
+                                        <View style={[styles.errorBox, { backgroundColor: alpha(currentTheme.colors.error, 0.05), marginTop: 16 }]}>
+                                            <AlertCircle size={14} color={currentTheme.colors.error} />
+                                            <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{resError}</Text>
+                                        </View>
+                                    )}
+
+                                    <TouchableOpacity
+                                        activeOpacity={0.9}
+                                        style={[styles.actionBtn, resSubmitting && styles.disabledBtn, { backgroundColor: currentTheme.colors.primary, marginTop: 24 }]}
+                                        onPress={handleShareResource}
+                                        disabled={resSubmitting}
+                                    >
+                                        {resSubmitting ? (
+                                            <ActivityIndicator color={currentTheme.colors.background} />
+                                        ) : (
+                                            <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Submit Resource</Text>
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
                             )}
 
 
@@ -810,7 +972,7 @@ const ShareScreen: React.FC = () => {
                             
                             <TouchableOpacity
                                 activeOpacity={0.7}
-                                onPress={() => navigation.navigate('MyShares')}
+                                onPress={() => navigation.navigate('MyShares', { initialTab: item.id === 'RESOURCE' ? 'RESOURCES' : 'JOBS' })}
                                 style={{ alignItems: 'center', paddingVertical: 16 }}
                             >
                                 <Text style={{ color: currentTheme.colors.textMuted, fontWeight: '600', fontSize: 14, textDecorationLine: 'underline' }}>
@@ -901,7 +1063,7 @@ const ShareScreen: React.FC = () => {
                   >
                       <View style={{ width: '100%' }}>
                           <Text style={{ fontSize: mScale(13.5), fontWeight: '900', color: currentTheme.colors.text }} numberOfLines={1}>
-                              {shareResult.existing ? 'Opportunity Ranked' : 'Opportunity Shared'}
+                              {shareResult.existing ? 'Opportunity Ranked' : (mode === 'RESOURCE' ? 'Resource Shared' : 'Opportunity Shared')}
                           </Text>
                           <Text style={{ fontSize: mScale(10), color: currentTheme.colors.textMuted, marginTop: 1 }} numberOfLines={1}>
                               Total contributions
@@ -1392,6 +1554,42 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.15,
         shadowRadius: 10,
         zIndex: 9999,
+    },
+    tagContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 8,
+    },
+    tag: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 10,
+    },
+    tagText: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    suggestions: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 6,
+        marginTop: 10,
+    },
+    suggestionItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 10,
+    },
+    suggestionItemText: {
+        fontSize: 11,
+        fontWeight: '700',
     },
 });
 

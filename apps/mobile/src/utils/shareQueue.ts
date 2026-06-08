@@ -1,4 +1,4 @@
-import { opportunitiesApi, profileApi } from '@fresherflow/api-client';
+import { opportunitiesApi, profileApi, resourcesApi } from '@fresherflow/api-client';
 import { normalizeOpportunityUrl } from '@fresherflow/utils';
 import { getJSON, mutateJSON } from '@/utils/storage';
 
@@ -6,10 +6,13 @@ const SHARE_QUEUE_KEY = 'fresherflow_share_queue';
 
 export interface QueuedShare {
     tempId: string;
-    type: 'LINK' | 'REFERRAL';
+    type: 'LINK' | 'REFERRAL' | 'RESOURCE';
     url?: string;
     title?: string;
     company?: string;
+    skills?: string[];
+    submittedByUserId?: string;
+    submittedByUsername?: string;
     referral?: {
         title: string;
         company: string;
@@ -25,8 +28,16 @@ export interface QueuedShare {
  * Adds a share (link or referral) to the offline queue.
  */
 export const queueShare = async (
-    type: 'LINK' | 'REFERRAL',
-    data: { url?: string; title?: string; company?: string; referral?: QueuedShare['referral'] }
+    type: 'LINK' | 'REFERRAL' | 'RESOURCE',
+    data: { 
+        url?: string; 
+        title?: string; 
+        company?: string; 
+        skills?: string[];
+        submittedByUserId?: string;
+        submittedByUsername?: string;
+        referral?: QueuedShare['referral'] 
+    }
 ): Promise<string> => {
     try {
         const tempId = `temp_share_${Date.now()}`;
@@ -37,6 +48,9 @@ export const queueShare = async (
             url: data.url,
             title: data.title,
             company: data.company,
+            skills: data.skills,
+            submittedByUserId: data.submittedByUserId,
+            submittedByUsername: data.submittedByUsername,
             referral: data.referral,
             timestamp: Date.now(),
         };
@@ -111,6 +125,8 @@ export const syncShareQueue = async (): Promise<number> => {
                             eligibleBatches: item.referral.eligibleBatches,
                         }
                     });
+                } else if (item.type === 'RESOURCE' && item.url) {
+                    await resourcesApi.submit(item.url);
                 }
                 await removeFromQueue(item.tempId);
                 syncedCount++;

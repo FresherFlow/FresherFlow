@@ -5,9 +5,10 @@ import { saveFeedCache, readFeedCache, saveLastSyncTimestamp, readTrackerCacheSy
 import { diffAndNotify } from '@/utils/cache/localNotifications';
 import { getLocalProfile } from '@/utils/cache/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
+import { useSectorStore } from './useSectorStore';
 import { generateCdnSignature, generateVersionedCdnSignature } from '@/utils/cdnSignature';
 import axios from 'axios';
-import { BOOTSTRAP_FEED_URL, FEED_VERSION_URL } from '@/config/api';
+import { BOOTSTRAP_FEED_URL, FEED_VERSION_URL, GOVERNMENT_FEED_URL, getApiUrlForSector } from '@/config/api';
 import { getString, setString } from '@/utils/storage';
 import { getSeenIds, getOpenedIds } from '@/utils/cache/seenJobs';
 import { getRecentSearchKeywords } from '@/utils/userBehavior';
@@ -137,6 +138,8 @@ const preResolveAndCacheLogos = async (opportunities: Opportunity[]) => {
 
 interface FeedStoreState {
     cachedItems: Opportunity[];
+    privateCachedItems: Opportunity[];
+    govtCachedItems: Opportunity[];
     seenIds: Set<string>;
     openedIds: Set<string>;
     appliedIds: Set<string>;
@@ -157,6 +160,8 @@ interface FeedStoreState {
 
 export const useFeedStore = create<FeedStoreState>((set, get) => ({
     cachedItems: [],
+    privateCachedItems: [],
+    govtCachedItems: [],
     seenIds: new Set(),
     openedIds: new Set(),
     appliedIds: new Set(),
@@ -249,8 +254,25 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
     computeScoringAndCache: async (opportunities: Opportunity[]) => {
         const userId = useAuthStore.getState().user?.id;
         const profile = await getLocalProfile(userId);  // scoped to current user
+        const activeSector = useSectorStore.getState().sector || 'PRIVATE';
 
-        
+        // Normalize opportunity types: if it has governmentJobDetails, force type to 'GOVERNMENT'
+        const normalizedOpportunities = opportunities.map(job => {
+            if (job.governmentJobDetails) {
+                return { ...job, type: 'GOVERNMENT' as any };
+            }
+            return job;
+        });
+
+        // Filter opportunities based on active sector
+        const sectorFilteredOpportunities = normalizedOpportunities.filter(job => {
+            const isGovtJob = !!job.governmentJobDetails;
+            if (activeSector === 'GOVERNMENT') {
+                return isGovtJob;
+            }
+            return !isGovtJob;
+        });
+
         const hasProfileData = profile && (
             (profile.skills && profile.skills.length > 0) ||
             (profile.preferredCities && profile.preferredCities.length > 0) ||
@@ -258,13 +280,17 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
             profile.educationLevel
         );
 
-        const scoredOpportunities = opportunities.map(job => {
+        const scoredOpportunities = sectorFilteredOpportunities.map(job => {
             const rawJob = { ...job } as any;
             delete rawJob.matchScore;
             delete rawJob.matchReason;
             delete rawJob.isEligible;
             
-            if (!hasProfileData) return rawJob as Opportunity;
+            // Bypass scoring for Government Jobs
+            if (activeSector === 'GOVERNMENT' || !hasProfileData) {
+                return rawJob as Opportunity;
+            }
+
             const match = calculateMatchScore(profile, rawJob);
             return {
                 ...rawJob,
@@ -275,13 +301,17 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
         });
 
         if (scoredOpportunities.length > 0) {
-            await saveFeedCache(scoredOpportunities);
+            await saveFeedCache(scoredOpportunities, activeSector);
             
             // 1. Pre-resolve the top 10 items in the background so feed renders instantly
             void preResolveAndCacheLogos(scoredOpportunities.slice(0, 10));
 
             // 2. Push to UI
-            set({ cachedItems: scoredOpportunities });
+            if (activeSector === 'GOVERNMENT') {
+                set({ govtCachedItems: scoredOpportunities, cachedItems: scoredOpportunities });
+            } else {
+                set({ privateCachedItems: scoredOpportunities, cachedItems: scoredOpportunities });
+            }
             
             // 3. Pre-resolve the remaining jobs in the background (silent)
             void preResolveAndCacheLogos(scoredOpportunities.slice(10));
@@ -299,7 +329,9 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
         const { isSyncing, computeScoringAndCache } = get();
         if (isSyncing) return; // Prevent concurrent syncs
 
-        const lastSyncStr = getString('fresherflow_last_sync_timestamp');
+        const activeSector = useSectorStore.getState().sector || 'PRIVATE';
+        const lastSyncKey = `fresherflow_last_sync_timestamp_${activeSector.toLowerCase()}`;
+        const lastSyncStr = getString(lastSyncKey);
         const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
         const now = Date.now();
         
@@ -311,47 +343,73 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
         set({ isSyncing: true, syncError: null });
 
         try {
-            let feedVersion = '';
-            try {
-                const versionRes = await axios.get(FEED_VERSION_URL, {
-                    timeout: 3000,
-                    headers: { 'Cache-Control': 'no-cache' }
+            const isGovt = activeSector === 'GOVERNMENT';
+            const sectorApiUrl = getApiUrlForSector(activeSector);
+
+            let response;
+            if (isGovt) {
+                // Government mode: CDN-signed static feed
+                let feedVersion = '';
+                try {
+                    const versionRes = await axios.get(FEED_VERSION_URL, {
+                        timeout: 3000,
+                        headers: { 'Cache-Control': 'no-cache' }
+                    });
+                    if (versionRes.data?.version) feedVersion = versionRes.data.version;
+                } catch (e) {
+                    console.warn('[mobile] Failed to fetch feed version, using timestamp:', e);
+                    feedVersion = Math.floor(Date.now() / 300000).toString();
+                }
+
+                const signaturePath = '/government-feed.json';
+                const signatureParams = feedVersion
+                    ? generateVersionedCdnSignature(signaturePath, feedVersion)
+                    : generateCdnSignature(signaturePath);
+                const signedUrl = 'v' in signatureParams
+                    ? `${GOVERNMENT_FEED_URL}?v=${signatureParams.v}&sig=${signatureParams.sig}`
+                    : `${GOVERNMENT_FEED_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
+
+                response = await axios.get(signedUrl, {
+                    timeout: 5000,
+                    headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
                 });
-                if (versionRes.data?.version) {
-                    feedVersion = versionRes.data.version;
+            } else {
+                // Private mode: CDN-signed static feed
+                let feedVersion = '';
+                try {
+                    const versionRes = await axios.get(FEED_VERSION_URL, {
+                        timeout: 3000,
+                        headers: { 'Cache-Control': 'no-cache' }
+                    });
+                    if (versionRes.data?.version) feedVersion = versionRes.data.version;
+                } catch (e) {
+                    console.warn('[mobile] Failed to fetch feed version, using timestamp:', e);
+                    feedVersion = Math.floor(Date.now() / 300000).toString();
                 }
-            } catch (e) {
-                console.warn('[mobile] Failed to fetch feed version, using timestamp:', e);
-                feedVersion = Math.floor(Date.now() / 300000).toString();
+
+                const signaturePath = '/bootstrap-feed.min.json';
+                const signatureParams = feedVersion
+                    ? generateVersionedCdnSignature(signaturePath, feedVersion)
+                    : generateCdnSignature(signaturePath);
+                const signedUrl = 'v' in signatureParams
+                    ? `${BOOTSTRAP_FEED_URL}?v=${signatureParams.v}&sig=${signatureParams.sig}`
+                    : `${BOOTSTRAP_FEED_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
+
+                response = await axios.get(signedUrl, {
+                    timeout: 5000,
+                    headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+                });
             }
-
-            const signatureParams = feedVersion
-                ? generateVersionedCdnSignature('/bootstrap-feed.min.json', feedVersion)
-                : generateCdnSignature('/bootstrap-feed.min.json');
-            const signedUrl = 'v' in signatureParams
-                ? `${BOOTSTRAP_FEED_URL}?v=${signatureParams.v}&sig=${signatureParams.sig}`
-                : `${BOOTSTRAP_FEED_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
-
-            console.log('Fetching signed URL:', signedUrl);
-
-            const response = await axios.get(signedUrl, { 
-                timeout: 5000,
-                headers: {
-                    'Cache-Control': 'no-cache',
-                    'Pragma': 'no-cache'
-                }
-            });
 
             if (response.data?.opportunities) {
                 const opportunities = response.data.opportunities as Opportunity[];
                 await computeScoringAndCache(opportunities);
-                // Only persist timestamp after data actually lands successfully
                 await saveLastSyncTimestamp(response.data.timestamp || now);
-                setString('fresherflow_last_sync_timestamp', now.toString());
+                setString(lastSyncKey, now.toString());
             }
         } catch (e) {
             const errMsg = (e as Error).message;
-            console.warn('[useFeedStore] CDN static sync failed:', errMsg);
+            console.warn('[useFeedStore] Feed sync failed:', errMsg);
             set({ syncError: errMsg });
         } finally {
             set({ isSyncing: false, isRefreshing: false });
@@ -369,15 +427,25 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
 
         set({ isBootstrapping: true, hasHydrated: true });
         try {
-            const [cached] = await Promise.all([
-                readFeedCache(),
+            const [cachedPrivate, cachedGovt] = await Promise.all([
+                readFeedCache('PRIVATE'),
+                readFeedCache('GOVERNMENT'),
                 refreshBehavioralData()
             ]);
-            if (cached && cached.items.length > 0) {
-                set({ cachedItems: cached.items, isBootstrapping: false });
-            }
-            // If we have cache, perform sync in the background so it doesn't block the UI
-            if (cached && cached.items.length > 0) {
+            const activeSector = useSectorStore.getState().sector || 'PRIVATE';
+            const privateItems = cachedPrivate?.items || [];
+            const govtItems = cachedGovt?.items || [];
+            const activeItems = activeSector === 'GOVERNMENT' ? govtItems : privateItems;
+
+            set({
+                privateCachedItems: privateItems,
+                govtCachedItems: govtItems,
+                cachedItems: activeItems,
+                isBootstrapping: false
+            });
+
+            // If we have cache for current sector, perform sync in the background so it doesn't block the UI
+            if (activeItems.length > 0) {
                 void performSync();
             } else {
                 await performSync();

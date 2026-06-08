@@ -22,6 +22,16 @@ export interface Share {
     } | null;
 }
 
+export interface SharedResource {
+    id: string;
+    title: string;
+    url: string;
+    status: string;
+    company?: string | null;
+    sector: string;
+    createdAt: string;
+}
+
 const mapQueuedShareToShare = (q: QueuedShare): Share => {
     if (q.type === 'LINK') {
         return {
@@ -58,13 +68,26 @@ const mapQueuedShareToShare = (q: QueuedShare): Share => {
     }
 };
 
+const mapQueuedShareToResource = (q: QueuedShare): SharedResource => {
+    return {
+        id: q.tempId,
+        title: q.title || 'User Submission',
+        url: q.url || '',
+        status: 'OFFLINE',
+        company: q.referral?.company || '',
+        sector: 'PRIVATE',
+        createdAt: new Date(q.timestamp).toISOString()
+    };
+};
+
 let lastFetchedTime = 0;
 const THROTTLE_MS = 30000; // 30 seconds throttle
 
 export function useMyShares() {
     const { user } = useAuthStore();
     const [shares, setShares] = useState<Share[]>([]);
-    const [stats, setStats] = useState({ totalShared: 0, totalPublished: 0, approvalRate: 0 });
+    const [resources, setResources] = useState<SharedResource[]>([]);
+    const [stats, setStats] = useState({ totalShared: 0, totalPublished: 0, approvalRate: 0, totalResources: 0 });
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
     const [page, setPage] = useState(1);
@@ -77,21 +100,28 @@ export function useMyShares() {
         try {
             const res = await profileApi.getShares(pageNum);
             const newShares = res.shares as Share[];
+            const newResources = res.resources as SharedResource[];
 
             if (pageNum === 1) {
                 const queue = await getShareQueue();
-                const offlineShares = queue.map(mapQueuedShareToShare);
+                const offlineShares = queue.filter(q => q.type !== 'RESOURCE').map(mapQueuedShareToShare);
+                const offlineResources = queue.filter(q => q.type === 'RESOURCE').map(mapQueuedShareToResource);
+
                 const mergedShares = [...offlineShares, ...newShares];
+                const mergedResources = [...offlineResources, ...newResources];
                 
                 setShares(mergedShares);
-                void saveSharesCache(newShares, res.stats);
+                setResources(mergedResources);
+                void saveSharesCache(newShares, newResources, res.stats);
                 setStats({
                     ...res.stats,
-                    totalShared: res.stats.totalShared + queue.length,
+                    totalShared: res.stats.totalShared + offlineShares.length,
+                    totalResources: res.totalResources + offlineResources.length,
                 });
             } else {
                 setShares(prev => [...prev, ...newShares]);
-                setStats(res.stats);
+                setResources(prev => [...prev, ...newResources]);
+                setStats({ ...res.stats, totalResources: res.totalResources });
             }
 
             setHasMore(res.hasMore);
@@ -113,24 +143,30 @@ export function useMyShares() {
         const loadCacheAndFetch = async () => {
             const cached = await readSharesCache();
             const queue = await getShareQueue();
-            const offlineShares = queue.map(mapQueuedShareToShare);
+            const offlineShares = queue.filter(q => q.type !== 'RESOURCE').map(mapQueuedShareToShare);
+            const offlineResources = queue.filter(q => q.type === 'RESOURCE').map(mapQueuedShareToResource);
 
-            if (cached && cached.items.length > 0) {
+            if (cached && (cached.items.length > 0 || (cached.resources && cached.resources.length > 0))) {
                 const mergedShares = [...offlineShares, ...(cached.items as Share[])];
+                const mergedResources = [...offlineResources, ...((cached.resources || []) as SharedResource[])];
                 setShares(mergedShares);
+                setResources(mergedResources);
                 const cachedStats = cached.stats as typeof stats;
                 setStats({
                     ...cachedStats,
-                    totalShared: cachedStats.totalShared + queue.length,
+                    totalShared: (cachedStats.totalShared || 0) + offlineShares.length,
+                    totalResources: (cachedStats.totalResources || 0) + offlineResources.length,
                 });
                 setLoading(false);
             } else {
-                if (offlineShares.length > 0) {
+                if (offlineShares.length > 0 || offlineResources.length > 0) {
                     setShares(offlineShares);
+                    setResources(offlineResources);
                     setStats({
                         totalShared: offlineShares.length,
                         totalPublished: 0,
                         approvalRate: 0,
+                        totalResources: offlineResources.length,
                     });
                     setLoading(false);
                 } else {
@@ -157,15 +193,22 @@ export function useMyShares() {
                 lastFetchedTime = Date.now();
                 setBoolean('fresherflow_shares_dirty', false);
                 const newShares = res.shares as Share[];
+                const newResources = res.resources as SharedResource[];
+                
                 const queueAfterSync = await getShareQueue();
-                const offlineSharesAfterSync = queueAfterSync.map(mapQueuedShareToShare);
+                const offlineSharesAfterSync = queueAfterSync.filter(q => q.type !== 'RESOURCE').map(mapQueuedShareToShare);
+                const offlineResourcesAfterSync = queueAfterSync.filter(q => q.type === 'RESOURCE').map(mapQueuedShareToResource);
+                
                 const mergedShares = [...offlineSharesAfterSync, ...newShares];
+                const mergedResources = [...offlineResourcesAfterSync, ...newResources];
                 
                 setShares(mergedShares);
-                void saveSharesCache(newShares, res.stats);
+                setResources(mergedResources);
+                void saveSharesCache(newShares, newResources, res.stats);
                 setStats({
                     ...res.stats,
-                    totalShared: res.stats.totalShared + queueAfterSync.length,
+                    totalShared: res.stats.totalShared + offlineSharesAfterSync.length,
+                    totalResources: res.totalResources + offlineResourcesAfterSync.length,
                 });
                 setHasMore(res.hasMore);
                 setPage(1);
@@ -182,6 +225,7 @@ export function useMyShares() {
 
     return {
         shares,
+        resources,
         stats,
         loading,
         refreshing,
