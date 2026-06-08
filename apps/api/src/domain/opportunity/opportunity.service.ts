@@ -36,7 +36,7 @@ export class OpportunityService {
         const created = await prisma.opportunity.create({
             data: {
                 ...(data as unknown as Prisma.OpportunityUncheckedCreateInput),
-                companyLogoUrl: (data as any).companyLogoUrl || generateCompanyLogoUrl(data.companyWebsite),
+                companyLogoUrl: data.companyLogoUrl || generateCompanyLogoUrl(data.companyWebsite),
                 id: tempId,
                 slug,
                 postedByUserId: adminId,
@@ -109,8 +109,8 @@ export class OpportunityService {
             lastVerified: new Date(),
         };
 
-        if ((data as any).companyLogoUrl !== undefined) {
-            updateData.companyLogoUrl = (data as any).companyLogoUrl || null;
+        if (data.companyLogoUrl !== undefined) {
+            updateData.companyLogoUrl = data.companyLogoUrl || null;
         } else if (data.companyWebsite !== undefined) {
             updateData.companyLogoUrl = generateCompanyLogoUrl(data.companyWebsite);
         }

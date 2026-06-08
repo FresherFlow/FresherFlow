@@ -36,21 +36,21 @@ export async function handleOpportunityPublished(
     });
   });
 
-  // 2. Broadcast to Public Channels
-  // We only broadcast if it's new (or newly published from draft)
-  TelegramService.broadcastNewOpportunity(
-    opportunity.id, 
-    opportunity.title, 
-    opportunity.company, 
-    opportunity.type, 
-    opportunity.locations, 
-    opportunity.slug
-  ).catch((err) => {
-    logger.error('[publish] Telegram broadcast failed', { 
-      opportunityId: opportunity.id, 
-      error: err instanceof Error ? err.message : String(err) 
+  if (isNew) {
+    TelegramService.broadcastNewOpportunity(
+      opportunity.id, 
+      opportunity.title, 
+      opportunity.company, 
+      opportunity.type, 
+      opportunity.locations, 
+      opportunity.slug
+    ).catch((err) => {
+      logger.error('[publish] Telegram broadcast failed', { 
+        opportunityId: opportunity.id, 
+        error: err instanceof Error ? err.message : String(err) 
+      });
     });
-  });
+  }
 
   // 3. User alerts (Instant Email/Push/App)
   sendNewJobAlerts(opportunity.id).catch((err) => {
