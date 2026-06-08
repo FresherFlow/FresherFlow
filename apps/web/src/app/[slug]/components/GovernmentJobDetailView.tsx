@@ -21,6 +21,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
+import CompanyLogo from '@/components/ui/CompanyLogo';
 
 import React from 'react';
 import Link from 'next/link';
@@ -351,6 +352,7 @@ export function GovernmentJobDetailView({
     formatDeadline
 }: GovernmentJobDetailViewProps) {
     const details = opp.governmentJobDetails || {} as any;
+    const hasSalaryInfo = Boolean(details.basicPay || details.payLevel || (details.allowances && details.allowances.length > 0) || details.extraMetadata?.promotionPath || details.extraMetadata?.careerGrowth || details.extraMetadata?.promotionOpportunities);
 
     // Helper to clean leading asterisk from text
     const cleanAsteriskPrefix = (text: string) => {
@@ -413,9 +415,39 @@ export function GovernmentJobDetailView({
     const changesKey = Object.keys(details.extraMetadata || {}).find(key => key.startsWith('changesIn'));
     const keyChangesList = changesKey ? (details.extraMetadata[changesKey] as string[]) : null;
     const keyChangesYear = changesKey ? changesKey.replace('changesIn', '') : '';
-    const vacancyTrends = details.extraMetadata?.vacancyTrend || null;
-    const examRules = details.extraMetadata?.rules || null;
-    const examRegions = details.extraMetadata?.regions || null;
+
+    // vacancyTrend: support both array [{year,vacancies}] and legacy object {year: count}
+    const vacancyTrends = React.useMemo(() => {
+        const raw = details.extraMetadata?.vacancyTrend;
+        if (!raw) return null;
+        if (Array.isArray(raw)) {
+            // Convert [{year, vacancies}] → { year: count }
+            const obj: Record<string, number> = {};
+            raw.forEach((e: any) => { if (e.year) obj[String(e.year)] = Number(e.vacancies ?? e.count ?? 0); });
+            return obj;
+        }
+        return raw as Record<string, number>;
+    }, [details.extraMetadata?.vacancyTrend]);
+
+    // rules: support both array of strings and legacy keyed object
+    const examRules = React.useMemo(() => {
+        const raw = details.extraMetadata?.rules;
+        if (!raw) return null;
+        if (Array.isArray(raw) && raw.length > 0) {
+            // Render as numbered list; convert to object for existing renderer
+            const obj: Record<string, string> = {};
+            raw.forEach((r: string, i: number) => { obj[`step${i + 1}`] = r; });
+            return obj;
+        }
+        if (typeof raw === 'object' && !Array.isArray(raw)) return raw as Record<string, string>;
+        return null;
+    }, [details.extraMetadata?.rules]);
+
+    const examRegions = details.extraMetadata?.examCenterRegions || details.extraMetadata?.regions || null;
+    const cutOffData = Array.isArray(details.cutOffMarks) && details.cutOffMarks.length > 0 ? details.cutOffMarks : null;
+    const postWiseSalary = Array.isArray(details.extraMetadata?.postWiseSalary) && details.extraMetadata.postWiseSalary.length > 0
+        ? details.extraMetadata.postWiseSalary : null;
+    const helplineNumber = details.extraMetadata?.helpline || null;
 
     // Helper to format fee values safely
     const formatFee = (value: number | string | undefined | null) => {
@@ -684,52 +716,193 @@ export function GovernmentJobDetailView({
         };
     }, [opp.title, validRequiredDocuments, instructionBullets]);
 
+    const applicationStatus = details.applicationStatus as string | undefined;
+
+    // Phase-aware primary CTA
+    const renderPhaseCTA = () => {
+        const base = 'w-full h-11 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm rounded-lg border transition-colors';
+
+        if (applicationStatus === 'ADMIT_CARD_RELEASED' && details.admitCardUrl) {
+            return (
+                <a href={details.admitCardUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-violet-600 hover:bg-violet-700 text-white border-violet-700`}>
+                    🎫 Download Admit Card
+                    <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                </a>
+            );
+        }
+        if (applicationStatus === 'ANSWER_KEY_RELEASED' && details.answerKeyUrl) {
+            return (
+                <a href={details.answerKeyUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700`}>
+                    🔑 View Answer Key
+                    <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                </a>
+            );
+        }
+        if (applicationStatus === 'RESULT_DECLARED' && details.resultUrl) {
+            return (
+                <a href={details.resultUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-orange-500 hover:bg-orange-600 text-white border-orange-600`}>
+                    🏆 View Result
+                    <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                </a>
+            );
+        }
+        if (['COUNSELLING', 'DOCUMENT_VERIFICATION'].includes(applicationStatus || '')) {
+            return (
+                <a href={details.officialWebsiteUrl || opp.applyLink || '#'} target="_blank" rel="noopener noreferrer" className={`${base} bg-teal-600 hover:bg-teal-700 text-white border-teal-700`}>
+                    🗂 Visit Official Portal
+                    <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+                </a>
+            );
+        }
+        if (applicationStatus === 'UPCOMING') {
+            return (
+                <div className="w-full h-11 rounded-lg border border-blue-400/30 bg-blue-500/10 text-blue-700 dark:text-blue-300 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider">
+                    🕐 Applications Not Started Yet
+                </div>
+            );
+        }
+        if (applicationStatus === 'CLOSED' || applicationStatus === 'CANCELLED' || applicationStatus === 'COMPLETED') {
+            return (
+                <div className="w-full h-11 rounded-lg border border-border bg-muted text-muted-foreground flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider">
+                    Application Window Closed
+                </div>
+            );
+        }
+        // Default: show apply button if link available
+        if (!hasApplyLink) return null;
+        if (listingState === 'EXPIRED') {
+            return (
+                <div className="w-full h-11 rounded-lg border border-destructive/20 bg-destructive/5 text-destructive flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider cursor-not-allowed">
+                    <ClockIcon className="w-4 h-4" />
+                    Closed
+                </div>
+            );
+        }
+        return (
+            <Button onClick={handleApply} className="w-full h-11 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm">
+                Apply Online
+                <ArrowTopRightOnSquareIcon className="w-4 h-4" />
+            </Button>
+        );
+    };
+
+    // Status phase badge for top of portal card
+    const PHASE_BADGE: Record<string, { label: string; className: string }> = {
+        UPCOMING:              { label: 'Upcoming',         className: 'bg-blue-500/10 border-blue-400/30 text-blue-700 dark:text-blue-300' },
+        OPEN:                  { label: 'Apply Now',         className: 'bg-emerald-500/10 border-emerald-400/30 text-emerald-700 dark:text-emerald-300' },
+        CLOSED:                { label: 'Closed',           className: 'bg-muted border-border text-muted-foreground' },
+        EXAM_SCHEDULED:        { label: 'Exam Scheduled',   className: 'bg-amber-500/10 border-amber-400/30 text-amber-700 dark:text-amber-300' },
+        ADMIT_CARD_RELEASED:   { label: 'Admit Card Out',   className: 'bg-violet-500/10 border-violet-400/30 text-violet-700 dark:text-violet-300' },
+        ANSWER_KEY_RELEASED:   { label: 'Answer Key Out',   className: 'bg-indigo-500/10 border-indigo-400/30 text-indigo-700 dark:text-indigo-300' },
+        RESULT_DECLARED:       { label: 'Result Declared',  className: 'bg-orange-500/10 border-orange-400/30 text-orange-700 dark:text-orange-300' },
+        COUNSELLING:           { label: 'Counselling',       className: 'bg-teal-500/10 border-teal-400/30 text-teal-700 dark:text-teal-300' },
+        DOCUMENT_VERIFICATION: { label: 'Doc Verification', className: 'bg-cyan-500/10 border-cyan-400/30 text-cyan-700 dark:text-cyan-300' },
+        COMPLETED:             { label: 'Completed',         className: 'bg-muted border-border text-muted-foreground' },
+        CANCELLED:             { label: 'Cancelled',         className: 'bg-destructive/10 border-destructive/30 text-destructive' },
+    };
+    const phaseBadge = applicationStatus ? PHASE_BADGE[applicationStatus] : undefined;
+
     const renderApplyPortal = () => (
-        <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
-            <h4 className="text-sm font-semibold text-muted-foreground">Apply Portal</h4>
+        <div id="important-links" className="bg-card border-2 border-primary/20 rounded-xl overflow-hidden shadow-sm scroll-mt-24">
+            <div className="bg-primary/5 border-b-2 border-primary/20 p-3 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-primary uppercase tracking-widest">Important Links</h3>
+            </div>
             
-            <div className="space-y-3">
-                {hasApplyLink && (
-                    <div>
-                        {listingState === 'EXPIRED' ? (
-                            <div className="w-full h-11 rounded-lg border border-destructive/20 bg-destructive/5 text-destructive flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-wider cursor-not-allowed">
-                                <ClockIcon className="w-4 h-4" />
-                                Closed
+            <div className="p-3 space-y-3">
+                {/* Phase-aware primary CTA */}
+                {renderPhaseCTA()}
+                
+                {/* Important Links List */}
+                {(details.officialNotificationUrl || details.officialWebsiteUrl || details.notificationPdfUrl || details.admitCardUrl || details.resultUrl || details.answerKeyUrl || details.syllabusUrl || details.previousPapersUrl) && (
+                    <div className="divide-y divide-border/50 border border-border rounded-lg overflow-hidden">
+                        {/* Download Notification */}
+                        {(details.notificationPdfUrl || details.officialNotificationUrl) && (
+                            <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
+                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Download Notice</span>
+                                <a href={details.notificationPdfUrl || details.officialNotificationUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                    Click Here <DocumentTextIcon className="w-3.5 h-3.5" />
+                                </a>
                             </div>
-                        ) : (
-                            <Button
-                                onClick={handleApply}
-                                className="w-full h-11 text-xs font-semibold uppercase tracking-widest flex items-center justify-center gap-2 shadow-sm"
-                            >
-                                Apply Online
-                                <ArrowTopRightOnSquareIcon className="w-4 h-4" />
-                            </Button>
+                        )}
+                        {/* Download Admit Card */}
+                        {details.admitCardUrl && (
+                            <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
+                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Admit Card</span>
+                                <a href={details.admitCardUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                    Click Here <ArrowTopRightOnSquareIcon className="w-3.5 h-3.5" />
+                                </a>
+                            </div>
+                        )}
+                        {/* Check Exam Result */}
+                        {details.resultUrl && (
+                            <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
+                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Exam Result</span>
+                                <a href={details.resultUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                    Click Here <CheckCircleIcon className="w-3.5 h-3.5" />
+                                </a>
+                            </div>
+                        )}
+                        {/* View Answer Key */}
+                        {details.answerKeyUrl && (
+                            <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
+                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Answer Key</span>
+                                <a href={details.answerKeyUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                    Click Here <ClipboardDocumentCheckIcon className="w-3.5 h-3.5" />
+                                </a>
+                            </div>
+                        )}
+                        {/* View Exam Syllabus */}
+                        {details.syllabusUrl && (
+                            <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
+                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Exam Syllabus</span>
+                                <a href={details.syllabusUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                    Click Here <AcademicCapIcon className="w-3.5 h-3.5" />
+                                </a>
+                            </div>
+                        )}
+                        {/* Previous Question Papers */}
+                        {details.previousPapersUrl && (
+                            <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
+                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Previous Papers</span>
+                                <a href={details.previousPapersUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                    Click Here <DocumentTextIcon className="w-3.5 h-3.5" />
+                                </a>
+                            </div>
+                        )}
+                        {/* Official Website */}
+                        {details.officialWebsiteUrl && (
+                            <div className="flex justify-between items-center p-2.5 gap-2 hover:bg-muted/10 transition-colors bg-card">
+                                <span className="font-bold text-foreground text-[11px] sm:text-xs uppercase tracking-wider">Official Website</span>
+                                <a href={details.officialWebsiteUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[10px] uppercase hover:underline inline-flex items-center gap-1 bg-primary/10 hover:bg-primary/20 transition-colors px-2 py-1 rounded">
+                                    Click Here <GlobeAltIcon className="w-3.5 h-3.5" />
+                                </a>
+                            </div>
                         )}
                     </div>
                 )}
 
                 {/* Share and Copy Links */}
-                <div className="grid grid-cols-2 gap-2 pt-2 border-t border-border/50">
+                <div className="grid grid-cols-2 gap-2 pt-1 mt-4">
                     <button
                         onClick={handleShare}
-                        className="flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground text-xs font-semibold uppercase transition-colors"
+                        className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground text-[10px] font-bold uppercase tracking-wider transition-colors"
                     >
-                        <ShareIcon className="w-4 h-4" />
+                        <ShareIcon className="w-3.5 h-3.5" />
                         Share
                     </button>
                     <button
                         onClick={handleCopyLink}
-                        className="flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground text-xs font-semibold uppercase transition-colors"
+                        className="flex items-center justify-center gap-1.5 h-9 rounded-lg border border-border bg-muted/20 text-muted-foreground hover:bg-muted hover:text-foreground text-[10px] font-bold uppercase tracking-wider transition-colors"
                     >
-                        <LinkIcon className="w-4 h-4" />
+                        <LinkIcon className="w-3.5 h-3.5" />
                         Copy Link
                     </button>
                 </div>
 
                 {/* Progress Tracking */}
                 {user && (
-                    <div className="space-y-2 pt-2 border-t border-border/50">
-                        <p className="text-xs font-medium text-muted-foreground">Track Application</p>
+                    <div className="space-y-2 pt-3 border-t border-border/50">
+                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Track Application</p>
                         <div className="grid grid-cols-2 gap-1.5">
                             {trackerOptions.map((option) => {
                                 const isActive = currentAction === option.key;
@@ -739,7 +912,7 @@ export function GovernmentJobDetailView({
                                         onClick={() => handleSetAction(option.key)}
                                         disabled={isUpdatingAction}
                                         className={cn(
-                                            "h-9 rounded text-xs font-semibold uppercase tracking-wider transition-colors",
+                                            "h-8 rounded text-[10px] font-bold uppercase tracking-wider transition-colors",
                                             isActive
                                                 ? "bg-primary text-primary-foreground border border-primary"
                                                 : "bg-muted/30 border border-border/60 text-muted-foreground hover:bg-muted",
@@ -1054,53 +1227,67 @@ export function GovernmentJobDetailView({
                     
                     {/* Header Summary Card */}
                     <div className="bg-card border border-border rounded-xl p-5 md:p-6 shadow-sm space-y-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="flex flex-wrap items-center gap-2">
-                                <span className="px-2.5 py-0.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded uppercase tracking-wider flex items-center gap-1">
-                                    <ShieldCheckIcon className="w-3.5 h-3.5" />
-                                    Govt Job
-                                </span>
-                                
-                                <span className={cn(
-                                    "inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold border rounded uppercase tracking-wider",
-                                    listingState === 'EXPIRED'
-                                        ? "bg-destructive/5 text-destructive border-destructive/20"
-                                        : "bg-emerald-500/5 text-emerald-500 border-emerald-500/20"
-                                )}>
-                                    {listingState === 'EXPIRED' ? 'CLOSED' : 'OPEN'}
-                                </span>
-                            </div>
-
-                            {details.officialSourceVerified && (
-                                <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/5 border border-emerald-500/10 px-2.5 py-1 rounded-lg">
-                                    <CheckCircleIcon className="w-3.5 h-3.5 shrink-0" />
-                                    <span>Official Verified</span>
-                                    {details.sourceLastCheckedAt && (
-                                        <span className="text-[10px] text-muted-foreground font-normal ml-0.5">
-                                            ({formatDate(String(details.sourceLastCheckedAt))})
+                        <div className="flex flex-col-reverse md:flex-row items-start justify-between gap-4 md:gap-6">
+                            <div className="flex-1 min-w-0 space-y-3">
+                                <div className="flex flex-wrap items-center justify-between gap-3">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="px-2.5 py-0.5 text-xs font-bold bg-primary/10 text-primary border border-primary/20 rounded uppercase tracking-wider flex items-center gap-1">
+                                            <ShieldCheckIcon className="w-3.5 h-3.5" />
+                                            Govt Job
                                         </span>
+                                        
+                                        <span className={cn(
+                                            "inline-flex items-center gap-1.5 px-2.5 py-0.5 text-xs font-bold border rounded uppercase tracking-wider",
+                                            listingState === 'EXPIRED'
+                                                ? "bg-destructive/5 text-destructive border-destructive/20"
+                                                : "bg-emerald-500/5 text-emerald-500 border-emerald-500/20"
+                                        )}>
+                                            {listingState === 'EXPIRED' ? 'CLOSED' : 'OPEN'}
+                                        </span>
+                                    </div>
+
+                                    {details.officialSourceVerified && (
+                                        <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600 bg-emerald-500/5 border border-emerald-500/10 px-2.5 py-1 rounded-lg">
+                                            <CheckCircleIcon className="w-3.5 h-3.5 shrink-0" />
+                                            <span>Official Verified</span>
+                                            {details.sourceLastCheckedAt && (
+                                                <span className="text-[10px] text-muted-foreground font-normal ml-0.5">
+                                                    ({formatDate(String(details.sourceLastCheckedAt))})
+                                                </span>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
 
-                        <div className="space-y-1.5">
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                                {details.recruitingBody || details.organization || opp.company}
-                            </p>
-                            <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-foreground leading-tight">
-                                {opp.title}
-                            </h1>
-                            {/* Job Categories */}
-                            {details.jobCategory && Array.isArray(details.jobCategory) && details.jobCategory.length > 0 && (
-                                <div className="flex flex-wrap gap-1.5 pt-1">
-                                    {details.jobCategory.map((cat: string, idx: number) => (
-                                        <span key={idx} className="px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground border border-border/50 rounded-full">
-                                            {cat}
-                                        </span>
-                                    ))}
+                                <div className="space-y-1.5">
+                                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                                        {details.recruitingBody || details.organization || opp.company}
+                                    </p>
+                                    <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-foreground leading-tight">
+                                        {opp.title}
+                                    </h1>
+                                    {/* Job Categories */}
+                                    {details.jobCategory && Array.isArray(details.jobCategory) && details.jobCategory.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                            {details.jobCategory.map((cat: string, idx: number) => (
+                                                <span key={idx} className="px-2 py-0.5 text-xs font-semibold bg-muted text-muted-foreground border border-border/50 rounded-full">
+                                                    {cat}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
-                            )}
+                            </div>
+                            <div className="shrink-0 self-start md:self-center">
+                                <CompanyLogo
+                                    companyName={opp.company}
+                                    companyWebsite={opp.companyWebsite}
+                                    companyLogoUrl={opp.companyLogoUrl}
+                                    applyLink={opp.applyLink}
+                                    isGovernment={true}
+                                    className="w-14 h-14 md:w-20 md:h-20"
+                                />
+                            </div>
                         </div>
 
                         <p className="text-base text-muted-foreground leading-relaxed">
@@ -1139,6 +1326,7 @@ export function GovernmentJobDetailView({
                                     ['Eligibility', (details as any).minimumQualification || (education.length > 0 ? ((education[0] as any)?.requirement || (education[0] as any)?.degree) : null)],
                                     ['Age Limit', ageLabel],
                                     ['Apply Mode', details.applicationMode || 'Online'],
+                                    ['Exam Languages', details.extraMetadata?.languages || details.extraMetadata?.examLanguages ? (Array.isArray(details.extraMetadata.languages || details.extraMetadata.examLanguages) ? (details.extraMetadata.languages || details.extraMetadata.examLanguages).join(', ') : String(details.extraMetadata.languages || details.extraMetadata.examLanguages)) : null],
                                     ['Selection Process', Array.isArray(details.selectionStages) && details.selectionStages.length > 0
                                         ? details.selectionStages.map((s: any) => typeof s === 'string' ? s : s.name).join(' → ')
                                         : null],
@@ -1183,6 +1371,127 @@ export function GovernmentJobDetailView({
                             </ul>
                         </div>
                     )}
+
+                    {/* Salary & Benefits Section */}
+                    {hasSalaryInfo && (
+                        <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
+                            <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                                <CurrencyRupeeIcon className="w-5 h-5 text-muted-foreground" />
+                                <h3 className="text-base font-semibold text-foreground">Salary, Benefits & Career Path</h3>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {(details.basicPay || details.payLevel) && (
+                                    <div className="bg-muted/10 border border-border/40 p-4 rounded-xl space-y-2">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pay Scale & Structure</p>
+                                        <div className="space-y-1">
+                                            {details.basicPay && (
+                                                <p className="text-2xl font-extrabold text-foreground tracking-tight">
+                                                    ₹{Number(details.basicPay).toLocaleString('en-IN')}
+                                                    <span className="text-xs font-medium text-muted-foreground ml-1.5">/ Month (Basic Pay)</span>
+                                                </p>
+                                            )}
+                                            {details.payLevel && (
+                                                <p className="text-sm font-semibold text-foreground/80">
+                                                    Pay Level: <span className="font-bold text-foreground">{details.payLevel}</span>
+                                                </p>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {details.allowances && details.allowances.length > 0 && (
+                                    <div className="bg-muted/10 border border-border/40 p-4 rounded-xl space-y-2">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Allowances & Perks</p>
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                            {details.allowances.map((allowance: string, idx: number) => (
+                                                <span key={idx} className="px-2.5 py-1 text-xs font-semibold bg-primary/5 text-primary border border-primary/10 rounded-full">
+                                                    {allowance}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Career Growth / Promotion Opportunities */}
+                            {(details.extraMetadata?.promotionPath || details.extraMetadata?.promotionOpportunities || details.extraMetadata?.careerGrowth) && (() => {
+                                const growthData = details.extraMetadata.promotionPath || details.extraMetadata.promotionOpportunities || details.extraMetadata.careerGrowth;
+                                const stages = Array.isArray(growthData) ? growthData : [growthData];
+                                return (
+                                    <div className="pt-3 border-t border-border/40 space-y-2">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Career Path & Promotion Opportunities</p>
+                                        {Array.isArray(growthData) ? (
+                                            <div className="flex flex-wrap items-center gap-2 pt-1">
+                                                {stages.map((stage: string, idx: number) => (
+                                                    <React.Fragment key={idx}>
+                                                        <span className="px-3 py-1.5 text-xs font-semibold bg-muted border border-border/50 rounded-lg text-foreground">
+                                                            {stage}
+                                                        </span>
+                                                        {idx < stages.length - 1 && (
+                                                            <span className="text-muted-foreground text-xs font-bold font-mono">→</span>
+                                                        )}
+                                                    </React.Fragment>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground leading-relaxed">{growthData}</p>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+                        </div>
+                    )}
+
+                    {/* Recruitment Highlights / Why Apply */}
+                    {(details.extraMetadata?.importance || details.extraMetadata?.whyApply || details.extraMetadata?.highlights) && (() => {
+                        const highlights = details.extraMetadata.importance || details.extraMetadata.whyApply || details.extraMetadata.highlights;
+                        const highlightsList = Array.isArray(highlights) ? highlights : [highlights];
+                        return (
+                            <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                                    <ShieldCheckIcon className="w-5 h-5 text-muted-foreground" />
+                                    <h3 className="text-base font-semibold text-foreground">Recruitment Highlights & Importance</h3>
+                                </div>
+                                <div className="space-y-3">
+                                    {Array.isArray(highlights) ? (
+                                        <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground leading-relaxed">
+                                            {highlightsList.map((highlight: string, idx: number) => (
+                                                <li key={idx} className="marker:text-primary"><span className="text-foreground/90 font-semibold">{highlight}</span></li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground leading-relaxed">{highlights}</p>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
+
+                    {/* Preparation Tips & Strategy Section */}
+                    {(details.extraMetadata?.preparationTips || details.extraMetadata?.prepTips || details.extraMetadata?.studyStrategy) && (() => {
+                        const tips = details.extraMetadata.preparationTips || details.extraMetadata.prepTips || details.extraMetadata.studyStrategy;
+                        const tipsList = Array.isArray(tips) ? tips : [tips];
+                        return (
+                            <div className="bg-card border border-border rounded-xl p-5 shadow-sm space-y-4">
+                                <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                                    <AcademicCapIcon className="w-5 h-5 text-muted-foreground" />
+                                    <h3 className="text-base font-semibold text-foreground">How to Prepare & Study Strategy</h3>
+                                </div>
+                                <div className="space-y-3">
+                                    {Array.isArray(tips) ? (
+                                        <ul className="list-disc list-inside space-y-2 text-sm text-muted-foreground leading-relaxed">
+                                            {tipsList.map((tip: string, idx: number) => (
+                                                <li key={idx} className="marker:text-primary"><span className="text-foreground/90 font-semibold">{tip}</span></li>
+                                            ))}
+                                        </ul>
+                                    ) : (
+                                        <p className="text-sm text-muted-foreground leading-relaxed">{tips}</p>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })()}
 
                     {/* Vacancy Trends - Moved near the top of the Left column */}
                     {vacancyTrends && typeof vacancyTrends === 'object' && Object.keys(vacancyTrends).length > 0 && (() => {
@@ -1438,99 +1747,14 @@ export function GovernmentJobDetailView({
                         );
                     })()}
 
-                    {/* Sidebar: Official PDF Circular & Recruiting Site */}
-                    {(details.officialNotificationUrl || details.officialWebsiteUrl || details.notificationPdfUrl || details.admitCardUrl || details.resultUrl || details.answerKeyUrl || details.syllabusUrl || details.previousPapersUrl) && (
-                        <div id="official-resources" className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3 transition-all duration-300">
-                            <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-                                <GlobeAltIcon className="w-4 h-4 text-muted-foreground" />
-                                <h3 className="text-sm font-semibold text-foreground">Official Resources</h3>
-                            </div>
-                            <div className="space-y-2">
-                                {(details.notificationPdfUrl || details.officialNotificationUrl) && (
-                                    <a
-                                        href={details.notificationPdfUrl || details.officialNotificationUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="w-full flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border bg-card hover:bg-muted font-bold text-xs uppercase tracking-tight transition-colors shadow-sm text-foreground"
-                                    >
-                                        <DocumentTextIcon className="w-4 h-4 text-muted-foreground" />
-                                        Download PDF Notice
-                                    </a>
-                                )}
-                                {details.officialWebsiteUrl && (
-                                    <a
-                                        href={details.officialWebsiteUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="w-full flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border bg-card hover:bg-muted font-bold text-xs uppercase tracking-tight transition-colors shadow-sm text-foreground"
-                                    >
-                                        <GlobeAltIcon className="w-4 h-4 text-muted-foreground" />
-                                        Visit Official Site
-                                    </a>
-                                )}
-                                {details.admitCardUrl && (
-                                    <a
-                                        href={details.admitCardUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="w-full flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border bg-card hover:bg-muted font-bold text-xs uppercase tracking-tight transition-colors shadow-sm text-foreground"
-                                    >
-                                        <ArrowTopRightOnSquareIcon className="w-4 h-4 text-muted-foreground" />
-                                        Download Admit Card
-                                    </a>
-                                )}
-                                {details.syllabusUrl && (
-                                    <a
-                                        href={details.syllabusUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="w-full flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border bg-card hover:bg-muted font-bold text-xs uppercase tracking-tight transition-colors shadow-sm text-foreground"
-                                    >
-                                        <AcademicCapIcon className="w-4 h-4 text-muted-foreground" />
-                                        View Exam Syllabus
-                                    </a>
-                                )}
-                                {details.answerKeyUrl && (
-                                    <a
-                                        href={details.answerKeyUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="w-full flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border bg-card hover:bg-muted font-bold text-xs uppercase tracking-tight transition-colors shadow-sm text-foreground"
-                                    >
-                                        <ClipboardDocumentCheckIcon className="w-4 h-4 text-muted-foreground" />
-                                        View Answer Key
-                                    </a>
-                                )}
-                                {details.resultUrl && (
-                                    <a
-                                        href={details.resultUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="w-full flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border bg-card hover:bg-muted font-bold text-xs uppercase tracking-tight transition-colors shadow-sm text-foreground"
-                                    >
-                                        <CheckCircleIcon className="w-4 h-4 text-muted-foreground" />
-                                        Check Exam Result
-                                    </a>
-                                )}
-                                {details.previousPapersUrl && (
-                                    <a
-                                        href={details.previousPapersUrl}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="w-full flex items-center justify-center gap-1.5 h-10 rounded-lg border border-border bg-card hover:bg-muted font-bold text-xs uppercase tracking-tight transition-colors shadow-sm text-foreground"
-                                    >
-                                        <DocumentTextIcon className="w-4 h-4 text-muted-foreground" />
-                                        Previous Question Papers
-                                    </a>
-                                )}
-                            </div>
-                        </div>
-                    )}
+
+
                 </div>
             </div>
 
             {/* Full-width Sections */}
-            {((vacancyTableData && vacancyTableData.rows.length > 0 && isHeavyTable) || syllabusTabs.length > 0 || (examRules && typeof examRules === 'object' && Object.keys(examRules).length > 0) || (examRegions && Array.isArray(examRegions) && examRegions.length > 0)) && (
+
+            {((vacancyTableData && vacancyTableData.rows.length > 0 && isHeavyTable) || syllabusTabs.length > 0 || (examRules && typeof examRules === 'object' && Object.keys(examRules).length > 0) || (examRegions && Array.isArray(examRegions) && examRegions.length > 0) || cutOffData || postWiseSalary) && (
                 <div className="space-y-4">
 
                     {/* Post-wise Vacancy Breakdown Table - Heavy Table Full Width */}
@@ -1552,6 +1776,94 @@ export function GovernmentJobDetailView({
                                 <h3 className="text-base font-semibold text-foreground">Exam Pattern & Syllabus</h3>
                             </div>
                             <Tabs items={syllabusTabs} />
+                        </div>
+                    )}
+
+                    {/* Post-wise Salary Table */}
+                    {postWiseSalary && (
+                        <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
+                            <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                                <CurrencyRupeeIcon className="w-4 h-4 text-muted-foreground" />
+                                <h3 className="text-base font-semibold text-foreground">Post-wise Pay Scale & Salary</h3>
+                            </div>
+                            <div className="border border-border rounded-lg overflow-x-auto">
+                                <table className="w-full text-left border-collapse text-sm">
+                                    <thead className="sticky top-0 z-10 bg-muted border-b border-border">
+                                        <tr>
+                                            {['Post', 'Pay Level', 'Pay Scale', 'Gross Salary'].map(h => (
+                                                <th key={h} className="p-3 font-semibold text-xs uppercase tracking-wider text-muted-foreground whitespace-nowrap">{h}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border/50 bg-card">
+                                        {(postWiseSalary as any[]).map((row: any, idx: number) => (
+                                            <tr key={idx} className="hover:bg-muted/20 transition-colors">
+                                                <td className="p-3 font-medium text-foreground text-sm">{row.post}</td>
+                                                <td className="p-3 text-muted-foreground text-sm whitespace-nowrap">{row.payLevel}</td>
+                                                <td className="p-3 text-muted-foreground text-sm whitespace-nowrap">{row.payScale}</td>
+                                                <td className="p-3 text-muted-foreground text-sm whitespace-nowrap">{row.grossSalary || '—'}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {helplineNumber && (
+                                <p className="text-xs text-muted-foreground">
+                                    📞 Helpline (Toll Free): <span className="font-semibold text-foreground">{helplineNumber}</span>
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Previous Year Cut-off Marks */}
+                    {cutOffData && (
+                        <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
+                            <div className="flex items-center gap-2 pb-2 border-b border-border/50">
+                                <ClipboardDocumentCheckIcon className="w-4 h-4 text-muted-foreground" />
+                                <h3 className="text-base font-semibold text-foreground">Previous Year Cut-off Marks</h3>
+                            </div>
+                            <div className="space-y-6">
+                                {(cutOffData as any[]).map((tierData: any, tIdx: number) => (
+                                    <div key={tIdx} className="space-y-2">
+                                        <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                                            {tierData.year} — {tierData.tier || 'Tier 1'}
+                                        </p>
+                                        {Array.isArray(tierData.data) && tierData.data.length > 0 && (() => {
+                                            // Group by post
+                                            const posts = [...new Set((tierData.data as any[]).map((r: any) => r.post))];
+                                            const categories = [...new Set((tierData.data as any[]).map((r: any) => r.category))];
+                                            const getMarks = (cat: string, post: string) => {
+                                                const match = (tierData.data as any[]).find((r: any) => r.category === cat && r.post === post);
+                                                return match ? Number(match.marks).toFixed(2) : '—';
+                                            };
+                                            return (
+                                                <div className="border border-border rounded-lg overflow-x-auto">
+                                                    <table className="w-full text-left border-collapse text-xs">
+                                                        <thead className="bg-muted border-b border-border">
+                                                            <tr>
+                                                                <th className="p-3 font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">Category</th>
+                                                                {posts.map(p => (
+                                                                    <th key={p} className="p-3 font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap">{p}</th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-border/50 bg-card">
+                                                            {categories.map(cat => (
+                                                                <tr key={cat} className="hover:bg-muted/20">
+                                                                    <td className="p-3 font-medium text-foreground">{cat}</td>
+                                                                    {posts.map(post => (
+                                                                        <td key={post} className="p-3 text-muted-foreground tabular-nums">{getMarks(cat, post)}</td>
+                                                                    ))}
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            );
+                                        })()}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     )}
 
@@ -1580,8 +1892,8 @@ export function GovernmentJobDetailView({
                     {examRegions && Array.isArray(examRegions) && examRegions.length > 0 && (
                         <div className="bg-card border border-border rounded-xl p-4 shadow-sm space-y-3">
                             <div className="flex items-center gap-2 pb-2 border-b border-border/50">
-                                <GlobeAltIcon className="w-4 h-4 text-muted-foreground" />
-                                <h3 className="text-base font-semibold text-foreground">Regional Offices & Websites</h3>
+                                <MapPinIcon className="w-4 h-4 text-muted-foreground" />
+                                <h3 className="text-base font-semibold text-foreground">Exam Centers by Region</h3>
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                                 {examRegions.map((reg: any, idx: number) => (

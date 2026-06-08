@@ -14,6 +14,7 @@ import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
 
 // EligibilitySnapshotCard removed
 import { WalkInDetailsCard } from './components/WalkInDetailsCard';
+import { ComplexityCard } from './components/ComplexityCard';
 import { RelatedOpportunities } from './components/RelatedOpportunities';
 import { DetailRequirements } from './components/DetailRequirements';
 import { DetailTimeline } from './components/DetailTimeline';
@@ -222,6 +223,10 @@ export default function OpportunityDetailClient({
                             title="Description"
                         />
 
+                        {opp.applicationDetails && opp.applicationDetails.method === 'FORM' && (
+                            <ComplexityCard applicationDetails={opp.applicationDetails} />
+                        )}
+
                         {opp.type === 'WALKIN' && opp.walkInDetails && (
                             <WalkInDetailsCard walkInDetails={opp.walkInDetails} />
                         )}
@@ -292,6 +297,10 @@ export default function OpportunityDetailClient({
                         />
                     </aside>
                 </div>
+
+                {opp.applicationDetails && opp.applicationDetails.method === 'ASSESSMENT' && (
+                    <ComplexityCard applicationDetails={opp.applicationDetails} />
+                )}
 
                 <RelatedOpportunities relatedOpps={relatedForMode} isLoadingRelated={isLoadingRelated} />
             </main>

@@ -131,12 +131,18 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
 
     const getExpiryLabel = () => {
         if (!job.expiresAt) return null;
-        if (isExpired()) return 'Expired';
+        if (isExpired()) return isGovernment ? 'Closed' : 'Expired';
         const days = daysToExpiry();
         if (days === null) return null;
         if (days <= 0) return 'Closing today';
         if (days === 1) return '1 day left';
         if (days <= 3) return `${days} days left`;
+        
+        if (isGovernment) {
+            const dateStr = new Date(job.expiresAt).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+            return `Apply by ${dateStr}`;
+        }
+        
         return `Closes in ${days} days`;
     };
 
@@ -164,9 +170,31 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
         return days <= 1;
     };
 
+    const isGovernment = Boolean(job.governmentJobDetails) || (job.type as any) === 'GOVERNMENT';
+    const govtMeta = job.governmentJobDetails as any;
+    const totalVacancies = govtMeta?.totalVacancies;
+    const payScale = govtMeta?.payScale;
+    const govtStatus: string | undefined = govtMeta?.applicationStatus;
+
+    // Map DB enum value → { label, color classes }
+    const GOVT_STATUS_META: Record<string, { label: string; className: string; ribbonClass: string }> = {
+        UPCOMING:              { label: 'Upcoming',         className: 'bg-muted/70 border-border/70 text-foreground/80', ribbonClass: '' },
+        OPEN:                  { label: 'Apply Now',         className: 'bg-muted/70 border-border/70 text-foreground/90', ribbonClass: '' },
+        CLOSED:                { label: 'Closed',           className: 'bg-muted/70 border-border/70 text-muted-foreground', ribbonClass: '' },
+        EXAM_SCHEDULED:        { label: 'Exam Scheduled',   className: 'bg-muted/70 border-border/70 text-foreground/80', ribbonClass: '' },
+        ADMIT_CARD_RELEASED:   { label: 'Admit Card Out',   className: 'bg-muted/70 border-border/70 text-foreground/80', ribbonClass: '' },
+        ANSWER_KEY_RELEASED:   { label: 'Answer Key Out',   className: 'bg-muted/70 border-border/70 text-foreground/80', ribbonClass: '' },
+        RESULT_DECLARED:       { label: 'Result Declared',  className: 'bg-muted/70 border-border/70 text-foreground/80', ribbonClass: '' },
+        COUNSELLING:           { label: 'Counselling',       className: 'bg-muted/70 border-border/70 text-foreground/80', ribbonClass: '' },
+        DOCUMENT_VERIFICATION: { label: 'Doc Verification', className: 'bg-muted/70 border-border/70 text-foreground/80', ribbonClass: '' },
+        COMPLETED:             { label: 'Completed',         className: 'bg-muted/70 border-border/70 text-muted-foreground', ribbonClass: '' },
+        CANCELLED:             { label: 'Cancelled',         className: 'bg-muted/70 border-border/70 text-muted-foreground', ribbonClass: '' },
+    };
+    const govtStatusMeta = govtStatus ? GOVT_STATUS_META[govtStatus] : undefined;
+    
     const metaChips = (() => {
         const chips: string[] = [];
-        if (job.governmentJobDetails || (job.tags || []).some((tag) => /government/i.test(tag))) chips.push('Government');
+        if (!isGovernment && (job.tags || []).some((tag) => /government/i.test(tag))) chips.push('Government');
         if (isDrive) chips.push('Campus 2024-2026');
         if (isDrive) chips.push('0-2 Yrs');
         const maxChips = variant === 'compact' ? 1 : 2;
@@ -183,7 +211,9 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
         return output;
     })();
 
-    const salaryLabel = isDrive
+    const salaryLabel = isGovernment && payScale
+        ? payScale
+        : isDrive
         ? normalizeSalaryInput(driveMeta.maxCtcLabel) ?? null
         : getOpportunityDisplaySalary(job);
 
@@ -210,7 +240,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             <div className="flex items-center justify-between gap-2 z-20 pointer-events-none">
                 <div className="flex items-center gap-2">
                     <span className="inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-md bg-muted/80 text-foreground border border-border/70">
-                        {isDrive ? 'Hiring Drive' : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
+                        {isDrive ? 'Hiring Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt Job') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
                     </span>
                     {heatBadge && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider border border-amber-500/20">
@@ -219,7 +249,7 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         </span>
                     )}
                     {isTrusted && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-bold uppercase tracking-wider border border-blue-500/20">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/80 text-foreground text-[10px] font-bold uppercase tracking-wider border border-border/70">
                             <CheckBadgeIcon className="w-3 h-3" />
                             Trusted
                         </span>
@@ -249,6 +279,11 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
                         <h3 className="mt-0.5 text-[17px] md:text-[18px] font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
                             {job.normalizedRole || job.title}
                         </h3>
+                        {isGovernment && totalVacancies && (
+                            <p className="mt-1.5 text-sm font-bold text-foreground bg-muted/50 inline-block px-2 py-0.5 rounded border border-border/50">
+                                Total Vacancies: <span className="text-primary">{Number(totalVacancies).toLocaleString('en-IN')}</span>
+                            </p>
+                        )}
                     </div>
                 </div>
 
@@ -314,7 +349,15 @@ export default function JobCard({ job, onClick, isSaved = false, isApplied = fal
             {/* Footer: Community Stats + CTA */}
             <div className="flex items-center justify-between pt-2 mt-auto border-t border-border/40">
                 <div className="flex items-center gap-3">
-                    {job.expiresAt && (
+                    {/* Govt phase badge takes priority; fallback to expiry for regular jobs */}
+                    {isGovernment && govtStatusMeta ? (
+                        <span className={cn(
+                            "inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold rounded-md whitespace-nowrap",
+                            govtStatusMeta.className
+                        )}>
+                            {govtStatusMeta.label}
+                        </span>
+                    ) : !isGovernment && job.expiresAt && (
                         <span
                             className={cn(
                                 "inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold rounded-md whitespace-nowrap",

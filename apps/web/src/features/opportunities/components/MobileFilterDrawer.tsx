@@ -5,7 +5,8 @@ import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/features/system/components/ui/Button';
 import { cn } from '@repo/ui/utils/cn';
 
-const LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Remote'];
+const CORP_LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Remote'];
+const GOVT_LOCATIONS = ['All India', 'Delhi', 'Telangana', 'Maharashtra', 'Uttar Pradesh', 'Karnataka'];
 
 const TYPE_OPTIONS = [
     { label: 'All', value: '' },
@@ -14,13 +15,9 @@ const TYPE_OPTIONS = [
     { label: 'Walk-ins', value: 'WALKIN' },
 ];
 
-const SALARY_RANGES = [
-    { label: 'Any', value: '' },
-    { label: '3L+', value: '300000' },
-    { label: '6L+', value: '600000' },
-    { label: '10L+', value: '1000000' },
-    { label: '15L+', value: '1500000' },
-];
+const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'SSC / UPSC', 'PSU'];
+const GOVT_QUALIFICATIONS = ['10th Pass', '12th Pass', 'Diploma', 'Graduate', 'Postgraduate'];
+const CORP_COURSES = ['B.Tech/B.E.', 'M.C.A.', 'MBA', 'B.Sc/B.Com/B.A', 'Diploma'];
 
 const CURRENT_YEAR = new Date().getFullYear();
 const START_YEAR = 2020;
@@ -30,7 +27,7 @@ const PASSOUT_YEAR_OPTIONS = Array.from(
     (_, idx) => START_YEAR + idx
 );
 
-type OpenSection = 'type' | 'location' | 'salary' | 'year' | null;
+type OpenSection = 'type' | 'location' | 'year' | 'sector' | 'qualification' | 'course' | null;
 
 interface MobileFilterDrawerProps {
     isOpen: boolean;
@@ -45,9 +42,14 @@ interface MobileFilterDrawerProps {
     setDraftClosingSoon: (val: boolean) => void;
     draftShowOnlySaved: boolean;
     setDraftShowOnlySaved: (val: boolean) => void;
-    draftMinSalary: number | null;
-    setDraftMinSalary: (val: number | null) => void;
+    draftSector: string | null;
+    setDraftSector: (val: string | null) => void;
+    draftQualification: string | null;
+    setDraftQualification: (val: string | null) => void;
+    draftCourse: string | null;
+    setDraftCourse: (val: string | null) => void;
     isLoggedIn: boolean;
+    pageType?: string;
     onApply: () => void;
     onClear: () => void;
 }
@@ -118,9 +120,14 @@ export function MobileFilterDrawer({
     setDraftClosingSoon,
     draftShowOnlySaved,
     setDraftShowOnlySaved,
-    draftMinSalary,
-    setDraftMinSalary,
+    draftSector,
+    setDraftSector,
+    draftQualification,
+    setDraftQualification,
+    draftCourse,
+    setDraftCourse,
     isLoggedIn,
+    pageType,
     onApply,
     onClear,
 }: MobileFilterDrawerProps) {
@@ -131,7 +138,9 @@ export function MobileFilterDrawer({
         draftType,
         draftLoc,
         draftYear,
-        draftMinSalary,
+        draftSector,
+        draftQualification,
+        draftCourse,
         draftClosingSoon ? 'closing' : null,
         draftShowOnlySaved ? 'saved' : null,
     ].filter(Boolean).length;
@@ -188,7 +197,7 @@ export function MobileFilterDrawer({
                     >
                         <div className="flex flex-wrap gap-2">
                             <Pill active={draftLoc === null} onClick={() => setDraftLoc(null)}>Any</Pill>
-                            {LOCATIONS.map((location) => (
+                            {(pageType === 'GOVERNMENT' ? GOVT_LOCATIONS : CORP_LOCATIONS).map((location) => (
                                 <Pill
                                     key={location}
                                     active={draftLoc === location}
@@ -200,42 +209,88 @@ export function MobileFilterDrawer({
                         </div>
                     </Section>
 
-                    <Section
-                        title="Salary"
-                        isOpen={openSection === 'salary'}
-                        onToggle={() => setOpenSection(openSection === 'salary' ? null : 'salary')}
-                    >
-                        <div className="flex flex-wrap gap-2">
-                            {SALARY_RANGES.map((option) => (
-                                <Pill
-                                    key={option.label}
-                                    active={(draftMinSalary?.toString() || '') === option.value}
-                                    onClick={() => setDraftMinSalary(option.value ? Number(option.value) : null)}
-                                >
-                                    {option.label}
-                                </Pill>
-                            ))}
-                        </div>
-                    </Section>
+                    {pageType === 'GOVERNMENT' && (
+                        <>
+                            <Section
+                                title="Sector"
+                                isOpen={openSection === 'sector'}
+                                onToggle={() => setOpenSection(openSection === 'sector' ? null : 'sector')}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    <Pill active={draftSector === null} onClick={() => setDraftSector(null)}>Any</Pill>
+                                    {GOVT_SECTORS.map((sector) => (
+                                        <Pill
+                                            key={sector}
+                                            active={draftSector === sector}
+                                            onClick={() => setDraftSector(sector)}
+                                        >
+                                            {sector}
+                                        </Pill>
+                                    ))}
+                                </div>
+                            </Section>
 
-                    <Section
-                        title="Passout Year"
-                        isOpen={openSection === 'year'}
-                        onToggle={() => setOpenSection(openSection === 'year' ? null : 'year')}
-                    >
-                        <div className="flex flex-wrap gap-2">
-                            <Pill active={draftYear === null} onClick={() => setDraftYear(null)}>Any</Pill>
-                            {PASSOUT_YEAR_OPTIONS.map((year) => (
-                                <Pill
-                                    key={year}
-                                    active={draftYear === year}
-                                    onClick={() => setDraftYear(year)}
-                                >
-                                    {year}
-                                </Pill>
-                            ))}
-                        </div>
-                    </Section>
+                            <Section
+                                title="Qualification"
+                                isOpen={openSection === 'qualification'}
+                                onToggle={() => setOpenSection(openSection === 'qualification' ? null : 'qualification')}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    <Pill active={draftQualification === null} onClick={() => setDraftQualification(null)}>Any</Pill>
+                                    {GOVT_QUALIFICATIONS.map((qual) => (
+                                        <Pill
+                                            key={qual}
+                                            active={draftQualification === qual}
+                                            onClick={() => setDraftQualification(qual)}
+                                        >
+                                            {qual}
+                                        </Pill>
+                                    ))}
+                                </div>
+                            </Section>
+                        </>
+                    )}
+
+                    {pageType !== 'GOVERNMENT' && (
+                        <>
+                            <Section
+                                title="Course"
+                                isOpen={openSection === 'course'}
+                                onToggle={() => setOpenSection(openSection === 'course' ? null : 'course')}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    <Pill active={draftCourse === null} onClick={() => setDraftCourse(null)}>Any</Pill>
+                                    {CORP_COURSES.map((course) => (
+                                        <Pill
+                                            key={course}
+                                            active={draftCourse === course}
+                                            onClick={() => setDraftCourse(course)}
+                                        >
+                                            {course}
+                                        </Pill>
+                                    ))}
+                                </div>
+                            </Section>
+                            <Section
+                                title="Passout Year"
+                                isOpen={openSection === 'year'}
+                                onToggle={() => setOpenSection(openSection === 'year' ? null : 'year')}
+                            >
+                                <div className="flex flex-wrap gap-2">
+                                    <Pill active={draftYear === null} onClick={() => setDraftYear(null)}>Any</Pill>
+                                    {PASSOUT_YEAR_OPTIONS.map((year) => (
+                                        <Pill
+                                            key={year}
+                                            active={draftYear === year}
+                                            onClick={() => setDraftYear(year)}
+                                        >
+                                            {year}
+                                        </Pill>
+                                    ))}
+                                </div>
+                            </Section>
+                        </>
+                    )}
 
 
                 </div>

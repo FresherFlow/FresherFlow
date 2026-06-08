@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import CategoryPage from '@/features/opportunities/components/CategoryPage';
 import { OpportunityType } from '@fresherflow/types';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { fetchGovernmentFeed } from '@/lib/api/cdnFeed';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 export const revalidate = false;
@@ -35,13 +35,11 @@ export const metadata: Metadata = {
 };
 
 export default async function GovernmentJobsPage() {
-    const bootstrapData = await fetchBootstrapFeed();
-    const initialData = bootstrapData ? {
-        opportunities: bootstrapData.opportunities.filter(
-            o => o.type === OpportunityType.GOVERNMENT || o.governmentJobDetails != null
-        ),
-        total: bootstrapData.count,
-        cachedAt: new Date(bootstrapData.generatedAt).getTime(),
+    const govtData = await fetchGovernmentFeed();
+    const initialData = govtData ? {
+        opportunities: govtData.opportunities,
+        total: govtData.opportunities.length,
+        cachedAt: new Date(govtData.generatedAt || Date.now()).getTime(),
     } : null;
 
     return <CategoryPage type={OpportunityType.GOVERNMENT} initialData={initialData} />;

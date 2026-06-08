@@ -11,23 +11,22 @@ import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 
-const LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Pune', 'Remote'];
-
-const SALARY_OPTIONS: { label: string; value: number | null }[] = [
-    { label: 'Any', value: null },
-    { label: '3L+', value: 300000 },
-    { label: '6L+', value: 600000 },
-    { label: '10L+', value: 1000000 },
-    { label: '15L+', value: 1500000 },
-];
+const CORP_LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Remote'];
+const GOVT_LOCATIONS = ['All India', 'Delhi', 'Telangana', 'Maharashtra', 'Uttar Pradesh', 'Karnataka'];
 
 export interface FilterBarFilters {
     location: string | null;
-    salary: number | null;
     year: number | null;
     closingSoon: boolean;
     saved: boolean;
+    sector: string | null;
+    qualification: string | null;
+    course: string | null;
 }
+
+const GOVT_SECTORS = ['Defense', 'Railways', 'Banking', 'Teaching', 'Police', 'SSC / UPSC', 'PSU'];
+const GOVT_QUALIFICATIONS = ['10th Pass', '12th Pass', 'Diploma', 'Graduate', 'Postgraduate'];
+const CORP_COURSES = ['B.Tech/B.E.', 'M.C.A.', 'MBA', 'B.Sc/B.Com/B.A', 'Diploma'];
 
 interface FilterDropdownBarProps {
     filters: FilterBarFilters;
@@ -36,9 +35,10 @@ interface FilterDropdownBarProps {
     // Optional: type selector (only on /opportunities page)
     selectedType?: string | null;
     onTypeChange?: (type: string | null) => void;
+    pageType?: string; // e.g. 'GOVERNMENT'
 }
 
-type OpenPanel = 'location' | 'salary' | 'year' | 'type' | null;
+type OpenPanel = 'location' | 'year' | 'type' | 'sector' | 'qualification' | 'course' | null;
 
 const CURRENT_YEAR = new Date().getFullYear();
 const START_YEAR = 2020;
@@ -67,7 +67,7 @@ const chipBase = 'h-9 px-3.5 rounded-xl border text-[12px] font-medium flex item
 const chipDefault = 'bg-background border-border text-muted-foreground hover:bg-muted/50 hover:text-foreground';
 const chipActive = 'bg-primary/10 text-primary border-primary/30';
 
-export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedType, onTypeChange }: FilterDropdownBarProps) {
+export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedType, onTypeChange, pageType }: FilterDropdownBarProps) {
     const [open, setOpen] = useState<OpenPanel>(null);
     const barRef = useRef<HTMLDivElement>(null);
 
@@ -83,9 +83,8 @@ export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedTyp
     const toggle = (panel: OpenPanel) =>
         setOpen(prev => (prev === panel ? null : panel));
 
-    const hasAnyFilter = !!(filters.location || filters.salary || filters.year || filters.closingSoon || filters.saved);
-
-    const salaryLabel = SALARY_OPTIONS.find(o => o.value === filters.salary)?.label ?? 'Any';
+    const hasAnyFilter = !!(filters.location || filters.year || filters.closingSoon || filters.saved || filters.sector || filters.qualification || filters.course);
+    const isGovt = pageType === 'GOVERNMENT';
 
     return (
         <div ref={barRef} className="hidden lg:flex items-center gap-2 flex-wrap">
@@ -143,7 +142,7 @@ export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedTyp
 
                 {open === 'location' && (
                     <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-52 z-50">
-                        {LOCATIONS.map(loc => (
+                        {(isGovt ? GOVT_LOCATIONS : CORP_LOCATIONS).map(loc => (
                             <button
                                 key={loc}
                                 onClick={() => {
@@ -175,98 +174,161 @@ export function FilterDropdownBar({ filters, setFilters, isLoggedIn, selectedTyp
                 )}
             </div>
 
-            {/* Salary dropdown */}
-            <div className="relative">
-                <button
-                    onClick={() => toggle('salary')}
-                    aria-expanded={open === 'salary'}
-                    aria-haspopup="listbox"
-                    className={cn(chipBase, filters.salary !== null ? chipActive : chipDefault)}
-                >
-                    <CurrencyRupeeIcon className="w-3.5 h-3.5" />
-                    {filters.salary !== null ? salaryLabel : 'Salary'}
-                    <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'salary' && 'rotate-180')} />
-                </button>
-
-                {open === 'salary' && (
-                    <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-50">
-                        {SALARY_OPTIONS.map(opt => (
-                            <button
-                                key={opt.label}
-                                onClick={() => {
-                                    setFilters({ ...filters, salary: opt.value });
-                                    setOpen(null);
-                                }}
-                                className={cn(
-                                    'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                    filters.salary === opt.value
-                                        ? 'bg-primary/10 text-primary'
-                                        : 'text-foreground hover:bg-muted/60'
-                                )}
-                            >
-                                {opt.label}
-                            </button>
-                        ))}
-                    </div>
-                )}
-            </div>
-
-            {/* Passout year dropdown */}
-            <div className="relative">
-                <button
-                    onClick={() => toggle('year')}
-                    aria-expanded={open === 'year'}
-                    aria-haspopup="listbox"
-                    className={cn(chipBase, filters.year !== null ? chipActive : chipDefault)}
-                >
-                    <AcademicCapIcon className="w-3.5 h-3.5" />
-                    {filters.year ?? 'Year'}
-                    <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'year' && 'rotate-180')} />
-                </button>
-
-                {open === 'year' && (
-                    <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-36 z-50">
+            {/* Govt specific dropdowns */}
+            {isGovt && (
+                <>
+                    <div className="relative">
                         <button
-                            onClick={() => {
-                                setFilters({ ...filters, year: null });
-                                setOpen(null);
-                            }}
-                            className={cn(
-                                'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                filters.year === null
-                                    ? 'bg-primary/10 text-primary'
-                                    : 'text-foreground hover:bg-muted/60'
-                            )}
+                            onClick={() => toggle('sector')}
+                            aria-expanded={open === 'sector'}
+                            className={cn(chipBase, filters.sector ? chipActive : chipDefault)}
                         >
-                            Any
+                            <BriefcaseIcon className="w-3.5 h-3.5" />
+                            {filters.sector ?? 'Sector'}
+                            <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'sector' && 'rotate-180')} />
                         </button>
-                        {PASSOUT_YEAR_OPTIONS.map((year) => (
-                            <button
-                                key={year}
-                                onClick={() => {
-                                    setFilters({ ...filters, year });
-                                    setOpen(null);
-                                }}
-                                className={cn(
-                                    'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
-                                    filters.year === year
-                                        ? 'bg-primary/10 text-primary'
-                                        : 'text-foreground hover:bg-muted/60'
-                                )}
-                            >
-                                {year}
-                            </button>
-                        ))}
+                        {open === 'sector' && (
+                            <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-50">
+                                {GOVT_SECTORS.map(opt => (
+                                    <button
+                                        key={opt}
+                                        onClick={() => {
+                                            setFilters({ ...filters, sector: filters.sector === opt ? null : opt });
+                                            setOpen(null);
+                                        }}
+                                        className={cn(
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                            filters.sector === opt ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                        )}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
+                    <div className="relative">
+                        <button
+                            onClick={() => toggle('qualification')}
+                            aria-expanded={open === 'qualification'}
+                            className={cn(chipBase, filters.qualification ? chipActive : chipDefault)}
+                        >
+                            <AcademicCapIcon className="w-3.5 h-3.5" />
+                            {filters.qualification ?? 'Qualification'}
+                            <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'qualification' && 'rotate-180')} />
+                        </button>
+                        {open === 'qualification' && (
+                            <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-50">
+                                {GOVT_QUALIFICATIONS.map(opt => (
+                                    <button
+                                        key={opt}
+                                        onClick={() => {
+                                            setFilters({ ...filters, qualification: filters.qualification === opt ? null : opt });
+                                            setOpen(null);
+                                        }}
+                                        className={cn(
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                            filters.qualification === opt ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                        )}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
+            {/* Corporate specific dropdowns */}
+            {!isGovt && (
+                <>
+                    <div className="relative">
+                        <button
+                            onClick={() => toggle('course')}
+                            aria-expanded={open === 'course'}
+                            className={cn(chipBase, filters.course ? chipActive : chipDefault)}
+                        >
+                            <AcademicCapIcon className="w-3.5 h-3.5" />
+                            {filters.course ?? 'Course'}
+                            <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'course' && 'rotate-180')} />
+                        </button>
+                        {open === 'course' && (
+                            <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-44 z-50">
+                                {CORP_COURSES.map(opt => (
+                                    <button
+                                        key={opt}
+                                        onClick={() => {
+                                            setFilters({ ...filters, course: filters.course === opt ? null : opt });
+                                            setOpen(null);
+                                        }}
+                                        className={cn(
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                            filters.course === opt ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-muted/60'
+                                        )}
+                                    >
+                                        {opt}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                    {/* Passout year dropdown */}
+                    <div className="relative">
+                        <button
+                            onClick={() => toggle('year')}
+                            aria-expanded={open === 'year'}
+                            aria-haspopup="listbox"
+                            className={cn(chipBase, filters.year !== null ? chipActive : chipDefault)}
+                        >
+                            <AcademicCapIcon className="w-3.5 h-3.5" />
+                            {filters.year ?? 'Year'}
+                            <ChevronDownIcon className={cn('w-3 h-3 transition-transform', open === 'year' && 'rotate-180')} />
+                        </button>
 
+                        {open === 'year' && (
+                            <div className="absolute left-0 top-full mt-2 bg-card border border-border rounded-xl shadow-lg p-2 w-36 z-50">
+                                <button
+                                    onClick={() => {
+                                        setFilters({ ...filters, year: null });
+                                        setOpen(null);
+                                    }}
+                                    className={cn(
+                                        'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                        filters.year === null
+                                            ? 'bg-primary/10 text-primary'
+                                            : 'text-foreground hover:bg-muted/60'
+                                    )}
+                                >
+                                    Any
+                                </button>
+                                {PASSOUT_YEAR_OPTIONS.map((year) => (
+                                    <button
+                                        key={year}
+                                        onClick={() => {
+                                            setFilters({ ...filters, year });
+                                            setOpen(null);
+                                        }}
+                                        className={cn(
+                                            'w-full text-left px-3 py-2 rounded-lg text-[12px] font-medium transition-all',
+                                            filters.year === year
+                                                ? 'bg-primary/10 text-primary'
+                                                : 'text-foreground hover:bg-muted/60'
+                                        )}
+                                    >
+                                        {year}
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </>
+            )}
 
             {/* Clear all */}
             {hasAnyFilter && (
                 <button
-                    onClick={() => setFilters({ location: null, salary: null, year: null, closingSoon: false, saved: false })}
+                    onClick={() => setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null })}
                     className={cn(chipBase, 'text-destructive border-destructive/30 bg-destructive/5 hover:bg-destructive/10')}
                 >
                     <XMarkIcon className="w-3.5 h-3.5" />

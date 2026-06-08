@@ -1,7 +1,8 @@
 'use client';
 
 import { cn } from '@repo/ui/utils/cn';
-import { useState, Suspense, useEffect } from 'react';
+import { useState, Suspense, useEffect, useMemo, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import JobCard from '@/features/opportunities/components/JobCard';
@@ -13,298 +14,165 @@ import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
+import IdentificationIcon from '@heroicons/react/24/outline/IdentificationIcon';
+import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
+import KeyIcon from '@heroicons/react/24/outline/KeyIcon';
+import TrophyIcon from '@heroicons/react/24/outline/TrophyIcon';
+import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
+import DevicePhoneMobileIcon from '@heroicons/react/24/outline/DevicePhoneMobileIcon';
+import StarIcon from '@heroicons/react/24/solid/StarIcon';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { FeedPageSkeleton, SkeletonJobCard } from '@/components/ui/Skeleton';
 import { useOpportunitiesFeed } from '@/features/opportunities/controller';
 import { useAuth } from '@/features/auth';
 import { FilterDropdownBar, type FilterBarFilters } from '@/features/opportunities/components/FilterDropdownBar';
+import {
+    GovtPhaseTabs,
+    GovtCategoryFilter as GovtCategoryFilterComponent,
+    GOVT_PHASE_STATUSES,
+    GOVT_CATEGORIES,
+    jobMatchesCategory,
+    type GovtPhaseFilter,
+    type GovtCategoryFilter,
+} from '@/features/opportunities/components/GovtPhaseTabs';
 import dynamic from 'next/dynamic';
 
-const MobileFilterDrawer = dynamic(() => import('@/features/opportunities/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer));
+const MobileFilterDrawer = dynamic(() =>
+    import('@/features/opportunities/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer)
+);
+
+// ─── Config ──────────────────────────────────────────────────────────────────
 
 const CATEGORY_CONFIG = {
-    JOB: {
-        title: 'Jobs for Freshers',
-        subtitle: 'Full-time opportunities across India',
-        icon: BriefcaseIcon,
-    },
-    INTERNSHIP: {
-        title: 'Internships',
-        subtitle: 'Kickstart your career with hands-on experience',
-        icon: AcademicCapIcon,
-    },
-    WALKIN: {
-        title: 'Walk-in Drives',
-        subtitle: 'Direct interview opportunities near you',
-        icon: UserGroupIcon,
-    },
-    REMOTE: {
-        title: 'Remote Opportunities',
-        subtitle: 'Fresh roles you can pursue from anywhere',
-        icon: BriefcaseIcon,
-    },
-    GOVERNMENT: {
-        title: 'Government Jobs',
-        subtitle: 'Official notices and public-sector openings',
-        icon: ShieldCheckIcon,
-    },
-    HACKATHONS: {
-        title: 'Hackathons',
-        subtitle: 'Competitions, challenges, and builder programs',
-        icon: AcademicCapIcon,
-    },
-} satisfies Record<OpportunityType, {
-    title: string;
-    subtitle: string;
-    icon: typeof BriefcaseIcon;
-}>;
+    JOB:        { title: 'Jobs for Freshers',          subtitle: 'Full-time opportunities across India',            icon: BriefcaseIcon },
+    INTERNSHIP: { title: 'Internships',                subtitle: 'Kickstart your career with hands-on experience',  icon: AcademicCapIcon },
+    WALKIN:     { title: 'Walk-in Drives',             subtitle: 'Direct interview opportunities near you',         icon: UserGroupIcon },
+    REMOTE:     { title: 'Remote Opportunities',       subtitle: 'Fresh roles you can pursue from anywhere',        icon: BriefcaseIcon },
+    GOVERNMENT: { title: 'Government Jobs',            subtitle: 'Official notices and public-sector openings',     icon: ShieldCheckIcon },
+    HACKATHONS: { title: 'Hackathons',                 subtitle: 'Competitions, challenges, and builder programs',  icon: AcademicCapIcon },
+} satisfies Record<OpportunityType, { title: string; subtitle: string; icon: typeof BriefcaseIcon }>;
 
-interface CategoryPageProps {
-    type: OpportunityType;
-    initialData?: {
-        opportunities: Opportunity[];
-        total: number;
-        cachedAt?: number;
-    } | null;
-}
+// Phase groups displayed in "What's Happening Now" layout
+const PHASE_GROUPS: { key: GovtPhaseFilter; label: string; Icon: React.ComponentType<React.SVGProps<SVGSVGElement>>; urgency: 'high' | 'medium' | 'normal' }[] = [
+    { key: 'ADMIT_CARD', label: 'Admit Card Out',      Icon: IdentificationIcon, urgency: 'high' },
+    { key: 'APPLY_NOW',  label: 'Apply Now',           Icon: CheckCircleIcon,    urgency: 'high' },
+    { key: 'ANSWER_KEY', label: 'Answer Key Released', Icon: KeyIcon,            urgency: 'medium' },
+    { key: 'RESULT',     label: 'Result Declared',     Icon: TrophyIcon,         urgency: 'medium' },
+    { key: 'UPCOMING',   label: 'Coming Soon',         Icon: ClockIcon,          urgency: 'normal' },
+];
 
-function CategoryPageContent({ type, initialData }: CategoryPageProps) {
-    const { user } = useAuth();
-    const config = CATEGORY_CONFIG[type];
-    const IconComponent = config.icon;
+// Ticker tag styles per applicationStatus
+const TICKER_TAG_MAP: Record<string, { tag: string; color: string }> = {
+    ADMIT_CARD_RELEASED: { tag: 'Admit Card', color: 'bg-violet-500/20 text-violet-300' },
+    RESULT_DECLARED:     { tag: 'Result Out', color: 'bg-emerald-500/20 text-emerald-300' },
+    ANSWER_KEY_RELEASED: { tag: 'Answer Key', color: 'bg-amber-500/20 text-amber-300' },
+    OPEN:                { tag: 'Apply Now',  color: 'bg-sky-500/20 text-sky-300' },
+};
 
-    const [search, setSearch] = useState('');
-    const [filters, setFilters] = useState<FilterBarFilters>({
-        location: null,
-        salary: null,
-        year: null,
-        closingSoon: false,
-        saved: false,
-    });
+// ─── Sub-components ───────────────────────────────────────────────────────────
 
-    // Mobile draft state
-    const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
-    const [draftLoc, setDraftLoc] = useState<string | null>(null);
-    const [draftYear, setDraftYear] = useState<number | null>(null);
-    const [draftClosingSoon, setDraftClosingSoon] = useState(false);
-    const [draftShowOnlySaved, setDraftShowOnlySaved] = useState(false);
-    const [draftMinSalary, setDraftMinSalary] = useState<number | null>(null);
-
-    const mobileActiveCount =
-        (filters.location ? 1 : 0) +
-        (filters.closingSoon ? 1 : 0) +
-        (filters.saved ? 1 : 0) +
-        (filters.salary ? 1 : 0) +
-        (filters.year ? 1 : 0);
-
-    const [mounted, setMounted] = useState(false);
-    useEffect(() => {
-         
-        setMounted(true);
-    }, []);
-
-    const {
-        filteredOpps,
-        totalCount,
-        isLoading,
-        error,
-        profileIncomplete,
-        toggleSave,
-        reload,
-    } = useOpportunitiesFeed({
-        type,
-        selectedLoc: filters.location,
-        showOnlySaved: filters.saved,
-        closingSoon: filters.closingSoon,
-        minSalary: filters.salary,
-        selectedYear: filters.year,
-        search,
-        initialData,
-    });
-
-    const isJobSaved = (opp: Opportunity) => opp.isSaved || false;
-    const isJobApplied = (opp: Opportunity) => opp.actions && opp.actions.length > 0;
-
-    const openMobileFilters = () => {
-        setDraftLoc(filters.location);
-        setDraftYear(filters.year);
-        setDraftClosingSoon(filters.closingSoon);
-        setDraftShowOnlySaved(filters.saved);
-        setDraftMinSalary(filters.salary);
-        setIsMobileFilterOpen(true);
-    };
-
-    const applyMobileFilters = () => {
-        setFilters({
-            location: draftLoc,
-            salary: draftMinSalary,
-            year: draftYear,
-            closingSoon: draftClosingSoon,
-            saved: draftShowOnlySaved,
-        });
-        setIsMobileFilterOpen(false);
-    };
-
-    const clearAll = () => {
-        setSearch('');
-        setFilters({ location: null, salary: null, year: null, closingSoon: false, saved: false });
-    };
-
+function LiveTicker({ items }: { items: { label: string; href: string; tag: string; tagColor: string }[] }) {
+    if (items.length === 0) return null;
+    const doubled = [...items, ...items];
     return (
-        <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pb-12 md:pb-20 space-y-6 md:space-y-6">
-
-            {/* Header / Title & Search row */}
-            <div className="flex flex-col gap-4 pb-4">
-                {/* Top Row: Icon + Title left-aligned, results on Right */}
-                <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-2 shrink-0">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted/60 border border-border">
-                            <IconComponent className="w-4 h-4 text-foreground" />
-                        </div>
-                        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
-                            {config.title}
-                        </h1>
-                    </div>
-
-                    {/* Results count & view all badge on the far right */}
-                    <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
-                        <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full border border-border capitalize tracking-wider">
-                            {mounted ? filteredOpps.length : 0} results
-                        </span>
-                        <Link href="/opportunities" className="text-[10px] font-semibold text-primary hover:underline capitalize tracking-widest">
-                            View all
+        <div className="flex items-stretch bg-foreground text-background overflow-hidden rounded-xl text-xs font-semibold select-none">
+            <div className="shrink-0 flex items-center gap-1.5 px-3 py-2 bg-primary text-primary-foreground font-bold uppercase tracking-wider text-[10px] whitespace-nowrap">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary-foreground animate-pulse" />
+                LIVE
+            </div>
+            <div className="overflow-hidden flex-1 min-w-0">
+                <div
+                    className="flex items-center whitespace-nowrap"
+                    style={{ animation: `ticker ${Math.max(items.length * 7, 24)}s linear infinite` }}
+                >
+                    {doubled.map((item, i) => (
+                        <Link
+                            key={i}
+                            href={item.href}
+                            className="inline-flex items-center gap-2 px-4 py-2 hover:bg-background/10 transition-colors shrink-0"
+                        >
+                            <span className={cn('text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider', item.tagColor)}>
+                                {item.tag}
+                            </span>
+                            <span className="text-background/90 text-xs">{item.label}</span>
                         </Link>
-                    </div>
-                </div>
-
-                {/* Filter buttons on left row + Search Bar right next to them */}
-                <div className="flex gap-2.5 items-center justify-between flex-wrap pt-1">
-                    <div className="flex items-center gap-3 flex-wrap w-full lg:w-auto">
-                        <div className="flex items-center gap-2 w-full lg:w-auto flex-1 lg:flex-none">
-                            {/* Search box right next to the dropdown filters */}
-                            <div className="relative flex-1 lg:w-96 group">
-                                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
-                                <Input
-                                    type="text"
-                                    placeholder="Search by role or company..."
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
-                                />
-                                {search && (
-                                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                                        <XMarkIcon className="w-4 h-4" />
-                                    </button>
-                                )}
-                            </div>
-
-                            {/* Mobile filter button next to search */}
-                            <button
-                                onClick={openMobileFilters}
-                                className="lg:hidden h-10 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0"
-                            >
-                                <FunnelIcon className="w-4 h-4" />
-                                {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
-                            </button>
-                        </div>
-
-                        {/* Desktop filter chips */}
-                        <FilterDropdownBar
-                            filters={filters}
-                            setFilters={setFilters}
-                            isLoggedIn={!!user}
-                        />
-                    </div>
+                    ))}
                 </div>
             </div>
+        </div>
+    );
+}
 
-            {/* Mobile drawer */}
-            <MobileFilterDrawer
-                isOpen={isMobileFilterOpen}
-                onClose={() => setIsMobileFilterOpen(false)}
-                draftLoc={draftLoc}
-                setDraftLoc={setDraftLoc}
-                draftYear={draftYear}
-                setDraftYear={setDraftYear}
-                draftClosingSoon={draftClosingSoon}
-                setDraftClosingSoon={setDraftClosingSoon}
-                draftShowOnlySaved={draftShowOnlySaved}
-                setDraftShowOnlySaved={setDraftShowOnlySaved}
-                draftMinSalary={draftMinSalary}
-                setDraftMinSalary={setDraftMinSalary}
-                isLoggedIn={!!user}
-                onApply={applyMobileFilters}
-                onClear={() => {
-                    setDraftLoc(null);
-                    setDraftYear(null);
-                    setDraftClosingSoon(false);
-                    setDraftShowOnlySaved(false);
-                    setDraftMinSalary(null);
-                }}
-            />
+function GroupedGovtView({
+    opps,
+    govtCategory,
+    isJobSaved,
+    isJobApplied,
+    toggleSave,
+    user,
+    onSelectPhase,
+}: {
+    opps: Opportunity[];
+    govtCategory: GovtCategoryFilter;
+    isJobSaved: (o: Opportunity) => boolean;
+    isJobApplied: (o: Opportunity) => boolean;
+    toggleSave: (id: string) => void;
+    user: any;
+    onSelectPhase: (phase: GovtPhaseFilter) => void;
+}) {
+    const groups = PHASE_GROUPS.map(group => {
+        const statuses = GOVT_PHASE_STATUSES[group.key];
+        const items = opps.filter(o => {
+            const s = (o.governmentJobDetails as any)?.applicationStatus;
+            if (!s || !statuses.includes(s)) return false;
+            if (govtCategory !== null && !jobMatchesCategory(o.governmentJobDetails, govtCategory)) return false;
+            return true;
+        });
+        return { ...group, items };
+    }).filter(g => g.items.length > 0);
 
-            {/* Full-width grid */}
-            {profileIncomplete ? (
-                <div className="p-12 md:p-20 text-center rounded-2xl border border-border bg-card">
-                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
-                        <ShieldCheckIcon className="w-8 h-8 text-primary" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-foreground tracking-tight mb-2">Profile Readiness Required</h3>
-                    <div className="max-w-md mx-auto space-y-6">
-                        <p className="text-sm font-medium text-muted-foreground leading-relaxed">
-                            {profileIncomplete.message}
-                        </p>
-                        <div className="bg-muted/50 p-6 rounded-xl border border-border">
-                            <div className="flex items-center justify-center gap-6">
-                                <div className="text-center">
-                                    <div className="text-3xl font-bold text-primary">{profileIncomplete.percentage}%</div>
-                                    <div className="text-[10px] text-muted-foreground font-bold capitalize tracking-[0.15em] mt-1">Current</div>
-                                </div>
-                                <div className="w-px h-10 bg-border" />
-                                <div className="text-center">
-                                    <div className="text-3xl font-bold text-foreground">100%</div>
-                                    <div className="text-[10px] text-muted-foreground font-bold capitalize tracking-[0.15em] mt-1">Goal</div>
-                                </div>
-                            </div>
+    if (groups.length === 0) return (
+        <div className="p-20 text-center rounded-2xl border border-dashed border-border bg-card">
+            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
+                <MagnifyingGlassIcon className="w-6 h-6" />
+            </div>
+            <h3 className="text-lg font-bold text-foreground tracking-tight">No government jobs yet</h3>
+            <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">
+                Check back soon — new notifications are added regularly.
+            </p>
+        </div>
+    );
+
+    return (
+        <div className="space-y-8">
+            {groups.map(group => (
+                <div key={group.key} className="space-y-3">
+                    {/* Group header */}
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                            <group.Icon className="w-5 h-5 text-current" />
+                            <h2 className="text-sm font-bold text-foreground tracking-tight">{group.label}</h2>
+                            <span className={cn(
+                                'text-[9px] font-bold px-2 py-0.5 rounded-full border',
+                                group.urgency === 'high'   ? 'bg-destructive/10 text-destructive border-destructive/20' :
+                                group.urgency === 'medium' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                                                             'bg-muted text-muted-foreground border-border'
+                            )}>
+                                {group.items.length} exam{group.items.length !== 1 ? 's' : ''}
+                            </span>
                         </div>
-                        <Button asChild className="h-12 px-8 text-sm font-bold capitalize tracking-widest">
-                            <Link href="/profile">
-                                Complete Profile
-                                <ChevronRightIcon className="w-4 h-4 ml-2" />
-                            </Link>
-                        </Button>
+                        <button
+                            onClick={() => onSelectPhase(group.key)}
+                            className="text-[10px] font-semibold text-primary hover:underline flex items-center gap-0.5"
+                        >
+                            View all <ChevronRightIcon className="w-3 h-3" />
+                        </button>
                     </div>
-                </div>
-            ) : isLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-                    {[1, 2, 3, 4, 5, 6].map((item) => <SkeletonJobCard key={item} />)}
-                </div>
-            ) : error ? (
-                <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card">
-                    <h3 className="text-lg font-bold text-foreground tracking-tight">Feed unavailable</h3>
-                    <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">{error}</p>
-                    <Button variant="outline" onClick={() => reload()} className="mt-6 h-10 px-6 text-xs font-bold capitalize tracking-widest">
-                        Retry
-                    </Button>
-                </div>
-            ) : filteredOpps.length === 0 ? (
-                <div className="p-20 text-center rounded-2xl border border-dashed border-border bg-card">
-                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
-                        <MagnifyingGlassIcon className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-lg font-bold text-foreground tracking-tight">No results found</h3>
-                    <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">
-                        Try adjusting your filters or search keywords.
-                    </p>
-                    <Button variant="outline" onClick={clearAll} className="mt-6 h-11 px-6 text-sm font-bold capitalize tracking-widest">
-                        Clear filters
-                    </Button>
-                </div>
-            ) : (
-                <div className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-4 md:gap-6">
-                        {filteredOpps.map((opp) => (
+
+                    {/* Cards — max 4 visible */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {group.items.slice(0, 4).map(opp => (
                             <JobCard
                                 key={opp.id}
                                 job={{
@@ -322,51 +190,364 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                             />
                         ))}
                     </div>
-                </div>
-            )
-            }
 
-            {/* Category FAQ / Info Guide for Search Engines and Users (Soft 404 Prevention) */}
+                    {group.items.length > 4 && (
+                        <button
+                            onClick={() => onSelectPhase(group.key)}
+                            className="w-full h-10 text-xs font-semibold text-muted-foreground border border-dashed border-border rounded-xl hover:border-foreground/30 hover:text-foreground transition-colors"
+                        >
+                            + {group.items.length - 4} more in {group.label}
+                        </button>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+interface CategoryPageProps {
+    type: OpportunityType;
+    initialData?: { opportunities: Opportunity[]; total: number; cachedAt?: number } | null;
+}
+
+function CategoryPageContent({ type, initialData }: CategoryPageProps) {
+    const { user } = useAuth();
+    const config = CATEGORY_CONFIG[type];
+    const IconComponent = config.icon;
+
+    const searchParams = useSearchParams();
+    
+    const [search, setSearch]             = useState(searchParams?.get('q') || '');
+    const [govtPhase, setGovtPhase]       = useState<GovtPhaseFilter>('ALL');
+    const [govtCategory, setGovtCategory] = useState<GovtCategoryFilter>((searchParams?.get('category') as GovtCategoryFilter) || null);
+    const [filters, setFilters]           = useState<FilterBarFilters>({
+        location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null,
+    });
+    const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
+    const [draftLoc, setDraftLoc]                     = useState<string | null>(null);
+    const [draftYear, setDraftYear]                   = useState<number | null>(null);
+    const [draftClosingSoon, setDraftClosingSoon]     = useState(false);
+    const [draftShowOnlySaved, setDraftShowOnlySaved] = useState(false);
+    const [draftSector, setDraftSector]               = useState<string | null>(null);
+    const [draftQualification, setDraftQualification] = useState<string | null>(null);
+    const [draftCourse, setDraftCourse]               = useState<string | null>(null);
+    const [mounted, setMounted]                       = useState(false);
+
+    useEffect(() => { setMounted(true); }, []);
+
+    const mobileActiveCount =
+        (filters.location ? 1 : 0) + (filters.closingSoon ? 1 : 0) + (filters.saved ? 1 : 0) +
+        (filters.sector ? 1 : 0) + (filters.qualification ? 1 : 0) + (filters.course ? 1 : 0) + (filters.year ? 1 : 0);
+
+    const { filteredOpps, isLoading, error, profileIncomplete, toggleSave, reload } = useOpportunitiesFeed({
+        type,
+        selectedLoc: filters.location,
+        showOnlySaved: filters.saved,
+        closingSoon: filters.closingSoon,
+        sector: filters.sector,
+        qualification: filters.qualification,
+        course: filters.course,
+        selectedYear: filters.year,
+        search,
+        initialData,
+    });
+
+    const phaseCounts = useMemo(() => {
+        if (type !== OpportunityType.GOVERNMENT) return undefined;
+        const counts: Partial<Record<GovtPhaseFilter, number>> = {};
+        for (const [phase, statuses] of Object.entries(GOVT_PHASE_STATUSES)) {
+            const key = phase as GovtPhaseFilter;
+            counts[key] = key === 'ALL'
+                ? filteredOpps.length
+                : filteredOpps.filter(o => { const s = (o.governmentJobDetails as any)?.applicationStatus; return s && statuses.includes(s); }).length;
+        }
+        return counts;
+    }, [filteredOpps, type]);
+
+    const categoryCounts = useMemo(() => {
+        if (type !== OpportunityType.GOVERNMENT) return undefined;
+        const counts: Record<string, number> = {};
+        for (const { label } of GOVT_CATEGORIES) {
+            counts[label] = filteredOpps.filter(o => jobMatchesCategory(o.governmentJobDetails, label)).length;
+        }
+        return counts;
+    }, [filteredOpps, type]);
+
+    const tickerItems = useMemo(() => {
+        if (type !== OpportunityType.GOVERNMENT) return [];
+        const urgentStatuses = Object.keys(TICKER_TAG_MAP);
+        return filteredOpps
+            .filter(o => { const s = (o.governmentJobDetails as any)?.applicationStatus; return s && urgentStatuses.includes(s); })
+            .slice(0, 14)
+            .map(o => {
+                const s = (o.governmentJobDetails as any)?.applicationStatus as string;
+                const meta = TICKER_TAG_MAP[s] ?? { tag: s, color: 'bg-muted text-muted-foreground' };
+                return { label: o.title, href: `/${o.slug}`, tag: meta.tag, tagColor: meta.color };
+            });
+    }, [filteredOpps, type]);
+
+    const visibleOpps = filteredOpps.filter(opp => {
+        if (filters.saved) return true;
+        if (type !== OpportunityType.GOVERNMENT && opp.expiresAt && new Date(opp.expiresAt) < new Date()) return false;
+        if (type === OpportunityType.GOVERNMENT && govtPhase !== 'ALL') {
+            const s = (opp.governmentJobDetails as any)?.applicationStatus;
+            if (!s || !GOVT_PHASE_STATUSES[govtPhase].includes(s)) return false;
+        }
+        if (type === OpportunityType.GOVERNMENT && govtCategory !== null) {
+            if (!jobMatchesCategory(opp.governmentJobDetails, govtCategory)) return false;
+        }
+        return true;
+    });
+
+    // Show grouped layout when on govt + All phase + no search/saved filter
+    const showGroupedView = type === OpportunityType.GOVERNMENT && govtPhase === 'ALL' && !search && !filters.saved;
+
+    const isJobSaved    = (opp: Opportunity) => opp.isSaved || false;
+    const isJobApplied  = (opp: Opportunity) => !!(opp.actions && opp.actions.length > 0);
+
+    const openMobileFilters = () => {
+        setDraftLoc(filters.location); setDraftYear(filters.year); setDraftClosingSoon(filters.closingSoon);
+        setDraftShowOnlySaved(filters.saved); setDraftSector(filters.sector);
+        setDraftQualification(filters.qualification); setDraftCourse(filters.course);
+        setIsMobileFilterOpen(true);
+    };
+
+    const applyMobileFilters = () => {
+        setFilters({ location: draftLoc, year: draftYear, closingSoon: draftClosingSoon, saved: draftShowOnlySaved, sector: draftSector, qualification: draftQualification, course: draftCourse });
+        setIsMobileFilterOpen(false);
+    };
+
+    const clearAll = () => {
+        setSearch('');
+        setFilters({ location: null, year: null, closingSoon: false, saved: false, sector: null, qualification: null, course: null });
+    };
+
+    return (
+        <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pb-12 md:pb-20 space-y-4">
+
+            {/* Live Ticker — govt only */}
+            {type === OpportunityType.GOVERNMENT && mounted && tickerItems.length > 0 && (
+                <LiveTicker items={tickerItems} />
+            )}
+
+            {/* Header */}
+            <div className="flex flex-col gap-3">
+                <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
+                    <div className="flex items-center gap-2 shrink-0">
+                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted/60 border border-border">
+                            <IconComponent className="w-4 h-4 text-foreground" />
+                        </div>
+                        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
+                            {config.title}
+                        </h1>
+                        {type === OpportunityType.GOVERNMENT && govtPhase !== 'ALL' && (
+                            <span className="text-xs font-semibold text-muted-foreground hidden sm:block">
+                                — {PHASE_GROUPS.find(p => p.key === govtPhase)?.label}
+                            </span>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
+                        <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full border border-border capitalize tracking-wider">
+                            {mounted ? visibleOpps.length : 0} results
+                        </span>
+                        {type !== OpportunityType.GOVERNMENT && (
+                            <Link href="/opportunities" className="text-[10px] font-semibold text-primary hover:underline capitalize tracking-widest">
+                                View all
+                            </Link>
+                        )}
+                    </div>
+                </div>
+
+                {/* Phase + Category tabs — govt only */}
+                {type === OpportunityType.GOVERNMENT && (
+                    <div className="space-y-2">
+                        <GovtPhaseTabs
+                            active={govtPhase}
+                            onChange={phase => { setGovtPhase(phase); setGovtCategory(null); }}
+                            counts={phaseCounts}
+                        />
+                        <GovtCategoryFilterComponent
+                            active={govtCategory}
+                            onChange={setGovtCategory}
+                            counts={categoryCounts}
+                        />
+                    </div>
+                )}
+
+                {/* Search + filters */}
+                <div className="flex gap-2.5 items-center justify-between flex-wrap">
+                    <div className="flex items-center gap-3 flex-wrap w-full lg:w-auto">
+                        <div className="flex items-center gap-2 w-full lg:w-auto flex-1 lg:flex-none">
+                            <div className="relative flex-1 lg:w-96 group">
+                                <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                <Input
+                                    type="text"
+                                    placeholder="Search by role or company..."
+                                    value={search}
+                                    onChange={e => setSearch(e.target.value)}
+                                    className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
+                                />
+                                {search && (
+                                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                                        <XMarkIcon className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                            <button
+                                onClick={openMobileFilters}
+                                className="lg:hidden h-10 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0"
+                            >
+                                <FunnelIcon className="w-4 h-4" />
+                                {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
+                            </button>
+                        </div>
+                        <FilterDropdownBar filters={filters} setFilters={setFilters} isLoggedIn={!!user} pageType={type} />
+                    </div>
+                </div>
+            </div>
+
+            {/* Mobile filter drawer */}
+            <MobileFilterDrawer
+                isOpen={isMobileFilterOpen}
+                onClose={() => setIsMobileFilterOpen(false)}
+                draftLoc={draftLoc} setDraftLoc={setDraftLoc}
+                draftYear={draftYear} setDraftYear={setDraftYear}
+                draftClosingSoon={draftClosingSoon} setDraftClosingSoon={setDraftClosingSoon}
+                draftShowOnlySaved={draftShowOnlySaved} setDraftShowOnlySaved={setDraftShowOnlySaved}
+                draftSector={draftSector} setDraftSector={setDraftSector}
+                draftQualification={draftQualification} setDraftQualification={setDraftQualification}
+                draftCourse={draftCourse} setDraftCourse={setDraftCourse}
+                isLoggedIn={!!user}
+                pageType={type}
+                onApply={applyMobileFilters}
+                onClear={() => {
+                    setDraftLoc(null); setDraftYear(null); setDraftClosingSoon(false);
+                    setDraftShowOnlySaved(false); setDraftSector(null);
+                    setDraftQualification(null); setDraftCourse(null);
+                }}
+            />
+
+            {/* Content area */}
+            {profileIncomplete ? (
+                <div className="p-12 md:p-20 text-center rounded-2xl border border-border bg-card">
+                    <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <ShieldCheckIcon className="w-8 h-8 text-primary" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-foreground tracking-tight mb-2">Profile Readiness Required</h3>
+                    <div className="max-w-md mx-auto space-y-6">
+                        <p className="text-sm font-medium text-muted-foreground leading-relaxed">{profileIncomplete.message}</p>
+                        <div className="bg-muted/50 p-6 rounded-xl border border-border">
+                            <div className="flex items-center justify-center gap-6">
+                                <div className="text-center">
+                                    <div className="text-3xl font-bold text-primary">{profileIncomplete.percentage}%</div>
+                                    <div className="text-[10px] text-muted-foreground font-bold capitalize tracking-[0.15em] mt-1">Current</div>
+                                </div>
+                                <div className="w-px h-10 bg-border" />
+                                <div className="text-center">
+                                    <div className="text-3xl font-bold text-foreground">100%</div>
+                                    <div className="text-[10px] text-muted-foreground font-bold capitalize tracking-[0.15em] mt-1">Goal</div>
+                                </div>
+                            </div>
+                        </div>
+                        <Button asChild className="h-12 px-8 text-sm font-bold capitalize tracking-widest">
+                            <Link href="/profile">Complete Profile <ChevronRightIcon className="w-4 h-4 ml-2" /></Link>
+                        </Button>
+                    </div>
+                </div>
+            ) : isLoading ? (
+                <div className={cn('grid gap-4 md:gap-6', type === OpportunityType.GOVERNMENT ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3')}>
+                    {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} />)}
+                </div>
+            ) : error ? (
+                <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card">
+                    <h3 className="text-lg font-bold text-foreground tracking-tight">Feed unavailable</h3>
+                    <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">{error}</p>
+                    <Button variant="outline" onClick={reload} className="mt-6 h-10 px-6 text-xs font-bold capitalize tracking-widest">Retry</Button>
+                </div>
+            ) : showGroupedView ? (
+                // ── "What's Happening Now" grouped layout ──────────────────────
+                <div className="space-y-2">
+                    {mounted && (
+                        <GroupedGovtView
+                            opps={filteredOpps}
+                            govtCategory={govtCategory}
+                            isJobSaved={isJobSaved}
+                            isJobApplied={isJobApplied}
+                            toggleSave={toggleSave}
+                            user={user}
+                            onSelectPhase={phase => setGovtPhase(phase)}
+                        />
+                    )}
+                </div>
+            ) : visibleOpps.length === 0 ? (
+                <div className="p-20 text-center rounded-2xl border border-dashed border-border bg-card">
+                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
+                        <MagnifyingGlassIcon className="w-6 h-6" />
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground tracking-tight">No results found</h3>
+                    <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">Try adjusting your filters or search keywords.</p>
+                    <Button variant="outline" onClick={clearAll} className="mt-6 h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear filters</Button>
+                </div>
+            ) : (
+                // ── Flat grid (filtered by phase / search) ─────────────────────
+                <div className={cn('grid gap-4 md:gap-6', type === OpportunityType.GOVERNMENT ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3')}>
+                    {visibleOpps.map(opp => (
+                        <JobCard
+                            key={opp.id}
+                            job={{ ...opp, normalizedRole: opp.title, salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined }}
+                            jobId={opp.id}
+                            isSaved={isJobSaved(opp)}
+                            isApplied={isJobApplied(opp)}
+                            onToggleSave={() => toggleSave(opp.id)}
+                            isAdmin={user?.role === 'ADMIN'}
+                        />
+                    ))}
+                </div>
+            )}
+
+            {/* Footer info / SEO blurb */}
             <div className="mt-16 pt-8 border-t border-border/50 space-y-6 max-w-3xl">
-                <h2 className="text-sm font-bold text-foreground tracking-tight uppercase tracking-wider">
-                    {type === OpportunityType.WALKIN 
-                        ? 'About Walk-in Interview Drives' 
-                        : type === OpportunityType.INTERNSHIP 
-                        ? 'About Fresher Internships' 
-                        : 'About Fresher Jobs'}
+                <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">
+                    {type === OpportunityType.WALKIN ? 'About Walk-in Interview Drives'
+                    : type === OpportunityType.INTERNSHIP ? 'About Fresher Internships'
+                    : type === OpportunityType.GOVERNMENT ? 'About Government Jobs'
+                    : 'About Fresher Jobs'}
                 </h2>
                 <p className="text-xs text-muted-foreground leading-relaxed">
                     {type === OpportunityType.WALKIN
-                        ? 'Walk-in interview drives are recruitment events where candidates can directly walk in for an interview without any prior appointment or referral. These drives are excellent fast-track opportunities for freshers to get hired quickly by top employers. Be sure to carry multiple copies of your resume, academic certificates, and a valid photo ID to the venue.'
-                        : type === OpportunityType.INTERNSHIP
-                        ? 'Internships are an exceptional way for fresh graduates and college students to gain practical industry experience, build their technical portfolios, and establish strong professional connections. Many fresher internships also lead to direct full-time pre-placement offers (PPOs).'
-                        : 'Explore verified entry-level job listings and off-campus recruitment drives for fresh graduates across India. These opportunities span across multiple domains including software development, IT services, finance, marketing, and operations, designed specifically for early-career professionals.'}
+                        ? 'Walk-in interview drives are recruitment events where candidates can directly walk in for an interview without any prior appointment. Be sure to carry copies of your resume, academic certificates, and a valid photo ID.'
+                    : type === OpportunityType.INTERNSHIP
+                        ? 'Internships help fresh graduates gain practical experience, build portfolios, and establish professional connections. Many also lead to direct PPOs.'
+                    : type === OpportunityType.GOVERNMENT
+                        ? 'Explore verified official notifications and recruitment drives for Government organizations, PSUs, and Defense services. Stay updated with SSC, UPSC, Banking, and State-level commission openings.'
+                    : 'Explore verified entry-level job listings for fresh graduates across India — spanning software, IT, finance, marketing, and operations.'}
                 </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="p-4 rounded-xl bg-card border border-border/60">
                         <h3 className="text-xs font-bold text-foreground mb-1">
-                            {type === OpportunityType.WALKIN ? 'What to bring to a walk-in?' : 'How to qualify?'}
+                            {type === OpportunityType.WALKIN ? 'What to bring?' : type === OpportunityType.GOVERNMENT ? 'Who can apply?' : 'How to qualify?'}
                         </h3>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
                             {type === OpportunityType.WALKIN
-                                ? 'Ensure you carry updated copies of your CV, a copy of the official job notification, any required graduation transcripts, and dress in professional business attire.'
-                                : 'Most entry-level listings require basic domain knowledge, a strong learning attitude, and a degree in relevant fields (B.E/B.Tech, M.C.A, B.Sc, etc.).'}
+                                ? 'Updated CV, graduation transcripts, and dress professionally.'
+                            : type === OpportunityType.GOVERNMENT
+                                ? 'Eligibility depends on the specific exam. Most require a 10th/12th, Diploma, or Degree with strict age limits and category relaxations.'
+                            : 'Basic domain knowledge, a degree in a relevant field, and a strong learning attitude.'}
                         </p>
                     </div>
                     <div className="p-4 rounded-xl bg-card border border-border/60">
-                        <h3 className="text-xs font-bold text-foreground mb-1">
-                            {type === OpportunityType.WALKIN ? 'Are walk-ins free?' : 'Are these listings verified?'}
-                        </h3>
+                        <h3 className="text-xs font-bold text-foreground mb-1">Are these listings verified?</h3>
                         <p className="text-[11px] text-muted-foreground leading-relaxed">
-                            {type === OpportunityType.WALKIN
-                                ? 'Yes, all verified walk-in drives published on FresherFlow are completely free. We strictly prohibit and filter out any paid training or fraudulent recruitment events.'
-                                : 'Yes, every listing is meticulously reviewed by our team to ensure it contains active apply links, clear job descriptions, and genuine employer details.'}
+                            {type === OpportunityType.GOVERNMENT
+                                ? 'Yes, every listing is sourced directly from official government portals.'
+                                : 'Yes, every listing is reviewed to ensure active apply links and genuine employer details.'}
                         </p>
                     </div>
                 </div>
             </div>
         </div>
-
     );
 }
 

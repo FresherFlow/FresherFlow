@@ -19,6 +19,9 @@ interface UseOpportunitiesFeedOptions {
     showOnlySaved: boolean;
     closingSoon: boolean;
     search: string;
+    sector?: string | null;
+    qualification?: string | null;
+    course?: string | null;
     minSalary?: number | null;
     maxSalary?: number | null;
     initialData?: {
@@ -39,9 +42,12 @@ export function useOpportunitiesFeed({
     showOnlySaved,
     closingSoon,
     search,
+    sector,
+    qualification,
+    course,
+    initialData,
     minSalary,
-    maxSalary,
-    initialData
+    maxSalary
 }: UseOpportunitiesFeedOptions) {
     const { user, profile, isLoading: authLoading } = useAuth();
 
@@ -230,7 +236,7 @@ export function useOpportunitiesFeed({
                 setIsLoading(false);
             }
         }
-    }, [type, selectedLoc, user, authLoading, showOnlySaved, minSalary, maxSalary, closingSoon, cacheScope, normalizedSearch, shouldUseBackendSearch, initialData]);
+    }, [type, selectedLoc, user, authLoading, showOnlySaved, sector, qualification, course, closingSoon, cacheScope, normalizedSearch, shouldUseBackendSearch, initialData]);
 
     useEffect(() => {
         if (!authLoading) {
@@ -285,17 +291,24 @@ export function useOpportunitiesFeed({
                 return expiryDate >= now && expiryDate <= threeDaysFromNow;
             })();
 
-            const matchesSalary = !minSalary || 
-                (opp.salaryMax && opp.salaryMax >= minSalary) || 
-                (opp.salaryMin && opp.salaryMin >= minSalary) ||
-                (!opp.salaryMin && !opp.salaryMax); // Allow undisclosed salaries so filter isn't empty, sorted below explicit matches
+            const matchesSector = !sector || (opp.governmentJobDetails?.jobCategory || []).some(cat => 
+                cat.toLowerCase().includes(sector.toLowerCase())
+            );
+
+            const matchesQualification = !qualification || (opp.allowedDegrees || []).some(deg => 
+                deg.toLowerCase().includes(qualification.toLowerCase())
+            );
+
+            const matchesCourse = !course || 
+                (opp.allowedCourses || []).some(c => c.toLowerCase().includes(course.toLowerCase())) ||
+                (opp.allowedDegrees || []).some(d => d.toLowerCase().includes(course.toLowerCase()));
 
             const matchesYear = !selectedYear || 
                 !opp.allowedPassoutYears || 
                 opp.allowedPassoutYears.length === 0 || 
                 opp.allowedPassoutYears.map(Number).includes(Number(selectedYear));
 
-            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSalary && matchesYear;
+            return matchesSearch && matchesLoc && matchesClosingSoon && matchesSector && matchesQualification && matchesCourse && matchesYear;
         });
 
         const enriched = filtered.map((opp) => {
@@ -323,12 +336,7 @@ export function useOpportunitiesFeed({
             // Not-eligible jobs always go to the bottom
             if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
 
-            // Prioritize explicit salary matches over undisclosed ones when salary filter is active
-            if (minSalary) {
-                const hasSalaryA = a.salaryMin !== null || a.salaryMax !== null;
-                const hasSalaryB = b.salaryMin !== null || b.salaryMax !== null;
-                if (hasSalaryA !== hasSalaryB) return hasSalaryA ? -1 : 1;
-            }
+            // Removed salary sorting
 
             const bucketDiff = bucketWeight(a) - bucketWeight(b);
             if (bucketDiff !== 0) return bucketDiff;
@@ -342,7 +350,7 @@ export function useOpportunitiesFeed({
 
             return (a.id || '').localeCompare(b.id || '');
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, minSalary, maxSalary, profile, normalizedSearch]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
