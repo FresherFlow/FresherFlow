@@ -41,6 +41,7 @@ export class StaticFeedService {
     private static readonly SITEMAP_DATA_PATH = path.join(this.PUBLIC_ROOT, 'sitemap-data.json');
     private static readonly LINKS_PATH = path.join(this.PUBLIC_ROOT, 'links.min.json');
     private static readonly RESOURCES_PATH = path.join(this.PUBLIC_ROOT, 'resources-feed.json');
+    private static readonly GOVERNMENT_PATH = path.join(this.PUBLIC_ROOT, 'government-feed.json');
 
     /**
      * Slugify a string for use as a filename/path.
@@ -105,7 +106,32 @@ export class StaticFeedService {
             });
 
             const mappedOpportunities = this.mapFeedOpportunities(opportunities);
-            return { opportunities: mappedOpportunities, timestamp: Date.now(), count: opportunities.length };
+            return { opportunities: mappedOpportunities, timestamp: Date.now(), generatedAt: new Date().toISOString(), count: opportunities.length };
+        });
+    }
+
+    /**
+     * GOVERNMENT JOBS FEED (live from DB, no static file)
+     * Only returns opportunities that have a governmentJobDetails record.
+     */
+    static async generateGovernmentFeed() {
+        return this.withDbRetry(async () => {
+            const opportunities = await prisma.opportunity.findMany({
+                where: {
+                    status: OpportunityStatus.PUBLISHED,
+                    deletedAt: null,
+                    governmentJobDetails: { isNot: null },
+                    OR: [
+                        { expiresAt: null },
+                        { expiresAt: { gt: new Date() } }
+                    ]
+                },
+                orderBy: { postedAt: 'desc' },
+                select: this.getFeedSelectFields(),
+            });
+
+            const mappedOpportunities = this.mapFeedOpportunities(opportunities);
+            return { opportunities: mappedOpportunities, timestamp: Date.now(), generatedAt: new Date().toISOString(), count: opportunities.length };
         });
     }
 
@@ -129,7 +155,7 @@ export class StaticFeedService {
             });
 
             const mappedOpportunities = this.mapFeedOpportunities(opportunities);
-            return { opportunities: mappedOpportunities, timestamp: Date.now(), count: opportunities.length };
+            return { opportunities: mappedOpportunities, timestamp: Date.now(), generatedAt: new Date().toISOString(), count: opportunities.length };
         });
     }
 
@@ -177,6 +203,7 @@ export class StaticFeedService {
             // Application
             applyLink: true,
             sourceLink: true,
+            applicationDetails: true,
 
             // Timestamps
             postedAt: true,
@@ -511,7 +538,6 @@ export class StaticFeedService {
         });
     }
 
-    /* TEMPORARILY DISABLED
     static async generateResourcesFeed() {
         return this.withDbRetry(async () => {
             const resources = await prisma.sharedResource.findMany({
@@ -533,7 +559,6 @@ export class StaticFeedService {
             };
         });
     }
-    */
 
     private static async uploadToR2(key: string, body: string, contentType: string) {
         const endpoint = process.env.R2_ENDPOINT;
@@ -605,6 +630,7 @@ export class StaticFeedService {
 
             // 2. Generate data
             const bootstrap = await this.generateBootstrapFeed();
+            const government = await this.generateGovernmentFeed();
             const expired = await this.generateExpiredFeed();
             const companyShards = await this.generateCompanyShards();
             // const categoryShards = await this.generateCategoryShards();
@@ -613,12 +639,16 @@ export class StaticFeedService {
             const sitemapData = await this.generateSitemapData();
             const usernames = await this.generateTakenUsernames();
             const linksFeed = await this.generateLinksFeed();
-            // const resourcesFeed = await this.generateResourcesFeed();
+            const resourcesFeed = await this.generateResourcesFeed();
 
             // 3. Write files & upload to R2
             const bootstrapBody = JSON.stringify(bootstrap);
             fs.writeFileSync(this.BOOTSTRAP_PATH, bootstrapBody);
             await this.uploadToR2('bootstrap-feed.min.json', bootstrapBody, 'application/json');
+
+            const governmentBody = JSON.stringify(government);
+            fs.writeFileSync(this.GOVERNMENT_PATH, governmentBody);
+            await this.uploadToR2('government-feed.json', governmentBody, 'application/json');
 
             const expiredBody = JSON.stringify(expired);
             fs.writeFileSync(this.EXPIRED_FEED_PATH, expiredBody);
@@ -649,9 +679,9 @@ export class StaticFeedService {
             fs.writeFileSync(this.LINKS_PATH, linksBody);
             await this.uploadToR2('links.min.json', linksBody, 'application/json');
 
-            // const resourcesBody = JSON.stringify(resourcesFeed);
-            // fs.writeFileSync(this.RESOURCES_PATH, resourcesBody);
-            // await this.uploadToR2('resources-feed.json', resourcesBody, 'application/json');
+            const resourcesBody = JSON.stringify(resourcesFeed);
+            fs.writeFileSync(this.RESOURCES_PATH, resourcesBody);
+            await this.uploadToR2('resources-feed.json', resourcesBody, 'application/json');
 
             for (const s of companyShards) {
                 const body = JSON.stringify(s.data);

@@ -23,7 +23,9 @@ export async function updateOpportunity(id: string, data: Partial<Opportunity>, 
         updateData.status = data.status as unknown as Prisma.EnumOpportunityStatusFieldUpdateOperationsInput;
     }
 
-    if (data.companyWebsite !== undefined) {
+    if ((data as any).companyLogoUrl !== undefined) {
+        updateData.companyLogoUrl = (data as any).companyLogoUrl || null;
+    } else if (data.companyWebsite !== undefined) {
         updateData.companyLogoUrl = generateCompanyLogoUrl(data.companyWebsite);
     }
 

@@ -23,7 +23,7 @@ export async function createOpportunity(data: Partial<Opportunity>, adminId: str
     const opportunity = await prisma.opportunity.create({
         data: {
             ...(data as unknown as Prisma.OpportunityUncheckedCreateInput),
-            companyLogoUrl: generateCompanyLogoUrl(data.companyWebsite),
+            companyLogoUrl: (data as any).companyLogoUrl || generateCompanyLogoUrl(data.companyWebsite),
             id: tempId,
             slug,
             postedByUserId: adminId,

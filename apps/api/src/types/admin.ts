@@ -93,6 +93,18 @@ export interface AdminOpportunityRequest {
         syllabusUrl?: string;
         previousPapersUrl?: string;
         vacancyBreakdown?: any;
+        categoryVacancies?: any;
+        cadreDetails?: any;
+        postPreferences?: any;
+        serviceBond?: any;
+        reservationDetails?: any;
+        referenceLinks?: any;
+        cutOffMarks?: any;
+        examName?: string;
+        notificationIssuedDate?: string;
+        basicPay?: number;
+        payLevel?: string;
+        allowances?: string[];
     } | null;
     walkInDetails?: {
         date?: string;

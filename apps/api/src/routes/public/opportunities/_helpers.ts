@@ -99,6 +99,7 @@ export function buildGuestOpportunitySelect() {
         experienceMax: true,
         applyLink: true,
         sourceLink: true,
+        applicationDetails: true,
         expiresAt: true,
         postedAt: true,
         linkHealth: true,
@@ -114,6 +115,17 @@ export function buildGuestOpportunitySelect() {
                 eventDate: true,
                 title: true,
                 sourceLink: true,
+            }
+        },
+        governmentJobDetails: {
+            select: {
+                id: true,
+                recruitingBody: true,
+                governmentLevel: true,
+                vacancyCount: true,
+                applicationStatus: true,
+                applicationEndDate: true,
+                importantDates: true,
             }
         },
         user: {
@@ -159,6 +171,7 @@ export function buildPublicOpportunitySelect(userId?: string) {
         tags: true,
         applyLink: true,
         sourceLink: true,
+        applicationDetails: true,
         expiresAt: true,
         postedAt: true,
         linkHealth: true,
@@ -216,6 +229,7 @@ export function buildPublicOpportunitySelect(userId?: string) {
                 examPattern: true,
                 examStages: true,
                 importantDates: true,
+                applicationEndDate: true,
                 importantInstructions: true,
                 basicPay: true,
                 payLevel: true,

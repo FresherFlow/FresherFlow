@@ -202,8 +202,14 @@ export function buildGovernmentJobDetailsCreate(data: AdminOpportunityRequest) {
 
     // Map legacy payload fields to new Prisma schema
     const payload = {
+        department: compactString(details.department),
+        organization: compactString(details.organization),
         recruitingBody: compactString(details.recruitingBody) || compactString(details.organization) || undefined,
+        officialWebsiteUrl: compactString(details.officialWebsiteUrl),
         advertisementNumber: compactString(details.advertisementNumber),
+        postName: compactString(details.postName),
+        examName: compactString(details.examName),
+        notificationIssuedDate: compactString(details.notificationIssuedDate),
         governmentLevel: (details.governmentLevel && Object.values(GovernmentLevel).includes(details.governmentLevel as GovernmentLevel)
             ? (details.governmentLevel as GovernmentLevel)
             : 'CENTRAL' as GovernmentLevel),
@@ -227,23 +233,32 @@ export function buildGovernmentJobDetailsCreate(data: AdminOpportunityRequest) {
         feeBreakdown: details.feeBreakdown ? (details.feeBreakdown as unknown as Prisma.InputJsonValue) : undefined,
         vacancyCount: typeof details.vacancyCount === 'number' ? details.vacancyCount : undefined,
         vacancyBreakdown: (details.vacancyBreakdown || details.vacancies) ? ((details.vacancyBreakdown || details.vacancies) as unknown as Prisma.InputJsonValue) : undefined,
+        categoryVacancies: details.categoryVacancies ? (details.categoryVacancies as unknown as Prisma.InputJsonValue) : undefined,
         ageMin: typeof details.ageMin === 'number' ? details.ageMin : undefined,
         ageMax: typeof details.ageMax === 'number' ? details.ageMax : undefined,
         ageRelaxationRules: (details.ageRelaxationRules || (details.ageRelaxation ? [{ category: "General", rule: details.ageRelaxation }] : undefined)) as unknown as Prisma.InputJsonValue | undefined,
         qualificationDetails: (details.qualificationDetails || details.eligibilityDetails) ? ((details.qualificationDetails || details.eligibilityDetails) as unknown as Prisma.InputJsonValue) : undefined,
         physicalStandards: details.physicalStandards ? (details.physicalStandards as unknown as Prisma.InputJsonValue) : undefined,
+        cadreDetails: details.cadreDetails ? (details.cadreDetails as unknown as Prisma.InputJsonValue) : undefined,
+        postPreferences: details.postPreferences ? (details.postPreferences as unknown as Prisma.InputJsonValue) : undefined,
+        serviceBond: details.serviceBond ? (details.serviceBond as unknown as Prisma.InputJsonValue) : undefined,
         selectionStages: (details.selectionStages && Array.isArray(details.selectionStages)) 
             ? details.selectionStages 
             : compactStringArray(details.selectionStages),
         skillTests: details.skillTests ? (details.skillTests as unknown as Prisma.InputJsonValue) : undefined,
         examPattern: details.examPattern ? (details.examPattern as unknown as Prisma.InputJsonValue) : undefined,
-        basicPay: undefined as number | undefined,
-        payLevel: undefined as string | undefined,
+        basicPay: typeof details.basicPay === 'number' ? details.basicPay : (details.basicPay ? parseInt(String(details.basicPay), 10) : undefined),
+        payLevel: compactString(details.payLevel),
+        allowances: compactStringArray(details.allowances),
         examCenters: compactStringArray(details.examCenters),
         requiredDocuments: compactStringArray(details.requiredDocuments),
         requiredDocumentDetails: details.requiredDocumentDetails ? (details.requiredDocumentDetails as unknown as Prisma.InputJsonValue) : undefined,
+        reservationNotes: compactString(details.reservationNotes),
+        reservationDetails: details.reservationDetails ? (details.reservationDetails as unknown as Prisma.InputJsonValue) : undefined,
         applicationMode: (compactString(details.applicationMode) || (compactStringArray(details.applicationModes)?.[0] || 'ONLINE')) as string,
         importantInstructions: compactString(details.importantInstructions),
+        referenceLinks: details.referenceLinks ? (details.referenceLinks as unknown as Prisma.InputJsonValue) : undefined,
+        cutOffMarks: details.cutOffMarks ? (details.cutOffMarks as unknown as Prisma.InputJsonValue) : undefined,
         notificationPdfUrl: compactString(details.notificationPdfUrl),
         officialNotificationUrl: compactString(details.officialNotificationUrl),
         admitCardUrl: compactString(details.admitCardUrl),
@@ -257,23 +272,11 @@ export function buildGovernmentJobDetailsCreate(data: AdminOpportunityRequest) {
         jobCategory: details.jobCategory || [],
         extraMetadata: (details.extraMetadata && typeof details.extraMetadata === 'object'
             ? {
-                department: details.department,
-                postName: details.postName,
-                reservationNotes: details.reservationNotes,
-                requiredDocuments: details.requiredDocuments,
-                requiredDocumentDetails: details.requiredDocumentDetails,
                 seoTags: details.seoTags,
-                officialWebsiteUrl: details.officialWebsiteUrl,
                 ...(details.extraMetadata as Record<string, unknown>)
               }
             : {
-                department: details.department,
-                postName: details.postName,
-                reservationNotes: details.reservationNotes,
-                requiredDocuments: details.requiredDocuments,
-                requiredDocumentDetails: details.requiredDocumentDetails,
                 seoTags: details.seoTags,
-                officialWebsiteUrl: details.officialWebsiteUrl
             }) as unknown as Prisma.InputJsonValue,
     };
 

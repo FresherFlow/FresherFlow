@@ -20,13 +20,21 @@ router.get('/', async (req: Request, res: Response, next: NextFunction) => {
         const cached = adminCache.get(cacheKey);
         if (cached) return res.json(cached);
 
-        const { type, status, includeCounts, includeWalkInDetails, limit, offset, cursor, page, q, sort, linkHealth, activeOnly } = req.query;
+        const { type, status, includeCounts, includeWalkInDetails, limit, offset, cursor, page, q, sort, linkHealth, activeOnly, sector } = req.query;
         const where: Prisma.OpportunityWhereInput = {};
         const andFilters: Prisma.OpportunityWhereInput[] = [];
         const now = new Date();
 
         const normalizedType = typeof type === 'string' ? normalizeTypeParam(type) : undefined;
         if (normalizedType) where.type = normalizedType as unknown as DbOpportunityType;
+
+        if (typeof sector === 'string' && sector) {
+            if (sector === 'GOVERNMENT') {
+                where.governmentJobDetails = { isNot: null };
+            } else if (sector === 'PRIVATE') {
+                where.governmentJobDetails = null;
+            }
+        }
 
         const statusFilter = typeof status === 'string' ? parseAdminStatusFilter(status) : undefined;
         if (statusFilter === 'EXPIRED') {
