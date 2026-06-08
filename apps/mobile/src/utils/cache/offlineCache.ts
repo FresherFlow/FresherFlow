@@ -1,25 +1,31 @@
 import { Opportunity } from '@fresherflow/types';
 import { getCompanyDomain } from '@fresherflow/utils';
 import { getJSON, getString, setJSON, setString, remove, storage } from '../storage';
+import { useSectorStore } from '@/store/useSectorStore';
+import { getSectorKey, JobSector } from '../storage/scopedKeys';
 
-const FEED_INDEX_KEY = 'fresherflow_feed_index';
-const JOB_PREFIX = 'fresherflow_job_';
-const SHARES_CACHE_KEY = 'fresherflow_shares_cache';
-const COMPANIES_CACHE_KEY = 'fresherflow_companies_cache';
-const ALERTS_CACHE_KEY = 'fresherflow_alerts_cache';
-const DETAIL_CACHE_PREFIX = 'fresherflow_detail_cache_';
-const COMPANY_JOBS_CACHE_PREFIX = 'fresherflow_company_jobs_cache_';
-const LAST_SYNC_KEY = 'fresherflow_last_sync_timestamp';
-const TRACKER_CACHE_KEY = 'fresherflow_tracker_cache';
-const CONTRIBUTIONS_CACHE_KEY = 'fresherflow_contributions_cache';
-const INVITES_CACHE_KEY = 'fresherflow_invites_cache';
+const getActiveSector = (): JobSector => useSectorStore.getState().sector || 'PRIVATE';
+
+const getFEED_INDEX_KEY = (sector?: JobSector) => getSectorKey('fresherflow_feed_index', sector || getActiveSector());
+const getJOB_PREFIX = (sector?: JobSector) => getSectorKey('fresherflow_job_', sector || getActiveSector());
+const getSHARES_CACHE_KEY = () => getSectorKey('fresherflow_shares_cache', getActiveSector());
+const getCOMPANIES_CACHE_KEY = () => getSectorKey('fresherflow_companies_cache', getActiveSector());
+const getALERTS_CACHE_KEY = () => getSectorKey('fresherflow_alerts_cache', getActiveSector());
+const getDETAIL_CACHE_PREFIX = () => getSectorKey('fresherflow_detail_cache_', getActiveSector());
+const getCOMPANY_JOBS_CACHE_PREFIX = () => getSectorKey('fresherflow_company_jobs_cache_', getActiveSector());
+const getLAST_SYNC_KEY = () => getSectorKey('fresherflow_last_sync_timestamp', getActiveSector());
+const getTRACKER_CACHE_KEY = () => getSectorKey('fresherflow_tracker_cache', getActiveSector());
+const getCONTRIBUTIONS_CACHE_KEY = () => getSectorKey('fresherflow_contributions_cache', getActiveSector());
+const getINVITES_CACHE_KEY = () => getSectorKey('fresherflow_invites_cache', getActiveSector());
+const getREPORTED_JOBS_KEY = () => getSectorKey('fresherflow_reported_jobs', getActiveSector());
+const getSIMILAR_CACHE_PREFIX = () => getSectorKey('fresherflow_similar_cache_', getActiveSector());
 
 export const saveLastSyncTimestamp = async (timestamp: string) => {
-    setString(LAST_SYNC_KEY, timestamp);
+    setString(getLAST_SYNC_KEY(), timestamp);
 };
 
 export const getLastSyncTimestamp = async (): Promise<string | null> => {
-    return getString(LAST_SYNC_KEY);
+    return getString(getLAST_SYNC_KEY());
 };
 
 /**
@@ -27,14 +33,14 @@ export const getLastSyncTimestamp = async (): Promise<string | null> => {
  * This prevents "Large Object" serialization lag.
  */
 export const saveOpportunityAtomic = async (job: Opportunity) => {
-    setJSON(`${JOB_PREFIX}${job.id}`, job);
+    setJSON(`${getJOB_PREFIX()}${job.id}`, job);
 };
 
 /**
  * Reads a single opportunity by ID.
  */
 export const getOpportunityAtomic = async (id: string): Promise<Opportunity | null> => {
-    return getJSON<Opportunity>(`${JOB_PREFIX}${id}`);
+    return getJSON<Opportunity>(`${getJOB_PREFIX()}${id}`);
 };
 
 export interface FeedIndex {
@@ -45,15 +51,16 @@ export interface FeedIndex {
 /**
  * Saves the feed as a list of IDs + individual atomic job saves using BATCH operations.
  */
-export const saveFeedCache = async (items: Opportunity[]) => {
+export const saveFeedCache = async (items: Opportunity[], sector?: JobSector) => {
     if (items.length === 0) return;
     
+    const targetSector = sector || getActiveSector();
     // 1. Perform Storage Garbage Collection
-    void pruneGhostJobs(items.map(i => i.id));
+    void pruneGhostJobs(items.map(i => i.id), targetSector);
 
     // 2. Save items (Synchronous in MMKV, but we wrap for compatibility)
     items.forEach(job => {
-        setJSON(`${JOB_PREFIX}${job.id}`, job);
+        setJSON(`${getJOB_PREFIX(targetSector)}${job.id}`, job);
     });
 
     // 3. Save the index (order)
@@ -61,18 +68,19 @@ export const saveFeedCache = async (items: Opportunity[]) => {
         ids: items.map(i => i.id),
         timestamp: Date.now(),
     };
-    setJSON(FEED_INDEX_KEY, index);
+    setJSON(getFEED_INDEX_KEY(targetSector), index);
 };
 
 /**
  * Reads the feed by reconstructing it from the index and atomic keys using BATCH read.
  */
-export const readFeedCache = async (): Promise<{ items: Opportunity[], timestamp: number } | null> => {
-    const index = getJSON<FeedIndex>(FEED_INDEX_KEY);
+export const readFeedCache = async (sector?: JobSector): Promise<{ items: Opportunity[], timestamp: number } | null> => {
+    const targetSector = sector || getActiveSector();
+    const index = getJSON<FeedIndex>(getFEED_INDEX_KEY(targetSector));
     if (!index || !index.ids || index.ids.length === 0) return null;
 
     const items: Opportunity[] = index.ids
-        .map(id => getJSON<Opportunity>(`${JOB_PREFIX}${id}`))
+        .map(id => getJSON<Opportunity>(`${getJOB_PREFIX(targetSector)}${id}`))
         .filter((j): j is Opportunity => j !== null);
 
     return {
@@ -81,17 +89,18 @@ export const readFeedCache = async (): Promise<{ items: Opportunity[], timestamp
     };
 };
 
-export const saveSharesCache = async (shares: unknown[], stats: unknown) => {
+export const saveSharesCache = async (shares: unknown[], resources: unknown[], stats: unknown) => {
     const cache = {
         items: shares,
+        resources,
         stats,
         timestamp: Date.now(),
     };
-    setJSON(SHARES_CACHE_KEY, cache);
+    setJSON(getSHARES_CACHE_KEY(), cache);
 };
 
-export const readSharesCache = async (): Promise<{ items: unknown[], stats: unknown, timestamp: number } | null> => {
-    return getJSON(SHARES_CACHE_KEY);
+export const readSharesCache = async (): Promise<{ items: unknown[], resources?: unknown[], stats: unknown, timestamp: number } | null> => {
+    return getJSON(getSHARES_CACHE_KEY());
 };
 
 export const saveCompaniesCache = async (companies: unknown[]) => {
@@ -99,11 +108,11 @@ export const saveCompaniesCache = async (companies: unknown[]) => {
         items: companies,
         timestamp: Date.now(),
     };
-    setJSON(COMPANIES_CACHE_KEY, cache);
+    setJSON(getCOMPANIES_CACHE_KEY(), cache);
 };
 
 export const readCompaniesCache = async (): Promise<{ items: unknown[], timestamp: number } | null> => {
-    return getJSON(COMPANIES_CACHE_KEY);
+    return getJSON(getCOMPANIES_CACHE_KEY());
 };
 
 export const saveAlertsCache = async (alerts: unknown[], unreadCount: number) => {
@@ -112,16 +121,16 @@ export const saveAlertsCache = async (alerts: unknown[], unreadCount: number) =>
         unreadCount,
         timestamp: Date.now(),
     };
-    setJSON(ALERTS_CACHE_KEY, cache);
+    setJSON(getALERTS_CACHE_KEY(), cache);
 };
 
 export const readAlertsCache = async (): Promise<{ items: unknown[], unreadCount: number, timestamp: number } | null> => {
-    return getJSON(ALERTS_CACHE_KEY);
+    return getJSON(getALERTS_CACHE_KEY());
 };
 
 export const saveCompanyJobsCache = async (companyName: string, jobs: Opportunity[]) => {
     const slug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const key = `${COMPANY_JOBS_CACHE_PREFIX}${slug}`;
+    const key = `${getCOMPANY_JOBS_CACHE_PREFIX()}${slug}`;
     const cache = {
         items: jobs,
         timestamp: Date.now(),
@@ -131,22 +140,20 @@ export const saveCompanyJobsCache = async (companyName: string, jobs: Opportunit
 
 export const readCompanyJobsCache = async (companyName: string): Promise<{ items: Opportunity[], timestamp: number } | null> => {
     const slug = companyName.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    const key = `${COMPANY_JOBS_CACHE_PREFIX}${slug}`;
+    const key = `${getCOMPANY_JOBS_CACHE_PREFIX()}${slug}`;
     return getJSON(key);
 };
-
-const SIMILAR_CACHE_PREFIX = 'fresherflow_similar_cache_';
 
 export const saveDetailCache = async (opportunity: Opportunity) => {
     const cache = {
         ...opportunity,
         _cachedAt: Date.now()
     };
-    setJSON(`${DETAIL_CACHE_PREFIX}${opportunity.id}`, cache);
+    setJSON(`${getDETAIL_CACHE_PREFIX()}${opportunity.id}`, cache);
 };
 
 export const readDetailCache = async (id: string): Promise<Opportunity & { _cachedAt?: number } | null> => {
-    return getJSON(`${DETAIL_CACHE_PREFIX}${id}`);
+    return getJSON(`${getDETAIL_CACHE_PREFIX()}${id}`);
 };
 
 export interface SimilarCache {
@@ -159,11 +166,11 @@ export const saveSimilarCache = async (opportunityId: string, opportunities: Opp
         opportunities,
         timestamp: Date.now(),
     };
-    setJSON(`${SIMILAR_CACHE_PREFIX}${opportunityId}`, cache);
+    setJSON(`${getSIMILAR_CACHE_PREFIX()}${opportunityId}`, cache);
 };
 
 export const readSimilarCache = async (opportunityId: string): Promise<SimilarCache | null> => {
-    return getJSON(`${SIMILAR_CACHE_PREFIX}${opportunityId}`);
+    return getJSON(`${getSIMILAR_CACHE_PREFIX()}${opportunityId}`);
 };
 
 /**
@@ -222,8 +229,9 @@ export const findJobsByCompanyLocally = async (
  * Prunes jobs from disk that are no longer present in the primary index.
  * This prevents the "Ghost Jobs" issue where thousands of individual keys stay on disk.
  */
-export const pruneGhostJobs = async (currentIds: string[]) => {
-    const oldIndex = getJSON<FeedIndex>(FEED_INDEX_KEY);
+export const pruneGhostJobs = async (currentIds: string[], sector?: JobSector) => {
+    const targetSector = sector || getActiveSector();
+    const oldIndex = getJSON<FeedIndex>(getFEED_INDEX_KEY(targetSector));
     if (!oldIndex) return;
 
     const newIdsSet = new Set(currentIds);
@@ -231,10 +239,10 @@ export const pruneGhostJobs = async (currentIds: string[]) => {
     
     if (ghostIds.length > 0) {
         ghostIds.forEach(id => {
-            remove(`${JOB_PREFIX}${id}`);
-            remove(`${DETAIL_CACHE_PREFIX}${id}`);
+            remove(`${getJOB_PREFIX(targetSector)}${id}`);
+            remove(`${getDETAIL_CACHE_PREFIX()}${id}`);
         });
-        console.log(`[OfflineCache] GC: Pruned ${ghostIds.length} ghost jobs from disk`);
+        console.log(`[OfflineCache] GC: Pruned ${ghostIds.length} ghost jobs from disk for ${targetSector}`);
     }
 };
 /**
@@ -250,15 +258,15 @@ export const saveTrackerCache = async (actions: unknown[]) => {
         items: actions,
         timestamp: Date.now(),
     };
-    setJSON(TRACKER_CACHE_KEY, cache);
+    setJSON(getTRACKER_CACHE_KEY(), cache);
 };
 
 export const readTrackerCache = async (): Promise<{ items: unknown[], timestamp: number } | null> => {
-    return getJSON(TRACKER_CACHE_KEY);
+    return getJSON(getTRACKER_CACHE_KEY());
 };
 
 export const readTrackerCacheSync = (): { items: unknown[], timestamp: number } | null => {
-    return getJSON(TRACKER_CACHE_KEY);
+    return getJSON(getTRACKER_CACHE_KEY());
 };
 
 export const saveContributionsCache = async (contributions: unknown[], user: unknown) => {
@@ -267,11 +275,11 @@ export const saveContributionsCache = async (contributions: unknown[], user: unk
         user,
         timestamp: Date.now(),
     };
-    setJSON(CONTRIBUTIONS_CACHE_KEY, cache);
+    setJSON(getCONTRIBUTIONS_CACHE_KEY(), cache);
 };
 
 export const readContributionsCache = async (): Promise<{ items: unknown[], user: unknown, timestamp: number } | null> => {
-    return getJSON(CONTRIBUTIONS_CACHE_KEY);
+    return getJSON(getCONTRIBUTIONS_CACHE_KEY());
 };
 
 export const saveInvitesCache = async (invites: unknown[], stats: unknown, metadata: Record<string, unknown>) => {
@@ -281,24 +289,22 @@ export const saveInvitesCache = async (invites: unknown[], stats: unknown, metad
         ...metadata,
         timestamp: Date.now(),
     };
-    setJSON(INVITES_CACHE_KEY, cache);
+    setJSON(getINVITES_CACHE_KEY(), cache);
 };
 
 export const readInvitesCache = async (): Promise<{ items: unknown[], stats: unknown, timestamp: number } | null> => {
-    return getJSON(INVITES_CACHE_KEY);
+    return getJSON(getINVITES_CACHE_KEY());
 };
 
-const REPORTED_JOBS_KEY = 'fresherflow_reported_jobs';
-
 export const saveReportedJobLocally = (opportunityId: string) => {
-    const reported = getJSON<string[]>(REPORTED_JOBS_KEY) || [];
+    const reported = getJSON<string[]>(getREPORTED_JOBS_KEY()) || [];
     if (!reported.includes(opportunityId)) {
         reported.push(opportunityId);
-        setJSON(REPORTED_JOBS_KEY, reported);
+        setJSON(getREPORTED_JOBS_KEY(), reported);
     }
 };
 
 export const isJobReportedLocally = (opportunityId: string): boolean => {
-    const reported = getJSON<string[]>(REPORTED_JOBS_KEY) || [];
+    const reported = getJSON<string[]>(getREPORTED_JOBS_KEY()) || [];
     return reported.includes(opportunityId);
 };

@@ -3,7 +3,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const ALERT_PREFS_KEY = 'ff:alert_preferences';
 
 export type AlertPreference = {
-    enabled: boolean;
+    enabled?: boolean;
+    privateJobs: boolean;
+    governmentJobs: boolean;
     closingSoon: boolean;
     minRelevanceScore: number;
 };

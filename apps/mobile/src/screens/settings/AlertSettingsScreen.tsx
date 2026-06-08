@@ -45,7 +45,9 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         updatePref,
     } = useAlertSettings();
 
-    const enabled = watch('enabled');
+    const privateJobs = watch('privateJobs');
+    const governmentJobs = watch('governmentJobs');
+    const enabled = privateJobs || governmentJobs;
     const minRelevanceScore = watch('minRelevanceScore');
 
     if (loading) {
@@ -103,14 +105,27 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Channels</Text>
                     <Controller
                         control={control}
-                        name="enabled"
+                        name="privateJobs"
                         render={({ field: { value, onChange } }) => (
                             <PremiumToggle 
                                 icon={Bell} 
-                                title="Enable All Alerts" 
-                                description="Receive push notifications for new matches"
+                                title="Private Jobs" 
+                                description="Receive push alerts for top tech and corporate roles"
                                 value={value}
-                                onValueChange={(v) => { onChange(v); updatePref({ enabled: v }); }}
+                                onValueChange={(v) => { onChange(v); updatePref({ privateJobs: v }); }}
+                            />
+                        )}
+                    />
+                    <Controller
+                        control={control}
+                        name="governmentJobs"
+                        render={({ field: { value, onChange } }) => (
+                            <PremiumToggle 
+                                icon={Bell} 
+                                title="Government Jobs" 
+                                description="Receive push alerts for SSC, UPSC, Banking, etc"
+                                value={value}
+                                onValueChange={(v) => { onChange(v); updatePref({ governmentJobs: v }); }}
                             />
                         )}
                     />

@@ -7,7 +7,8 @@ import * as Haptics from 'expo-haptics';
 import { getLocalAlertPrefs, saveLocalAlertPrefs, AlertPreference } from '@/utils/cache/localAlerts';
 
 const alertSettingsSchema = z.object({
-    enabled: z.boolean(),
+    privateJobs: z.boolean(),
+    governmentJobs: z.boolean(),
     closingSoon: z.boolean(),
     minRelevanceScore: z.number().min(0).max(100),
 });
@@ -15,7 +16,8 @@ const alertSettingsSchema = z.object({
 export type AlertSettingsFormData = z.infer<typeof alertSettingsSchema>;
 
 const DEFAULT_PREFS: AlertSettingsFormData = {
-    enabled: true,
+    privateJobs: true,
+    governmentJobs: true,
     closingSoon: true,
     minRelevanceScore: 45,
 };
@@ -56,6 +58,27 @@ export const useAlertSettings = () => {
             const current = await getLocalAlertPrefs();
             const updated = { ...current, ...data } as AlertPreference;
             await saveLocalAlertPrefs(updated);
+            
+            try {
+                const messaging = require('@react-native-firebase/messaging').default;
+                if (data.privateJobs !== undefined) {
+                    if (data.privateJobs) {
+                        void messaging().subscribeToTopic('fresherflow_private_jobs').catch(() => {});
+                    } else {
+                        void messaging().unsubscribeFromTopic('fresherflow_private_jobs').catch(() => {});
+                    }
+                }
+                if (data.governmentJobs !== undefined) {
+                    if (data.governmentJobs) {
+                        void messaging().subscribeToTopic('fresherflow_govt_jobs').catch(() => {});
+                    } else {
+                        void messaging().unsubscribeFromTopic('fresherflow_govt_jobs').catch(() => {});
+                    }
+                }
+            } catch (err) {
+                // Ignore messaging errors
+            }
+
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         } catch (error) {
             console.error('Failed to update local preferences', error);
