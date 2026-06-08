@@ -1,8 +1,6 @@
 import prisma from '../../infrastructure/database/prisma';
 import axios from 'axios';
-import { OpportunityType } from '@fresherflow/types';
 import { enqueueTelegramBroadcast } from '@fresherflow/queue';
-import { buildSocialOpportunityUrl } from '../../utils/share';
 import { logger } from '@fresherflow/logger';
 
 import { getCanonicalShareOrigin, getPublicSiteUrl, getRootDomainHost } from '../../utils/runtimeConfig';
@@ -292,36 +290,92 @@ class TelegramService {
             return;
         }
 
-        const typeLabel = type === 'JOB' ? 'Job' : type === 'INTERNSHIP' ? 'Internship' : 'Walk-in';
-        const locationText = locations.length > 0 ? locations.join(', ') : 'Remote/Multiple';
+        const locationText = locations.length > 0 ? locations.join(' / ') : 'India';
         const frontendOrigin = this.resolveCanonicalShareOrigin();
-        const jobUrl = buildSocialOpportunityUrl({
-            frontendOrigin,
-            slug,
-            type: type as OpportunityType,
-            platform: 'telegram',
-        });
+        const jobUrl = `${frontendOrigin}/${slug}`;
         const opportunity = await prisma.opportunity.findUnique({
             where: { id: opportunityId },
-            select: { allowedPassoutYears: true }
+            select: {
+                allowedPassoutYears: true,
+                allowedDegrees: true,
+                allowedCourses: true,
+                experienceMin: true,
+                experienceMax: true,
+                requiredSkills: true,
+                salaryRange: true,
+                salaryMin: true,
+                salaryMax: true,
+            }
         });
-        const sortedBatchYears = [...(opportunity?.allowedPassoutYears || [])]
-            .filter((value) => Number.isFinite(value))
-            .sort((a, b) => a - b);
-        const batchText = sortedBatchYears.length > 0 ? sortedBatchYears.join(', ') : 'Any';
-        const locationTag = locations.length === 1
-            ? `#${locations[0].replace(/[^a-zA-Z0-9]/g, '')}Jobs`
-            : '';
+
+        const getExperienceText = () => {
+            const min = opportunity?.experienceMin;
+            const max = opportunity?.experienceMax;
+            if (min === null || min === undefined) return 'Fresher/0–2 years';
+            if (min === 0 && (max === 0 || !max)) return 'Fresher';
+            if (min !== undefined && max !== undefined && max !== null) {
+                return `${min === 0 ? 'Fresher' : min}–${max} years`;
+            }
+            return `${min || 0}+ years`;
+        };
+
+        const getSalaryText = () => {
+            if (opportunity?.salaryRange) return opportunity.salaryRange;
+            const min = opportunity?.salaryMin;
+            const max = opportunity?.salaryMax;
+            if (typeof min === 'number' && typeof max === 'number') {
+                return `₹${min}L – ₹${max}L`;
+            }
+            if (typeof min === 'number') return `₹${min}L+`;
+            return '';
+        };
+
+        const getDegreesText = () => {
+            if (opportunity?.allowedCourses && opportunity.allowedCourses.length > 0) {
+                return opportunity.allowedCourses.join(' / ');
+            }
+            if (opportunity?.allowedDegrees && opportunity.allowedDegrees.length > 0) {
+                return opportunity.allowedDegrees.join(' / ');
+            }
+            return 'B.E / B.Tech / MCA / Any Graduate';
+        };
+
+        const getBatchYearsText = () => {
+            if (opportunity?.allowedPassoutYears && opportunity.allowedPassoutYears.length > 0) {
+                const sorted = [...opportunity.allowedPassoutYears].sort((a, b) => a - b);
+                if (sorted.length === 1) {
+                    return `${sorted[0]} Batch`;
+                }
+                return `${sorted.join(' / ')} Batch`;
+            }
+            return '';
+        };
+
+        const degrees = getDegreesText();
+        const batchYears = getBatchYearsText();
+        const exp = getExperienceText();
+        const salary = getSalaryText();
+
+        const skillsSlice = opportunity?.requiredSkills && opportunity.requiredSkills.length > 0 
+            ? opportunity.requiredSkills.slice(0, 4) 
+            : [];
+        const skillsLine = skillsSlice.length > 0 ? skillsSlice.join(', ') : '';
+
+        const tgSkills = skillsLine ? `\n⚡ Skills: ${this.escapeHtml(skillsLine)}` : '';
+        const tgSalary = salary ? `\n💰 Salary: ${this.escapeHtml(salary)}` : '';
+        const tgBatch = batchYears ? `\n🎯 Batch: ${this.escapeHtml(batchYears)}` : '';
 
         const message = [
-            `<b>${title}</b>`,
-            `<b>Type:</b> ${typeLabel}`,
-            `<b>Company:</b> ${company}`,
-            `<b>Location:</b> ${locationText}`,
-            `<b>Batch:</b> ${batchText}`,
-            `<b>View details:</b> <a href="${jobUrl}">${new URL(frontendOrigin).hostname}</a>`,
+            `🚀 <b>${this.escapeHtml(company)} Hiring ${this.escapeHtml(title)}</b>`,
             '',
-            `<i>${['#FresherJobs', locationTag, '#FresherFlow'].filter(Boolean).join(' ')}</i>`
+            `🎓 Eligibility: ${this.escapeHtml(degrees)}${tgBatch}`,
+            `💼 Experience: ${this.escapeHtml(exp)}`,
+            `📍 Location: ${this.escapeHtml(locationText)}${tgSkills}${tgSalary}`,
+            '',
+            `⭕️ Apply Now:`,
+            `<a href="${jobUrl}">${jobUrl}</a>`,
+            '',
+            `📱 More jobs: fresherflow.in/app`
         ].join('\n');
 
         // Enqueue — worker handles Axios I/O, retries, and DB record update

@@ -416,7 +416,7 @@ export class StaticFeedService {
             companies.forEach(c => xml += `  <url><loc>${baseUrl}/companies/${this.slugify(c.company)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
             opportunities.forEach(opp => {
                 const slugOrId = opp.slug || opp.id;
-                const prefix = opp.type === 'INTERNSHIP' ? '/internships/' : opp.type === 'WALKIN' ? '/walk-ins/details/' : '/jobs/';
+                const prefix = '/';
                 const rawDate = opp.updatedAt || opp.postedAt;
                 const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
                 xml += `  <url><loc>${baseUrl}${prefix}${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
