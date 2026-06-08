@@ -2,7 +2,7 @@
   "expo": {
     "name": "FresherFlow",
     "slug": "fresherflow",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon-1024.png",
     "userInterfaceStyle": "automatic",
@@ -57,6 +57,11 @@
               "scheme": "https",
               "host": "fresherflow.in",
               "pathPrefix": "/invite"
+            },
+            {
+              "scheme": "https",
+              "host": "fresherflow.in",
+              "pathPrefix": "/"
             }
           ],
           "category": [
@@ -81,7 +86,7 @@
         "@sentry/react-native",
         {
           "organization": "fresherflow",
-          "project": "react-native"
+          "project": "fresherflow-app"
         }
       ],
       "expo-web-browser"
@@ -92,7 +97,7 @@
       "checkAutomatically": "ON_LOAD",
       "fallbackToCacheTimeout": 30000
     },
-    "runtimeVersion": "1.1.0",
+    "runtimeVersion": "1.2.0",
     "extra": {
       "apiUrl": "https://api.fresherflow.in",
       "eas": {

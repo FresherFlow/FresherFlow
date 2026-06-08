@@ -75,21 +75,18 @@ import { FirstRunGate } from './src/system/components/FirstRunGate';
 
 import { useAuthStore, AuthManager } from './src/store/useAuthStore';
 import { useFeedStore } from './src/store/useFeedStore';
+import { useSectorStore } from './src/store/useSectorStore';
 import { useAuthHandshake } from './src/hooks/useAuthHandshake';
+import { usePushToken } from './src/hooks/usePushToken';
 import { useEmailLinkSignIn } from './src/hooks/useEmailLinkSignIn';
 
-// Configure API client
-configureClient(API_URL, secureStorage, {
-  onError: (err) => {
-    if (err instanceof HttpError && err.status === 401) {
-      const { isAuthenticated, triggerHandshake } = useAuthStore.getState();
-      if (isAuthenticated) {
-        console.log('[Auth] Detected 401 Unauthorized, triggering re-handshake...');
-        triggerHandshake();
-      }
-    }
-  }
-});
+import { configureApiClientForSector } from './src/config/api';
+import { getString } from './src/utils/storage';
+
+// Configure API client initially based on stored sector or default to PRIVATE
+const initialSector = getString('fresherflow_active_sector');
+configureApiClientForSector(initialSector || 'PRIVATE');
+
 
 
 import { getFirebaseDatabaseUrl } from './src/config/firebase';
@@ -123,23 +120,19 @@ const AuthBridge = ({ children }: { children: React.ReactNode }) => {
 
 const AppContent = () => {
   useAuthHandshake(); // Background handshake logic
+  usePushToken();     // Register FCM device token after login
   useEmailLinkSignIn(); // Listen and complete email magic link logins
   const [isLoaded, setIsLoaded] = useState(false);
   const [updatePopupVisible, setUpdatePopupVisible] = useState(false);
   const pendingNavigationRef = React.useRef<{ screen: string; params: any } | null>(null);
 
   React.useEffect(() => {
-    // Globally hydrate the master feed on app start
+    // Globally hydrate the sector store then feed on app start
+    useSectorStore.getState().hydrate();
     void useFeedStore.getState().hydrate();
 
 
     
-    // Check if first run - if so, bypass BrandIntroLoader splash animation to go straight to onboarding
-    AsyncStorage.getItem('ff_first_run_done').then(val => {
-      if (val !== 'true') {
-        setIsLoaded(true);
-      }
-    }).catch(() => {});
   }, []);
 
   const { currentTheme } = useTheme();

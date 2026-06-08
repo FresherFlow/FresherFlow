@@ -1,3 +1,25 @@
+const { withAndroidManifest } = require('@expo/config-plugins');
+
+const withFixManifestMerger = (config) => {
+  return withAndroidManifest(config, async (config) => {
+    const androidManifest = config.modResults;
+    const application = androidManifest.manifest.application[0];
+    
+    const metaData = application['meta-data'] || [];
+    const colorNode = metaData.find(
+      (node) => node.$['android:name'] === 'com.google.firebase.messaging.default_notification_color'
+    );
+
+    if (colorNode) {
+      colorNode.$['tools:replace'] = 'android:resource';
+      if (!androidManifest.manifest.$['xmlns:tools']) {
+        androidManifest.manifest.$['xmlns:tools'] = 'http://schemas.android.com/tools';
+      }
+    }
+    return config;
+  });
+};
+
 module.exports = ({ config }) => {
   const appEnv = process.env.APP_ENV || process.env.EXPO_PUBLIC_APP_ENV || 'development';
   
@@ -42,6 +64,13 @@ module.exports = ({ config }) => {
     ios: {
       ...config.ios,
       bundleIdentifier: bundleIdentifier,
+      googleServicesFile: "./GoogleService-Info.plist",
+      associatedDomains: [
+        "applinks:fresherflow.in",
+        "applinks:staging.fresherflow.in",
+        "applinks:fresherflow-3604b.firebaseapp.com",
+        "applinks:fresherflow-3604b.web.app"
+      ]
     },
     android: {
       ...config.android,
@@ -71,5 +100,5 @@ module.exports = ({ config }) => {
     });
   }
 
-  return updatedConfig;
+  return withFixManifestMerger(updatedConfig);
 };
