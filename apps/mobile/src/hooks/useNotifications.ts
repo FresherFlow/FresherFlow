@@ -1,10 +1,14 @@
 import { useEffect } from 'react';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useSectorStore } from '@/store/useSectorStore';
 
 export function useNotifications() {
+    const { sector } = useSectorStore();
+
     // Select primitives individually — prevents re-render loop from new object references
     const alerts = useNotificationStore(s => s.alerts);
-    const unreadCount = useNotificationStore(s => s.unreadCount);
+    const privateUnreadCount = useNotificationStore(s => s.privateUnreadCount);
+    const govtUnreadCount = useNotificationStore(s => s.govtUnreadCount);
     const unseenFeedCount = useNotificationStore(s => s.unseenFeedCount);
     const loading = useNotificationStore(s => s.loading);
     const refreshing = useNotificationStore(s => s.refreshing);
@@ -16,6 +20,8 @@ export function useNotifications() {
     const markRead = useNotificationStore(s => s.markRead);
     const markAllRead = useNotificationStore(s => s.markAllRead);
     const deleteAlert = useNotificationStore(s => s.deleteAlert);
+
+    const unreadCount = sector === 'GOVERNMENT' ? govtUnreadCount : privateUnreadCount;
 
     // Initial hydration — only if never fetched
     useEffect(() => {
@@ -37,7 +43,7 @@ export function useNotifications() {
         loading,
         refreshing,
         markRead,
-        markAllRead,
+        markAllRead: () => markAllRead(sector || 'PRIVATE'),
         deleteAlert,
         refresh: () => fetchAlerts(true),
     };

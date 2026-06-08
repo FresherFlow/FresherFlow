@@ -11,7 +11,8 @@ import {
 
 interface NotificationState {
     alerts: LocalAlert[];
-    unreadCount: number;
+    privateUnreadCount: number;
+    govtUnreadCount: number;
     unseenFeedCount: number;
     loading: boolean;
     refreshing: boolean;
@@ -21,7 +22,7 @@ interface NotificationState {
     fetchAlerts: (isRefresh?: boolean) => Promise<void>;
     fetchUnreadCount: () => Promise<void>;
     markRead: (id: string) => Promise<void>;
-    markAllRead: () => Promise<void>;
+    markAllRead: (sector?: 'PRIVATE' | 'GOVERNMENT') => Promise<void>;
     deleteAlert: (id: string) => Promise<void>;
     hydrate: () => Promise<void>;
     startPolling: (userId?: string) => void;
@@ -41,9 +42,18 @@ const sortAlerts = (alerts: LocalAlert[]) => {
     });
 };
 
+const getCounts = (alerts: LocalAlert[]) => {
+    const unread = alerts.filter(a => !a.readAt);
+    return {
+        privateUnreadCount: unread.filter(a => a.opportunity.type !== 'GOVERNMENT').length,
+        govtUnreadCount: unread.filter(a => a.opportunity.type === 'GOVERNMENT').length,
+    };
+};
+
 export const useNotificationStore = create<NotificationState>((set, get) => ({
     alerts: [],
-    unreadCount: 0,
+    privateUnreadCount: 0,
+    govtUnreadCount: 0,
     unseenFeedCount: 0,
     loading: false,
     refreshing: false,
@@ -56,11 +66,11 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
         try {
             const alerts = await getLocalAlerts();
-            const unreadCount = alerts.filter(a => !a.readAt).length;
+            const counts = getCounts(alerts);
 
             set({
                 alerts: sortAlerts(alerts),
-                unreadCount,
+                ...counts,
                 loading: false,
                 refreshing: false,
                 lastFetched: Date.now()
@@ -80,7 +90,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             
             set({
                 alerts: sortAlerts(alerts),
-                unreadCount: alerts.filter(a => !a.readAt).length,
+                ...getCounts(alerts),
                 unseenFeedCount: unseenFeed
             });
         } catch (error) {
@@ -92,8 +102,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         try {
             const currentAlerts = get().alerts;
             const updated = currentAlerts.map(a => a.id === id ? { ...a, readAt: new Date().toISOString() } : a);
-            const unreadCount = updated.filter(a => !a.readAt).length;
-            set({ alerts: updated, unreadCount });
+            set({ alerts: updated, ...getCounts(updated) });
 
             await markLocalAlertAsRead(id);
         } catch (error) {
@@ -101,13 +110,18 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         }
     },
 
-    markAllRead: async () => {
+    markAllRead: async (sector?: 'PRIVATE' | 'GOVERNMENT') => {
         try {
             const currentAlerts = get().alerts;
-            const updated = currentAlerts.map(a => ({ ...a, readAt: new Date().toISOString() }));
-            set({ alerts: updated, unreadCount: 0 });
+            const updated = currentAlerts.map(a => {
+                if (!sector || a.opportunity.type === sector || (sector === 'PRIVATE' && a.opportunity.type !== 'GOVERNMENT')) {
+                    return { ...a, readAt: a.readAt || new Date().toISOString() };
+                }
+                return a;
+            });
+            set({ alerts: updated, ...getCounts(updated) });
 
-            await markAllLocalAlertsAsRead();
+            await markAllLocalAlertsAsRead(sector);
         } catch (error) {
             console.error('[NotificationStore] markAllRead failed:', error);
         }
@@ -117,8 +131,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
         try {
             const currentAlerts = get().alerts;
             const updated = currentAlerts.filter(a => a.id !== id);
-            const unreadCount = updated.filter(a => !a.readAt).length;
-            set({ alerts: updated, unreadCount });
+            set({ alerts: updated, ...getCounts(updated) });
 
             await deleteLocalAlert(id);
         } catch (error) {
@@ -136,7 +149,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
             
             set({ 
                 alerts: sortAlerts(alerts), 
-                unreadCount: alerts.filter(a => !a.readAt).length,
+                ...getCounts(alerts),
                 unseenFeedCount: unseenCount,
                 lastFetched: Date.now(),
                 loading: false

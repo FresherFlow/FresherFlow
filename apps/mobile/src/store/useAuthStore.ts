@@ -22,6 +22,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isAnonymous: boolean;
   isSyncing: boolean;
+  isHandshaking: boolean;
   token: string | null;
   referralCode: string | null;
   skipUsernameSetup: boolean;
@@ -32,6 +33,7 @@ interface AuthState {
   setReferralCode: (code: string | null) => void;
   setFirebaseUser: (user: FirebaseAuthTypes.User | null) => void;
   setSyncing: (isSyncing: boolean) => void;
+  setHandshaking: (isHandshaking: boolean) => void;
   logout: () => Promise<void>;
   clearAuth: () => void;
   updateUser: (user: Partial<User>) => void;
@@ -64,6 +66,7 @@ export const useAuthStore = create<AuthState>()(
     isAuthenticated: Boolean(initialCachedUser && !initialCachedUser.isAnonymous),
     isAnonymous: initialCachedUser?.isAnonymous ?? false,
     isSyncing: true,
+    isHandshaking: false,
     token: null,
     referralCode: null,
     skipUsernameSetup: false,
@@ -237,6 +240,11 @@ export const useAuthStore = create<AuthState>()(
             state.isSyncing = isSyncing;
         });
     },
+    setHandshaking: (isHandshaking) => {
+        set((state) => {
+            state.isHandshaking = isHandshaking;
+        });
+    },
     ensureSession: async () => {
         if (!isFirebaseAuthAvailable()) return;
         if (!auth().currentUser) {
@@ -250,6 +258,18 @@ export const useAuthStore = create<AuthState>()(
     },
     logout: async () => {
       try {
+        // Unregister FCM token before signing out so this device stops receiving pushes
+        try {
+            const messaging = require('@react-native-firebase/messaging').default;
+            const token = await messaging().getToken();
+            if (token) {
+                const { deviceTokenApi } = require('@fresherflow/api-client');
+                void deviceTokenApi.unregister(token);
+            }
+        } catch {
+            // FCM not available or token fetch failed — safe to ignore
+        }
+
         if (isFirebaseAuthAvailable() && auth().currentUser) {
           await auth().signOut();
         }
@@ -273,6 +293,7 @@ export const useAuthStore = create<AuthState>()(
         state.isAuthenticated = false;
         state.isAnonymous = false;
         state.isSyncing = false;
+        state.isHandshaking = false;
       });
     },
     updateUser: (updatedFields) => {

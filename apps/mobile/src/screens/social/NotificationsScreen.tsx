@@ -21,6 +21,7 @@ import { RootStackParamList } from '@/navigation/types';
 import { useFocusEffect } from '@react-navigation/native';
 import { Profile } from '@fresherflow/types';
 import { useProfile } from '@/hooks/useProfile';
+import { useSectorStore } from '@/store/useSectorStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Notifications'>;
 
@@ -284,6 +285,7 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
     const { currentTheme } = useTheme();
     const { alerts, unreadCount, refreshing, markRead, markAllRead, deleteAlert, refresh } = useNotifications();
     const { user, profile, loadingProfile: isLoadingProfile } = useProfile();
+    const { sector } = useSectorStore();
     const isAnonymous = !user || user.isAnonymous;
 
     const isSetup = useMemo(() => isProfileSetupComplete(profile), [profile]);
@@ -305,6 +307,10 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
 
         alerts
             .filter(a => a.opportunity.matchReason !== 'Complete profile to see eligibility')
+            .filter(a => {
+                if (sector === 'GOVERNMENT') return a.opportunity.type === 'GOVERNMENT';
+                return a.opportunity.type !== 'GOVERNMENT';
+            })
             .forEach(alert => {
                 const time = new Date(alert.sentAt).getTime();
                 if (time >= startOfToday) today.push(alert);
@@ -337,7 +343,7 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
         }
 
         return result;
-    }, [alerts, isSetup, isAnonymous]);
+    }, [alerts, isSetup, isAnonymous, sector]);
 
     const handleCompleteProfileNudge = useCallback(() => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);

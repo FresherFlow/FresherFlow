@@ -11,7 +11,7 @@ import { readFirebaseProfile, writeFirebaseProfile } from '@/utils/firebaseProfi
 
 
 export const useAuthHandshake = () => {
-    const { firebaseUser, user, setAuth, setSyncing, handshakeTrigger } = useAuthStore();
+    const { firebaseUser, user, setAuth, setSyncing, setHandshaking, handshakeTrigger } = useAuthStore();
     const isHandshaking = useRef(false);
     const retryCount = useRef(0); // <-- Ref to track retry attempts
     const lastHandshakeTime = useRef(0); // <-- Ref to track last handshake timestamp for rate limiting
@@ -33,6 +33,7 @@ export const useAuthHandshake = () => {
             if (user && user.isOptimistic != true && !isDifferentUser && !isForced && hasAccessToken) return;
 
             isHandshaking.current = true;
+            setHandshaking(true);
 
             try {
                 // The backend requires a fresh token to verify auth_time, otherwise it throws 403.
@@ -94,6 +95,7 @@ export const useAuthHandshake = () => {
                 }
             } finally {
                 isHandshaking.current = false;
+                setHandshaking(false);
             }
         };
 

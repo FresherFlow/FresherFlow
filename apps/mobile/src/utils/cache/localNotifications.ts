@@ -519,10 +519,15 @@ export async function markLocalAlertAsRead(id: string): Promise<void> {
   }
 }
 
-export async function markAllLocalAlertsAsRead(): Promise<void> {
+export async function markAllLocalAlertsAsRead(sector?: 'PRIVATE' | 'GOVERNMENT'): Promise<void> {
   try {
     const alerts = await getLocalAlerts();
-    const updated = alerts.map(a => ({ ...a, readAt: new Date().toISOString() }));
+    const updated = alerts.map(a => {
+        if (!sector || a.opportunity.type === sector || (sector === 'PRIVATE' && a.opportunity.type !== 'GOVERNMENT')) {
+            return { ...a, readAt: a.readAt || new Date().toISOString() };
+        }
+        return a;
+    });
     await AsyncStorage.setItem(LOCAL_ALERTS_KEY, JSON.stringify(updated));
   } catch {
     // ignore

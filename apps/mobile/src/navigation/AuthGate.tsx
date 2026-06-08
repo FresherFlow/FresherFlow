@@ -12,12 +12,13 @@ export const AuthGate: React.FC<AuthGateProps> = ({
     needsUsername,
     loading = null,
 }) => {
-    const { user, isSyncing, skipUsernameSetup, isSkipLoaded } = useAuthStore();
+    const { user, isSyncing, isHandshaking, skipUsernameSetup, isSkipLoaded } = useAuthStore();
 
-    if (isSyncing || !isSkipLoaded) return <>{loading}</>;
-
-    const isRealUser = Boolean(user && !user.isAnonymous);
     const hasUsername = Boolean(user?.username?.trim());
+    const isRealUser = Boolean(user && !user.isAnonymous);
+    const isLoading = isSyncing || !isSkipLoaded || (isHandshaking && !hasUsername && !skipUsernameSetup) || (isRealUser && user?.isOptimistic && !skipUsernameSetup);
+    
+    if (isLoading) return <>{loading}</>;
 
     if (isRealUser && !hasUsername && !skipUsernameSetup) {
         return <>{needsUsername}</>;
@@ -27,12 +28,12 @@ export const AuthGate: React.FC<AuthGateProps> = ({
 };
 
 export const useAuthGate = () => {
-    const { user, isSyncing } = useAuthStore();
+    const { user, isSyncing, isHandshaking, skipUsernameSetup } = useAuthStore();
 
-    const isLoading = isSyncing;
     const isAnonymous = !user || user.isAnonymous;
     const isAuthenticated = !isAnonymous;
     const hasUsername = isAuthenticated && Boolean(user?.username?.trim());
+    const isLoading = isSyncing || (isHandshaking && !hasUsername && !skipUsernameSetup) || (isAuthenticated && user?.isOptimistic && !skipUsernameSetup);
     const isFullyOnboarded = isAuthenticated && hasUsername;
 
     return {

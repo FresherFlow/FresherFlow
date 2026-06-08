@@ -19,24 +19,16 @@ let cachedProfile: Profile | null = null;
 let cachedCompletionPercentage = 0;
 
 let activeStatsPromise: Promise<{ applied: number; shareStats: typeof cachedShareStats }> | null = null;
-let activeProfilePromise: Promise<{ profile: Profile; completionPercentage: number; source: string }> | null = null;
+let activeProfilePromise: Promise<{ profile: Profile; source: string } | null> | null = null;
 
 // --- Global Subscription listeners to synchronize all mounted hook instances ---
 const profileListeners = new Set<(profile: Profile | null) => void>();
-const percentageListeners = new Set<(percentage: number) => void>();
 const statsListeners = new Set<(stats: { applied: number; shareStats: typeof cachedShareStats }) => void>();
 
 const updateGlobalProfile = (p: Profile | null) => {
     cachedProfile = p;
     profileListeners.forEach(listener => {
         try { listener(p); } catch (e) { console.error(e); }
-    });
-};
-
-const updateGlobalPercentage = (pct: number) => {
-    cachedCompletionPercentage = pct;
-    percentageListeners.forEach(listener => {
-        try { listener(pct); } catch (e) { console.error(e); }
     });
 };
 
@@ -61,7 +53,6 @@ export const useProfile = () => {
     // Subscribe to global updates
     useEffect(() => {
         profileListeners.add(setFullProfile);
-        percentageListeners.add(setCompletionPercentage);
         
         const statsListener = (s: { applied: number; shareStats: typeof cachedShareStats }) => {
             setAppliedCount(s.applied);
@@ -71,7 +62,6 @@ export const useProfile = () => {
 
         return () => {
             profileListeners.delete(setFullProfile);
-            percentageListeners.delete(setCompletionPercentage);
             statsListeners.delete(statsListener);
         };
     }, []);
@@ -94,12 +84,10 @@ export const useProfile = () => {
     // Set initial values from memory cache if available
     useEffect(() => {
         if (cachedProfile) setFullProfile(cachedProfile);
-        if (cachedCompletionPercentage) setCompletionPercentage(cachedCompletionPercentage);
         if (cachedAppliedCount) setAppliedCount(cachedAppliedCount);
         setShareStats(cachedShareStats);
     }, []);
 
-    const [completionPercentage, setCompletionPercentage] = useState(0);
     const [loadingProfile, setLoadingProfile] = useState(false);
     const [appliedCount, setAppliedCount] = useState(0);
     const [shareStats, setShareStats] = useState({ totalShared: 0, totalPublished: 0, approvalRate: 0 });
@@ -157,7 +145,6 @@ export const useProfile = () => {
         // 1. Serve from memory cache if fresh
         if (Date.now() - lastProfileFetchTime < 10000 && cachedProfile) {
             updateGlobalProfile(cachedProfile);
-            updateGlobalPercentage(cachedCompletionPercentage);
             return;
         }
 
@@ -165,8 +152,9 @@ export const useProfile = () => {
         if (activeProfilePromise) {
             try {
                 const res = await activeProfilePromise;
-                updateGlobalProfile(res.profile);
-                updateGlobalPercentage(res.completionPercentage);
+                if (res) {
+                    updateGlobalProfile(res.profile);
+                }
             } catch {
                 // Handled in main promise
             }
@@ -179,26 +167,25 @@ export const useProfile = () => {
             const firebaseProfile = firebaseUid ? await readFirebaseProfile(firebaseUid) : null;
 
             if (firebaseProfile) {
-                const completionPercentage = calculateProfileCompletion(firebaseProfile).percentage;
-                return { profile: firebaseProfile, completionPercentage, source: 'firebase' };
+                return { profile: firebaseProfile, source: 'firebase' };
             }
 
             // 4. Fallback to API if Firebase has nothing (first login, new user)
             const profileRes = await profileApi.get() as { profile: Profile };
-            const completionPercentage = calculateProfileCompletion(profileRes.profile).percentage;
-            return { profile: profileRes.profile, completionPercentage, source: 'api' };
+            return profileRes?.profile ? { profile: profileRes.profile, source: 'api' } : null;
         })();
 
         try {
             const res = await activeProfilePromise;
-            lastProfileFetchTime = Date.now();
-            updateGlobalProfile(res.profile);
-            updateGlobalPercentage(res.completionPercentage);
-            await saveLocalProfile(res.profile, user.id);
-            console.log(`[useProfile] Profile loaded from ${res.source}`);
-            // Trigger instant real-time full sync of jobs from CDN
-            const feedStore = useFeedStore.getState();
-            void feedStore.performSync(true, true);
+            if (res) {
+                lastProfileFetchTime = Date.now();
+                updateGlobalProfile(res.profile);
+                await saveLocalProfile(res.profile, user.id);
+                console.log(`[useProfile] Profile loaded from ${res.source}`);
+                // Trigger instant real-time full sync of jobs from CDN
+                const feedStore = useFeedStore.getState();
+                void feedStore.performSync(true, true);
+            }
         } catch (e) {
             console.warn('[useProfile] Failed to fetch profile', e);
         } finally {
@@ -223,7 +210,6 @@ export const useProfile = () => {
         // 1. Local-first: update in-memory and persist immediately
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         updateGlobalProfile(merged);
-        updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
 
         // Trigger instant real-time full sync of jobs from CDN
@@ -258,7 +244,6 @@ export const useProfile = () => {
         // 1. Local-first
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         updateGlobalProfile(merged);
-        updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
 
         // Trigger instant real-time full sync of jobs from CDN
@@ -288,7 +273,6 @@ export const useProfile = () => {
         // 1. Local-first
         const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
         updateGlobalProfile(merged);
-        updateGlobalPercentage(calculateProfileCompletion(merged).percentage);
         await saveLocalProfile(merged, user?.id);
 
         // Trigger instant real-time full sync of jobs from CDN
@@ -325,9 +309,12 @@ export const useProfile = () => {
         await logout();
     }, [logout]);
 
+    const activeProfile = fullProfile ?? (user?.profile as Profile) ?? null;
+    const completionPercentage = calculateProfileCompletion(activeProfile).percentage;
+
     return {
         user,
-        profile: fullProfile ?? (user?.profile as Profile),
+        profile: activeProfile,
         completionPercentage,
         loadingProfile,
         loadingCache,
