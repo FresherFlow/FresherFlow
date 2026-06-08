@@ -13,6 +13,7 @@ import {
   Dimensions,
   InteractionManager,
   LayoutAnimation,
+  Image,
 } from 'react-native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -47,6 +48,10 @@ import {
   AlertCircle,
   ChevronRight,
   ChevronDown,
+  PlayCircle,
+  FolderOpen,
+  Compass,
+  Globe,
 } from 'lucide-react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -98,6 +103,8 @@ import { CommentSection } from '@/system/components/CommentSection';
 import { TrackerStatusSheet, TrackerStatusSheetRef } from '@/system/components/TrackerStatusSheet';
 import { PremiumActionSheet } from '@/system/components/PremiumActionSheet';
 import { SuccessModal } from '@/system/components/SuccessModal';
+import { ComplexityCard } from './components/ComplexityCard';
+import { useResourcesFeed } from '@/hooks/useResourcesFeed';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -138,6 +145,44 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     route.params?.opportunity ?? route.params?.job ?? null,
     navigation
   );
+
+  const { resources } = useResourcesFeed();
+  const matchedResources = useMemo(() => {
+    if (!opportunity) return [];
+    
+    const companyName = (opportunity.company || '').toLowerCase().trim();
+    const jobSkills = (opportunity.requiredSkills || []).map((s: string) => s.toLowerCase().trim());
+    
+    return resources.filter(res => {
+      const matchesCompany = !!(res.company && res.company.toLowerCase().trim() === companyName);
+      const matchesSkills = res.skills.some((skill: string) => jobSkills.includes(skill.toLowerCase().trim()));
+      return matchesCompany || matchesSkills;
+    }).slice(0, 3);
+  }, [opportunity, resources]);
+
+  const getResourceColor = (type: string, opacity: number = 1) => {
+    let hex = currentTheme.colors.primary;
+    if (type === 'YOUTUBE') hex = '#EF4444';
+    else if (type === 'GOOGLE_DRIVE') hex = '#10B981';
+    else if (type === 'ROADMAP') hex = '#3B82F6';
+    else hex = '#8B5CF6';
+    return alpha(hex, opacity);
+  };
+
+  const getResourceIcon = (type: string) => {
+    const size = 18;
+    const color = getResourceColor(type, 1);
+    switch (type) {
+      case 'YOUTUBE':
+        return <PlayCircle size={size} color={color} />;
+      case 'GOOGLE_DRIVE':
+        return <FolderOpen size={size} color={color} />;
+      case 'ROADMAP':
+        return <Compass size={size} color={color} />;
+      default:
+        return <Globe size={size} color={color} />;
+    }
+  };
 
   const isFollowingCompany = useMemo(() => {
     if (!opportunity?.company) return false;
@@ -762,7 +807,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </Animated.View>
             )}
 
-            {/* Requirements & Skills */}
+             {/* Requirements & Skills */}
             <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
                 <Section title="Candidate Requirements">
                     <SurfaceCard style={styles.requirementCard}>
@@ -850,6 +895,13 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </Section>
             </Animated.View>
 
+            {/* Application Method & Preparation details (FORM / ASSESSMENT) */}
+            {opportunity.applicationDetails && (
+                <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <ComplexityCard applicationDetails={opportunity.applicationDetails} />
+                </Animated.View>
+            )}
+
             {/* Selection Process (NEW) */}
             {opportunity.selectionProcess && (
                 <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
@@ -857,7 +909,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             const rawProcess = (opportunity.selectionProcess || '').replace(/\\n/g, '\n');
                             const steps = rawProcess
                                 .split(/,|\n/)
-                                .map(s => s.trim().replace(/^\d+[\.)\]]?\s*/, ''))
+                                .map(s => s.trim().replace(/^\d+[.)\]]?\s*/, ''))
                                 .filter(Boolean);
                             
                             if (steps.length === 0) return null;
@@ -952,6 +1004,92 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </Animated.View>
             )}
 
+            {/* Curated Preparation Resources (Private Jobs) */}
+            {opportunity.type !== 'GOVERNMENT' && matchedResources.length > 0 && (
+                <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                    <Section 
+                        title="Curated Prep Resources"
+                        rightElement={
+                            opportunity.company ? (
+                                <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={() => navigation.navigate('CompanyDetail', {
+                                        companyName: opportunity.company!,
+                                        companyLogoUrl: opportunity.companyLogoUrl || undefined,
+                                        website: opportunity.companyWebsite || undefined,
+                                        initialTab: 'RESOURCES'
+                                    })}
+                                >
+                                    <Text style={{ fontSize: 12, fontWeight: '800', color: currentTheme.colors.primary }}>View All</Text>
+                                </TouchableOpacity>
+                            ) : undefined
+                        }
+                    >
+                        <View style={{ gap: 12 }}>
+                            {matchedResources.map((res) => {
+                                const isYoutube = res.type === 'YOUTUBE' || res.url.toLowerCase().includes('youtube.com') || res.url.toLowerCase().includes('youtu.be');
+                                let ytVideoId = null;
+                                if (isYoutube) {
+                                    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                                    const match = res.url.match(regExp);
+                                    if (match && match[2].length === 11) {
+                                        ytVideoId = match[2];
+                                    }
+                                }
+
+                                return (
+                                    <TouchableOpacity
+                                        key={res.id}
+                                        activeOpacity={0.8}
+                                        onPress={() => openExternalURL(res.url, currentTheme.colors)}
+                                    >
+                                        <SurfaceCard style={{ borderWidth: 1, borderColor: alpha(currentTheme.colors.border, 0.05), flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, gap: 14 }}>
+                                            <View style={{ flex: 1, gap: 10 }}>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                                                    <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: getResourceColor(res.type, 0.08) }}>
+                                                        {getResourceIcon(res.type)}
+                                                    </View>
+                                                    <View style={{ flex: 1 }}>
+                                                        <Text style={{ fontSize: 14, fontWeight: '800', lineHeight: 18, color: currentTheme.colors.text }} numberOfLines={2}>
+                                                            {res.title}
+                                                        </Text>
+                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                                                            <Text style={{ fontSize: 8, fontWeight: '900', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, textTransform: 'uppercase', color: getResourceColor(res.type), backgroundColor: getResourceColor(res.type, 0.08) }}>
+                                                                {res.type.replace('_', ' ')}
+                                                            </Text>
+                                                            {res.skills && res.skills.slice(0, 2).map((skill: string) => (
+                                                                <View key={skill} style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.05) }}>
+                                                                    <Text style={{ fontSize: 8, fontWeight: '800', color: currentTheme.colors.textMuted }}>{skill}</Text>
+                                                                </View>
+                                                            ))}
+                                                        </View>
+                                                    </View>
+                                                    <ExternalLink size={15} color={alpha(currentTheme.colors.textMuted, 0.3)} />
+                                                </View>
+
+                                                {ytVideoId && (
+                                                    <View style={{ marginTop: 8, borderRadius: 12, borderWidth: 1, overflow: 'hidden', position: 'relative', aspectRatio: 16 / 9, width: '100%', borderColor: alpha(currentTheme.colors.border, 0.1) }}>
+                                                        <Image
+                                                            source={{ uri: `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` }}
+                                                            style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
+                                                        />
+                                                        <View style={{ ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+                                                            <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EF4444' }}>
+                                                                <PlayCircle size={24} color="#FFFFFF" />
+                                                            </View>
+                                                        </View>
+                                                    </View>
+                                                )}
+                                            </View>
+                                        </SurfaceCard>
+                                    </TouchableOpacity>
+                                );
+                            })}
+                        </View>
+                    </Section>
+                </Animated.View>
+            )}
+
             {/* Notes / Highlights (NEW) */}
             {opportunity.notesHighlights && (
                 <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
@@ -992,75 +1130,77 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 </Animated.View>
             )}
 
-            {/* Government Job Details (Conditional) */}
-            {opportunity.governmentJobDetails && (
-                <Animated.View style={{ opacity: fadeAnim5, transform: [{ translateY: fadeAnim5.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
-                    <Section title="Government Notice">
-                        <SurfaceCard style={[styles.govtCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.02) }]}>
-                            <View style={styles.govtHeader}>
-                                <Trophy size={20} color={currentTheme.colors.primary} />
-                                <Text style={[styles.govtTitle, { color: currentTheme.colors.text }]}>Official Vacancy</Text>
-                            </View>
-
-                            <View style={styles.govtInfoRow}>
-                                <View style={styles.govtInfoItem}>
-                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>Vacancies</Text>
-                                    <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{opportunity.governmentJobDetails.vacancyCount || 'As per norms'}</Text>
+            {opportunity.governmentJobDetails && (() => {
+                const govtDetails = opportunity.governmentJobDetails as any;
+                return (
+                    <Animated.View style={{ opacity: fadeAnim5, transform: [{ translateY: fadeAnim5.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                        <Section title="Government Notice">
+                            <SurfaceCard style={[styles.govtCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.02) }]}>
+                                <View style={styles.govtHeader}>
+                                    <Trophy size={20} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.govtTitle, { color: currentTheme.colors.text }]}>Official Vacancy</Text>
                                 </View>
-                                <View style={styles.govtInfoItem}>
-                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>Last Date</Text>
-                                    <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{opportunity.governmentJobDetails.applicationEndDate || 'Check portal'}</Text>
-                                </View>
-                            </View>
 
-                            <View style={[styles.govtFeeBox, { backgroundColor: alpha(currentTheme.colors.text, 0.04) }]}>
-                                <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 4 }]}>Application Fee</Text>
-                                <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{opportunity.governmentJobDetails.applicationFee || 'Nil / Varied'}</Text>
-                            </View>
-
-                            {opportunity.governmentJobDetails.vacancies && opportunity.governmentJobDetails.vacancies.length > 0 && (
-                                <View style={{ marginBottom: 20 }}>
-                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 8 }]}>Vacancy Breakup</Text>
-                                    <View style={{ gap: 8 }}>
-                                        {opportunity.governmentJobDetails.vacancies.map((v, i) => (
-                                            <View key={i} style={[styles.govtVacancyItem, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
-                                                <Text style={[styles.govtVacancyPost, { color: currentTheme.colors.text }]}>{v.postName}</Text>
-                                                <Text style={[styles.govtVacancyCount, { color: currentTheme.colors.primary }]}>{v.total} Posts</Text>
-                                            </View>
-                                        ))}
+                                <View style={styles.govtInfoRow}>
+                                    <View style={styles.govtInfoItem}>
+                                        <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>Vacancies</Text>
+                                        <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{govtDetails.vacancyCount || 'As per norms'}</Text>
+                                    </View>
+                                    <View style={styles.govtInfoItem}>
+                                        <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted }]}>Last Date</Text>
+                                        <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{govtDetails.applicationEndDate || 'Check portal'}</Text>
                                     </View>
                                 </View>
-                            )}
 
-                            {opportunity.governmentJobDetails.examDates && (
-                                <View style={{ marginBottom: 20 }}>
-                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 8 }]}>Exam Schedule</Text>
-                                    <View style={{ gap: 8 }}>
-                                        {Object.entries(opportunity.governmentJobDetails.examDates).filter(([, v]) => !!v).map(([k, v], i) => (
-                                            <View key={i} style={styles.govtExamRow}>
-                                                <Text style={[styles.govtExamLabel, { color: currentTheme.colors.textMuted }]}>
-                                                    {k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
-                                                </Text>
-                                                <Text style={[styles.govtExamValue, { color: currentTheme.colors.text }]}>{v}</Text>
-                                            </View>
-                                        ))}
-                                    </View>
+                                <View style={[styles.govtFeeBox, { backgroundColor: alpha(currentTheme.colors.text, 0.04) }]}>
+                                    <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 4 }]}>Application Fee</Text>
+                                    <Text style={[styles.govtValue, { color: currentTheme.colors.text }]}>{govtDetails.applicationFee || 'Nil / Varied'}</Text>
                                 </View>
-                            )}
 
-                            {opportunity.governmentJobDetails.officialNotificationUrl && (
-                                <TouchableOpacity
-                                    style={[styles.govtLink, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]}
-                                    onPress={() => openExternalURL(opportunity.governmentJobDetails!.officialNotificationUrl!, currentTheme.colors)}
-                                >
-                                    <Text style={[styles.govtLinkText, { color: currentTheme.colors.primary }]}>Read Official Notification</Text>
-                                    <ExternalLink size={14} color={currentTheme.colors.primary} />
-                                </TouchableOpacity>
-                            )}
-                        </SurfaceCard>
-                    </Section>
-                </Animated.View>
-            )}
+                                {govtDetails.vacancies && govtDetails.vacancies.length > 0 && (
+                                    <View style={{ marginBottom: 20 }}>
+                                        <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 8 }]}>Vacancy Breakup</Text>
+                                        <View style={{ gap: 8 }}>
+                                            {govtDetails.vacancies.map((v: any, i: number) => (
+                                                <View key={i} style={[styles.govtVacancyItem, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
+                                                    <Text style={[styles.govtVacancyPost, { color: currentTheme.colors.text }]}>{v.postName}</Text>
+                                                    <Text style={[styles.govtVacancyCount, { color: currentTheme.colors.primary }]}>{v.total} Posts</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                )}
+
+                                {govtDetails.examDates && (
+                                    <View style={{ marginBottom: 20 }}>
+                                        <Text style={[styles.govtLabel, { color: currentTheme.colors.textMuted, marginBottom: 8 }]}>Exam Schedule</Text>
+                                        <View style={{ gap: 8 }}>
+                                            {Object.entries(govtDetails.examDates).filter(([, v]) => !!v).map(([k, v], i) => (
+                                                <View key={i} style={styles.govtExamRow}>
+                                                    <Text style={[styles.govtExamLabel, { color: currentTheme.colors.textMuted }]}>
+                                                        {k.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
+                                                    </Text>
+                                                    <Text style={[styles.govtExamValue, { color: currentTheme.colors.text }]}>{v as React.ReactNode}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                    </View>
+                                )}
+
+                                {govtDetails.officialNotificationUrl && (
+                                    <TouchableOpacity
+                                        style={[styles.govtLink, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]}
+                                        onPress={() => openExternalURL(govtDetails.officialNotificationUrl!, currentTheme.colors)}
+                                    >
+                                        <Text style={[styles.govtLinkText, { color: currentTheme.colors.primary }]}>Read Official Notification</Text>
+                                        <ExternalLink size={14} color={currentTheme.colors.primary} />
+                                    </TouchableOpacity>
+                                )}
+                            </SurfaceCard>
+                        </Section>
+                    </Animated.View>
+                );
+            })()}
 
             {opportunity.description && (
                 <Animated.View style={{ opacity: fadeAnim3, transform: [{ translateY: fadeAnim3.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>

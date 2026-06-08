@@ -74,10 +74,7 @@ export const OpportunityActionSheetContent: React.FC<{
     const fresherflowLink = (() => {
         const slug = activeOpportunity.slug ? activeOpportunity.slug.trim() : '';
         const safeSegment = slug ? encodeURIComponent(slug.split('/').filter(Boolean).pop() || slug) : activeOpportunity.id;
-        if (activeOpportunity.type === 'JOB') return `https://fresherflow.in/jobs/${safeSegment}`;
-        if (activeOpportunity.type === 'INTERNSHIP') return `https://fresherflow.in/internships/${safeSegment}`;
-        if (activeOpportunity.type === 'WALKIN') return `https://fresherflow.in/walk-ins/details/${safeSegment}`;
-        return `https://fresherflow.in/opportunities/${safeSegment}`;
+        return `https://fresherflow.in/${safeSegment}`;
     })();
 
     const handleShare = async () => {

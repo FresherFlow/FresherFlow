@@ -35,7 +35,7 @@ export type ExtendedOpportunity = Opportunity & { matchScore?: number; matchReas
 export const useOpportunityDetail = (
     opportunityId: string | null,
     initialOpportunity: ExtendedOpportunity | null,
-    navigation: Props['navigation']
+    navigation: any
 ) => {
     const { currentTheme } = useTheme();
     const { isSaved, toggleSave } = useSaved();

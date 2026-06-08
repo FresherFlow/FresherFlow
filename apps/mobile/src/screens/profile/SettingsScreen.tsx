@@ -26,6 +26,8 @@ import {
   RefreshCw,
   Share2,
   Building2,
+  BookOpen,
+  Landmark,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
@@ -36,6 +38,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
 import { useFollows } from '@/hooks/useFollows';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useSectorStore } from '@/store/useSectorStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { subscribeToGlobalStats } from '@/utils/firebaseViewsDb';
@@ -59,6 +62,7 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
   const { user, completionPercentage, fetchProfile, fetchStats } = useProfile();
   const firebaseUser = useAuthStore(s => s.firebaseUser);
+  const { sector, setSector } = useSectorStore();
   const isFocused = useIsFocused();
   
   const cachedItems = useFeedStore(s => s.cachedItems);
@@ -211,9 +215,20 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             ))}
                         </View>
                   </>
+
                   <>
                         <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>General</Text>
                         <SurfaceCard style={styles.groupCard}>
+                            <MenuRow
+                                icon={sector === 'PRIVATE' ? Landmark : Briefcase}
+                                label="Switch mode"
+                                subtitle={sector === 'PRIVATE' ? "Change to government jobs" : "Change to private jobs"}
+                                onPress={() => {
+                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                                    navigation.navigate('SectorSelection');
+                                }}
+                                currentTheme={currentTheme}
+                            />
                             <MenuRow
                                 icon={Settings}
                                 label="Account & Privacy"
@@ -243,6 +258,13 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 icon={Building2}
                                 label="Companies"
                                 onPress={() => onNavigate('FollowedCompanies')}
+                                currentTheme={currentTheme}
+                            />
+                            <MenuRow
+                                icon={BookOpen}
+                                label="Prep Resources"
+                                subtitle="Guides & Topic Lounge"
+                                onPress={() => onNavigate('ResourcesDirectory')}
                                 currentTheme={currentTheme}
                                 isLast
                             />

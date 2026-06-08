@@ -1,4 +1,4 @@
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useState, useMemo } from 'react';
 import {
     StyleSheet,
     Text,
@@ -7,10 +7,11 @@ import {
     ActivityIndicator,
     StatusBar,
     Animated,
+    Image,
 } from 'react-native';
 import { openExternalURL } from '@/utils/browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Share2, Globe, Building2, Home, Copy, Linkedin, Twitter, Send, Instagram } from 'lucide-react-native';
+import { Share2, Globe, Building2, Home, Copy, Linkedin, Twitter, Send, Instagram, PlayCircle, FolderOpen, Compass, ExternalLink, Bookmark } from 'lucide-react-native';
 import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/system/components/SocialIcons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
@@ -39,9 +40,11 @@ import { SPACING, mScale, RADIUS } from '@/system/constants/dimensions';
 import { useCompany } from '@/hooks/useCompany';
 import { useFollows } from '@/hooks/useFollows';
 import { useAuthStore } from '@/store/useAuthStore';
-import { SecondaryHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, PremiumRefreshControl, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { useToast } from '@/contexts/ToastContext';
 import * as Haptics from 'expo-haptics';
+import { useResourcesFeed } from '@/hooks/useResourcesFeed';
+import { useSavedJobs } from '@/hooks/useSavedJobs';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyDetail'>;
 
@@ -51,7 +54,7 @@ const alpha = (color: string, opacity: number) => {
 };
 
 const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
-    const { companyName, companyLogoUrl, website, currentJob } = route.params;
+    const { companyName, companyLogoUrl, website, currentJob, initialTab } = route.params;
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const { isSaved, toggleSave } = useSaved();
@@ -62,6 +65,37 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
     const { showSuccess } = useToast();
     const fabAnim = React.useRef(new Animated.Value(0)).current;
     const shareSheetRef = React.useRef<BottomSheetModal>(null);
+
+    const [activeTab, setActiveTab] = useState<'JOBS' | 'RESOURCES'>(initialTab || 'JOBS');
+    const { getResourcesByGroup } = useResourcesFeed();
+    const { isSavedResource, toggleSaveResource } = useSavedJobs();
+    const companyResources = useMemo(() => {
+        return getResourcesByGroup('COMPANY', companyName.toLowerCase().replace(/\s+/g, '-'));
+    }, [companyName, getResourcesByGroup]);
+
+    const getResourceColor = (type: string, opacity: number = 1) => {
+        let hex = currentTheme.colors.primary;
+        if (type === 'YOUTUBE') hex = '#EF4444';
+        else if (type === 'GOOGLE_DRIVE') hex = '#10B981';
+        else if (type === 'ROADMAP') hex = '#3B82F6';
+        else hex = '#8B5CF6';
+        return alpha(hex, opacity);
+    };
+
+    const getResourceIcon = (type: string) => {
+        const size = 20;
+        const color = getResourceColor(type, 1);
+        switch (type) {
+            case 'YOUTUBE':
+                return <PlayCircle size={size} color={color} />;
+            case 'GOOGLE_DRIVE':
+                return <FolderOpen size={size} color={color} />;
+            case 'ROADMAP':
+                return <Compass size={size} color={color} />;
+            default:
+                return <Globe size={size} color={color} />;
+        }
+    };
 
     const companyKey = React.useMemo(() => website || companyName, [website, companyName]);
     const followingCompany = isFollowing('COMPANY', companyKey);
@@ -230,8 +264,8 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                 />
             </View>
 
-            <FlashList<Opportunity>
-                data={jobs}
+            <FlashList<any>
+                data={activeTab === 'JOBS' ? jobs : companyResources}
                 keyExtractor={(item) => item.id}
                 // @ts-expect-error - estimatedItemSize exists but typing is bugged in this setup
                 estimatedItemSize={180}
@@ -309,31 +343,169 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
 
                         <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.1) }]} />
 
-                        <View style={styles.feedHeader}>
-                            <Building2 size={16} color={currentTheme.colors.textMuted} />
-                            <Text style={[styles.feedTitle, { color: currentTheme.colors.textMuted }]}>
-                                {jobs.length > 0 ? `${jobs.length} ACTIVE OPPORTUNITIES` : 'FETCHING OPPORTUNITIES...'}
-                            </Text>
+                        {/* Premium Sliding Segmented Tab Controller */}
+                        <View style={[styles.tabBar, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
+                            <TouchableOpacity
+                                activeOpacity={0.9}
+                                onPress={() => {
+                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setActiveTab('JOBS');
+                                }}
+                                style={[
+                                    styles.tabBtn,
+                                    activeTab === 'JOBS' && { backgroundColor: currentTheme.colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+                                ]}
+                            >
+                                <Text style={[styles.tabBtnText, { color: activeTab === 'JOBS' ? currentTheme.colors.text : currentTheme.colors.textMuted }]}>
+                                    Opportunities ({jobs.length})
+                                </Text>
+                            </TouchableOpacity>
+
+                            <TouchableOpacity
+                                activeOpacity={0.9}
+                                onPress={() => {
+                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    setActiveTab('RESOURCES');
+                                }}
+                                style={[
+                                    styles.tabBtn,
+                                    activeTab === 'RESOURCES' && { backgroundColor: currentTheme.colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
+                                ]}
+                            >
+                                <Text style={[styles.tabBtnText, { color: activeTab === 'RESOURCES' ? currentTheme.colors.text : currentTheme.colors.textMuted }]}>
+                                    Prep Pack ({companyResources.length})
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+
+                        <View style={[styles.feedHeader, { marginTop: 20 }]}>
+                            {activeTab === 'JOBS' ? (
+                                <>
+                                    <Building2 size={16} color={currentTheme.colors.textMuted} />
+                                    <Text style={[styles.feedTitle, { color: currentTheme.colors.textMuted }]}>
+                                        {jobs.length > 0 ? `${jobs.length} ACTIVE OPPORTUNITIES` : 'FETCHING OPPORTUNITIES...'}
+                                    </Text>
+                                </>
+                            ) : (
+                                <>
+                                    <PlayCircle size={16} color={currentTheme.colors.textMuted} />
+                                    <Text style={[styles.feedTitle, { color: currentTheme.colors.textMuted }]}>
+                                        {companyResources.length > 0 ? `${companyResources.length} CURATED PREP GUIDES` : 'NO GUIDES ADDED YET'}
+                                    </Text>
+                                </>
+                            )}
                         </View>
                     </View>
                 }
-                renderItem={({ item, index }) => (
-                    <JobCard
-                        opportunity={item}
-                        index={index}
-                        onPress={() => {
-                            void saveDetailCache(item);
-                            navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
-                        }}
-                        onSave={() => handleToggleSave(item)}
-                        isSaved={isSaved(item.id)}
-                    />
-                )}
+                renderItem={({ item, index }) => {
+                    if (activeTab === 'JOBS') {
+                        const opportunity = item as Opportunity;
+                        return (
+                            <JobCard
+                                opportunity={opportunity}
+                                index={index}
+                                onPress={() => {
+                                    void saveDetailCache(opportunity);
+                                    navigation.navigate('JobDetail', { opportunity, opportunityId: opportunity.id });
+                                }}
+                                onSave={() => handleToggleSave(opportunity)}
+                                isSaved={isSaved(opportunity.id)}
+                            />
+                        );
+                    } else {
+                        const res = item;
+                        const isYoutube = res.type === 'YOUTUBE' || res.url.toLowerCase().includes('youtube.com') || res.url.toLowerCase().includes('youtu.be');
+                        let ytVideoId = null;
+                        if (isYoutube) {
+                            const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+                            const match = res.url.match(regExp);
+                            if (match && match[2].length === 11) {
+                                ytVideoId = match[2];
+                            }
+                        }
+
+                        return (
+                            <TouchableOpacity
+                                key={res.id}
+                                activeOpacity={0.8}
+                                onPress={() => openExternalURL(res.url, currentTheme.colors)}
+                                style={{ paddingHorizontal: SPACING.lg, marginBottom: 12 }}
+                            >
+                                <SurfaceCard style={[styles.resourceCard, { borderWidth: 1, borderColor: alpha(currentTheme.colors.border, 0.05) }]}>
+                                    <View style={{ flex: 1, gap: 10 }}>
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
+                                            <View style={[styles.iconWrapper, { backgroundColor: getResourceColor(res.type, 0.08) }]}>
+                                                {getResourceIcon(res.type)}
+                                            </View>
+                                            <View style={{ flex: 1 }}>
+                                                <Text style={[styles.resourceTitle, { color: currentTheme.colors.text }]} numberOfLines={2}>
+                                                    {res.title}
+                                                </Text>
+                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
+                                                    <Text style={[styles.resourceTypeBadge, { color: getResourceColor(res.type), backgroundColor: getResourceColor(res.type, 0.08) }]}>
+                                                        {res.type.replace('_', ' ')}
+                                                    </Text>
+                                                    {res.skills && res.skills.slice(0, 2).map((skill: string) => (
+                                                        <View key={skill} style={[styles.miniSkillTag, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.05), borderWidth: 1 }]}>
+                                                            <Text style={[styles.miniSkillTagText, { color: currentTheme.colors.textMuted }]}>{skill}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                            <ExternalLink size={15} color={alpha(currentTheme.colors.textMuted, 0.3)} />
+                                        </View>
+
+                                        {ytVideoId && (
+                                            <View style={[styles.youtubePreviewContainer, { borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
+                                                <Image
+                                                    source={{ uri: `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` }}
+                                                    style={styles.youtubeThumbnail}
+                                                />
+                                                <View style={[styles.playButtonOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
+                                                    <View style={[styles.playButtonCircle, { backgroundColor: '#EF4444' }]}>
+                                                        <PlayCircle size={24} color="#FFFFFF" />
+                                                    </View>
+                                                </View>
+                                            </View>
+                                        )}
+                                        
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
+                                            <Text style={{ color: currentTheme.colors.textMuted, fontSize: 11, fontWeight: '600', marginBottom: 8 }}>
+                                                Shared by @{res.addedByUsername || 'community'}
+                                            </Text>
+                                            <TouchableOpacity 
+                                                onPress={(e) => {
+                                                    e.stopPropagation();
+                                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                    toggleSaveResource(res);
+                                                }}
+                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                                style={{ 
+                                                    padding: 6, 
+                                                    borderRadius: 8, 
+                                                    backgroundColor: isSavedResource(res.id) ? alpha(currentTheme.colors.primary, 0.1) : 'transparent' 
+                                                }}
+                                            >
+                                                <Bookmark 
+                                                    size={18} 
+                                                    color={isSavedResource(res.id) ? currentTheme.colors.primary : currentTheme.colors.textMuted} 
+                                                    fill={isSavedResource(res.id) ? currentTheme.colors.primary : 'none'} 
+                                                />
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                </SurfaceCard>
+                            </TouchableOpacity>
+                        );
+                    }
+                }}
                 ListEmptyComponent={
                     !loading ? (
                         <View style={styles.emptyState}>
                             <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>
-                                No active listings found for this company right now.
+                                {activeTab === 'JOBS' 
+                                    ? 'No active listings found for this company right now.'
+                                    : 'No prep resources shared for this company yet.'}
                             </Text>
                         </View>
                     ) : (
@@ -675,6 +847,87 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         textAlign: 'center',
         width: '100%',
+    },
+    tabBar: {
+        height: 48,
+        borderRadius: 14,
+        flexDirection: 'row',
+        padding: 4,
+        alignItems: 'center',
+    },
+    tabBtn: {
+        flex: 1,
+        height: '100%',
+        borderRadius: 10,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    tabBtnText: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    resourceCard: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        padding: 16,
+        borderRadius: 20,
+        gap: 14,
+    },
+    iconWrapper: {
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    resourceTitle: {
+        fontSize: 14,
+        fontWeight: '800',
+        lineHeight: 18,
+    },
+    resourceTypeBadge: {
+        fontSize: 8,
+        fontWeight: '900',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        textTransform: 'uppercase',
+    },
+    miniSkillTag: {
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 6,
+        borderWidth: 1,
+    },
+    miniSkillTagText: {
+        fontSize: 8,
+        fontWeight: '800',
+    },
+    youtubePreviewContainer: {
+        marginTop: 8,
+        borderRadius: 12,
+        borderWidth: 1,
+        overflow: 'hidden',
+        position: 'relative',
+        aspectRatio: 16 / 9,
+        width: '100%',
+    },
+    youtubeThumbnail: {
+        width: '100%',
+        height: '100%',
+        resizeMode: 'cover',
+    },
+    playButtonOverlay: {
+        ...StyleSheet.absoluteFillObject,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    playButtonCircle: {
+        width: 44,
+        height: 44,
+        borderRadius: 22,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
 });
 

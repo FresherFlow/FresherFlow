@@ -95,3 +95,36 @@ export const GET_CATEGORY_SHARD_URL = (id: string) => `${CDN_URL}/categories/${i
 export const EDUCATION_METADATA_URL = `${CDN_URL}/education.json`;
 export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;
 export const CITIES_METADATA_URL = `${CDN_URL}/cities.json`;
+export const RESOURCES_FEED_URL = `${CDN_URL}/resources-feed.json`;
+export const GOVERNMENT_FEED_URL = `${CDN_URL}/government-feed.json`;
+export const GOVERNMENT_RESOURCES_FEED_URL = `${CDN_URL}/government-resources-feed.json`;
+
+export function getApiUrlForSector(sector: string | null): string {
+    if (sector === 'GOVERNMENT') {
+        return resolveLocalUrl(undefined, DEV_LOCAL_URL);
+    }
+    return API_URL;
+}
+
+export function configureApiClientForSector(sector: string | null) {
+    const finalApiUrl = getApiUrlForSector(sector);
+    console.log(`[mobile] Re-configuring API client for sector ${sector}: ${finalApiUrl}`);
+
+    const { configureClient, HttpError } = require('@fresherflow/api-client');
+    const { secureStorage } = require('@repo/frontend-core');
+    const { useAuthStore } = require('../store/useAuthStore');
+
+    configureClient(finalApiUrl, secureStorage, {
+      onError: (err: any) => {
+        if (err instanceof HttpError && err.status === 401) {
+          const { isAuthenticated, triggerHandshake } = useAuthStore.getState();
+          if (isAuthenticated) {
+            console.log('[Auth] Detected 401 Unauthorized, triggering re-handshake...');
+            triggerHandshake();
+          }
+        }
+      }
+    });
+}
+
+

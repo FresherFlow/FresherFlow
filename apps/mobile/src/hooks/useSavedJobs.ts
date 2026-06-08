@@ -4,7 +4,7 @@ import { useSaved } from '@repo/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
 
 export const useSavedJobs = () => {
-    const { savedJobs, syncSavedJobs } = useSaved();
+    const { savedJobs, savedResources, toggleSaveResource, isSavedResource, syncSavedJobs, syncSavedResources } = useSaved();
     const { showToast } = useToast();
     const [loading, setLoading] = useState(false);
     
@@ -13,6 +13,9 @@ export const useSavedJobs = () => {
         try {
             if (syncSavedJobs) {
                 await syncSavedJobs();
+            }
+            if (syncSavedResources) {
+                await syncSavedResources();
             }
         } finally {
             setLoading(false);
@@ -25,6 +28,9 @@ export const useSavedJobs = () => {
 
     return {
         savedJobs,
+        savedResources,
+        toggleSaveResource,
+        isSavedResource,
         loading,
         refresh,
         clearAll,

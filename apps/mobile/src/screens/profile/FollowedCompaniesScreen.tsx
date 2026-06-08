@@ -10,13 +10,14 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, X, ChevronRight, Check, Plus, Building2, ChevronUp } from 'lucide-react-native';
+import { Search, X, ChevronRight, Check, Plus, Building2, ChevronUp, Landmark } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useScrollToTop } from '@react-navigation/native';
 import { useFollows } from '@/hooks/useFollows';
 import { useFeedStore } from '@/store/useFeedStore';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useSectorStore } from '@/store/useSectorStore';
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { CompanyLogo } from '@repo/ui';
@@ -39,6 +40,7 @@ interface CompanyListItem {
 const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
+  const { sector } = useSectorStore();
   const { showToast } = useToast();
   const { user } = useAuthStore();
   const { follows, follow, unfollow, isFollowing } = useFollows();
@@ -210,7 +212,7 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
               </Text>
             ) : (
               <Text style={[styles.companyWebsite, { color: currentTheme.colors.textMuted }]}>
-                Company Profile
+                {sector === 'GOVERNMENT' ? 'Organization Profile' : 'Company Profile'}
               </Text>
             )}
           </View>
@@ -248,7 +250,7 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
 
       <View style={{ paddingTop: insets.top + 10, paddingBottom: 10 }}>
         <PremiumHeader
-          title="Companies"
+          title={sector === 'GOVERNMENT' ? "Govt Organizations" : "Companies"}
           showBack
           onBack={() => {
             if (navigation.canGoBack()) {
@@ -266,7 +268,7 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
           <Search size={18} color={currentTheme.colors.textMuted} />
           <TextInput
             style={[styles.searchInput, { color: currentTheme.colors.text }]}
-            placeholder="Search companies..."
+            placeholder={sector === 'GOVERNMENT' ? "Search organizations..." : "Search companies..."}
             placeholderTextColor={currentTheme.colors.textMuted}
             value={searchQuery}
             onChangeText={setSearchQuery}
@@ -324,11 +326,15 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
           contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Building2 size={48} color={currentTheme.colors.textMuted} style={{ marginBottom: 12 }} />
+              {sector === 'GOVERNMENT' ? (
+                <Landmark size={48} color={currentTheme.colors.textMuted} style={{ marginBottom: 12 }} />
+              ) : (
+                <Building2 size={48} color={currentTheme.colors.textMuted} style={{ marginBottom: 12 }} />
+              )}
               <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>
                 {filterType === 'FOLLOWED' 
-                  ? "You aren't following any companies yet." 
-                  : "No companies found matching search."}
+                  ? (sector === 'GOVERNMENT' ? "You aren't following any organizations yet." : "You aren't following any companies yet.")
+                  : (sector === 'GOVERNMENT' ? "No organizations found matching search." : "No companies found matching search.")}
               </Text>
             </View>
           }

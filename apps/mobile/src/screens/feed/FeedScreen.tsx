@@ -128,6 +128,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     isBootstrapping,
     hasProfileData,
     error,
+    isSyncing,
   } = useFeed(tabFeedType);
 
   // Haptic confirmation when pull-to-refresh completes
@@ -173,8 +174,8 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
   const listData = useMemo(() => {
     const data: FeedItem[] = [];
     
-    // If we are bootstrapping on app launch, show skeletons instead of flashing old cache
-    if (loading && !refreshing) {
+    // If we are bootstrapping on app launch, or if we have no items and are syncing, show skeletons
+    if ((loading || (filteredOpportunities.length === 0 && isSyncing)) && !refreshing) {
       [1, 2, 3].forEach(i => data.push({ type: 'skeleton', key: `skeleton-${i}` }));
       return data;
     }
@@ -197,7 +198,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     }
 
     return data;
-  }, [loading, filteredOpportunities, refreshing]);
+  }, [loading, filteredOpportunities, refreshing, isSyncing]);
 
   const renderItem = useCallback(({ item }: { item: FeedItem }) => {
     switch (item.type) {
@@ -392,9 +393,9 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const activeTabRef = useRef(0);
   const pagerRef = useRef<PagerView>(null);
   const tabListRef = useRef<ScrollView>(null);
-  // Indicator position — springs to new tab after swipe lands (no per-frame JS bridge cost)
   const indicatorLeft = useRef(new Animated.Value(0)).current;
   const indicatorWidth = useRef(new Animated.Value(0)).current;
+  const [indicatorReady, setIndicatorReady] = useState(false);
 
   // Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -473,22 +474,33 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   ];
 
 
-  // Animate indicator position smoothly when active tab changes
+  // Animate indicator position when tab changes. On first layout, snap instantly and reveal.
+  const isFirstLayout = useRef(true);
   useEffect(() => {
-    if (tabLayouts[activeTab]) {
+    if (!tabLayouts[activeTab]) return;
+    const targetX = tabLayouts[activeTab].center || tabLayouts[activeTab].x;
+    const targetW = tabLayouts[activeTab].width;
+
+    if (isFirstLayout.current) {
+      // Snap to exact position with zero animation, then reveal
+      indicatorLeft.setValue(targetX);
+      indicatorWidth.setValue(targetW);
+      isFirstLayout.current = false;
+      setIndicatorReady(true);
+    } else {
       Animated.parallel([
-          Animated.spring(indicatorLeft, {
-              toValue: tabLayouts[activeTab].center || tabLayouts[activeTab].x,
-              useNativeDriver: true,
-              bounciness: 0,
-              speed: 14,
-          }),
-          Animated.spring(indicatorWidth, {
-              toValue: tabLayouts[activeTab].width,
-              useNativeDriver: true,
-              bounciness: 0,
-              speed: 14,
-          })
+        Animated.spring(indicatorLeft, {
+          toValue: targetX,
+          useNativeDriver: true,
+          bounciness: 0,
+          speed: 20,
+        }),
+        Animated.spring(indicatorWidth, {
+          toValue: targetW,
+          useNativeDriver: true,
+          bounciness: 0,
+          speed: 20,
+        }),
       ]).start();
     }
   }, [tabLayouts, activeTab]);
@@ -659,11 +671,11 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 </Text>
                                 {showBadge && (
                                     <View style={{
-                                        backgroundColor: currentTheme.colors.error,
-                                        paddingHorizontal: 4,
-                                        paddingVertical: 1,
-                                        borderRadius: 8,
-                                        minWidth: 16,
+                                        backgroundColor: currentTheme.colors.text,
+                                        paddingHorizontal: 5,
+                                        paddingVertical: 2,
+                                        borderRadius: 10,
+                                        minWidth: 18,
                                         alignItems: 'center',
                                         justifyContent: 'center',
                                     }}>
@@ -672,7 +684,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                             fontSize: 10,
                                             fontWeight: 'bold',
                                         }}>
-                                            {unseenFeedCount > 9 ? '9+' : unseenFeedCount}
+                                            {unseenFeedCount > 99 ? '99+' : unseenFeedCount}
                                         </Text>
                                     </View>
                                 )}
@@ -684,6 +696,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             styles.tabIndicator,
                             {
                                 width: 1,
+                                opacity: indicatorReady ? 1 : 0,
                                 transform: [
                                     { translateX: indicatorLeft },
                                     { scaleX: indicatorWidth }

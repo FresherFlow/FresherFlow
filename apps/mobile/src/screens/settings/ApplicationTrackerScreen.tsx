@@ -17,10 +17,12 @@ import {
     Briefcase,
     Trash2, 
     ChevronRight,
+    Landmark,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTracker } from '@/hooks/useTracker';
+import { useSectorStore } from '@/store/useSectorStore';
 import { ActionType, Opportunity } from '@fresherflow/types';
 // import LottieView from 'lottie-react-native';
 import { Share } from 'react-native';
@@ -62,6 +64,21 @@ const STATUS_LABEL: Record<string, string> = {
     REJECTED: 'Rejected',
 };
 
+const getStatusLabel = (status: string, isGovt: boolean): string => {
+    if (isGovt) {
+        const GOVT_STATUS_LABEL: Record<string, string> = {
+            PLANNED: 'Notified',
+            APPLIED: 'Applied',
+            OA: 'Written Exam',
+            INTERVIEWED: 'Interview/DV',
+            SELECTED: 'Merit List',
+            REJECTED: 'Not Qualified',
+        };
+        return GOVT_STATUS_LABEL[status] || status;
+    }
+    return STATUS_LABEL[status] || status;
+};
+
 const alpha = (color: string, opacity: number) => {
     if (color.startsWith('rgba')) return color;
     return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
@@ -88,14 +105,48 @@ interface TrackerTabContentProps {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onScroll: any;
     contentPaddingTop: number;
+    isGovt: boolean;
 }
 
-const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLength, refresh, refreshing, currentTheme, onScroll, contentPaddingTop }: TrackerTabContentProps) => {
+import { MotiView } from 'moti';
+
+const TrackerSkeleton = memo(({ currentTheme }: { currentTheme: any }) => (
+    <SurfaceCard style={styles.jobCard}>
+        <View style={styles.cardHeader}>
+            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+                <MotiView
+                    from={{ opacity: 0.5 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ type: 'timing', duration: 1000, loop: true }}
+                    style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: alpha(currentTheme.colors.textMuted, 0.2) }}
+                />
+                <View style={{ flex: 1, gap: 8 }}>
+                    <MotiView
+                        from={{ opacity: 0.5 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ type: 'timing', duration: 1000, loop: true }}
+                        style={{ width: '70%', height: 16, borderRadius: 4, backgroundColor: alpha(currentTheme.colors.textMuted, 0.2) }}
+                    />
+                    <MotiView
+                        from={{ opacity: 0.5 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ type: 'timing', duration: 1000, loop: true }}
+                        style={{ width: '40%', height: 12, borderRadius: 4, backgroundColor: alpha(currentTheme.colors.textMuted, 0.2) }}
+                    />
+                </View>
+            </View>
+        </View>
+    </SurfaceCard>
+));
+
+const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLength, refresh, refreshing, currentTheme, onScroll, contentPaddingTop, isGovt }: TrackerTabContentProps) => {
     return (
         <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
             {loading && actionsLength === 0 ? (
-                <View style={styles.center}>
-                    <ActivityIndicator color={currentTheme.colors.primary} />
+                <View style={[styles.listContent, { paddingTop: contentPaddingTop }]}>
+                    <TrackerSkeleton currentTheme={currentTheme} />
+                    <TrackerSkeleton currentTheme={currentTheme} />
+                    <TrackerSkeleton currentTheme={currentTheme} />
                 </View>
             ) : (
                 <FlashList
@@ -110,11 +161,17 @@ const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLen
                     ListEmptyComponent={
                         <View style={styles.emptyContainer}>
                             <View style={[styles.emptyIconBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03) }]}>
-                                <Briefcase size={32} color={currentTheme.colors.textMuted} opacity={0.2} />
+                                {isGovt ? (
+                                    <Landmark size={32} color={currentTheme.colors.primary} />
+                                ) : (
+                                    <Briefcase size={32} color={currentTheme.colors.primary} />
+                                )}
                             </View>
                             <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>Nothing here yet</Text>
                             <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
-                                Track your {STATUS_LABEL[status].toLowerCase()} applications to manage your pipeline better.
+                                {isGovt 
+                                  ? `Track your ${getStatusLabel(status, true).toLowerCase()} exams to manage your prep pipeline.`
+                                  : `Track your ${getStatusLabel(status, false).toLowerCase()} applications to manage your pipeline.`}
                             </Text>
                         </View>
                     }
@@ -131,6 +188,7 @@ const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLen
 const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
+    const { sector } = useSectorStore();
     const {
         actions,
         loading,
@@ -153,12 +211,21 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
     const tabListRef = useRef<ScrollView>(null);
     const isManualScrolling = useRef(false);
     const [tabLayouts, setTabLayouts] = useState<{[key: number]: {x: number, width: number}}>({});
+    
+    const isGovt = sector === 'GOVERNMENT';
+
     const handleShareSuccess = async () => {
         if (!celebrateJob) return;
         try {
-            await Share.share({
-                message: `I just got an offer from ${celebrateJob.company} for the ${celebrateJob.title} role! 🎉 Thanks to the FresherFlow app for helping me track and discover this amazing opportunity. #FresherFlow #Hired #Tech`,
-            });
+            if (isGovt) {
+                await Share.share({
+                    message: `I just got selected in the merit list of ${celebrateJob.company} for the ${celebrateJob.title} exam! 🎉 Thanks to the FresherFlow app for helping me track my prep. #FresherFlow #Selected #GovtJobs`,
+                });
+            } else {
+                await Share.share({
+                    message: `I just got an offer from ${celebrateJob.company} for the ${celebrateJob.title} role! 🎉 Thanks to the FresherFlow app for helping me track and discover this amazing opportunity. #FresherFlow #Hired #Tech`,
+                });
+            }
         } catch (error) {
             console.log(error);
         }
@@ -190,11 +257,24 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
         setRemoveConfirmVisible(true);
     };
 
+    const filteredActions = useMemo(() => {
+        if (!actions) return [];
+        return (actions as ActionRecord[]).filter((item) => {
+            const opp = item.opportunity;
+            if (!opp) return false;
+            if (isGovt) {
+                return opp.type === 'GOVERNMENT';
+            } else {
+                return opp.type !== 'GOVERNMENT';
+            }
+        });
+    }, [actions, isGovt]);
+
     const grouped = useMemo(() => {
         const map: Record<string, ActionRecord[]> = {
             PLANNED: [], APPLIED: [], OA: [], INTERVIEWED: [], SELECTED: [], REJECTED: [],
         };
-        (actions as ActionRecord[]).forEach((item) => {
+        filteredActions.forEach((item) => {
             const type = item.actionType as string;
             // Normalize legacy statuses
             let normalized = type;
@@ -206,7 +286,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
             }
         });
         return map;
-    }, [actions]);
+    }, [filteredActions]);
 
     const onPagerScroll = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {
         if (isManualScrolling.current) return;
@@ -309,7 +389,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
             }}>
                 <View style={{ paddingTop: 10 }}>
                     <SecondaryHeader 
-                        title="Tracker" 
+                        title={isGovt ? "Govt Exam Tracker" : "Job Tracker"} 
                         onBack={() => navigation.goBack()}
                     />
                     <View style={[styles.tabContainer, { borderBottomColor: alpha(currentTheme.colors.border, 0.08) }]}>
@@ -367,7 +447,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                                                     opacity: isActive ? 1 : 0.7,
                                                 }
                                             ]}>
-                                                {STATUS_LABEL[status]}
+                                                {getStatusLabel(status, isGovt)}
                                             </Text>
                                         </TouchableOpacity>
 
@@ -408,12 +488,13 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                         items={grouped[status] || []}
                         renderItem={renderItem}
                         loading={loading}
-                        actionsLength={actions.length}
+                        actionsLength={filteredActions.length}
                         refresh={refresh}
                         refreshing={refreshing}
                         currentTheme={currentTheme}
                         onScroll={null}
                         contentPaddingTop={10}
+                        isGovt={isGovt}
                     />
                 )}
             />
@@ -423,16 +504,20 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                 <View style={[StyleSheet.absoluteFill, { backgroundColor: alpha(currentTheme.colors.background, 0.95), zIndex: 1000, justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
                     <Text style={{ fontSize: 80, marginBottom: 20 }}>🎉</Text>
                     <Text style={{ fontSize: 32, fontWeight: '900', color: currentTheme.colors.text, textAlign: 'center', marginBottom: 12 }}>
-                        You Got Hired!
+                        {isGovt ? "Exam Cleared!" : "You Got Hired!"}
                     </Text>
                     <Text style={{ fontSize: 16, color: currentTheme.colors.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 24 }}>
-                        Congratulations on your offer from <Text style={{ color: currentTheme.colors.primary, fontWeight: '800' }}>{celebrateJob.company}</Text> for the <Text style={{ color: currentTheme.colors.text, fontWeight: '800' }}>{celebrateJob.title}</Text> role!
+                        {isGovt ? (
+                            <>Congratulations on your selection in the merit list of <Text style={{ color: currentTheme.colors.primary, fontWeight: '800' }}>{celebrateJob.company}</Text> for the <Text style={{ color: currentTheme.colors.text, fontWeight: '800' }}>{celebrateJob.title}</Text> exam!</>
+                        ) : (
+                            <>Congratulations on your offer from <Text style={{ color: currentTheme.colors.primary, fontWeight: '800' }}>{celebrateJob.company}</Text> for the <Text style={{ color: currentTheme.colors.text, fontWeight: '800' }}>{celebrateJob.title}</Text> role!</>
+                        )}
                     </Text>
                     <TouchableOpacity 
                         onPress={handleShareSuccess}
                         style={{ backgroundColor: '#0A66C2', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 100, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, width: '100%', justifyContent: 'center' }}
                     >
-                        <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 16 }}>Share on LinkedIn</Text>
+                        <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 16 }}>{isGovt ? "Share Success" : "Share on LinkedIn"}</Text>
                     </TouchableOpacity>
                     
                     <TouchableOpacity 

@@ -51,6 +51,21 @@ export const useTracker = () => {
                         // Fallback: Try reading from detail cache
                         opp = (await readDetailCache(opportunityId)) || undefined;
                     }
+                    
+                    if (!opp) {
+                        // Create a stub if it's not cached yet so it still appears
+                        const existing = items.find(i => i.opportunityId === opportunityId);
+                        if (existing?.opportunity && existing.opportunity.title !== 'Tracked Job') {
+                            opp = existing.opportunity;
+                        } else {
+                            opp = {
+                                id: opportunityId,
+                                title: 'Loading...',
+                                company: 'Details fetching...',
+                                type: 'JOB',
+                            } as unknown as Opportunity;
+                        }
+                    }
 
                     mappedActions.push({
                         id: opportunityId,

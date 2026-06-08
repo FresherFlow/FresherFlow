@@ -11,9 +11,11 @@ import {
     NativeSyntheticEvent,
     NativeScrollEvent,
     Platform,
+    Animated,
+    Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bookmark, Compass, Bell, ChevronUp } from 'lucide-react-native';
+import { Bookmark, Compass, Bell, ChevronUp, ExternalLink } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useScrollToTop } from '@react-navigation/native';
@@ -27,6 +29,9 @@ import { mScale, SPACING, RADIUS } from '@/system/constants/dimensions';
 import { TYPOGRAPHY } from '@/system/constants/typography';
 import { useNotifications } from '@/hooks/useNotifications';
 import { UsernameNudgeCard } from '@/system/components/UsernameNudgeCard';
+import { useSectorStore } from '@/store/useSectorStore';
+import { GovtJobCard } from '@/system/components/GovtJobCard';
+import { ResourcePreviewCard } from '@/system/components/ResourcePreviewCard';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -46,16 +51,20 @@ import { useToast } from '@/contexts/ToastContext';
 const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
-    const { savedJobs, loading, refresh } = useSavedJobs();
+    const { sector } = useSectorStore();
+    const { savedJobs, savedResources, isSavedResource, toggleSaveResource, loading, refresh } = useSavedJobs();
     const { hideTabBar, showTabBar } = useUI();
     const { unreadCount } = useNotifications();
     const { isSaved, toggleSave } = useSaved();
     const { showSuccess } = useToast();
-    const flashListRef = useRef<any>(null);
+    
+    const [activeTab, setActiveTab] = React.useState<'JOBS' | 'RESOURCES'>('JOBS');
     
     // Track scroll position for hide/show tab bar
     const scrollOffset = useRef(0);
     const [showScrollTop, setShowScrollTop] = React.useState(false);
+
+    const flashListRef = useRef<any>(null);
 
     const smoothScrollToTop = useCallback(() => {
         if (!flashListRef.current) return;
@@ -97,52 +106,178 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         }
     }, [hideTabBar, showTabBar]);
 
-    const renderEmpty = useCallback(() => (
-        <View style={styles.emptyContainer}>
-            {loading ? (
-                <ActivityIndicator size="large" color={currentTheme.colors.primary} />
-            ) : (
-                <>
-                    <View style={[styles.emptyIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
-                        <Bookmark size={48} color={currentTheme.colors.primary} />
-                    </View>
-                    <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>Library Empty</Text>
-                    <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
-                        Opportunities you save will appear here for quick access later.
-                    </Text>
-                    <TouchableOpacity
-                        style={[styles.exploreBtn, { backgroundColor: currentTheme.colors.primary }]}
-                        onPress={() => navigation.navigate('Explore')}
-                    >
-                        <Compass size={18} color={currentTheme.colors.background} />
-                        <Text style={[styles.exploreBtnText, { color: currentTheme.colors.background }]}>Explore Roles</Text>
-                    </TouchableOpacity>
-                </>
-            )}
-        </View>
-    ), [loading, currentTheme, navigation]);
+    const renderEmpty = useCallback(() => {
+        return (
+            <View style={styles.emptyContainer}>
+                {loading ? (
+                    <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+                ) : (
+                    <Animated.View>
+                        <View style={[styles.emptyIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
+                            <Bookmark size={48} color={currentTheme.colors.primary} />
+                        </View>
+                        <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>Library Empty</Text>
+                        <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
+                            {activeTab === 'JOBS' ? "Opportunities you save will appear here for quick access later." : "Resources you save will appear here."}
+                        </Text>
+                        
+                        {activeTab === 'JOBS' && (
+                            <TouchableOpacity 
+                                activeOpacity={0.9} 
+                                style={[styles.exploreBtn, { backgroundColor: currentTheme.colors.primary }]}
+                                onPress={() => navigation.navigate('Explore')}
+                            >
+                                <Compass size={18} color={currentTheme.colors.background} />
+                                <Text style={[styles.exploreBtnText, { color: currentTheme.colors.background }]}>Explore Roles</Text>
+                            </TouchableOpacity>
+                        )}
+                    </Animated.View>
+                )}
+            </View>
+        );
+    }, [loading, currentTheme, navigation, activeTab]);
+
+    const filteredSavedJobs = React.useMemo(() => {
+        if (!savedJobs) return [];
+        return savedJobs.filter((job) => {
+            if (sector === 'GOVERNMENT') {
+                return job.type === 'GOVERNMENT';
+            } else {
+                return job.type !== 'GOVERNMENT';
+            }
+        });
+    }, [savedJobs, sector]);
 
     const listData = React.useMemo(() => {
-        return [{ id: 'nudge-header-item', isHeader: true } as any, ...savedJobs];
-    }, [savedJobs]);
+        if (activeTab === 'RESOURCES') {
+            return [{ id: 'nudge-header-item', isHeader: true } as any, ...savedResources];
+        }
+        return [{ id: 'nudge-header-item', isHeader: true } as any, ...filteredSavedJobs];
+    }, [filteredSavedJobs, savedResources, activeTab]);
 
-    const renderItem = useCallback(({ item, index }: { item: Opportunity & { isHeader?: boolean }, index: number }) => {
+    const renderItem = useCallback(({ item, index }: { item: any, index: number }) => {
         if (item.isHeader) {
+            const currentList = activeTab === 'JOBS' ? filteredSavedJobs : savedResources;
             return (
-                <View>
+                <View style={{ paddingBottom: 16 }}>
+                    <PremiumHeader
+                        title="Library"
+                        rightSlot={
+                            <TouchableOpacity 
+                                onPress={() => navigation.navigate('Notifications')}
+                                style={styles.notificationBtn}
+                            >
+                                <Bell size={24} color={currentTheme.colors.text} />
+                                {unreadCount > 0 && (
+                                    <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]} />
+                                )}
+                            </TouchableOpacity>
+                        }
+                    />
+
                     <UsernameNudgeCard />
-                    {!loading && savedJobs.length > 0 ? (
+                    
+                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 24, marginBottom: 8 }}>
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('JOBS')}
+                            style={{
+                                paddingHorizontal: 16,
+                                paddingVertical: 8,
+                                borderRadius: 12,
+                                backgroundColor: activeTab === 'JOBS' ? currentTheme.colors.text : 'transparent',
+                            }}
+                        >
+                            <Text style={{
+                                fontSize: 13,
+                                fontWeight: '800',
+                                color: activeTab === 'JOBS' ? currentTheme.colors.background : currentTheme.colors.textMuted
+                            }}>Jobs</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                            onPress={() => setActiveTab('RESOURCES')}
+                            style={{
+                                paddingHorizontal: 16,
+                                paddingVertical: 8,
+                                borderRadius: 12,
+                                backgroundColor: activeTab === 'RESOURCES' ? currentTheme.colors.text : 'transparent',
+                            }}
+                        >
+                            <Text style={{
+                                fontSize: 13,
+                                fontWeight: '800',
+                                color: activeTab === 'RESOURCES' ? currentTheme.colors.background : currentTheme.colors.textMuted
+                            }}>Resources</Text>
+                        </TouchableOpacity>
+                    </View>
+
+                    {!loading && currentList.length > 0 ? (
                         <View style={styles.resultsHeader}>
                             <Text style={[styles.resultsText, { color: currentTheme.colors.textMuted }]}>
-                                {savedJobs.length} Saved Opportunities
+                                {currentList.length} Saved {activeTab === 'JOBS' ? 'Opportunities' : 'Resources'}
                             </Text>
                         </View>
                     ) : (
-                        savedJobs.length === 0 ? renderEmpty() : null
+                        currentList.length === 0 ? renderEmpty() : null
                     )}
                 </View>
             );
         }
+
+        if (activeTab === 'RESOURCES') {
+            return (
+                <TouchableOpacity 
+                    style={[styles.resourceCard, { borderColor: currentTheme.colors.border, backgroundColor: currentTheme.colors.surface }]}
+                    activeOpacity={0.7}
+                    onPress={() => {
+                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        void Linking.openURL(item.url);
+                    }}
+                >
+                    <View pointerEvents="box-none">
+                        <ResourcePreviewCard 
+                            url={item.url} 
+                            style={{ borderWidth: 0, borderRadius: 8 }} 
+                            isSaved={isSavedResource(item.id)}
+                            onSave={() => {
+                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                toggleSaveResource(item);
+                            }}
+                            addedByUsername={item.addedByUsername}
+                        />
+                    </View>
+
+                    <View style={[styles.cardFooter, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.5) }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                            <ExternalLink size={14} color={currentTheme.colors.textMuted} />
+                            <Text style={[{ fontSize: 12, fontWeight: '600' }, { color: currentTheme.colors.textMuted }]}>Resource Link</Text>
+                        </View>
+                        {item.createdAt && (
+                            <Text style={[{ fontSize: 11, fontWeight: '600' }, { color: currentTheme.colors.textMuted }]}>
+                                {new Date(item.createdAt).toLocaleDateString()}
+                            </Text>
+                        )}
+                    </View>
+                </TouchableOpacity>
+            );
+        }
+
+        if (sector === 'GOVERNMENT') {
+            return (
+                <GovtJobCard
+                    opportunity={item}
+                    index={index - 1}
+                    onPress={() => {
+                        requestAnimationFrame(() => {
+                            navigation.navigate('GovtJobDetail', { opportunity: item, opportunityId: item.id });
+                        });
+                    }}
+                    isSaved={isSaved(item.id)}
+                    onSave={handleToggleSave}
+                />
+            );
+        }
+
         return (
             <JobCard
                 opportunity={item}
@@ -156,7 +291,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 onSave={handleToggleSave}
             />
         );
-    }, [savedJobs, loading, currentTheme, isSaved, handleToggleSave, navigation]);
+    }, [filteredSavedJobs, loading, currentTheme, isSaved, handleToggleSave, navigation, sector]);
 
     return (
         <Screen safe={false}>
@@ -326,6 +461,17 @@ const styles = StyleSheet.create({
                 elevation: 4,
             },
         }),
+    },
+    resourceCard: {
+        marginBottom: 16,
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    cardFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     }
 });
 

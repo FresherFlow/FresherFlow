@@ -122,8 +122,7 @@ const AppearanceScreen = ({ navigation }: Props) => {
             </View>
         )}
 
-        {/* Muted In-App Browser toggle as requested since it is not working reliably for now */}
-        {/* <View style={styles.section}>
+        <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>App Settings</Text>
           <View style={{ gap: 16 }}>
             <PremiumToggle 
@@ -134,7 +133,7 @@ const AppearanceScreen = ({ navigation }: Props) => {
                 icon={Globe}
             />
           </View>
-        </View> */}
+        </View>
 
         <View style={[styles.infoBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.3) }]}>
           <View style={[styles.infoIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
