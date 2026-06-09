@@ -34,6 +34,8 @@ const EXPIRED_PHRASES = [
     "this job is no longer accepting applications",
     "job has expired",
     "job is no longer active",
+    "job posting is no longer active",
+    "no longer active",
     "this job is closed",
     "requisition is closed",
     "the page you are looking for doesn't exist",
