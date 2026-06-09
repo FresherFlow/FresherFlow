@@ -28,11 +28,7 @@ export const dynamicParams = true;
 export async function generateStaticParams() {
     const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
     const feed = await fetchBootstrapFeed();
-    
     if (!feed?.opportunities) return [];
-    
-    // Only emit the canonical slug (or id as fallback) — never both.
-    // Emitting both doubles ISR cache entries and burns write quota.
     return feed.opportunities.map((opp) => ({ slug: opp.slug ?? opp.id }));
 }
 

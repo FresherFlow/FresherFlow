@@ -3,7 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 
 // These list pages use revalidate = false (on-demand only).
 // Always revalidate them alongside any specific job path so the feed stays current.
-const LIST_PAGES = ['/jobs', '/internships', '/walk-ins', '/opportunities'];
+const LIST_PAGES = ['/', '/jobs', '/internships', '/walk-ins', '/opportunities'];
 
 export async function POST(request: NextRequest) {
     try {
@@ -45,9 +45,10 @@ export async function POST(request: NextRequest) {
 
         // Bust the Next.js data cache for version + feed so re-rendered pages get
         // fresh CDN data, not the indefinitely-cached stale version.
-        // "max" profile = expire:never — held until explicitly invalidated (Next.js 16 required arg)
-        revalidateTag('feed-version', 'max');
-        revalidateTag('bootstrap-feed', 'max');
+        // @ts-expect-error
+        revalidateTag('feed-version');
+        // @ts-expect-error
+        revalidateTag('bootstrap-feed');
 
         return NextResponse.json({
             revalidated: true,

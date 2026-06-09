@@ -4,7 +4,7 @@ import { useEffect, Suspense } from 'react';
 import { useAdmin } from '@/features/admin/AdminContext';
 import { useRouter } from 'next/navigation';
 import { AdminOpportunitiesSkeleton } from '@/features/system/components/ui/Skeleton';
-import { getPublicOpportunityHref } from '@/features/admin/opportunities/listUtils';
+import { getPublicOpportunityUrl } from '@/features/admin/opportunities/listUtils';
 
 // Hooks
 import { useAdminOpportunities } from './hooks/useAdminOpportunities';
@@ -119,7 +119,7 @@ function OpportunitiesListPage() {
                         handleRejectDraft={handleRejectDraft}
                         handleRestore={handleRestore}
                         copySocialCaption={handleCopySocialCaption}
-                        getPublicOpportunityHref={getPublicOpportunityHref}
+                        getPublicOpportunityUrl={getPublicOpportunityUrl}
                     />
 
                     <AdminOpportunitiesTable 
@@ -134,7 +134,7 @@ function OpportunitiesListPage() {
                         handleRejectDraft={handleRejectDraft}
                         handleRestore={handleRestore}
                         copySocialCaption={handleCopySocialCaption}
-                        getPublicOpportunityHref={getPublicOpportunityHref}
+                        getPublicOpportunityUrl={getPublicOpportunityUrl}
                         page={page}
                         pageSize={pageSize}
                         totalCount={totalCount}

@@ -11,19 +11,10 @@ export const contentType = 'image/png';
 
 // Pre-generate a PNG for every job at build time.
 // Uses the same links.min.json already fetched during the render — force-cache = single CDN hit.
+// OG images are generated on-demand (first social share) and cached by Vercel CDN.
+// Pre-generating at build time caused Satori crashes on some job data edge cases.
 export async function generateStaticParams() {
-    try {
-        const { fetchFeedVersion } = await import('@/lib/api/cdnFeed');
-        const version = await fetchFeedVersion();
-        const res = await fetch(`${LINKS_FEED_URL}?v=${version}`, { cache: 'force-cache' });
-        if (!res.ok) return [];
-        const data = await res.json();
-        return (data?.opportunities ?? []).map((o: { slug?: string; id: string }) => ({
-            slug: o.slug ?? o.id,
-        }));
-    } catch {
-        return [];
-    }
+    return [];
 }
 
 type OpportunityDto = {
@@ -44,7 +35,7 @@ const getBadgeColors = (t?: string) => t === 'INTERNSHIP'
 const isCampusDrive = (o: OpportunityDto) => {
     const t = (o.title || '').toLowerCase();
     return t.includes('nqt') || t.includes('campus drive') ||
-        (o.events || []).some(e => ['REG_START', 'REG_END', 'EXAM_DATE'].includes(e.eventType));
+        (Array.isArray(o.events) && o.events.some(e => ['REG_START', 'REG_END', 'EXAM_DATE'].includes(e.eventType)));
 };
 
 const getDays = (d?: string | null) => {
@@ -83,7 +74,10 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
         const { fetchFeedVersion } = await import('@/lib/api/cdnFeed');
         const version = await fetchFeedVersion();
         const res = await fetch(`${LINKS_FEED_URL}?v=${version}`, { cache: 'force-cache' });
-        if (res.ok) opportunities = (await res.json())?.opportunities ?? [];
+        if (res.ok) {
+            const data = await res.json() as { opportunities?: OpportunityDto[] };
+            opportunities = data?.opportunities ?? [];
+        }
     } catch { /* serve fallback */ }
 
     const opp = opportunities.find(o => o.id === slug || o.slug === slug) ?? null;
@@ -95,86 +89,101 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
         fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial',
     };
 
-    if (!opp || opp.status === 'EXPIRED') {
-        const title = !opp ? 'Opportunity Preview' : 'Listing Archived';
-        const sub = !opp ? 'This listing is unavailable.' : 'This opportunity has expired.';
+    try {
+        if (!opp || opp.status === 'EXPIRED') {
+            const title = !opp ? 'Opportunity Preview' : 'Listing Archived';
+            const sub = !opp ? 'This listing is unavailable.' : 'This opportunity has expired.';
+            return new ImageResponse(
+                <div style={baseStyle}>
+                    <div style={{ fontSize: 22, fontWeight: 700, color: 'rgba(245,247,248,0.4)' }}>FresherFlow</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                        <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1.08 }}>{title}</div>
+                        <div style={{ fontSize: 28, color: 'rgba(245,247,248,0.45)' }}>{sub}</div>
+                    </div>
+                    <div style={{ fontSize: 20, color: 'rgba(245,247,248,0.28)' }}>fresherflow.in</div>
+                </div>,
+                { ...size }
+            );
+        }
+
+        const isDrive = isCampusDrive(opp);
+        const typeLabel = isDrive ? 'CAMPUS DRIVE' : getTypeLabel(opp.type);
+        const badge = getBadgeColors(isDrive ? undefined : opp.type);
+        const title = truncate(opp.title || 'Opportunity', 65);
+        const company = truncate(opp.company || 'Company', 34);
+        const location = truncate((Array.isArray(opp.locations) ? opp.locations[0] : null) || 'India', 24);
+        const urgency = urgencyLabel(getDays(opp.expiresAt));
+
+        let finalLogoUrl = opp.companyLogoUrl;
+        if (finalLogoUrl?.includes('logo.clearbit.com/')) {
+            const domain = finalLogoUrl.split('logo.clearbit.com/')[1];
+            finalLogoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+        }
+        const logoUrl = finalLogoUrl ? await logoToDataUrl(finalLogoUrl) : null;
+        const titleSize = title.length > 52 ? 52 : title.length > 38 ? 62 : 74;
+        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://fresherflow.in';
+        const siteLogoUrl = `${siteUrl}/logo-white-optimized.png`;
+
+        return new ImageResponse(
+            <div style={baseStyle}>
+
+                {/* TOP: Company logo + FresherFlow branding */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+                        {logoUrl
+                            ? <img src={logoUrl} alt={company} width={100} height={100} style={{ borderRadius: 24, background: '#fff', objectFit: 'contain', padding: 10 }} />
+                            : <div style={{ width: 100, height: 100, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1c1c1c', border: '1px solid rgba(245,247,248,0.1)', fontSize: 40, fontWeight: 900 }}>{company[0]}</div>
+                        }
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            <div style={{ fontSize: 22, color: 'rgba(245,247,248,0.38)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Hiring at</div>
+                            <div style={{ fontSize: 48, fontWeight: 800, color: '#F5F7F8', letterSpacing: '-0.5px' }}>{company}</div>
+                        </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.12)', borderRadius: 12, padding: '10px 20px' }}>
+                        <img src={siteLogoUrl} alt="FresherFlow" width={26} height={26} style={{ objectFit: 'contain' }} />
+                        <div style={{ fontSize: 20, fontWeight: 700, color: '#F5F7F8' }}>FresherFlow</div>
+                    </div>
+                </div>
+
+                {/* MIDDLE: Job title */}
+                <div style={{ fontSize: titleSize, fontWeight: 900, lineHeight: 1.1, color: '#F5F7F8', letterSpacing: '-1px', maxWidth: '1080px' }}>
+                    {title}
+                </div>
+
+                {/* BOTTOM: Type + location + urgency badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                    <div style={{ display: 'flex', borderRadius: 12, padding: '16px 28px', background: badge.bg, border: `1px solid ${badge.border}`, fontSize: 24, fontWeight: 700, letterSpacing: '0.07em', color: badge.color }}>
+                        {typeLabel}
+                    </div>
+                    <div style={{ display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.11)', fontSize: 24, fontWeight: 600, color: 'rgba(245,247,248,0.65)' }}>
+                        📍 {location}
+                    </div>
+                    {urgency && (
+                        <div style={{ display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(239,68,68,0.16)', border: '1px solid rgba(239,68,68,0.35)', fontSize: 24, fontWeight: 700, color: '#fca5a5' }}>
+                            ⚡ {urgency}
+                        </div>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
+                        <div style={{ width: 12, height: 12, borderRadius: 999, background: '#4ade80', display: 'flex' }} />
+                        <div style={{ fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }}>Verified · fresherflow.in</div>
+                    </div>
+                </div>
+
+            </div>,
+            { ...size }
+        );
+    } catch {
+        // Fallback: return a safe generic image if anything in the render crashes
         return new ImageResponse(
             <div style={baseStyle}>
                 <div style={{ fontSize: 22, fontWeight: 700, color: 'rgba(245,247,248,0.4)' }}>FresherFlow</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                    <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1.08 }}>{title}</div>
-                    <div style={{ fontSize: 28, color: 'rgba(245,247,248,0.45)' }}>{sub}</div>
+                    <div style={{ fontSize: 64, fontWeight: 900, lineHeight: 1.08 }}>Job Opportunity</div>
+                    <div style={{ fontSize: 28, color: 'rgba(245,247,248,0.45)' }}>Find your next role on FresherFlow</div>
                 </div>
                 <div style={{ fontSize: 20, color: 'rgba(245,247,248,0.28)' }}>fresherflow.in</div>
             </div>,
             { ...size }
         );
     }
-
-    const isDrive = isCampusDrive(opp);
-    const typeLabel = isDrive ? 'CAMPUS DRIVE' : getTypeLabel(opp.type);
-    const badge = getBadgeColors(isDrive ? undefined : opp.type);
-    const title = truncate(opp.title || 'Opportunity', 65);
-    const company = truncate(opp.company || 'Company', 34);
-    const location = truncate(opp.locations?.[0] || 'India', 24);
-    const urgency = urgencyLabel(getDays(opp.expiresAt));
-
-    let finalLogoUrl = opp.companyLogoUrl;
-    if (finalLogoUrl?.includes('logo.clearbit.com/')) {
-        const domain = finalLogoUrl.split('logo.clearbit.com/')[1];
-        finalLogoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
-    }
-    const logoUrl = finalLogoUrl ? await logoToDataUrl(finalLogoUrl) : null;
-    const titleSize = title.length > 52 ? 52 : title.length > 38 ? 62 : 74;
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://fresherflow.in';
-    const siteLogoUrl = `${siteUrl}/logo-white-optimized.png`;
-
-    return new ImageResponse(
-        <div style={baseStyle}>
-
-            {/* TOP: Company logo + FresherFlow branding */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                    {logoUrl
-                        ? <img src={logoUrl} alt={company} width={100} height={100} style={{ borderRadius: 24, background: '#fff', objectFit: 'contain', padding: 10 }} />
-                        : <div style={{ width: 100, height: 100, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1c1c1c', border: '1px solid rgba(245,247,248,0.1)', fontSize: 40, fontWeight: 900 }}>{company[0]}</div>
-                    }
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-                        <div style={{ fontSize: 22, color: 'rgba(245,247,248,0.38)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Hiring at</div>
-                        <div style={{ fontSize: 48, fontWeight: 800, color: '#F5F7F8', letterSpacing: '-0.5px' }}>{company}</div>
-                    </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.12)', borderRadius: 12, padding: '10px 20px' }}>
-                    <img src={siteLogoUrl} alt="FresherFlow" width={26} height={26} style={{ objectFit: 'contain' }} />
-                    <div style={{ fontSize: 20, fontWeight: 700, color: '#F5F7F8' }}>FresherFlow</div>
-                </div>
-            </div>
-
-            {/* MIDDLE: Job title */}
-            <div style={{ fontSize: titleSize, fontWeight: 900, lineHeight: 1.1, color: '#F5F7F8', letterSpacing: '-1px', maxWidth: '1080px' }}>
-                {title}
-            </div>
-
-            {/* BOTTOM: Type + location + urgency badges */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                <div style={{ display: 'flex', borderRadius: 12, padding: '16px 28px', background: badge.bg, border: `1px solid ${badge.border}`, fontSize: 24, fontWeight: 700, letterSpacing: '0.07em', color: badge.color }}>
-                    {typeLabel}
-                </div>
-                <div style={{ display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.11)', fontSize: 24, fontWeight: 600, color: 'rgba(245,247,248,0.65)' }}>
-                    📍 {location}
-                </div>
-                {urgency && (
-                    <div style={{ display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(239,68,68,0.16)', border: '1px solid rgba(239,68,68,0.35)', fontSize: 24, fontWeight: 700, color: '#fca5a5' }}>
-                        ⚡ {urgency}
-                    </div>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }}>
-                    <div style={{ width: 12, height: 12, borderRadius: 999, background: '#4ade80', display: 'flex' }} />
-                    <div style={{ fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }}>Verified · fresherflow.in</div>
-                </div>
-            </div>
-
-        </div>,
-        { ...size }
-    );
 }

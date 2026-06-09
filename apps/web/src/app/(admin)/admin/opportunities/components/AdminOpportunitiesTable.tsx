@@ -36,7 +36,7 @@ interface AdminOpportunitiesTableProps {
     handleRejectDraft: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
     copySocialCaption: (opp: SocialOpportunity) => void;
-    getPublicOpportunityHref: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
+    getPublicOpportunityUrl: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
     page: number;
     pageSize: number;
     totalCount: number;
@@ -56,7 +56,7 @@ export const AdminOpportunitiesTable = ({
     handleRejectDraft,
     handleRestore,
     copySocialCaption,
-    getPublicOpportunityHref,
+    getPublicOpportunityUrl,
     page,
     pageSize,
     totalCount,
@@ -174,15 +174,15 @@ export const AdminOpportunitiesTable = ({
                                             <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                                         </a>
                                     )}
-                                    <Link
-                                        href={getPublicOpportunityHref(opp)}
+                                    <a
+                                        href={getPublicOpportunityUrl(opp)}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
                                         title="View as user"
                                     >
                                         <EyeIcon className="w-4 h-4" />
-                                    </Link>
+                                    </a>
                                     <Link
                                         href={`/admin/opportunities/edit/${opp.slug || opp.id}`}
                                         className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"

@@ -116,7 +116,7 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
     try {
         // Optimized: Fetch the complete opportunity list from the CDN JSON instead of querying the Render database backend.
         // This prevents Render backend wake-ups, OOMs, and database connection limits during Vercel builds or revalidations.
-        const { fetchBootstrapFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
+        const { fetchBootstrapFeed, fetchExpiredFeed, fetchGovernmentFeed } = await import('@/lib/api/cdnFeed');
         
         const feed = await fetchBootstrapFeed();
         if (feed?.opportunities) {
@@ -125,6 +125,16 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
             );
             if (opportunity) {
                 return opportunity as ExtendedOpportunity;
+            }
+        }
+
+        const govtFeed = await fetchGovernmentFeed();
+        if (govtFeed?.opportunities) {
+            const govtOpportunity = govtFeed.opportunities.find(
+                (opp) => opp.slug === slugOrId || opp.id === slugOrId
+            );
+            if (govtOpportunity) {
+                return govtOpportunity as ExtendedOpportunity;
             }
         }
 

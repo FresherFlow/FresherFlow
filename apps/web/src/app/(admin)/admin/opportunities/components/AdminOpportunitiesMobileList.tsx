@@ -34,7 +34,7 @@ interface AdminOpportunitiesMobileListProps {
     handleRejectDraft: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
     copySocialCaption: (opp: SocialOpportunity) => void;
-    getPublicOpportunityHref: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
+    getPublicOpportunityUrl: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
 }
 
 export const AdminOpportunitiesMobileList = ({
@@ -47,7 +47,7 @@ export const AdminOpportunitiesMobileList = ({
     handleRejectDraft,
     handleRestore,
     copySocialCaption,
-    getPublicOpportunityHref
+    getPublicOpportunityUrl
 }: AdminOpportunitiesMobileListProps) => {
     return (
         <div className="md:hidden space-y-3 overflow-y-auto max-h-[calc(100vh-250px)] pb-4 custom-scrollbar">
@@ -129,15 +129,15 @@ export const AdminOpportunitiesMobileList = ({
                                     <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                                 </a>
                             )}
-                            <Link
-                                href={getPublicOpportunityHref(opp)}
+                            <a
+                                href={getPublicOpportunityUrl(opp)}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-secondary/20 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                                className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
                                 title="View as user"
                             >
                                 <EyeIcon className="w-4 h-4" />
-                            </Link>
+                            </a>
                             <Link
                                 href={`/admin/opportunities/edit/${opp.slug || opp.id}`}
                                 className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-secondary/20 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
