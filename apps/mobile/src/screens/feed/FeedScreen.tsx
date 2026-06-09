@@ -41,6 +41,7 @@ import { clearUnseenCount } from '@/utils/cache/localNotifications';
 import { Opportunity } from '@fresherflow/types';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNotificationStore } from '@/store/useNotificationStore';
+import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 
@@ -389,6 +390,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const { hideTabBar, showTabBar } = useUI();
   const { unreadCount } = useNotifications();
   const unseenFeedCount = useNotificationStore(s => s.unseenFeedCount);
+  const hiddenFeedTabs = useAppPreferencesStore(s => s.hiddenFeedTabs);
   const [activeTab, setActiveTab] = useState(0);
   const activeTabRef = useRef(0);
   const pagerRef = useRef<PagerView>(null);
@@ -462,16 +464,18 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   // Tab indicator animations
   const [tabLayouts, setTabLayouts] = useState<{[key: number]: {x: number, width: number, center: number}}>({});
 
-  const feeds = [
-    { id: 'latest', label: 'Latest' },
-    { id: null, label: 'For You' },
-    // { id: 'profile', label: 'Profile' },
-    { id: 'trending', label: 'Trending' },
-    { id: 'closing_soon', label: 'Closing Soon' },
-    { id: 'remote', label: 'Remote' },
-    { id: '2026', label: '2026 Batch' },
-    { id: 'internships', label: 'Internships' },
-  ];
+  const feeds = useMemo(() => {
+    const allFeeds = [
+      { id: 'latest', label: 'Latest' },
+      { id: null, label: 'For You' },
+      { id: 'trending', label: 'Trending' },
+      { id: 'closing_soon', label: 'Closing Soon' },
+      { id: 'remote', label: 'Remote' },
+      { id: '2026', label: '2026 Batch' },
+      { id: 'internships', label: 'Internships' },
+    ];
+    return allFeeds.filter(f => !hiddenFeedTabs.includes((f.id || 'for_you') as any));
+  }, [hiddenFeedTabs]);
 
 
   // Animate indicator position when tab changes. On first layout, snap instantly and reveal.

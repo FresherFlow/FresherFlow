@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from 'react';
+import React, { memo, useCallback, useMemo, useRef } from 'react';
 import Fuse from 'fuse.js';
 import {
     StyleSheet,
@@ -52,7 +52,7 @@ export const PreferencesView = ({ profile, onEdit, currentTheme }: { profile: Re
                         {/* Opportunity Types */}
                         <View style={{ marginBottom: 24 }}>
                             <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted, marginBottom: 12 }]}>LOOKING FOR</Text>
-                            <View style={styles.chipRow}>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                                 {(profile?.interestedIn || []).map(type => (
                                     <View key={type} style={[styles.viewChip, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
                                         <Text style={[styles.viewChipText, { color: currentTheme.colors.primary }]}>{type}</Text>
@@ -64,7 +64,7 @@ export const PreferencesView = ({ profile, onEdit, currentTheme }: { profile: Re
                         {/* Work Mode */}
                         <View style={{ marginBottom: 24 }}>
                             <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted, marginBottom: 12 }]}>WORK MODE</Text>
-                            <View style={styles.chipRow}>
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                                 {(profile?.workModes || []).map(mode => (
                                     <View key={mode} style={[styles.viewChip, { backgroundColor: alpha(currentTheme.colors.text, 0.06) }]}>
                                         <Text style={[styles.viewChipText, { color: currentTheme.colors.text }]}>{mode}</Text>
@@ -79,14 +79,39 @@ export const PreferencesView = ({ profile, onEdit, currentTheme }: { profile: Re
                             {(profile?.preferredCities || []).length === 0 ? (
                                 <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>Any location</Text>
                             ) : (
-                                <View style={styles.chipRow}>
-                                    {(profile?.preferredCities || []).map(city => (
-                                        <View key={city} style={[styles.viewChip, { backgroundColor: alpha(currentTheme.colors.text, 0.06) }]}>
-                                            <MapPin size={10} color={currentTheme.colors.textMuted} />
-                                            <Text style={[styles.viewChipText, { color: currentTheme.colors.text }]}>{city}</Text>
+                                <>
+                                    {(profile?.preferredCities || []).length > 4 ? (
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -24 }} contentContainerStyle={{ paddingHorizontal: 24 }}>
+                                            <View style={{ flexDirection: 'column', gap: 8 }}>
+                                                <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                    {(profile?.preferredCities || []).filter((_, i) => i % 2 === 0).map(city => (
+                                                        <View key={city} style={[styles.viewChip, { backgroundColor: alpha(currentTheme.colors.text, 0.06) }]}>
+                                                            <MapPin size={10} color={currentTheme.colors.textMuted} />
+                                                            <Text style={[styles.viewChipText, { color: currentTheme.colors.text }]}>{city.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                                <View style={{ flexDirection: 'row', gap: 8 }}>
+                                                    {(profile?.preferredCities || []).filter((_, i) => i % 2 !== 0).map(city => (
+                                                        <View key={city} style={[styles.viewChip, { backgroundColor: alpha(currentTheme.colors.text, 0.06) }]}>
+                                                            <MapPin size={10} color={currentTheme.colors.textMuted} />
+                                                            <Text style={[styles.viewChipText, { color: currentTheme.colors.text }]}>{city.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</Text>
+                                                        </View>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        </ScrollView>
+                                    ) : (
+                                        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                            {(profile?.preferredCities || []).map(city => (
+                                                <View key={city} style={[styles.viewChip, { backgroundColor: alpha(currentTheme.colors.text, 0.06) }]}>
+                                                    <MapPin size={10} color={currentTheme.colors.textMuted} />
+                                                    <Text style={[styles.viewChipText, { color: currentTheme.colors.text }]}>{city.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</Text>
+                                                </View>
+                                            ))}
                                         </View>
-                                    ))}
-                                </View>
+                                    )}
+                                </>
                             )}
                         </View>
                     </>
@@ -124,12 +149,15 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         errors,
     } = usePreferences();
 
+    const scrollRef = useRef<ScrollView>(null);
+
     const hasData = (profile?.interestedIn?.length ?? 0) > 0;
 
     const citiesFuse = useMemo(() => {
         return new Fuse(cities, {
-            threshold: 0.35,
-            distance: 10,
+            threshold: 0.3,
+            distance: 20,
+            ignoreLocation: true,
         });
     }, [cities]);
 
@@ -278,50 +306,46 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 {errors.preferredCities && <Text style={[styles.errorText, { color: currentTheme.colors.error }]}>{errors.preferredCities.message}</Text>}
 
                                 {/* Quick selection popular cities grid */}
-                                <View style={{ marginTop: 16 }}>
-                                    <Text style={{ fontSize: 11, fontWeight: '800', color: currentTheme.colors.textMuted, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 10 }}>Popular Locations</Text>
-                                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                                        {['Bangalore', 'Mumbai', 'Pune', 'Hyderabad', 'Chennai'].map(city => {
-                                            const isSelected = preferredCities.includes(city);
-                                            return (
-                                                <TouchableOpacity
-                                                    key={city}
-                                                    activeOpacity={0.7}
-                                                    onPress={() => {
-                                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                        if (isSelected) {
-                                                            removeCity(city);
-                                                        } else {
+                                {(() => {
+                                    if (cityInput.length > 0) return null;
+                                    const popularCities = ['Bangalore', 'Mumbai', 'Pune', 'Hyderabad', 'Chennai'].filter(c => !preferredCities.includes(c));
+                                    if (popularCities.length === 0) return null;
+                                    return (
+                                        <View style={{ marginTop: 16 }}>
+                                            <Text style={{ fontSize: 11, fontWeight: '800', color: currentTheme.colors.textMuted, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 10 }}>Popular Locations</Text>
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                                {popularCities.map(city => (
+                                                    <TouchableOpacity
+                                                        key={city}
+                                                        activeOpacity={0.7}
+                                                        onPress={() => {
+                                                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                                                             addCity(city);
-                                                        }
-                                                    }}
-                                                    style={{
-                                                        flexDirection: 'row',
-                                                        alignItems: 'center',
-                                                        gap: 6,
-                                                        paddingHorizontal: 12,
-                                                        paddingVertical: 8,
-                                                        borderRadius: 12,
-                                                        backgroundColor: isSelected ? alpha(currentTheme.colors.primary, 0.1) : alpha(currentTheme.colors.text, 0.03),
-                                                        borderWidth: 1,
-                                                        borderColor: isSelected ? alpha(currentTheme.colors.primary, 0.2) : alpha(currentTheme.colors.border, 0.05)
-                                                    }}
-                                                >
-                                                    <Text style={{
-                                                        fontSize: 12,
-                                                        fontWeight: '700',
-                                                        color: isSelected ? currentTheme.colors.primary : currentTheme.colors.textMuted
-                                                    }}>{city}</Text>
-                                                    {isSelected ? (
-                                                        <Check size={12} color={currentTheme.colors.primary} strokeWidth={3} />
-                                                    ) : (
+                                                        }}
+                                                        style={{
+                                                            flexDirection: 'row',
+                                                            alignItems: 'center',
+                                                            gap: 6,
+                                                            paddingHorizontal: 12,
+                                                            paddingVertical: 8,
+                                                            borderRadius: 12,
+                                                            backgroundColor: alpha(currentTheme.colors.text, 0.03),
+                                                            borderWidth: 1,
+                                                            borderColor: alpha(currentTheme.colors.border, 0.05)
+                                                        }}
+                                                    >
+                                                        <Text style={{
+                                                            fontSize: 12,
+                                                            fontWeight: '700',
+                                                            color: currentTheme.colors.textMuted
+                                                        }}>{city}</Text>
                                                         <Plus size={12} color={currentTheme.colors.textMuted} />
-                                                    )}
-                                                </TouchableOpacity>
-                                            );
-                                        })}
-                                    </View>
-                                </View>
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </View>
+                                    );
+                                })()}
 
                                 {showCitySuggestions && cityInput.length > 0 && citySuggestions.length > 0 && (
                                     <View style={styles.suggestionsContainer}>
@@ -338,24 +362,34 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                     </View>
                                 )}
 
-                                <View style={styles.tagContainer}>
+                                <View style={[styles.tagContainer, { marginTop: 24, marginBottom: 16 }]}>
                                     {preferredCities.length === 0 ? (
                                         <View style={styles.emptyState}>
                                             <MapPin size={24} color={alpha(currentTheme.colors.textMuted, 0.2)} />
                                             <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>Any location preferred</Text>
                                         </View>
                                     ) : (
-                                        preferredCities.map(city => (
-                                            <TouchableOpacity
-                                                key={city}
-                                                activeOpacity={0.7}
-                                                onPress={() => removeCity(city)}
-                                                style={[styles.tag, { backgroundColor: currentTheme.colors.text }]}
-                                            >
-                                                <Text style={[styles.tagText, { color: currentTheme.colors.background }]}>{city}</Text>
-                                                <X size={12} color={currentTheme.colors.background} />
-                                            </TouchableOpacity>
-                                        ))
+                                        <ScrollView 
+                                            ref={scrollRef}
+                                            style={{ maxHeight: 160 }} 
+                                            nestedScrollEnabled 
+                                            showsVerticalScrollIndicator={false}
+                                            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+                                        >
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 4 }}>
+                                                {preferredCities.map(city => (
+                                                    <TouchableOpacity
+                                                        key={city}
+                                                        activeOpacity={0.7}
+                                                        onPress={() => removeCity(city)}
+                                                        style={[styles.tag, { backgroundColor: currentTheme.colors.text }]}
+                                                    >
+                                                        <Text style={[styles.tagText, { color: currentTheme.colors.background }]}>{city}</Text>
+                                                        <X size={12} color={currentTheme.colors.background} />
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </ScrollView>
                                     )}
                                 </View>
                             </SurfaceCard>

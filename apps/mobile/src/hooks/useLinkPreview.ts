@@ -10,7 +10,12 @@ export interface LinkPreviewData {
 const cache: Record<string, LinkPreviewData> = {};
 
 export function useLinkPreview(url: string | null | undefined) {
-    const [data, setData] = useState<LinkPreviewData | null>(null);
+    const [data, setData] = useState<LinkPreviewData | null>(() => {
+        if (url && cache[url]) {
+            return cache[url];
+        }
+        return null;
+    });
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {

@@ -53,7 +53,8 @@ export const useSkills = () => {
     }, [profile, reset]);
 
     const addSkill = useCallback((skill: string) => {
-        const trimmed = skill.trim();
+        const toTitleCase = (str: string) => str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        const trimmed = toTitleCase(skill.trim());
         if (trimmed && !skills.includes(trimmed)) {
             setValue('skills', [...skills, trimmed], { shouldValidate: true });
             setSkillInput('');

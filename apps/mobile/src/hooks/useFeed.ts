@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { OpportunityType, Profile } from '@fresherflow/types';
-import { useNotifications, useSaved } from '@repo/frontend-core';
+import { useSaved } from '@repo/frontend-core';
 import { useFollows } from '@/hooks/useFollows';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
@@ -10,7 +10,6 @@ import Fuse from 'fuse.js';
 
 export const useFeed = (initialFeedType: string | null = null) => {
     const { user } = useAuthStore();
-    useNotifications();
     const { savedJobs } = useSaved();
     const { follows } = useFollows();
     

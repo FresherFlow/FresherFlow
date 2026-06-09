@@ -22,19 +22,19 @@ import { useSkillsMetadata } from '@/hooks/useSkillsMetadata';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SkillSearch'>;
 
-const normalizeSkill = (value: string) => value.toLowerCase().replace(/[^a-z0-9+#.]+/g, ' ').replace(/\s+/g, ' ').trim();
+const normalize = (s: string) => s.trim().toLowerCase().replace(/\./g, '');
 
 const matchesSkillQuery = (opportunity: Opportunity, query: string) => {
-    const normalizedQuery = normalizeSkill(query);
+    const normalizedQuery = normalize(query);
     if (!normalizedQuery) return true;
 
     const skillMatches = (opportunity.requiredSkills || []).some(skill => {
-        const normalizedSkill = normalizeSkill(skill);
+        const normalizedSkill = normalize(skill);
         return normalizedSkill === normalizedQuery || normalizedSkill.includes(normalizedQuery);
     });
     if (skillMatches) return true;
 
-    const tagMatches = (opportunity.tags || []).some(tag => normalizeSkill(tag).includes(normalizedQuery));
+    const tagMatches = (opportunity.tags || []).some(tag => normalize(tag).includes(normalizedQuery));
     if (tagMatches) return true;
 
     return [
@@ -42,7 +42,7 @@ const matchesSkillQuery = (opportunity: Opportunity, query: string) => {
         opportunity.company,
         opportunity.jobFunction,
         ...(opportunity.locations || []),
-    ].some(value => normalizeSkill(value || '').includes(normalizedQuery));
+    ].some(value => normalize(value || '').includes(normalizedQuery));
 };
 
 export default function SkillSearchScreen({ navigation, route }: Props) {
@@ -67,8 +67,9 @@ export default function SkillSearchScreen({ navigation, route }: Props) {
 
     const skillsFuse = useMemo(() => {
         return new Fuse(metadataSkills, {
-            threshold: 0.35,
-            distance: 10,
+            threshold: 0.3,
+            distance: 20,
+            ignoreLocation: true,
         });
     }, [metadataSkills]);
 
@@ -172,7 +173,7 @@ export default function SkillSearchScreen({ navigation, route }: Props) {
                             )}
                         </View>
 
-                        {selectedSkill && normalizeSkill(inputValue) === normalizeSkill(selectedSkill) ? (
+                        {selectedSkill && normalize(inputValue) === normalize(selectedSkill) ? (
                             <TouchableOpacity 
                                 onPress={toggleProfileSkill}
                                 style={[
@@ -214,6 +215,7 @@ export default function SkillSearchScreen({ navigation, route }: Props) {
                         numColumns={2}
                         keyboardShouldPersistTaps="handled"
                         keyboardDismissMode="on-drag"
+                        drawDistance={800}
                         // @ts-expect-error - FlashList typing bug with estimatedItemSize
                         estimatedItemSize={60}
                         contentContainerStyle={{ paddingHorizontal: 14, paddingTop: 6, paddingBottom: insets.bottom + 20 }}
@@ -278,9 +280,10 @@ export default function SkillSearchScreen({ navigation, route }: Props) {
                     keyExtractor={(item) => item.id}
                     keyboardShouldPersistTaps="handled"
                     keyboardDismissMode="on-drag"
+                    drawDistance={800}
                     contentContainerStyle={{ paddingTop: 16, paddingBottom: insets.bottom + 20 }}
                     // @ts-expect-error - FlashList typing bug with estimatedItemSize
-                    estimatedItemSize={160}
+                    estimatedItemSize={250}
                     renderItem={({ item }) => (
                         <JobCard 
                             opportunity={item} 

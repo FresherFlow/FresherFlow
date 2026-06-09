@@ -8,13 +8,13 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Palette, Moon, Sun, Smartphone, Zap, Globe } from 'lucide-react-native';
+import { Check, Palette, Moon, Sun, Smartphone, Zap } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
-import { getBoolean, setBoolean } from '@/utils/storage';
+
 
 // Premium System
 import { mScale } from '@/system/constants/dimensions';
@@ -33,25 +33,7 @@ const AppearanceScreen = ({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme, themeMode, setThemeMode, isAmoled, toggleAmoled } = useTheme();
 
-  const [useInAppBrowser, setUseInAppBrowser] = useState(getBoolean('use_in_app_browser', true));
 
-  // Write the default value to storage on first mount if it was never explicitly set.
-  // The mock MMKV hydrates from AsyncStorage asynchronously — if we don't write the
-  // default, browser.ts may read 'undefined' on a fresh install and behave incorrectly.
-  useEffect(() => {
-    const stored = getBoolean('use_in_app_browser', true);
-    setUseInAppBrowser(stored);
-    // Always persist so it's never undefined in storage
-    if (stored !== false) {
-      setBoolean('use_in_app_browser', stored);
-    }
-  }, []);
-
-  const toggleInAppBrowser = (value: boolean) => {
-      setUseInAppBrowser(value);
-      setBoolean('use_in_app_browser', value);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-  };
 
   const handleModeSelect = useCallback((mode: 'light' | 'dark' | 'system') => {
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -121,19 +103,6 @@ const AppearanceScreen = ({ navigation }: Props) => {
                 />
             </View>
         )}
-
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>App Settings</Text>
-          <View style={{ gap: 16 }}>
-            <PremiumToggle 
-                title="In-App Browser"
-                description="Open job applications and career pages inside the app instead of your default browser."
-                value={useInAppBrowser}
-                onValueChange={toggleInAppBrowser}
-                icon={Globe}
-            />
-          </View>
-        </View>
 
         <View style={[styles.infoBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.3) }]}>
           <View style={[styles.infoIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>

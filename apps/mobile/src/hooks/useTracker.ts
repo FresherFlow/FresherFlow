@@ -18,7 +18,6 @@ export const useTracker = () => {
     const { user } = useAuthStore();
     const [items, setItems] = useState<TrackerAction[]>([]);
     const [loading, setLoading] = useState(true);
-    const [updating, setUpdating] = useState(false);
 
     const isAnonymous = !user || user.isAnonymous;
 
@@ -103,90 +102,64 @@ export const useTracker = () => {
         return item?.actionType || null;
     }, [items]);
 
-    const toggleTracking = useCallback(async (opportunity: Opportunity, status?: ActionType) => {
+    const toggleTracking = useCallback((opportunity: Opportunity, status?: ActionType) => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         const currentlyTracking = isTracking(opportunity.id);
 
-        if (isAnonymous) {
-            // Support local offline-first demo state for guests
-            let updated: TrackerAction[];
-            if (currentlyTracking && !status) {
-                updated = items.filter(item => item.opportunityId !== opportunity.id);
-            } else {
-                const targetStatus = status || ActionType.PLANNED;
-                updated = [
-                    {
-                        id: opportunity.id,
-                        actionType: targetStatus,
-                        createdAt: new Date().toISOString(),
-                        opportunityId: opportunity.id,
-                        opportunity,
-                    },
-                    ...items.filter(item => item.opportunityId !== opportunity.id)
-                ];
-            }
-            setItems(updated);
-            void saveTrackerCache(updated);
-            void useFeedStore.getState().refreshBehavioralData();
-            return;
+        let updated: TrackerAction[];
+        if (currentlyTracking && !status) {
+            updated = items.filter(item => item.opportunityId !== opportunity.id);
+        } else {
+            const targetStatus = status || ActionType.PLANNED;
+            updated = [
+                {
+                    id: opportunity.id,
+                    actionType: targetStatus,
+                    createdAt: new Date().toISOString(),
+                    opportunityId: opportunity.id,
+                    opportunity,
+                },
+                ...items.filter(item => item.opportunityId !== opportunity.id)
+            ];
         }
+        setItems(updated);
+        void saveTrackerCache(updated);
+        void useFeedStore.getState().refreshBehavioralData();
 
-        if (!user?.id) return;
-
-        setUpdating(true);
-        try {
+        if (user?.id) {
             if (currentlyTracking && !status) {
-                await removeFirebaseTrackerItem(user.id, opportunity.id);
+                void removeFirebaseTrackerItem(user.id, opportunity.id);
             } else {
-                const targetStatus = status || ActionType.PLANNED;
-                await writeFirebaseTrackerItem(user.id, opportunity.id, targetStatus);
+                void writeFirebaseTrackerItem(user.id, opportunity.id, status || ActionType.PLANNED);
             }
-        } finally {
-            setUpdating(false);
         }
-    }, [isTracking, items, user?.id, isAnonymous]);
+    }, [isTracking, items, user?.id]);
 
-    const updateStatus = useCallback(async (opportunityId: string, status: ActionType) => {
+    const updateStatus = useCallback((opportunityId: string, status: ActionType) => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        if (isAnonymous) {
-            const updated = items.map(item => 
-                item.opportunityId === opportunityId ? { ...item, actionType: status } : item
-            );
-            setItems(updated);
-            void saveTrackerCache(updated);
-            void useFeedStore.getState().refreshBehavioralData();
-            return;
+        const updated = items.map(item => 
+            item.opportunityId === opportunityId ? { ...item, actionType: status } : item
+        );
+        setItems(updated);
+        void saveTrackerCache(updated);
+        void useFeedStore.getState().refreshBehavioralData();
+
+        if (user?.id) {
+            void writeFirebaseTrackerItem(user.id, opportunityId, status);
         }
+    }, [items, user?.id]);
 
-        if (!user?.id) return;
-
-        setUpdating(true);
-        try {
-            await writeFirebaseTrackerItem(user.id, opportunityId, status);
-        } finally {
-            setUpdating(false);
-        }
-    }, [items, user?.id, isAnonymous]);
-
-    const removeAction = useCallback(async (opportunityId: string) => {
+    const removeAction = useCallback((opportunityId: string) => {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-        if (isAnonymous) {
-            const updated = items.filter(item => item.opportunityId !== opportunityId);
-            setItems(updated);
-            void saveTrackerCache(updated);
-            void useFeedStore.getState().refreshBehavioralData();
-            return;
-        }
+        const updated = items.filter(item => item.opportunityId !== opportunityId);
+        setItems(updated);
+        void saveTrackerCache(updated);
+        void useFeedStore.getState().refreshBehavioralData();
 
-        if (!user?.id) return;
-
-        setUpdating(true);
-        try {
-            await removeFirebaseTrackerItem(user.id, opportunityId);
-        } finally {
-            setUpdating(false);
+        if (user?.id) {
+            void removeFirebaseTrackerItem(user.id, opportunityId);
         }
-    }, [items, user?.id, isAnonymous]);
+    }, [items, user?.id]);
 
     const onRefresh = useCallback(async () => {
         return Promise.resolve();
@@ -203,7 +176,6 @@ export const useTracker = () => {
         toggleTracking,
         updateStatus,
         removeAction,
-        updating,
     };
 };
 

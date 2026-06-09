@@ -385,8 +385,25 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
   if (!opportunity) {
     return (
-      <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
-        <Text style={{ color: currentTheme.colors.text }}>Opportunity not found</Text>
+      <View style={[styles.center, { backgroundColor: currentTheme.colors.background, padding: 32 }]}>
+        <Briefcase size={48} color={currentTheme.colors.textMuted} style={{ marginBottom: 16 }} />
+        <Text style={{ color: currentTheme.colors.text, fontSize: 18, fontWeight: '700', marginBottom: 8, textAlign: 'center' }}>
+          Opportunity not found
+        </Text>
+        <Text style={{ color: currentTheme.colors.textMuted, fontSize: 14, textAlign: 'center', marginBottom: 28, lineHeight: 20 }}>
+          This job may have been removed or expired.
+        </Text>
+        <TouchableOpacity
+          onPress={handleBack}
+          style={{
+            backgroundColor: currentTheme.colors.primary,
+            paddingHorizontal: 28,
+            paddingVertical: 12,
+            borderRadius: 12,
+          }}
+        >
+          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Browse Jobs</Text>
+        </TouchableOpacity>
       </View>
     );
   }

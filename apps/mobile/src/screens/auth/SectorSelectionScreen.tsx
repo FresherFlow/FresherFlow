@@ -38,7 +38,7 @@ export default function SectorSelectionScreen() {
         <SafeAreaView style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
             <View style={styles.content}>
                 <Text style={[styles.title, { color: currentTheme.colors.text }]}>
-                    Choose Your Journey
+                    Choose Your Journey (Beta)
                 </Text>
                 <Text style={[styles.subtitle, { color: currentTheme.colors.textMuted }]}>
                     Select what kind of opportunities you are looking for. You can easily switch this later in Settings.

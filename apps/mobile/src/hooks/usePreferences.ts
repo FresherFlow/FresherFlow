@@ -62,7 +62,8 @@ export const usePreferences = () => {
     }, [watch, setValue]);
 
     const addCity = useCallback((city: string) => {
-        const trimmed = city.trim();
+        const toTitleCase = (str: string) => str.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+        const trimmed = toTitleCase(city.trim());
         if (trimmed && !preferredCities.includes(trimmed)) {
             if (preferredCities.length >= 5) {
                 showToast('You can select up to 5 cities', 'warning');

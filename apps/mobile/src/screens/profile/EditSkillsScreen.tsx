@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useMemo } from 'react';
+import React, { memo, useCallback, useMemo, useRef } from 'react';
 import Fuse from 'fuse.js';
 import {
     StyleSheet,
@@ -53,13 +53,34 @@ export const SkillsView = ({ profile, availabilityLabel, onEdit, currentTheme }:
                         {/* Skills */}
                         <View style={{ marginBottom: 24 }}>
                             <Text style={[styles.viewFieldLabel, { color: currentTheme.colors.textMuted, marginBottom: 12 }]}>SKILLS & EXPERTISE</Text>
-                            <View style={styles.tagContainer}>
-                                {(profile?.skills || []).map(skill => (
-                                    <View key={skill} style={[styles.viewTag, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
-                                        <Text style={[styles.viewTagText, { color: currentTheme.colors.primary }]}>{skill}</Text>
+                            {(profile?.skills || []).length > 4 ? (
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -24 }} contentContainerStyle={{ paddingHorizontal: 24 }}>
+                                    <View style={{ flexDirection: 'column', gap: 8 }}>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            {(profile?.skills || []).filter((_, i) => i % 2 === 0).map(skill => (
+                                                <View key={skill} style={[styles.viewTag, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                                                    <Text style={[styles.viewTagText, { color: currentTheme.colors.primary }]}>{skill.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
+                                        <View style={{ flexDirection: 'row', gap: 8 }}>
+                                            {(profile?.skills || []).filter((_, i) => i % 2 !== 0).map(skill => (
+                                                <View key={skill} style={[styles.viewTag, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                                                    <Text style={[styles.viewTagText, { color: currentTheme.colors.primary }]}>{skill.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</Text>
+                                                </View>
+                                            ))}
+                                        </View>
                                     </View>
-                                ))}
-                            </View>
+                                </ScrollView>
+                            ) : (
+                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                                    {(profile?.skills || []).map(skill => (
+                                        <View key={skill} style={[styles.viewTag, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                                            <Text style={[styles.viewTagText, { color: currentTheme.colors.primary }]}>{skill.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}</Text>
+                                        </View>
+                                    ))}
+                                </View>
+                            )}
                         </View>
 
                         {/* Availability */}
@@ -111,12 +132,15 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         setValue,
     } = useSkills();
 
+    const scrollRef = useRef<ScrollView>(null);
+
     const hasData = (profile?.skills?.length ?? 0) > 0;
 
     const skillsFuse = useMemo(() => {
         return new Fuse(metadataSkills, {
-            threshold: 0.35,
-            distance: 10,
+            threshold: 0.3,
+            distance: 20,
+            ignoreLocation: true,
         });
     }, [metadataSkills]);
 
@@ -208,17 +232,27 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                             </View>
                                         </View>
                                     ) : (
-                                        skills.map(skill => (
-                                            <TouchableOpacity
-                                                key={skill}
-                                                activeOpacity={0.7}
-                                                onPress={() => removeSkill(skill)}
-                                                style={[styles.tag, { backgroundColor: currentTheme.colors.text }]}
-                                            >
-                                                <Text style={[styles.tagText, { color: currentTheme.colors.background }]}>{skill}</Text>
-                                                <X size={12} color={currentTheme.colors.background} />
-                                            </TouchableOpacity>
-                                        ))
+                                        <ScrollView 
+                                            ref={scrollRef}
+                                            style={{ maxHeight: 160 }} 
+                                            nestedScrollEnabled 
+                                            showsVerticalScrollIndicator={false}
+                                            onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+                                        >
+                                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 4 }}>
+                                                {skills.map(skill => (
+                                                    <TouchableOpacity
+                                                        key={skill}
+                                                        activeOpacity={0.7}
+                                                        onPress={() => removeSkill(skill)}
+                                                        style={[styles.tag, { backgroundColor: currentTheme.colors.text }]}
+                                                    >
+                                                        <Text style={[styles.tagText, { color: currentTheme.colors.background }]}>{skill}</Text>
+                                                        <X size={12} color={currentTheme.colors.background} />
+                                                    </TouchableOpacity>
+                                                ))}
+                                            </View>
+                                        </ScrollView>
                                     )}
                                 </View>
 

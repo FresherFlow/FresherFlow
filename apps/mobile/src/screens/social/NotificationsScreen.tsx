@@ -452,7 +452,7 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                 // @ts-expect-error - FlashList typing bug with estimatedItemSize
                 estimatedItemSize={100}
                 initialNumToRender={15}
-                drawDistance={500}
+                drawDistance={2500}
                 contentContainerStyle={styles.listContent}
                 ListEmptyComponent={renderEmpty}
                 refreshControl={

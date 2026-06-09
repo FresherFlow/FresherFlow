@@ -30,16 +30,6 @@
           "data": [
             {
               "scheme": "https",
-              "host": "fresherflow-3604b.firebaseapp.com",
-              "pathPrefix": "/__/auth/links"
-            },
-            {
-              "scheme": "https",
-              "host": "fresherflow-3604b.web.app",
-              "pathPrefix": "/__/auth/links"
-            },
-            {
-              "scheme": "https",
               "host": "fresherflow.in",
               "pathPrefix": "/opportunities"
             },
@@ -62,6 +52,25 @@
               "scheme": "https",
               "host": "fresherflow.in",
               "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "https",
+              "host": "fresherflow-3604b.firebaseapp.com",
+              "pathPrefix": "/__/auth/links"
+            },
+            {
+              "scheme": "https",
+              "host": "fresherflow-3604b.web.app",
+              "pathPrefix": "/__/auth/links"
             }
           ],
           "category": [

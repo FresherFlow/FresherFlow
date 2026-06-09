@@ -4,6 +4,7 @@ import {
     Text,
     StyleSheet,
     Platform,
+    TouchableOpacity,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FlashList } from '@shopify/flash-list';
@@ -19,9 +20,9 @@ import { ContributionPreviewCard } from '@/system/components/ContributionPreview
 import { ResourcePreviewCard } from '@/system/components/ResourcePreviewCard';
 import { saveDetailCache } from '@/utils/cache/offlineCache';
 import { SPACING, mScale } from '@/system/constants/dimensions';
-import { Zap, BookOpen, Link2, ExternalLink } from 'lucide-react-native';
+import { Zap, BookOpen, CheckCircle2, Clock, XCircle } from 'lucide-react-native';
 import * as Linking from 'expo-linking';
-import { TouchableOpacity } from 'react-native-gesture-handler';
+import { SurfaceCard } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MyShares'>;
 
@@ -76,73 +77,90 @@ const MySharesScreen: React.FC<Props> = ({ route, navigation }) => {
     };
 
     const renderResourceItem = ({ item }: { item: SharedResource }) => {
-        let statusColor = currentTheme.colors.warning;
-        let statusText = 'PENDING';
-        if (item.status === 'PUBLISHED') { statusColor = currentTheme.colors.success; statusText = 'LIVE'; }
-        if (item.status === 'REJECTED') { statusColor = currentTheme.colors.error; statusText = 'REJECTED'; }
+        const isLive = item.status === 'PUBLISHED' || item.status === 'APPROVED';
+        const isRejected = item.status === 'REJECTED';
+        const statusColor = isLive
+            ? currentTheme.colors.success
+            : isRejected
+            ? currentTheme.colors.error
+            : currentTheme.colors.warning;
+        const StatusIcon = isLive ? CheckCircle2 : isRejected ? XCircle : Clock;
+        const statusText = isLive ? 'Live' : isRejected ? 'Rejected' : 'Reviewing';
 
         return (
-            <TouchableOpacity 
-                style={[styles.card, { borderColor: currentTheme.colors.border, backgroundColor: currentTheme.colors.surface }]}
-                activeOpacity={0.7}
+            <TouchableOpacity
+                activeOpacity={0.85}
                 onPress={() => {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     void Linking.openURL(item.url);
                 }}
+                style={{ marginBottom: mScale(10) }}
             >
-                <View style={[styles.statusBadge, { backgroundColor: alpha(statusColor, 0.1), alignSelf: 'flex-start', marginBottom: 12 }]}>
-                    <Text style={[styles.statusText, { color: statusColor }]}>{statusText}</Text>
-                </View>
-
-                <View pointerEvents="box-none">
-                    <ResourcePreviewCard 
-                        url={item.url} 
-                        style={{ borderWidth: 0, borderRadius: 8 }} 
-                        isSaved={isSavedResource(item.id)}
-                        onSave={() => {
-                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            toggleSaveResource(item);
-                        }}
-                        addedByUsername={(item as any).addedByUsername}
-                    />
-                </View>
-
-                <View style={[styles.cardFooter, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.5) }]}>
-                    <View style={styles.impactRow}>
-                        <ExternalLink size={14} color={currentTheme.colors.textMuted} />
-                        <Text style={[styles.impactText, { color: currentTheme.colors.textMuted }]}>Resource Link</Text>
+                {/* Status + date row (no outer card border/background) */}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, paddingHorizontal: 4 }}>
+                    <View style={[styles.statusBadge, { backgroundColor: alpha(statusColor, 0.08) }]}>
+                        <StatusIcon size={mScale(11)} color={statusColor} />
+                        <Text style={[styles.statusText, { color: statusColor }]}>{statusText}</Text>
                     </View>
                     <Text style={[styles.dateText, { color: currentTheme.colors.textMuted }]}>
-                        {new Date(item.createdAt).toLocaleDateString()}
+                        {new Date(item.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                     </Text>
+                </View>
+
+                {/* Singular preview card */}
+                <View pointerEvents="box-none">
+                    <ResourcePreviewCard
+                        url={item.url}
+                        isSaved={isSavedResource(item.id)}
+                        onSave={isLive ? () => {
+                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                            toggleSaveResource(item as unknown as import('@fresherflow/types').SharedResource);
+                        } : undefined}
+                        addedByUsername={(item as any).addedByUsername}
+                    />
                 </View>
             </TouchableOpacity>
         );
     };
 
     const renderTabs = () => (
-        <View style={[styles.tabContainer, { backgroundColor: currentTheme.colors.surface, borderColor: currentTheme.colors.border }]}>
+        <View style={{ flexDirection: 'row', gap: 12, marginBottom: SPACING.lg, paddingHorizontal: 4 }}>
             <TouchableOpacity
-                style={[styles.tabButton, activeTab === 'JOBS' && { backgroundColor: currentTheme.colors.primary }]}
                 onPress={() => {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveTab('JOBS');
                 }}
+                style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 12,
+                    backgroundColor: activeTab === 'JOBS' ? currentTheme.colors.text : 'transparent',
+                }}
             >
-                <Text style={[styles.tabText, { color: activeTab === 'JOBS' ? currentTheme.colors.background : currentTheme.colors.textMuted }]}>
-                    Jobs & Referrals
-                </Text>
+                <Text style={{
+                    fontSize: 13,
+                    fontWeight: '800',
+                    color: activeTab === 'JOBS' ? currentTheme.colors.background : currentTheme.colors.textMuted
+                }}>Jobs</Text>
             </TouchableOpacity>
+            
             <TouchableOpacity
-                style={[styles.tabButton, activeTab === 'RESOURCES' && { backgroundColor: currentTheme.colors.primary }]}
                 onPress={() => {
                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                     setActiveTab('RESOURCES');
                 }}
+                style={{
+                    paddingHorizontal: 16,
+                    paddingVertical: 8,
+                    borderRadius: 12,
+                    backgroundColor: activeTab === 'RESOURCES' ? currentTheme.colors.text : 'transparent',
+                }}
             >
-                <Text style={[styles.tabText, { color: activeTab === 'RESOURCES' ? currentTheme.colors.background : currentTheme.colors.textMuted }]}>
-                    Resources
-                </Text>
+                <Text style={{
+                    fontSize: 13,
+                    fontWeight: '800',
+                    color: activeTab === 'RESOURCES' ? currentTheme.colors.background : currentTheme.colors.textMuted
+                }}>Resources</Text>
             </TouchableOpacity>
         </View>
     );
@@ -253,7 +271,7 @@ const styles = StyleSheet.create({
         borderRadius: 8,
     },
     tabText: {
-        fontSize: mScale(13),
+        fontSize: mScale(12),
         fontWeight: '800',
     },
     cardMain: {

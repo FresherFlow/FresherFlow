@@ -112,11 +112,11 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 {loading ? (
                     <ActivityIndicator size="large" color={currentTheme.colors.primary} />
                 ) : (
-                    <Animated.View>
+                    <Animated.View style={{ alignItems: 'center', width: '100%' }}>
                         <View style={[styles.emptyIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
                             <Bookmark size={48} color={currentTheme.colors.primary} />
                         </View>
-                        <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>Library Empty</Text>
+                        <Text style={[styles.emptyTitle, { color: currentTheme.colors.text, textAlign: 'center' }]}>Library Empty</Text>
                         <Text style={[styles.emptySub, { color: currentTheme.colors.textMuted }]}>
                             {activeTab === 'JOBS' ? "Opportunities you save will appear here for quick access later." : "Resources you save will appear here."}
                         </Text>
@@ -160,24 +160,10 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             const currentList = activeTab === 'JOBS' ? filteredSavedJobs : savedResources;
             return (
                 <View style={{ paddingBottom: 16 }}>
-                    <PremiumHeader
-                        title="Library"
-                        rightSlot={
-                            <TouchableOpacity 
-                                onPress={() => navigation.navigate('Notifications')}
-                                style={styles.notificationBtn}
-                            >
-                                <Bell size={24} color={currentTheme.colors.text} />
-                                {unreadCount > 0 && (
-                                    <View style={[styles.badge, { backgroundColor: currentTheme.colors.primary, borderColor: currentTheme.colors.background }]} />
-                                )}
-                            </TouchableOpacity>
-                        }
-                    />
 
                     <UsernameNudgeCard />
                     
-                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 24, marginBottom: 8 }}>
+                    <View style={{ flexDirection: 'row', gap: 12, marginTop: 24, marginBottom: 8, paddingHorizontal: SPACING.lg }}>
                         <TouchableOpacity
                             onPress={() => setActiveTab('JOBS')}
                             style={{
@@ -227,17 +213,16 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         if (activeTab === 'RESOURCES') {
             return (
                 <TouchableOpacity 
-                    style={[styles.resourceCard, { borderColor: currentTheme.colors.border, backgroundColor: currentTheme.colors.surface }]}
-                    activeOpacity={0.7}
+                    activeOpacity={0.75}
                     onPress={() => {
                         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         void Linking.openURL(item.url);
                     }}
+                    style={{ marginBottom: 12, paddingHorizontal: SPACING.lg }}
                 >
                     <View pointerEvents="box-none">
                         <ResourcePreviewCard 
                             url={item.url} 
-                            style={{ borderWidth: 0, borderRadius: 8 }} 
                             isSaved={isSavedResource(item.id)}
                             onSave={() => {
                                 void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -245,18 +230,6 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             }}
                             addedByUsername={item.addedByUsername}
                         />
-                    </View>
-
-                    <View style={[styles.cardFooter, { marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: alpha(currentTheme.colors.border, 0.5) }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                            <ExternalLink size={14} color={currentTheme.colors.textMuted} />
-                            <Text style={[{ fontSize: 12, fontWeight: '600' }, { color: currentTheme.colors.textMuted }]}>Resource Link</Text>
-                        </View>
-                        {item.createdAt && (
-                            <Text style={[{ fontSize: 11, fontWeight: '600' }, { color: currentTheme.colors.textMuted }]}>
-                                {new Date(item.createdAt).toLocaleDateString()}
-                            </Text>
-                        )}
                     </View>
                 </TouchableOpacity>
             );
@@ -291,7 +264,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 onSave={handleToggleSave}
             />
         );
-    }, [filteredSavedJobs, loading, currentTheme, isSaved, handleToggleSave, navigation, sector]);
+    }, [filteredSavedJobs, savedResources, activeTab, isSavedResource, toggleSaveResource, renderEmpty, loading, currentTheme, isSaved, handleToggleSave, navigation, sector]);
 
     return (
         <Screen safe={false}>

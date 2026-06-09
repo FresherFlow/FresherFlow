@@ -40,7 +40,7 @@ import { useSkillsMetadata } from '@/hooks/useSkillsMetadata';
 import { postFirebaseResourceSuggestion } from '@/utils/firebaseResourcesDb';
 import { queueShare } from '@/utils/shareQueue';
 import { resourcesApi } from '@fresherflow/api-client';
-
+import { normalizeOpportunityUrl } from '@fresherflow/utils';
 // Premium System
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
@@ -71,7 +71,6 @@ const ShareScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const params = route.params as { url?: string } | undefined;
   const { user } = useAuthStore();
-  const [shareResult, setShareResult] = useState<ShareResult | null>(null);
   const { shareStats, fetchStats } = useProfile();
 
   const {
@@ -97,24 +96,6 @@ const ShareScreen: React.FC = () => {
     urlRef.current = url;
   }, [url]);
 
-  const successCardTimerRef = useRef<NodeJS.Timeout | null>(null);
-
-  const dismissShareResult = useCallback(() => {
-      if (successCardTimerRef.current) {
-          clearTimeout(successCardTimerRef.current);
-          successCardTimerRef.current = null;
-      }
-      setShareResult(null);
-  }, []);
-
-  useEffect(() => {
-      return () => {
-          if (successCardTimerRef.current) {
-              clearTimeout(successCardTimerRef.current);
-          }
-      };
-  }, []);
-
   const [activeTab, setActiveTab] = useState(0);
   const pagerRef = useRef<FlatList>(null);
   const tabListRef = useRef<ScrollView>(null);
@@ -122,9 +103,9 @@ const ShareScreen: React.FC = () => {
   const isManualScrolling = useRef(false);
 
   const tabs = [
-    { id: 'SHARE', label: 'Share Link' },
-    { id: 'REFER', label: 'Offer Referral' },
-    { id: 'RESOURCE', label: 'Prep Resource' },
+    { id: 'SHARE', label: 'Job Link' },
+    { id: 'RESOURCE', label: 'Resource' },
+    { id: 'REFER', label: 'Referral' },
   ];
 
   const mode = tabs[activeTab].id as 'SHARE' | 'REFER' | 'RESOURCE';
@@ -136,40 +117,56 @@ const ShareScreen: React.FC = () => {
   const [resError, setResError] = useState<string | null>(null);
 
   const handleShareResource = async () => {
-    const isValid = /^https?:\/\/.+\..+/.test(resUrl.trim());
+    const trimmedUrl = resUrl.trim();
+    const isValid = /^https?:\/\/.+\..+/.test(trimmedUrl);
     if (!isValid) { setResError('Please paste a valid link'); return; }
+
+    const normalized = trimmedUrl.toLowerCase();
+    const submittedRes = getJSON<string[]>('fresherflow_submitted_resources') || [];
+    if (submittedRes.includes(normalized)) {
+        setResError('This link is already under review!');
+        return;
+    }
+
     try {
       setResSubmitting(true);
       setResError(null);
       try {
-        await resourcesApi.submit(resUrl.trim());
+        await resourcesApi.submit(trimmedUrl);
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         
-        const currentCount = getJSON<number>('fresherflow_persistent_total_shared_count') ?? shareStats.totalShared ?? 0;
-        setPrevTotalShared(currentCount);
-        setJSON('fresherflow_persistent_total_shared_count', currentCount + 1);
-        setShareResult({ success: true, id: 'res_' + Date.now() });
-        
-        if (successCardTimerRef.current) {
-            clearTimeout(successCardTimerRef.current);
+        // Add to local submitted links cache
+        if (!submittedRes.includes(normalized)) {
+            submittedRes.push(normalized);
+            setJSON('fresherflow_submitted_resources', submittedRes);
         }
-        successCardTimerRef.current = setTimeout(() => {
-            setShareResult(null);
-        }, 5000);
+
+        showToast('Resource submitted for review successfully!', 'success');
 
         setResUrl('');
         setResError(null);
         void fetchRecentShares();
         void fetchStats();
       } catch (apiErr: unknown) {
-        // 409 = duplicate, treat as success
-        if ((apiErr as { status?: number }).status === 409) {
-          showToast('This resource is already in our library!', 'info');
-          setResUrl('');
+        const err = apiErr as { status?: number; body?: any };
+        if (err.status === 409) {
+          const body = err.body as { error?: string; status?: string; existing?: boolean } | undefined;
+          
+          // Add to local submitted resources cache so we don't hit the server next time
+          if (!submittedRes.includes(normalized)) {
+              submittedRes.push(normalized);
+              setJSON('fresherflow_submitted_resources', submittedRes);
+          }
+
+          if (body?.status === 'PENDING_REVIEW') {
+            setResError('This link is already under review!');
+          } else {
+            setResError('This resource is already live in our library!');
+          }
           return;
         }
         // Offline — queue it
-        await queueShare('RESOURCE', { url: resUrl.trim() });
+        await queueShare('RESOURCE', { url: trimmedUrl });
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
         showToast('Saved offline, will sync when back online.', 'info');
         setResUrl('');
@@ -213,7 +210,23 @@ const ShareScreen: React.FC = () => {
 
       const response = await profileApi.getShares(1);
       setRecentShares(response.shares.slice(0, 5));
-      void saveSharesCache(response.shares, [], response.stats);
+      void saveSharesCache(response.shares, response.resources, response.stats);
+      
+      // Populate local submitted caches so we can do duplicate checks locally (not via API)
+      if (response.shares && response.shares.length > 0) {
+          const submittedLinks = getJSON<string[]>('fresherflow_submitted_links') || [];
+          const newLinks = response.shares.map(s => {
+              try { return normalizeOpportunityUrl(s.sourceLink); } catch { return s.sourceLink.toLowerCase(); }
+          }).filter(Boolean);
+          setJSON('fresherflow_submitted_links', Array.from(new Set([...submittedLinks, ...newLinks])));
+      }
+
+      if (response.resources && response.resources.length > 0) {
+          const submittedRes = getJSON<string[]>('fresherflow_submitted_resources') || [];
+          const newRes = response.resources.map(r => r.url.trim().toLowerCase()).filter(Boolean);
+          setJSON('fresherflow_submitted_resources', Array.from(new Set([...submittedRes, ...newRes])));
+      }
+
       setBoolean('fresherflow_shares_dirty', false); // Clear dirty flag
       lastSharesScreenFetchTime = Date.now();
     } catch (err: unknown) {
@@ -276,19 +289,18 @@ const ShareScreen: React.FC = () => {
         return () => {
             isActive = false;
             subscription.remove();
-            dismissShareResult();
         };
-    }, [fetchRecentShares, dismissShareResult])
+    }, [fetchRecentShares])
   );
 
   useEffect(() => {
-    if (url && url.length > 15 && !preview && !shareResult && !loading && !error) {
+    if (url && url.length > 15 && !preview && !loading && !error) {
         const timer = setTimeout(() => {
             void handleParse();
         }, 800);
         return () => clearTimeout(timer);
     }
-  }, [url, preview, shareResult, loading, error, handleParse]);
+  }, [url, preview, loading, error, handleParse]);
 
   useEffect(() => {
     if (params?.url) {
@@ -297,49 +309,8 @@ const ShareScreen: React.FC = () => {
     }
   }, [params?.url, setValue, handleParse]);
 
-  const [prevTotalShared, setPrevTotalShared] = useState(() => {
-      return getJSON<number>('fresherflow_persistent_total_shared_count') || 0;
-  });
-  const [animatedCount, setAnimatedCount] = useState(0);
-  const [animationStep, setAnimationStep] = useState(0); // 0: old center, 1: tick center, 2: shift left & show text
- 
-  // Sync with MMKV whenever shareStats totalShared loads
-  useEffect(() => {
-      if (shareResult) return; // DO NOT update prevTotalShared while celebration card is active!
-      if (shareStats.totalShared !== undefined && shareStats.totalShared !== null) {
-          setJSON('fresherflow_persistent_total_shared_count', shareStats.totalShared);
-          setPrevTotalShared(shareStats.totalShared);
-      }
-  }, [shareStats.totalShared, shareResult]);
-
-  useEffect(() => {
-      if (shareResult) {
-          setAnimatedCount(prevTotalShared);
-          setAnimationStep(0);
-          
-          // Step 1: Update the count after 600ms
-          const timer1 = setTimeout(() => {
-              setAnimatedCount(prevTotalShared + 1);
-              setAnimationStep(1);
-          }, 600);
- 
-          // Step 2: Shift to the left and show text after 1300ms
-          const timer2 = setTimeout(() => {
-              setAnimationStep(2);
-          }, 1300);
- 
-          return () => {
-              clearTimeout(timer1);
-              clearTimeout(timer2);
-          };
-      }
-  }, [shareResult, prevTotalShared]);
- 
   const onConfirm = handleSubmit(async (data: ShareFormData) => {
       let result;
-      const currentCount = getJSON<number>('fresherflow_persistent_total_shared_count') ?? shareStats.totalShared ?? 0;
-      setPrevTotalShared(currentCount);
- 
       if (mode === 'SHARE') {
         result = await handleShare();
       } else if (mode === 'REFER') {
@@ -347,26 +318,14 @@ const ShareScreen: React.FC = () => {
       }
  
       if (result) {
-          const newCount = currentCount + 1;
-          setJSON('fresherflow_persistent_total_shared_count', newCount);
-          setPrevTotalShared(currentCount); // Keep the previous count for the tick animation!
-
           // Clear inputs immediately!
           reset();
           setPreview(null);
           setError(null);
           
-          setShareResult(result);
+          showToast(mode === 'SHARE' ? 'Opportunity shared successfully!' : 'Referral published successfully!', 'success');
           void fetchRecentShares();
           void fetchStats();
-          
-          // Auto-dismiss the celebration card after 5 seconds
-          if (successCardTimerRef.current) {
-              clearTimeout(successCardTimerRef.current);
-          }
-          successCardTimerRef.current = setTimeout(() => {
-              setShareResult(null);
-          }, 5000);
  
           // Track contribution
           Analytics.trackEvent(mode === 'SHARE' ? EventNames.JOB_SHARED : EventNames.REFERRAL_OFFERED, {
@@ -377,39 +336,9 @@ const ShareScreen: React.FC = () => {
   });
 
   const resetShare = () => {
-      dismissShareResult();
       setPreview(null);
       reset();
   };
-
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
-
-  useEffect(() => {
-    if (shareResult) {
-        Animated.parallel([
-            Animated.timing(fadeAnim, {
-                toValue: 1,
-                duration: 600,
-                useNativeDriver: true,
-            }),
-            Animated.spring(slideAnim, {
-                toValue: 0,
-                tension: 40,
-                friction: 7,
-                useNativeDriver: true,
-            })
-        ]).start();
-        void Haptics.notificationAsync(
-            shareResult.existing
-                ? Haptics.NotificationFeedbackType.Warning
-                : Haptics.NotificationFeedbackType.Success
-        );
-    } else {
-        fadeAnim.setValue(0);
-        slideAnim.setValue(30);
-    }
-  }, [shareResult, fadeAnim, slideAnim]);
 
   const onPagerScroll = useCallback((event: { nativeEvent: { contentOffset: { x: number } } }) => {
     if (isManualScrolling.current) return;
@@ -515,15 +444,26 @@ const ShareScreen: React.FC = () => {
                 offset: SCREEN_WIDTH * index,
                 index,
             })}
-            renderItem={({ item }) => (
-                <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
-                    <ScrollView
-                        contentContainerStyle={styles.scrollContent}
-                        showsVerticalScrollIndicator={false}
-                        keyboardShouldPersistTaps="handled"
-                        keyboardDismissMode="on-drag"
-                    >
-                        <View style={styles.container}>
+            renderItem={({ item }) => {
+                const isShareEmpty = item.id === 'SHARE' && !url.trim() && !preview;
+                const isResourceEmpty = item.id === 'RESOURCE' && !resUrl.trim();
+                const shouldCenter = isShareEmpty || isResourceEmpty;
+
+                return (
+                    <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
+                        <ScrollView
+                            contentContainerStyle={[
+                                styles.scrollContent,
+                                shouldCenter ? { flexGrow: 1 } : undefined,
+                            ]}
+                            showsVerticalScrollIndicator={false}
+                            keyboardShouldPersistTaps="handled"
+                            keyboardDismissMode="on-drag"
+                        >
+                            <View style={[
+                                styles.container,
+                                shouldCenter ? { justifyContent: 'center', paddingBottom: 80 } : undefined
+                            ]}>
                             {item.id === 'SHARE' ? (
                                 <>
                                     <View style={styles.heroSection}>
@@ -546,7 +486,6 @@ const ShareScreen: React.FC = () => {
                                                     activeOpacity={0.7}
                                                     onPress={() => {
                                                         setValue('url', '');
-                                                        if (shareResult) setShareResult(null);
                                                         if (preview) setPreview(null);
                                                         if (clipboardLink) setClipboardLink(null);
                                                         setError(null);
@@ -569,7 +508,6 @@ const ShareScreen: React.FC = () => {
                                                     onBlur={onBlur}
                                                     onChangeText={(t) => {
                                                         onChange(t);
-                                                        if (shareResult) setShareResult(null);
                                                         if (preview) setPreview(null);
                                                         if (clipboardLink) setClipboardLink(null);
                                                         setError(null);
@@ -872,29 +810,58 @@ const ShareScreen: React.FC = () => {
                                         </Text>
                                     </View>
 
-                                    {/* URL only */}
+                                    {/* Preview — shown ABOVE the input box */}
+                                    {/^https?:\/\/.+\..+/.test(resUrl.trim()) && (
+                                        <View style={{ marginBottom: 12 }}>
+                                            <ResourcePreviewCard url={resUrl.trim()} />
+                                        </View>
+                                    )}
+
+                                    {/* Input with X dismiss */}
                                     <SurfaceCard style={[styles.inputCard, resError && { borderColor: currentTheme.colors.error }]}>
-                                        <View style={styles.inputHeader}>
-                                            <LinkIcon size={16} color={currentTheme.colors.primary} />
-                                            <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>Resource Link</Text>
+                                        <View style={[styles.inputHeader, { justifyContent: 'space-between', alignItems: 'center', width: '100%', flexDirection: 'row' }]}>
+                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                                                <LinkIcon size={16} color={currentTheme.colors.primary} />
+                                                <Text style={[styles.inputLabel, { color: currentTheme.colors.textMuted }]}>Resource Link</Text>
+                                            </View>
+                                            {resUrl.trim().length > 0 && (
+                                                <TouchableOpacity
+                                                    activeOpacity={0.7}
+                                                    onPress={() => {
+                                                        setResUrl('');
+                                                        setResError(null);
+                                                        if (clipboardLink) setClipboardLink(null);
+                                                    }}
+                                                    style={{ padding: 4 }}
+                                                >
+                                                    <X size={16} color={currentTheme.colors.textMuted} />
+                                                </TouchableOpacity>
+                                            )}
                                         </View>
                                         <TextInput
                                             style={[styles.cleanInput, { color: currentTheme.colors.text, minHeight: 40 }]}
                                             placeholder="https://youtube.com/..."
                                             placeholderTextColor={alpha(currentTheme.colors.textMuted, 0.4)}
                                             value={resUrl}
-                                            onChangeText={(t) => { setResUrl(t); setResError(null); }}
+                                            onChangeText={(t) => {
+                                                setResUrl(t);
+                                                setResError(null);
+                                                
+                                                if (t.trim()) {
+                                                    const normalized = t.trim().toLowerCase();
+                                                    const submittedRes = getJSON<string[]>('fresherflow_submitted_resources') || [];
+                                                    if (submittedRes.includes(normalized)) {
+                                                        setResError('This link is already under review!');
+                                                    }
+                                                }
+                                            }}
                                             autoCapitalize="none"
                                             autoCorrect={false}
                                             keyboardType="url"
+                                            multiline
+                                            returnKeyType="done"
                                         />
                                     </SurfaceCard>
-
-                                    {/^https?:\/\/.+\..+/.test(resUrl.trim()) && (
-                                        <View style={{ marginTop: 12 }}>
-                                            <ResourcePreviewCard url={resUrl.trim()} />
-                                        </View>
-                                    )}
 
                                     {clipboardLink && !resUrl && (
                                         <View style={[styles.clipboardPromo, { marginTop: 12, backgroundColor: alpha(currentTheme.colors.primary, 0.03), position: 'relative' }]}>
@@ -902,7 +869,7 @@ const ShareScreen: React.FC = () => {
                                                 activeOpacity={0.7}
                                                 onPress={() => {
                                                     setClipboardLink(null);
-                                                    if (clipboardLink) lastSeenClipboardUrl.current = clipboardLink; // Mark as dismissed
+                                                    if (clipboardLink) lastSeenClipboardUrl.current = clipboardLink;
                                                 }}
                                                 style={{ position: 'absolute', right: 12, top: 12, padding: 6, zIndex: 10 }}
                                             >
@@ -925,7 +892,7 @@ const ShareScreen: React.FC = () => {
                                                     style={[styles.promoUseBtn, { backgroundColor: currentTheme.colors.primary }]}
                                                     onPress={() => {
                                                         setResUrl(clipboardLink || '');
-                                                        if (clipboardLink) lastSeenClipboardUrl.current = clipboardLink; // Mark as used
+                                                        if (clipboardLink) lastSeenClipboardUrl.current = clipboardLink;
                                                         setClipboardLink(null);
                                                         showToast("Link used from clipboard");
                                                     }}
@@ -936,13 +903,6 @@ const ShareScreen: React.FC = () => {
                                         </View>
                                     )}
 
-                                    {/* HIDDEN FIELDS — uncomment when admin review UI is ready */}
-                                    {/*
-                                    <SurfaceCard style={[styles.inputCard, { marginTop: 12 }]}>
-                                        ... title, company, skills fields ...
-                                    </SurfaceCard>
-                                    */}
-
                                     {resError && (
                                         <View style={[styles.errorBox, { backgroundColor: alpha(currentTheme.colors.error, 0.05), marginTop: 16 }]}>
                                             <AlertCircle size={14} color={currentTheme.colors.error} />
@@ -950,22 +910,22 @@ const ShareScreen: React.FC = () => {
                                         </View>
                                     )}
 
-                                    <TouchableOpacity
-                                        activeOpacity={0.9}
-                                        style={[styles.actionBtn, resSubmitting && styles.disabledBtn, { backgroundColor: currentTheme.colors.primary, marginTop: 24 }]}
-                                        onPress={handleShareResource}
-                                        disabled={resSubmitting}
-                                    >
-                                        {resSubmitting ? (
-                                            <ActivityIndicator color={currentTheme.colors.background} />
-                                        ) : (
-                                            <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Submit Resource</Text>
-                                        )}
-                                    </TouchableOpacity>
+                                    {resUrl.trim().length > 0 && (
+                                        <TouchableOpacity
+                                            activeOpacity={0.9}
+                                            style={[styles.actionBtn, resSubmitting && styles.disabledBtn, { backgroundColor: currentTheme.colors.primary, marginTop: 16 }]}
+                                            onPress={handleShareResource}
+                                            disabled={resSubmitting}
+                                        >
+                                            {resSubmitting ? (
+                                                <ActivityIndicator color={currentTheme.colors.background} />
+                                            ) : (
+                                                <Text style={[styles.actionText, { color: currentTheme.colors.background }]}>Submit Resource</Text>
+                                            )}
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
                             )}
-
-
 
                             {/* Spacer to push the button down slightly */}
                             <View style={{ height: 60 }} />
@@ -982,105 +942,11 @@ const ShareScreen: React.FC = () => {
                         </View>
                     </ScrollView>
                 </View>
-            )}
+            )}}
         />
       </KeyboardAvoidingView>
 
-      {/* Floating Success Celebration Card */}
-      {shareResult && (
-          <Animated.View
-            style={[
-                styles.successCardFloating,
-                {
-                    opacity: fadeAnim,
-                    transform: [{ translateY: slideAnim }],
-                    backgroundColor: currentTheme.colors.surface, // Solid surface card background!
-                    borderColor: currentTheme.colors.border, // Subtle clean border, no glow!
-                    borderWidth: 1,
-                    shadowColor: '#000',
-                    shadowOffset: { width: 0, height: 6 },
-                    shadowOpacity: 0.08,
-                    shadowRadius: 16,
-                    elevation: 8,
-                    top: insets.top + 90, // Placed perfectly at the top right below the header!
-                    paddingVertical: 20, // Taller card!
-                }
-            ]}
-          >
-              <View style={{ height: 60, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
-                  {/* The animated digit badge */}
-                  <MotiView
-                      animate={{
-                          scale: animationStep === 1 ? 1.15 : 1, // Subtle pop when ticking
-                      }}
-                      transition={{ type: 'spring', damping: 15, stiffness: 220 }}
-                      style={{
-                          backgroundColor: alpha(currentTheme.colors.primary, 0.08),
-                          paddingHorizontal: 16,
-                          paddingVertical: 8,
-                          borderRadius: 14,
-                          flexDirection: 'row',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                      }}
-                  >
-                      <Trophy size={18} color={currentTheme.colors.primary} style={{ marginRight: 6 }} />
-                      <View style={{ height: 26, width: 24, justifyContent: 'center', overflow: 'hidden', position: 'relative' }}>
-                          <MotiView
-                              animate={{
-                                  translateY: animationStep >= 1 ? -30 : 0,
-                                  opacity: animationStep >= 1 ? 0 : 1,
-                              }}
-                              transition={{ type: 'timing', duration: 250 }}
-                          >
-                              <Text style={{ fontSize: mScale(16), fontWeight: '900', color: currentTheme.colors.primary }}>
-                                  {prevTotalShared}
-                              </Text>
-                          </MotiView>
-                          <MotiView
-                              from={{ translateY: 30, opacity: 0 }}
-                              animate={{
-                                  translateY: animationStep >= 1 ? 0 : 30,
-                                  opacity: animationStep >= 1 ? 1 : 0,
-                              }}
-                              transition={{ type: 'timing', duration: 250 }}
-                              style={{ position: 'absolute', top: 0, left: 0 }}
-                          >
-                              <Text style={{ fontSize: mScale(16), fontWeight: '900', color: currentTheme.colors.primary }}>
-                                  {prevTotalShared + 1}
-                              </Text>
-                          </MotiView>
-                      </View>
-                  </MotiView>
 
-                  {/* The text label sliding/fading in on the right with zero collision */}
-                  <MotiView
-                      animate={{
-                          opacity: 1,
-                          transform: [{ translateX: 0 }],
-                      }}
-                      style={{ flex: 1, marginLeft: 14 }}
-                  >
-                      <View style={{ width: '100%' }}>
-                          <Text style={{ fontSize: mScale(13.5), fontWeight: '900', color: currentTheme.colors.text }} numberOfLines={1}>
-                              {shareResult.existing ? 'Opportunity Ranked' : (mode === 'RESOURCE' ? 'Resource Shared' : 'Opportunity Shared')}
-                          </Text>
-                          <Text style={{ fontSize: mScale(10), color: currentTheme.colors.textMuted, marginTop: 1 }} numberOfLines={1}>
-                              Total contributions
-                          </Text>
-                      </View>
-                  </MotiView>
-
-                  {/* Close button on the top right */}
-                  <TouchableOpacity 
-                      onPress={dismissShareResult} 
-                      style={{ position: 'absolute', right: 0, top: -10, padding: 4 }}
-                  >
-                      <X size={16} color={currentTheme.colors.textMuted} />
-                  </TouchableOpacity>
-              </View>
-          </Animated.View>
-      )}
     </Screen>
   );
 };
@@ -1098,7 +964,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     heroSection: {
-        marginTop: 110,
+        marginTop: 32,
         marginBottom: 20,
     },
     heroTitle: {
@@ -1172,6 +1038,12 @@ const styles = StyleSheet.create({
     },
     disabledBtn: {
         opacity: 0.3,
+    },
+    pinnedSubmit: {
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderTopWidth: StyleSheet.hairlineWidth,
+        borderTopColor: 'rgba(0,0,0,0.06)',
     },
     previewSection: {
         marginBottom: 20,

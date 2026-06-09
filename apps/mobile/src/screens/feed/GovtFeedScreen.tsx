@@ -31,6 +31,7 @@ import { useSaved } from '@repo/frontend-core';
 
 import { useGovtFeed, GOVT_FEED_TABS } from '@/hooks/useGovtFeed';
 import { useFeedStore } from '@/store/useFeedStore';
+import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
 import { markJobAsSeen } from '@/utils/cache/seenJobs';
 import { Opportunity } from '@fresherflow/types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -282,6 +283,14 @@ const GovtFeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const [isSearching, setIsSearching] = useState(false);
   const searchInputRef = useRef<TextInput>(null);
 
+  const { hiddenFeedTabs } = useAppPreferencesStore();
+  const visibleTabs = useMemo(() => {
+    return GOVT_FEED_TABS.filter((feed) => {
+        if (feed.id === null) return true; // 'All' tab cannot be hidden
+        return !hiddenFeedTabs.includes(feed.id as any);
+    });
+  }, [hiddenFeedTabs]);
+
   useEffect(() => {
       const sub = Keyboard.addListener('keyboardDidHide', () => {
           searchInputRef.current?.blur();
@@ -388,7 +397,7 @@ const GovtFeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   }, [isSaved, toggleSave, showSuccess]);
 
   const handlePageSelected = useCallback((index: number) => {
-    if (index >= 0 && index < GOVT_FEED_TABS.length && index !== activeTabRef.current) {
+    if (index >= 0 && index < visibleTabs.length && index !== activeTabRef.current) {
         activeTabRef.current = index;
 
         requestAnimationFrame(() => {
@@ -477,7 +486,7 @@ const GovtFeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     showsHorizontalScrollIndicator={false}
                     contentContainerStyle={styles.feedList}
                 >
-                    {GOVT_FEED_TABS.map((feed, index) => {
+                    {visibleTabs.map((feed, index) => {
                         const isActive = activeTab === index;
                         const tabKey = `govt-tab-${feed.id || 'all'}-${index}`;
                         
@@ -530,7 +539,7 @@ const GovtFeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         onPageSelected={(e) => handlePageSelected(e.nativeEvent.position)}
         overdrag={true}
       >
-        {GOVT_FEED_TABS.map((feed) => (
+        {visibleTabs.map((feed) => (
             <View key={`govt-page-${feed.id || 'all'}`} style={{ flex: 1 }}>
                 <GovtFeedTabContent
                     tabId={feed.id}
