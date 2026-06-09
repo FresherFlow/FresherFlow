@@ -11,6 +11,7 @@ const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
 
 const TARGET_SITES = [
     { url: 'https://job4freshers.co.in/', name: 'job4freshers' },
+    { url: 'https://frontlinesmedia.in/tag/fresher-jobs/', name: 'frontlinesmedia' },
     { url: 'https://jobsaddafreshers.com/category/freshers/', name: 'jobsaddafreshers' },
     { url: 'https://internshipss.com/', name: 'internshipss' },
     { url: 'https://www.freshersvoice.com/', name: 'freshersvoice' },
@@ -76,28 +77,90 @@ const EXPERIENCED_PHRASES = [
     "3+ years",
     "4+ years",
     "5+ years",
+    "6+ years",
+    "7+ years",
+    "8+ years",
+    "10+ years",
     "1+ exp",
     "2+ exp",
     "3+ exp",
     "4+ exp",
+    "5+ exp",
+    "6+ exp",
+    "7+ exp",
+    "8+ exp",
+    "10+ exp",
+    "2 yrs",
+    "3 yrs",
+    "4 yrs",
+    "5 yrs",
+    "6 yrs",
+    "7 yrs",
+    "8 yrs",
+    "10 yrs",
+    "2yrs",
+    "3yrs",
+    "4yrs",
+    "5yrs",
+    "6yrs",
+    "7yrs",
+    "8yrs",
+    "10yrs",
+    "2y -",
+    "3y -",
+    "4y -",
+    "5y -",
+    "6y -",
+    "7y -",
+    "8y -",
+    "10y -",
+    "2y to",
+    "3y to",
+    "4y to",
+    "5y to",
+    "6y to",
+    "7y to",
+    "8y to",
     "1-2 years",
     "1-3 years",
     "2-3 years",
     "2-4 years",
     "3-5 years",
+    "4-5 years",
     "1 - 3 years",
     "2 - 4 years",
     "1 to 3 years",
     "2 to 4 years",
     "1 year of experience",
     "2 years of experience",
+    "3 years of experience",
+    "4 years of experience",
+    "5 years of experience",
     "1 year experience",
     "2 years experience",
-    "minimum 1 year",
+    "3 years experience",
+    "4 years experience",
+    "5 years experience",
     "minimum 2 years",
-    "minimum 1",
-    "min 1 year",
-    "min 2 year"
+    "minimum 3 years",
+    "minimum 4 years",
+    "minimum 5 years",
+    "min 2 year",
+    "min 3 year",
+    "min 4 year",
+    "min 5 year",
+    "min 2 years",
+    "min 3 years",
+    "min 4 years",
+    "min 5 years",
+    "2 yr",
+    "3 yr",
+    "4 yr",
+    "5 yr",
+    "6 yr",
+    "7 yr",
+    "8 yr",
+    "10 yr"
 ];
 
 // Helper to sign the CDN URL
@@ -137,9 +200,18 @@ async function sendTelegramMessage(text: string) {
 function normalizeUrl(urlStr: string): string {
     try {
         const url = new URL(urlStr);
-        return `${url.origin}${url.pathname}`.replace(/\/$/, '');
+        let path = url.pathname.replace(/\/$/, '');
+        
+        // Aggressive normalization for Workday URLs
+        if (url.hostname.includes('myworkdayjobs.com')) {
+            const parts = path.split('/');
+            const lastPart = parts[parts.length - 1];
+            return `${url.hostname}/${lastPart}`.toLowerCase();
+        }
+        
+        return `${url.origin}${path}`.toLowerCase();
     } catch {
-        return urlStr.split('?')[0].replace(/\/$/, '');
+        return urlStr.split('?')[0].replace(/\/$/, '').toLowerCase();
     }
 }
 
@@ -160,7 +232,7 @@ async function saveVisited(visited: Record<string, string[]>) {
 
 // Is this a fresher job?
 function isFresherJob(text: string): boolean {
-    const lowerText = text.toLowerCase();
+    const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
     
     // If it explicitly asks for experience (e.g. 3+ years), it is NOT a fresher job.
     for (const phrase of EXPERIENCED_PHRASES) {
@@ -187,7 +259,7 @@ async function isJobLive(page: Page, url: string): Promise<boolean> {
         
         await page.waitForTimeout(2000);
         const bodyText = await page.locator('body').innerText();
-        const lowerText = bodyText.toLowerCase();
+        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'");
 
         for (const phrase of EXPIRED_PHRASES) {
             if (lowerText.includes(phrase)) {
@@ -220,12 +292,14 @@ function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
         
         const blacklistedDomains = [
             'facebook.com', 'twitter.com', 'x.com', 'linkedin.com', 'whatsapp.com', 
-            'telegram.org', 't.me', 'youtube.com', 'instagram.com', 'foundit.in', 
-            'naukri.com', 'cloudflare.com', 'play.google.com', 'apps.apple.com',
+            'telegram.org', 't.me', 'telegram.me', 'youtube.com', 'youtu.be', 
+            'instagram.com', 'foundit.in', 'naukri.com', 'cloudflare.com', 
+            'play.google.com', 'plus.google.com', 'apps.apple.com',
             'pinterest.com', 'reddit.com', 'github.com/MukeshCheekatla',
+            'openinapp.co', 'openinapp.link', 'linktr.ee', 'bio.link', 'bit.ly', 'tinyurl.com',
             'freshershunt.in', 'jobsaddafreshers.com', 'internshipss.com', 'placementdrive.in',
             'freshersvoice.com', 'freshersnow.com', 'offcampusjobs4u.com', 'freshhiring.com', 
-            'recruitnxt.com', 'fresheropenings.com'
+            'recruitnxt.com', 'fresheropenings.com', 'job4freshers.co.in', 'frontlinesmedia.in'
         ];
         
         for (const domain of blacklistedDomains) {

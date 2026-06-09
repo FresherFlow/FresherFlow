@@ -69,7 +69,7 @@ async function checkJob(page: Page, url: string): Promise<boolean> {
         // Wait a tiny bit for JS rendered ATS like Workday to paint text
         await page.waitForTimeout(2000);
         const bodyText = await page.locator('body').innerText();
-        const lowerText = bodyText.toLowerCase();
+        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'");
 
         for (const phrase of EXPIRED_PHRASES) {
             if (lowerText.includes(phrase)) {
@@ -148,7 +148,7 @@ async function run() {
         let msg = `🚨 <b>Found ${expiredJobs.length} Expired Jobs</b> 🚨\n\n`;
         const displayJobs = expiredJobs.slice(0, 15);
         for (const job of displayJobs) {
-            msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  ID: <code>${job.id}</code>\n`;
+            msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.applyLink || job.sourceLink || 'None'}\n`;
         }
         if (expiredJobs.length > 15) {
             msg += `...and ${expiredJobs.length - 15} more!\n\n`;
@@ -167,7 +167,7 @@ async function run() {
         if (expiredJobs.length > 0) {
             summary += `### Expired Jobs\n`;
             expiredJobs.forEach(j => {
-                summary += `- **${j.company}**: ${j.title} (ID: \`${j.id}\`)\n`;
+                summary += `- **${j.company}**: ${j.title} (Apply Link: ${j.applyLink || j.sourceLink || 'None'})\n`;
             });
         }
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
