@@ -4,7 +4,7 @@ import prisma from '../database/prisma';
 import { Prisma } from '@prisma/client';
 import { OpportunityStatus } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
 /**
  * Service to generate "Distributed Static Data Shards" for discovery.
@@ -42,6 +42,7 @@ export class StaticFeedService {
     private static readonly LINKS_PATH = path.join(this.PUBLIC_ROOT, 'links.min.json');
     private static readonly RESOURCES_PATH = path.join(this.PUBLIC_ROOT, 'resources-feed.json');
     private static readonly GOVERNMENT_PATH = path.join(this.PUBLIC_ROOT, 'government-feed.json');
+    private static readonly SYLLABUS_PATH = path.join(this.PUBLIC_ROOT, 'syllabus.json');
 
     /**
      * Slugify a string for use as a filename/path.
@@ -596,6 +597,44 @@ export class StaticFeedService {
         }
     }
 
+    private static async fetchFromR2(key: string): Promise<string | null> {
+        const endpoint = process.env.R2_ENDPOINT;
+        const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+        const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+        const bucketName = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+
+        if (!endpoint || !accessKeyId || !secretAccessKey) {
+            return null;
+        }
+
+        try {
+            const s3 = new S3Client({
+                region: 'auto',
+                endpoint,
+                credentials: {
+                    accessKeyId,
+                    secretAccessKey,
+                },
+            });
+
+            const response = await s3.send(
+                new GetObjectCommand({
+                    Bucket: bucketName,
+                    Key: key,
+                })
+            );
+            if (!response.Body) return null;
+            return await response.Body.transformToString();
+        } catch (error: unknown) {
+            const err = error as Error & { $metadata?: { httpStatusCode?: number } };
+            if (err.name === 'NoSuchKey' || err.$metadata?.httpStatusCode === 404) {
+                return null;
+            }
+            logger.error(`[StaticFeedService] Failed to fetch ${key} from R2`, error);
+            return null;
+        }
+    }
+
     /**
      * REFRESH USERNAMES ALONE
      */
@@ -653,6 +692,20 @@ export class StaticFeedService {
             const expiredBody = JSON.stringify(expired);
             fs.writeFileSync(this.EXPIRED_FEED_PATH, expiredBody);
             await this.uploadToR2('expired-feed.min.json', expiredBody, 'application/json');
+
+            // Sync syllabus.json from R2 to local public folder, or upload local as fallback
+            try {
+                const syllabusBody = await this.fetchFromR2('syllabus.json');
+                if (syllabusBody) {
+                    fs.writeFileSync(this.SYLLABUS_PATH, syllabusBody);
+                } else if (fs.existsSync(this.SYLLABUS_PATH)) {
+                    // Fallback: If not on R2 but exists locally, upload local to R2 as the baseline
+                    const localSyllabus = fs.readFileSync(this.SYLLABUS_PATH, 'utf-8');
+                    await this.uploadToR2('syllabus.json', localSyllabus, 'application/json');
+                }
+            } catch (err) {
+                logger.error('[StaticFeedService] Failed to sync syllabus.json from R2', err);
+            }
 
             // Generate and upload dynamic feed-version.json cache buster
             const feedVersion = Date.now().toString();

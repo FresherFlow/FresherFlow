@@ -45,9 +45,9 @@ export async function POST(request: NextRequest) {
 
         // Bust the Next.js data cache for version + feed so re-rendered pages get
         // fresh CDN data, not the indefinitely-cached stale version.
-        // @ts-expect-error
+        // @ts-expect-error -- revalidateTag accepts 1 arg in Next.js 15 typings; 'max' profile is Next.js 16 only
         revalidateTag('feed-version');
-        // @ts-expect-error
+        // @ts-expect-error -- revalidateTag accepts 1 arg in Next.js 15 typings; 'max' profile is Next.js 16 only
         revalidateTag('bootstrap-feed');
 
         return NextResponse.json({

@@ -4,6 +4,7 @@ import { sendNewJobAlerts } from './notification.service';
 import { invalidatePublicOpportunityCache } from './publicOpportunityCache.service';
 import { logger } from '@fresherflow/logger';
 import { discoveryEmitter } from '../events/DiscoveryEmitter';
+import { MetadataService } from './metadata.service';
 
 /**
  * Service to handle all business side-effects when an opportunity is published.
@@ -89,4 +90,12 @@ export async function handleOpportunityPublished(
   // 6. Static Feed Regeneration (CDN Sharding)
   // Decoupled via Emitter with debounce to prevent compute thrashing
   discoveryEmitter.trigger();
+
+  // 7. Append new opportunity metadata to R2 CDN files
+  MetadataService.appendOpportunityMetadata(opportunity).catch((err) => {
+    logger.error('[publish] Failed to append opportunity metadata to R2', {
+      opportunityId: opportunity.id,
+      error: err instanceof Error ? err.message : String(err)
+    });
+  });
 }
