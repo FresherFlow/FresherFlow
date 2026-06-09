@@ -39,7 +39,27 @@ export function useCitiesMetadata() {
     staleTime: 1000 * 60 * 60 * 24, // Cache for 24 hours
   });
 
-  const citiesData = data || localFallback;
+  const normalize = (s: string) => s.trim().toLowerCase().replace(/\./g, '');
+
+  const mergeUnique = (local: string[] = [], remote: string[] = []) => {
+      const seen = new Set(local.map(normalize));
+      const merged = [...local];
+      for (const item of remote) {
+          const normalized = normalize(item);
+          if (!seen.has(normalized)) {
+              seen.add(normalized);
+              merged.push(item.trim());
+          }
+      }
+      return merged;
+  };
+
+  const citiesData: CitiesData = { ...localFallback };
+  if (data) {
+      for (const [state, cityList] of Object.entries(data)) {
+          citiesData[state] = mergeUnique(citiesData[state], cityList);
+      }
+  }
 
   // Flatten the cities and sort them alphabetically for forms
   const cities = Object.values(citiesData).flat().sort();
