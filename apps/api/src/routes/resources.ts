@@ -82,7 +82,11 @@ router.post('/',
             });
 
             if (existing) {
-                res.status(409).json({ error: 'This resource has already been submitted.' });
+                res.status(409).json({ 
+                    error: 'This resource has already been submitted.',
+                    status: existing.status,
+                    existing: true
+                });
                 return;
             }
 
