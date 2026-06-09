@@ -21,6 +21,9 @@ import MySharesScreen from '@/screens/social/MySharesScreen';
 import FollowedCompaniesScreen from '@/screens/profile/FollowedCompaniesScreen';
 import AuthScreen from '@/screens/auth/AuthScreen';
 import AppearanceScreen from '@/screens/settings/AppearanceScreen';
+import AppPreferencesScreen from '@/screens/settings/AppPreferencesScreen';
+import BottomNavPreferencesScreen from '@/screens/settings/BottomNavPreferencesScreen';
+import FeedTabsPreferencesScreen from '@/screens/settings/FeedTabsPreferencesScreen';
 import EditEducationScreen from '@/screens/profile/EditEducationScreen';
 import EditSkillsScreen from '@/screens/profile/EditSkillsScreen';
 import EditPreferencesScreen from '@/screens/profile/EditPreferencesScreen';
@@ -49,10 +52,9 @@ import { ResourceGroupDetailScreen } from '@/screens/resources/ResourceGroupDeta
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { useUI } from '@/contexts/UIContext';
-import { useNotifications } from '@/hooks/useNotifications';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSectorStore } from '@/store/useSectorStore';
-import { useNotificationStore } from '@/store/useNotificationStore';
+import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
 import { RootStackParamList } from './types';
@@ -138,19 +140,24 @@ const SavedStack = () => (
   </ScreenErrorBoundary>
 );
 
+const ProfileStackNav = createNativeStackNavigator<RootStackParamList>();
+
 const ProfileStack = () => (
   <ScreenErrorBoundary>
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
-      <Stack.Screen name="ProfileMain" component={SettingsScreen} />
-    </Stack.Navigator>
+    <ProfileStackNav.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+      <ProfileStackNav.Screen name="ProfileMain" component={SettingsScreen} />
+      <ProfileStackNav.Screen name="Appearance" component={AppearanceScreen} />
+      <ProfileStackNav.Screen name="AppPreferences" component={AppPreferencesScreen} />
+      <ProfileStackNav.Screen name="BottomNavPreferences" component={BottomNavPreferencesScreen} />
+      <ProfileStackNav.Screen name="FeedTabsPreferences" component={FeedTabsPreferencesScreen} />
+      <ProfileStackNav.Screen name="AccountManage" component={AccountManageScreen} />
+    </ProfileStackNav.Navigator>
   </ScreenErrorBoundary>
 );
 
 const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { currentTheme } = useTheme();
   const { tabBarTranslateY, isKeyboardVisible } = useUI();
-  const unseenFeedCount = useNotificationStore(s => s.unseenFeedCount);
-  useNotifications();
 
   const isDark = currentTheme.mode === 'dark';
 
@@ -224,18 +231,27 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
   );
 };
 
-const TabNavigator = () => (
-  <Tab.Navigator
-    tabBar={props => <CustomTabBar {...props} />}
-    screenOptions={{ headerShown: false }}
-  >
-    <Tab.Screen name="Feed" component={FeedStack} options={{ tabBarLabel: 'Feed' }} />
-    <Tab.Screen name="Explore" component={ExploreStack} options={{ tabBarLabel: 'Explore' }} />
-    <Tab.Screen name="Share" component={ShareStack} options={{ tabBarLabel: 'Share' }} />
-    <Tab.Screen name="Saved" component={SavedStack} options={{ tabBarLabel: 'Saved' }} />
-    <Tab.Screen name="Profile" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
-  </Tab.Navigator>
-);
+const renderTabBar = (props: BottomTabBarProps) => <CustomTabBar {...props} />;
+
+const TabNavigator = () => {
+  const hiddenTabs = useAppPreferencesStore(s => s.hiddenTabs);
+  
+  return (
+    <Tab.Navigator
+      tabBar={renderTabBar}
+      screenOptions={{ 
+        headerShown: false,
+        freezeOnBlur: true,
+      }}
+    >
+      {!hiddenTabs.includes('Feed') && <Tab.Screen name="Feed" component={FeedStack} options={{ tabBarLabel: 'Feed' }} />}
+      {!hiddenTabs.includes('Explore') && <Tab.Screen name="Explore" component={ExploreStack} options={{ tabBarLabel: 'Explore' }} />}
+      {!hiddenTabs.includes('Share') && <Tab.Screen name="Share" component={ShareStack} options={{ tabBarLabel: 'Share' }} />}
+      {!hiddenTabs.includes('Saved') && <Tab.Screen name="Saved" component={SavedStack} options={{ tabBarLabel: 'Saved' }} />}
+      <Tab.Screen name="Profile" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
+    </Tab.Navigator>
+  );
+};
 
 const styles = StyleSheet.create({
   tabBarContainer: {
@@ -294,10 +310,8 @@ const AppStack = ({ initialRouteName = 'Main' }: { initialRouteName?: keyof Root
     <Stack.Screen name="GovtJobDetail" component={GovtJobDetailScreen} />
     <Stack.Screen name="GovtVacancyDetail" component={GovtVacancyDetailScreen} />
     <Stack.Screen name="SkillSearch" component={SkillSearchScreen} />
-    <Stack.Screen name="Appearance" component={AppearanceScreen} />
     <Stack.Screen name="Dashboard" component={DashboardScreen} />
     <Stack.Screen name="Invite" component={InviteScreen} />
-    <Stack.Screen name="AccountManage" component={AccountManageScreen} />
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
     <Stack.Screen name="EditEducation" component={EditEducationScreen} />
     <Stack.Screen name="EditSkills" component={EditSkillsScreen} />
@@ -338,13 +352,15 @@ const AppLoading = () => {
 
 export const AppNavigator = () => {
   const { isSkipLoaded } = useAuthStore();
-  const { sector, hasHydrated, hydrate } = useSectorStore();
+  const { sector, hasHydrated: sectorHydrated, hydrate: hydrateSector } = useSectorStore();
+  const { hasHydrated: prefsHydrated, hydrate: hydratePrefs } = useAppPreferencesStore();
   
   // Default to null so we block rendering until we know for sure
   const [isOnboardingCompleted, setIsOnboardingCompleted] = React.useState<boolean | null>(null);
 
   React.useEffect(() => {
-    hydrate();
+    hydrateSector();
+    hydratePrefs();
     // Check onboarding state in the background
     AsyncStorage.getItem('ff_onboarding_completed').then((val) => {
       setIsOnboardingCompleted(val === 'true');
@@ -352,10 +368,10 @@ export const AppNavigator = () => {
       // If AsyncStorage fails, assume they need to onboard just to be safe
       setIsOnboardingCompleted(false);
     });
-  }, [hydrate]);
+  }, [hydrateSector, hydratePrefs]);
 
-  // Block rendering until auth store, sector, and onboarding state are resolved
-  if (!isSkipLoaded || !hasHydrated || isOnboardingCompleted === null) {
+  // Block rendering until auth store, sector, prefs, and onboarding state are resolved
+  if (!isSkipLoaded || !sectorHydrated || !prefsHydrated || isOnboardingCompleted === null) {
     return <AppLoading />;
   }
 

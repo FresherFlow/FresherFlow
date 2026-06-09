@@ -28,6 +28,9 @@ export type RootStackParamList = {
   Dashboard: undefined;
   Invite: undefined;
   Appearance: undefined;
+  AppPreferences: undefined;
+  BottomNavPreferences: undefined;
+  FeedTabsPreferences: undefined;
   AccountManage: undefined;
   Notifications: undefined;
   ContributorProfile: { userId: string };

@@ -11,6 +11,7 @@ import {
   Image,
   Share,
 } from 'react-native';
+import Svg, { Circle } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
     User as UserIcon,
@@ -55,6 +56,39 @@ import { ShareAppBottomSheet } from '@/system/components/ShareAppBottomSheet';
 import { BottomSheetModal } from '@gorhom/bottom-sheet';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ProfileMain'>;
+
+const ProgressCircle = ({ size, progress, color, trackColor }: { size: number, progress: number, color: string, trackColor: string }) => {
+  const strokeWidth = 2.5;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = radius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  return (
+    <Svg width={size} height={size}>
+      <Circle
+        stroke={trackColor}
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        strokeWidth={strokeWidth}
+        fill="none"
+      />
+      <Circle
+        stroke={color}
+        cx={size / 2}
+        cy={size / 2}
+        r={radius}
+        strokeWidth={strokeWidth}
+        strokeDasharray={`${circumference} ${circumference}`}
+        strokeDashoffset={strokeDashoffset}
+        strokeLinecap="round"
+        fill="none"
+        rotation="-90"
+        origin={`${size / 2}, ${size / 2}`}
+      />
+    </Svg>
+  );
+};
 
 const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
@@ -208,20 +242,34 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                     style={completionPercentage === 0 ? [styles.signInBtnSmall, { backgroundColor: currentTheme.colors.primary }] : [styles.completionBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
                                     onPress={() => navigation.navigate('CareerProfile')}
                                 >
-                                    <Text style={completionPercentage === 0 ? [styles.signInBtnSmallText, { color: currentTheme.colors.inverseText }] : [styles.completionText, { color: currentTheme.colors.primary }]}>
-                                        {completionPercentage === 0 ? 'Update Profile' : `Profile Completion: ${completionPercentage}%`}
-                                    </Text>
+                                    {completionPercentage === 0 ? (
+                                        <Text style={[styles.signInBtnSmallText, { color: currentTheme.colors.inverseText }]}>
+                                            Update Profile
+                                        </Text>
+                                    ) : (
+                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                                            <ProgressCircle 
+                                                size={14} 
+                                                progress={completionPercentage} 
+                                                color={currentTheme.colors.primary} 
+                                                trackColor={alpha(currentTheme.colors.primary, 0.2)} 
+                                            />
+                                            <Text style={[styles.completionText, { color: currentTheme.colors.primary }]}>
+                                                {completionPercentage}%
+                                            </Text>
+                                        </View>
+                                    )}
                                 </TouchableOpacity>
                             ))}
                         </View>
                   </>
 
                   <>
-                        <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>General</Text>
+                        <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Account</Text>
                         <SurfaceCard style={styles.groupCard}>
                             <MenuRow
                                 icon={sector === 'PRIVATE' ? Landmark : Briefcase}
-                                label="Switch mode"
+                                label="Switch mode (Beta)"
                                 subtitle={sector === 'PRIVATE' ? "Change to government jobs" : "Change to private jobs"}
                                 onPress={() => {
                                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -232,32 +280,57 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <MenuRow
                                 icon={Settings}
                                 label="Account & Privacy"
+                                subtitle="Manage credentials & sessions"
                                 onPress={() => onNavigate('AccountManage')}
                                 currentTheme={currentTheme}
                             />
                             <MenuRow
                                 icon={Award}
                                 label="Career Profile"
-                                subtitle={isAnonymous ? undefined : 'Update your details'}
+                                subtitle={isAnonymous ? "Sign in to edit profile" : "Update your details"}
                                 onPress={() => onNavigate('CareerProfile')}
+                                currentTheme={currentTheme}
+                                isLast
+                            />
+                        </SurfaceCard>
+                  </>
+
+                  <>
+                        <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>General</Text>
+                        <SurfaceCard style={styles.groupCard}>
+                            <MenuRow
+                                icon={Palette}
+                                label="Appearance"
+                                subtitle="Customize theme & dark mode"
+                                onPress={() => navigation.navigate('Appearance')}
+                                currentTheme={currentTheme}
+                            />
+                            <MenuRow
+                                icon={Settings} // Replace with a generic slider/settings icon later if needed
+                                label="App Preferences"
+                                subtitle="Browser, feed & layout settings"
+                                onPress={() => onNavigate('AppPreferences')} // Wiring to new future screen
                                 currentTheme={currentTheme}
                             />
                             <MenuRow
                                 icon={Briefcase}
                                 label="Application Tracker"
+                                subtitle="Track your active job applications"
                                 onPress={() => onNavigate('ApplicationTracker')}
-                                currentTheme={currentTheme}
-                            />
-                            <MenuRow
-                                icon={History}
-                                label="Contribution History"
-                                onPress={() => onNavigate('MyShares')}
                                 currentTheme={currentTheme}
                             />
                             <MenuRow
                                 icon={Building2}
                                 label="Companies"
+                                subtitle="Manage companies you follow"
                                 onPress={() => onNavigate('FollowedCompanies')}
+                                currentTheme={currentTheme}
+                            />
+                            <MenuRow
+                                icon={History}
+                                label="My Shares"
+                                subtitle="Jobs, referrals & resources"
+                                onPress={() => onNavigate('MyShares')}
                                 currentTheme={currentTheme}
                             />
                             <MenuRow
@@ -273,23 +346,19 @@ const SettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
 
 
-                  <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Community & System</Text>
+                  <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>About</Text>
                   <SurfaceCard style={styles.groupCard}>
-                       <MenuRow
-                        icon={Palette}
-                        label="Theme & Browser Settings"
-                        onPress={() => navigation.navigate('Appearance')}
-                        currentTheme={currentTheme}
-                      />
                       <MenuRow
                         icon={Info}
                         label="About FresherFlow"
+                        subtitle="Version info & support details"
                         onPress={() => navigation.navigate('About')}
                         currentTheme={currentTheme}
                       />
                       <MenuRow
                         icon={RefreshCw}
                         label="Software Updates"
+                        subtitle="Check for instant OTA updates"
                         onPress={() => navigation.navigate('OTAUpdates')}
                         currentTheme={currentTheme}
                         isLast
@@ -372,7 +441,7 @@ interface MenuRowProps {
 
 export const MenuRow = ({ icon: Icon, label, onPress, isLast, currentTheme, destructive, subtitle }: MenuRowProps) => (
     <TouchableOpacity
-        style={[styles.menuRow, !isLast && { borderBottomWidth: 1, borderBottomColor: alpha(currentTheme.colors.border, 0.08) }]}
+        style={styles.menuRow}
         onPress={onPress}
         activeOpacity={0.7}
     >
@@ -385,7 +454,6 @@ export const MenuRow = ({ icon: Icon, label, onPress, isLast, currentTheme, dest
                 {subtitle && <Text style={[styles.rowSubtitle, { color: currentTheme.colors.textMuted }]}>{subtitle}</Text>}
             </View>
         </View>
-        <ChevronRight size={14} color={alpha(currentTheme.colors.textMuted, 0.3)} strokeWidth={3} />
     </TouchableOpacity>
 );
 
@@ -588,6 +656,7 @@ const styles = StyleSheet.create({
     groupCard: {
         padding: 0,
         borderRadius: 16,
+        paddingVertical: 8,
     },
     simpleStatsCard: {
         marginTop: 24,
@@ -635,12 +704,12 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     rowLabel: {
-        fontSize: 14,
-        fontWeight: '500',
+        fontSize: mScale(15),
+        fontWeight: '400',
     },
     rowSubtitle: {
-        fontSize: 11,
-        fontWeight: '500',
+        fontSize: mScale(13),
+        fontWeight: '400',
         marginTop: 1,
     },
     statsRow: {
@@ -701,8 +770,10 @@ const styles = StyleSheet.create({
     },
     completionBadge: {
         paddingHorizontal: 8,
-        paddingVertical: 4,
+        paddingVertical: 5,
         borderRadius: 8,
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     completionText: {
         fontSize: 12,
