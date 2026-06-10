@@ -103,7 +103,7 @@ export const linking: LinkingOptions<RootStackParamList> = {
 
       if (!isWalkinDetail) {
         console.log('[Linking] Web-only route detected. Opening in WebBrowser:', rewrittenPath);
-        const appEnv = Constants.expoConfig?.extra?.appEnv || 'development';
+        const appEnv = process.env.EXPO_PUBLIC_APP_ENV || Constants.expoConfig?.extra?.appEnv || 'development';
         const host = appEnv === 'staging' ? 'staging.fresherflow.in' : 'fresherflow.in';
         void WebBrowser.openBrowserAsync(`https://${host}/${cleanPath}`);
         return undefined;

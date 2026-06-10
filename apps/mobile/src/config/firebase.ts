@@ -33,7 +33,7 @@ export function isFirebaseAuthAvailable(): boolean {
 }
 
 const getGoogleWebClientId = () => {
-  const appEnv = Constants.expoConfig?.extra?.appEnv || 'development';
+  const appEnv = process.env.EXPO_PUBLIC_APP_ENV || Constants.expoConfig?.extra?.appEnv || 'development';
   if (appEnv === 'production') {
     return '346180935352-mr0jnrbqo9382vg987mb8ms4otfgmh1j.apps.googleusercontent.com';
   }
@@ -42,12 +42,12 @@ const getGoogleWebClientId = () => {
 };
 
 export const getFirebaseDatabaseUrl = (): string => {
-  // Prefer env-injected URL (set per environment in .env → app.config.js → extra)
-  const fromEnv = Constants.expoConfig?.extra?.firebaseRtdbUrl as string | undefined;
+  // Prefer env-injected URL directly from process.env
+  const fromEnv = process.env.EXPO_PUBLIC_FIREBASE_RTDB_URL || Constants.expoConfig?.extra?.firebaseRtdbUrl as string | undefined;
   if (fromEnv) return fromEnv;
 
   // Fallback by appEnv in case env var is missing (both DBs are in Singapore)
-  const appEnv = Constants.expoConfig?.extra?.appEnv || 'development';
+  const appEnv = process.env.EXPO_PUBLIC_APP_ENV || Constants.expoConfig?.extra?.appEnv || 'development';
   if (appEnv === 'production') {
     return 'https://fresherflow-3604b-default-rtdb.asia-southeast1.firebasedatabase.app';
   }
@@ -55,7 +55,7 @@ export const getFirebaseDatabaseUrl = (): string => {
 };
 
 export const getFirebaseAuthDomain = (): string => {
-  const appEnv = Constants.expoConfig?.extra?.appEnv || 'development';
+  const appEnv = process.env.EXPO_PUBLIC_APP_ENV || Constants.expoConfig?.extra?.appEnv || 'development';
   if (appEnv === 'production') {
     return 'fresherflow-3604b.firebaseapp.com';
   }
