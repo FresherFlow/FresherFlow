@@ -27,7 +27,6 @@ const TARGET_SITES = [
 
 const VISITED_FILE = path.join(process.cwd(), 'visited_urls.json');
 
-// Phrases indicating the job is no longer active
 const EXPIRED_PHRASES = [
     "no longer available",
     "the job you are trying to apply for is no longer available",
@@ -45,7 +44,14 @@ const EXPIRED_PHRASES = [
     "the job you requested was not found",
     "job not found",
     "page not found",
-    "an error has occurred"
+    "an error has occurred",
+    "you can't view this job because it's not available at this time",
+    "you cant view this job because it's not available at this time",
+    "you cant view this job because its not available at this time",
+    "you can't view this job because its not available at this time",
+    "not available at this time",
+    "job is not available at this time",
+    "job is not available at this time."
 ];
 
 // Phrases indicating it's a fresher job
@@ -235,7 +241,7 @@ function normalizeUrl(urlStr: string): string {
 }
 
 // Load cached visited URLs
-async function loadVisited(): Promise<Record<string, string[]>> {
+async function loadVisited(): Promise<Record<string, any>> {
     try {
         const data = await fs.readFile(VISITED_FILE, 'utf-8');
         return JSON.parse(data);
@@ -268,9 +274,30 @@ function isFresherJob(text: string): boolean {
     for (const phrase of FRESHER_PHRASES) {
         if (lowerText.includes(phrase)) return true;
     }
-
-    // Default to true to avoid missing potential entry level/fresher jobs
+// Default to true to avoid missing potential entry level/fresher jobs
     return true; 
+}
+
+// Check if a page is actually a job post (vs a course, syllabus, prep guide, roadmap, exam result)
+function isActualJob(title: string, bodyText: string): boolean {
+    const titleLower = title.toLowerCase();
+
+    // Only block if the title explicitly indicates it is a course, syllabus, mock test, study material, roadmap, or exam info.
+    const titleBlacklist = [
+        'course', 'courses', 'bootcamp', 'syllabus', 'admit card', 'admit-card', 'hall ticket', 
+        'exam date', 'exam result', 'exam paper', 'question paper', 'answer key', 'mock test', 
+        'test series', 'practice test', 'study material', 'roadmap', 'roadmaps', 'ambassador', 
+        'newsletter', 'whatsapp', 'telegram', 'pdf download', 'placement papers', 'eligibility criteria', 
+        'how to apply', 'nqt preparation', 'exam syllabus', 'exam details'
+    ];
+
+    for (const keyword of titleBlacklist) {
+        if (titleLower.includes(keyword)) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // Check if job is live (using existing sweeper logic)
@@ -284,7 +311,15 @@ async function isJobLive(page: Page, url: string): Promise<boolean> {
             console.log(`  -> Navigation warning: ${(gotoErr as Error).message}. Checking DOM anyway.`);
         }
 
-        if (response && (response.status() === 404 || response.status() === 410)) {
+        if (response && (response.status() === 404 || response.status() === 410 || response.status() === 403 || response.status() === 401)) {
+            console.log(`  -> Page returned inactive status code: ${response.status()}`);
+            return false;
+        }
+
+        const pageTitle = await page.title().catch(() => "");
+        const lowerTitle = pageTitle.toLowerCase();
+        if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required')) {
+            console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}").`);
             return false;
         }
         
@@ -294,7 +329,7 @@ async function isJobLive(page: Page, url: string): Promise<boolean> {
             return true; // Fallback to live if we can't read body at all
         }
 
-        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'");
+        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
         for (const phrase of EXPIRED_PHRASES) {
             if (lowerText.includes(phrase)) {
@@ -308,6 +343,11 @@ async function isJobLive(page: Page, url: string): Promise<boolean> {
                 console.log(`  -> False positive caught! ATS page mentions: ${phrase}`);
                 return false;
             }
+        }
+
+        if (!isActualJob(pageTitle, bodyText)) {
+            console.log(`  -> False positive caught! Target page does not appear to be an actual job.`);
+            return false;
         }
 
         return true;
@@ -324,6 +364,7 @@ function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
         
         if (targetHost === baseHost) return false;
         if (u.protocol.includes('mailto')) return false;
+        if (targetHost.startsWith('courses.')) return false;
         
         const blacklistedDomains = [
             'facebook.com', 'twitter.com', 'x.com', 'linkedin.com', 'whatsapp.com', 
@@ -338,7 +379,11 @@ function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
             'govtjobmart.in', 'findmyjobss.com', 'dailypharmajobs.in', 'ashokworld.in',
             'cookieyes.com', 'generatepress.com', 'wordpress.org', 'wordpress.com', 'gravatar.com',
             'elementor.com', 'schema.org', 'doubleclick.net', 'google-analytics.com', 'googletagmanager.com',
-            'w.org', 'wp.com', 'blogspot.com'
+            'w.org', 'wp.com', 'blogspot.com', 'getrevue.co', 'revue.co',
+            'frontlinesedutech.com', 'courses.frontlinesedutech.com',
+            'apprenticeshipindia.org', 'mhrdnats.gov.in', 'nats.education.gov.in', 'udemy.com',
+            'coursera.org', 'edx.org', 'simplilearn.com', 'greatlearning.in', 'medium.com',
+            'subscribepage.com', 'mailerlite.com', 'getresponse.com', 'activecampaign.com', 'convertkit.com'
         ];
         
         for (const domain of blacklistedDomains) {
@@ -354,21 +399,23 @@ function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
 // Find actual ATS link
 async function findActualApplyLink(page: Page, context: BrowserContext, currentDomain: string): Promise<string | null> {
     try {
-        // Collect all external links
-        const links = await page.$$eval('a', anchors => anchors.map(a => a.href));
-        const externalLinks = links.filter(l => isValidApplyLink(l, currentDomain));
-
-        // Heuristic: If we see a known ATS link, return it immediately
-        for (const link of externalLinks) {
-            const lowerLink = link.toLowerCase();
-            if (lowerLink.includes('workday') || lowerLink.includes('greenhouse') || lowerLink.includes('lever') || lowerLink.includes('myworkdayjobs') || lowerLink.includes('taleo') || lowerLink.includes('icims') || lowerLink.includes('smartrecruiters') || lowerLink.includes('forms.gle') || lowerLink.includes('eightfold') || lowerLink.includes('careers') || lowerLink.includes('jobs') || lowerLink.includes('oraclecloud.com') || lowerLink.includes('infosysapps.com') || lowerLink.includes('phenompro.com') || lowerLink.includes('ashbyhq.com') || lowerLink.includes('jobvite.com') || lowerLink.includes('workable') || lowerLink.includes('rippling')) {
-                return link;
+        // Define common selectors for the main article/post content
+        const contentSelectors = [
+            '.post-body', '.entry-content', 'article', 'main', '#main-content', 
+            '#content', '.post-content', '.entry-body', '.post', '.job-description'
+        ];
+        
+        let rootLocator = page.locator('body');
+        for (const selector of contentSelectors) {
+            const locator = page.locator(selector).first();
+            if (await locator.count() > 0) {
+                rootLocator = locator;
+                break;
             }
         }
 
-        // If no direct ATS, try to find an "Apply" button with an external href
-        const applyButtons = await page.$$('a >> text=/(apply|register|click here|submit)/i');
-        
+        // 1. Try to find links containing explicit apply/register/click here/submit text
+        const applyButtons = await rootLocator.locator('a >> text=/(apply|register|click here|submit)/i').elementHandles();
         for (const btn of applyButtons) {
             const href = await btn.getAttribute('href');
             if (href) {
@@ -383,9 +430,21 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
             }
         }
 
-        // If no explicit apply link with an external href was found, try clicking the first apply button
+        // 2. Fall back to collecting all external links and checking for known ATS hosts
+        const links = await rootLocator.locator('a').evaluateAll(anchors => 
+            anchors.map(a => (a as HTMLAnchorElement).href)
+        );
+        const externalLinks = links.filter(l => isValidApplyLink(l, currentDomain));
+
+        for (const link of externalLinks) {
+            const lowerLink = link.toLowerCase();
+            if (lowerLink.includes('workday') || lowerLink.includes('greenhouse') || lowerLink.includes('lever') || lowerLink.includes('myworkdayjobs') || lowerLink.includes('taleo') || lowerLink.includes('icims') || lowerLink.includes('smartrecruiters') || lowerLink.includes('forms.gle') || lowerLink.includes('eightfold') || lowerLink.includes('careers') || lowerLink.includes('jobs') || lowerLink.includes('oraclecloud.com') || lowerLink.includes('infosysapps.com') || lowerLink.includes('phenompro.com') || lowerLink.includes('ashbyhq.com') || lowerLink.includes('jobvite.com') || lowerLink.includes('workable') || lowerLink.includes('rippling')) {
+                return link;
+            }
+        }
+
+        // 3. If no explicit apply link with an external href was found, try clicking the first apply button (js actions)
         if (applyButtons.length > 0) {
-            // Wait for potential new tab
             const [newPage] = await Promise.all([
                 context.waitForEvent('page').catch(() => null),
                 applyButtons[0].click({ timeout: 5000 }).catch(() => null)
@@ -399,7 +458,6 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
                     return url;
                 }
             } else {
-                // If it redirected the current page
                 await page.waitForTimeout(3000);
                 const currentUrl = page.url();
                 if (isValidApplyLink(currentUrl, currentDomain)) {
@@ -408,7 +466,7 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
             }
         }
         
-        // Return first external link as a fallback
+        // 4. Return first external link from content area as a fallback
         return externalLinks.length > 0 ? externalLinks[0] : null;
 
     } catch (err) {
@@ -547,6 +605,11 @@ async function run() {
                     continue;
                 }
 
+                if (!isActualJob(aggregatorTitle, bodyText)) {
+                    console.log(`  -> Skipping: Not an actual job post (likely a course, syllabus, prep guide, roadmap, exam result, etc.).`);
+                    continue;
+                }
+
                 // Try to find the apply link
                 const applyLink = await findActualApplyLink(page, context, siteDomain);
                 if (!applyLink) {
@@ -593,6 +656,10 @@ async function run() {
                     }
                 } else {
                     console.log(`  -> Job appears expired.`);
+                    visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                    if (visited["__discovered_apply_links__"].length > 2000) {
+                        visited["__discovered_apply_links__"] = visited["__discovered_apply_links__"].slice(-2000);
+                    }
                 }
             }
         } catch (err) {

@@ -57,27 +57,46 @@ const EXPIRED_PHRASES = [
     "the job you requested was not found",
     "job not found",
     "page not found",
-    "an error has occurred"
+    "an error has occurred",
+    "you can't view this job because it's not available at this time",
+    "you cant view this job because it's not available at this time",
+    "you cant view this job because its not available at this time",
+    "you can't view this job because its not available at this time",
+    "not available at this time",
+    "job is not available at this time",
+    "job is not available at this time."
 ];
 
 async function checkJob(page: Page, url: string): Promise<boolean> {
     try {
         const response = await page.goto(url, { waitUntil: 'load', timeout: 20000 });
         if (!response) return true; // Treat as failed/expired if we can't even load it
-        if (response.status() === 404 || response.status() === 410) {
-            return true; // Hard 404 means expired
+        if (response.status() === 404 || response.status() === 410 || response.status() === 403 || response.status() === 401) {
+            console.log(`  -> Page returned inactive status code: ${response.status()}`);
+            return true; // Hard 404/410/403/401 means expired/inactive
         }
         
         // Wait a tiny bit for JS rendered ATS like Workday to paint text
         await page.waitForTimeout(4000);
-        const bodyText = await page.locator('body').innerText();
-        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'");
+        const pageTitle = await page.title().catch(() => "");
+        const lowerTitle = pageTitle.toLowerCase();
+        if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required')) {
+            console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}").`);
+            return true;
+        }
+
+        const bodyText = await page.locator('body').innerText().catch(() => "");
+        if (!bodyText) {
+            return true; // If we can't read the page text at all, treat as closed/invalid
+        }
+        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
         for (const phrase of EXPIRED_PHRASES) {
             if (lowerText.includes(phrase)) {
                 return true;
             }
         }
+
         return false;
     } catch (err) {
         console.error(`Error checking ${url}:`, (err as Error).message);
