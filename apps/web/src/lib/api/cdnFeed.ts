@@ -12,12 +12,34 @@ import {
     API_URL,
     GOVERNMENT_FEED_URL
 } from '../runtimeConfig';
-import crypto from 'node:crypto';
-
 export interface BootstrapFeedResponse {
     opportunities: Opportunity[];
     count: number;
     generatedAt: string;
+}
+
+async function signMessage(message: string, secret: string): Promise<string> {
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const messageData = encoder.encode(message);
+    
+    const key = await globalThis.crypto.subtle.importKey(
+        'raw',
+        keyData,
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+    );
+    
+    const signature = await globalThis.crypto.subtle.sign(
+        'HMAC',
+        key,
+        messageData
+    );
+    
+    return Array.from(new Uint8Array(signature))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
 }
 
 /**
@@ -26,14 +48,14 @@ export interface BootstrapFeedResponse {
  * enabling indefinite CDN caching (immutable cache headers from Edge Worker).
  * Used for the bootstrap feed on the web/Next.js server side.
  */
-function signUrlWithVersion(url: string, version: string): string {
+async function signUrlWithVersion(url: string, version: string): Promise<string> {
     const secret = process.env.CDN_SIGNATURE_SECRET || process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET;
     if (!secret) return url;
     try {
         const parsedUrl = new URL(url, 'https://cdn.fresherflow.in');
         const pathname = parsedUrl.pathname;
         const message = `${pathname}:${version}`;
-        const sig = crypto.createHmac('sha256', secret).update(message).digest('hex');
+        const sig = await signMessage(message, secret);
         parsedUrl.searchParams.set('v', version);
         parsedUrl.searchParams.set('sig', sig);
         return parsedUrl.toString();
@@ -48,7 +70,7 @@ function signUrlWithVersion(url: string, version: string): string {
  * Used for protected paths that don't have a version yet (categories, usernames).
  * Remains safely within the Edge Worker's 5-minute replay attack window.
  */
-function signUrlIfServer(url: string): string {
+async function signUrlIfServer(url: string): Promise<string> {
     const IS_SERVER = typeof window === 'undefined';
     if (!IS_SERVER) return url;
 
@@ -64,7 +86,7 @@ function signUrlIfServer(url: string): string {
             if (isProtected) {
                 const t = Math.floor(Date.now() / 1000 / 120) * 120;
                 const message = `${pathname}:${t}`;
-                const sig = crypto.createHmac('sha256', secret).update(message).digest('hex');
+                const sig = await signMessage(message, secret);
                 parsedUrl.searchParams.set('t', t.toString());
                 parsedUrl.searchParams.set('sig', sig);
                 return parsedUrl.toString();
@@ -137,7 +159,7 @@ export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFe
         // allowing Vercel / Cloudflare edges to cache it indefinitely (immutable).
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
-            ? signUrlWithVersion(BOOTSTRAP_FEED_URL, version)
+            ? await signUrlWithVersion(BOOTSTRAP_FEED_URL, version)
             : `${BOOTSTRAP_FEED_URL}?v=${version}`;
 
         const controller = new AbortController();
@@ -186,7 +208,7 @@ export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> 
         const version = await fetchFeedVersion();
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
-            ? signUrlWithVersion(EXPIRED_FEED_URL, version)
+            ? await signUrlWithVersion(EXPIRED_FEED_URL, version)
             : `${EXPIRED_FEED_URL}?v=${version}`;
 
         const controller = new AbortController();
@@ -237,7 +259,7 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
         const version = await fetchFeedVersion();
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
-            ? signUrlWithVersion(GOVERNMENT_FEED_URL, version)
+            ? await signUrlWithVersion(GOVERNMENT_FEED_URL, version)
             : `${GOVERNMENT_FEED_URL}?v=${version}`;
 
         const controller = new AbortController();
@@ -274,7 +296,7 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
  */
 export async function fetchCategoryShard(id: string): Promise<BootstrapFeedResponse | null> {
     try {
-        const url = signUrlIfServer(GET_CATEGORY_SHARD_URL(id));
+        const url = await signUrlIfServer(GET_CATEGORY_SHARD_URL(id));
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
@@ -299,7 +321,7 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
  */
 export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResponse | null> {
     try {
-        const url = signUrlIfServer(GET_COMPANY_SHARD_URL(slug));
+        const url = await signUrlIfServer(GET_COMPANY_SHARD_URL(slug));
 
         const controller = new AbortController();
         // 3.5s hard cap — bots hitting non-existent company slugs were hanging the
@@ -332,7 +354,7 @@ export interface EducationMetadata {
  */
 export async function fetchEducationMetadata(): Promise<EducationMetadata | null> {
     try {
-        const url = signUrlIfServer(EDUCATION_METADATA_URL);
+        const url = await signUrlIfServer(EDUCATION_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache', // Static metadata — changes rarely, no hourly/daily timer
         }));
@@ -349,7 +371,7 @@ export async function fetchEducationMetadata(): Promise<EducationMetadata | null
  */
 export async function fetchSkillsMetadata(): Promise<string[] | null> {
     try {
-        const url = signUrlIfServer(SKILLS_METADATA_URL);
+        const url = await signUrlIfServer(SKILLS_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache', // Static metadata — changes rarely, no hourly/daily timer
         }));
@@ -378,7 +400,7 @@ export interface SitemapDataResponse {
  */
 export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
     try {
-        const url = signUrlIfServer(SITEMAP_DATA_URL);
+        const url = await signUrlIfServer(SITEMAP_DATA_URL);
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); 
