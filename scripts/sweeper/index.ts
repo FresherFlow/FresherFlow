@@ -62,14 +62,14 @@ const EXPIRED_PHRASES = [
 
 async function checkJob(page: Page, url: string): Promise<boolean> {
     try {
-        const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        const response = await page.goto(url, { waitUntil: 'load', timeout: 20000 });
         if (!response) return true; // Treat as failed/expired if we can't even load it
         if (response.status() === 404 || response.status() === 410) {
             return true; // Hard 404 means expired
         }
         
         // Wait a tiny bit for JS rendered ATS like Workday to paint text
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(4000);
         const bodyText = await page.locator('body').innerText();
         const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'");
 

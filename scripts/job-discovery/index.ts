@@ -12,13 +12,15 @@ const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
 const TARGET_SITES = [
     { url: 'https://job4freshers.co.in/', name: 'job4freshers' },
     { url: 'https://frontlinesmedia.in/tag/fresher-jobs/', name: 'frontlinesmedia' },
+    { url: 'https://govtjobmart.in/', name: 'govtjobmart' },
+    { url: 'https://findmyjobss.com/', name: 'findmyjobss' },
+    { url: 'https://jobs.dailypharmajobs.in/', name: 'dailypharmajobs' },
+    { url: 'https://skillbloom.ashokworld.in/', name: 'skillbloom' },
     { url: 'https://jobsaddafreshers.com/category/freshers/', name: 'jobsaddafreshers' },
     { url: 'https://internshipss.com/', name: 'internshipss' },
     { url: 'https://www.freshersvoice.com/', name: 'freshersvoice' },
     { url: 'https://placementdrive.in/', name: 'placementdrive' },
     { url: 'https://freshershunt.in/', name: 'freshershunt' },
-    { url: 'https://freshhiring.com/', name: 'freshhiring' },
-    { url: 'https://recruitnxt.com/', name: 'recruitnxt' },
     { url: 'https://fresheropenings.com/', name: 'fresheropenings' }
 ];
 
@@ -202,7 +204,7 @@ async function sendTelegramMessage(text: string) {
 function normalizeUrl(urlStr: string): string {
     try {
         const url = new URL(urlStr);
-        let path = url.pathname.replace(/\/$/, '');
+        const path = url.pathname.replace(/\/$/, '');
         
         // Aggressive normalization for Workday URLs
         if (url.hostname.includes('myworkdayjobs.com')) {
@@ -253,13 +255,13 @@ function isFresherJob(text: string): boolean {
 // Check if job is live (using existing sweeper logic)
 async function isJobLive(page: Page, url: string): Promise<boolean> {
     try {
-        const response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        const response = await page.goto(url, { waitUntil: 'load', timeout: 20000 });
         if (!response) return true; // Treat as live if timeout/blocked
         if (response.status() === 404 || response.status() === 410) {
             return false;
         }
         
-        await page.waitForTimeout(2000);
+        await page.waitForTimeout(4000);
         const bodyText = await page.locator('body').innerText();
         const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'");
 
@@ -294,14 +296,15 @@ function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
         
         const blacklistedDomains = [
             'facebook.com', 'twitter.com', 'x.com', 'linkedin.com', 'whatsapp.com', 
-            'telegram.org', 't.me', 'telegram.me', 'youtube.com', 'youtu.be', 
+            'telegram.org', 't.me', 'telegram.me', 'telegram.dog', 'youtube.com', 'youtu.be', 
             'instagram.com', 'foundit.in', 'naukri.com', 'cloudflare.com', 
             'play.google.com', 'plus.google.com', 'apps.apple.com',
             'pinterest.com', 'reddit.com', 'github.com/MukeshCheekatla',
             'openinapp.co', 'openinapp.link', 'linktr.ee', 'bio.link', 'bit.ly', 'tinyurl.com',
             'freshershunt.in', 'jobsaddafreshers.com', 'internshipss.com', 'placementdrive.in',
             'freshersvoice.com', 'freshersnow.com', 'offcampusjobs4u.com', 'freshhiring.com', 
-            'recruitnxt.com', 'fresheropenings.com', 'job4freshers.co.in', 'frontlinesmedia.in'
+            'recruitnxt.com', 'fresheropenings.com', 'job4freshers.co.in', 'frontlinesmedia.in',
+            'govtjobmart.in', 'findmyjobss.com', 'dailypharmajobs.in', 'ashokworld.in'
         ];
         
         for (const domain of blacklistedDomains) {
