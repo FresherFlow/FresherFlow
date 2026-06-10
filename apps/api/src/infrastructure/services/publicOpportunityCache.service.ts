@@ -44,8 +44,13 @@ export async function invalidatePublicOpportunityCache(options?: {
             // ~5x unnecessary ISR writes on every publish/expire/delete action.
             // Use slug (canonical) if available; the UUID fallback is still included
             // since redirect logic in the page handles UUID → slug.
+            const uuid = idsOrSlugs.find(v => !!v.match(/^[0-9a-f-]{36}$/i));
             const slug = idsOrSlugs.find(v => !v.match(/^[0-9a-f-]{36}$/i)) ?? idsOrSlugs[0];
             const pathsToRevalidate = [getCanonicalPath(slug)];
+            
+            if (uuid) {
+                pathsToRevalidate.push(`/government-jobs/${uuid}`);
+            }
 
             const secret = process.env.REVALIDATE_SECRET_TOKEN;
             const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';

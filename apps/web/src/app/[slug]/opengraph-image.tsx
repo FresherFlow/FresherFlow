@@ -2,20 +2,12 @@
 import { ImageResponse } from 'next/og';
 import { LINKS_FEED_URL } from '@/lib/runtimeConfig';
 
-// Static PNG — generated at build time for pre-built jobs, on-demand once for new jobs.
-// Served directly from Vercel CDN. No edge function, no cold start, no timeout risk.
+/// Edge runtime: faster cold starts than Node.js, lower timeout ceiling, optimised for ImageResponse.
+export const runtime = 'edge';
+
 export const alt = 'Job opportunity on FresherFlow';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
-// revalidate = false inherited from parent page — cached until on-demand revalidation
-
-// Pre-generate a PNG for every job at build time.
-// Uses the same links.min.json already fetched during the render — force-cache = single CDN hit.
-// OG images are generated on-demand (first social share) and cached by Vercel CDN.
-// Pre-generating at build time caused Satori crashes on some job data edge cases.
-export async function generateStaticParams() {
-    return [];
-}
 
 type OpportunityDto = {
     id: string; slug?: string | null; title: string; company: string;
@@ -47,18 +39,22 @@ const getDays = (d?: string | null) => {
 const urgencyLabel = (days: number | null) =>
     days == null ? null : days <= 0 ? 'Closing Today' : days <= 3 ? `Closing in ${days}d` : days <= 7 ? `${days} days left` : null;
 
-// Node.js runtime: use Buffer instead of chunked btoa, 1.5s timeout on logo fetch
+// Edge runtime safe base64 logo fetcher (no timer leaks)
 async function logoToDataUrl(url: string): Promise<string | null> {
     try {
-        const ctrl = new AbortController();
-        setTimeout(() => ctrl.abort(), 1500);
-        const res = await fetch(url, { signal: ctrl.signal });
+        const res = await fetch(url, { signal: AbortSignal.timeout(1000) });
         if (!res.ok) return null;
         const ct = res.headers.get('content-type') || '';
         if (!/image\/(png|jpe?g|webp|gif)/.test(ct)) return null;
-        const buf = Buffer.from(await res.arrayBuffer());
-        if (buf.length < 500 || buf.length > 65536) return null;
-        return `data:${ct.split(';')[0]};base64,${buf.toString('base64')}`;
+        const buf = await res.arrayBuffer();
+        if (buf.byteLength < 500 || buf.byteLength > 65536) return null;
+        
+        const bytes = new Uint8Array(buf);
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += 1024) {
+            binary += String.fromCharCode(...bytes.subarray(i, i + 1024));
+        }
+        return `data:${ct.split(';')[0]};base64,${btoa(binary)}`;
     } catch {
         return null;
     }
@@ -68,12 +64,14 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
     const { slug } = await params;
 
     // append ?v=version so Next.js data cache treats it as a new URL when jobs are published.
-    // fetchFeedVersion is correctly cache-invalidated by /api/revalidate
     let opportunities: OpportunityDto[] = [];
     try {
         const { fetchFeedVersion } = await import('@/lib/api/cdnFeed');
         const version = await fetchFeedVersion();
-        const res = await fetch(`${LINKS_FEED_URL}?v=${version}`, { cache: 'force-cache' });
+        const res = await fetch(`${LINKS_FEED_URL}?v=${version}`, { 
+            cache: 'force-cache',
+            signal: AbortSignal.timeout(3000)
+        });
         if (res.ok) {
             const data = await res.json() as { opportunities?: OpportunityDto[] };
             opportunities = data?.opportunities ?? [];
@@ -121,8 +119,6 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
         }
         const logoUrl = finalLogoUrl ? await logoToDataUrl(finalLogoUrl) : null;
         const titleSize = title.length > 52 ? 52 : title.length > 38 ? 62 : 74;
-        const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://fresherflow.in';
-        const siteLogoUrl = `${siteUrl}/logo-white-optimized.png`;
 
         return new ImageResponse(
             <div style={baseStyle}>
@@ -130,17 +126,53 @@ export default async function OpengraphImage({ params }: { params: Promise<{ slu
                 {/* TOP: Company logo + FresherFlow branding */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
-                        {logoUrl
-                            ? <img src={logoUrl} alt={company} width={100} height={100} style={{ borderRadius: 24, background: '#fff', objectFit: 'contain', padding: 10 }} />
-                            : <div style={{ width: 100, height: 100, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#1c1c1c', border: '1px solid rgba(245,247,248,0.1)', fontSize: 40, fontWeight: 900 }}>{company[0]}</div>
-                        }
+                        {logoUrl ? (
+                            <img 
+                                src={logoUrl} 
+                                alt={company} 
+                                width={100} 
+                                height={100} 
+                                style={{ borderRadius: 24, background: '#fff', objectFit: 'contain', padding: 10 }} 
+                            />
+                        ) : (
+                            <div style={{ 
+                                width: 100, 
+                                height: 100, 
+                                borderRadius: 24, 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                background: 'linear-gradient(135deg, #1c1c1c 0%, #0c0c0c 100%)', 
+                                border: '1px solid rgba(245,247,248,0.12)', 
+                                fontSize: 44, 
+                                fontWeight: 900,
+                                color: badge.color
+                            }}>
+                                {company[0].toUpperCase()}
+                            </div>
+                        )}
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                             <div style={{ fontSize: 22, color: 'rgba(245,247,248,0.38)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Hiring at</div>
                             <div style={{ fontSize: 48, fontWeight: 800, color: '#F5F7F8', letterSpacing: '-0.5px' }}>{company}</div>
                         </div>
                     </div>
+                    
+                    {/* CSS-Only Logo Badge */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.12)', borderRadius: 12, padding: '10px 20px' }}>
-                        <img src={siteLogoUrl} alt="FresherFlow" width={26} height={26} style={{ objectFit: 'contain' }} />
+                        <div style={{
+                            display: 'flex',
+                            width: 28,
+                            height: 28,
+                            borderRadius: 8,
+                            background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 14,
+                            fontWeight: 900,
+                            color: '#ffffff'
+                        }}>
+                            FF
+                        </div>
                         <div style={{ fontSize: 20, fontWeight: 700, color: '#F5F7F8' }}>FresherFlow</div>
                     </div>
                 </div>

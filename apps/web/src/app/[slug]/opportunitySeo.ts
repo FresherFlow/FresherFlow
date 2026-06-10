@@ -199,6 +199,12 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     const canonicalPath = getOpportunityPath(opportunity.type, canonicalId);
     const url = `${SITE_URL}${canonicalPath}`;
 
+    // Use the pre-generated static OG image from R2 (generated at publish time).
+    // This avoids Vercel running opengraph-image.tsx on every bot crawl.
+    // Falls back to the dynamic edge route for jobs not yet processed.
+    const r2CdnBase = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
+    const staticOgUrl = `${r2CdnBase}/og/${opportunity.id}.png`;
+
     return {
         title: seoTitle,
         description,
@@ -221,11 +227,13 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
             url,
             siteName: 'FresherFlow',
             type: 'website',
+            images: [{ url: staticOgUrl, width: 1200, height: 630, alt: seoTitle }],
         },
         twitter: {
             card: 'summary_large_image',
             title: seoTitle,
             description,
+            images: [staticOgUrl],
         },
         alternates: {
             canonical: url,

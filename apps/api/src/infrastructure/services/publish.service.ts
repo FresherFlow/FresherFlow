@@ -5,6 +5,7 @@ import { invalidatePublicOpportunityCache } from './publicOpportunityCache.servi
 import { logger } from '@fresherflow/logger';
 import { discoveryEmitter } from '../events/DiscoveryEmitter';
 import { MetadataService } from './metadata.service';
+import { generateAndUploadOgImage } from './ogImage.service';
 
 /**
  * Service to handle all business side-effects when an opportunity is published.
@@ -98,4 +99,23 @@ export async function handleOpportunityPublished(
       error: err instanceof Error ? err.message : String(err)
     });
   });
+
+  // 8. Generate static OG image and upload to R2
+  // This makes Vercel OG image routes irrelevant — zero compute for OG after this.
+  if (isNew) {
+    generateAndUploadOgImage({
+      id: opportunity.id,
+      title: opportunity.title,
+      company: opportunity.company,
+      type: opportunity.type,
+      locations: opportunity.locations,
+      expiresAt: opportunity.expiresAt instanceof Date ? opportunity.expiresAt.toISOString() : opportunity.expiresAt,
+      companyLogoUrl: opportunity.companyLogoUrl,
+    }).catch((err) => {
+      logger.error('[publish] OG image generation failed', {
+        opportunityId: opportunity.id,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    });
+  }
 }

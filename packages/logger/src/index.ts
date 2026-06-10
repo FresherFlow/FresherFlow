@@ -1,5 +1,4 @@
-import winston from 'winston';
-import chalk from 'chalk';
+import type winston from 'winston';
 
 const sanitizeMeta = (meta: Record<string, unknown>) => {
     if (!meta.error || typeof meta.error !== 'object') return meta;
@@ -15,30 +14,6 @@ const sanitizeMeta = (meta: Record<string, unknown>) => {
     };
 };
 
-const consoleFormat = winston.format.printf(({ level, message, timestamp, requestId, service, ...meta }) => {
-    const time = chalk.gray(new Date(timestamp as string).toLocaleTimeString());
-    const reqId = requestId && typeof requestId === 'string' ? chalk.gray(`[${requestId.substring(0, 8)}]`) : '';
-    const svc = service ? chalk.magenta(`[${service}]`) : '';
-
-    const levelStyles: Record<string, (value: string) => string> = {
-        info: chalk.blue,
-        warn: chalk.yellow,
-        error: chalk.red,
-        debug: chalk.cyan
-    };
-
-    const renderLevel = (levelStyles[level] || chalk.white)(level.toUpperCase().padEnd(5));
-    const metaEntries = Object.keys(meta).length > 0 ? chalk.dim(JSON.stringify(sanitizeMeta(meta as Record<string, unknown>))) : '';
-
-    const baseLog = `${time} ${svc} ${renderLevel} ${chalk.white(String(message))} ${reqId} ${metaEntries}`.trim();
-
-    if (level === 'error') {
-        return `\n${chalk.red('╔════════════════════ ERROR ════════════════════')}\n${baseLog}\n${chalk.red('╚══════════════════════════════════════════════')}\n`;
-    }
-
-    return baseLog;
-});
-
 const isBrowser = typeof window !== 'undefined' || typeof self !== 'undefined';
 
 export const createLogger = (serviceName: string) => {
@@ -51,24 +26,55 @@ export const createLogger = (serviceName: string) => {
         } as unknown as winston.Logger;
     }
 
+    // Server-side dynamically require winston and chalk to prevent bundling into client-side code
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const win = require('winston');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const chalk = require('chalk');
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const consoleFormat = win.format.printf(({ level, message, timestamp, requestId, service, ...meta }: any) => {
+        const time = chalk.gray(new Date(timestamp as string).toLocaleTimeString());
+        const reqId = requestId && typeof requestId === 'string' ? chalk.gray(`[${requestId.substring(0, 8)}]`) : '';
+        const svc = service ? chalk.magenta(`[${service}]`) : '';
+
+        const levelStyles: Record<string, (value: string) => string> = {
+            info: chalk.blue,
+            warn: chalk.yellow,
+            error: chalk.red,
+            debug: chalk.cyan
+        };
+
+        const renderLevel = (levelStyles[level] || chalk.white)(level.toUpperCase().padEnd(5));
+        const metaEntries = Object.keys(meta).length > 0 ? chalk.dim(JSON.stringify(sanitizeMeta(meta as Record<string, unknown>))) : '';
+
+        const baseLog = `${time} ${svc} ${renderLevel} ${chalk.white(String(message))} ${reqId} ${metaEntries}`.trim();
+
+        if (level === 'error') {
+            return `\n${chalk.red('╔════════════════════ ERROR ════════════════════')}\n${baseLog}\n${chalk.red('╚══════════════════════════════════════════════')}\n`;
+        }
+
+        return baseLog;
+    });
+
     const isProd = process.env.NODE_ENV === 'production';
     const useJsonLogs = process.env.LOG_FORMAT === 'json' || isProd;
 
-    return winston.createLogger({
+    return win.createLogger({
         level: isProd ? 'info' : 'debug',
-        format: winston.format.combine(
-            winston.format.timestamp(),
-            winston.format.errors({ stack: true })
+        format: win.format.combine(
+            win.format.timestamp(),
+            win.format.errors({ stack: true })
         ),
         defaultMeta: { service: serviceName },
         transports: [
-            new winston.transports.Console({
+            new win.transports.Console({
                 format: useJsonLogs
-                    ? winston.format.combine(
-                        winston.format.timestamp(),
-                        winston.format.errors({ stack: true }),
-                        winston.format.json()
-                    )
+                    ? win.format.combine(
+                        win.format.timestamp(),
+                        win.format.errors({ stack: true }),
+                        win.format.json()
+                      )
                     : consoleFormat
             })
         ]
@@ -124,8 +130,10 @@ export function setupCleanLogging() {
     };
 
     // Also hook into process-level errors if needed
-    process.on('uncaughtException', (err) => {
-        if (BANNED_ERRORS.some(b => err.message.includes(b))) return;
-        logger.error('Uncaught Exception', { error: err });
-    });
+    if (typeof process !== 'undefined') {
+        process.on('uncaughtException', (err) => {
+            if (BANNED_ERRORS.some(b => err.message.includes(b))) return;
+            logger.error('Uncaught Exception', { error: err });
+        });
+    }
 }

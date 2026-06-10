@@ -20,12 +20,10 @@ let cachedLinks: OpportunityDto[] | null = null;
 let lastFetchTime = 0;
 const CACHE_TTL_MS = 300_000; // 5 min — re-fetch after TTL expires on warm instances
 
-// Pre-fetch logo as ArrayBuffer so ImageResponse gets a real image, not a redirect or SVG
+// Pre-fetch logo as ArrayBuffer so ImageResponse gets a real image, not a redirect or SVG (no timer leaks)
 async function logoToDataUrl(url: string): Promise<string | null> {
   try {
-    const ctrl = new AbortController();
-    setTimeout(() => ctrl.abort(), 800);
-    const res = await fetch(url, { signal: ctrl.signal });
+    const res = await fetch(url, { signal: AbortSignal.timeout(1000) });
     if (!res.ok) return null;
     const ct = res.headers.get('content-type') || '';
     // Only accept raster images — SVG breaks ImageResponse
@@ -86,19 +84,11 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 
   if (!cachedLinks || now - lastFetchTime > CACHE_TTL_MS) {
     try {
-      // force-cache: Vercel edge CDN caches this between cold starts in the same region.
-      // Promise.race guards against slow CDN responses on a cache miss — edge has no AbortSignal
-      // issue with force-cache (unlike next:{revalidate} which bypasses cache when signal is set).
-      const timeout = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('timeout')), 4000)
-      );
-      const res = await Promise.race([
-        fetch(LINKS_FEED_URL, {
-          cache: "force-cache",
-          headers: { Origin: process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in" }
-        }),
-        timeout,
-      ]);
+      const res = await fetch(LINKS_FEED_URL, {
+        cache: "force-cache",
+        headers: { Origin: process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in" },
+        signal: AbortSignal.timeout(3000)
+      });
       if (res.ok) {
         cachedLinks = ((await res.json())?.opportunities || []) as OpportunityDto[];
         lastFetchTime = now;
@@ -117,16 +107,16 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const company = truncate(opp.company || "Company", 34);
   const location = truncate(opp.locations?.[0] || "India", 24);
   const urgency = urgencyLabel(getDays(opp.expiresAt));
+  
   let finalLogoUrl = opp.companyLogoUrl;
   if (finalLogoUrl?.includes('logo.clearbit.com/')) {
     const domain = finalLogoUrl.split('logo.clearbit.com/')[1];
     finalLogoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
   }
   const logoUrl = finalLogoUrl ? await logoToDataUrl(finalLogoUrl) : null;
+  
   // Long titles shrink — short titles fill space
   const titleSize = title.length > 52 ? 52 : title.length > 38 ? 62 : 74;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in";
-  const siteLogoUrl = `${siteUrl}/logo-white-optimized.png`;
 
   return new ImageResponse(
     <div style={{ width:"100%", height:"100%", display:"flex", flexDirection:"column", justifyContent:"space-between", background:"#020404", color:"#F5F7F8", padding:"52px 60px", fontFamily:"ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial" }}>
@@ -134,17 +124,53 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
       {/* TOP: Company + FresherFlow */}
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <div style={{ display:"flex", alignItems:"center", gap:20 }}>
-          {logoUrl
-            ? <img src={logoUrl} alt={company} width={100} height={100} style={{ borderRadius:24, background:"#fff", objectFit:"contain", padding:10 }} />
-            : <div style={{ width:100, height:100, borderRadius:24, display:"flex", alignItems:"center", justifyContent:"center", background:"#1c1c1c", border:"1px solid rgba(245,247,248,0.1)", fontSize:40, fontWeight:900 }}>{company[0]}</div>
-          }
+          {logoUrl ? (
+            <img 
+              src={logoUrl} 
+              alt={company} 
+              width={100} 
+              height={100} 
+              style={{ borderRadius:24, background:"#fff", objectFit:"contain", padding:10 }} 
+            />
+          ) : (
+            <div style={{ 
+                width: 100, 
+                height: 100, 
+                borderRadius: 24, 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                background: 'linear-gradient(135deg, #1c1c1c 0%, #0c0c0c 100%)', 
+                border: '1px solid rgba(245,247,248,0.12)', 
+                fontSize: 44, 
+                fontWeight: 900,
+                color: badge.color
+            }}>
+                {company[0].toUpperCase()}
+            </div>
+          )}
           <div style={{ display:"flex", flexDirection:"column", gap:6 }}>
             <div style={{ fontSize:22, color:"rgba(245,247,248,0.38)", fontWeight:600, letterSpacing:"0.08em", textTransform:"uppercase" }}>Hiring at</div>
             <div style={{ fontSize:48, fontWeight:800, color:"#F5F7F8", letterSpacing:"-0.5px" }}>{company}</div>
           </div>
         </div>
+        
+        {/* CSS-Only Logo Badge */}
         <div style={{ display:"flex", alignItems:"center", gap:10, background:"rgba(245,247,248,0.07)", border:"1px solid rgba(245,247,248,0.12)", borderRadius:12, padding:"10px 20px" }}>
-          <img src={siteLogoUrl} alt="FresherFlow" width={26} height={26} style={{ objectFit: "contain" }} />
+          <div style={{
+              display: 'flex',
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 14,
+              fontWeight: 900,
+              color: '#ffffff'
+          }}>
+              FF
+          </div>
           <div style={{ fontSize:20, fontWeight:700, color:"#F5F7F8" }}>FresherFlow</div>
         </div>
       </div>

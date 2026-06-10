@@ -1,21 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 
-// These list pages use revalidate = false (on-demand only).
-// Always revalidate them alongside any specific job path so the feed stays current.
-const LIST_PAGES = ['/', '/jobs', '/internships', '/walk-ins', '/opportunities'];
-
 export async function POST(request: NextRequest) {
     try {
         const body = await request.json();
         const { secret, paths } = body;
 
-        // Ensure the secret matches the environment variable
         const expectedSecret = process.env.REVALIDATE_SECRET_TOKEN;
-        
         if (!expectedSecret) {
             return NextResponse.json(
-                { message: 'REVALIDATE_SECRET_TOKEN is not configured on the server' }, 
+                { message: 'REVALIDATE_SECRET_TOKEN is not configured on the server' },
                 { status: 500 }
             );
         }
@@ -26,7 +20,10 @@ export async function POST(request: NextRequest) {
 
         const revalidatedPaths: string[] = [];
 
-        // Revalidate specific literal paths (e.g. ['/software-engineer-at-google-abc123'])
+        // Revalidate only the specific paths passed (e.g. the job detail slug).
+        // Do NOT revalidate list pages here — they pull from the CDN feed which
+        // is cache-busted by the tags below. Revalidating list pages on every
+        // publish was the cause of 242K ISR writes (5 pages × N publishes/day).
         if (Array.isArray(paths)) {
             for (const path of paths) {
                 if (typeof path === 'string') {
@@ -36,15 +33,7 @@ export async function POST(request: NextRequest) {
             }
         }
 
-        // Always revalidate list pages — they use revalidate = false so they only
-        // update when explicitly triggered here, not on a timer.
-        for (const listPath of LIST_PAGES) {
-            revalidatePath(listPath);
-            revalidatedPaths.push(listPath);
-        }
-
-        // Bust the Next.js data cache for version + feed so re-rendered pages get
-        // fresh CDN data, not the indefinitely-cached stale version.
+        // Bust the Next.js data cache so re-rendered pages get fresh CDN data.
         // @ts-expect-error -- revalidateTag accepts 1 arg in Next.js 15 typings; 'max' profile is Next.js 16 only
         revalidateTag('feed-version');
         // @ts-expect-error -- revalidateTag accepts 1 arg in Next.js 15 typings; 'max' profile is Next.js 16 only
@@ -53,9 +42,10 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
             revalidated: true,
             now: Date.now(),
-            paths: revalidatedPaths
+            paths: revalidatedPaths,
         });
     } catch {
         return NextResponse.json({ message: 'Error parsing request body' }, { status: 400 });
     }
 }
+
