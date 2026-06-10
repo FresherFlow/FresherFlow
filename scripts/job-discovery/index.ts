@@ -21,7 +21,8 @@ const TARGET_SITES = [
     { url: 'https://www.freshersvoice.com/', name: 'freshersvoice' },
     { url: 'https://placementdrive.in/', name: 'placementdrive' },
     { url: 'https://freshershunt.in/', name: 'freshershunt' },
-    { url: 'https://fresheropenings.com/', name: 'fresheropenings' }
+    { url: 'https://fresheropenings.com/', name: 'fresheropenings' },
+    { url: 'https://freshersjobsaadda.blogspot.com/search', name: 'freshersjobsaadda' }
 ];
 
 const VISITED_FILE = path.join(process.cwd(), 'visited_urls.json');
@@ -85,6 +86,20 @@ const EXPERIENCED_PHRASES = [
     "7+ years",
     "8+ years",
     "10+ years",
+    "1+ year",
+    "1 + year",
+    "1+ yr",
+    "1 + yr",
+    "1.5+ years",
+    "1.5 years",
+    "18+ months",
+    "12+ months",
+    "24+ months",
+    "12 months",
+    "18 months",
+    "24 months",
+    "1 year of exp",
+    "1 year exp",
     "1+ exp",
     "2+ exp",
     "3+ exp",
@@ -238,6 +253,12 @@ async function saveVisited(visited: Record<string, string[]>) {
 function isFresherJob(text: string): boolean {
     const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
     
+    // Check for ranges like "1-4 years", "2-5 years", "1 to 4 years" (excluding ranges starting with 0)
+    const expRangeRegex = /(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years|years'|yrs|yr|y\b)/gi;
+    if (expRangeRegex.test(lowerText)) {
+        return false;
+    }
+    
     // If it explicitly asks for experience (e.g. 3+ years), it is NOT a fresher job.
     for (const phrase of EXPERIENCED_PHRASES) {
         if (lowerText.includes(phrase)) return false;
@@ -255,14 +276,24 @@ function isFresherJob(text: string): boolean {
 // Check if job is live (using existing sweeper logic)
 async function isJobLive(page: Page, url: string): Promise<boolean> {
     try {
-        const response = await page.goto(url, { waitUntil: 'load', timeout: 20000 });
-        if (!response) return true; // Treat as live if timeout/blocked
-        if (response.status() === 404 || response.status() === 410) {
+        let response = null;
+        try {
+            response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+        } catch (gotoErr) {
+            // If it timed out, the page DOM might still be loaded/accessible
+            console.log(`  -> Navigation warning: ${(gotoErr as Error).message}. Checking DOM anyway.`);
+        }
+
+        if (response && (response.status() === 404 || response.status() === 410)) {
             return false;
         }
         
-        await page.waitForTimeout(4000);
-        const bodyText = await page.locator('body').innerText();
+        await page.waitForTimeout(3000).catch(() => {});
+        const bodyText = await page.locator('body').innerText().catch(() => "");
+        if (!bodyText) {
+            return true; // Fallback to live if we can't read body at all
+        }
+
         const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'");
 
         for (const phrase of EXPIRED_PHRASES) {
@@ -304,7 +335,10 @@ function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
             'freshershunt.in', 'jobsaddafreshers.com', 'internshipss.com', 'placementdrive.in',
             'freshersvoice.com', 'freshersnow.com', 'offcampusjobs4u.com', 'freshhiring.com', 
             'recruitnxt.com', 'fresheropenings.com', 'job4freshers.co.in', 'frontlinesmedia.in',
-            'govtjobmart.in', 'findmyjobss.com', 'dailypharmajobs.in', 'ashokworld.in'
+            'govtjobmart.in', 'findmyjobss.com', 'dailypharmajobs.in', 'ashokworld.in',
+            'cookieyes.com', 'generatepress.com', 'wordpress.org', 'wordpress.com', 'gravatar.com',
+            'elementor.com', 'schema.org', 'doubleclick.net', 'google-analytics.com', 'googletagmanager.com',
+            'w.org', 'wp.com', 'blogspot.com'
         ];
         
         for (const domain of blacklistedDomains) {
@@ -327,7 +361,7 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
         // Heuristic: If we see a known ATS link, return it immediately
         for (const link of externalLinks) {
             const lowerLink = link.toLowerCase();
-            if (lowerLink.includes('workday') || lowerLink.includes('greenhouse') || lowerLink.includes('lever') || lowerLink.includes('myworkdayjobs') || lowerLink.includes('taleo') || lowerLink.includes('icims') || lowerLink.includes('smartrecruiters') || lowerLink.includes('forms.gle') || lowerLink.includes('eightfold') || lowerLink.includes('careers.') || lowerLink.includes('jobs.') || lowerLink.includes('oraclecloud.com') || lowerLink.includes('infosysapps.com') || lowerLink.includes('phenompro.com') || lowerLink.includes('ashbyhq.com') || lowerLink.includes('jobvite.com')) {
+            if (lowerLink.includes('workday') || lowerLink.includes('greenhouse') || lowerLink.includes('lever') || lowerLink.includes('myworkdayjobs') || lowerLink.includes('taleo') || lowerLink.includes('icims') || lowerLink.includes('smartrecruiters') || lowerLink.includes('forms.gle') || lowerLink.includes('eightfold') || lowerLink.includes('careers') || lowerLink.includes('jobs') || lowerLink.includes('oraclecloud.com') || lowerLink.includes('infosysapps.com') || lowerLink.includes('phenompro.com') || lowerLink.includes('ashbyhq.com') || lowerLink.includes('jobvite.com') || lowerLink.includes('workable') || lowerLink.includes('rippling')) {
                 return link;
             }
         }
@@ -408,12 +442,47 @@ async function run() {
     if (!visited["__discovered_apply_links__"]) {
         visited["__discovered_apply_links__"] = [];
     }
-    const newJobsFound: { title: string, applyLink: string, source: string }[] = [];
+
+    let pending = visited["pending_admin_approval"] || [];
+    
+    // Filter out approved ones (already in CDN)
+    pending = pending.filter((item: any) => {
+        const norm = normalizeUrl(item.applyLink);
+        const isApproved = knownLinks.has(norm);
+        if (isApproved) {
+            console.log(`  -> Job approved & published in CDN: ${item.applyLink}`);
+        }
+        return !isApproved;
+    });
+
+    const activePending: { title: string, applyLink: string, source: string, discoveredAt: string }[] = [];
+    const newJobsFound: { title: string, applyLink: string, source: string, discoveredAt?: string }[] = [];
 
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     });
+
+    if (pending.length > 0) {
+        console.log(`\n--- Re-verifying ${pending.length} pending links not yet in CDN ---`);
+        const page = await context.newPage();
+        for (const item of pending) {
+            console.log(`Checking pending job: ${item.title} (${item.applyLink})`);
+            const isLive = await isJobLive(page, item.applyLink);
+            if (isLive) {
+                console.log(`  ✅ Still live and pending admin add. Re-reporting.`);
+                activePending.push(item);
+                newJobsFound.push(item);
+            } else {
+                console.log(`  -> Expired or inactive since last check. Removing.`);
+                const norm = normalizeUrl(item.applyLink);
+                if (!visited["__discovered_apply_links__"].includes(norm)) {
+                    visited["__discovered_apply_links__"].push(norm);
+                }
+            }
+        }
+        await page.close();
+    }
     
     for (const site of TARGET_SITES) {
         console.log(`\n--- Scraping ${site.name} ---`);
@@ -451,7 +520,7 @@ async function run() {
                         ) return false;
                         
                         return u.hostname.includes(siteDomain) && 
-                               (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('careers') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher'));
+                               (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher'));
                     } catch {
                         return false;
                     }
@@ -508,11 +577,15 @@ async function run() {
                         jobTitle = aggregatorTitle.trim() || "Job Title Unknown";
                     }
                     
-                    newJobsFound.push({
+                    const newJob = {
                         title: jobTitle,
                         applyLink: applyLink,
-                        source: site.name
-                    });
+                        source: site.name,
+                        discoveredAt: new Date().toISOString()
+                    };
+                    
+                    newJobsFound.push(newJob);
+                    activePending.push(newJob);
                     
                     visited["__discovered_apply_links__"].push(normalizedApplyLink);
                     if (visited["__discovered_apply_links__"].length > 2000) {
@@ -530,6 +603,8 @@ async function run() {
     }
 
     await browser.close();
+    
+    visited["pending_admin_approval"] = activePending;
     await saveVisited(visited);
 
     if (newJobsFound.length > 0) {

@@ -2,8 +2,8 @@ name: Job Discovery Bot
 
 on:
   schedule:
-    # Run twice a day: 6 AM and 6 PM UTC
-    - cron: '0 6,18 * * *'
+    # Run three times a day: 6 AM (11:30 AM IST), 12 PM (5:30 PM IST), and 6 PM (11:30 PM IST)
+    - cron: '0 6,12,18 * * *'
   workflow_dispatch: # Allow manual trigger from GitHub UI
 
 jobs:
