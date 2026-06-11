@@ -838,3 +838,12 @@ export interface AdminUpdateResourceRequest {
     sector?: string;
     status?: ResourceItemStatus;
 }
+
+export interface AdminCreateResourceRequest {
+    title: string;
+    url: string;
+    type: string;
+    company?: string | null;
+    skills?: string[];
+    status?: ResourceItemStatus;
+}

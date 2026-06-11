@@ -236,6 +236,11 @@ export const adminApi = {
             const queryString = query.toString();
             return apiClient<import('@fresherflow/types').AdminGetResourcesResponse>(`/api/admin/resources${queryString ? `?${queryString}` : ''}`);
         },
+        createResource: (data: any) =>
+            apiClient<{ resource: import('@fresherflow/types').SharedResource }>(`/api/admin/resources`, {
+                method: 'POST',
+                body: JSON.stringify(data)
+            }),
         updateResource: (id: string, data: any) =>
             apiClient<{ resource: import('@fresherflow/types').SharedResource }>(`/api/admin/resources/${id}`, {
                 method: 'PATCH',

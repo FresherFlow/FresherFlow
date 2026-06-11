@@ -87,11 +87,6 @@ export default async function RootLayout({
         <meta charSet="utf-8" />
         <meta name="theme-color" content="#e2eaf2" id="theme-color-meta" />
         <HeadInjections />
-        <meta property="og:image" content={OG_IMAGE_URL} />
-        <meta property="og:image:secure_url" content={OG_IMAGE_URL} />
-        <meta property="og:image:type" content="image/png" />
-        <meta property="og:image:width" content="1200" />
-        <meta property="og:image:height" content="630" />
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
         <link rel="preload" as="image" href="/logo-optimized.png?v=3" fetchPriority="high" />
         <link rel="preload" as="image" href="/logo-white-optimized.png?v=3" fetchPriority="high" />

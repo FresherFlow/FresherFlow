@@ -88,7 +88,7 @@ export const ADMIN_WEB_HOST = normalizeHost(
     getFallbackHost()
 );
 
-const DEFAULT_CDN_HOST = 'https://cdn.fresherflow.in';
+const DEFAULT_CDN_HOST = IS_PRODUCTION ? 'https://cdn.fresherflow.in' : API_URL;
 export const CDN_URL = normalizeUrl(process.env.NEXT_PUBLIC_CDN_URL, DEFAULT_CDN_HOST);
 
 export const BOOTSTRAP_FEED_URL =
@@ -127,6 +127,8 @@ export const GET_COMPANY_SHARD_URL = (slug: string) =>
 export const EDUCATION_METADATA_URL = `${CDN_URL}/education.json`;
 
 export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;
+
+export const COMPANIES_METADATA_URL = `${CDN_URL}/companies.json`;
 
 export const CITIES_METADATA_URL = `${CDN_URL}/cities.json`;
 

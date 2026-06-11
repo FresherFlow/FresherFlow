@@ -47,7 +47,8 @@ export default function AdminBottomNav() {
         pathname === '/admin/government-jobs/create' ||
         pathname === '/admin/jobs/new' ||
         pathname === '/admin/walkins/new' ||
-        pathname.includes('/edit');
+        pathname.includes('/edit') ||
+        pathname.includes('/resources');
 
     if (isFormPage) return null;
 

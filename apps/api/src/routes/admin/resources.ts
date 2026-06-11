@@ -62,6 +62,59 @@ router.get('/',
     }
 );
 
+// POST /api/admin/resources - Create a new resource
+const createResourceValidation = [
+    body('title').isString().notEmpty().trim(),
+    body('url').isURL().trim(),
+    body('type').isString().trim(),
+    body('company').optional({ nullable: true }).isString().trim(),
+    body('skills').optional().isArray(),
+    body('skills.*').isString().trim(),
+    body('status').optional().isIn(['PENDING_REVIEW', 'APPROVED']),
+];
+
+router.post('/',
+    createResourceValidation,
+    async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+        try {
+            const errors = validationResult(req);
+            if (!errors.isEmpty()) {
+                res.status(400).json({ error: 'Validation failed', details: errors.array() });
+                return;
+            }
+
+            const { title, url, type, company, skills, status } = req.body;
+
+            // Check if URL already exists
+            const existing = await prisma.sharedResource.findUnique({
+                where: { url }
+            });
+
+            if (existing) {
+                res.status(409).json({ error: 'Resource with this URL already exists' });
+                return;
+            }
+
+            const resource = await prisma.sharedResource.create({
+                data: {
+                    title,
+                    url,
+                    type,
+                    company: company || null,
+                    skills: skills || [],
+                    status: status || 'APPROVED', // Default to APPROVED for admin creations
+                    addedByUserId: (req as unknown as { user?: { id: string } }).user?.id || 'admin',
+                    addedByUsername: (req as unknown as { user?: { username: string } }).user?.username || 'admin',
+                }
+            });
+
+            res.status(201).json({ resource });
+        } catch (error) {
+            next(error);
+        }
+    }
+);
+
 // PATCH /api/admin/resources/:id - Update resource
 const updateResourceValidation = [
     body('title').optional().isString().trim(),

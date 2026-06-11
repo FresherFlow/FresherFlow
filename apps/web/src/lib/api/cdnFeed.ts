@@ -8,6 +8,8 @@ import {
     SITE_URL, 
     EDUCATION_METADATA_URL, 
     SKILLS_METADATA_URL,
+    COMPANIES_METADATA_URL,
+    CITIES_METADATA_URL,
     SITEMAP_DATA_URL,
     API_URL,
     GOVERNMENT_FEED_URL
@@ -379,6 +381,24 @@ export async function fetchSkillsMetadata(): Promise<string[] | null> {
         return await res.json() as string[];
     } catch (err) {
         console.warn('Failed to fetch skills metadata from CDN:', err);
+        return null;
+    }
+}
+
+/**
+ * Fetches companies list from CDN.
+ */
+export async function fetchCompaniesMetadata(): Promise<string[] | null> {
+    try {
+        const url = await signUrlIfServer(COMPANIES_METADATA_URL);
+        const res = await fetch(url, getCDNFetchOptions({
+            cache: 'force-cache',
+        }));
+        if (!res.ok) return null;
+        const data = await res.json() as string[]; // Based on backend MetadataService saving companies as string array
+        return data;
+    } catch (err) {
+        console.warn('Failed to fetch companies metadata from CDN:', err);
         return null;
     }
 }

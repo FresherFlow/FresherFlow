@@ -489,7 +489,16 @@ export async function apiClient<T = unknown>(
             }
         }
 
-        return await response.json();
+        if (response.status === 204) {
+            return {} as T;
+        }
+
+        const text = await response.text();
+        if (!text || text.trim() === '') {
+            return {} as T;
+        }
+
+        return JSON.parse(text);
     } catch (error: unknown) {
         // Convert network-level failures that occur while offline into OfflineError.
         // This lets callers distinguish offline failures from real server errors
@@ -565,7 +574,16 @@ export const authApi = {
         await apiClient('/api/auth/logout', { method: 'POST' });
     },
 
-    me: () => apiClient('/api/auth/me')
+    me: () => apiClient('/api/auth/me'),
+
+    handshake: (idToken: string, ref?: string) =>
+        apiClient<AuthResponse>('/api/auth/handshake', {
+            method: 'POST',
+            headers: {
+                Authorization: `Bearer ${idToken}`
+            },
+            body: JSON.stringify({ ref })
+        })
 };
 
 // Admin Auth API calls
