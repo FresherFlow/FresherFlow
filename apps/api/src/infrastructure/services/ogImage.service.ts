@@ -1,5 +1,7 @@
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { logger } from '@fresherflow/logger';
+import fs from 'fs';
+import path from 'path';
 
 const endpoint = process.env.R2_ENDPOINT;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -22,6 +24,7 @@ type OgOpportunity = {
     company: string;
     type?: string;
     locations?: string[];
+    events?: { eventType: string }[];
     expiresAt?: string | null;
     companyLogoUrl?: string | null;
 };
@@ -31,8 +34,17 @@ const truncate = (v: string, max: number) => v.length > max ? `${v.slice(0, max 
 const getTypeLabel = (t?: string) =>
     t === 'INTERNSHIP' ? 'INTERNSHIP' : t === 'WALKIN' ? 'WALK-IN' : 'JOB';
 
-const getBadgeColor = (t?: string) =>
-    t === 'INTERNSHIP' ? '#c4b5fd' : t === 'WALKIN' ? '#6ee7b7' : '#93c5fd';
+const getBadgeColors = (t?: string) => t === "INTERNSHIP"
+  ? { bg: "rgba(124,58,237,0.22)", border: "rgba(167,139,250,0.4)", color: "#c4b5fd" }
+  : t === "WALKIN"
+  ? { bg: "rgba(5,150,105,0.22)", border: "rgba(52,211,153,0.4)", color: "#6ee7b7" }
+  : { bg: "rgba(37,99,235,0.22)", border: "rgba(96,165,250,0.4)", color: "#93c5fd" };
+
+const isCampusDrive = (o: OgOpportunity) => {
+    const t = (o.title || "").toLowerCase();
+    return t.includes("nqt") || t.includes("campus drive") ||
+      (o.events || []).some(e => ["REG_START","REG_END","EXAM_DATE"].includes(e.eventType));
+};
 
 const getDays = (d?: string | null) => {
     if (!d) return null;
@@ -44,40 +56,36 @@ const getDays = (d?: string | null) => {
 const urgencyLabel = (days: number | null) =>
     days == null ? null : days <= 0 ? 'Closing Today' : days <= 3 ? `Closing in ${days}d` : days <= 7 ? `${days} days left` : null;
 
-/** Fetch company logo and encode as data URL. Returns null on any failure. */
+/** Fetch company logo and encode as data URL (Exactly as old Next.js Edge route). */
 async function fetchLogoDataUrl(logoUrl: string): Promise<string | null> {
     try {
-        let url = logoUrl;
-        if (url.includes('logo.clearbit.com/')) {
-            const domain = url.split('logo.clearbit.com/')[1];
-            url = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+        let finalLogoUrl = logoUrl;
+        if (finalLogoUrl.includes('logo.clearbit.com/')) {
+            const domain = finalLogoUrl.split('logo.clearbit.com/')[1];
+            finalLogoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
         }
+
         const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), 1500);
-        const res = await fetch(url, { signal: controller.signal });
+        const timer = setTimeout(() => controller.abort(), 2000);
+        const res = await fetch(finalLogoUrl, { signal: controller.signal });
         clearTimeout(timer);
         if (!res.ok) return null;
-        const ct = res.headers.get('content-type') || '';
-        if (!/image\/(png|jpe?g|webp|gif)/.test(ct)) return null;
+        
+        const ct = res.headers.get('content-type') || 'image/png';
         const buf = await res.arrayBuffer();
-        if (buf.byteLength < 500 || buf.byteLength > 65536) return null;
+        if (buf.byteLength < 50) return null; // allow small favicons, but reject empty
         const bytes = new Uint8Array(buf);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i += 1024) {
-            binary += String.fromCharCode(...bytes.subarray(i, i + 1024));
-        }
-        return `data:${ct.split(';')[0]};base64,${Buffer.from(bytes).toString('base64')}`;
+        const base64 = Buffer.from(bytes).toString('base64');
+        return `data:${ct.split(';')[0]};base64,${base64}`;
     } catch {
         return null;
     }
 }
 
-/** Returns the public CDN URL for a given opportunity's OG image. */
 export function getStaticOgImageUrl(opportunityId: string): string {
     return `${cdnBase}/og/${opportunityId}.png`;
 }
 
-/** Generates an OG PNG for the given opportunity and uploads it to R2. */
 export async function generateAndUploadOgImage(opportunity: OgOpportunity): Promise<string | null> {
     if (!endpoint || !accessKeyId || !secretAccessKey) {
         logger.warn('[OgImage] R2 not configured, skipping OG image generation');
@@ -85,20 +93,20 @@ export async function generateAndUploadOgImage(opportunity: OgOpportunity): Prom
     }
 
     try {
-        // Lazy-load heavy deps so they don't bloat cold starts of other routes
         const [{ default: satori }, { Resvg }] = await Promise.all([
             import('satori'),
             import('@resvg/resvg-js'),
         ]);
 
+        const isDrive = isCampusDrive(opportunity);
+        const typeLabel = isDrive ? "CAMPUS DRIVE" : getTypeLabel(opportunity.type);
+        const badge = getBadgeColors(isDrive ? undefined : opportunity.type);
         const title = truncate(opportunity.title || 'Opportunity', 65);
         const company = truncate(opportunity.company || 'Company', 34);
         const location = truncate(
-            (Array.isArray(opportunity.locations) ? opportunity.locations[0] : null) || 'India',
+            (Array.isArray(opportunity.locations) && opportunity.locations.length > 0 ? opportunity.locations[0] : 'India'),
             24
         );
-        const typeLabel = getTypeLabel(opportunity.type);
-        const badgeColor = getBadgeColor(opportunity.type);
         const urgency = urgencyLabel(getDays(opportunity.expiresAt));
         const titleSize = title.length > 52 ? 52 : title.length > 38 ? 62 : 74;
 
@@ -106,99 +114,82 @@ export async function generateAndUploadOgImage(opportunity: OgOpportunity): Prom
             ? await fetchLogoDataUrl(opportunity.companyLogoUrl)
             : null;
 
-        // Build JSX element tree (plain object — satori doesn't need React)
+        const ffLogoPath = path.join(process.cwd(), 'src', 'assets', 'images', 'logo.png');
+        const ffLogoBuf = await fs.promises.readFile(ffLogoPath);
+        const ffLogoBase64 = `data:image/png;base64,${ffLogoBuf.toString('base64')}`;
+
+        // Build element exactly mirroring old design
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const bottomBadges: any[] = [
+            { type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: badge.bg, border: `1px solid ${badge.border}`, fontSize: 24, fontWeight: 700, letterSpacing: '0.07em', color: badge.color }, children: typeLabel } },
+            { type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.11)', fontSize: 24, fontWeight: 600, color: 'rgba(245,247,248,0.65)' }, children: location } }
+        ];
+
+        if (urgency) {
+            bottomBadges.push({
+                type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(239,68,68,0.16)', border: '1px solid rgba(239,68,68,0.35)', fontSize: 24, fontWeight: 700, color: '#fca5a5' }, children: urgency }
+            });
+        }
+
+        bottomBadges.push({
+            type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }, children: [
+                { type: 'div', props: { style: { width: 12, height: 12, borderRadius: 999, background: '#4ade80', display: 'flex' } } },
+                { type: 'div', props: { style: { fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: 'Verified · fresherflow.in' } }
+            ]}
+        });
+
         const element = {
             type: 'div',
             props: {
-                style: {
-                    width: '100%', height: '100%', display: 'flex', flexDirection: 'column',
-                    justifyContent: 'space-between', background: '#020404', color: '#F5F7F8',
-                    padding: '52px 60px',
-                    fontFamily: 'ui-sans-serif, system-ui, -apple-system, Roboto, Helvetica, Arial',
-                },
+                style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#020404', color: '#F5F7F8', padding: '52px 60px', fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' },
                 children: [
-                    // TOP ROW
                     {
-                        type: 'div',
-                        props: {
-                            style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' },
-                            children: [
-                                // Company logo + name
-                                {
-                                    type: 'div',
-                                    props: {
-                                        style: { display: 'flex', alignItems: 'center', gap: '20px' },
-                                        children: [
-                                            logoDataUrl ? {
-                                                type: 'img',
-                                                props: {
-                                                    src: logoDataUrl,
-                                                    width: 100, height: 100,
-                                                    style: { borderRadius: '24px', background: '#fff', objectFit: 'contain', padding: '10px' },
-                                                },
-                                            } : {
-                                                type: 'div',
-                                                props: {
-                                                    style: {
-                                                        width: '100px', height: '100px', borderRadius: '24px',
-                                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                                        background: 'linear-gradient(135deg, #1c1c1c 0%, #0c0c0c 100%)',
-                                                        border: '1px solid rgba(245,247,248,0.12)',
-                                                        fontSize: '44px', fontWeight: 900, color: badgeColor,
-                                                    },
-                                                    children: company[0].toUpperCase(),
-                                                },
-                                            },
-                                            {
-                                                type: 'div',
-                                                props: {
-                                                    style: { display: 'flex', flexDirection: 'column', gap: '6px' },
-                                                    children: [
-                                                        { type: 'div', props: { style: { fontSize: '22px', color: 'rgba(245,247,248,0.38)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }, children: 'Hiring at' } },
-                                                        { type: 'div', props: { style: { fontSize: '48px', fontWeight: 800, color: '#F5F7F8', letterSpacing: '-0.5px' }, children: company } },
-                                                    ],
-                                                },
-                                            },
-                                        ],
+                        type: 'div', props: { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }, children: [
+                            {
+                                type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 20 }, children: [
+                                    logoDataUrl ? {
+                                        type: 'img', props: { src: logoDataUrl, width: 100, height: 100, style: { borderRadius: 24, background: '#fff', objectFit: 'contain', padding: 10 } }
+                                    } : {
+                                        type: 'div', props: { style: { width: 100, height: 100, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1c1c1c 0%, #0c0c0c 100%)', border: '1px solid rgba(245,247,248,0.12)', fontSize: 44, fontWeight: 900, color: badge.color }, children: company[0].toUpperCase() }
                                     },
-                                },
-                                // FresherFlow badge
-                                {
-                                    type: 'div',
-                                    props: {
-                                        style: { display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.12)', borderRadius: '12px', padding: '10px 20px' },
-                                        children: [
-                                            { type: 'div', props: { style: { display: 'flex', width: '28px', height: '28px', borderRadius: '8px', background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 900, color: '#ffffff' }, children: 'FF' } },
-                                            { type: 'div', props: { style: { fontSize: '20px', fontWeight: 700, color: '#F5F7F8' }, children: 'FresherFlow' } },
-                                        ],
-                                    },
-                                },
-                            ],
-                        },
+                                    {
+                                        type: 'div', props: { style: { display: 'flex', flexDirection: 'column', gap: 6 }, children: [
+                                            { type: 'div', props: { style: { fontSize: 22, color: 'rgba(245,247,248,0.38)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }, children: 'Hiring at' } },
+                                            { type: 'div', props: { style: { fontSize: 48, fontWeight: 800, color: '#F5F7F8', letterSpacing: '-0.5px' }, children: company } }
+                                        ] }
+                                    }
+                                ]}
+                            },
+                            {
+                                type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.12)', borderRadius: 12, padding: '10px 20px' }, children: [
+                                    { type: 'img', props: { src: ffLogoBase64, width: 28, height: 28, style: { borderRadius: 6, objectFit: 'contain' } } },
+                                    { type: 'div', props: { style: { fontSize: 20, fontWeight: 700, color: '#F5F7F8' }, children: 'FresherFlow' } }
+                                ]}
+                            }
+                        ]}
                     },
-                    // TITLE
-                    { type: 'div', props: { style: { fontSize: `${titleSize}px`, fontWeight: 900, lineHeight: 1.1, color: '#F5F7F8', letterSpacing: '-1px', maxWidth: '1080px' }, children: title } },
-                    // BOTTOM BADGES
-                    {
-                        type: 'div',
-                        props: {
-                            style: { display: 'flex', alignItems: 'center', gap: '16px' },
-                            children: [
-                                { type: 'div', props: { style: { display: 'flex', borderRadius: '12px', padding: '16px 28px', background: 'rgba(37,99,235,0.22)', border: `1px solid rgba(96,165,250,0.4)`, fontSize: '24px', fontWeight: 700, letterSpacing: '0.07em', color: badgeColor }, children: typeLabel } },
-                                { type: 'div', props: { style: { display: 'flex', borderRadius: '12px', padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.11)', fontSize: '24px', fontWeight: 600, color: 'rgba(245,247,248,0.65)' }, children: `📍 ${location}` } },
-                                ...(urgency ? [{ type: 'div', props: { style: { display: 'flex', borderRadius: '12px', padding: '16px 28px', background: 'rgba(239,68,68,0.16)', border: '1px solid rgba(239,68,68,0.35)', fontSize: '24px', fontWeight: 700, color: '#fca5a5' }, children: `⚡ ${urgency}` } }] : []),
-                                { type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: '10px', marginLeft: 'auto' }, children: [{ type: 'div', props: { style: { width: '12px', height: '12px', borderRadius: '999px', background: '#4ade80', display: 'flex' } } }, { type: 'div', props: { style: { fontSize: '22px', fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: 'Verified · fresherflow.in' } }] } },
-                            ],
-                        },
-                    },
-                ],
-            },
+                    { type: 'div', props: { style: { fontSize: titleSize, fontWeight: 900, lineHeight: 1.1, color: '#F5F7F8', letterSpacing: '-1px', maxWidth: '1080px' }, children: title } },
+                    { type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 16 }, children: bottomBadges } }
+                ]
+            }
         };
 
-        const svg = await satori(element as Parameters<typeof satori>[0], {
+        const fontPathRegular = path.join(process.cwd(), 'src', 'assets', 'fonts', 'inter_regular.ttf');
+        const fontPathBold = path.join(process.cwd(), 'src', 'assets', 'fonts', 'inter_bold.ttf');
+        const regularFont = await fs.promises.readFile(fontPathRegular);
+        const boldFont = await fs.promises.readFile(fontPathBold);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const svg = await satori(element as any, {
             width: 1200,
             height: 630,
-            fonts: [],
+            fonts: [
+                { name: 'ui-sans-serif', data: regularFont, weight: 400, style: 'normal' },
+                { name: 'ui-sans-serif', data: regularFont, weight: 600, style: 'normal' },
+                { name: 'ui-sans-serif', data: boldFont, weight: 700, style: 'normal' },
+                { name: 'ui-sans-serif', data: boldFont, weight: 800, style: 'normal' },
+                { name: 'ui-sans-serif', data: boldFont, weight: 900, style: 'normal' }
+            ],
         });
 
         const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } });
@@ -224,3 +215,4 @@ export async function generateAndUploadOgImage(opportunity: OgOpportunity): Prom
         return null;
     }
 }
+
