@@ -104,6 +104,16 @@ const EXPERIENCED_PHRASES = [
     "12 months",
     "18 months",
     "24 months",
+    "1 year's",
+    "1 year’s",
+    "1 year's experience",
+    "1 year’s experience",
+    "at least 1 year",
+    "at least 1 yr",
+    "minimum 1 year",
+    "minimum 1 yr",
+    "min 1 year",
+    "min 1 yr",
     "1 year of exp",
     "1 year exp",
     "1+ exp",
@@ -503,14 +513,19 @@ async function run() {
 
     let pending = visited["pending_admin_approval"] || [];
     
-    // Filter out approved ones (already in CDN)
+    // Filter out approved ones (already in CDN) and ones that are no longer valid apply links (e.g. newly blacklisted)
     pending = pending.filter((item: any) => {
         const norm = normalizeUrl(item.applyLink);
         const isApproved = knownLinks.has(norm);
         if (isApproved) {
             console.log(`  -> Job approved & published in CDN: ${item.applyLink}`);
+            return false;
         }
-        return !isApproved;
+        if (!isValidApplyLink(item.applyLink, "")) {
+            console.log(`  -> Removing pending job because apply link is blacklisted or invalid: ${item.applyLink}`);
+            return false;
+        }
+        return true;
     });
 
     const activePending: { title: string, applyLink: string, source: string, discoveredAt: string }[] = [];
