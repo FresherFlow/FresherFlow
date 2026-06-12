@@ -58,6 +58,8 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // Job not found in CDN feed — return a real 404 so Google doesn't
         // soft-404 the page (200 with error UI = Soft 404 in GSC).
         if (!opportunityData) {
+            const { unstable_noStore } = await import('next/cache');
+            unstable_noStore();
             notFound();
         }
 

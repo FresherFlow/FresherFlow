@@ -7,8 +7,7 @@ type Props = {
     params: Promise<{ id: string }>;
 };
 
-// On-demand revalidation
-export const revalidate = 300; // 5 minutes
+export const dynamic = 'force-dynamic';
 
 async function fetchGovernmentJob(id: string) {
     try {
@@ -17,7 +16,7 @@ async function fetchGovernmentJob(id: string) {
             headers: {
                 'X-Requested-From': 'fresherflow-web',
             },
-            next: { revalidate: 300 },
+            next: { revalidate: 0 },
         });
 
         if (!response.ok) return null;

@@ -6,33 +6,30 @@ import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 
 interface LandingStatsProps {
     initialLiveCount: number;
-    initialOpportunities: Opportunity[];
+    initialCompaniesCount: number;
 }
 
-export function LandingStats({ initialLiveCount, initialOpportunities }: LandingStatsProps) {
+export function LandingStats({ initialLiveCount, initialCompaniesCount }: LandingStatsProps) {
     const [liveCount, setLiveCount] = useState(initialLiveCount);
-    const [opportunities, setOpportunities] = useState<Opportunity[]>(initialOpportunities);
+    const [companiesCount, setCompaniesCount] = useState(initialCompaniesCount);
 
     useEffect(() => {
         // If SSR timed out, fetch on client
-        if (initialLiveCount === 0 || initialOpportunities.length === 0) {
+        if (initialLiveCount === 0 || initialCompaniesCount === 0) {
             fetchBootstrapFeed().then((feed) => {
                 if (feed) {
                     setLiveCount(feed.count || feed.opportunities?.length || 0);
-                    setOpportunities(feed.opportunities || []);
+                    if (feed.opportunities) {
+                        const set = new Set<string>();
+                        feed.opportunities.forEach(o => {
+                            if (o.company) set.add(o.company);
+                        });
+                        setCompaniesCount(set.size);
+                    }
                 }
             }).catch(console.error);
         }
-    }, [initialLiveCount, initialOpportunities]);
-
-    const companiesCount = useMemo(() => {
-        if (!opportunities || opportunities.length === 0) return 0;
-        const set = new Set<string>();
-        opportunities.forEach(o => {
-            if (o.company) set.add(o.company);
-        });
-        return set.size;
-    }, [opportunities]);
+    }, [initialLiveCount, initialCompaniesCount]);
 
     const stats = [
         { label: 'Active Jobs', value: liveCount > 0 ? liveCount.toLocaleString() : '- -' },

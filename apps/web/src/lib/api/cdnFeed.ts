@@ -170,8 +170,9 @@ export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFe
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
             // Signed URLs are version-pinned (immutable until next publish).
-            // force-cache holds forever — no hourly ISR writes.
-            cache: 'force-cache',
+            // We use no-store because the Route Cache handles ISR caching.
+            // force-cache causes infinite Vercel Data Cache bloat due to v= signatures.
+            cache: 'no-store',
             signal: controller.signal,
         }));
 
@@ -218,7 +219,7 @@ export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> 
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
             // Signed URLs are version-pinned (immutable until next publish).
-            cache: 'force-cache',
+            cache: 'no-store',
             signal: controller.signal,
         }));
 
@@ -268,7 +269,7 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
-            cache: 'force-cache',
+            cache: 'no-store',
             signal: controller.signal,
         }));
 
@@ -298,14 +299,19 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
  */
 export async function fetchCategoryShard(id: string): Promise<BootstrapFeedResponse | null> {
     try {
-        const url = await signUrlIfServer(GET_CATEGORY_SHARD_URL(id));
+        const version = await fetchFeedVersion();
+        const IS_SERVER = typeof window === 'undefined';
+        const rawUrl = GET_CATEGORY_SHARD_URL(id);
+        const url = IS_SERVER
+            ? await signUrlWithVersion(rawUrl, version)
+            : `${rawUrl}?v=${version}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
         const res = await fetch(url, getCDNFetchOptions({
             // Signed URLs: immutable per feed version.
-            cache: 'force-cache',
+            cache: 'no-store',
             signal: controller.signal,
         }));
 
@@ -323,7 +329,12 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
  */
 export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResponse | null> {
     try {
-        const url = await signUrlIfServer(GET_COMPANY_SHARD_URL(slug));
+        const version = await fetchFeedVersion();
+        const IS_SERVER = typeof window === 'undefined';
+        const rawUrl = GET_COMPANY_SHARD_URL(slug);
+        const url = IS_SERVER
+            ? await signUrlWithVersion(rawUrl, version)
+            : `${rawUrl}?v=${version}`;
 
         const controller = new AbortController();
         // 3.5s hard cap — bots hitting non-existent company slugs were hanging the
@@ -332,7 +343,7 @@ export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResp
 
         const res = await fetch(url, getCDNFetchOptions({
             // Signed URLs: immutable per feed version.
-            cache: 'force-cache',
+            cache: 'no-store',
             signal: controller.signal,
         }));
 

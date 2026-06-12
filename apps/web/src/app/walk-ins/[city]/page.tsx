@@ -70,6 +70,22 @@ export async function generateMetadata({ params }: { params: Promise<{ city: str
 
 export default async function WalkInsCityLandingPage({ params }: { params: Promise<{ city: string }> }) {
     const { city } = await params;
+    
+    // Validate city against feed to prevent cache poisoning by bots
+    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+    const feed = await fetchBootstrapFeed();
+    const hasCity = feed?.opportunities?.some(opp => 
+        opp.type === 'WALKIN' && 
+        opp.locations?.some(loc => loc.trim().toLowerCase().replace(/\s+/g, '-') === city)
+    );
+
+    if (!hasCity) {
+        const { unstable_noStore } = await import('next/cache');
+        unstable_noStore();
+        const { notFound } = await import('next/navigation');
+        notFound();
+    }
+
     const cityLabel = formatLabel(city);
     const pageUrl = `${SITE_URL}/walk-ins/${city}`;
     const jsonLd = {

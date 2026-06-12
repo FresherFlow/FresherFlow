@@ -22,6 +22,11 @@ interface PageProps {
 export default async function ReferralRedirectPage({ params }: PageProps) {
     const { code } = await params;
 
+    // Drop malicious spam traffic before hitting the backend
+    if (!code || code.length > 20 || !/^[A-Za-z0-9_-]+$/.test(code)) {
+        redirect('/');
+    }
+
     const apiUrl = API_URL;
 
     // Fire-and-forget click tracking (don't block redirect)

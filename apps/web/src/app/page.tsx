@@ -151,7 +151,10 @@ export default async function LandingPage() {
                                         Get App
                                     </Link>
                                 </div>
-                                <LandingStats initialLiveCount={liveCount} initialOpportunities={opportunities} />
+                                <LandingStats 
+                                    initialLiveCount={liveCount} 
+                                    initialCompaniesCount={new Set(opportunities.map(o => o.company).filter(Boolean)).size} 
+                                />
                             </div>
 
                              <div className="hidden lg:block relative rounded-3xl overflow-hidden shadow-xl border border-border bg-card/40 backdrop-blur p-2 group transition-all duration-500 hover:border-primary/20 w-full h-[480px]">

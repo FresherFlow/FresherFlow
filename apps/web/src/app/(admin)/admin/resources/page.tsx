@@ -7,6 +7,8 @@ export const metadata: Metadata = {
     description: 'Manage shared resources',
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function AdminResourcesPage() {
     let initialSkills: string[] = [];
     let initialCompanies: string[] = [];
