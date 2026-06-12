@@ -276,6 +276,24 @@ function isFresherJob(text: string): boolean {
     if (expRangeRegex.test(lowerText)) {
         return false;
     }
+
+    // Check for experience requirements of 1+ years (e.g. "2 years' experience", "1 year's analytical experience")
+    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
+    if (expReqRegex.test(lowerText)) {
+        return false;
+    }
+
+    // Check for "2+ years", "1+ yr", etc.
+    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*\+\s*(?:years|year|yrs|yr|y\b)/gi;
+    if (plusExpRegex.test(lowerText)) {
+        return false;
+    }
+
+    // Check for "minimum of 2 years", "min 1 year", "at least 2 yrs", etc.
+    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b10\b)\s*(?:years|year|yrs|yr|y\b)/gi;
+    if (minExpRegex.test(lowerText)) {
+        return false;
+    }
     
     // If it explicitly asks for experience (e.g. 3+ years), it is NOT a fresher job.
     for (const phrase of EXPERIENCED_PHRASES) {
