@@ -51,7 +51,9 @@ const EXPIRED_PHRASES = [
     "you can't view this job because its not available at this time",
     "not available at this time",
     "job is not available at this time",
-    "job is not available at this time."
+    "job is not available at this time.",
+    "has expired",
+    "no longer open"
 ];
 
 // Phrases indicating it's a fresher job
@@ -375,6 +377,7 @@ function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
         if (targetHost === baseHost) return false;
         if (u.protocol.includes('mailto')) return false;
         if (targetHost.startsWith('courses.')) return false;
+        if (u.pathname.toLowerCase().includes('.pdf')) return false;
         
         const blacklistedDomains = [
             'facebook.com', 'twitter.com', 'x.com', 'linkedin.com', 'whatsapp.com', 
@@ -511,51 +514,12 @@ async function run() {
         visited["__discovered_apply_links__"] = [];
     }
 
-    let pending = visited["pending_admin_approval"] || [];
-    
-    // Filter out approved ones (already in CDN) and ones that are no longer valid apply links (e.g. newly blacklisted)
-    pending = pending.filter((item: any) => {
-        const norm = normalizeUrl(item.applyLink);
-        const isApproved = knownLinks.has(norm);
-        if (isApproved) {
-            console.log(`  -> Job approved & published in CDN: ${item.applyLink}`);
-            return false;
-        }
-        if (!isValidApplyLink(item.applyLink, "")) {
-            console.log(`  -> Removing pending job because apply link is blacklisted or invalid: ${item.applyLink}`);
-            return false;
-        }
-        return true;
-    });
-
-    const activePending: { title: string, applyLink: string, source: string, discoveredAt: string }[] = [];
     const newJobsFound: { title: string, applyLink: string, source: string, discoveredAt?: string }[] = [];
 
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     });
-
-    if (pending.length > 0) {
-        console.log(`\n--- Re-verifying ${pending.length} pending links not yet in CDN ---`);
-        const page = await context.newPage();
-        for (const item of pending) {
-            console.log(`Checking pending job: ${item.title} (${item.applyLink})`);
-            const isLive = await isJobLive(page, item.applyLink);
-            if (isLive) {
-                console.log(`  ✅ Still live and pending admin add. Re-reporting.`);
-                activePending.push(item);
-                newJobsFound.push(item);
-            } else {
-                console.log(`  -> Expired or inactive since last check. Removing.`);
-                const norm = normalizeUrl(item.applyLink);
-                if (!visited["__discovered_apply_links__"].includes(norm)) {
-                    visited["__discovered_apply_links__"].push(norm);
-                }
-            }
-        }
-        await page.close();
-    }
     
     for (const site of TARGET_SITES) {
         console.log(`\n--- Scraping ${site.name} ---`);
@@ -663,7 +627,6 @@ async function run() {
                     };
                     
                     newJobsFound.push(newJob);
-                    activePending.push(newJob);
                     
                     visited["__discovered_apply_links__"].push(normalizedApplyLink);
                     if (visited["__discovered_apply_links__"].length > 2000) {
@@ -686,7 +649,7 @@ async function run() {
 
     await browser.close();
     
-    visited["pending_admin_approval"] = activePending;
+    delete visited["pending_admin_approval"];
     await saveVisited(visited);
 
     if (newJobsFound.length > 0) {
