@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { ALL_COURSE_OPTIONS, ALL_SPECIALIZATION_OPTIONS } from '@/lib/profileConstants';
+import { ALL_COURSE_OPTIONS, ALL_SPECIALIZATION_OPTIONS } from '@/features/profile/profileConstants';
 import { useOpportunityForm } from '@/features/admin/opportunities/useOpportunityForm';
 
 const commonDegrees = ['DIPLOMA', 'DEGREE', 'PG'];

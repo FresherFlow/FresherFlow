@@ -2,8 +2,8 @@
 
 import { Opportunity } from '@fresherflow/types';
 import JobCard from './JobCard';
-import { SkeletonJobCard } from '@/features/system/components/ui/Skeleton';
-import { ErrorMessage } from '@/features/system/components/ui/ErrorMessage';
+import { SkeletonJobCard } from '@/ui/Skeleton';
+import { ErrorMessage } from '@/ui/ErrorMessage';
 
 type OpportunityAction = { actionType: string };
 

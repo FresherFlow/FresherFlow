@@ -59,7 +59,7 @@ export function ParserSection({
                 </div>
                 <div className="grid grid-cols-1 gap-3">
                     <div className="hidden space-y-2">
-                        <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground">Paste raw text</label>
+                        <label className="text-sm font-semibold text-muted-foreground/80">Paste raw text</label>
                         <textarea
                             value={pastedText}
                             onChange={(e) => setPastedText(e.target.value)}
@@ -70,7 +70,7 @@ export function ParserSection({
                             type="button"
                             onClick={handleAutoFill}
                             disabled={isParsing || !pastedText.trim()}
-                            className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-md transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                            className="w-full h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-md transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                         >
                             {isParsing ? (
                                 <div className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
@@ -81,7 +81,7 @@ export function ParserSection({
                         </button>
                     </div>
                     <div className="space-y-2">
-                        <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground">Paste JSON payload</label>
+                        <label className="text-sm font-semibold text-muted-foreground/80">Paste JSON payload</label>
                         <textarea
                             value={pastedJson}
                             onChange={(e) => setPastedJson(e.target.value)}
@@ -92,7 +92,7 @@ export function ParserSection({
                             <button
                                 type="button"
                                 onClick={() => handleCopy(jobTemplate, 'job')}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150"
                             >
                                 {copiedType === 'job' ? (
                                     <>
@@ -109,7 +109,7 @@ export function ParserSection({
                             <button
                                 type="button"
                                 onClick={() => handleCopy(internshipTemplate, 'internship')}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150"
                             >
                                 {copiedType === 'internship' ? (
                                     <>
@@ -126,7 +126,7 @@ export function ParserSection({
                             <button
                                 type="button"
                                 onClick={() => handleCopy(walkinTemplate, 'walkin')}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold capitalize tracking-widest bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold bg-muted/60 border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-all duration-150"
                             >
                                 {copiedType === 'walkin' ? (
                                     <>
@@ -144,7 +144,7 @@ export function ParserSection({
                                 <button
                                     type="button"
                                     onClick={() => handleCopy(governmentTemplate, 'govt')}
-                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold capitalize tracking-widest bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15 transition-all duration-150"
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold bg-primary/10 border border-primary/20 text-primary hover:bg-primary/15 transition-all duration-150"
                                 >
                                     {copiedType === 'govt' ? (
                                         <>
@@ -165,7 +165,7 @@ export function ParserSection({
                                 type="button"
                                 onClick={applyJsonToForm}
                                 disabled={!pastedJson.trim()}
-                                className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-md transition-all shadow-sm active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
+                                className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-md transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
                             >
                                 Apply JSON
                             </button>
@@ -173,14 +173,14 @@ export function ParserSection({
                                 <button
                                     type="button"
                                     onClick={clearAllFields}
-                                    className="px-4 h-10 bg-destructive/10 hover:bg-destructive/20 text-destructive font-bold text-sm rounded-md transition-all shadow-sm active:scale-[0.98] flex items-center justify-center gap-2"
+                                    className="px-4 h-10 bg-destructive/10 hover:bg-destructive/20 text-destructive font-bold text-sm rounded-md transition-all shadow-sm flex items-center justify-center gap-2"
                                 >
                                     Clear Form
                                 </button>
                             )}
                         </div>
                         {jsonReport && (
-                            <div className={`rounded-md border p-3 text-[10px] space-y-2 ${jsonReport.valid ? 'border-border bg-muted/40' : 'border-destructive/30 bg-destructive/5 text-destructive'}`}>
+                            <div className={`rounded-md border p-3 text-xs space-y-2 ${jsonReport.valid ? 'border-border bg-muted/40' : 'border-destructive/30 bg-destructive/5 text-destructive'}`}>
                                 {!jsonReport.valid ? (
                                     <p className="font-bold capitalize tracking-wider">Invalid JSON format</p>
                                 ) : (

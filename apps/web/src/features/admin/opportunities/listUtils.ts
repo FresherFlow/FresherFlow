@@ -1,5 +1,5 @@
 import { getApiBaseForEndpoint } from '@/lib/api/client';
-import { SITE_URL } from '@/lib/runtimeConfig';
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import type { Opportunity } from '@fresherflow/types';
 
 export const typeParamToEnum = (value: string) => {
@@ -69,7 +69,7 @@ export const getStatusBadgeClass = (opp: Opportunity & { expiredAt?: string | Da
 };
 
 import { OpportunityType } from '@fresherflow/types';
-import { getOpportunityPath } from '@/lib/opportunityPath';
+import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
 
 export const getPublicOpportunityHref = (opp: { id: string; slug?: string | null; type?: Opportunity['type'] }) => {
     return getOpportunityPath(opp.type as OpportunityType, opp.slug || opp.id);

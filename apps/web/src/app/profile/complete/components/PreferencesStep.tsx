@@ -1,7 +1,7 @@
 import React, { RefObject } from 'react';
 import { cn } from '@repo/ui/utils/cn';
 import { OPPORTUNITY_TYPES, WORK_MODES } from '@fresherflow/domain';
-import { Input } from '@/features/system/components/ui/Input';
+import { Input } from '@/ui/Input';
 import { ArrowPathIcon, CheckCircleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface PreferencesStepProps {

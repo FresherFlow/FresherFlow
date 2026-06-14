@@ -9,8 +9,8 @@ export default function FrozenAccountRoute() {
 // 
 // import { useEffect, useState } from 'react';
 // import Link from 'next/link';
-// import { useAuth } from '@/features/auth';
-// import { alertsApi } from '@/shared/api/client';
+// import { useAuth } from '@/lib/auth/AuthContext';
+// import { alertsApi } from '@/lib/api/client';
 // import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 // import { Loader2 } from 'lucide-react';
 // import { toast } from 'sonner';

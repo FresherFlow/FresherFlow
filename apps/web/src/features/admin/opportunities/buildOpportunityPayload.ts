@@ -1,4 +1,4 @@
-type OpportunityType = 'JOB' | 'INTERNSHIP' | 'WALKIN';
+type OpportunityType = 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT';
 type WorkMode = 'ONSITE' | 'HYBRID' | 'REMOTE';
 type SalaryPeriod = 'YEARLY' | 'MONTHLY';
 
@@ -41,7 +41,16 @@ export type BuildOpportunityPayloadInput = {
     autoTimeRange: string;
 };
 
-const splitCsv = (value: string) => value.split(',').map((s) => s.trim()).filter(Boolean);
+const splitCsv = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item).trim()).filter(Boolean);
+    }
+    if (typeof value !== 'string') return [];
+    return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+};
 
 const toNumberOrUndefined = (value: string) => {
     const trimmed = value.trim();

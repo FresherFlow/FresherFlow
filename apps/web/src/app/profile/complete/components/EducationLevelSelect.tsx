@@ -1,6 +1,6 @@
 'use client';
 
-import { Select } from '@/features/system/components/ui/Select';
+import { Select } from '@/ui/Select';
 
 type EducationLevelSelectProps = {
     value: string;

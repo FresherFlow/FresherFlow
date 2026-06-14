@@ -1,5 +1,5 @@
-import { TimelineEventView } from '../detailUtils';
-import { cn } from '@/shared/ui/cn';
+import { TimelineEventView } from '@/features/opportunities/utils/detailUtils';
+import { cn } from '@repo/ui/utils/cn';
 import { useState } from 'react';
 
 interface DetailTimelineProps {

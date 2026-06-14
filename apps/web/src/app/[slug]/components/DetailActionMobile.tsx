@@ -1,7 +1,7 @@
 import { type Opportunity, type User } from '@fresherflow/types';
-import { TimelineEventView } from '../detailUtils';
+import { TimelineEventView } from '@/features/opportunities/utils/detailUtils';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/ui/Button';
 // removed bookmark icons
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';

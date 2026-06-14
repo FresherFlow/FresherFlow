@@ -96,7 +96,7 @@ export const WALKIN_TEMPLATE = `{
 }`;
 
 export const GOVERNMENT_JOB_TEMPLATE = `{
-  "type": "JOB",
+  "type": "GOVERNMENT",
   "title": "SSC CGL 2026 Notification Out — 12256 Vacancies",
   "company": "Staff Selection Commission",
   "companyWebsite": "https://ssc.gov.in",
@@ -257,6 +257,26 @@ export const GOVERNMENT_JOB_TEMPLATE = `{
     ],
 
     "importantInstructions": "OTR mandatory. Sectional timing — practice each section within time limit. Fee via UPI / Net Banking / Debit Card.",
+
+    "requiredDocumentDetails": [
+      { "name": "10th Certificate", "mandatory": true, "notes": "Date of Birth proof" },
+      { "name": "Graduation Degree / Marksheet", "mandatory": true }
+    ],
+    "cadreDetails": [],
+    "postPreferences": [],
+    "serviceBond": {},
+    "reservationNotes": "Reservation as per Central Government norms for SC, ST, OBC, EWS, and PwBD.",
+    "reservationDetails": {
+      "SC": true,
+      "ST": true,
+      "OBC": true,
+      "EWS": true
+    },
+    "referenceLinks": {
+      "SSC Portal": "https://ssc.gov.in"
+    },
+    "sourceLastCheckedAt": "2026-06-12T00:00:00.000Z",
+    "extractionConfidence": 0.95,
 
     "officialSourceVerified": true,
     "admitCardUrl": null,

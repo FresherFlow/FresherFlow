@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { adminApi } from "@/shared/api/admin";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/features/system/components/ui/Card";
-import { Button } from "@/features/system/components/ui/Button";
-import { Badge } from "@/features/system/components/ui/Badge";
+import { adminApi } from "@/lib/api/admin";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/ui/Card";
+import { Button } from "@/ui/Button";
+import { Badge } from "@/ui/Badge";
 import { toast } from "sonner";
 import { Loader2, RefreshCw } from "lucide-react";
 import { SocialPost, SocialPostStatus, SocialPlatform } from "@fresherflow/types";

@@ -1,5 +1,5 @@
 import { getStatusLabel } from '@/features/admin/opportunities/listUtils';
-import { SITE_URL } from '@/lib/runtimeConfig';
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { getOpportunityPath } from '@fresherflow/domain';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 

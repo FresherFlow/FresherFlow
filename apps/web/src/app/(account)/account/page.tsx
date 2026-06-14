@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-// import RedirectToApp from '@/components/ui/RedirectToApp';
+// import RedirectToApp from '@/ui/RedirectToApp';
 
 export const metadata = {
     title: 'Account Settings',

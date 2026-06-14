@@ -1,6 +1,6 @@
 import type { Opportunity } from '@fresherflow/types';
-import { Button } from '@/components/ui/Button';
-import { formatTimeText12Hour } from '../detailUtils';
+import { Button } from '@/ui/Button';
+import { formatTimeText12Hour } from '@/features/opportunities/utils/detailUtils';
 
 type WalkInDetailsCardProps = {
     walkInDetails: NonNullable<Opportunity['walkInDetails']>;

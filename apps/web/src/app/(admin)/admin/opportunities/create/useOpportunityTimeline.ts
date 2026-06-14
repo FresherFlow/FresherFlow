@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import toast from 'react-hot-toast';
-import { adminApi } from '@/shared/api/admin';
+import { adminApi } from '@/lib/api/admin';
 import type { TimelineEvent } from '@/features/admin/opportunities/formUtils';
 
 const toLocalISOString = (dateInput: Date | string) => {

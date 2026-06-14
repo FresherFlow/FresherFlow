@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-// import { adminApi } from '@/shared/api/admin';
-import { AdminAnalyticsSkeleton } from '@/features/system/components/ui/Skeleton';
+// import { adminApi } from '@/lib/api/admin';
+import { AdminAnalyticsSkeleton } from '@/ui/Skeleton';
 
 /*
 type MetricsV2 = {

@@ -19,11 +19,11 @@ import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
 import KeyIcon from '@heroicons/react/24/outline/KeyIcon';
 import TrophyIcon from '@heroicons/react/24/outline/TrophyIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { FeedPageSkeleton, SkeletonJobCard } from '@/components/ui/Skeleton';
-import { useOpportunitiesFeed } from '@/features/opportunities/controller';
-import { useAuth } from '@/features/auth';
+import { Button } from '@/ui/Button';
+import { Input } from '@/ui/Input';
+import { FeedPageSkeleton, SkeletonJobCard } from '@/ui/Skeleton';
+import { useOpportunitiesFeed } from '@/features/opportunities/hooks/useOpportunitiesFeed';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { FilterDropdownBar, type FilterBarFilters } from '@/features/opportunities/components/FilterDropdownBar';
 import {
     GovtPhaseTabs,

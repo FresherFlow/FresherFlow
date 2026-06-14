@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowPathIcon, ExclamationTriangleIcon, CheckCircleIcon, ClockIcon, NoSymbolIcon } from '@heroicons/react/24/outline';
-import { adminApi } from '@/shared/api/admin';
+import { adminApi } from '@/lib/api/admin';
 import toast from 'react-hot-toast';
 import { useState } from 'react';
 import { SocialPost } from '@fresherflow/types';
@@ -86,24 +86,24 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
 
                   {!!post.payload && typeof post.payload === 'object' && !!(post.payload as Record<string, unknown>).text && (
                     <div className="mt-3">
-                      <p className="text-[10px] font-medium text-muted-foreground capitalize tracking-wider mb-1">Generated Caption Preview</p>
-                      <pre className="text-xs bg-muted/50 p-3 rounded-md border border-border/50 font-sans whitespace-pre-wrap text-foreground italic leading-relaxed">
+                      <p className="text-sm font-medium text-muted-foreground/80 mb-1">Generated Caption Preview</p>
+                      <pre className="text-sm bg-muted/50 p-3 rounded-md border border-border/50 font-sans whitespace-pre-wrap text-foreground italic leading-relaxed">
                         {String((post.payload as Record<string, unknown>).text)}
                       </pre>
                     </div>
                   )}
 
-                  <div className="text-xs text-muted-foreground mt-3 space-y-1">
+                  <div className="text-sm text-muted-foreground mt-3 space-y-1">
                     {post.publishedAt && (
                       <p>Published: {new Date(post.publishedAt).toLocaleString()}</p>
                     )}
                     {post.externalPostId && (
-                      <p>Ext ID: <code className="text-[10px] bg-muted px-1 py-0.5 rounded">{post.externalPostId}</code></p>
+                      <p>Ext ID: <code className="text-xs bg-muted px-1 py-0.5 rounded">{post.externalPostId}</code></p>
                     )}
                     {post.retryCount > 0 && (
                       <p>Retries: {post.retryCount}</p>
                     )}
-                    <p className="text-[10px] opacity-70">Dedupe Key: {post.dedupeKey}</p>
+                    <p className="text-xs opacity-70">Dedupe Key: {post.dedupeKey}</p>
                   </div>
                 </div>
               </div>
@@ -113,7 +113,7 @@ export function SocialStatusSection({ socialPosts, onRefresh }: SocialStatusSect
                   type="button"
                   disabled={retryingIds[post.id]}
                   onClick={() => handleRetry(post.id)}
-                  className="shrink-0 self-start md:self-center inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-4 text-xs font-medium text-foreground transition-all hover:bg-accent disabled:opacity-50"
+                  className="shrink-0 self-start md:self-center inline-flex h-8 items-center justify-center rounded-md border border-input bg-background px-4 text-sm font-semibold text-foreground transition-all hover:bg-accent disabled:opacity-50"
                 >
                   {retryingIds[post.id] ? (
                     <ArrowPathIcon className="w-3.5 h-3.5 animate-spin mr-1.5" />

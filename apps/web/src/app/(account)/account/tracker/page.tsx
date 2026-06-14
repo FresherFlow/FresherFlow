@@ -10,21 +10,21 @@ export default function FrozenAccountRoute() {
 // import { useEffect, useMemo, useState } from 'react';
 // import Link from 'next/link';
 // import { useRouter } from 'next/navigation';
-// import { useAuth } from '@/contexts/AuthContext';
+// import { useAuth } from '@/lib/auth/AuthContext';
 // import { actionsApi } from '@/lib/api/client';
 // import { ActionType } from '@fresherflow/types';
 // import type { Opportunity } from '@fresherflow/types';
-// import LoadingScreen from '@/components/ui/LoadingScreen';
+// import LoadingScreen from '@/ui/LoadingScreen';
 // import toast from 'react-hot-toast';
 // import {
 //     BriefcaseIcon,
 //     TrashIcon,
 //     ArrowPathRoundedSquareIcon
 // } from '@heroicons/react/24/outline';
-// import { cn } from '@/lib/utils';
-// import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
-// import { enqueueOfflineActionRemove, enqueueOfflineActionTrack } from '@/lib/offline/actionQueue';
-// import JobCard from '@/features/jobs/components/JobCard';
+// import { cn } from '@/lib/utils/utils';
+// import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
+// import { enqueueOfflineActionRemove, enqueueOfflineActionTrack } from '@/lib/api/offline/actionQueue';
+// import JobCard from '@/features/opportunities/components/JobCard';
 // 
 // type ActionRecord = {
 //     id: string;

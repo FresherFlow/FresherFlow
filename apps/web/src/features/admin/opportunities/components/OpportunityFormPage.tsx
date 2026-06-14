@@ -1,6 +1,6 @@
 'use client';
 
-import { useAdmin } from '@/features/admin/AdminContext';
+import { useAdmin } from '@/lib/auth/AdminContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import toast from 'react-hot-toast';
@@ -60,7 +60,7 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
 
     useEffect(() => {
         if (!isEditMode && initialGovernmentMode) {
-            form.setIsGovernmentJob(true);
+            form.setType('GOVERNMENT');
         }
     }, [form, initialGovernmentMode, isEditMode]);
 
@@ -75,14 +75,10 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
     };
 
     return (
-        <div className="max-w-6xl mx-auto px-4 pt-0 pb-24 md:pt-0 md:pb-32">
+        <div className="max-w-[1600px] mx-auto px-4 pt-0 pb-8 md:pb-12">
             <div className="mb-8">
                 <FormHeader
                     isEditMode={isEditMode}
-                    showParser={form.showParser}
-                    setShowParser={form.setShowParser}
-                    isGovernmentJob={form.isGovernmentJob}
-                    setIsGovernmentJob={form.setIsGovernmentJob}
                 />
             </div>
 
@@ -144,15 +140,9 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                 <BoltIcon className="w-6 h-6 animate-pulse" />
             </button>
 
-            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-6 md:space-y-8 pb-32 md:pb-20">
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                    <div className="lg:col-span-8 space-y-6 md:space-y-8">
-                        <TypeSelection
-                            type={form.type}
-                            setType={form.setType}
-                            isGovernmentJob={form.isGovernmentJob}
-                            setIsGovernmentJob={form.setIsGovernmentJob}
-                        />
+            <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 md:space-y-4">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <div className="lg:col-span-8 space-y-4 md:space-y-4">
                         <JobInfoSection
                             title={form.title} setTitle={form.setTitle}
                             company={form.company} setCompany={form.setCompany}
@@ -184,18 +174,14 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                             experienceMax={form.experienceMax} setExperienceMax={form.setExperienceMax}
                             passoutYears={form.passoutYears}
                             handlePassoutYearsChange={handlePassoutYearsChange}
+                            passoutYearMin={form.passoutYearMin} setPassoutYearMin={form.setPassoutYearMin}
+                            passoutYearMax={form.passoutYearMax} setPassoutYearMax={form.setPassoutYearMax}
+                            allowedAvailability={form.allowedAvailability} setAllowedAvailability={form.setAllowedAvailability}
                             requiredSkills={form.requiredSkills} setRequiredSkills={form.setRequiredSkills}
                             commonDegrees={commonDegrees}
                             visibleCourseOptions={visibleCourseOptions}
                             visibleSpecializationOptions={visibleSpecializationOptions}
                             customDegrees={customDegrees}
-                        />
-
-                        <ApplyLinkSection
-                            sourceLink={form.sourceLink} setSourceLink={form.setSourceLink}
-                            applyLink={form.applyLink} setApplyLink={form.setApplyLink}
-                            type={form.type}
-                            showUrlError={form.showUrlError}
                         />
 
                         {!form.isGovernmentJob && (
@@ -211,129 +197,6 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                             />
                         )}
 
-
-                        {form.isGovernmentJob && (
-                            <GovernmentJobSection
-                                governmentTags={form.governmentTags}
-                                setGovernmentTags={form.setGovernmentTags}
-                                department={form.governmentDepartment}
-                                setDepartment={form.setGovernmentDepartment}
-                                organization={form.governmentOrganization}
-                                setOrganization={form.setGovernmentOrganization}
-                                recruitingBody={form.recruitingBody}
-                                setRecruitingBody={form.setRecruitingBody}
-                                officialWebsiteUrl={form.officialWebsiteUrl}
-                                setOfficialWebsiteUrl={form.setOfficialWebsiteUrl}
-                                officialNotificationUrl={form.officialNotificationUrl}
-                                setOfficialNotificationUrl={form.setOfficialNotificationUrl}
-                                advertisementNumber={form.advertisementNumber}
-                                setAdvertisementNumber={form.setAdvertisementNumber}
-                                postName={form.postName}
-                                setPostName={form.setPostName}
-                                examName={form.examName}
-                                setExamName={form.setExamName}
-                                applicationMode={form.applicationMode}
-                                setApplicationMode={form.setApplicationMode}
-                                notificationIssuedDate={form.notificationIssuedDate}
-                                setNotificationIssuedDate={form.setNotificationIssuedDate}
-                                vacancyCount={form.vacancyCount}
-                                setVacancyCount={form.setVacancyCount}
-                                vacancyBreakdownJson={form.vacancyBreakdownJson}
-                                setVacancyBreakdownJson={form.setVacancyBreakdownJson}
-                                categoryVacanciesJson={form.categoryVacanciesJson}
-                                setCategoryVacanciesJson={form.setCategoryVacanciesJson}
-                                applicationFee={form.applicationFee}
-                                setApplicationFee={form.setApplicationFee}
-                                applicationFeeJson={form.applicationFeeJson}
-                                setApplicationFeeJson={form.setApplicationFeeJson}
-                                ageMin={form.ageMin}
-                                setAgeMin={form.setAgeMin}
-                                ageMax={form.ageMax}
-                                setAgeMax={form.setAgeMax}
-                                ageRelaxation={form.ageRelaxation}
-                                setAgeRelaxation={form.setAgeRelaxation}
-                                eligibilityDetailsJson={form.eligibilityDetailsJson}
-                                setEligibilityDetailsJson={form.setEligibilityDetailsJson}
-                                reservationNotes={form.reservationNotes}
-                                setReservationNotes={form.setReservationNotes}
-                                importantInstructions={form.importantInstructions}
-                                setImportantInstructions={form.setImportantInstructions}
-                                applicationStartDate={form.applicationStartDate}
-                                setApplicationStartDate={form.setApplicationStartDate}
-                                applicationEndDate={form.applicationEndDate}
-                                setApplicationEndDate={form.setApplicationEndDate}
-                                examDate={form.examDate}
-                                setExamDate={form.setExamDate}
-                                examDatesJson={form.examDatesJson}
-                                setExamDatesJson={form.setExamDatesJson}
-                                admitCardDate={form.admitCardDate}
-                                setAdmitCardDate={form.setAdmitCardDate}
-                                resultDate={form.resultDate}
-                                setResultDate={form.setResultDate}
-                                selectionStages={form.selectionStages}
-                                setSelectionStages={form.setSelectionStages}
-                                governmentRequiredDocuments={form.governmentRequiredDocuments}
-                                setGovernmentRequiredDocuments={form.setGovernmentRequiredDocuments}
-                                governmentRequiredDocumentsJson={form.governmentRequiredDocumentsJson}
-                                setGovernmentRequiredDocumentsJson={form.setGovernmentRequiredDocumentsJson}
-                                
-                                // New fields wired to UI
-                                examCenters={form.examCenters}
-                                setExamCenters={form.setExamCenters}
-                                examPatternJson={form.examPatternJson}
-                                setExamPatternJson={form.setExamPatternJson}
-                                skillTestsJson={form.skillTestsJson}
-                                setSkillTestsJson={form.setSkillTestsJson}
-                                examStagesJson={form.examStagesJson}
-                                setExamStagesJson={form.setExamStagesJson}
-                                importantDatesJson={form.importantDatesJson}
-                                setImportantDatesJson={form.setImportantDatesJson}
-                                qualificationDetailsJson={form.qualificationDetailsJson}
-                                setQualificationDetailsJson={form.setQualificationDetailsJson}
-                                physicalStandardsJson={form.physicalStandardsJson}
-                                setPhysicalStandardsJson={form.setPhysicalStandardsJson}
-                                extraMetadataJson={form.extraMetadataJson}
-                                setExtraMetadataJson={form.setExtraMetadataJson}
-                                feeBreakdownJson={form.feeBreakdownJson}
-                                setFeeBreakdownJson={form.setFeeBreakdownJson}
-                                ageRelaxationRulesJson={form.ageRelaxationRulesJson}
-                                setAgeRelaxationRulesJson={form.setAgeRelaxationRulesJson}
-                                officialSourceVerified={form.officialSourceVerified}
-                                setOfficialSourceVerified={form.setOfficialSourceVerified}
-                                notificationPdfUrl={form.notificationPdfUrl}
-                                setNotificationPdfUrl={form.setNotificationPdfUrl}
-                                admitCardUrl={form.admitCardUrl}
-                                setAdmitCardUrl={form.setAdmitCardUrl}
-                                resultUrl={form.resultUrl}
-                                setResultUrl={form.setResultUrl}
-                                answerKeyUrl={form.answerKeyUrl}
-                                setAnswerKeyUrl={form.setAnswerKeyUrl}
-                                syllabusUrl={form.syllabusUrl}
-                                setSyllabusUrl={form.setSyllabusUrl}
-                                previousPapersUrl={form.previousPapersUrl}
-                                setPreviousPapersUrl={form.setPreviousPapersUrl}
-                                cadreDetailsJson={form.cadreDetailsJson}
-                                setCadreDetailsJson={form.setCadreDetailsJson}
-                                postPreferencesJson={form.postPreferencesJson}
-                                setPostPreferencesJson={form.setPostPreferencesJson}
-                                serviceBondJson={form.serviceBondJson}
-                                setServiceBondJson={form.setServiceBondJson}
-                                reservationDetailsJson={form.reservationDetailsJson}
-                                setReservationDetailsJson={form.setReservationDetailsJson}
-                                referenceLinksJson={form.referenceLinksJson}
-                                setReferenceLinksJson={form.setReferenceLinksJson}
-                                cutOffMarksJson={form.cutOffMarksJson}
-                                setCutOffMarksJson={form.setCutOffMarksJson}
-                                applicationStatus={form.applicationStatus}
-                                setApplicationStatus={form.setApplicationStatus}
-                                governmentLevel={form.governmentLevel}
-                                setGovernmentLevel={form.setGovernmentLevel}
-                                vacancyNature={form.vacancyNature}
-                                setVacancyNature={form.setVacancyNature}
-                                jobCategory={form.jobCategory}
-                                setJobCategory={form.setJobCategory}
-                            />
-                        )}
 
                         {form.type === 'WALKIN' && (
                             <WalkInDetailsSection
@@ -373,7 +236,18 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                         )}
                     </div>
 
-                    <div className={`lg:col-span-4 space-y-6 md:space-y-8 ${form.isGovernmentJob ? '' : 'lg:sticky lg:top-8 self-start'}`}>
+                    <div className="lg:col-span-4 space-y-4 md:space-y-4">
+                        <TypeSelection
+                            type={form.type}
+                            setType={form.setType}
+                        />
+
+                        <ApplyLinkSection
+                            sourceLink={form.sourceLink} setSourceLink={form.setSourceLink}
+                            applyLink={form.applyLink} setApplyLink={form.setApplyLink}
+                            type={form.type}
+                            showUrlError={form.showUrlError}
+                        />
 
                         <LogisticsSection
                             type={form.type}
@@ -385,7 +259,10 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                         <SalarySection
                             salaryRange={form.salaryRange} setSalaryRange={form.setSalaryRange}
                             salaryAmount={form.salaryAmount} setSalaryAmount={form.setSalaryAmount}
-                            salaryPeriod={form.salaryPeriod} setSalaryPeriod={form.setSalaryPeriod}
+                            salaryPeriod={form.salaryPeriod}
+                            setSalaryPeriod={form.setSalaryPeriod}
+                            stipend={form.stipend}
+                            setStipend={form.setStipend}
                         />
 
 
@@ -396,6 +273,137 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                         />
                     </div>
                 </div>
+
+                {form.isGovernmentJob && (
+                    <div className="w-full pt-4">
+                        <GovernmentJobSection
+                            governmentTags={form.governmentTags}
+                            setGovernmentTags={form.setGovernmentTags}
+                            department={form.governmentDepartment}
+                            setDepartment={form.setGovernmentDepartment}
+                            organization={form.governmentOrganization}
+                            setOrganization={form.setGovernmentOrganization}
+                            recruitingBody={form.recruitingBody}
+                            setRecruitingBody={form.setRecruitingBody}
+                            officialWebsiteUrl={form.officialWebsiteUrl}
+                            setOfficialWebsiteUrl={form.setOfficialWebsiteUrl}
+                            officialNotificationUrl={form.officialNotificationUrl}
+                            setOfficialNotificationUrl={form.setOfficialNotificationUrl}
+                            advertisementNumber={form.advertisementNumber}
+                            setAdvertisementNumber={form.setAdvertisementNumber}
+                            postName={form.postName}
+                            setPostName={form.setPostName}
+                            examName={form.examName}
+                            setExamName={form.setExamName}
+                            applicationMode={form.applicationMode}
+                            setApplicationMode={form.setApplicationMode}
+                            notificationIssuedDate={form.notificationIssuedDate}
+                            setNotificationIssuedDate={form.setNotificationIssuedDate}
+                            vacancyCount={form.vacancyCount}
+                            setVacancyCount={form.setVacancyCount}
+                            vacancyBreakdownJson={form.vacancyBreakdownJson}
+                            setVacancyBreakdownJson={form.setVacancyBreakdownJson}
+                            categoryVacanciesJson={form.categoryVacanciesJson}
+                            setCategoryVacanciesJson={form.setCategoryVacanciesJson}
+                            applicationFee={form.applicationFee}
+                            setApplicationFee={form.setApplicationFee}
+                            applicationFeeJson={form.applicationFeeJson}
+                            setApplicationFeeJson={form.setApplicationFeeJson}
+                            ageMin={form.ageMin}
+                            setAgeMin={form.setAgeMin}
+                            ageMax={form.ageMax}
+                            setAgeMax={form.setAgeMax}
+                            ageRelaxation={form.ageRelaxation}
+                            setAgeRelaxation={form.setAgeRelaxation}
+                            eligibilityDetailsJson={form.eligibilityDetailsJson}
+                            setEligibilityDetailsJson={form.setEligibilityDetailsJson}
+                            reservationNotes={form.reservationNotes}
+                            setReservationNotes={form.setReservationNotes}
+                            importantInstructions={form.importantInstructions}
+                            setImportantInstructions={form.setImportantInstructions}
+                            applicationStartDate={form.applicationStartDate}
+                            setApplicationStartDate={form.setApplicationStartDate}
+                            applicationEndDate={form.applicationEndDate}
+                            setApplicationEndDate={form.setApplicationEndDate}
+                            examDate={form.examDate}
+                            setExamDate={form.setExamDate}
+                            examDatesJson={form.examDatesJson}
+                            setExamDatesJson={form.setExamDatesJson}
+                            admitCardDate={form.admitCardDate}
+                            setAdmitCardDate={form.setAdmitCardDate}
+                            resultDate={form.resultDate}
+                            setResultDate={form.setResultDate}
+                            selectionStages={form.selectionStages}
+                            setSelectionStages={form.setSelectionStages}
+                            governmentRequiredDocuments={form.governmentRequiredDocuments}
+                            setGovernmentRequiredDocuments={form.setGovernmentRequiredDocuments}
+                            governmentRequiredDocumentsJson={form.governmentRequiredDocumentsJson}
+                            setGovernmentRequiredDocumentsJson={form.setGovernmentRequiredDocumentsJson}
+                            
+                            // New fields wired to UI
+                            examCenters={form.examCenters}
+                            setExamCenters={form.setExamCenters}
+                            examPatternJson={form.examPatternJson}
+                            setExamPatternJson={form.setExamPatternJson}
+                            skillTestsJson={form.skillTestsJson}
+                            setSkillTestsJson={form.setSkillTestsJson}
+                            examStagesJson={form.examStagesJson}
+                            setExamStagesJson={form.setExamStagesJson}
+                            importantDatesJson={form.importantDatesJson}
+                            setImportantDatesJson={form.setImportantDatesJson}
+                            qualificationDetailsJson={form.qualificationDetailsJson}
+                            setQualificationDetailsJson={form.setQualificationDetailsJson}
+                            physicalStandardsJson={form.physicalStandardsJson}
+                            setPhysicalStandardsJson={form.setPhysicalStandardsJson}
+                            extraMetadataJson={form.extraMetadataJson}
+                            setExtraMetadataJson={form.setExtraMetadataJson}
+                            feeBreakdownJson={form.feeBreakdownJson}
+                            setFeeBreakdownJson={form.setFeeBreakdownJson}
+                            ageRelaxationRulesJson={form.ageRelaxationRulesJson}
+                            setAgeRelaxationRulesJson={form.setAgeRelaxationRulesJson}
+                            officialSourceVerified={form.officialSourceVerified}
+                            setOfficialSourceVerified={form.setOfficialSourceVerified}
+                            notificationPdfUrl={form.notificationPdfUrl}
+                            setNotificationPdfUrl={form.setNotificationPdfUrl}
+                            admitCardUrl={form.admitCardUrl}
+                            setAdmitCardUrl={form.setAdmitCardUrl}
+                            resultUrl={form.resultUrl}
+                            setResultUrl={form.setResultUrl}
+                            answerKeyUrl={form.answerKeyUrl}
+                            setAnswerKeyUrl={form.setAnswerKeyUrl}
+                            syllabusUrl={form.syllabusUrl}
+                            setSyllabusUrl={form.setSyllabusUrl}
+                            previousPapersUrl={form.previousPapersUrl}
+                            setPreviousPapersUrl={form.setPreviousPapersUrl}
+                            cadreDetailsJson={form.cadreDetailsJson}
+                            setCadreDetailsJson={form.setCadreDetailsJson}
+                            postPreferencesJson={form.postPreferencesJson}
+                            setPostPreferencesJson={form.setPostPreferencesJson}
+                            serviceBondJson={form.serviceBondJson}
+                            setServiceBondJson={form.setServiceBondJson}
+                            reservationDetailsJson={form.reservationDetailsJson}
+                            setReservationDetailsJson={form.setReservationDetailsJson}
+                            referenceLinksJson={form.referenceLinksJson}
+                            setReferenceLinksJson={form.setReferenceLinksJson}
+                            cutOffMarksJson={form.cutOffMarksJson}
+                            setCutOffMarksJson={form.setCutOffMarksJson}
+                            applicationStatus={form.applicationStatus}
+                            setApplicationStatus={form.setApplicationStatus}
+                            governmentLevel={form.governmentLevel}
+                            setGovernmentLevel={form.setGovernmentLevel}
+                            vacancyNature={form.vacancyNature}
+                            setVacancyNature={form.setVacancyNature}
+                            jobCategory={form.jobCategory}
+                            setJobCategory={form.setJobCategory}
+                            basicPay={form.basicPay}
+                            setBasicPay={form.setBasicPay}
+                            payLevel={form.payLevel}
+                            setPayLevel={form.setPayLevel}
+                            allowances={form.allowances}
+                            setAllowances={form.setAllowances}
+                        />
+                    </div>
+                )}
 
                 {/* Compact floating action pill */}
                 <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-2 bg-background border border-border rounded-full shadow-lg px-2 py-2">
@@ -416,6 +424,14 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                             <PaperAirplaneIcon className="w-4 h-4 mr-2" />
                         )}
                         {form.isLoading ? (isEditMode ? 'Updating...' : 'Publishing...') : (isEditMode ? 'Update' : 'Publish')}
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => form.setShowParser(true)}
+                        className="hidden md:inline-flex h-9 items-center justify-center rounded-full border border-input bg-background px-5 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-colors gap-1.5"
+                    >
+                        <BoltIcon className="w-4 h-4 text-primary" />
+                        Auto-fill
                     </button>
                 </div>
 

@@ -1,9 +1,9 @@
 import React from 'react';
 import Link from 'next/link';
 import { Opportunity } from '@fresherflow/types';
-import { SkeletonJobCard } from '@/features/system/components/ui/Skeleton';
+import { SkeletonJobCard } from '@/ui/Skeleton';
 import JobCard from '@/features/opportunities/components/JobCard';
-import { Button } from '@/features/system/components/ui/Button';
+import { Button } from '@/ui/Button';
 
 interface DashboardFeedProps {
     isLoading: boolean;

@@ -7,15 +7,15 @@ export default function FrozenUserRoute() {
 // /* WEB PIVOT: old user route implementation preserved below for later restoration.
 // 'use client';
 // 
-// import { useAuth } from '@/contexts/AuthContext';
-// import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
+// import { useAuth } from '@/lib/auth/AuthContext';
+// import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
 // import { useState, useEffect, useRef } from 'react';
 // import { useProfileForm } from '@/features/profile/hooks/useProfileForm';
 // import Link from 'next/link';
 // import toast from 'react-hot-toast';
 // import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 // import { useClickOutside } from '@/lib/hooks/useClickOutside';
-// import { calculateProfileCompletion } from '@/lib/profileCompletion';
+// import { calculateProfileCompletion } from '@/features/profile/profileCompletion';
 // 
 // // Components
 // import { ProfileStatusCard } from './components/ProfileStatusCard';

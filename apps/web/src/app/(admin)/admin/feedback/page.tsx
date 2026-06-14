@@ -1,13 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { useAdmin } from '@/features/admin/AdminContext';
+import { useAdmin } from '@/lib/auth/AdminContext';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { adminApi } from '@/lib/api/admin';
 import toast from 'react-hot-toast';
 import { cn } from '@repo/ui/utils/cn';
-import { AdminFeedbackSkeleton } from '@/features/system/components/ui/Skeleton';
+import { AdminFeedbackSkeleton } from '@/ui/Skeleton';
 import {
     ChatBubbleBottomCenterTextIcon,
     ExclamationTriangleIcon,
@@ -20,7 +20,7 @@ import {
     StarIcon,
 } from '@heroicons/react/24/outline';
 
-import { database } from '@/lib/firebase';
+import { database } from '@/lib/api/firebase';
 import { ref, onValue, remove } from 'firebase/database';
 import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
 

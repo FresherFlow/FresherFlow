@@ -1,6 +1,6 @@
 'use client';
 
-import { useAdmin } from '@/contexts/AdminContext';
+import { useAdmin } from '@/lib/auth/AdminContext';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
@@ -14,13 +14,14 @@ import {
     XMarkIcon,
     Cog8ToothIcon,
     ShareIcon,
-    BookOpenIcon
+    BookOpenIcon,
+    BellAlertIcon
 } from '@heroicons/react/24/outline';
-import AdminBottomNav from '@/shared/components/navigation/AdminBottomNav';
+import AdminBottomNav from '@/lib/navigation/AdminBottomNav';
 import { ThemeToggle } from '@repo/ui/ThemeToggle';
-import LoadingScreen from '@/components/ui/LoadingScreen';
+import LoadingScreen from '@/ui/LoadingScreen';
 import { getApiBaseForEndpoint } from '@/lib/api/client';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme } from '@/lib/providers/ThemeContext';
 
 const ADMIN_FEEDBACK_SEEN_KEY = 'ff_admin_feedback_last_seen_at';
 // const ADMIN_ALERT_POLL_MS = Number(process.env.NEXT_PUBLIC_ADMIN_ALERT_POLL_MS || 180000);
@@ -132,6 +133,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: '/admin/opportunities/create', label: 'Post New', icon: PlusCircleIcon },
         { href: '/admin/resources', label: 'Resources', icon: BookOpenIcon },
         { href: '/admin/captions', label: 'Captions', icon: ShareIcon },
+        { href: '/admin/push', label: 'Push Notifications', icon: BellAlertIcon },
         // { href: '/admin/analytics', label: 'Analytics', icon: ChartBarIcon },
         { href: '/admin/feedback', label: 'Feedback', icon: ChatBubbleBottomCenterTextIcon },
         // { href: '/admin/alerts', label: 'Alerts', icon: BellAlertIcon },
@@ -305,7 +307,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <main
                     className="flex-1 overflow-y-auto p-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:p-8 md:pt-8 w-full pb-20 md:pb-8"
                 >
-                    <div className="max-w-7xl mx-auto w-full">
+                    <div className="max-w-[1600px] mx-auto w-full">
                         {children}
                     </div>
                 </main>

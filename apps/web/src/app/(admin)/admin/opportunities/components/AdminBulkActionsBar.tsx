@@ -18,7 +18,7 @@ export const AdminBulkActionsBar = ({
     if (selectedCount === 0) return null;
 
     return (
-        <div className="flex flex-col gap-3 p-3 bg-primary/5 border border-primary/20 rounded-lg animate-in slide-in-from-top-4 duration-300 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3 p-3 bg-background border border-input rounded-sm md:flex-row md:items-center md:justify-between">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:gap-4">
                 <div className="flex items-center gap-2 flex-wrap">
                     <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold">

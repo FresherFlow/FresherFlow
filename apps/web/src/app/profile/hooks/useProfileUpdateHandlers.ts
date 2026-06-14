@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import toast from 'react-hot-toast';
-import { profileApi } from '@/shared/api/client';
+import { profileApi } from '@/lib/api/client';
 import { validateEducationData } from '@fresherflow/domain';
 
 export function useProfileUpdateHandlers(form: any, refreshUser: () => Promise<void>) {  

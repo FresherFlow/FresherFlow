@@ -1,7 +1,7 @@
 'use client';
 
-import CaptionsTool from '@/components/CaptionsTool';
+import CaptionsTool from '@/app/(admin)/admin/captions/components/CaptionsTool';
 
 export default function AdminCaptionsPage() {
-    return <CaptionsTool />;
+    return <CaptionsTool isAdmin={true} />;
 }

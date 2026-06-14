@@ -1,12 +1,12 @@
 import { Opportunity } from '@fresherflow/types';
-import { cn } from '@/shared/ui/cn';
-import CompanyLogo from '@/components/ui/CompanyLogo';
+import { cn } from '@repo/ui/utils/cn';
+import CompanyLogo from '@/ui/CompanyLogo';
 import { slugify } from '@fresherflow/utils';
 import Link from 'next/link';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import { OpportunityDeadlineBadge } from './OpportunityDeadlineBadge';
-import { DriveMetadata } from '@/shared/utils/driveTimeline';
+import { DriveMetadata } from '@/lib/utils/driveTimeline';
 
 function formatEmploymentText(text: string | null | undefined): string {
     if (!text) return 'Not specified';

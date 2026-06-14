@@ -1,6 +1,6 @@
 'use client';
 
-import { AdminProvider } from "@/contexts/AdminContext";
+import { AdminProvider } from '@/lib/auth/AdminContext';
 
 export default function AdminLayout({
     children,

@@ -10,9 +10,9 @@ export default function FrozenAccountRoute() {
 // import { useState } from 'react';
 // import Link from 'next/link';
 // import { usePathname } from 'next/navigation';
-// import { useAuth } from '@/features/auth';
-// import { appFeedbackApi } from '@/shared/api/client';
-// import LoadingScreen from '@/features/system/components/ui/LoadingScreen';
+// import { useAuth } from '@/lib/auth/AuthContext';
+// import { appFeedbackApi } from '@/lib/api/client';
+// import LoadingScreen from '@/ui/LoadingScreen';
 // import toast from 'react-hot-toast';
 // import {
 //     ArrowLeftIcon,

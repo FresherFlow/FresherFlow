@@ -1,52 +1,26 @@
-
+import { SmartSelect } from '@/features/admin/ui/SmartSelect';
 
 interface TypeSelectionProps {
-    type: 'JOB' | 'INTERNSHIP' | 'WALKIN';
-    setType: (type: 'JOB' | 'INTERNSHIP' | 'WALKIN') => void;
-    isGovernmentJob?: boolean;
-    setIsGovernmentJob?: (value: boolean) => void;
+    type: 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT';
+    setType: (type: 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT') => void;
 }
 
-export function TypeSelection({ type, setType, isGovernmentJob = false, setIsGovernmentJob }: TypeSelectionProps) {
+export function TypeSelection({ type, setType }: TypeSelectionProps) {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="flex flex-col justify-center">
-                <label className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-                    Opportunity Type
-                </label>
-                <select
+                <SmartSelect
+                    label="Opportunity Type"
                     value={type}
-                    onChange={(e) => setType(e.target.value as 'JOB' | 'INTERNSHIP' | 'WALKIN')}
-                    className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                    <option value="JOB">JOB - Direct apply</option>
-                    <option value="INTERNSHIP">INTERNSHIP - Direct apply</option>
-                    <option value="WALKIN">WALKIN - In-person</option>
-                </select>
+                    onChange={(val) => setType(val as 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT')}
+                    options={[
+                        { label: 'JOB - Direct apply', value: 'JOB' },
+                        { label: 'INTERNSHIP - Direct apply', value: 'INTERNSHIP' },
+                        { label: 'WALKIN - In-person', value: 'WALKIN' },
+                        { label: 'GOVERNMENT', value: 'GOVERNMENT' },
+                    ]}
+                />
             </div>
-
-            {setIsGovernmentJob && (
-                <div className="flex items-center justify-between p-2.5 rounded-md border border-border bg-card">
-                    <p className="text-xs font-bold text-foreground">Govt Job Mode</p>
-
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={isGovernmentJob}
-                            onClick={() => setIsGovernmentJob(!isGovernmentJob)}
-                            className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-primary ${
-                                isGovernmentJob ? 'bg-primary' : 'bg-muted-foreground/30'
-                            }`}
-                        >
-                            <span
-                                aria-hidden="true"
-                                className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                    isGovernmentJob ? 'translate-x-4' : 'translate-x-0'
-                                }`}
-                            />
-                        </button>
-                    </div>
-                )}
-            </div>
+        </div>
     );
 }

@@ -1,4 +1,4 @@
-import LoadingScreen from '@/features/system/components/ui/LoadingScreen';
+import LoadingScreen from '@/ui/LoadingScreen';
 
 export default function Loading() {
     return <LoadingScreen message="Loading..." />;

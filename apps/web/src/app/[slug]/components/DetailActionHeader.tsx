@@ -1,6 +1,6 @@
 import { type Opportunity, type User } from '@fresherflow/types';
 import { useRouter } from 'next/navigation';
-import { cn } from '@/shared/ui/cn';
+import { cn } from '@repo/ui/utils/cn';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';

@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
 import { Suspense } from 'react';
-import { FeedPageSkeleton } from '@/components/ui/Skeleton';
+import { FeedPageSkeleton } from '@/ui/Skeleton';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
-import { OpportunitiesFeedClient } from '@/features/jobs/components/OpportunitiesFeedClient';
+import { OpportunitiesFeedClient } from '@/features/opportunities/components/OpportunitiesFeedClient';
 
 // On-demand revalidation via /api/revalidate — called when jobs are published/expired.
 // No time-based revalidation: avoids hourly ISR writes when the feed hasn't changed.

@@ -1,7 +1,7 @@
 'use client';
 
 import { ShieldCheckIcon, ChevronRightIcon } from '@heroicons/react/24/outline';
-import { Button } from '@/features/system/components/ui/Button';
+import { Button } from '@/ui/Button';
 import Link from 'next/link';
 
 interface ProfileReadinessRequiredProps {

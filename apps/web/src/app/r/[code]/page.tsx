@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import type { Metadata } from 'next';
-import { API_URL } from '@/lib/runtimeConfig';
+import { API_URL } from '@/lib/utils/runtimeConfig';
 
 export const metadata: Metadata = {
     robots: {

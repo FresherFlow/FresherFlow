@@ -1,7 +1,7 @@
 // removed unused Opportunity import
-import { Button } from '@/components/ui/Button';
-import { formatLpaValue } from '../detailUtils';
-import { DriveMetadata, DriveSalaryRow } from '@/shared/utils/driveTimeline';
+import { Button } from '@/ui/Button';
+import { formatLpaValue } from '@/features/opportunities/utils/detailUtils';
+import { DriveMetadata, DriveSalaryRow } from '@/lib/utils/driveTimeline';
 
 interface DetailCampusDriveInfoProps {
     driveMeta: DriveMetadata;

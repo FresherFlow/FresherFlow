@@ -3,8 +3,8 @@ import { permanentRedirect } from 'next/navigation';
 import JobCard from '@/features/opportunities/components/JobCard';
 import { GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
-import CompanyLogo from '@/components/ui/CompanyLogo';
-import { SITE_URL } from '@/lib/runtimeConfig';
+import CompanyLogo from '@/ui/CompanyLogo';
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export const revalidate = false;
 // Same as /[slug] — dynamicParams = true to support dynamically loaded new company profiles.

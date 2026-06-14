@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
-import { alertsApi } from '@/shared/api/client';
-import { AuthContext } from '@/features/auth';
+import { alertsApi } from '@/lib/api/client';
+import { AuthContext } from '@/lib/auth/AuthContext';
 import toast from 'react-hot-toast';
 
 const CACHE_KEY = 'ff_unread_count_cache';

@@ -9,9 +9,9 @@ export default function FrozenUserRoute() {
 // 
 // import { useState, useEffect, useRef } from 'react';
 // import { AcademicCapIcon, SparklesIcon } from '@heroicons/react/24/outline';
-// import { useAuth } from '@/contexts/AuthContext';
+// import { useAuth } from '@/lib/auth/AuthContext';
 // import { useRouter } from 'next/navigation';
-// import { AuthGate } from '@/components/gates/ProfileGate';
+// import { AuthGate } from '@/lib/components/ProfileGate';
 // import { useProfileForm } from '@/features/profile/hooks/useProfileForm';
 // import { useClickOutside } from '@/lib/hooks/useClickOutside';
 // 

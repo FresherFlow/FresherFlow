@@ -11,7 +11,7 @@ import {
     CloudIcon,
     SignalIcon,
 } from '@heroicons/react/24/outline';
-import { database } from '@/lib/firebase';
+import { database } from '@/lib/api/firebase';
 import { ref, onValue } from 'firebase/database';
 import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
 

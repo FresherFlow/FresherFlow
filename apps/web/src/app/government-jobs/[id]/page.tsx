@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { API_URL } from '@/lib/runtimeConfig';
-import { getOpportunityPath } from '@/lib/opportunityPath';
+import { API_URL } from '@/lib/utils/runtimeConfig';
+import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
 
 type Props = {
     params: Promise<{ id: string }>;

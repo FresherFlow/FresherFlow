@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { adminApi } from '@/shared/api/admin';
+import { adminApi } from '@/lib/api/admin';
 import { extractDomain, overlapRatio, tokenSet, type DuplicateOpportunity } from '@/features/admin/opportunities/formUtils';
 
 type DuplicateCandidate = {

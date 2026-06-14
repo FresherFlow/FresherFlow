@@ -1,11 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { adminAuthApi } from "@/shared/api/client";
+import { adminAuthApi } from "@/lib/api/client";
 import { toast } from "sonner";
-import { Button } from "@/features/system/components/ui/Button";
-import { Input } from "@/features/system/components/ui/Input";
-import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/features/system/components/ui/Card";
+import { Button } from "@/ui/Button";
+import { Input } from "@/ui/Input";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/ui/Card";
 import { ShieldCheck, Loader2, Smartphone } from "lucide-react";
 import Image from "next/image";
 

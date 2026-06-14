@@ -8,15 +8,15 @@ export default function FrozenAccountRoute() {
 // 'use client';
 // 
 // import { useState, useEffect, useCallback, useContext } from 'react';
-// import { AuthContext } from '@/features/auth';
-// import { savedApi } from '@/shared/api/client';
+// import { AuthContext } from '@/lib/auth/AuthContext';
+// import { savedApi } from '@/lib/api/client';
 // import type { Opportunity } from '@fresherflow/types';
 // import { ActionType } from '@fresherflow/types';
 // import Link from 'next/link';
 // import { useRouter } from 'next/navigation';
 // import { MapPinIcon, TrashIcon } from '@heroicons/react/24/outline';
 // import toast from 'react-hot-toast';
-// import LoadingScreen from '@/features/system/components/ui/LoadingScreen';
+// import LoadingScreen from '@/ui/LoadingScreen';
 // import { getOpportunityPathFromItem } from '@fresherflow/domain';
 // 
 // export default function SavedJobsPage() {

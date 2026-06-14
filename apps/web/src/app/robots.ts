@@ -1,5 +1,5 @@
 import type { MetadataRoute } from 'next';
-import { PUBLIC_WEB_HOST } from '@/lib/runtimeConfig';
+import { PUBLIC_WEB_HOST } from '@/lib/utils/runtimeConfig';
 
 export default function robots(): MetadataRoute.Robots {
     const host = PUBLIC_WEB_HOST

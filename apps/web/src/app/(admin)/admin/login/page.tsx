@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { adminAuthApi } from '@/shared/api/client';
+import { adminAuthApi } from '@/lib/api/client';
 import { setAdminAccessToken } from '@/lib/api/client';
 import { startRegistration, startAuthentication } from '@simplewebauthn/browser';
 import toast from 'react-hot-toast';
-import { Button } from '@/features/system/components/ui/Button';
+import { Button } from '@/ui/Button';
 import {
     ShieldCheckIcon,
     FingerPrintIcon
@@ -155,7 +155,7 @@ export default function AdminLoginPage() {
 
     return (
         <div className="min-h-screen bg-background flex items-center justify-center p-4">
-            <div className="max-w-md w-full space-y-8 bg-card border border-border p-8 rounded-2xl shadow-2xl relative overflow-hidden">
+            <div className="max-w-md w-full space-y-8 bg-card border border-border p-8 relative">
                 {/* Visual Accent */}
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/20 via-primary to-primary/20 opacity-50" />
 
@@ -177,10 +177,10 @@ export default function AdminLoginPage() {
                     <button
                         onClick={handleQuickLogin}
                         disabled={isLoading}
-                        className="w-full group relative flex flex-col items-center justify-center p-8 bg-primary text-primary-foreground rounded-2xl border border-primary/20 shadow-xl shadow-primary/10 transition-all active:scale-[0.98] disabled:opacity-50"
+                        className="w-full group relative flex flex-col items-center justify-center p-8 bg-primary text-primary-foreground border border-primary/20 transition-all disabled:opacity-50"
                     >
                         <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                        <FingerPrintIcon className="w-12 h-12 mb-3 group-hover:scale-110 transition-transform duration-300" />
+                        <FingerPrintIcon className="w-12 h-12 mb-3" />
                         <span className="text-base font-bold capitalize tracking-widest">
                             {isLoading ? 'Verifying...' : 'Quick Access'}
                         </span>
@@ -189,7 +189,7 @@ export default function AdminLoginPage() {
 
                     {/* Secondary/Initial Creation */}
                     {showOtherOptions && (
-                        <form onSubmit={handleRegisterNewPasskey} className="p-6 bg-muted/30 rounded-2xl border border-border animate-in slide-in-from-top-2 duration-300 space-y-4">
+                        <form onSubmit={handleRegisterNewPasskey} className="p-6 bg-muted/30 border border-border space-y-4">
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
                                     Register New Device
@@ -199,7 +199,7 @@ export default function AdminLoginPage() {
                                     placeholder="admin@yourdomain.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                                    className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all"
                                 />
                             </div>
                             <div className="space-y-1.5">
@@ -211,7 +211,7 @@ export default function AdminLoginPage() {
                                     placeholder="Enter backend bootstrap secret"
                                     value={bootstrapSecret}
                                     onChange={(e) => setBootstrapSecret(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                                    className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all"
                                 />
                             </div>
                             <Button
@@ -224,7 +224,7 @@ export default function AdminLoginPage() {
                         </form>
                     )}
 
-                    <form onSubmit={handleTotpLogin} className="p-6 bg-muted/30 rounded-2xl border border-border space-y-4">
+                    <form onSubmit={handleTotpLogin} className="p-6 bg-muted/30 border border-border space-y-4">
                         {!adminEmailConfigured && (
                             <div className="space-y-1.5">
                                 <label className="text-[10px] font-bold capitalize tracking-widest text-muted-foreground ml-1">
@@ -235,7 +235,7 @@ export default function AdminLoginPage() {
                                     placeholder="admin@yourdomain.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all"
+                                    className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all"
                                 />
                             </div>
                         )}
@@ -251,7 +251,7 @@ export default function AdminLoginPage() {
                                 placeholder="123456"
                                 value={totpCode}
                                 onChange={(e) => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                                className="w-full bg-background border border-border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all tracking-[0.2em]"
+                                className="w-full bg-background border border-border px-4 py-3 text-sm focus:outline-none focus:border-primary transition-all tracking-[0.2em]"
                             />
                         </div>
                         <Button

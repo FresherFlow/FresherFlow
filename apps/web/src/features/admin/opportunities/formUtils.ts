@@ -1,14 +1,14 @@
-import { buildShareUrl, type SharePlatform } from '@/lib/share';
+import { buildShareUrl, type SharePlatform } from '@/lib/utils/share';
 export type { SharePlatform };
-import { SITE_URL } from '@/lib/runtimeConfig';
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
-import { getOpportunityPath } from '@/lib/opportunityPath';
+import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
 import {
     normalizeCourseName,
     normalizeSpecializationName,
-} from '@/lib/profileConstants';
+} from '@/features/profile/profileConstants';
 
-export type OpportunityKind = 'JOB' | 'INTERNSHIP' | 'WALKIN';
+export type OpportunityKind = 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT';
 
 export interface ParsedJob {
     title?: string;
@@ -145,6 +145,8 @@ export interface ParsedJob {
         basicPay?: number | string;
         payLevel?: string;
         allowances?: string[];
+        sourceLastCheckedAt?: string;
+        extractionConfidence?: number;
     };
     walkInDetails?: {
         dateRange?: string;

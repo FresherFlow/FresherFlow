@@ -2,14 +2,14 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { type Opportunity } from '@fresherflow/types';
 // removed unused toast imports
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
-import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
+import { Button } from '@/ui/Button';
+import { OpportunityDetailSkeleton } from '@/ui/Skeleton';
 // removed unused feedbackApi import
 
 // EligibilitySnapshotCard removed
@@ -28,9 +28,9 @@ import { GovernmentJobDetailView } from './components/GovernmentJobDetailView';
 
 
 // Hooks & Utils
-import { useOpportunityDetail } from './useOpportunityDetail';
-import { useOpportunityDerivedState } from './useOpportunityDerivedState';
-import { useOpportunityReport } from './useOpportunityReport';
+import { useOpportunityDetail } from '@/features/opportunities/hooks/useOpportunityDetail';
+import { useOpportunityDerivedState } from '@/features/opportunities/hooks/useOpportunityDerivedState';
+import { useOpportunityReport } from '@/features/opportunities/hooks/useOpportunityReport';
 
 export default function OpportunityDetailClient({ 
     id, 

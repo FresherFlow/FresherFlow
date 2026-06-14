@@ -1,5 +1,5 @@
-// import TelegramBroadcastPanel from "@/components/admin/TelegramBroadcastPanel";
-// import SocialBroadcastPanel from "@/components/admin/SocialBroadcastPanel";
+// import TelegramBroadcastPanel from "@/features/admin/components/TelegramBroadcastPanel";
+// import SocialBroadcastPanel from "@/features/admin/components/SocialBroadcastPanel";
 // import DeliveryControlsPanel from "@/features/admin/components/DeliveryControlsPanel";
 
 export const metadata = {

@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import UserIcon from '@heroicons/react/24/outline/UserIcon';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
-import { Button } from '@/features/system/components/ui/Button';
+import { Button } from '@/ui/Button';
 
 
 interface DashboardHeaderProps {

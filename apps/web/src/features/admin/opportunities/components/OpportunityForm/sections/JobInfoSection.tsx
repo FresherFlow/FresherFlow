@@ -1,4 +1,6 @@
 import { BriefcaseIcon } from '@heroicons/react/24/outline';
+import { SmartInput } from '@/features/admin/ui/SmartInput';
+import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
 
 interface JobInfoSectionProps {
     title: string;
@@ -41,135 +43,101 @@ export function JobInfoSection({
     duplicateCheckComponent
 }: JobInfoSectionProps) {
     return (
-        <div className="space-y-5 md:space-y-6 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm">
-            <h3 className="text-sm md:text-base font-semibold text-foreground flex items-center gap-2">
+        <div className="space-y-5 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm">
+            <h3 className="text-sm md:text-base font-semibold text-foreground flex items-center gap-2 mb-4">
                 <BriefcaseIcon className="w-4 h-4 text-muted-foreground" />
                 Core details
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Title *</label>
-                    <input
-                        required
-                        value={title}
-                        onChange={(e) => setTitle(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
-                        placeholder="e.g. Frontend Engineer"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Company *</label>
-                    <input
-                        required
-                        value={company}
-                        onChange={(e) => setCompany(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
-                        placeholder="e.g. Google"
-                    />
-                </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <SmartInput
+                    label="Title"
+                    required
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    placeholder="e.g. Frontend Engineer"
+                />
+                
+                <SmartInput
+                    label="Company"
+                    required
+                    value={company}
+                    onChange={(e) => setCompany(e.target.value)}
+                    placeholder="e.g. Google"
+                />
             </div>
 
             {duplicateCheckComponent}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Company website (logo)</label>
-                    <input
-                        type="url"
-                        value={companyWebsite}
-                        onChange={(e) => setCompanyWebsite(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
-                        placeholder="https://wipro.com"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Company Logo URL</label>
-                    <input
-                        type="url"
-                        value={companyLogoUrl}
-                        onChange={(e) => setCompanyLogoUrl(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
-                        placeholder="e.g. https://cdn.fresherflow.in/logos/rrb.png"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Custom SEO Slug</label>
-                    <input
-                        value={customSlug}
-                        onChange={(e) => setCustomSlug(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
-                        placeholder="e.g. ssc-cgl-2026 (Optional)"
-                    />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Function</label>
-                    <input
-                        value={jobFunction}
-                        onChange={(e) => setJobFunction(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
-                        placeholder="e.g. Sales, Banking, IT"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Employment type</label>
-                    <input
-                        value={employmentType}
-                        onChange={(e) => setEmploymentType(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
-                        placeholder="e.g. Full Time, Permanent"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Benefits</label>
-                    <input
-                        value={incentives}
-                        onChange={(e) => setIncentives(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 transition-all shadow-sm"
-                        placeholder="e.g. Rs. 20,000 to 1,00,000"
-                    />
-                </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Selection process</label>
-                    <textarea
-                        value={selectionProcess}
-                        onChange={(e) => setSelectionProcess(e.target.value)}
-                        rows={3}
-                        className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary resize-y transition-all shadow-sm"
-                        placeholder="e.g. Aptitude Test > Technical Interview > HR Round"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Notes / highlights</label>
-                    <textarea
-                        value={notesHighlights}
-                        onChange={(e) => setNotesHighlights(e.target.value)}
-                        rows={3}
-                        className="flex min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary resize-y transition-all shadow-sm"
-                        placeholder="e.g. Bond: 12 months, Training: 3 months, Immediate joiners preferred"
-                    />
-                </div>
-            </div>
-
-            <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">Description</label>
-                <p className="text-[11px] text-muted-foreground">
-                    Supports line breaks, bullet lines like <span className="font-mono">- Requirement</span>, and bold section headings like <span className="font-mono">**Responsibilities**</span>.
-                </p>
-                <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    rows={8}
-                    className="flex min-h-40 w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 resize-y transition-all shadow-sm"
-                    placeholder={"**Responsibilities**\n- Build features\n- Write tests\n\n**Requirements**\n- React\n- TypeScript"}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <SmartInput
+                    label="Company website (logo)"
+                    value={companyWebsite}
+                    type="url"
+                    onChange={(e) => setCompanyWebsite(e.target.value)}
+                    placeholder="https://wipro.com"
+                />
+                <SmartInput
+                    label="Company Logo URL"
+                    value={companyLogoUrl}
+                    type="url"
+                    onChange={(e) => setCompanyLogoUrl(e.target.value)}
+                    placeholder="e.g. https://cdn.fresherflow.in/logos/rrb.png"
+                />
+                <SmartInput
+                    label="Custom SEO Slug"
+                    value={customSlug}
+                    onChange={(e) => setCustomSlug(e.target.value)}
+                    placeholder="e.g. ssc-cgl-2026 (Optional)"
                 />
             </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <SmartInput
+                    label="Function"
+                    value={jobFunction}
+                    onChange={(e) => setJobFunction(e.target.value)}
+                    placeholder="e.g. Sales, Banking, IT"
+                />
+                <SmartInput
+                    label="Employment type"
+                    value={employmentType}
+                    onChange={(e) => setEmploymentType(e.target.value)}
+                    placeholder="e.g. Full Time, Permanent"
+                />
+                <SmartInput
+                    label="Benefits"
+                    value={incentives}
+                    onChange={(e) => setIncentives(e.target.value)}
+                    placeholder="e.g. Rs. 20,000 to 1,00,000"
+                />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <SmartTextarea
+                    label="Selection process"
+                    value={selectionProcess}
+                    onChange={(e) => setSelectionProcess(e.target.value)}
+                    rows={3}
+                    placeholder="e.g. Aptitude Test > Technical Interview > HR Round"
+                />
+                <SmartTextarea
+                    label="Notes / highlights"
+                    value={notesHighlights}
+                    onChange={(e) => setNotesHighlights(e.target.value)}
+                    rows={3}
+                    placeholder="e.g. Bond: 12 months, Training: 3 months, Immediate joiners preferred"
+                />
+            </div>
+
+            <SmartTextarea
+                label="Description"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={8}
+                helpText={<>Supports line breaks, bullet lines like <span className="font-mono">- Requirement</span>, and bold section headings like <span className="font-mono">**Responsibilities**</span>.</>}
+                placeholder={"**Responsibilities**\n- Build features\n- Write tests\n\n**Requirements**\n- React\n- TypeScript"}
+            />
         </div>
     );
 }

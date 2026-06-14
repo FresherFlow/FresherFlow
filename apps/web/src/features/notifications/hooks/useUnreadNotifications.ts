@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
 import { alertsApi } from '@/lib/api/client';
-import { AuthContext } from '@/features/auth';
+import { AuthContext } from '@/lib/auth/AuthContext';
 import toast from 'react-hot-toast';
 
 const CACHE_KEY = 'ff_unread_count_cache';

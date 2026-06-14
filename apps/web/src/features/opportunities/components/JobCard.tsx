@@ -12,13 +12,13 @@ import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import FireIcon from '@heroicons/react/24/outline/FireIcon';
 import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
-import CompanyLogo from '@/components/ui/CompanyLogo';
+import CompanyLogo from '@/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@repo/ui/utils/error-web';
-import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
-import { getDriveMetadata, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
-import { getOpportunityDisplaySalary, normalizeSalaryInput, parseOpportunityLocation } from '@/lib/opportunityDisplay';
-import { buildShareUrl } from '@/lib/share';
+import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
+import { getDriveMetadata, isCampusDriveOpportunity } from '@/lib/utils/driveTimeline';
+import { getOpportunityDisplaySalary, normalizeSalaryInput, parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
+import { buildShareUrl } from '@/lib/utils/share';
 
 /**
  * JobCard - REFINED TYPOGRAPHY PATTERN
@@ -78,7 +78,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
             url: shareUrl,
         };
 
-        import('@/shared/api/client').then(({ growthApi }) => {
+        import('@/lib/api/client').then(({ growthApi }) => {
             growthApi.trackEvent('SHARE_JOB', 'opportunity_card').catch(() => undefined);
         });
 

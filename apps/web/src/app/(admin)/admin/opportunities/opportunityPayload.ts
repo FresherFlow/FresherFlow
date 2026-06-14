@@ -1,4 +1,4 @@
-type OpportunityType = 'JOB' | 'INTERNSHIP' | 'WALKIN';
+type OpportunityType = 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT';
 type WorkMode = 'ONSITE' | 'HYBRID' | 'REMOTE';
 type SalaryPeriod = 'YEARLY' | 'MONTHLY';
 
@@ -13,12 +13,16 @@ export type OpportunityFormValues = {
     allowedCourses: string[];
     allowedSpecializations: string[];
     passoutYears: number[];
+    passoutYearMin: string;
+    passoutYearMax: string;
+    allowedAvailability: string;
     requiredSkills: string;
     locations: string;
     workMode: WorkMode;
     salaryRange: string;
     salaryAmount: string;
     salaryPeriod: SalaryPeriod;
+    stipend: string;
     employmentType: string;
     incentives: string;
     jobFunction: string;
@@ -68,6 +72,17 @@ export type OpportunityFormValues = {
     feeBreakdownJson: string;
     ageRelaxationRulesJson: string;
     officialSourceVerified: boolean;
+    sourceLastCheckedAt: string;
+    extractionConfidence: string;
+    examName: string;
+    notificationIssuedDate: string;
+    categoryVacanciesJson: string;
+    cadreDetailsJson: string;
+    postPreferencesJson: string;
+    serviceBondJson: string;
+    reservationDetailsJson: string;
+    referenceLinksJson: string;
+    cutOffMarksJson: string;
     notificationPdfUrl: string;
     admitCardUrl: string;
     resultUrl: string;
@@ -101,11 +116,16 @@ export type OpportunityFormValues = {
     appRequiredItems: string[];
 };
 
-const toCsvList = (value: string) =>
-    value
+const toCsvList = (value: unknown): string[] => {
+    if (Array.isArray(value)) {
+        return value.map((item) => String(item).trim()).filter(Boolean);
+    }
+    if (typeof value !== 'string') return [];
+    return value
         .split(',')
         .map((item) => item.trim())
         .filter(Boolean);
+};
 
 
 const toFloat = (value: string) => {
@@ -185,7 +205,7 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
     }
 
     const payload: Record<string, unknown> = {
-        type: values.type,
+        type: values.isGovernmentJob ? 'GOVERNMENT' : values.type,
         title: values.title,
         company: values.company,
         companyWebsite: values.companyWebsite || null,
@@ -195,11 +215,15 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
         allowedCourses: values.allowedCourses,
         allowedSpecializations: values.allowedSpecializations,
         allowedPassoutYears: values.passoutYears,
+        passoutYearMin: values.passoutYearMin ? parseInt(values.passoutYearMin, 10) : null,
+        passoutYearMax: values.passoutYearMax ? parseInt(values.passoutYearMax, 10) : null,
+        allowedAvailability: values.allowedAvailability ? toCsvList(values.allowedAvailability) : [],
         requiredSkills: toCsvList(values.requiredSkills),
         locations: toCsvList(values.locations),
         workMode: values.type === 'WALKIN' ? undefined : (values.workMode || null),
         salaryRange: values.salaryRange || formatSalaryRange(values.salaryAmount, values.salaryPeriod) || null,
         salaryPeriod: values.salaryPeriod || null,
+        stipend: values.stipend || null,
         employmentType: values.employmentType || null,
         incentives: values.incentives || null,
         jobFunction: values.jobFunction || null,
@@ -245,6 +269,16 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
             governmentLevel: values.governmentLevel || undefined,
             vacancyNature: values.vacancyNature || undefined,
             jobCategory: toCsvList(values.jobCategory),
+            examName: values.examName || undefined,
+            postName: values.postName || undefined,
+            notificationIssuedDate: values.notificationIssuedDate || undefined,
+            categoryVacancies: parseJsonInput(values.categoryVacanciesJson),
+            cadreDetails: parseJsonInput(values.cadreDetailsJson),
+            postPreferences: parseJsonInput(values.postPreferencesJson),
+            serviceBond: parseJsonInput(values.serviceBondJson),
+            reservationDetails: parseJsonInput(values.reservationDetailsJson),
+            referenceLinks: parseJsonInput(values.referenceLinksJson),
+            cutOffMarks: parseJsonInput(values.cutOffMarksJson),
             officialWebsiteUrl: values.officialWebsiteUrl || undefined,
             officialNotificationUrl: values.officialNotificationUrl || undefined,
             advertisementNumber: values.advertisementNumber || undefined,
@@ -280,6 +314,8 @@ export const buildOpportunityPayload = (values: OpportunityFormValues): Record<s
             feeBreakdown: parseJsonInput(values.feeBreakdownJson),
             ageRelaxationRules: parseJsonInput(values.ageRelaxationRulesJson),
             officialSourceVerified: values.officialSourceVerified || undefined,
+            sourceLastCheckedAt: values.sourceLastCheckedAt || undefined,
+            extractionConfidence: values.extractionConfidence ? parseFloat(values.extractionConfidence) : undefined,
             notificationPdfUrl: values.notificationPdfUrl || undefined,
             admitCardUrl: values.admitCardUrl || undefined,
             resultUrl: values.resultUrl || undefined,

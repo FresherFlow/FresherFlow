@@ -1,10 +1,10 @@
 import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
 import { cache } from 'react';
-import { getOpportunityPath } from '@/lib/opportunityPath';
-import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
-import { getDriveDates, isCampusDriveOpportunity } from '@/shared/utils/driveTimeline';
-import { SITE_URL } from '@/lib/runtimeConfig';
+import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
+import { parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
+import { getDriveDates, isCampusDriveOpportunity } from '@/lib/utils/driveTimeline';
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 
 export interface ExtendedOpportunity extends Opportunity {

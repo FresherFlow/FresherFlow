@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { joblinksApi } from '@/lib/api/client';
 import toast from 'react-hot-toast';
 import { ArrowLeftIcon, LinkIcon, ShieldCheckIcon, CheckCircleIcon } from '@heroicons/react/24/outline';

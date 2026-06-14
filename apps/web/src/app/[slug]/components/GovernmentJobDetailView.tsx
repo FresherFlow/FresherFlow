@@ -1,8 +1,8 @@
 'use client';
 
 import { ActionType, type Opportunity, type User, type GovernmentExamStage } from '@fresherflow/types';
-import { cn } from '@/lib/utils';
-import { Button } from '@/components/ui/Button';
+import { cn } from '@/lib/utils/utils';
+import { Button } from '@/ui/Button';
 import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
@@ -20,7 +20,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
-import CompanyLogo from '@/components/ui/CompanyLogo';
+import CompanyLogo from '@/ui/CompanyLogo';
 
 import React from 'react';
 

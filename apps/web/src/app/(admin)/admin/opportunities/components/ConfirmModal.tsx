@@ -54,7 +54,7 @@ export const ConfirmModal = ({
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onCancel}
-                        className="flex-1 h-10 px-4 rounded-md border border-input bg-secondary/20 text-sm font-medium hover:bg-accent transition-colors"
+                        className="flex-1 h-10 px-4 rounded-md border border-input bg-background text-sm font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                         Cancel
                     </button>

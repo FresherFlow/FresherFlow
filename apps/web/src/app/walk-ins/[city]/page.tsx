@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { SITE_URL } from '@/lib/runtimeConfig';
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export const revalidate = false; // on-demand only — busted via revalidateTag on publish
 export const dynamicParams = true;

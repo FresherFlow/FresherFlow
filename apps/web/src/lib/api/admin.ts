@@ -250,6 +250,14 @@ export const adminApi = {
             apiClient<void>(`/api/admin/resources/${id}`, {
                 method: 'DELETE'
             })
+    },
+
+    adminPushApi: {
+        sendPush: (data: { title: string; message: string; url?: string }) =>
+            apiClient<{ success: boolean; messageId: string }>('/api/admin/push', {
+                method: 'POST',
+                body: JSON.stringify(data)
+            })
     }
 
 };

@@ -1,3 +1,6 @@
+import { SmartInput } from '@/features/admin/ui/SmartInput';
+import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
+
 interface WalkInDetailsSectionProps {
     startDate: string;
     setStartDate: (val: string) => void;
@@ -31,98 +34,75 @@ export function WalkInDetailsSection({
     contactPhone, setContactPhone
 }: WalkInDetailsSectionProps) {
     return (
-        <div className="bg-amber-500/5 border border-amber-500/20 rounded-lg p-4 md:p-5 space-y-5">
+        <div className="space-y-5 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Drive dates *</label>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <input
-                            type="date"
-                            required
-                            value={startDate}
-                            onChange={(e) => setStartDate(e.target.value)}
-                            className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 text-sm focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50"
-                        />
-                        <span className="text-amber-700/50 text-center text-xs font-bold">{">>"}</span>
-                        <input
-                            type="date"
-                            value={endDate}
-                            onChange={(e) => setEndDate(e.target.value)}
-                            className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 text-sm focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50"
-                        />
-                    </div>
-                </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Reporting window *</label>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                        <input
-                            type="time"
-                            required
-                            value={startTime}
-                            onChange={(e) => setStartTime(e.target.value)}
-                            className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 text-sm focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50"
-                        />
-                        <span className="text-amber-700/50 text-center text-xs font-bold">{">>"}</span>
-                        <input
-                            type="time"
-                            value={endTime}
-                            onChange={(e) => setEndTime(e.target.value)}
-                            className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 text-sm focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50"
-                        />
-                    </div>
-                </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Venue address *</label>
-                    <textarea
+                <div className="grid grid-cols-2 gap-2">
+                    <SmartInput
+                        label="Start Date *"
+                        type="date"
                         required
-                        value={venueAddress}
-                        onChange={(e) => setVenueAddress(e.target.value)}
-                        rows={2}
-                        className="flex min-h-15 w-full rounded-md border border-amber-500/30 bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50 resize-none transition-all"
-                        placeholder="Complete street address..."
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                    />
+                    <SmartInput
+                        label="End Date"
+                        type="date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
                     />
                 </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Maps link</label>
-                    <input
-                        type="url"
-                        value={venueLink}
-                        onChange={(e) => setVenueLink(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                        placeholder="Google Maps URL"
+                <div className="grid grid-cols-2 gap-2">
+                    <SmartInput
+                        label="Start Time *"
+                        type="time"
+                        required
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                    />
+                    <SmartInput
+                        label="End Time"
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
                     />
                 </div>
             </div>
-            <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Required documents</label>
-                <input
-                    value={requiredDocuments}
-                    onChange={(e) => setRequiredDocuments(e.target.value)}
-                    className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                    placeholder="e.g. Resume, ID Proof, 10th Marks card"
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <SmartTextarea
+                    label="Venue address *"
+                    value={venueAddress}
+                    required
+                    onChange={(e) => setVenueAddress(e.target.value)}
+                    rows={2}
+                    placeholder="Complete street address..."
+                />
+                <SmartInput
+                    label="Maps link"
+                    type="url"
+                    value={venueLink}
+                    onChange={(e) => setVenueLink(e.target.value)}
+                    placeholder="Google Maps URL"
                 />
             </div>
+            <SmartInput
+                label="Required documents"
+                value={requiredDocuments}
+                onChange={(e) => setRequiredDocuments(e.target.value)}
+                placeholder="e.g. Resume, ID Proof, 10th Marks card"
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Contact person</label>
-                    <input
-                        value={contactPerson}
-                        onChange={(e) => setContactPerson(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                        placeholder="Name of SPOC"
-                    />
-                </div>
-                <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-amber-700 dark:text-amber-400 capitalize tracking-wider">Contact phone</label>
-                    <input
-                        value={contactPhone}
-                        onChange={(e) => setContactPhone(e.target.value)}
-                        className="flex h-11 w-full rounded-md border border-amber-500/30 bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus:ring-2 focus:ring-amber-500/50 transition-all"
-                        placeholder="Mobile number"
-                    />
-                </div>
+                <SmartInput
+                    label="Contact person"
+                    value={contactPerson}
+                    onChange={(e) => setContactPerson(e.target.value)}
+                    placeholder="Name of SPOC"
+                />
+                <SmartInput
+                    label="Contact phone"
+                    value={contactPhone}
+                    onChange={(e) => setContactPhone(e.target.value)}
+                    placeholder="Mobile number"
+                />
             </div>
         </div>
     );

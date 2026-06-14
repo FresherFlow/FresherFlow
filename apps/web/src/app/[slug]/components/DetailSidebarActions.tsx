@@ -1,6 +1,6 @@
 import { ActionType, type Opportunity, type User, type OpportunityEvent } from '@fresherflow/types';
-import { cn } from '@/shared/ui/cn';
-import { Button } from '@/components/ui/Button';
+import { cn } from '@repo/ui/utils/cn';
+import { Button } from '@/ui/Button';
 // removed bookmark icons
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';

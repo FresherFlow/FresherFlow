@@ -1,6 +1,6 @@
-import TwoFactorSetup from "@/components/admin/TwoFactorSetup";
-import PasskeyManager from "@/components/admin/PasskeyManager";
-import { Badge } from "@/features/system/components/ui/Badge";
+import TwoFactorSetup from "@/features/admin/components/TwoFactorSetup";
+import PasskeyManager from "@/features/admin/components/PasskeyManager";
+import { Badge } from "@/ui/Badge";
 
 export const metadata = {
     title: "Admin Settings | FresherFlow",

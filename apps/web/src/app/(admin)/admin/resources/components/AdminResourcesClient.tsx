@@ -2,17 +2,27 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { adminApi } from '@/lib/api/admin';
-import { SharedResource, ResourceItemStatus } from '@fresherflow/types';
+import { SharedResource, ResourceItemStatus, ResourceItemType } from '@fresherflow/types';
 import { 
     CheckCircleIcon, 
     XCircleIcon, 
     PencilSquareIcon,
     TrashIcon,
     PlusIcon,
-    ArrowTopRightOnSquareIcon
+    ArrowTopRightOnSquareIcon,
+    DocumentTextIcon,
+    ExclamationTriangleIcon
 } from '@heroicons/react/24/outline';
-
 import { toast } from 'react-hot-toast';
+import { SmartInput } from '@/features/admin/ui/SmartInput';
+import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
+import { SmartSelect } from '@/features/admin/ui/SmartSelect';
+
+const inputClasses = `
+    flex w-full px-2.5 py-1.5 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50
+    placeholder:text-muted-foreground/50 border border-solid border-input bg-background text-foreground
+    focus:border-primary focus:bg-background focus:ring-0 transition-colors duration-200 rounded-md
+`;
 
 function AutocompleteInput({ 
     label, 
@@ -53,7 +63,7 @@ function AutocompleteInput({
         if (isOpen && wrapperRef.current) {
             const rect = wrapperRef.current.getBoundingClientRect();
             const spaceBelow = window.innerHeight - rect.bottom;
-            if (spaceBelow < 250) {
+            if (spaceBelow < 200) {
                 setDropdownPosition('top');
             } else {
                 setDropdownPosition('bottom');
@@ -85,7 +95,6 @@ function AutocompleteInput({
             onChange(newItems.join(', '));
             setSearch('');
             setActiveIndex(-1);
-            // Keep it open for multiple selection
         } else {
             onChange(opt);
             setIsOpen(false);
@@ -121,16 +130,20 @@ function AutocompleteInput({
         }
     };
 
+    const isFilled = isMulti ? search.length > 0 || selectedItems.length > 0 : !!value;
+
     return (
-        <div className="relative" ref={wrapperRef}>
-            <label className="block text-xs font-medium text-muted-foreground mb-1">{label}</label>
+        <div className="flex flex-col gap-1.5" ref={wrapperRef}>
+            <label className="text-sm font-medium text-muted-foreground/80 flex items-center gap-1.5">
+                {label}
+            </label>
             
             {isMulti && selectedItems.length > 0 && (
-                <div className="flex flex-wrap gap-2 mb-2 max-h-24 overflow-y-auto">
+                <div className="flex flex-wrap gap-1 mb-1">
                     {selectedItems.map(item => (
-                        <span key={item} className="inline-flex items-center gap-1 px-2 py-1 bg-primary/10 text-primary rounded-md text-xs font-medium">
+                        <span key={item} className="inline-flex items-center gap-1 px-2 py-0.5 bg-muted border border-border text-foreground rounded text-xs font-medium">
                             {item}
-                            <button type="button" onClick={() => handleRemove(item)} className="hover:text-primary/70">
+                            <button type="button" onClick={() => handleRemove(item)} className="text-muted-foreground hover:text-destructive">
                                 <XCircleIcon className="w-3 h-3" />
                             </button>
                         </span>
@@ -138,43 +151,40 @@ function AutocompleteInput({
                 </div>
             )}
 
-            <input 
-                type="text" 
-                value={isMulti ? search : value} 
-                onChange={(e) => {
-                    if (isMulti) setSearch(e.target.value);
-                    else onChange(e.target.value);
-                    setIsOpen(true);
-                }}
-                onFocus={(e) => {
-                    setIsOpen(true);
-                    // On mobile, scroll the input into view so the dropdown is visible
-                    setTimeout(() => {
-                        e.target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }, 300);
-                }}
-                onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-            />
+            <div className="relative">
+                <input 
+                    type="text" 
+                    value={isMulti ? search : value} 
+                    data-filled={isFilled}
+                    onChange={(e) => {
+                        if (isMulti) setSearch(e.target.value);
+                        else onChange(e.target.value);
+                        setIsOpen(true);
+                    }}
+                    onFocus={() => setIsOpen(true)}
+                    onKeyDown={handleKeyDown}
+                    placeholder={placeholder}
+                    className={inputClasses}
+                />
 
-            {isOpen && currentSearchTerm && filteredOptions.length > 0 && (
-                <ul ref={listRef} className={`absolute z-[9999] w-full max-h-48 overflow-y-auto bg-card border border-border rounded-lg shadow-lg ${
-                    dropdownPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
-                }`}>
-                    {filteredOptions.map((opt, i) => (
-                        <li 
-                            key={i} 
-                            onClick={() => handleSelect(opt)}
-                            className={`px-3 py-2 text-sm cursor-pointer ${
-                                i === activeIndex ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
-                            }`}
-                        >
-                            {opt}
-                        </li>
-                    ))}
-                </ul>
-            )}
+                {isOpen && currentSearchTerm && filteredOptions.length > 0 && (
+                    <ul ref={listRef} className={`absolute z-[99] w-full max-h-40 overflow-y-auto bg-card border border-border rounded-md shadow-lg ${
+                        dropdownPosition === 'top' ? 'bottom-full mb-1' : 'top-full mt-1'
+                    }`}>
+                        {filteredOptions.map((opt, i) => (
+                            <li 
+                                key={i} 
+                                onClick={() => handleSelect(opt)}
+                                className={`px-3 py-1.5 text-sm cursor-pointer ${
+                                    i === activeIndex ? 'bg-primary/10 text-primary font-medium' : 'text-foreground hover:bg-muted'
+                                }`}
+                            >
+                                {opt}
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
         </div>
     );
 }
@@ -200,16 +210,17 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
     
     const [formState, setFormState] = useState({
         title: '',
-        url: '',
-        type: 'LINK',
+        description: '',
         company: '',
-        skills: ''
+        skills: '',
+        status: ResourceItemStatus.PENDING_REVIEW,
+        items: [] as { id?: string; title: string; type: string; url: string }[]
     });
     const [isSaving, setIsSaving] = useState(false);
     const [resourceToDelete, setResourceToDelete] = useState<string | null>(null);
     const [isDeleting, setIsDeleting] = useState(false);
+    const [uiMode, setUiMode] = useState<'SINGLE' | 'COLLECTION'>('SINGLE');
 
-    // Dependencies from props, no need to fetch here
     useEffect(() => {
         if (initialSkills.length > 0) setAvailableSkills(initialSkills.sort());
         if (initialCompanies.length > 0) setAvailableCompanies(initialCompanies.sort());
@@ -221,7 +232,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
             const response = await adminApi.adminResourcesApi.getResources({
                 status: activeTab,
                 page,
-                limit: 20
+                limit: 50 // Increased limit for denser table
             });
             setResources(response.resources || []);
             setTotalPages(response.pagination?.pages || 1);
@@ -271,24 +282,33 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
 
     const openEditModal = (resource: SharedResource) => {
         setEditingResource(resource);
+        setUiMode(resource.items && resource.items.length === 1 ? 'SINGLE' : 'COLLECTION');
         setFormState({
             title: resource.title || '',
-            url: resource.url || '',
-            type: resource.type || 'LINK',
+            description: resource.description || '',
             company: resource.company || '',
-            skills: resource.skills?.join(', ') || ''
+            skills: resource.skills?.join(', ') || '',
+            status: resource.status,
+            items: resource.items?.map(item => ({
+                id: item.id,
+                title: item.title,
+                type: item.type,
+                url: item.url
+            })) || []
         });
-        setIsCreateModalOpen(false);
+        setIsCreateModalOpen(true);
     };
 
     const openCreateModal = () => {
         setEditingResource(null);
+        setUiMode('SINGLE');
         setFormState({
             title: '',
-            url: '',
-            type: 'LINK',
+            description: '',
             company: '',
-            skills: ''
+            skills: '',
+            status: ResourceItemStatus.APPROVED,
+            items: [{ title: '', type: 'LINK', url: '' }]
         });
         setIsCreateModalOpen(true);
     };
@@ -298,21 +318,66 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
         setIsSaving(true);
         try {
             const skillsArray = formState.skills.split(',').map(s => s.trim()).filter(Boolean);
+            let itemsToSubmit = formState.items;
             
-            if (isCreateModalOpen) {
+            if (uiMode === 'SINGLE') {
+                if (formState.items.length === 0) {
+                    toast.error('URL is required');
+                    setIsSaving(false);
+                    return;
+                }
+                const item = formState.items[0];
+                if (!formState.title.trim() || !item.url.trim()) {
+                    toast.error('Title and URL are required');
+                    setIsSaving(false);
+                    return;
+                }
+                itemsToSubmit = [{
+                    id: item.id,
+                    title: formState.title.trim(),
+                    type: item.type as any,
+                    url: item.url.trim()
+                }];
+            } else {
+                if (formState.items.length === 0) {
+                    toast.error('At least one item is required in the collection');
+                    setIsSaving(false);
+                    return;
+                }
+                for (const item of formState.items) {
+                    if (!item.title.trim() || !item.url.trim()) {
+                        toast.error('All items must have a title and a valid URL');
+                        setIsSaving(false);
+                        return;
+                    }
+                }
+                itemsToSubmit = formState.items.map(item => ({
+                    id: item.id,
+                    title: item.title.trim(),
+                    type: item.type as any,
+                    url: item.url.trim()
+                }));
+            }
+
+            if (isCreateModalOpen && !editingResource) {
                 await adminApi.adminResourcesApi.createResource({
                     title: formState.title,
-                    url: formState.url,
-                    type: formState.type,
+                    description: formState.description || null,
                     company: formState.company || null,
                     skills: skillsArray,
+                    status: formState.status,
+                    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    items: itemsToSubmit.map(({ id, ...rest }) => rest)
                 });
                 toast.success('Resource created successfully');
             } else if (editingResource) {
                 await adminApi.adminResourcesApi.updateResource(editingResource.id, {
                     title: formState.title,
+                    description: formState.description || null,
                     company: formState.company || null,
-                    skills: skillsArray
+                    skills: skillsArray,
+                    status: formState.status,
+                    items: itemsToSubmit
                 });
                 toast.success('Resource updated successfully');
             }
@@ -333,132 +398,305 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
         setEditingResource(null);
     };
 
-    if (isCreateModalOpen || editingResource) {
-        return (
-            <div className="bg-card rounded-xl border border-border p-4 sm:p-6 shadow-sm animate-in fade-in slide-in-from-bottom-4 duration-300">
-                <div className="flex items-center justify-between mb-6 pb-4 border-b border-border">
-                    <h2 className="text-xl font-bold">
-                        {isCreateModalOpen ? 'Create New Resource' : 'Edit Resource'}
-                    </h2>
-                    <button 
-                        onClick={closeModal}
-                        className="p-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted transition-colors"
-                        aria-label="Close"
-                    >
-                        <XCircleIcon className="w-6 h-6" />
+    const handleUrlChange = (url: string, index: number) => {
+        const lowerUrl = url.toLowerCase();
+        let detectedType = 'LINK';
+        if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) detectedType = 'YOUTUBE';
+        else if (lowerUrl.endsWith('.pdf')) detectedType = 'PDF';
+        else if (lowerUrl.includes('roadmap.sh')) detectedType = 'ROADMAP';
+        else if (
+            lowerUrl.includes('drive.google.com') || lowerUrl.includes('dropbox.com') ||
+            lowerUrl.includes('onedrive') || lowerUrl.includes('box.com') || lowerUrl.includes('sharepoint')
+        ) detectedType = 'FILE';
+
+        setFormState(f => {
+            const items = [...f.items];
+            if (items.length === 0) items.push({ title: f.title, type: detectedType, url });
+            else items[index] = { ...items[index], url, type: detectedType };
+            return { ...f, items };
+        });
+    };
+
+    const formPanelContent = (isCreateModalOpen || editingResource) ? (
+        <div className="bg-card border border-border rounded-xl p-5 md:p-6 shadow-sm mb-6 animate-in slide-in-from-top duration-300">
+            <div className="flex items-center justify-between mb-5 border-b border-border pb-3">
+                <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
+                    <PencilSquareIcon className="w-5 h-5 text-muted-foreground" />
+                    {editingResource ? 'Edit Resource' : 'Create Resource'}
+                </h2>
+                <div className="flex items-center gap-4">
+                    <div className="flex bg-muted p-1 rounded-md">
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setUiMode('SINGLE');
+                                if (formState.items.length === 0) setFormState(f => ({ ...f, items: [{ title: '', type: 'LINK', url: '' }] }));
+                            }}
+                            className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${uiMode === 'SINGLE' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Single Link
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setUiMode('COLLECTION')}
+                            className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${uiMode === 'COLLECTION' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                        >
+                            Collection
+                        </button>
+                    </div>
+                    <button onClick={closeModal} className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors">
+                        <XCircleIcon className="w-5 h-5" />
                     </button>
                 </div>
-                
-                <form onSubmit={handleModalSubmit} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8">
-                        <div className="space-y-5">
-                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Basic Details</h3>
-                            <div>
-                                <label className="block text-sm font-medium mb-1.5">URL</label>
-                                <input 
-                                    type="url" 
-                                    required
-                                    disabled={!!editingResource} 
-                                    value={formState.url} 
-                                    onChange={(e) => setFormState(f => ({...f, url: e.target.value}))}
-                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
-                                    placeholder="https://..."
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium mb-1.5">Title</label>
-                                <input 
-                                    type="text" 
-                                    required
-                                    value={formState.title} 
-                                    onChange={(e) => setFormState(f => ({...f, title: e.target.value}))}
-                                    className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                                    placeholder="e.g. Complete Java Roadmap 2024"
-                                />
-                            </div>
-                            
-                            {isCreateModalOpen && (
-                                <div>
-                                    <label className="block text-sm font-medium mb-1.5">Resource Type</label>
-                                    <select 
-                                        value={formState.type} 
-                                        onChange={(e) => setFormState(f => ({...f, type: e.target.value}))}
-                                        className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                                    >
-                                        <option value="LINK">Link</option>
-                                        <option value="YOUTUBE">YouTube</option>
-                                        <option value="GOOGLE_DRIVE">Google Drive</option>
-                                        <option value="WEBSITE">Website</option>
-                                        <option value="ROADMAP">Roadmap</option>
-                                    </select>
-                                </div>
-                            )}
+            </div>
+            
+            <form onSubmit={handleModalSubmit} className="space-y-5">
+                {uiMode === 'SINGLE' ? (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div className="md:col-span-2">
+                            <SmartInput 
+                                label="Resource Title"
+                                type="text" 
+                                required
+                                value={formState.title} 
+                                onChange={(e) => setFormState(f => ({...f, title: e.target.value}))}
+                                placeholder="e.g. Complete Java Roadmap"
+                            />
                         </div>
-
-                        <div className="space-y-5">
-                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Tagging & Metadata</h3>
-                            <div className="relative z-20">
+                        <div className="md:col-span-2">
+                            <SmartInput 
+                                label="Target URL"
+                                type="url" 
+                                required
+                                value={formState.items[0]?.url || ''} 
+                                onChange={(e) => handleUrlChange(e.target.value, 0)}
+                                placeholder="https://..."
+                            />
+                        </div>
+                        <div>
+                            <SmartSelect
+                                label="Resource Type"
+                                required
+                                value={formState.items[0]?.type || 'LINK'}
+                                onChange={(val) => {
+                                    setFormState(f => {
+                                        const items = [...f.items];
+                                        if (items.length > 0) items[0] = { ...items[0], type: val };
+                                        return { ...f, items };
+                                    });
+                                }}
+                                options={[
+                                    { value: ResourceItemType.LINK, label: 'LINK' },
+                                    { value: ResourceItemType.YOUTUBE, label: 'YOUTUBE' },
+                                    { value: ResourceItemType.PDF, label: 'PDF' },
+                                    { value: ResourceItemType.ROADMAP, label: 'ROADMAP' },
+                                    { value: ResourceItemType.FILE, label: 'FILE' },
+                                    { value: ResourceItemType.WEBSITE, label: 'WEBSITE' },
+                                ]}
+                            />
+                        </div>
+                        <AutocompleteInput
+                            label="Company"
+                            value={formState.company}
+                            onChange={(val) => setFormState(f => ({...f, company: val}))}
+                            options={availableCompanies}
+                            placeholder="Optional..."
+                        />
+                        <div>
+                            <SmartSelect
+                                label="Status"
+                                required
+                                value={formState.status}
+                                onChange={(val) => setFormState(f => ({...f, status: val as ResourceItemStatus}))}
+                                options={[
+                                    { value: ResourceItemStatus.PENDING_REVIEW, label: 'Pending Review' },
+                                    { value: ResourceItemStatus.APPROVED, label: 'Approved' },
+                                ]}
+                            />
+                        </div>
+                        <AutocompleteInput
+                            label="Skills"
+                            value={formState.skills}
+                            onChange={(val) => setFormState(f => ({...f, skills: val}))}
+                            options={availableSkills}
+                            placeholder="Optional..."
+                            isMulti={true}
+                        />
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+                        <div className="lg:col-span-2 space-y-4">
+                            <h3 className="text-sm font-semibold border-b border-border pb-2 text-foreground">Collection Details</h3>
+                            <SmartInput 
+                                label="Title"
+                                type="text" 
+                                required
+                                value={formState.title} 
+                                onChange={(e) => setFormState(f => ({...f, title: e.target.value}))}
+                                placeholder="e.g. Front-end Dev Package"
+                            />
+                            <SmartTextarea 
+                                label="Description"
+                                value={formState.description} 
+                                onChange={(e) => setFormState(f => ({...f, description: e.target.value}))}
+                                placeholder="e.g. Essential resources, books, and links."
+                                rows={3}
+                            />
+                            <div className="grid grid-cols-2 gap-3">
+                                <SmartSelect
+                                    label="Status"
+                                    required
+                                    value={formState.status}
+                                    onChange={(val) => setFormState(f => ({...f, status: val as ResourceItemStatus}))}
+                                    options={[
+                                        { value: ResourceItemStatus.PENDING_REVIEW, label: 'Pending' },
+                                        { value: ResourceItemStatus.APPROVED, label: 'Approved' },
+                                    ]}
+                                />
                                 <AutocompleteInput
-                                    label="Company (Optional)"
+                                    label="Company"
                                     value={formState.company}
                                     onChange={(val) => setFormState(f => ({...f, company: val}))}
                                     options={availableCompanies}
-                                    placeholder="Start typing company name..."
+                                    placeholder="Optional..."
                                 />
                             </div>
-                            <div className="relative z-10">
-                                <AutocompleteInput
-                                    label="Skills"
-                                    value={formState.skills}
-                                    onChange={(val) => setFormState(f => ({...f, skills: val}))}
-                                    options={availableSkills}
-                                    placeholder="Start typing skill..."
-                                    isMulti={true}
-                                />
+                            <AutocompleteInput
+                                label="Skills"
+                                value={formState.skills}
+                                onChange={(val) => setFormState(f => ({...f, skills: val}))}
+                                options={availableSkills}
+                                placeholder="Optional..."
+                                isMulti={true}
+                            />
+                        </div>
+
+                        <div className="lg:col-span-3 space-y-3">
+                            <div className="flex items-center justify-between border-b border-border pb-2">
+                                <h3 className="text-sm font-semibold text-foreground">Curated Items</h3>
+                                <button
+                                    type="button"
+                                    onClick={() => setFormState(f => ({
+                                        ...f,
+                                        items: [...f.items, { title: '', type: 'LINK', url: '' }]
+                                    }))}
+                                    className="text-xs font-semibold text-primary hover:underline flex items-center gap-1 bg-primary/10 px-2.5 py-1 rounded-md"
+                                >
+                                    <PlusIcon className="w-3 h-3 font-bold" /> Add Item
+                                </button>
+                            </div>
+                            <div className="space-y-3 pr-1">
+                                {formState.items.map((item, index) => (
+                                    <div key={index} className="relative p-4 bg-muted/15 border border-border rounded-lg flex flex-col gap-3">
+                                        {formState.items.length > 1 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormState(f => ({
+                                                    ...f,
+                                                    items: f.items.filter((_, idx) => idx !== index)
+                                                }))}
+                                                className="absolute top-2 right-2 p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                                            >
+                                                <TrashIcon className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                        <div className="grid grid-cols-3 gap-3 pr-6">
+                                            <div className="col-span-2">
+                                                <SmartInput 
+                                                    label="Item Title"
+                                                    type="text" 
+                                                    required
+                                                    value={item.title} 
+                                                    onChange={(e) => {
+                                                        const newItems = [...formState.items];
+                                                        newItems[index] = { ...newItems[index], title: e.target.value };
+                                                        setFormState(f => ({ ...f, items: newItems }));
+                                                    }}
+                                                    placeholder="e.g. Official Documentation"
+                                                />
+                                            </div>
+                                            <div className="col-span-1">
+                                                <SmartSelect
+                                                    label="Type"
+                                                    required
+                                                    value={item.type}
+                                                    onChange={(val) => {
+                                                        const newItems = [...formState.items];
+                                                        newItems[index] = { ...newItems[index], type: val };
+                                                        setFormState(f => ({ ...f, items: newItems }));
+                                                    }}
+                                                    options={[
+                                                        { value: ResourceItemType.LINK, label: 'LINK' },
+                                                        { value: ResourceItemType.YOUTUBE, label: 'YOUTUBE' },
+                                                        { value: ResourceItemType.PDF, label: 'PDF' },
+                                                        { value: ResourceItemType.ROADMAP, label: 'ROADMAP' },
+                                                        { value: ResourceItemType.FILE, label: 'FILE' },
+                                                        { value: ResourceItemType.WEBSITE, label: 'WEBSITE' },
+                                                    ]}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <SmartInput 
+                                                label="URL"
+                                                type="url" 
+                                                required
+                                                value={item.url} 
+                                                onChange={(e) => handleUrlChange(e.target.value, index)}
+                                                placeholder="https://..."
+                                            />
+                                        </div>
+                                    </div>
+                                ))}
+                                {formState.items.length === 0 && (
+                                    <div className="p-8 text-center text-xs text-muted-foreground border border-dashed border-border rounded-lg bg-muted/5">
+                                        No items added yet. Click &quot;Add Item&quot; to start.
+                                    </div>
+                                )}
                             </div>
                         </div>
                     </div>
-                    
-                    <div className="pt-6 mt-8 border-t border-border flex flex-col-reverse sm:flex-row items-center justify-end gap-3 sm:gap-4">
-                        <button 
-                            type="button" 
-                            onClick={closeModal}
-                            className="w-full sm:w-auto px-6 py-2.5 text-sm font-medium text-muted-foreground bg-muted/50 hover:bg-muted rounded-lg transition-colors"
-                        >
-                            Cancel
-                        </button>
-                        <button 
-                            type="submit" 
-                            disabled={isSaving}
-                            className="w-full sm:w-auto px-6 py-2.5 text-sm font-semibold bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 transition-colors shadow-sm"
-                        >
-                            {isSaving ? 'Saving...' : 'Save Resource'}
-                        </button>
-                    </div>
-                </form>
-            </div>
-        );
-    }
+                )}
+                
+                <div className="pt-4 border-t border-border flex justify-end gap-3 mt-2">
+                    <button 
+                        type="button" 
+                        onClick={closeModal}
+                        className="px-4 py-1.5 text-sm font-semibold border border-border rounded-md hover:bg-muted transition-colors"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit" 
+                        disabled={isSaving}
+                        className="px-6 py-1.5 text-sm font-bold bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                    >
+                        {isSaving ? 'Saving...' : 'Save Resource'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    ) : null;
 
     return (
-        <div className="bg-card rounded-xl border border-border overflow-hidden">
-            <div className="flex flex-col sm:flex-row border-b border-border sm:items-center justify-between p-4 sm:p-0 sm:pr-4 gap-4 sm:gap-0">
-                <div className="flex w-full sm:w-auto overflow-x-auto">
+        <div className="space-y-4">
+            <div className="flex items-center justify-between bg-card border border-border p-2 rounded-lg shadow-sm">
+                <div className="flex bg-muted p-1 rounded-md">
                     <button
-                        className={`whitespace-nowrap px-6 py-3 text-sm font-medium transition-colors ${
+                        className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
                             activeTab === ResourceItemStatus.PENDING_REVIEW 
-                                ? 'bg-primary/10 text-primary border-b-2 border-primary' 
-                                : 'text-muted-foreground hover:bg-muted/50'
+                                ? 'bg-background shadow-sm text-foreground' 
+                                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                         }`}
                         onClick={() => { setActiveTab(ResourceItemStatus.PENDING_REVIEW); setPage(1); }}
                     >
                         Pending Review
                     </button>
                     <button
-                        className={`whitespace-nowrap px-6 py-3 text-sm font-medium transition-colors ${
+                        className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
                             activeTab === ResourceItemStatus.APPROVED 
-                                ? 'bg-primary/10 text-primary border-b-2 border-primary' 
-                                : 'text-muted-foreground hover:bg-muted/50'
+                                ? 'bg-background shadow-sm text-foreground' 
+                                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                         }`}
                         onClick={() => { setActiveTab(ResourceItemStatus.APPROVED); setPage(1); }}
                     >
@@ -467,229 +705,150 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                 </div>
                 <button
                     onClick={openCreateModal}
-                    className="hidden sm:flex flex-shrink-0 items-center justify-center gap-1 px-4 py-2 text-sm font-medium text-primary-foreground bg-primary rounded-lg hover:bg-primary/90 transition-colors w-auto"
+                    className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 shadow-sm transition-colors"
                 >
                     <PlusIcon className="w-4 h-4" />
                     Create Resource
                 </button>
             </div>
 
-            <div className="relative min-h-[300px]">
-                {isLoading && (
-                    <div className="absolute inset-0 z-10 bg-background/50 flex items-center justify-center backdrop-blur-[2px]">
-                        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin shadow-lg" />
+            {formPanelContent}
+
+            <div className="border border-border rounded-lg bg-card shadow-sm overflow-hidden">
+                {isLoading ? (
+                    <div className="p-10 text-center text-sm font-medium text-muted-foreground flex items-center justify-center gap-2">
+                        <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                        Loading resources...
                     </div>
-                )}
-                {resources.length === 0 && !isLoading ? (
-                    <div className="p-8 text-center text-muted-foreground">
-                        No resources found in this category.
+                ) : resources.length === 0 ? (
+                    <div className="p-10 text-center flex flex-col items-center">
+                        <DocumentTextIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                        <h3 className="text-sm font-medium text-foreground">No resources found</h3>
+                        <p className="text-xs text-muted-foreground mt-1">There are no {activeTab.toLowerCase().replace('_', ' ')} resources to display.</p>
                     </div>
                 ) : (
-                    <>
-                        {/* Mobile Card Layout */}
-                        <div className="block md:hidden space-y-4 p-4">
-                            {resources.map((resource) => (
-                                <div key={resource.id} className="bg-card border border-border rounded-xl p-4 space-y-3 shadow-sm">
-                                    <div>
-                                        <p className="font-semibold text-foreground line-clamp-2" title={resource.title}>
-                                            {resource.title}
-                                        </p>
-                                        <a 
-                                            href={resource.url} 
-                                            target="_blank" 
-                                            rel="noopener noreferrer"
-                                            className="text-xs text-primary hover:underline flex items-center gap-1 mt-1.5"
-                                        >
-                                            <span className="truncate max-w-[240px]">{resource.url}</span>
-                                            <ArrowTopRightOnSquareIcon className="w-3 h-3 shrink-0" />
-                                        </a>
-                                    </div>
-                                    
-                                    <div className="flex items-center justify-between">
-                                        <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-[10px] font-bold uppercase tracking-wider">
-                                            {resource.type}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground">
-                                            {new Date(resource.createdAt).toLocaleDateString()}
-                                        </span>
-                                    </div>
-
-                                    {(resource.company || (resource.skills && resource.skills.length > 0)) && (
-                                        <div className="flex flex-wrap gap-1.5">
-                                            {resource.company && (
-                                                <span className="px-2 py-0.5 bg-primary/10 text-primary rounded text-[10px] font-medium border border-primary/20">
-                                                    {resource.company}
-                                                </span>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left whitespace-nowrap">
+                            <thead className="text-xs text-muted-foreground bg-muted/50 border-b border-border uppercase tracking-wider">
+                                <tr>
+                                    <th className="px-4 py-3 font-semibold">Title & Items</th>
+                                    <th className="px-4 py-3 font-semibold">Type</th>
+                                    <th className="px-4 py-3 font-semibold">Metadata</th>
+                                    <th className="px-4 py-3 font-semibold">Date</th>
+                                    <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border">
+                                {resources.map((resource) => (
+                                    <tr key={resource.id} className="hover:bg-muted/20 transition-colors">
+                                        <td className="px-4 py-3 align-top max-w-[300px] whitespace-normal">
+                                            <div className="font-medium text-foreground text-sm leading-tight mb-1">{resource.title}</div>
+                                            {resource.description && (
+                                                <div className="text-xs text-muted-foreground line-clamp-1 mb-2">{resource.description}</div>
                                             )}
-                                            {resource.skills?.map((skill, i) => (
-                                                <span key={i} className="px-2 py-0.5 bg-muted rounded text-[10px] font-medium text-muted-foreground border border-border">
-                                                    {skill}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/50 mt-3">
-                                        <button 
-                                            onClick={() => openEditModal(resource)}
-                                            className="p-2 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"
-                                            title="Edit"
-                                        >
-                                            <PencilSquareIcon className="w-5 h-5" />
-                                        </button>
-                                        {activeTab === ResourceItemStatus.PENDING_REVIEW && (
-                                            <button 
-                                                onClick={() => handleApprove(resource.id)}
-                                                className="p-2 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors"
-                                                title="Approve"
-                                            >
-                                                <CheckCircleIcon className="w-5 h-5" />
-                                            </button>
-                                        )}
-                                        <button 
-                                            onClick={() => handleReject(resource.id)}
-                                            className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                                            title="Delete"
-                                        >
-                                            <TrashIcon className="w-5 h-5" />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-
-                        {/* Desktop Table Layout */}
-                        <div className="hidden md:block overflow-x-auto">
-                            <table className="w-full text-sm text-left">
-                                <thead className="text-xs text-muted-foreground uppercase bg-muted/30">
-                                    <tr>
-                                        <th className="px-6 py-4 font-medium">Title & Link</th>
-                                        <th className="px-6 py-4 font-medium">Company / Tags</th>
-                                        <th className="px-6 py-4 font-medium">Type</th>
-                                        <th className="px-6 py-4 font-medium text-right">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-border">
-                                    {resources.map((resource) => (
-                                        <tr key={resource.id} className="hover:bg-muted/20 transition-colors">
-                                            <td className="px-6 py-4 max-w-[300px]">
-                                                <p className="font-semibold text-foreground truncate" title={resource.title}>
-                                                    {resource.title}
-                                                </p>
-                                                <a 
-                                                    href={resource.url} 
-                                                    target="_blank" 
-                                                    rel="noopener noreferrer"
-                                                    className="text-xs text-primary hover:underline flex items-center gap-1 mt-1"
-                                                >
-                                                    <span className="truncate max-w-[200px]">{resource.url}</span>
-                                                    <ArrowTopRightOnSquareIcon className="w-3 h-3 shrink-0" />
-                                                </a>
-                                                <p className="text-[10px] text-muted-foreground mt-1">
-                                                    Added: {new Date(resource.createdAt).toLocaleDateString()}
-                                                </p>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <div className="font-medium text-foreground">{resource.company || '-'}</div>
-                                                <div className="flex flex-wrap gap-1 mt-1">
-                                                    {resource.skills?.slice(0, 3).map((skill, i) => (
-                                                        <span key={i} className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-medium text-muted-foreground">
-                                                            {skill}
-                                                        </span>
+                                            {resource.items && resource.items.length > 0 && (
+                                                <div className="space-y-1">
+                                                    {resource.items.slice(0, 2).map((item) => (
+                                                        <a href={item.url} target="_blank" rel="noopener noreferrer" key={item.id} className="inline-flex items-center gap-1 text-xs text-primary hover:underline bg-primary/5 px-1.5 py-0.5 rounded mr-1 mb-1 border border-primary/10">
+                                                            <DocumentTextIcon className="w-3 h-3" />
+                                                            <span className="truncate max-w-[150px]">{item.title}</span>
+                                                            <ArrowTopRightOnSquareIcon className="w-3 h-3" />
+                                                        </a>
                                                     ))}
-                                                    {resource.skills?.length > 3 && (
-                                                        <span className="px-1.5 py-0.5 bg-muted rounded text-[10px] font-medium text-muted-foreground">
-                                                            +{resource.skills.length - 3}
+                                                    {(resource.items.length > 2) && (
+                                                        <span className="inline-flex text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
+                                                            +{resource.items.length - 2} more
                                                         </span>
                                                     )}
                                                 </div>
-                                            </td>
-                                            <td className="px-6 py-4">
-                                                <span className="px-2 py-1 bg-secondary text-secondary-foreground rounded text-[10px] font-bold uppercase tracking-wider">
-                                                    {resource.type}
-                                                </span>
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button 
-                                                        onClick={() => openEditModal(resource)}
-                                                        className="p-1.5 text-muted-foreground hover:text-blue-500 hover:bg-blue-500/10 rounded-md transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <PencilSquareIcon className="w-5 h-5" />
+                                            )}
+                                        </td>
+                                        <td className="px-4 py-3 align-top">
+                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
+                                                {resource.items?.length === 1 ? 'Single' : 'Collection'}
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 align-top max-w-[200px] whitespace-normal">
+                                            <div className="flex flex-col gap-1.5">
+                                                {resource.company && (
+                                                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{resource.company}</span>
+                                                )}
+                                                {resource.skills && resource.skills.length > 0 && (
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {resource.skills.map((skill, i) => (
+                                                            <span key={i} className="px-1.5 py-0.5 bg-background shadow-sm border border-border text-[10px] rounded text-foreground font-medium">
+                                                                {skill}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 align-top text-xs text-muted-foreground">
+                                            {new Date(resource.createdAt).toLocaleDateString()}
+                                        </td>
+                                        <td className="px-4 py-3 align-top text-right">
+                                            <div className="flex items-center justify-end gap-1">
+                                                {activeTab === ResourceItemStatus.PENDING_REVIEW && (
+                                                    <button onClick={() => handleApprove(resource.id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Approve">
+                                                        <CheckCircleIcon className="w-4 h-4" />
                                                     </button>
-                                                    {activeTab === ResourceItemStatus.PENDING_REVIEW && (
-                                                        <button 
-                                                            onClick={() => handleApprove(resource.id)}
-                                                            className="p-1.5 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 rounded-md transition-colors"
-                                                            title="Approve"
-                                                        >
-                                                            <CheckCircleIcon className="w-5 h-5" />
-                                                        </button>
-                                                    )}
-                                                    <button 
-                                                        onClick={() => handleReject(resource.id)}
-                                                        className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                                                        title="Delete"
-                                                    >
-                                                        <TrashIcon className="w-5 h-5" />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </>
+                                                )}
+                                                <button onClick={() => openEditModal(resource)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit">
+                                                    <PencilSquareIcon className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={() => handleReject(resource.id)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md transition-colors" title="Delete">
+                                                    <TrashIcon className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 )}
             </div>
 
             {totalPages > 1 && (
-                <div className="flex items-center justify-between px-6 py-4 border-t border-border bg-muted/10">
-                    <button 
-                        onClick={() => setPage(p => Math.max(1, p - 1))}
-                        disabled={page === 1}
-                        className="px-3 py-1 text-sm font-medium rounded-md bg-card border border-border disabled:opacity-50"
-                    >
-                        Previous
-                    </button>
-                    <span className="text-sm text-muted-foreground">
-                        Page {page} of {totalPages}
+                <div className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg shadow-sm">
+                    <span className="text-xs font-medium text-muted-foreground">
+                        Showing page {page} of {totalPages}
                     </span>
-                    <button 
-                        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                        disabled={page === totalPages}
-                        className="px-3 py-1 text-sm font-medium rounded-md bg-card border border-border disabled:opacity-50"
-                    >
-                        Next
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button 
+                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                            disabled={page === 1}
+                            className="px-3 py-1 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted disabled:opacity-50 disabled:hover:bg-background transition-colors"
+                        >
+                            Previous
+                        </button>
+                        <button 
+                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                            disabled={page === totalPages}
+                            className="px-3 py-1 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted disabled:opacity-50 disabled:hover:bg-background transition-colors"
+                        >
+                            Next
+                        </button>
+                    </div>
                 </div>
             )}
 
-
-
-            {/* Mobile FAB for Create Resource */}
-            <button
-                onClick={openCreateModal}
-                className="fixed bottom-20 right-4 z-40 sm:hidden flex items-center justify-center w-14 h-14 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all outline-none"
-                aria-label="Create Resource"
-            >
-                <PlusIcon className="w-6 h-6" />
-            </button>
-            {/* Delete Confirmation Modal */}
             {resourceToDelete && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-card w-full max-w-md rounded-2xl border border-border shadow-2xl p-6">
-                        <h3 className="text-lg font-bold text-foreground">Delete Resource</h3>
-                        <p className="text-sm text-muted-foreground mt-2">
-                            Are you sure you want to permanently delete this resource? This action cannot be undone.
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm">
+                    <div className="bg-card w-full max-w-sm rounded-xl border border-border shadow-lg p-6 text-center animate-in zoom-in-95 duration-200">
+                        <div className="w-12 h-12 mx-auto bg-destructive/10 rounded-full flex items-center justify-center mb-4">
+                            <ExclamationTriangleIcon className="w-6 h-6 text-destructive" />
+                        </div>
+                        <h3 className="text-lg font-semibold text-foreground mb-2">Delete Resource?</h3>
+                        <p className="text-sm text-muted-foreground mb-6">
+                            This action cannot be undone. Are you sure you want to permanently delete this resource?
                         </p>
-                        <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-border">
+                        <div className="flex justify-center gap-3">
                             <button 
                                 type="button"
                                 onClick={() => setResourceToDelete(null)}
-                                className="px-4 py-2 text-sm font-semibold rounded-xl border border-border hover:bg-muted transition-colors"
+                                className="px-4 py-2 text-sm font-medium rounded-md border border-border hover:bg-muted transition-colors"
                             >
                                 Cancel
                             </button>
@@ -697,7 +856,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                 type="button"
                                 onClick={confirmDelete}
                                 disabled={isDeleting}
-                                className="px-4 py-2 text-sm font-semibold rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
+                                className="px-4 py-2 text-sm font-medium rounded-md bg-destructive text-destructive-foreground hover:bg-destructive/90 transition-colors disabled:opacity-50"
                             >
                                 {isDeleting ? 'Deleting...' : 'Delete'}
                             </button>

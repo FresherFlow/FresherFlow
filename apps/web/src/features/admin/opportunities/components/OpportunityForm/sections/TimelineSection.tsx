@@ -1,4 +1,5 @@
-import { InformationCircleIcon } from '@heroicons/react/24/outline';
+import { InformationCircleIcon, TrashIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { SmartSelect } from '@/features/admin/ui/SmartSelect';
 import type { TimelineEvent } from '@/features/admin/opportunities/formUtils';
 
 interface TimelineSectionProps {
@@ -43,26 +44,27 @@ export function TimelineSection({
                 Drive timeline events
             </h3>
             {!isEditMode ? (
-                <p className="text-xs text-muted-foreground">
+                <p className="text-sm text-muted-foreground">
                     Publish this listing first, then add timeline milestones like registration dates, exam, result, and interview.
                 </p>
             ) : (
                 <div className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <select
+                        <SmartSelect
                             value={newEventType}
-                            onChange={(e) => setNewEventType(e.target.value as TimelineEvent['eventType'])}
-                            className="flex h-11 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                        >
-                            <option value="NOTIFICATION">Notification</option>
-                            <option value="REG_START">Registration Start</option>
-                            <option value="REG_END">Registration End</option>
-                            <option value="EXAM_DATE">Exam Date</option>
-                            <option value="RESULT">Result</option>
-                            <option value="INTERVIEW">Interview</option>
-                            <option value="DOC_VERIFICATION">Document Verification</option>
-                            <option value="OTHER">Other</option>
-                        </select>
+                            onChange={(val) => setNewEventType(val as TimelineEvent['eventType'])}
+                            containerClassName="w-full"
+                            options={[
+                                { label: 'Notification', value: 'NOTIFICATION' },
+                                { label: 'Registration Start', value: 'REG_START' },
+                                { label: 'Registration End', value: 'REG_END' },
+                                { label: 'Exam Date', value: 'EXAM_DATE' },
+                                { label: 'Result', value: 'RESULT' },
+                                { label: 'Interview', value: 'INTERVIEW' },
+                                { label: 'Document Verification', value: 'DOC_VERIFICATION' },
+                                { label: 'Other', value: 'OTHER' },
+                            ]}
+                        />
                         <input
                             type="datetime-local"
                             value={newEventDate}
@@ -94,7 +96,7 @@ export function TimelineSection({
                             type="button"
                             onClick={handleCreateTimelineEvent}
                             disabled={timelineBusyId === 'new'}
-                            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-xs font-bold capitalize tracking-wider text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-60"
+                            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground transition-all hover:bg-primary/90 disabled:opacity-60"
                         >
                             {timelineBusyId === 'new' ? 'Adding...' : 'Add event'}
                         </button>
@@ -102,48 +104,49 @@ export function TimelineSection({
 
                     <div className="space-y-3">
                         {timelineLoading ? (
-                            <div className="text-xs text-muted-foreground">Loading timeline...</div>
+                            <div className="text-sm text-muted-foreground">Loading timeline...</div>
                         ) : timelineEvents.length === 0 ? (
-                            <div className="text-xs text-muted-foreground">No timeline events yet.</div>
+                            <div className="text-sm text-muted-foreground">No timeline events yet.</div>
                         ) : timelineEvents.map((event) => (
                             <div key={event.id} className="border border-border rounded-md p-3 space-y-2">
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                    <select
+                                    <SmartSelect
                                         value={event.eventType}
-                                        onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, eventType: e.target.value as TimelineEvent['eventType'] } : item))}
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
-                                    >
-                                        <option value="NOTIFICATION">Notification</option>
-                                        <option value="REG_START">Registration Start</option>
-                                        <option value="REG_END">Registration End</option>
-                                        <option value="EXAM_DATE">Exam Date</option>
-                                        <option value="RESULT">Result</option>
-                                        <option value="INTERVIEW">Interview</option>
-                                        <option value="DOC_VERIFICATION">Document Verification</option>
-                                        <option value="OTHER">Other</option>
-                                    </select>
+                                        onChange={(val) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, eventType: val as TimelineEvent['eventType'] } : item))}
+                                        containerClassName="w-full"
+                                        options={[
+                                            { label: 'Notification', value: 'NOTIFICATION' },
+                                            { label: 'Registration Start', value: 'REG_START' },
+                                            { label: 'Registration End', value: 'REG_END' },
+                                            { label: 'Exam Date', value: 'EXAM_DATE' },
+                                            { label: 'Result', value: 'RESULT' },
+                                            { label: 'Interview', value: 'INTERVIEW' },
+                                            { label: 'Document Verification', value: 'DOC_VERIFICATION' },
+                                            { label: 'Other', value: 'OTHER' },
+                                        ]}
+                                    />
                                     <input
                                         type="datetime-local"
                                         value={event.eventDate}
                                         onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, eventDate: e.target.value } : item))}
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20"
                                     />
                                     <input
                                         value={event.title}
                                         onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, title: e.target.value } : item))}
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
                                     />
                                     <textarea
                                         rows={2}
                                         value={event.notes || ''}
                                         onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, notes: e.target.value } : item))}
-                                        className="flex min-h-14 w-full rounded-md border border-input bg-background px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
+                                        className="flex min-h-14 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
                                         placeholder="Notes"
                                     />
                                     <input
                                         value={event.sourceLink || ''}
                                         onChange={(e) => setTimelineEvents((prev) => prev.map((item) => item.id === event.id ? { ...item, sourceLink: e.target.value } : item))}
-                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
+                                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 md:col-span-2"
                                         placeholder="Source link"
                                     />
                                 </div>
@@ -152,7 +155,7 @@ export function TimelineSection({
                                         type="button"
                                         onClick={() => handleDeleteTimelineEvent(event.id)}
                                         disabled={timelineBusyId === event.id}
-                                        className="inline-flex h-9 items-center justify-center rounded-md border border-rose-300 bg-rose-50 px-3 text-[11px] font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
+                                        className="inline-flex h-9 items-center justify-center rounded-md border border-rose-300 bg-rose-50 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-60"
                                     >
                                         Delete
                                     </button>
@@ -160,7 +163,7 @@ export function TimelineSection({
                                         type="button"
                                         onClick={() => handleUpdateTimelineEvent(event)}
                                         disabled={timelineBusyId === event.id}
-                                        className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-[11px] font-semibold text-foreground hover:bg-accent disabled:opacity-60"
+                                        className="inline-flex h-9 items-center justify-center rounded-md border border-input bg-background px-3 text-sm font-semibold text-foreground hover:bg-accent disabled:opacity-60"
                                     >
                                         {timelineBusyId === event.id ? 'Saving...' : 'Save event'}
                                     </button>

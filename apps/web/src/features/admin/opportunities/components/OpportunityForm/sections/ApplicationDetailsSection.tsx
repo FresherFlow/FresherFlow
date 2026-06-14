@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ClipboardDocumentCheckIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { SmartSelect } from '@/features/admin/ui/SmartSelect';
 
 interface ApplicationDetailsSectionProps {
     appMethod: 'DIRECT' | 'FORM' | 'ASSESSMENT';
@@ -50,31 +51,29 @@ export function ApplicationDetailsSection({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">
-                        Application Method
-                    </label>
-                    <select
+                    <SmartSelect
+                        label="Application Method"
                         value={appMethod}
-                        onChange={(e) => {
-                            const val = e.target.value as 'DIRECT' | 'FORM' | 'ASSESSMENT';
-                            setAppMethod(val);
-                            if (val === 'DIRECT') {
+                        onChange={(val) => {
+                            const method = val as 'DIRECT' | 'FORM' | 'ASSESSMENT';
+                            setAppMethod(method);
+                            if (method === 'DIRECT') {
                                 setAppPlatform('');
                                 setAppDuration('');
                                 setAppRequiredItems([]);
                             }
                         }}
-                        className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 focus-visible:border-primary transition-all shadow-sm"
-                    >
-                        <option value="DIRECT">DIRECT (Direct redirect - default)</option>
-                        <option value="FORM">FORM (Portal or external Form)</option>
-                        <option value="ASSESSMENT">ASSESSMENT (Timed coding test/exam)</option>
-                    </select>
+                        options={[
+                            { label: 'DIRECT (Direct redirect - default)', value: 'DIRECT' },
+                            { label: 'FORM (Portal or external Form)', value: 'FORM' },
+                            { label: 'ASSESSMENT (External hiring test platform)', value: 'ASSESSMENT' },
+                        ]}
+                    />
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">
-                        Platform {!isPlatformEnabled && <span className="text-muted-foreground/50 text-[10px]">(Disabled)</span>}
+                    <label className="text-sm font-medium text-muted-foreground/80 flex items-center gap-1.5">
+                        Platform {!isPlatformEnabled && <span className="text-muted-foreground/50 text-xs">(Disabled)</span>}
                     </label>
                     <input
                         type="text"
@@ -87,8 +86,8 @@ export function ApplicationDetailsSection({
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider">
-                        Estimated Duration (Minutes) {!isPlatformEnabled && <span className="text-muted-foreground/50 text-[10px]">(Disabled)</span>}
+                    <label className="text-sm font-medium text-muted-foreground/80 flex items-center gap-1.5">
+                        Duration (Mins) {!isPlatformEnabled && <span className="text-muted-foreground/50 text-xs">(Disabled)</span>}
                     </label>
                     <input
                         type="number"
@@ -104,7 +103,7 @@ export function ApplicationDetailsSection({
 
             {isPlatformEnabled && (
                 <div className="space-y-3 pt-2">
-                    <label className="text-xs font-semibold text-muted-foreground capitalize tracking-wider block">
+                    <label className="text-sm font-medium text-muted-foreground/80 block">
                         {appMethod === 'ASSESSMENT' ? 'Assessment Topics / Syllabus' : 'Required Preparation Items'}
                     </label>
                     <div className="flex gap-2">

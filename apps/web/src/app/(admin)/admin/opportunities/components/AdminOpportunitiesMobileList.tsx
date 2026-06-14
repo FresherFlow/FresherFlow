@@ -2,7 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { Opportunity } from '@fresherflow/types';
 import { SocialOpportunity } from '@/features/admin/opportunities/listUtils';
-import CompanyLogo from '@/features/system/components/ui/CompanyLogo';
+import CompanyLogo from '@/ui/CompanyLogo';
 import {
     MapPinIcon,
     CalendarIcon,

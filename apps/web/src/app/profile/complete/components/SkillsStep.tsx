@@ -1,6 +1,6 @@
 import React, { RefObject } from 'react';
 import { cn } from '@repo/ui/utils/cn';
-import { Button } from '@/features/system/components/ui/Button';
+import { Button } from '@/ui/Button';
 import { ArrowPathIcon, CheckCircleIcon, PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface SkillsStepProps {

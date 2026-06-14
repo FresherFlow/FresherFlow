@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
-import { Button } from '@/features/system/components/ui/Button';
+import { Button } from '@/ui/Button';
 import { cn } from '@repo/ui/utils/cn';
 
 const CORP_LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Remote'];

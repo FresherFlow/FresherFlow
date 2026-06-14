@@ -3,8 +3,8 @@ import { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import OpportunityDetailClient from './OpportunityDetailClient';
-import { OpportunityDetailSkeleton } from '@/components/ui/Skeleton';
-import { getOpportunityPath } from '@/lib/opportunityPath';
+import { OpportunityDetailSkeleton } from '@/ui/Skeleton';
+import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
 import {
     fetchOpportunityForPage,
     generateOpportunityMetadata,
@@ -82,7 +82,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
         const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
         const feed = await fetchBootstrapFeed();
         if (feed?.opportunities) {
-            const { getRelatedOpportunities } = await import('./detailUtils');
+            const { getRelatedOpportunities } = await import('@/features/opportunities/utils/detailUtils');
             relatedOpportunitiesData = getRelatedOpportunities(opportunityData, feed.opportunities);
         }
     } catch (err) {

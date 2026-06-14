@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { savedApi } from '@/shared/api/client';
+import { savedApi } from '@/lib/api/client';
 import type { Opportunity } from '@fresherflow/types';
-import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
+import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
 import JobCard from '@/features/opportunities/components/JobCard';
 import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
 

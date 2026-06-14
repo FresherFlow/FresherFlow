@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/lib/auth/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { toastError } from '@/lib/utils/error';
@@ -13,11 +13,11 @@ import {
     ChevronLeftIcon,
     KeyIcon
 } from '@heroicons/react/24/outline';
-import { useAuthFormData } from '@/contexts/AuthFormDataContext';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { useAuthFormData } from '@/lib/auth/AuthFormDataContext';
+import { Button } from '@/ui/Button';
+import { Input } from '@/ui/Input';
 import { growthApi } from '@/lib/api/client';
-import LoadingScreen from '@/components/ui/LoadingScreen';
+import LoadingScreen from '@/ui/LoadingScreen';
 
 declare global {
     interface Window {

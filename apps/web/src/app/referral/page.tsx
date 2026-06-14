@@ -8,12 +8,12 @@ export default function FrozenReferralRoute() {
 // 'use client';
 // 
 // import { useEffect, useState, useCallback } from 'react';
-// import { useAuth } from '@/features/auth';
+// import { useAuth } from '@/lib/auth/AuthContext';
 // import Link from 'next/link';
 // import { buildInviteUrl } from '@fresherflow/domain';
-// import { analytics } from '@/lib/analytics';
-// import { referralApi } from '@/shared/api/client';
-// import { SITE_URL } from '@/lib/runtimeConfig';
+// import { analytics } from '@/lib/api/analytics';
+// import { referralApi } from '@/lib/api/client';
+// import { SITE_URL } from '@/lib/utils/runtimeConfig';
 // import {
 //     ClipboardDocumentIcon,
 //     ShareIcon,

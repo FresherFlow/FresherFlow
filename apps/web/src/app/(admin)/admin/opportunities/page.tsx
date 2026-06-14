@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, Suspense } from 'react';
-import { useAdmin } from '@/features/admin/AdminContext';
+import { useAdmin } from '@/lib/auth/AdminContext';
 import { useRouter } from 'next/navigation';
-import { AdminOpportunitiesSkeleton } from '@/features/system/components/ui/Skeleton';
+import { AdminOpportunitiesSkeleton } from '@/ui/Skeleton';
 import { getPublicOpportunityUrl } from '@/features/admin/opportunities/listUtils';
 
 // Hooks
@@ -72,7 +72,7 @@ function OpportunitiesListPage() {
     const effectiveTotalPages = totalPages || Math.ceil(totalCount / pageSize) || 1;
 
     return (
-        <div className="space-y-6 md:space-y-8 animate-in fade-in duration-500">
+        <div className="space-y-6 md:space-y-8">
             <AdminOpportunitiesHeader 
                 isLoading={isLoading} 
                 onRefresh={loadOpportunities} 

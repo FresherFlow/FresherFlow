@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { auth } from '../firebase';
+import { auth } from '@/lib/api/firebase';
 import { signInWithCustomToken, onAuthStateChanged, User } from 'firebase/auth';
 import { adminApi } from '../api/admin';
 

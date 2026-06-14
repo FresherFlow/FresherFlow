@@ -1,18 +1,18 @@
 'use client';
 
-import { useAuth } from '@/features/auth';
-import { AuthGate, ProfileGate } from '@/components/gates/ProfileGate';
-import { opportunitiesApi, dashboardApi, savedApi } from '@/shared/api/client';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { AuthGate, ProfileGate } from '@/lib/components/ProfileGate';
+import { opportunitiesApi, dashboardApi, savedApi } from '@/lib/api/client';
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Opportunity } from '@fresherflow/types';
 import toast from 'react-hot-toast';
 // removed unused sync status import
-import { calculateOpportunityMatch, isNotEligible } from '@/lib/matchScore';
+import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
 import { OpportunityEventType } from '@fresherflow/types';
-import { OfflineError } from '@/shared/api/client';
-import { ProfileCompletionBanner } from '@/components/dashboard/DashboardBanners';
-import { Button } from '@/features/system/components/ui/Button';
-import { calculateProfileCompletion } from '@/lib/profileCompletion';
+import { OfflineError } from '@/lib/api/client';
+import { ProfileCompletionBanner } from '@/features/dashboard/components/DashboardBanners';
+import { Button } from '@/ui/Button';
+import { calculateProfileCompletion } from '@/features/profile/profileCompletion';
 
 
 // Components

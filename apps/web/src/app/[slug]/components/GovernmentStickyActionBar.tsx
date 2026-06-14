@@ -1,10 +1,10 @@
 import { Opportunity, User } from '@fresherflow/types';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/ui/Button';
 import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
 import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
 import { BookmarkIcon as BookmarkSolidIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
-import { cn } from '@/shared/ui/cn';
+import { cn } from '@repo/ui/utils/cn';
 
 interface GovernmentStickyActionBarProps {
     user: User | null;

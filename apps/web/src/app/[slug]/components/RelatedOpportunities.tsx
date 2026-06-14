@@ -1,10 +1,10 @@
 import type { Opportunity } from '@fresherflow/types';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import CompanyLogo from '@/components/ui/CompanyLogo';
+import CompanyLogo from '@/ui/CompanyLogo';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
-import { parseOpportunityLocation } from '@/lib/opportunityDisplay';
-import { getOpportunityPathFromItem } from '@/lib/opportunityPath';
+import { parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
+import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 
 type RelatedOpportunitiesProps = {
     relatedOpps: Opportunity[];

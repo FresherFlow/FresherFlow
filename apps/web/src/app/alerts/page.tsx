@@ -6,7 +6,7 @@ export default function FrozenUserRoute() {
 
 // /* WEB PIVOT: old user route implementation preserved below for later restoration.
 // import { redirect } from 'next/navigation';
-// // import RedirectToApp from '@/components/ui/RedirectToApp';
+// // import RedirectToApp from '@/ui/RedirectToApp';
 // 
 // export const metadata = {
 //     title: 'Alerts',
