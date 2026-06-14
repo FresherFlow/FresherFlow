@@ -21,15 +21,7 @@
     ],
     "paths": {
       "@/*": ["src/*"],
-      "@/features/auth": ["./src/contexts/AuthContext.tsx"],
-      "@/features/system/components/ui/*": ["./src/components/ui/*"],
-      "@/shared/api/client": ["./src/lib/api/client.ts"],
-      "@/shared/api/admin": ["./src/lib/api/admin.ts"],
-      "@/shared/api/analytics": ["./src/lib/analytics.ts"],
-      "@/shared/api/offline/*": ["./src/lib/offline/*"],
-      "@/shared/ui/error": ["./src/lib/utils/error.ts"],
-      "@/shared/ui/cn": ["../../packages/ui/src/utils/cn.ts"],
-      "@/shared/ui/sanitize": ["../../packages/ui/src/utils/sanitize.ts"],
+
       "@repo/domain": ["../../packages/domain/src"],
       "@repo/domain/*": ["../../packages/domain/src/*"],
       "@repo/api-client": ["../../packages/api-client/src"],

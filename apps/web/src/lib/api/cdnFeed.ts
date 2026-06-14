@@ -13,7 +13,7 @@ import {
     SITEMAP_DATA_URL,
     API_URL,
     GOVERNMENT_FEED_URL
-} from '../runtimeConfig';
+} from '@/lib/utils/runtimeConfig';
 export interface BootstrapFeedResponse {
     opportunities: Opportunity[];
     count: number;
@@ -169,10 +169,10 @@ export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFe
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
-            // Signed URLs are version-pinned (immutable until next publish).
-            // We use no-store because the Route Cache handles ISR caching.
-            // force-cache causes infinite Vercel Data Cache bloat due to v= signatures.
-            cache: 'no-store',
+            // force-cache: version-pinned URLs mean each URL is immutable until next publish.
+            // Pages are statically cached at Edge after first visit — zero compute on repeat visits.
+            // ISR writes stay low: build-time pre-render + 1 per job publish (not 257k).
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 
@@ -218,8 +218,7 @@ export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> 
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
-            // Signed URLs are version-pinned (immutable until next publish).
-            cache: 'no-store',
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 
@@ -269,7 +268,7 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
-            cache: 'no-store',
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 
@@ -310,8 +309,7 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
         const res = await fetch(url, getCDNFetchOptions({
-            // Signed URLs: immutable per feed version.
-            cache: 'no-store',
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 
@@ -342,8 +340,7 @@ export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResp
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
         const res = await fetch(url, getCDNFetchOptions({
-            // Signed URLs: immutable per feed version.
-            cache: 'no-store',
+            cache: 'force-cache',
             signal: controller.signal,
         }));
 
@@ -419,7 +416,7 @@ export interface SitemapDataResponse {
     opportunities: Array<{
         id: string;
         slug: string | null;
-        type: 'JOB' | 'INTERNSHIP' | 'WALKIN';
+        type: 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT';
         postedAt: string;
         updatedAt?: string;
     }>;

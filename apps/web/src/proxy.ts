@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { handleHostRouting } from "./proxy/hosts";
-import { handleAuth } from "./proxy/auth";
-import { applySeoHeaders } from "./proxy/seo";
+import { handleHostRouting } from "@/lib/config/hosts";
+import { handleAuth } from "@/lib/config/auth";
+import { applySeoHeaders } from "@/lib/config/seo";
 
 /**
- * Standard Next.js Middleware
- * Replaces the misnamed src/proxy.ts to follow standard conventions.
+ * Standard Next.js Proxy (formerly Middleware)
+ * Handles host routing, maintenance mode, and authentication limits.
  */
 export default function middleware(req: NextRequest) {
     // 0. Check if maintenance mode is active
