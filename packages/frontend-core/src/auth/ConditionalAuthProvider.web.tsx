@@ -1,6 +1,6 @@
 'use client';
 
-import { UserAuthProvider as AuthProvider } from "@repo/frontend-core";
+import { UserAuthProvider as AuthProvider } from "./UserAuthContext";
 import { usePathname } from "next/navigation";
 import { ReactNode } from "react";
 

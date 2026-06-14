@@ -92,7 +92,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         return;
     }, [isAuthenticated, isLoginPage, pathname]);
 
-    // Poll backend health
+    // Check backend health once on mount
     useEffect(() => {
         if (!isAuthenticated || isLoginPage) return;
         const checkHealth = async () => {
@@ -105,8 +105,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             }
         };
         void checkHealth();
-        const id = window.setInterval(checkHealth, 30000);
-        return () => window.clearInterval(id);
     }, [isAuthenticated, isLoginPage]);
 
 
