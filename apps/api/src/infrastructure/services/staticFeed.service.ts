@@ -541,22 +541,69 @@ export class StaticFeedService {
 
     static async generateResourcesFeed() {
         return this.withDbRetry(async () => {
-            const resources = await prisma.sharedResource.findMany({
+            const collections = await prisma.resourceCollection.findMany({
                 where: {
                     status: 'APPROVED'
+                },
+                include: {
+                    items: true
                 },
                 orderBy: {
                     createdAt: 'desc'
                 },
                 take: 500
             });
+
+            const companyNames = Array.from(
+                new Set(
+                    collections
+                        .map(c => c.company)
+                        .filter((c): c is string => typeof c === 'string' && c.trim() !== '')
+                )
+            );
+
+            const companyMetadata: Record<string, { logoUrl: string | null; website: string | null }> = {};
+
+            if (companyNames.length > 0) {
+                const opportunities = await prisma.opportunity.findMany({
+                    where: {
+                        company: {
+                            in: companyNames
+                        },
+                        status: 'PUBLISHED',
+                        deletedAt: null
+                    },
+                    select: {
+                        company: true,
+                        companyLogoUrl: true,
+                        companyWebsite: true
+                    },
+                    orderBy: {
+                        postedAt: 'desc'
+                    }
+                });
+
+                for (const name of companyNames) {
+                    const match = opportunities.find(
+                        o => o.company.toLowerCase() === name.toLowerCase() && o.companyLogoUrl
+                    );
+                    const fallback = opportunities.find(
+                        o => o.company.toLowerCase() === name.toLowerCase()
+                    );
+                    companyMetadata[name] = {
+                        logoUrl: match?.companyLogoUrl || fallback?.companyLogoUrl || null,
+                        website: match?.companyWebsite || fallback?.companyWebsite || null
+                    };
+                }
+            }
+
             return {
                 metadata: {
                     version: '1.0',
                     updatedAt: Date.now()
                 },
-                resources,
-                companyMetadata: {}
+                resources: collections,
+                companyMetadata
             };
         });
     }

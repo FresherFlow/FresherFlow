@@ -1,7 +1,7 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import prisma from '../infrastructure/database/prisma';
-import { ResourceItemType, CreateSharedResourceRequest } from '@fresherflow/types';
+import { ResourceItemType } from '@fresherflow/types';
 import { optionalAuth } from '../middleware/auth';
 import { logger } from '@fresherflow/logger';
 
@@ -45,25 +45,59 @@ function detectResourceType(url: string): ResourceItemType {
     if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) {
         return ResourceItemType.YOUTUBE;
     }
-    if (lowerUrl.includes('drive.google.com')) {
-        return ResourceItemType.GOOGLE_DRIVE;
+    if (lowerUrl.endsWith('.pdf')) {
+        return ResourceItemType.PDF;
     }
     if (lowerUrl.includes('roadmap.sh')) {
         return ResourceItemType.ROADMAP;
     }
+
+    const isCloudStorage = 
+        lowerUrl.includes('drive.google.com') || 
+        lowerUrl.includes('dropbox.com') || 
+        lowerUrl.includes('onedrive') || 
+        lowerUrl.includes('box.com') ||
+        lowerUrl.includes('sharepoint');
+
+    if (isCloudStorage) {
+        return ResourceItemType.FILE;
+    }
+
     return ResourceItemType.LINK;
 }
 
+const adaptSingleUrlSubmit = (req: Request, res: Response, next: NextFunction): void => {
+    if (req.body && typeof req.body.url === 'string' && req.body.url.trim()) {
+        const url = req.body.url.trim();
+        req.body.title = req.body.title || 'Resource Link';
+        req.body.items = [
+            {
+                url,
+                title: req.body.title !== 'Resource Link' ? req.body.title : undefined,
+                type: req.body.type
+            }
+        ];
+    }
+    next();
+};
+
 const submitResourceValidation = [
-    body('url').isURL().withMessage('Valid URL is required'),
-    body('title').optional().isString().trim(),
+    body('title').isString().notEmpty().withMessage('Collection title is required'),
+    body('description').optional().isString().trim(),
     body('company').optional().isString().trim(),
     body('skills').optional().isArray(),
-    body('skills.*').isString().trim()
+    body('skills.*').isString().trim(),
+    body('tags').optional().isArray(),
+    body('tags.*').isString().trim(),
+    body('items').isArray({ min: 1 }).withMessage('At least one resource item is required'),
+    body('items.*.url').isURL({ require_tld: false }).withMessage('Each item must have a valid URL'),
+    body('items.*.title').optional().isString().trim(),
+    body('items.*.type').optional().isIn(Object.values(ResourceItemType)).withMessage('Invalid item type')
 ];
 
 router.post('/', 
     optionalAuth, 
+    adaptSingleUrlSubmit,
     submitResourceValidation, 
     async (req: Request, res: Response, next: NextFunction): Promise<void> => {
         try {
@@ -73,34 +107,57 @@ router.post('/',
                 return;
             }
 
-            const { url, title: providedTitle, company, skills } = req.body as CreateSharedResourceRequest;
+            const { title, description, company, skills, tags, items } = req.body;
             const userId = req.userId || null;
-            
-            // Check for existing url
-            const existing = await prisma.sharedResource.findUnique({
-                where: { url }
+
+            // Check for duplicate URLs across any existing APPROVED or PENDING collections
+            const urlsToCheck = items.map((item: { url: string }) => item.url.trim());
+            const existingItem = await prisma.resourceItem.findFirst({
+                where: {
+                    url: {
+                        in: urlsToCheck,
+                        mode: 'insensitive'
+                    }
+                },
+                include: {
+                    collection: true
+                }
             });
 
-            if (existing) {
-                res.status(409).json({ 
-                    error: 'This resource has already been submitted.',
-                    status: existing.status,
-                    existing: true
+            if (existingItem) {
+                res.status(409).json({
+                    error: 'This link is already under review or approved!',
+                    existing: true,
+                    status: existingItem.collection.status
                 });
                 return;
             }
+            
+            // Map items, auto-detecting types and titles if necessary
+            const mappedItems = await Promise.all(items.map(async (item: { url: string; type?: ResourceItemType; title?: string }) => {
+                const url = item.url.trim();
+                let type = item.type;
+                if (!type || !Object.values(ResourceItemType).includes(type)) {
+                    type = detectResourceType(url);
+                }
+                let itemTitle = item.title?.trim();
+                if (!itemTitle) {
+                    const fetchedTitle = await fetchPageTitle(url);
+                    itemTitle = fetchedTitle || url;
+                }
+                if (itemTitle.length > 200) {
+                    itemTitle = itemTitle.substring(0, 197) + '...';
+                }
+                return {
+                    title: itemTitle,
+                    url,
+                    type
+                };
+            }));
 
-            const type = detectResourceType(url);
-            let finalTitle = providedTitle?.trim();
-
-            if (!finalTitle) {
-                const fetchedTitle = await fetchPageTitle(url);
-                finalTitle = fetchedTitle || url; // Fallback to URL if we can't get a title
-            }
-
-            // Truncate title if extremely long
-            if (finalTitle.length > 200) {
-                finalTitle = finalTitle.substring(0, 197) + '...';
+            let finalCollectionTitle = title.trim();
+            if (finalCollectionTitle === 'Resource Link' && mappedItems.length === 1) {
+                finalCollectionTitle = mappedItems[0].title;
             }
 
             let username: string | null = null;
@@ -112,19 +169,25 @@ router.post('/',
                 username = user?.username || null;
             }
 
-            const resource = await prisma.sharedResource.create({
+            const collection = await prisma.resourceCollection.create({
                 data: {
-                    url,
-                    title: finalTitle,
-                    type,
+                    title: finalCollectionTitle,
+                    description: description || null,
                     company: company || null,
                     skills: skills || [],
+                    tags: tags || [],
                     addedByUserId: userId,
-                    addedByUsername: username
+                    addedByUsername: username,
+                    items: {
+                        create: mappedItems
+                    }
+                },
+                include: {
+                    items: true
                 }
             });
 
-            res.status(201).json({ resource });
+            res.status(201).json({ resource: collection });
             
         } catch (error) {
             next(error);
@@ -132,12 +195,15 @@ router.post('/',
     }
 );
 
-// Get approved resources (public)
+// Get approved collections (public)
 router.get('/', async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-        const resources = await prisma.sharedResource.findMany({
+        const collections = await prisma.resourceCollection.findMany({
             where: {
                 status: 'APPROVED'
+            },
+            include: {
+                items: true
             },
             orderBy: {
                 createdAt: 'desc'
@@ -145,7 +211,7 @@ router.get('/', async (req: Request, res: Response, next: NextFunction): Promise
             take: 100
         });
 
-        res.json({ resources });
+        res.json({ resources: collections });
     } catch (error) {
         next(error);
     }

@@ -278,6 +278,9 @@ export function buildGovernmentJobDetailsCreate(data: AdminOpportunityRequest) {
             : {
                 seoTags: details.seoTags,
             }) as unknown as Prisma.InputJsonValue,
+        officialSourceVerified: typeof details.officialSourceVerified === 'boolean' ? details.officialSourceVerified : undefined,
+        sourceLastCheckedAt: details.sourceLastCheckedAt ? new Date(details.sourceLastCheckedAt) : undefined,
+        extractionConfidence: typeof details.extractionConfidence === 'number' ? details.extractionConfidence : undefined,
     };
 
     const hasValue = Object.values(payload).some((value) => Array.isArray(value) ? value.length > 0 : value !== undefined);

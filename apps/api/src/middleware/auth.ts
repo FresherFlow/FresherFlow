@@ -123,7 +123,7 @@ export async function requireAuth(req: express.Request, res: Response, next: Nex
 
 // Admin Authentication Middleware
 // Accepts both cookie (web) and Authorization Bearer header (mobile app)
-export function requireAdmin(req: express.Request, res: Response, next: NextFunction) {
+export async function requireAdmin(req: express.Request, res: Response, next: NextFunction) {
     const cookieToken = req.cookies?.adminAccessToken as string | undefined;
     const authHeader = req.headers?.authorization;
     const bearerToken =
@@ -146,6 +146,27 @@ export function requireAdmin(req: express.Request, res: Response, next: NextFunc
 
     if (!adminId) {
         return next(new AppError('Invalid admin token', 403));
+    }
+
+    try {
+        const user = await prisma.user.findUnique({ where: { id: adminId } });
+        if (!user) {
+            const referralCode = `ADMIN_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+            await prisma.user.create({
+                data: {
+                    id: adminId,
+                    email: process.env.ADMIN_EMAIL || 'cheekatlamukesh+admin@gmail.com',
+                    fullName: 'Admin User',
+                    role: 'ADMIN',
+                    isAnonymous: false,
+                    referralCode,
+                    profile: { create: {} }
+                }
+            });
+        }
+    } catch (error) {
+        logger.error('[auth] Admin user check/creation failed:', error);
+        return next(new AppError('Database is temporarily unavailable. Please try again shortly.', 503));
     }
 
     req.adminId = adminId;

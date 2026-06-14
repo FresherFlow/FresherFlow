@@ -333,13 +333,16 @@ router.get('/shares', requireAuth, async (req: Request, res: Response, next: Nex
         const total = await prisma.rawOpportunity.count({ where: { createdByUserId: userId } });
         
         // Also fetch user's shared resources
-        const resources = await prisma.sharedResource.findMany({
+        const resources = await prisma.resourceCollection.findMany({
             where: { addedByUserId: userId },
+            include: {
+                items: true
+            },
             orderBy: { createdAt: 'desc' },
             skip,
             take: limit,
         });
-        const totalResources = await prisma.sharedResource.count({ where: { addedByUserId: userId } });
+        const totalResources = await prisma.resourceCollection.count({ where: { addedByUserId: userId } });
 
         const totalShared = total;
         const totalPublished = await prisma.opportunity.count({

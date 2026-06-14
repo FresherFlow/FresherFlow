@@ -100,6 +100,9 @@ export interface AdminOpportunityRequest {
         reservationDetails?: any;
         referenceLinks?: any;
         cutOffMarks?: any;
+        officialSourceVerified?: boolean;
+        sourceLastCheckedAt?: string;
+        extractionConfidence?: number;
         examName?: string;
         notificationIssuedDate?: string;
         basicPay?: number;
