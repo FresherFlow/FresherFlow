@@ -53,7 +53,10 @@ const EXPIRED_PHRASES = [
     "job is not available at this time",
     "job is not available at this time.",
     "has expired",
-    "no longer open"
+    "no longer open",
+    "this requisition is no longer accepting applications",
+    "no longer accepting applications via careers",
+    "please explore other open opportunities"
 ];
 
 // Phrases indicating it's a fresher job
@@ -85,19 +88,6 @@ const FRESHER_PHRASES = [
 
 // Phrases indicating it's NOT a fresher job (we skip if we see these AND we don't see fresher phrases)
 const EXPERIENCED_PHRASES = [
-    "1+ years",
-    "2+ years",
-    "3+ years",
-    "4+ years",
-    "5+ years",
-    "6+ years",
-    "7+ years",
-    "8+ years",
-    "10+ years",
-    "1+ year",
-    "1 + year",
-    "1+ yr",
-    "1 + yr",
     "1.5+ years",
     "1.5 years",
     "18+ months",
@@ -106,16 +96,6 @@ const EXPERIENCED_PHRASES = [
     "12 months",
     "18 months",
     "24 months",
-    "1 year's",
-    "1 year’s",
-    "1 year's experience",
-    "1 year’s experience",
-    "at least 1 year",
-    "at least 1 yr",
-    "minimum 1 year",
-    "minimum 1 yr",
-    "min 1 year",
-    "min 1 yr",
     "1 year of exp",
     "1 year exp",
     "1+ exp",
@@ -126,78 +106,7 @@ const EXPERIENCED_PHRASES = [
     "6+ exp",
     "7+ exp",
     "8+ exp",
-    "10+ exp",
-    "2 yrs",
-    "3 yrs",
-    "4 yrs",
-    "5 yrs",
-    "6 yrs",
-    "7 yrs",
-    "8 yrs",
-    "10 yrs",
-    "2yrs",
-    "3yrs",
-    "4yrs",
-    "5yrs",
-    "6yrs",
-    "7yrs",
-    "8yrs",
-    "10yrs",
-    "2y -",
-    "3y -",
-    "4y -",
-    "5y -",
-    "6y -",
-    "7y -",
-    "8y -",
-    "10y -",
-    "2y to",
-    "3y to",
-    "4y to",
-    "5y to",
-    "6y to",
-    "7y to",
-    "8y to",
-    "1-2 years",
-    "1-3 years",
-    "2-3 years",
-    "2-4 years",
-    "3-5 years",
-    "4-5 years",
-    "1 - 3 years",
-    "2 - 4 years",
-    "1 to 3 years",
-    "2 to 4 years",
-    "1 year of experience",
-    "2 years of experience",
-    "3 years of experience",
-    "4 years of experience",
-    "5 years of experience",
-    "1 year experience",
-    "2 years experience",
-    "3 years experience",
-    "4 years experience",
-    "5 years experience",
-    "minimum 2 years",
-    "minimum 3 years",
-    "minimum 4 years",
-    "minimum 5 years",
-    "min 2 year",
-    "min 3 year",
-    "min 4 year",
-    "min 5 year",
-    "min 2 years",
-    "min 3 years",
-    "min 4 years",
-    "min 5 years",
-    "2 yr",
-    "3 yr",
-    "4 yr",
-    "5 yr",
-    "6 yr",
-    "7 yr",
-    "8 yr",
-    "10 yr"
+    "10+ exp"
 ];
 
 // Helper to sign the CDN URL
@@ -292,6 +201,12 @@ function isFresherJob(text: string): boolean {
     // Check for "minimum of 2 years", "min 1 year", "at least 2 yrs", etc.
     const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b10\b)\s*(?:years|year|yrs|yr|y\b)/gi;
     if (minExpRegex.test(lowerText)) {
+        return false;
+    }
+    
+    // Check for standalone experience requirements of 2-10 years (e.g. "3 years", "5 yrs", "2yr") that are not part of a 0-X range
+    const standaloneExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b10\b)\s*(?:years|yrs|yr|y\b)/gi;
+    if (standaloneExpRegex.test(lowerText)) {
         return false;
     }
     

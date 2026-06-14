@@ -66,7 +66,10 @@ const EXPIRED_PHRASES = [
     "job is not available at this time",
     "job is not available at this time.",
     "has expired",
-    "no longer open"
+    "no longer open",
+    "this requisition is no longer accepting applications",
+    "no longer accepting applications via careers",
+    "please explore other open opportunities"
 ];
 
 async function checkJob(page: Page, url: string): Promise<boolean> {
