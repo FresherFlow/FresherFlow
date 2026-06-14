@@ -26,6 +26,7 @@ enum OpportunityType {
   JOB
   INTERNSHIP
   WALKIN
+  GOVERNMENT
 }
 
 enum OpportunityStatus {
@@ -228,8 +229,9 @@ enum UserTrustLevel {
 }
 
 enum ResourceItemType {
+  PDF
+  FILE
   YOUTUBE
-  GOOGLE_DRIVE
   WEBSITE
   ROADMAP
   LINK
@@ -1042,20 +1044,34 @@ model OpportunityComment {
   @@index([userId])
 }
 
-model SharedResource {
+model ResourceCollection {
   id              String             @id @default(uuid())
   title           String
-  type            ResourceItemType
-  url             String             @unique
+  description     String?
   company         String?
   skills          String[]           @default([])
+  tags            String[]           @default([])
   addedByUserId   String?
   addedByUsername String?
   status          ResourceItemStatus @default(PENDING_REVIEW)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
+  items           ResourceItem[]
 
   @@index([company])
   @@index([skills], type: Gin)
   @@index([status])
+}
+
+model ResourceItem {
+  id           String             @id @default(uuid())
+  collectionId String
+  collection   ResourceCollection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  title        String
+  type         ResourceItemType
+  url          String
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  @@index([collectionId])
 }

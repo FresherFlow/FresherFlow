@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
@@ -76,11 +76,11 @@ export const NotificationProvider: React.FC<{
     setNativePushToken(token);
   };
 
-  const showToast = (message: string, tone: 'info' | 'success' | 'error' = 'info') => {
+  const showToast = useCallback((message: string, tone: 'info' | 'success' | 'error' = 'info') => {
     setToast({ message, tone });
     if (toastTimer.current) clearTimeout(toastTimer.current);
     toastTimer.current = setTimeout(() => setToast(null), 2600);
-  };
+  }, []);
 
   useEffect(() => {
     // Defer to avoid cascading renders warning

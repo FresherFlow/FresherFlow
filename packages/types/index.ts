@@ -239,6 +239,9 @@ export interface Opportunity {
     allowedCourses: string[];
     allowedSpecializations?: string[];
     allowedPassoutYears: number[];
+    passoutYearMin?: number | null;
+    passoutYearMax?: number | null;
+    allowedAvailability?: string | null;
     requiredSkills: string[];
 
     // Location
@@ -781,8 +784,9 @@ export interface CreateSharedResourceRequest {
 }
 
 export enum ResourceItemType {
+    PDF = 'PDF',
+    FILE = 'FILE',
     YOUTUBE = 'YOUTUBE',
-    GOOGLE_DRIVE = 'GOOGLE_DRIVE',
     WEBSITE = 'WEBSITE',
     ROADMAP = 'ROADMAP',
     LINK = 'LINK'
@@ -793,19 +797,32 @@ export enum ResourceItemStatus {
     APPROVED = 'APPROVED'
 }
 
-export interface SharedResource {
+export interface ResourceItem {
     id: string;
+    collectionId: string;
     title: string;
     type: ResourceItemType;
     url: string;
+    createdAt: string | Date;
+    updatedAt: string | Date;
+}
+
+export interface ResourceCollection {
+    id: string;
+    title: string;
+    description?: string | null;
     company?: string | null;
     skills: string[];
+    tags: string[];
     addedByUserId?: string | null;
     addedByUsername?: string | null;
     status: ResourceItemStatus;
     createdAt: string | Date;
     updatedAt: string | Date;
+    items: ResourceItem[];
 }
+
+export type SharedResource = ResourceCollection;
 
 export interface CompanyResourceMetadata {
     logoUrl?: string | null;
@@ -817,12 +834,12 @@ export interface ResourcesFeed {
         version: string;
         updatedAt: number;
     };
-    resources: SharedResource[];
+    resources: ResourceCollection[];
     companyMetadata: Record<string, CompanyResourceMetadata>;
 }
 
 export interface AdminGetResourcesResponse {
-    resources: SharedResource[];
+    resources: ResourceCollection[];
     pagination: {
         total: number;
         page: number;
@@ -833,17 +850,29 @@ export interface AdminGetResourcesResponse {
 
 export interface AdminUpdateResourceRequest {
     title?: string;
+    description?: string | null;
     company?: string | null;
     skills?: string[];
-    sector?: string;
+    tags?: string[];
     status?: ResourceItemStatus;
+    items?: {
+        id?: string;
+        title: string;
+        type: ResourceItemType;
+        url: string;
+    }[];
 }
 
 export interface AdminCreateResourceRequest {
     title: string;
-    url: string;
-    type: string;
+    description?: string;
     company?: string | null;
     skills?: string[];
+    tags?: string[];
     status?: ResourceItemStatus;
+    items: {
+        title: string;
+        type: ResourceItemType;
+        url: string;
+    }[];
 }

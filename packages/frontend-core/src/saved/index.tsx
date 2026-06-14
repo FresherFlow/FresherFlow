@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { OpportunityType, ResourceItemType, ResourceItemStatus, type Opportunity, type SharedResource } from '@fresherflow/types';
+import { OpportunityType, ResourceItemStatus, type Opportunity, type SharedResource } from '@fresherflow/types';
 import { 
   readSavedJobs, 
   saveSavedJobs, 
@@ -149,12 +149,14 @@ export const SavedProvider: React.FC<{
           updatedResources.push({
             id,
             title: 'Saved Resource',
-            type: ResourceItemType.LINK,
-            url: '',
+            description: '',
+            company: null,
             skills: [],
+            tags: [],
             status: ResourceItemStatus.APPROVED,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            items: []
           });
         }
       }
