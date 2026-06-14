@@ -1,24 +1,24 @@
 'use client';
 
-import { useAuth } from '@/features/auth';
+import { useAuth } from '@/lib/auth/AuthContext';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import ArrowRightIcon from '@heroicons/react/24/outline/ArrowRightIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
 import CheckIcon from '@heroicons/react/24/outline/CheckIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
-import { analytics } from '@/lib/analytics';
-import { buildInviteUrl } from '@fresherflow/domain';
-import { referralApi } from '@/shared/api/client';
-import { SHARE_BASE_URL } from '@/lib/runtimeConfig';
-import { calculateProfileCompletion } from '@/lib/profileCompletion';
+import { analytics } from '@/lib/api/analytics';
+import { buildInviteUrl } from '@/lib/utils/share';
+import { referralApi } from '@/lib/api/client';
+import { SHARE_BASE_URL } from '@/lib/utils/runtimeConfig';
+import { calculateProfileCompletion } from '@/features/profile/profileCompletion';
 
 // Profile completion banner
 export function ProfileCompletionBanner() {
-    const { profile } = useAuth();
+    const { profile, isLoading } = useAuth();
     const pct = calculateProfileCompletion(profile).percentage;
 
-    if (!profile || pct >= 100) return null;
+    if (isLoading || !profile || pct >= 100) return null;
 
     return (
         <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -67,7 +67,7 @@ export function ReferralLinkButton() {
 
     const origin = typeof window !== 'undefined' ? window.location.origin : SHARE_BASE_URL;
     // Use short code if loaded, otherwise fall back to user id (will update once fetched)
-    const referralUrl = buildInviteUrl(referralCode ?? user.id, { shareBase: origin });
+    const referralUrl = buildInviteUrl(origin, referralCode ?? user.id);
 
     const shareData = {
         title: 'Join me on FresherFlow',

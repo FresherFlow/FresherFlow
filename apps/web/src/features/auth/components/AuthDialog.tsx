@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useContext } from 'react';
-import { AuthContext } from '@/contexts/AuthContext';
+import { AuthContext } from '@/lib/auth/AuthContext';
 import { useRouter } from 'next/navigation';
 
 interface AuthDialogProps {
