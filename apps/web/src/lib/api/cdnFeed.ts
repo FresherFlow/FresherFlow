@@ -100,6 +100,16 @@ async function signUrlIfServer(url: string): Promise<string> {
 }
 
 /**
+ * Returns the CDN fetch timeout in ms.
+ * During production build, Next.js renders all generateStaticParams pages
+ * concurrently from one machine — this saturates CDN connections and 3.5s
+ * is too short. At runtime, 3.5s fast-fails bots hitting non-existent slugs.
+ */
+function getCDNTimeout(): number {
+    return process.env.NEXT_PHASE === 'phase-production-build' ? 12000 : 3500;
+}
+
+/**
  * Generates correct fetch options for the static CDN.
  */
 function getCDNFetchOptions(options: RequestInit = {}): RequestInit {
@@ -110,7 +120,6 @@ function getCDNFetchOptions(options: RequestInit = {}): RequestInit {
         headers,
     };
 }
-
 
 /**
  * Fetches the centrally stored R2 feed version without caching.
@@ -334,9 +343,9 @@ export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResp
             : `${rawUrl}?v=${version}`;
 
         const controller = new AbortController();
-        // 3.5s hard cap — bots hitting non-existent company slugs were hanging the
-        // serverless function until Vercel's ~9s ceiling, burning compute the entire time.
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        // 3.5s at runtime (fast-fail bots on non-existent slugs before Vercel's ~9s ceiling).
+        // 12s during build (concurrent static generation saturates CDN connections).
+        const timeoutId = setTimeout(() => controller.abort(), getCDNTimeout());
 
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache',
@@ -399,9 +408,8 @@ export async function fetchCompaniesMetadata(): Promise<string[] | null> {
     try {
         const url = await signUrlIfServer(COMPANIES_METADATA_URL);
         const controller = new AbortController();
-        // 3.5s hard cap — same as shard fetches. Without this, a CDN cache miss
-        // causes the function to hang indefinitely, producing 51s+ P75 latency.
-        const timeoutId = setTimeout(() => controller.abort(), 3500);
+        // 3.5s at runtime (fast-fail). 12s during build (concurrent static generation).
+        const timeoutId = setTimeout(() => controller.abort(), getCDNTimeout());
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache',
             signal: controller.signal,
