@@ -3,7 +3,6 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { body, query, validationResult } from 'express-validator';
 import prisma from '../../infrastructure/database/prisma';
 import { ResourceItemStatus } from '@fresherflow/types';
-import { StaticFeedService } from '../../infrastructure/services/staticFeed.service';
 
 const router = Router();
 
@@ -76,6 +75,7 @@ const createResourceValidation = [
     body('tags').optional().isArray(),
     body('tags.*').isString().trim(),
     body('status').optional().isIn(['PENDING_REVIEW', 'APPROVED']),
+    body('sector').optional().isIn(['PRIVATE', 'GOVERNMENT']),
     body('items').isArray().withMessage('Items array is required'),
     body('items.*.title').isString().notEmpty().trim(),
     body('items.*.type').isString().trim(),
@@ -92,7 +92,7 @@ router.post('/',
                 return;
             }
 
-            const { title, description, company, skills, tags, status, items } = req.body;
+            const { title, description, company, skills, tags, status, items, sector } = req.body;
 
             const collection = await prisma.resourceCollection.create({
                 data: {
@@ -102,6 +102,7 @@ router.post('/',
                     skills: skills || [],
                     tags: tags || [],
                     status: status || 'APPROVED', // Default to APPROVED for admin creations
+                    sector: sector || 'PRIVATE',
                     addedByUserId: (req as unknown as { user?: { id: string } }).user?.id || 'admin',
                     addedByUsername: (req as unknown as { user?: { username: string } }).user?.username || 'admin',
                     items: {
@@ -117,7 +118,7 @@ router.post('/',
                 }
             });
 
-            StaticFeedService.scheduleRefresh();
+            // StaticFeedService.scheduleRefresh();
 
             res.status(201).json({ resource: collection });
         } catch (error) {
@@ -136,6 +137,7 @@ const updateResourceValidation = [
     body('tags').optional().isArray(),
     body('tags.*').isString().trim(),
     body('status').optional().isIn(['PENDING_REVIEW', 'APPROVED']),
+    body('sector').optional().isIn(['PRIVATE', 'GOVERNMENT']),
     body('items').optional().isArray(),
     body('items.*.id').optional().isString(),
     body('items.*.title').optional().isString().notEmpty().trim(),
@@ -219,7 +221,7 @@ router.patch('/:id',
                 });
             });
 
-            StaticFeedService.scheduleRefresh();
+            // StaticFeedService.scheduleRefresh();
 
             res.json({ resource: collection });
         } catch (error) {
@@ -246,7 +248,7 @@ router.delete('/:id', async (req: Request, res: Response, next: NextFunction): P
             where: { id }
         });
 
-        StaticFeedService.scheduleRefresh();
+        // StaticFeedService.scheduleRefresh();
 
         res.status(204).send();
     } catch (error) {
@@ -290,7 +292,7 @@ router.post('/:id/items',
                 }
             });
 
-            StaticFeedService.scheduleRefresh();
+            // StaticFeedService.scheduleRefresh();
 
             res.status(201).json({ item });
         } catch (error) {
@@ -331,7 +333,7 @@ router.patch('/:collectionId/items/:itemId',
                 data: updateData
             });
 
-            StaticFeedService.scheduleRefresh();
+            // StaticFeedService.scheduleRefresh();
 
             res.json({ item });
         } catch (error) {
@@ -358,7 +360,7 @@ router.delete('/:collectionId/items/:itemId', async (req: Request, res: Response
             where: { id: itemId }
         });
 
-        StaticFeedService.scheduleRefresh();
+        // StaticFeedService.scheduleRefresh();
 
         res.status(204).send();
     } catch (error) {

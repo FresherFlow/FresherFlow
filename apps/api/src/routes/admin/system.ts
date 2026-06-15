@@ -7,6 +7,7 @@ import { TelegramBroadcastStatus } from '@fresherflow/database';
 import { runAlertsCycle } from '../../infrastructure/services/alerts.service';
 import { getAdminMetricsV2, MetricsWindow } from '../../infrastructure/services/adminMetrics.service';
 import { getAdminDeliveryControls, updateAdminDeliveryControls } from '../../infrastructure/services/adminDeliveryControl.service';
+import { StaticFeedService } from '../../infrastructure/services/staticFeed.service';
 
 
 const router = Router();
@@ -69,6 +70,18 @@ router.post('/alerts/run', requireAdmin, async (_req: Request, res: Response, ne
     try {
         const result = await runAlertsCycle();
         res.json({ success: true, ...result });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * Manually trigger static CDN feeds regeneration
+ */
+router.post('/regenerate-feeds', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
+    try {
+        await StaticFeedService.refresh();
+        res.json({ success: true, message: 'Static feeds successfully regenerated.' });
     } catch (error) {
         next(error);
     }

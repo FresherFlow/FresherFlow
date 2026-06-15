@@ -8,7 +8,7 @@ import { validate } from '../middleware/validate';
 import { educationSchema, preferencesSchema, readinessSchema, contributionSchema } from '../utils/validation';
 import TelegramService from '../infrastructure/services/telegram.service';
 import { AppError } from '../middleware/errorHandler';
-import { Profile } from '@fresherflow/types';
+import { Profile, Gender, ReservationCategory } from '@fresherflow/types';
 import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/domain';
 import { areOpportunityUrlsEquivalent, getOpportunityUrlAliases, normalizeOpportunityUrl } from '@fresherflow/utils';
 import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
@@ -60,6 +60,35 @@ router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunct
         const normalizedPg = normalizeProfileEducation(data.pgCourse, data.pgSpecialization);
         const normalizedSkills = normalizeSkills(data.skills);
 
+        let dob: Date | null | undefined = undefined;
+        if (data.dob !== undefined) {
+            if (data.dob === null || data.dob === '') {
+                dob = null;
+            } else {
+                const parsedDob = new Date(data.dob);
+                if (isNaN(parsedDob.getTime())) {
+                    return next(new AppError('Invalid date of birth format', 400));
+                }
+                dob = parsedDob;
+            }
+        }
+
+        if (data.gender !== undefined && data.gender !== null && !Object.values(Gender).includes(data.gender)) {
+            return next(new AppError('Invalid gender value', 400));
+        }
+        if (data.category !== undefined && data.category !== null && !Object.values(ReservationCategory).includes(data.category)) {
+            return next(new AppError('Invalid category value', 400));
+        }
+        if (data.isPwBD !== undefined && data.isPwBD !== null && typeof data.isPwBD !== 'boolean') {
+            return next(new AppError('isPwBD must be a boolean', 400));
+        }
+        if (data.isExServicemen !== undefined && data.isExServicemen !== null && typeof data.isExServicemen !== 'boolean') {
+            return next(new AppError('isExServicemen must be a boolean', 400));
+        }
+        if (data.homeState !== undefined && data.homeState !== null && typeof data.homeState !== 'string') {
+            return next(new AppError('homeState must be a string', 400));
+        }
+
         // Update user if fullName is provided
         if (fullName) {
             await prisma.user.update({
@@ -85,7 +114,13 @@ router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunct
                 preferredCities: data.preferredCities,
                 workModes: data.workModes,
                 availability: data.availability,
-                skills: normalizedSkills
+                skills: normalizedSkills,
+                dob: dob,
+                gender: data.gender,
+                category: data.category,
+                isPwBD: data.isPwBD,
+                isExServicemen: data.isExServicemen,
+                homeState: data.homeState
             }
         });
 
@@ -126,7 +161,8 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
             tenthYear,
             twelfthYear,
             gradCourse, gradSpecialization, gradYear,
-            pgCourse, pgSpecialization, pgYear
+            pgCourse, pgSpecialization, pgYear,
+            dob, gender, category, isPwBD, isExServicemen, homeState
         } = req.body;
         const normalizedGrad = normalizeProfileEducation(gradCourse, gradSpecialization);
         const normalizedPg = normalizeProfileEducation(pgCourse, pgSpecialization);
@@ -151,7 +187,13 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
                 gradYear,
                 pgCourse: normalizedPg.course || null,
                 pgSpecialization: normalizedPg.specialization || null,
-                pgYear
+                pgYear,
+                dob,
+                gender,
+                category,
+                isPwBD,
+                isExServicemen,
+                homeState
             }
         });
 

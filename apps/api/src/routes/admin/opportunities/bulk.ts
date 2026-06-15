@@ -4,7 +4,6 @@ import { OpportunityStatus } from '@fresherflow/types';
 import { withAdminAudit } from '../../../middleware/adminAudit';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
 import { queueNewJobAlerts } from './_helpers';
-import { StaticFeedService } from '../../../infrastructure/services/staticFeed.service';
 
 const router = Router();
 
@@ -75,7 +74,7 @@ router.post(
             if (action === 'PUBLISH' && idsNeedingAlerts.length > 0) {
                 idsNeedingAlerts.forEach(id => queueNewJobAlerts(id));
             }
-            StaticFeedService.scheduleRefresh();
+            // StaticFeedService.scheduleRefresh(); // Commented out to prevent automatic builds
         } catch (error) {
             next(error);
         }

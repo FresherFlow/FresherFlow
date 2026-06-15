@@ -89,6 +89,7 @@ const submitResourceValidation = [
     body('skills.*').isString().trim(),
     body('tags').optional().isArray(),
     body('tags.*').isString().trim(),
+    body('sector').optional().isIn(['PRIVATE', 'GOVERNMENT']).withMessage('Invalid sector'),
     body('items').isArray({ min: 1 }).withMessage('At least one resource item is required'),
     body('items.*.url').isURL({ require_tld: false }).withMessage('Each item must have a valid URL'),
     body('items.*.title').optional().isString().trim(),
@@ -107,7 +108,7 @@ router.post('/',
                 return;
             }
 
-            const { title, description, company, skills, tags, items } = req.body;
+            const { title, description, company, skills, tags, items, sector } = req.body;
             const userId = req.userId || null;
 
             // Check for duplicate URLs across any existing APPROVED or PENDING collections
@@ -178,6 +179,7 @@ router.post('/',
                     tags: tags || [],
                     addedByUserId: userId,
                     addedByUsername: username,
+                    sector: sector || 'PRIVATE',
                     items: {
                         create: mappedItems
                     }
