@@ -14,22 +14,23 @@ export async function generateStaticParams() {
     // Use bootstrap feed (active jobs only) instead of sitemap data (includes expired company slugs).
     // Expired companies have no CDN shard file — their shard fetch returns 404 every time,
     // which Next.js never caches, causing 0% data cache hit and unnecessary ISR writes.
-    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    const feed = await fetchBootstrapFeed();
-    if (!feed?.opportunities) return [];
+    // const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+    // const feed = await fetchBootstrapFeed();
+    // if (!feed?.opportunities) return [];
 
-    const { slugify } = await import('@fresherflow/utils');
-    const seen = new Set<string>();
-    const params: { name: string }[] = [];
-    for (const opp of feed.opportunities) {
-        if (!opp.company) continue;
-        const slug = slugify(opp.company);
-        if (!seen.has(slug)) {
-            seen.add(slug);
-            params.push({ name: slug });
-        }
-    }
-    return params;
+    // const { slugify } = await import('@fresherflow/utils');
+    // const seen = new Set<string>();
+    // const params: { name: string }[] = [];
+    // for (const opp of feed.opportunities) {
+    //     if (!opp.company) continue;
+    //     const slug = slugify(opp.company);
+    //     if (!seen.has(slug)) {
+    //         seen.add(slug);
+    //         params.push({ name: slug });
+    //     }
+    // }
+    // return params;
+    return [];
 }
 
 export async function generateMetadata(
@@ -92,8 +93,8 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     // Empty state: company exists in sitemap but currently has no active listings.
     // Return a proper page (not 404) so Google keeps it indexed.
     if (companyJobs.length === 0) {
-        const { unstable_noStore } = await import('next/cache');
-        unstable_noStore();
+        // const { unstable_noStore } = await import('next/cache');
+        // unstable_noStore();
         return (
             <div className="min-h-screen bg-background pb-20">
                 <main className="max-w-5xl mx-auto px-4 py-16 text-center space-y-4">

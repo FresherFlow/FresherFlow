@@ -26,10 +26,11 @@ export const revalidate = false;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    const feed = await fetchBootstrapFeed();
-    if (!feed?.opportunities) return [];
-    return feed.opportunities.map((opp) => ({ slug: opp.slug ?? opp.id }));
+    // const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+    // const feed = await fetchBootstrapFeed();
+    // if (!feed?.opportunities) return [];
+    // return feed.opportunities.map((opp) => ({ slug: opp.slug ?? opp.id }));
+    return [];
 }
 
 // Generate dynamic SEO metadata
@@ -58,8 +59,8 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // Job not found in CDN feed — return a real 404 so Google doesn't
         // soft-404 the page (200 with error UI = Soft 404 in GSC).
         if (!opportunityData) {
-            const { unstable_noStore } = await import('next/cache');
-            unstable_noStore();
+            // const { unstable_noStore } = await import('next/cache');
+            // unstable_noStore();
             notFound();
         }
 
