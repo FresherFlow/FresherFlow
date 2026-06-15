@@ -68,6 +68,7 @@ import { renderFormattedDescription } from '@/system/components/DescriptionParse
 import { markJobAsSeen } from '@/utils/cache/seenJobs';
 import { formatSalary } from '@/utils/formatters';
 import { openExternalURL } from '@/utils/browser';
+import { calculateMatchScore } from '@/utils/matchScoring';
 
 import { useNotifications } from '@repo/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
@@ -151,6 +152,11 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
     route.params?.opportunity ?? route.params?.job ?? null,
     navigation
   );
+
+  const matchResult = useMemo(() => {
+    if (!opportunity) return null;
+    return calculateMatchScore(profile, opportunity);
+  }, [profile, opportunity]);
 
   const isFollowingCompany = useMemo(() => {
     if (!opportunity?.company) return false;
@@ -1526,12 +1532,12 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
                         {opportunity.title}
                     </Text>
                 </View>
-                {opportunity.matchReason && opportunity.matchScore !== undefined && opportunity.matchScore > 0 && (
+                {matchResult && matchResult.reason && matchResult.score !== undefined && matchResult.score > 0 && (
                     <Text style={[
                         styles.matchReasonText,
-                        { color: opportunity.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary }
+                        { color: matchResult.isEligible === false ? currentTheme.colors.error : currentTheme.colors.primary }
                     ]}>
-                        {opportunity.matchReason}
+                        {matchResult.reason}
                     </Text>
                 )}
 
@@ -1655,6 +1661,85 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
                         </Text>
                     </View>
                 </Animated.View>
+            )}
+
+            {/* Eligibility Status Card */}
+            {opportunity && (
+              <Animated.View style={{ opacity: fadeAnim1, transform: [{ translateY: fadeAnim1.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
+                <SurfaceCard 
+                  style={{ 
+                    padding: 16, 
+                    marginBottom: SPACING.xl, 
+                    borderWidth: 1, 
+                    borderColor: matchResult?.isEligible 
+                      ? alpha(currentTheme.colors.success, 0.2) 
+                      : matchResult?.reason?.includes('required') || matchResult?.reason?.includes('Complete profile') || matchResult?.reason?.includes('Date of birth') || matchResult?.reason?.includes('Home state')
+                        ? alpha(currentTheme.colors.warning, 0.2) 
+                        : alpha(currentTheme.colors.error, 0.2),
+                    backgroundColor: matchResult?.isEligible 
+                      ? alpha(currentTheme.colors.success, 0.03) 
+                      : matchResult?.reason?.includes('required') || matchResult?.reason?.includes('Complete profile') || matchResult?.reason?.includes('Date of birth') || matchResult?.reason?.includes('Home state')
+                        ? alpha(currentTheme.colors.warning, 0.03) 
+                        : alpha(currentTheme.colors.error, 0.03),
+                    borderRadius: 16,
+                  }}
+                >
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                    <View 
+                      style={{ 
+                        width: 36, 
+                        height: 36, 
+                        borderRadius: 18, 
+                        alignItems: 'center', 
+                        justifyContent: 'center',
+                        backgroundColor: matchResult?.isEligible 
+                          ? alpha(currentTheme.colors.success, 0.1) 
+                          : matchResult?.reason?.includes('required') || matchResult?.reason?.includes('Complete profile') || matchResult?.reason?.includes('Date of birth') || matchResult?.reason?.includes('Home state')
+                            ? alpha(currentTheme.colors.warning, 0.1) 
+                            : alpha(currentTheme.colors.error, 0.1),
+                      }}
+                    >
+                      {matchResult?.isEligible ? (
+                        <Check size={20} color={currentTheme.colors.success} strokeWidth={3} />
+                      ) : matchResult?.reason?.includes('required') || matchResult?.reason?.includes('Complete profile') || matchResult?.reason?.includes('Date of birth') || matchResult?.reason?.includes('Home state') ? (
+                        <AlertCircle size={20} color={currentTheme.colors.warning} strokeWidth={2.5} />
+                      ) : (
+                        <AlertCircle size={20} color={currentTheme.colors.error} strokeWidth={2.5} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: mScale(15), fontWeight: '900', color: currentTheme.colors.text }}>
+                        {matchResult?.isEligible ? 'Eligible to Apply' : 'Not Eligible'}
+                      </Text>
+                      <Text style={{ fontSize: mScale(13), color: currentTheme.colors.textMuted, marginTop: 2, lineHeight: 18 }}>
+                        {matchResult?.reason}
+                      </Text>
+                    </View>
+                    {!matchResult?.isEligible && (matchResult?.reason?.includes('required') || matchResult?.reason?.includes('Complete profile') || matchResult?.reason?.includes('Date of birth') || matchResult?.reason?.includes('Home state')) && (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          if (matchResult.reason.includes('Date of birth') || matchResult.reason.includes('Home state')) {
+                            navigation.navigate('EditDemographics');
+                          } else {
+                            navigation.navigate('CareerProfile');
+                          }
+                        }}
+                        style={{
+                          backgroundColor: alpha(currentTheme.colors.primary, 0.08),
+                          paddingVertical: 6,
+                          paddingHorizontal: 12,
+                          borderRadius: 8,
+                        }}
+                      >
+                        <Text style={{ fontSize: 12, fontWeight: '700', color: currentTheme.colors.primary }}>
+                          Fix Info
+                        </Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </SurfaceCard>
+              </Animated.View>
             )}
 
             {/* Government Quick Stats Grid */}

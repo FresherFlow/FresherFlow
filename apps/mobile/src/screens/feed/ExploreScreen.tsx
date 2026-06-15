@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useRef } from 'react';
+import React, { memo, useCallback, useRef, useMemo } from 'react';
 import { FlashList } from '@shopify/flash-list';
 
 import {
@@ -14,7 +14,7 @@ import {
     InteractionManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Compass, Filter, Building2, ChevronRight, X, ChevronUp } from 'lucide-react-native';
+import { Compass, Filter, Building2, ChevronRight, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useScrollToTop } from '@react-navigation/native';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
@@ -24,7 +24,8 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useSaved } from '@repo/frontend-core';
 import { CompanyLogo } from '@repo/ui';
-import { SurfaceCard, PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
+import { SurfaceCard, PremiumHeader, PremiumRefreshControl, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
+import { useScrollTracker } from '@/hooks/useScrollTracker';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -34,6 +35,7 @@ import { FilterChip } from '@/system/components/FilterChip';
 import { UsernameNudgeCard } from '@/system/components/UsernameNudgeCard';
 import { SPACING } from '@/system/constants/dimensions';
 import { useExplore } from '@/hooks/useExplore';
+import { useFeedStore } from '@/store/useFeedStore';
 import { saveRecentSearchKeyword } from '@/utils/userBehavior';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { CORE_CATEGORIES, CONTROLLED_TAGS, CATEGORY_LABELS } from '@fresherflow/constants';
@@ -110,15 +112,19 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         setFilters,
         searchQuery,
         setSearchQuery,
-        suggestions
+        suggestions,
+        openedIds
     } = useExplore();
 
     const filterSheetRef = React.useRef<FilterSheetRef>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const flashListRef = React.useRef<any>(null);
     
-    // Track scroll position for animations and tab bar
-    const scrollOffset = useRef(0);
+    const { showScrollTop, handleScroll, scrollOffset } = useScrollTracker({
+        threshold: 1200,
+        scrollUpRequired: 200,
+        hideShowTabBar: true
+    });
 
     const smoothScrollToTop = useCallback(() => {
         if (!flashListRef.current) return;
@@ -132,8 +138,6 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const scrollToTopRef = useRef({ scrollToTop: smoothScrollToTop });
     useScrollToTop(scrollToTopRef);
-    
-    const [showScrollTop, setShowScrollTop] = React.useState(false);
     const [viewMode, setViewMode] = React.useState<'opportunities' | 'companies'>('opportunities');
 
     // Scroll back to top on search query, filter change, or view mode toggle
@@ -172,27 +176,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const { showSuccess } = useToast();
 
-    const handleScroll = useCallback((event: any) => {
-        const currentOffset = event.nativeEvent.contentOffset.y;
-        const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
-
-        if (currentOffset > 600) {
-            if (Math.abs(currentOffset - scrollOffset.current) > 10) {
-                setShowScrollTop(direction === 'up');
-            }
-        } else {
-            setShowScrollTop(false);
-        }
-
-        if (Math.abs(currentOffset - scrollOffset.current) > 20) {
-            if (direction === 'down' && currentOffset > 100) {
-                hideTabBar();
-            } else if (direction === 'up' || currentOffset < 50) {
-                showTabBar();
-            }
-            scrollOffset.current = currentOffset;
-        }
-    }, [hideTabBar, showTabBar]);
+    // scroll handling is coordinated by useScrollTracker above
 
     const handleToggleSave = useCallback((opportunity: Opportunity) => {
         const wasSaved = isSaved(opportunity.id);
@@ -203,6 +187,46 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const resultsCount = results.length;
     const activeFilterCount = (filters.types?.length || 0) + (filters.workModes?.length || 0) + (filters.batchYears?.length || 0) + (filters.tag ? 1 : 0);
+
+    // Memoized list data so FlashList receives a stable array reference between renders.
+    // Previously this was an inline IIFE which created a new array on every render.
+    const listData = useMemo((): ExploreItem[] => {
+        const items: ExploreItem[] = [];
+
+        if (viewMode === 'companies') {
+            items.push({ type: 'discovery', key: 'discovery' });
+            if (derivedCompanies.length > 0) {
+                items.push({ type: 'stats', key: 'company_stats', count: derivedCompanies.length });
+                derivedCompanies.forEach((c, idx) => {
+                    items.push({ type: 'company', data: c, key: `company_${c.name}_${idx}` });
+                });
+            } else if (!loading) {
+                items.push({ type: 'empty', key: 'empty_state' });
+            } else if (loading) {
+                items.push({ type: 'loading', key: 'loading_state' });
+            }
+            return items;
+        }
+
+        const showDiscovery = !searchQuery && !filters.tag && activeFilterCount === 0;
+
+        if (showDiscovery) {
+            items.push({ type: 'discovery', key: 'discovery' });
+        }
+
+        if (resultsCount > 0) {
+            items.push({ type: 'stats', key: 'results_stats', count: resultsCount });
+            results.forEach((r, idx) => {
+                items.push({ type: 'opportunity', data: r, key: `${r.id}_${idx}` });
+            });
+        } else if (!loading && !showDiscovery) {
+            items.push({ type: 'empty', key: 'empty_state' });
+        } else if (loading) {
+            items.push({ type: 'loading', key: 'loading_state' });
+        }
+
+        return items;
+    }, [viewMode, derivedCompanies, results, loading, searchQuery, activeFilterCount, filters.tag, resultsCount]);
 
     const renderEmpty = useCallback(() => (
         <View style={styles.emptyContainer}>
@@ -243,12 +267,12 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                     opportunity={s}
                                     index={idx}
                                     onPress={() => {
-                                        requestAnimationFrame(() => {
-                                            navigation.navigate('JobDetail', { opportunity: s, opportunityId: s.id });
-                                        });
+                                        void useFeedStore.getState().markAsOpened(s.id);
+                                        navigation.navigate('JobDetail', { opportunity: s, opportunityId: s.id });
                                     }}
                                     onSave={() => handleToggleSave(s)}
                                     isSaved={isSaved(s.id)}
+                                    isViewed={openedIds.has(s.id)}
                                 />
                             ))}
                         </View>
@@ -287,7 +311,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         rightSlot={
                             <TouchableOpacity
                                 onPress={() => {
-                                    console.log('[ExploreScreen] Opening FilterSheet via Ref');
+                                    if (__DEV__) { console.log('[ExploreScreen] Opening FilterSheet via Ref') }
                                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                                     filterSheetRef.current?.present();
                                 }}
@@ -337,44 +361,8 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
             <FlashList<ExploreItem>
                 ref={flashListRef}
-                extraData={{ savedJobs, isSaved }}
-                data={(() => {
-                    const items: ExploreItem[] = [];
-
-                    if (viewMode === 'companies') {
-                        items.push({ type: 'discovery', key: 'discovery' });
-                        if (derivedCompanies.length > 0) {
-                            items.push({ type: 'stats', key: 'company_stats', count: derivedCompanies.length });
-                            derivedCompanies.forEach((c, idx) => {
-                                items.push({ type: 'company', data: c, key: `company_${c.name}_${idx}` });
-                            });
-                        } else if (!loading) {
-                            items.push({ type: 'empty', key: 'empty_state' });
-                        } else if (loading) {
-                            items.push({ type: 'loading', key: 'loading_state' });
-                        }
-                        return items;
-                    }
-
-                    const showDiscovery = !searchQuery && !filters.tag && activeFilterCount === 0;
-
-                    if (showDiscovery) {
-                        items.push({ type: 'discovery', key: 'discovery' });
-                    }
-
-                    if (resultsCount > 0) {
-                        items.push({ type: 'stats', key: 'results_stats', count: resultsCount });
-                        results.forEach((r, idx) => {
-                            items.push({ type: 'opportunity', data: r, key: `${r.id}_${idx}` });
-                        });
-                    } else if (!loading && !showDiscovery) {
-                        items.push({ type: 'empty', key: 'empty_state' });
-                    } else if (loading) {
-                        items.push({ type: 'loading', key: 'loading_state' });
-                    }
-
-                    return items;
-                })()}
+                extraData={{ savedJobs, isSaved, openedIds }}
+                data={listData}
                 // @ts-expect-error - FlashList typing bug with estimatedItemSize
                 estimatedItemSize={180}
                 drawDistance={2500}
@@ -537,13 +525,11 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 theme={currentTheme}
                                 onPress={() => {
                                     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                    InteractionManager.runAfterInteractions(() => {
-                                        navigation.navigate('CompanyDetail', {
-                                            companyName: item.data.name,
-                                            companyLogoUrl: item.data.logoUrl,
-                                            website: item.data.website,
-                                            currentJob: item.data.firstOpp
-                                        });
+                                    navigation.navigate('CompanyDetail', {
+                                        companyName: item.data.name,
+                                        companyLogoUrl: item.data.logoUrl,
+                                        website: item.data.website,
+                                        currentJob: item.data.firstOpp
                                     });
                                 }}
                             />
@@ -556,12 +542,12 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 opportunity={item.data}
                                 index={index}
                                 onPress={() => {
-                                    requestAnimationFrame(() => {
-                                        navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
-                                    });
+                                    void useFeedStore.getState().markAsOpened(item.data.id);
+                                    navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
                                 }}
                                 onSave={() => handleToggleSave(item.data)}
                                 isSaved={isSaved(item.data.id)}
+                                isViewed={openedIds.has(item.data.id)}
                             />
                         );
                     }
@@ -586,25 +572,11 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 onApply={setFilters}
             />
 
-            {showScrollTop && (
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
-                    }}
-                    style={[
-                        styles.scrollTopBtn,
-                        {
-                            backgroundColor: currentTheme.colors.surface,
-                            borderColor: alpha(currentTheme.colors.border, 0.3),
-                            bottom: insets.bottom + 110,
-                        },
-                    ]}
-                >
-                    <ChevronUp size={20} color={currentTheme.colors.primary} />
-                </TouchableOpacity>
-            )}
+            <ScrollToTopButton 
+                visible={showScrollTop} 
+                onPress={() => flashListRef.current?.scrollToOffset({ offset: 0, animated: true })} 
+                bottomOffset={insets.bottom + 110}
+            />
         </Screen>
     );
 });
@@ -727,28 +699,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 22,
-    },
-    scrollTopBtn: {
-        position: 'absolute',
-        right: 28,
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        zIndex: 9999,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
     }
 });
 

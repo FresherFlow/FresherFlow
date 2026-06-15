@@ -10,7 +10,7 @@ import {
   Linking,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, PlayCircle, FolderOpen, Compass, Globe, Info, ExternalLink } from 'lucide-react-native';
+import { ChevronRight, PlayCircle, FolderOpen, Compass, Globe, Info, ExternalLink, FileText } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { openExternalURL } from '@/utils/browser';
 import * as Haptics from 'expo-haptics';
@@ -20,14 +20,14 @@ import { alpha } from '@/theme';
 import { RootStackParamList } from '@/navigation/types';
 import { useResourcesFeed } from '@/hooks/useResourcesFeed';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
+import { useSavedItems } from '@/hooks/useSavedItems';
 import { Bookmark } from 'lucide-react-native';
 import { Screen } from '@/system/layout/Layout';
 import { SurfaceCard, SecondaryHeader } from '@/system/components/PremiumPrimitives';
 import { CommentSection } from '@/system/components/CommentSection';
+import { ResourceCollectionCard } from '@/system/components/ResourceCollectionCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResourceGroupDetail'>;
-
-type TabType = 'GUIDES' | 'DISCUSSION';
 
 export const ResourceGroupDetailScreen: React.FC<Props> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -35,9 +35,7 @@ export const ResourceGroupDetailScreen: React.FC<Props> = ({ route, navigation }
   const { groupType, groupId, groupName, logoUrl } = route.params;
   const { getResourcesByGroup, companyMetadata } = useResourcesFeed();
   const { isSavedResource, toggleSaveResource } = useSavedJobs();
-
-  // State
-  const [activeTab, setActiveTab] = useState<TabType>('GUIDES');
+  const { isItemSaved, toggleSaveItem } = useSavedItems();
 
   // Filter items in this group
   const groupResources = useMemo(
@@ -52,6 +50,14 @@ export const ResourceGroupDetailScreen: React.FC<Props> = ({ route, navigation }
     }
     return null;
   }, [groupType, groupName, companyMetadata]);
+
+  const getDomainFromUrl = (url: string): string => {
+    try {
+      return url.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+    } catch {
+      return 'link';
+    }
+  };
 
   // Handle URL opening
   const handleOpenLink = async (url: string) => {
@@ -68,34 +74,52 @@ export const ResourceGroupDetailScreen: React.FC<Props> = ({ route, navigation }
       // Fallback or default: Open in secure in-app Browser
       await openExternalURL(url, currentTheme.colors);
     } catch (err) {
-      console.warn('Failed to open link:', err);
+      if (__DEV__) { console.warn('Failed to open link:', err) }
     }
   };
 
-  const getResourceColor = (type: string, opacity: number = 1) => {
+  // Derive colour from URL or Type
+  const getColorByUrl = (url: string, type?: string, opacity: number = 1) => {
+    const u = url.toLowerCase();
     let hex = currentTheme.colors.primary;
-    if (type === 'YOUTUBE') hex = '#EF4444';
-    else if (type === 'GOOGLE_DRIVE') hex = '#10B981';
-    else if (type === 'ROADMAP') hex = '#3B82F6';
+    if (type === 'YOUTUBE' || u.includes('youtube.com') || u.includes('youtu.be')) hex = '#EF4444';
+    else if (type === 'PDF' || u.endsWith('.pdf')) hex = '#EA580C';
+    else if (type === 'ROADMAP' || u.includes('roadmap.sh')) hex = '#3B82F6';
+    else if (
+      type === 'FOLDER' ||
+      type === 'FILE' ||
+      u.includes('drive.google.com') ||
+      u.includes('dropbox.com') ||
+      u.includes('onedrive') ||
+      u.includes('box.com') ||
+      u.includes('sharepoint')
+    ) hex = '#10B981';
     else hex = '#8B5CF6';
     return alpha(hex, opacity);
   };
 
-  // Get matching icon for Resource Type
-  const getResourceIcon = (type: string) => {
-    const size = 20;
-    const color = getResourceColor(type, 1);
-    switch (type) {
-      case 'YOUTUBE':
-        return <PlayCircle size={size} color={color} />;
-      case 'GOOGLE_DRIVE':
-        return <FolderOpen size={size} color={color} />;
-      case 'ROADMAP':
-        return <Compass size={size} color={color} />;
-      default:
-        return <Globe size={size} color={color} />;
+  const getIconByUrl = (url: string, type?: string, size = 20) => {
+    const u = url.toLowerCase();
+    const color = getColorByUrl(url, type, 1);
+    if (type === 'YOUTUBE' || u.includes('youtube.com') || u.includes('youtu.be')) return <PlayCircle size={size} color={color} />;
+    if (type === 'PDF' || u.endsWith('.pdf')) return <FileText size={size} color={color} />;
+    if (type === 'ROADMAP' || u.includes('roadmap.sh')) return <Compass size={size} color={color} />;
+    if (type === 'FOLDER') return <FolderOpen size={size} color={color} />;
+    if (type === 'FILE') return <FileText size={size} color={color} />;
+    if (
+      u.includes('drive.google.com') ||
+      u.includes('dropbox.com') ||
+      u.includes('onedrive') ||
+      u.includes('box.com') ||
+      u.includes('sharepoint')
+    ) {
+      return (u.includes('folder') || u.includes('folders') || u.includes('id='))
+        ? <FolderOpen size={size} color={color} />
+        : <FileText size={size} color={color} />;
     }
+    return <Globe size={size} color={color} />;
   };
+
 
   return (
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
@@ -106,25 +130,23 @@ export const ResourceGroupDetailScreen: React.FC<Props> = ({ route, navigation }
         <SecondaryHeader
           title={`${groupName} Guides`}
           showBack={true}
+          onBack={() => navigation.goBack()}
         />
       </View>
 
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 40 }}
-        stickyHeaderIndices={[1]}
       >
         {/* Group Hero Block */}
         <View style={styles.heroWrapper}>
           <SurfaceCard style={[styles.heroCard, { borderColor: alpha(currentTheme.colors.border, 0.05), borderWidth: 1 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-              <View style={[styles.logoBox, { backgroundColor: alpha(currentTheme.colors.text, 0.02), borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
-                {logoUrl ? (
+              {logoUrl ? (
+                <View style={[styles.logoBox, { backgroundColor: alpha(currentTheme.colors.text, 0.02), borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
                   <Image source={{ uri: logoUrl }} style={styles.logoImage} />
-                ) : (
-                  <Globe size={32} color={currentTheme.colors.textMuted} strokeWidth={1.5} />
-                )}
-              </View>
+                </View>
+              ) : null}
               <View style={{ flex: 1 }}>
                 <Text style={[styles.heroName, { color: currentTheme.colors.text }]}>{groupName}</Text>
                 <Text style={[styles.heroDesc, { color: currentTheme.colors.textMuted }]}>
@@ -150,149 +172,31 @@ export const ResourceGroupDetailScreen: React.FC<Props> = ({ route, navigation }
           </SurfaceCard>
         </View>
 
-        {/* Tab Controls Bar */}
-        <View style={[styles.tabBarContainer, { backgroundColor: currentTheme.colors.background, borderBottomColor: alpha(currentTheme.colors.border, 0.05) }]}>
-          <View style={[styles.tabBar, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => {
-                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setActiveTab('GUIDES');
-              }}
-              style={[
-                styles.tabBtn,
-                activeTab === 'GUIDES' && { backgroundColor: currentTheme.colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
-              ]}
-            >
-              <Text style={[styles.tabBtnText, { color: activeTab === 'GUIDES' ? currentTheme.colors.text : currentTheme.colors.textMuted }]}>
-                Guides ({groupResources.length})
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              activeOpacity={0.9}
-              onPress={() => {
-                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setActiveTab('DISCUSSION');
-              }}
-              style={[
-                styles.tabBtn,
-                activeTab === 'DISCUSSION' && { backgroundColor: currentTheme.colors.background, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
-              ]}
-            >
-              <Text style={[styles.tabBtnText, { color: activeTab === 'DISCUSSION' ? currentTheme.colors.text : currentTheme.colors.textMuted }]}>
-                Discussion Lounge
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Tab Contents */}
+        {/* Guides List directly under hero */}
         <View style={styles.tabContentContainer}>
-          {activeTab === 'GUIDES' ? (
-            /* Guides Tab content */
-            <View style={styles.guidesList}>
-              {groupResources.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <Info size={40} color={alpha(currentTheme.colors.textMuted, 0.2)} />
-                  <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>
-                    No prep items found in this section yet. Tap the '+' in the directory to add one!
-                  </Text>
-                </View>
-              ) : (
-                groupResources.map((item) => {
-                  const isYoutube = item.type === 'YOUTUBE' || item.url.toLowerCase().includes('youtube.com') || item.url.toLowerCase().includes('youtu.be');
-                  let ytVideoId = null;
-                  if (isYoutube) {
-                    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-                    const match = item.url.match(regExp);
-                    if (match && match[2].length === 11) {
-                      ytVideoId = match[2];
-                    }
-                  }
-
-                  return (
-                    <TouchableOpacity
-                      key={item.id}
-                      activeOpacity={0.8}
-                      onPress={() => handleOpenLink(item.url)}
-                    >
-                      <SurfaceCard style={[styles.resourceCard, { borderWidth: 1, borderColor: alpha(currentTheme.colors.border, 0.05) }]}>
-                        <View style={{ flex: 1, gap: 10 }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                            <View style={[styles.iconWrapper, { backgroundColor: getResourceColor(item.type, 0.08) }]}>
-                              {getResourceIcon(item.type)}
-                            </View>
-                            <View style={{ flex: 1 }}>
-                              <Text style={[styles.resourceTitle, { color: currentTheme.colors.text }]} numberOfLines={2}>
-                                {item.title}
-                              </Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                                <Text style={[styles.resourceTypeBadge, { color: getResourceColor(item.type), backgroundColor: getResourceColor(item.type, 0.08) }]}>
-                                  {item.type.replace('_', ' ')}
-                                </Text>
-                                {item.skills && item.skills.slice(0, 2).map(skill => (
-                                  <View key={skill} style={[styles.miniSkillTag, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.05), borderWidth: 1 }]}>
-                                    <Text style={[styles.miniSkillTagText, { color: currentTheme.colors.textMuted }]}>{skill}</Text>
-                                  </View>
-                                ))}
-                              </View>
-                            </View>
-                            <ExternalLink size={15} color={alpha(currentTheme.colors.textMuted, 0.3)} />
-                          </View>
-
-                          {/* YouTube Rich Preview Video Card */}
-                          {ytVideoId && (
-                            <View style={[styles.youtubePreviewContainer, { borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
-                              <Image
-                                source={{ uri: `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` }}
-                                style={styles.youtubeThumbnail}
-                              />
-                              <View style={[styles.playButtonOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
-                                <View style={[styles.playButtonCircle, { backgroundColor: '#EF4444' }]}>
-                                  <PlayCircle size={24} color="#FFFFFF" />
-                                </View>
-                              </View>
-                            </View>
-                          )}
-
-                          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                            <Text style={[styles.resourceMeta, { color: currentTheme.colors.textMuted }]}>
-                              Shared by @{item.addedByUsername || 'community'}
-                            </Text>
-                            <TouchableOpacity 
-                              onPress={(e) => {
-                                e.stopPropagation(); // Prevent opening the link when saving
-                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                toggleSaveResource(item);
-                              }}
-                              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                              style={{ 
-                                  padding: 6, 
-                                  borderRadius: 8, 
-                                  backgroundColor: isSavedResource(item.id) ? alpha(currentTheme.colors.primary, 0.1) : 'transparent' 
-                              }}
-                            >
-                                <Bookmark 
-                                    size={18} 
-                                    color={isSavedResource(item.id) ? currentTheme.colors.primary : currentTheme.colors.textMuted} 
-                                    fill={isSavedResource(item.id) ? currentTheme.colors.primary : 'none'} 
-                                />
-                            </TouchableOpacity>
-                          </View>
-                        </View>
-                      </SurfaceCard>
-                    </TouchableOpacity>
-                  );
-                })
-              )}
-            </View>
-          ) : (
-            /* Discussion lounge tab (embeds reusable CommentSection) */
-            <View style={{ paddingHorizontal: 4 }}>
-              <CommentSection opportunityId={`group_${groupId}`} />
-            </View>
-          )}
+          <View style={styles.guidesList}>
+            {groupResources.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Info size={40} color={alpha(currentTheme.colors.textMuted, 0.2)} />
+                <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>
+                  No prep items found in this section yet.
+                </Text>
+              </View>
+            ) : (
+              groupResources.map((item) => (
+                <ResourceCollectionCard
+                  key={item.id}
+                  collection={item}
+                  isSaved={isSavedResource(item.id)}
+                  onToggleSave={() => toggleSaveResource(item)}
+                  onPressTitle={() => navigation.navigate('ResourceCollectionDetail', { collectionId: item.id, collectionTitle: item.title })}
+                  onPressViewAll={() => navigation.navigate('ResourceCollectionDetail', { collectionId: item.id, collectionTitle: item.title })}
+                  isItemSaved={isItemSaved}
+                  onToggleSaveItem={(item) => toggleSaveItem(item.id)}
+                />
+              ))
+            )}
+          </View>
         </View>
       </ScrollView>
     </Screen>
@@ -382,6 +286,21 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 20,
     gap: 14,
+  },
+  resourceCardContainer: {
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  itemLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    borderRadius: 12,
+    gap: 10,
+  },
+  itemLinkTitle: {
+    fontSize: 13,
+    fontWeight: '700',
   },
   iconWrapper: {
     width: 44,

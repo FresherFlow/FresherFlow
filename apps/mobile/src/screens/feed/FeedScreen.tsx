@@ -6,7 +6,6 @@ import {
   Text,
   View,
   TouchableOpacity,
-  FlatList,
   ScrollView,
   ActivityIndicator,
   Platform,
@@ -27,7 +26,6 @@ import {
     Bell,
     Search,
     X,
-    ChevronUp,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { haptic } from '@/utils/haptics';
@@ -35,19 +33,21 @@ import { useSaved } from '@repo/frontend-core';
 
 import { useFeed } from '@/hooks/useFeed';
 import { saveDetailCache } from '@/utils/cache/offlineCache';
-import { markJobAsSeen } from '@/utils/cache/seenJobs';
+
 import { Analytics, EventNames } from '@/utils/analytics';
 import { clearUnseenCount } from '@/utils/cache/localNotifications';
 import { Opportunity } from '@fresherflow/types';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useNotificationStore } from '@/store/useNotificationStore';
 import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
+import { useFeedStore } from '@/store/useFeedStore';
+import { useScrollTracker } from '@/hooks/useScrollTracker';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { UsernameNudgeCard } from '@/system/components/UsernameNudgeCard';
 import { mScale, SPACING, RADIUS, SCREEN_WIDTH } from '@/system/constants/dimensions';
@@ -85,8 +85,13 @@ interface FeedTabContentProps {
 const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, isSaved, toggleSave, handleScroll, searchQuery, savedJobs }: FeedTabContentProps) => {
   const insets = useSafeAreaInsets();
   const listRef = useRef<any>(null);
-  const scrollOffset = useRef<number>(0);
-  const [showScrollTop, setShowScrollTop] = useState(false);
+  const openedIds = useFeedStore(s => s.openedIds);
+
+  const { showScrollTop, handleScroll: localHandleScroll, scrollOffset } = useScrollTracker({
+    threshold: 1200,
+    scrollUpRequired: 200,
+    onScrollPropagation: handleScroll
+  });
 
   const smoothScrollToTop = useCallback(() => {
     if (!listRef.current) return;
@@ -100,24 +105,6 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
   const scrollToTopRef = useRef({ scrollToTop: smoothScrollToTop });
   useScrollToTop(scrollToTopRef);
 
-  const localHandleScroll = useCallback((event: any) => {
-    const currentOffset = event.nativeEvent.contentOffset.y;
-    const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
-
-    if (currentOffset > 600) {
-        if (Math.abs(currentOffset - scrollOffset.current) > 10) {
-            setShowScrollTop(direction === 'up');
-        }
-    } else {
-        setShowScrollTop(false);
-    }
-
-    scrollOffset.current = currentOffset;
-    if (handleScroll) {
-      handleScroll(event);
-    }
-  }, [handleScroll]);
-
   const {
     loading,
     refreshing,
@@ -130,6 +117,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     hasProfileData,
     error,
     isSyncing,
+    isCacheEmpty,
   } = useFeed(tabFeedType);
 
   // Haptic confirmation when pull-to-refresh completes
@@ -152,31 +140,26 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
     setSearchQuery(searchQuery);
   }, [searchQuery, setSearchQuery]);
 
-  const viewabilityConfig = useRef({
-    itemVisiblePercentThreshold: 50,
-  }).current;
 
-  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    viewableItems.forEach((viewable) => {
-      const item = viewable.item as FeedItem;
-      if (item.type === 'opportunity' && item.data?.id) {
-        void markJobAsSeen(item.data.id);
-      }
-    });
-  }, []);
 
   useFocusEffect(
     useCallback(() => {
       // Task 11: Clear unseen count when feed is active
       void clearUnseenCount();
+      const task = InteractionManager.runAfterInteractions(() => {
+        void useFeedStore.getState().refreshBehavioralData();
+      });
+      return () => task.cancel();
     }, [])
   );
 
   const listData = useMemo(() => {
     const data: FeedItem[] = [];
     
-    // If we are bootstrapping on app launch, or if we have no items and are syncing, show skeletons
-    if ((loading || (filteredOpportunities.length === 0 && isSyncing)) && !refreshing) {
+    // Show skeletons only when bootstrapping OR when the cache is genuinely empty + syncing.
+    // Using isCacheEmpty instead of filteredOpportunities.length prevents showing skeletons
+    // when there IS cached data but the current tab filter returns 0 results.
+    if ((loading || (isCacheEmpty && isSyncing)) && !refreshing) {
       [1, 2, 3].forEach(i => data.push({ type: 'skeleton', key: `skeleton-${i}` }));
       return data;
     }
@@ -224,12 +207,12 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                 opportunity={item.data}
                 index={item.index}
                 onPress={() => {
-                    requestAnimationFrame(() => {
-                        navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
-                    });
+                    void useFeedStore.getState().markAsOpened(item.data.id);
+                    navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
                 }}
                 onSave={() => toggleSave(item.data)}
                 isSaved={isSaved(item.data.id)}
+                isViewed={openedIds.has(item.data.id)}
             />
         );
       case 'skeleton':
@@ -320,7 +303,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
       default:
         return null;
     }
-  }, [currentTheme, navigation, isSaved, toggleSave, isBootstrapping, searchQuery, tabFeedType, hasProfileData]);
+  }, [currentTheme, navigation, isSaved, toggleSave, isBootstrapping, searchQuery, tabFeedType, hasProfileData, openedIds]);
 
   
   return (
@@ -330,18 +313,18 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
             ref={listRef}
             data={listData}
             renderItem={renderItem}
-            extraData={{ searchQuery, savedJobs }}
+            extraData={{ searchQuery, savedJobs, openedIds }}
             keyExtractor={(item) => item.key}
             // @ts-expect-error - FlashList typing bug with estimatedItemSize
             estimatedItemSize={180}
-            drawDistance={600}
+            getItemType={(item) => item.type}
+            drawDistance={800}
             removeClippedSubviews={true}
             windowSize={3}
             maxToRenderPerBatch={5}
             initialNumToRender={5}
             showsVerticalScrollIndicator={false}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
+
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + mScale(60) }]}
             onEndReached={loadMore}
             onScroll={localHandleScroll}
@@ -359,25 +342,7 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
             }
         />
 
-        {showScrollTop && (
-            <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    smoothScrollToTop();
-                }}
-                style={[
-                    styles.scrollTopBtn,
-                    {
-                        backgroundColor: currentTheme.colors.surface,
-                        borderColor: alpha(currentTheme.colors.border, 0.3),
-                        bottom: insets.bottom + mScale(100),
-                    },
-                ]}
-            >
-                <ChevronUp size={20} color={currentTheme.colors.primary} />
-            </TouchableOpacity>
-        )}
+        <ScrollToTopButton visible={showScrollTop} onPress={smoothScrollToTop} />
     </View>
   );
 });
@@ -390,7 +355,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
   const { hideTabBar, showTabBar } = useUI();
   const { unreadCount } = useNotifications();
   const unseenFeedCount = useNotificationStore(s => s.unseenFeedCount);
-  const hiddenFeedTabs = useAppPreferencesStore(s => s.hiddenFeedTabs);
+  const { hiddenFeedTabs, customFeedTabs } = useAppPreferencesStore();
   const [activeTab, setActiveTab] = useState(0);
   const activeTabRef = useRef(0);
   const pagerRef = useRef<PagerView>(null);
@@ -473,9 +438,11 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
       { id: 'remote', label: 'Remote' },
       { id: '2026', label: '2026 Batch' },
       { id: 'internships', label: 'Internships' },
+      { id: 'walkins', label: 'Walk-ins' },
+      ...customFeedTabs,
     ];
     return allFeeds.filter(f => !hiddenFeedTabs.includes((f.id || 'for_you') as any));
-  }, [hiddenFeedTabs]);
+  }, [hiddenFeedTabs, customFeedTabs]);
 
 
   // Animate indicator position when tab changes. On first layout, snap instantly and reveal.
@@ -568,7 +535,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     activeTabRef.current = index;
     setActiveTab(index);
 
-    pagerRef.current?.setPage(index);
+    pagerRef.current?.setPageWithoutAnimation(index);
 
     if (tabLayouts[index] && tabListRef.current) {
         const centerOffset =
@@ -718,7 +685,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         ref={pagerRef as any}
         style={{ flex: 1 }}
         initialPage={0}
-        offscreenPageLimit={1}
+        offscreenPageLimit={2}
         overdrag={false}
         overScrollMode="never"
         layoutDirection="ltr"
@@ -744,28 +711,7 @@ const FeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 });
 
 const styles = StyleSheet.create({
-    scrollTopBtn: {
-        position: 'absolute',
-        right: 28,
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        zIndex: 9999,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
-    },
+
     stickyHeader: {
         zIndex: 10,
         backgroundColor: 'transparent', // Screen will handle background

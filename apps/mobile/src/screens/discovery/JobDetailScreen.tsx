@@ -52,6 +52,8 @@ import {
   FolderOpen,
   Compass,
   Globe,
+  FileText,
+  BookOpen,
 } from 'lucide-react-native';
 
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -105,6 +107,9 @@ import { PremiumActionSheet } from '@/system/components/PremiumActionSheet';
 import { SuccessModal } from '@/system/components/SuccessModal';
 import { ComplexityCard } from './components/ComplexityCard';
 import { useResourcesFeed } from '@/hooks/useResourcesFeed';
+import { useSavedJobs } from '@/hooks/useSavedJobs';
+import { useSavedItems } from '@/hooks/useSavedItems';
+import { ResourceCollectionCard } from '@/system/components/ResourceCollectionCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'JobDetail'>;
 
@@ -127,6 +132,11 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     [route.params],
   );
 
+  const initialOpp = useMemo(
+    () => route.params?.opportunity ?? route.params?.job ?? null,
+    [route.params],
+  );
+
     const {
     opportunity,
     loading,
@@ -146,43 +156,91 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     navigation
   );
 
+  const isGovt = useMemo(
+    () => (opportunity || initialOpp)?.type === 'GOVERNMENT',
+    [opportunity, initialOpp],
+  );
+
   const { resources } = useResourcesFeed();
+  const { isSavedResource, toggleSaveResource } = useSavedJobs();
+  const { isItemSaved, toggleSaveItem } = useSavedItems();
   const matchedResources = useMemo(() => {
     if (!opportunity) return [];
     
     const companyName = (opportunity.company || '').toLowerCase().trim();
     const jobSkills = (opportunity.requiredSkills || []).map((s: string) => s.toLowerCase().trim());
     
-    return resources.filter(res => {
-      const matchesCompany = !!(res.company && res.company.toLowerCase().trim() === companyName);
-      const matchesSkills = res.skills.some((skill: string) => jobSkills.includes(skill.toLowerCase().trim()));
-      return matchesCompany || matchesSkills;
-    }).slice(0, 3);
+    const matched: typeof resources = [];
+    const matchedIds = new Set<string>();
+
+    // 1. Prioritize company-matched collection (limit 1)
+    if (companyName) {
+      const companyRes = resources.find(res => 
+        res.company && res.company.toLowerCase().trim() === companyName
+      );
+      if (companyRes) {
+        matched.push(companyRes);
+        matchedIds.add(companyRes.id);
+      }
+    }
+
+    // 2. Map other collections, limit to at most 1 collection per skill
+    for (const skill of jobSkills) {
+      if (matched.length >= 3) break; // Capped at 3 collections total
+      
+      const skillRes = resources.find(res => 
+        !matchedIds.has(res.id) &&
+        res.skills.some((s: string) => s.toLowerCase().trim() === skill)
+      );
+      
+      if (skillRes) {
+        matched.push(skillRes);
+        matchedIds.add(skillRes.id);
+      }
+    }
+
+    return matched;
   }, [opportunity, resources]);
 
-  const getResourceColor = (type: string, opacity: number = 1) => {
+  // Derive colour from URL — URL is the single source of truth
+  const getColorByUrl = (url: string, opacity: number = 1) => {
+    const u = url.toLowerCase();
     let hex = currentTheme.colors.primary;
-    if (type === 'YOUTUBE') hex = '#EF4444';
-    else if (type === 'GOOGLE_DRIVE') hex = '#10B981';
-    else if (type === 'ROADMAP') hex = '#3B82F6';
+    if (u.includes('youtube.com') || u.includes('youtu.be')) hex = '#EF4444';
+    else if (u.endsWith('.pdf')) hex = '#EA580C';
+    else if (u.includes('roadmap.sh')) hex = '#3B82F6';
+    else if (
+      u.includes('drive.google.com') ||
+      u.includes('dropbox.com') ||
+      u.includes('onedrive') ||
+      u.includes('box.com') ||
+      u.includes('sharepoint')
+    ) hex = '#10B981';
     else hex = '#8B5CF6';
     return alpha(hex, opacity);
   };
 
-  const getResourceIcon = (type: string) => {
+  const getIconByUrl = (url: string) => {
     const size = 18;
-    const color = getResourceColor(type, 1);
-    switch (type) {
-      case 'YOUTUBE':
-        return <PlayCircle size={size} color={color} />;
-      case 'GOOGLE_DRIVE':
-        return <FolderOpen size={size} color={color} />;
-      case 'ROADMAP':
-        return <Compass size={size} color={color} />;
-      default:
-        return <Globe size={size} color={color} />;
+    const u = url.toLowerCase();
+    const color = getColorByUrl(url, 1);
+    if (u.includes('youtube.com') || u.includes('youtu.be')) return <PlayCircle size={size} color={color} />;
+    if (u.endsWith('.pdf')) return <FileText size={size} color={color} />;
+    if (u.includes('roadmap.sh')) return <Compass size={size} color={color} />;
+    if (
+      u.includes('drive.google.com') ||
+      u.includes('dropbox.com') ||
+      u.includes('onedrive') ||
+      u.includes('box.com') ||
+      u.includes('sharepoint')
+    ) {
+      return (u.includes('folder') || u.includes('folders') || u.includes('id='))
+        ? <FolderOpen size={size} color={color} />
+        : <FileText size={size} color={color} />;
     }
+    return <Globe size={size} color={color} />;
   };
+
 
   const isFollowingCompany = useMemo(() => {
     if (!opportunity?.company) return false;
@@ -304,6 +362,19 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     }
   }, [loading, opportunityId]);
 
+  React.useEffect(() => {
+    if (isGovt) {
+      const target = opportunity || initialOpp;
+      if (target) {
+        navigation.replace('GovtJobDetail', {
+          opportunityId: target.id,
+          opportunity: target,
+          job: target
+        });
+      }
+    }
+  }, [isGovt, opportunity, initialOpp, navigation]);
+
 
 
     const trackerSheetRef = useRef<TrackerStatusSheetRef>(null);
@@ -375,7 +446,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         };
     }, [opportunity?.expiresAt, currentTheme]);
 
-  if ((!opportunity && loading) || isTransitioning) {
+  if (isGovt || (!opportunity && loading) || isTransitioning) {
     return (
       <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
         <ActivityIndicator size="large" color={currentTheme.colors.primary} />
@@ -1020,88 +1091,33 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                         })()}
                 </Animated.View>
             )}
-
-            {/* Curated Preparation Resources (Private Jobs) */}
+                       {/* Curated Preparation Resources (Private Jobs) */}
             {opportunity.type !== 'GOVERNMENT' && matchedResources.length > 0 && (
                 <Animated.View style={{ opacity: fadeAnim4, transform: [{ translateY: fadeAnim4.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }}>
                     <Section 
-                        title="Curated Prep Resources"
+                        title="Preparation Resources"
                         rightElement={
-                            opportunity.company ? (
-                                <TouchableOpacity
-                                    activeOpacity={0.7}
-                                    onPress={() => navigation.navigate('CompanyDetail', {
-                                        companyName: opportunity.company!,
-                                        companyLogoUrl: opportunity.companyLogoUrl || undefined,
-                                        website: opportunity.companyWebsite || undefined,
-                                        initialTab: 'RESOURCES'
-                                    })}
-                                >
-                                    <Text style={{ fontSize: 12, fontWeight: '800', color: currentTheme.colors.primary }}>View All</Text>
-                                </TouchableOpacity>
-                            ) : undefined
+                            <TouchableOpacity
+                                activeOpacity={0.7}
+                                onPress={() => navigation.navigate('ResourcesDirectory', { filterSkills: opportunity.requiredSkills })}
+                            >
+                                <Text style={{ fontSize: 12, fontWeight: '800', color: currentTheme.colors.primary }}>View Library</Text>
+                            </TouchableOpacity>
                         }
                     >
                         <View style={{ gap: 12 }}>
-                            {matchedResources.map((res) => {
-                                const isYoutube = res.type === 'YOUTUBE' || res.url.toLowerCase().includes('youtube.com') || res.url.toLowerCase().includes('youtu.be');
-                                let ytVideoId = null;
-                                if (isYoutube) {
-                                    const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-                                    const match = res.url.match(regExp);
-                                    if (match && match[2].length === 11) {
-                                        ytVideoId = match[2];
-                                    }
-                                }
-
-                                return (
-                                    <TouchableOpacity
-                                        key={res.id}
-                                        activeOpacity={0.8}
-                                        onPress={() => openExternalURL(res.url, currentTheme.colors)}
-                                    >
-                                        <SurfaceCard style={{ borderWidth: 1, borderColor: alpha(currentTheme.colors.border, 0.05), flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, gap: 14 }}>
-                                            <View style={{ flex: 1, gap: 10 }}>
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                                                    <View style={{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: getResourceColor(res.type, 0.08) }}>
-                                                        {getResourceIcon(res.type)}
-                                                    </View>
-                                                    <View style={{ flex: 1 }}>
-                                                        <Text style={{ fontSize: 14, fontWeight: '800', lineHeight: 18, color: currentTheme.colors.text }} numberOfLines={2}>
-                                                            {res.title}
-                                                        </Text>
-                                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                                                            <Text style={{ fontSize: 8, fontWeight: '900', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, textTransform: 'uppercase', color: getResourceColor(res.type), backgroundColor: getResourceColor(res.type, 0.08) }}>
-                                                                {res.type.replace('_', ' ')}
-                                                            </Text>
-                                                            {res.skills && res.skills.slice(0, 2).map((skill: string) => (
-                                                                <View key={skill} style={{ paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, borderWidth: 1, backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.05) }}>
-                                                                    <Text style={{ fontSize: 8, fontWeight: '800', color: currentTheme.colors.textMuted }}>{skill}</Text>
-                                                                </View>
-                                                            ))}
-                                                        </View>
-                                                    </View>
-                                                    <ExternalLink size={15} color={alpha(currentTheme.colors.textMuted, 0.3)} />
-                                                </View>
-
-                                                {ytVideoId && (
-                                                    <View style={{ marginTop: 8, borderRadius: 12, borderWidth: 1, overflow: 'hidden', position: 'relative', aspectRatio: 16 / 9, width: '100%', borderColor: alpha(currentTheme.colors.border, 0.1) }}>
-                                                        <Image
-                                                            source={{ uri: `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` }}
-                                                            style={{ width: '100%', height: '100%', resizeMode: 'cover' }}
-                                                        />
-                                                        <View style={{ ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.4)' }}>
-                                                            <View style={{ width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: '#EF4444' }}>
-                                                                <PlayCircle size={24} color="#FFFFFF" />
-                                                            </View>
-                                                        </View>
-                                                    </View>
-                                                )}
-                                            </View>
-                                        </SurfaceCard>
-                                    </TouchableOpacity>
-                                );
-                            })}
+                            {matchedResources.map((res) => (
+                                <ResourceCollectionCard
+                                    key={res.id}
+                                    collection={res}
+                                    isSaved={isSavedResource(res.id)}
+                                    onToggleSave={() => toggleSaveResource(res)}
+                                    onPressTitle={() => navigation.navigate('ResourceCollectionDetail', { collectionId: res.id, collectionTitle: res.title })}
+                                    onPressViewAll={() => navigation.navigate('ResourceCollectionDetail', { collectionId: res.id, collectionTitle: res.title })}
+                                    isItemSaved={isItemSaved}
+                                    onToggleSaveItem={(item) => toggleSaveItem(item.id)}
+                                />
+                            ))}
                         </View>
                     </Section>
                 </Animated.View>
@@ -1311,7 +1327,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                             }
                                         }
                                     } catch (err) {
-                                        console.error('Failed to toggle company follow:', err);
+                                        if (__DEV__) { console.error('Failed to toggle company follow:', err) }
                                         showToast('Failed to toggle company alerts', 'error');
                                     }
                                 }}

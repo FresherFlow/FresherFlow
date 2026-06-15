@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import { openExternalURL } from '@/utils/browser';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Share2, Globe, Building2, Home, Copy, Linkedin, Twitter, Send, Instagram, PlayCircle, FolderOpen, Compass, ExternalLink, Bookmark } from 'lucide-react-native';
+import { Share2, Globe, Building2, Home, Copy, Linkedin, Twitter, Send, Instagram, PlayCircle, FolderOpen, Compass, ExternalLink, Bookmark, FileText } from 'lucide-react-native';
 import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/system/components/SocialIcons';
 import { useTheme } from '@/contexts/ThemeContext';
 import { JobCard } from '@/system/components/OpportunityCard';
@@ -42,9 +42,11 @@ import { useFollows } from '@/hooks/useFollows';
 import { useAuthStore } from '@/store/useAuthStore';
 import { SecondaryHeader, PremiumRefreshControl, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { useToast } from '@/contexts/ToastContext';
+import { ResourceCollectionCard } from '@/system/components/ResourceCollectionCard';
 import * as Haptics from 'expo-haptics';
 import { useResourcesFeed } from '@/hooks/useResourcesFeed';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
+import { useSavedItems } from '@/hooks/useSavedItems';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CompanyDetail'>;
 
@@ -67,35 +69,73 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
     const shareSheetRef = React.useRef<BottomSheetModal>(null);
 
     const [activeTab, setActiveTab] = useState<'JOBS' | 'RESOURCES'>(initialTab || 'JOBS');
-    const { getResourcesByGroup } = useResourcesFeed();
+    const { getResourcesByGroup, resources } = useResourcesFeed();
     const { isSavedResource, toggleSaveResource } = useSavedJobs();
+    const { isItemSaved, toggleSaveItem } = useSavedItems();
     const companyResources = useMemo(() => {
-        return getResourcesByGroup('COMPANY', companyName.toLowerCase().replace(/\s+/g, '-'));
-    }, [companyName, getResourcesByGroup]);
+        const companySpecific = getResourcesByGroup('COMPANY', companyName.toLowerCase().replace(/\s+/g, '-'));
+        
+        if (companySpecific.length > 0) {
+            return companySpecific;
+        }
 
-    const getResourceColor = (type: string, opacity: number = 1) => {
+        // Fallback: If no company-specific resource guides exist, collect unique skills required by this company's active jobs
+        const activeJobSkills = new Set<string>();
+        jobs.forEach((job) => {
+            if (job.requiredSkills) {
+                job.requiredSkills.forEach((skill) => {
+                    activeJobSkills.add(skill.toLowerCase().trim());
+                });
+            }
+        });
+
+        if (activeJobSkills.size === 0) return [];
+
+        // Return all resource collections matching these skills
+        return resources.filter((res) => 
+            res.skills.some((skill) => activeJobSkills.has(skill.toLowerCase().trim()))
+        );
+    }, [companyName, getResourcesByGroup, jobs, resources]);
+
+    // Derive colour from URL — URL is the single source of truth
+    const getColorByUrl = (url: string, opacity: number = 1) => {
+        const u = url.toLowerCase();
         let hex = currentTheme.colors.primary;
-        if (type === 'YOUTUBE') hex = '#EF4444';
-        else if (type === 'GOOGLE_DRIVE') hex = '#10B981';
-        else if (type === 'ROADMAP') hex = '#3B82F6';
+        if (u.includes('youtube.com') || u.includes('youtu.be')) hex = '#EF4444';
+        else if (u.endsWith('.pdf')) hex = '#EA580C';
+        else if (u.includes('roadmap.sh')) hex = '#3B82F6';
+        else if (
+            u.includes('drive.google.com') ||
+            u.includes('dropbox.com') ||
+            u.includes('onedrive') ||
+            u.includes('box.com') ||
+            u.includes('sharepoint')
+        ) hex = '#10B981';
         else hex = '#8B5CF6';
         return alpha(hex, opacity);
     };
 
-    const getResourceIcon = (type: string) => {
+    const getIconByUrl = (url: string) => {
         const size = 20;
-        const color = getResourceColor(type, 1);
-        switch (type) {
-            case 'YOUTUBE':
-                return <PlayCircle size={size} color={color} />;
-            case 'GOOGLE_DRIVE':
-                return <FolderOpen size={size} color={color} />;
-            case 'ROADMAP':
-                return <Compass size={size} color={color} />;
-            default:
-                return <Globe size={size} color={color} />;
+        const u = url.toLowerCase();
+        const color = getColorByUrl(url, 1);
+        if (u.includes('youtube.com') || u.includes('youtu.be')) return <PlayCircle size={size} color={color} />;
+        if (u.endsWith('.pdf')) return <FileText size={size} color={color} />;
+        if (u.includes('roadmap.sh')) return <Compass size={size} color={color} />;
+        if (
+            u.includes('drive.google.com') ||
+            u.includes('dropbox.com') ||
+            u.includes('onedrive') ||
+            u.includes('box.com') ||
+            u.includes('sharepoint')
+        ) {
+            return (u.includes('folder') || u.includes('folders') || u.includes('id='))
+                ? <FolderOpen size={size} color={color} />
+                : <FileText size={size} color={color} />;
         }
+        return <Globe size={size} color={color} />;
     };
+
 
     const companyKey = React.useMemo(() => website || companyName, [website, companyName]);
     const followingCompany = isFollowing('COMPANY', companyKey);
@@ -145,7 +185,7 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                 }
             }
         } catch (error) {
-            console.error('Failed to toggle follow:', error);
+            if (__DEV__) { console.error('Failed to toggle follow:', error) }
         }
     };
 
@@ -226,7 +266,7 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                 url: shareUrl,
             });
         } catch (error) {
-            console.error('System share failed:', error);
+            if (__DEV__) { console.error('System share failed:', error) }
         }
         shareSheetRef.current?.dismiss();
     };
@@ -414,88 +454,18 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                         );
                     } else {
                         const res = item;
-                        const isYoutube = res.type === 'YOUTUBE' || res.url.toLowerCase().includes('youtube.com') || res.url.toLowerCase().includes('youtu.be');
-                        let ytVideoId = null;
-                        if (isYoutube) {
-                            const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-                            const match = res.url.match(regExp);
-                            if (match && match[2].length === 11) {
-                                ytVideoId = match[2];
-                            }
-                        }
-
                         return (
-                            <TouchableOpacity
-                                key={res.id}
-                                activeOpacity={0.8}
-                                onPress={() => openExternalURL(res.url, currentTheme.colors)}
-                                style={{ paddingHorizontal: SPACING.lg, marginBottom: 12 }}
-                            >
-                                <SurfaceCard style={[styles.resourceCard, { borderWidth: 1, borderColor: alpha(currentTheme.colors.border, 0.05) }]}>
-                                    <View style={{ flex: 1, gap: 10 }}>
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-                                            <View style={[styles.iconWrapper, { backgroundColor: getResourceColor(res.type, 0.08) }]}>
-                                                {getResourceIcon(res.type)}
-                                            </View>
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={[styles.resourceTitle, { color: currentTheme.colors.text }]} numberOfLines={2}>
-                                                    {res.title}
-                                                </Text>
-                                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginTop: 4 }}>
-                                                    <Text style={[styles.resourceTypeBadge, { color: getResourceColor(res.type), backgroundColor: getResourceColor(res.type, 0.08) }]}>
-                                                        {res.type.replace('_', ' ')}
-                                                    </Text>
-                                                    {res.skills && res.skills.slice(0, 2).map((skill: string) => (
-                                                        <View key={skill} style={[styles.miniSkillTag, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.05), borderWidth: 1 }]}>
-                                                            <Text style={[styles.miniSkillTagText, { color: currentTheme.colors.textMuted }]}>{skill}</Text>
-                                                        </View>
-                                                    ))}
-                                                </View>
-                                            </View>
-                                            <ExternalLink size={15} color={alpha(currentTheme.colors.textMuted, 0.3)} />
-                                        </View>
-
-                                        {ytVideoId && (
-                                            <View style={[styles.youtubePreviewContainer, { borderColor: alpha(currentTheme.colors.border, 0.1) }]}>
-                                                <Image
-                                                    source={{ uri: `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` }}
-                                                    style={styles.youtubeThumbnail}
-                                                />
-                                                <View style={[styles.playButtonOverlay, { backgroundColor: 'rgba(0,0,0,0.4)' }]}>
-                                                    <View style={[styles.playButtonCircle, { backgroundColor: '#EF4444' }]}>
-                                                        <PlayCircle size={24} color="#FFFFFF" />
-                                                    </View>
-                                                </View>
-                                            </View>
-                                        )}
-                                        
-                                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                                            <Text style={{ color: currentTheme.colors.textMuted, fontSize: 11, fontWeight: '600', marginBottom: 8 }}>
-                                                Shared by @{res.addedByUsername || 'community'}
-                                            </Text>
-                                            <TouchableOpacity 
-                                                onPress={(e) => {
-                                                    e.stopPropagation();
-                                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                                    toggleSaveResource(res);
-                                                }}
-                                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                                                style={{ 
-                                                    padding: 6, 
-                                                    borderRadius: 8, 
-                                                    backgroundColor: isSavedResource(res.id) ? alpha(currentTheme.colors.primary, 0.1) : 'transparent' 
-                                                }}
-                                            >
-                                                <Bookmark 
-                                                    size={18} 
-                                                    color={isSavedResource(res.id) ? currentTheme.colors.primary : currentTheme.colors.textMuted} 
-                                                    fill={isSavedResource(res.id) ? currentTheme.colors.primary : 'none'} 
-                                                />
-                                            </TouchableOpacity>
-                                        </View>
-                                    </View>
-                                </SurfaceCard>
-                            </TouchableOpacity>
+                            <View style={{ marginHorizontal: SPACING.lg }}>
+                                <ResourceCollectionCard
+                                    collection={res}
+                                    isSaved={isSavedResource(res.id)}
+                                    onToggleSave={() => toggleSaveResource(res)}
+                                    onPressTitle={() => navigation.navigate('ResourceCollectionDetail', { collectionId: res.id, collectionTitle: res.title })}
+                                    onPressViewAll={() => navigation.navigate('ResourceCollectionDetail', { collectionId: res.id, collectionTitle: res.title })}
+                                    isItemSaved={isItemSaved}
+                                    onToggleSaveItem={(item) => toggleSaveItem(item.id)}
+                                />
+                            </View>
                         );
                     }
                 }}

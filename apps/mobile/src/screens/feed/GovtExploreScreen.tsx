@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useRef, useState, useEffect } from 'react';
+import React, { memo, useCallback, useRef, useState, useEffect, useMemo } from 'react';
 import { FlashList } from '@shopify/flash-list';
 import {
     StyleSheet,
@@ -10,17 +10,19 @@ import {
     Animated,
     ScrollView,
     Platform,
+    InteractionManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Shield, Filter, ChevronRight, X, ChevronUp } from 'lucide-react-native';
+import { Shield, Filter, ChevronRight, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { useScrollToTop } from '@react-navigation/native';
+import { useScrollToTop, useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useScrollTracker } from '@/hooks/useScrollTracker';
 import { GovtJobCard } from '@/system/components/GovtJobCard';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useSaved } from '@repo/frontend-core';
-import { SurfaceCard, PremiumHeader } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -52,7 +54,7 @@ const GovtExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { currentTheme } = useTheme();
     const { isSaved, toggleSave } = useSaved();
     const { hideTabBar, showTabBar } = useUI();
-    const { isBootstrapping } = useFeedStore();
+    const { isBootstrapping, openedIds } = useFeedStore();
 
     const [searchQuery, setSearchQuery] = useState('');
     const [filters, setFilters] = useState<GovtExploreFilters>({
@@ -68,7 +70,11 @@ const GovtExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const filterSheetRef = React.useRef<FilterSheetRef>(null);
     const flashListRef = React.useRef<any>(null);
     
-    const scrollOffset = useRef(0);
+    const { showScrollTop, handleScroll, scrollOffset } = useScrollTracker({
+        threshold: 1200,
+        scrollUpRequired: 200,
+        hideShowTabBar: true
+    });
 
     const smoothScrollToTop = useCallback(() => {
         if (!flashListRef.current) return;
@@ -82,8 +88,15 @@ const GovtExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const scrollToTopRef = useRef({ scrollToTop: smoothScrollToTop });
     useScrollToTop(scrollToTopRef);
-    
-    const [showScrollTop, setShowScrollTop] = React.useState(false);
+
+    useFocusEffect(
+        useCallback(() => {
+            const task = InteractionManager.runAfterInteractions(() => {
+                void useFeedStore.getState().refreshBehavioralData();
+            });
+            return () => task.cancel();
+        }, [])
+    );
 
     React.useEffect(() => {
         try {
@@ -95,27 +108,7 @@ const GovtExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const { showSuccess } = useToast();
 
-    const handleScroll = useCallback((event: any) => {
-        const currentOffset = event.nativeEvent.contentOffset.y;
-        const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
-
-        if (currentOffset > 600) {
-            if (Math.abs(currentOffset - scrollOffset.current) > 10) {
-                setShowScrollTop(direction === 'up');
-            }
-        } else {
-            setShowScrollTop(false);
-        }
-
-        if (Math.abs(currentOffset - scrollOffset.current) > 20) {
-            if (direction === 'down' && currentOffset > 100) {
-                hideTabBar();
-            } else if (direction === 'up' || currentOffset < 50) {
-                showTabBar();
-            }
-            scrollOffset.current = currentOffset;
-        }
-    }, [hideTabBar, showTabBar]);
+    // scroll handling is coordinated by useScrollTracker above
 
     const handleToggleSave = useCallback((opportunity: Opportunity) => {
         const wasSaved = isSaved(opportunity.id);
@@ -126,6 +119,26 @@ const GovtExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
     const resultsCount = results.length;
     const activeFilterCount = (filters.govLevels?.length || 0) + (filters.govStatuses?.length || 0) + (filters.tag ? 1 : 0);
+
+    const listData = useMemo<ExploreItem[]>(() => {
+        const items: ExploreItem[] = [];
+        const showDiscovery = !searchQuery && !filters.tag && activeFilterCount === 0;
+
+        if (showDiscovery) {
+            items.push({ type: 'discovery', key: 'discovery' });
+        }
+        if (resultsCount > 0) {
+            items.push({ type: 'stats', key: 'results_stats', count: resultsCount });
+            results.forEach((r, idx) => {
+                items.push({ type: 'opportunity', data: r, key: `${r.id}_${idx}` });
+            });
+        } else if (isBootstrapping) {
+            items.push({ type: 'loading', key: 'loading_state' });
+        } else if (!showDiscovery) {
+            items.push({ type: 'empty', key: 'empty_state' });
+        }
+        return items;
+    }, [results, resultsCount, searchQuery, filters.tag, activeFilterCount, isBootstrapping]);
 
     const renderEmpty = useCallback(() => (
         <View style={styles.emptyContainer}>
@@ -224,29 +237,8 @@ const GovtExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
 
             <FlashList<ExploreItem>
                 ref={flashListRef}
-                extraData={{ results, isSaved }}
-                data={(() => {
-                    const items: ExploreItem[] = [];
-
-                    const showDiscovery = !searchQuery && !filters.tag && activeFilterCount === 0;
-
-                    if (showDiscovery) {
-                        items.push({ type: 'discovery', key: 'discovery' });
-                    }
-
-                    if (resultsCount > 0) {
-                        items.push({ type: 'stats', key: 'results_stats', count: resultsCount });
-                        results.forEach((r, idx) => {
-                            items.push({ type: 'opportunity', data: r, key: `${r.id}_${idx}` });
-                        });
-                    } else if (isBootstrapping) {
-                        items.push({ type: 'loading', key: 'loading_state' });
-                    } else if (!showDiscovery) {
-                        items.push({ type: 'empty', key: 'empty_state' });
-                    }
-
-                    return items;
-                })()}
+                extraData={{ results, isSaved, openedIds }}
+                data={listData}
                 // @ts-expect-error - FlashList typing bug with estimatedItemSize
                 estimatedItemSize={180}
                 drawDistance={2500}
@@ -332,12 +324,12 @@ const GovtExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 opportunity={item.data}
                                 index={index}
                                 onPress={() => {
-                                    requestAnimationFrame(() => {
-                                        navigation.navigate('GovtJobDetail', { opportunity: item.data, opportunityId: item.data.id });
-                                    });
+                                    void useFeedStore.getState().markAsOpened(item.data.id);
+                                    navigation.navigate('GovtJobDetail', { opportunity: item.data, opportunityId: item.data.id });
                                 }}
                                 onSave={() => handleToggleSave(item.data)}
                                 isSaved={isSaved(item.data.id)}
+                                isViewed={openedIds.has(item.data.id)}
                             />
                         );
                     }
@@ -367,25 +359,11 @@ const GovtExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 }}
             />
 
-            {showScrollTop && (
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        flashListRef.current?.scrollToOffset({ offset: 0, animated: true });
-                    }}
-                    style={[
-                        styles.scrollTopBtn,
-                        {
-                            backgroundColor: currentTheme.colors.surface,
-                            borderColor: alpha(currentTheme.colors.border, 0.3),
-                            bottom: insets.bottom + 110,
-                        },
-                    ]}
-                >
-                    <ChevronUp size={20} color={currentTheme.colors.primary} />
-                </TouchableOpacity>
-            )}
+            <ScrollToTopButton 
+                visible={showScrollTop} 
+                onPress={() => flashListRef.current?.scrollToOffset({ offset: 0, animated: true })} 
+                bottomOffset={insets.bottom + 110}
+            />
         </Screen>
     );
 });
@@ -483,28 +461,6 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 22,
-    },
-    scrollTopBtn: {
-        position: 'absolute',
-        right: 28,
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        zIndex: 9999,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
     }
 });
 

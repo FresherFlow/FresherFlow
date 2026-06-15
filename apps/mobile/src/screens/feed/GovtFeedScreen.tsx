@@ -15,6 +15,7 @@ import {
   TextInput,
   Animated,
   Keyboard,
+  InteractionManager,
 } from 'react-native';
 import PagerView from 'react-native-pager-view';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,7 +24,6 @@ import {
   Shield,
   Search,
   X,
-  ChevronUp,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { haptic } from '@/utils/haptics';
@@ -31,14 +31,16 @@ import { useSaved } from '@repo/frontend-core';
 
 import { useGovtFeed, GOVT_FEED_TABS } from '@/hooks/useGovtFeed';
 import { useFeedStore } from '@/store/useFeedStore';
+import { useScrollTracker } from '@/hooks/useScrollTracker';
 import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
-import { markJobAsSeen } from '@/utils/cache/seenJobs';
+import Fuse from 'fuse.js';
+
 import { Opportunity } from '@fresherflow/types';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
 import { GovtJobCard } from '@/system/components/GovtJobCard';
 import { mScale, SPACING, RADIUS, SCREEN_WIDTH } from '@/system/constants/dimensions';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -69,9 +71,13 @@ interface FeedTabContentProps {
 const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handleScroll, searchQuery }: FeedTabContentProps) => {
   const insets = useSafeAreaInsets();
   const listRef = useRef<any>(null);
-  const scrollOffset = useRef<number>(0);
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const { currentTheme } = useTheme();
+
+  const { showScrollTop, handleScroll: localHandleScroll, scrollOffset } = useScrollTracker({
+    threshold: 1200,
+    scrollUpRequired: 200,
+    onScrollPropagation: handleScroll
+  });
 
   const smoothScrollToTop = useCallback(() => {
     if (!listRef.current) return;
@@ -85,37 +91,38 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
   const scrollToTopRef = useRef({ scrollToTop: smoothScrollToTop });
   useScrollToTop(scrollToTopRef);
 
-  const localHandleScroll = useCallback((event: any) => {
-    const currentOffset = event.nativeEvent.contentOffset.y;
-    const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
-
-    if (currentOffset > 600) {
-        if (Math.abs(currentOffset - scrollOffset.current) > 10) {
-            setShowScrollTop(direction === 'up');
-        }
-    } else {
-        setShowScrollTop(false);
-    }
-
-    scrollOffset.current = currentOffset;
-    if (handleScroll) {
-      handleScroll(event);
-    }
-  }, [handleScroll]);
-
   const govtOpportunities = useGovtFeed(tabId);
-  const { isBootstrapping, isRefreshing, performSync, refreshBehavioralData, isSyncing } = useFeedStore();
+  const { isBootstrapping, isRefreshing, performSync, refreshBehavioralData, isSyncing, openedIds } = useFeedStore();
+
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const fuseIndex = useMemo(() => {
+    if (govtOpportunities.length === 0 || debouncedSearchQuery.trim().length < 2) return null;
+    return new Fuse(govtOpportunities, {
+      keys: [
+        'title',
+        'company',
+        'governmentJobDetails.examName',
+        'governmentJobDetails.recruitingBody',
+        'governmentJobDetails.posts.name',
+        'jobFunction',
+        'locations'
+      ],
+      threshold: 0.3,
+    });
+  }, [govtOpportunities, debouncedSearchQuery]);
 
   const filteredOpportunities = useMemo(() => {
     if (!searchQuery.trim()) return govtOpportunities;
-    const query = searchQuery.toLowerCase().trim();
-    return govtOpportunities.filter(
-      (job) =>
-        job.title?.toLowerCase().includes(query) ||
-        job.description?.toLowerCase().includes(query) ||
-        job.company?.toLowerCase().includes(query)
-    );
-  }, [govtOpportunities, searchQuery]);
+    if (fuseIndex && debouncedSearchQuery.trim().length >= 2) {
+      return fuseIndex.search(debouncedSearchQuery).map(r => r.item);
+    }
+    return govtOpportunities;
+  }, [govtOpportunities, searchQuery, debouncedSearchQuery, fuseIndex]);
 
   const handleRefresh = useCallback(() => {
       if (scrollOffset.current > 10) return;
@@ -123,14 +130,7 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
       void performSync(true, true);
   }, [performSync, refreshBehavioralData]);
 
-  const onViewableItemsChanged = useCallback(({ viewableItems }: { viewableItems: ViewToken[] }) => {
-    viewableItems.forEach((viewable) => {
-      const item = viewable.item as GovtFeedItem;
-      if (item.type === 'opportunity' && item.data?.id) {
-        void markJobAsSeen(item.data.id);
-      }
-    });
-  }, []);
+
 
   const listData = useMemo(() => {
     const data: GovtFeedItem[] = [];
@@ -163,12 +163,12 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
                 opportunity={item.data}
                 index={item.index}
                 onPress={() => {
-                    requestAnimationFrame(() => {
-                        navigation.navigate('GovtJobDetail', { opportunity: item.data, opportunityId: item.data.id });
-                    });
+                    void useFeedStore.getState().markAsOpened(item.data.id);
+                    navigation.navigate('GovtJobDetail', { opportunity: item.data, opportunityId: item.data.id });
                 }}
                 onSave={() => toggleSave(item.data)}
                 isSaved={isSaved(item.data.id)}
+                isViewed={openedIds.has(item.data.id)}
             />
         );
       case 'skeleton':
@@ -212,7 +212,7 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
       default:
         return null;
     }
-  }, [currentTheme, navigation, isSaved, toggleSave, isBootstrapping, searchQuery]);
+  }, [currentTheme, navigation, isSaved, toggleSave, isBootstrapping, searchQuery, openedIds]);
 
   return (
     <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
@@ -220,17 +220,17 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
             ref={listRef}
             data={listData}
             renderItem={renderItem}
-            extraData={{ searchQuery, govtOpportunities }}
+            extraData={{ searchQuery, govtOpportunities, openedIds }}
             keyExtractor={(item) => item.key}
             // @ts-expect-error - FlashList typing bug with estimatedItemSize
             estimatedItemSize={180}
-            drawDistance={600}
+            drawDistance={800}
             removeClippedSubviews={true}
             windowSize={3}
             maxToRenderPerBatch={5}
             initialNumToRender={5}
             showsVerticalScrollIndicator={false}
-            onViewableItemsChanged={onViewableItemsChanged}
+
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + mScale(60) }]}
             onScroll={localHandleScroll}
             scrollEventThrottle={16}
@@ -241,25 +241,7 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
             }
         />
 
-        {showScrollTop && (
-            <TouchableOpacity
-                activeOpacity={0.8}
-                onPress={() => {
-                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    smoothScrollToTop();
-                }}
-                style={[
-                    styles.scrollTopBtn,
-                    {
-                        backgroundColor: currentTheme.colors.surface,
-                        borderColor: alpha(currentTheme.colors.border, 0.3),
-                        bottom: insets.bottom + mScale(100),
-                    },
-                ]}
-            >
-                <ChevronUp size={20} color={currentTheme.colors.primary} />
-            </TouchableOpacity>
-        )}
+        <ScrollToTopButton visible={showScrollTop} onPress={smoothScrollToTop} />
     </View>
   );
 });
@@ -313,6 +295,9 @@ const GovtFeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     useCallback(() => {
         isTabBarVisible.current = true;
         showTabBar();
+        const task = InteractionManager.runAfterInteractions(() => {
+            void useFeedStore.getState().refreshBehavioralData();
+        });
 
         let backPressCount = 0;
         const onBackPress = () => {
@@ -331,7 +316,10 @@ const GovtFeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         };
 
         const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-        return () => subscription.remove();
+        return () => {
+            task.cancel();
+            subscription.remove();
+        };
     }, [])
   );
 
@@ -419,7 +407,7 @@ const GovtFeedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     activeTabRef.current = index;
     setActiveTab(index);
 
-    pagerRef.current?.setPage(index);
+    pagerRef.current?.setPageWithoutAnimation(index);
 
     if (tabLayouts[index] && tabListRef.current) {
         const centerOffset =
@@ -560,19 +548,19 @@ export default GovtFeedScreen;
 
 const styles = StyleSheet.create({
   searchContainer: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    height: 40,
-    borderRadius: RADIUS.lg,
-    paddingHorizontal: SPACING.md,
-    gap: SPACING.sm,
-    marginRight: SPACING.sm,
+    height: 44,
+    borderRadius: 22,
+    paddingHorizontal: 16,
+    width: SCREEN_WIDTH - 110,
+    marginLeft: -8,
   },
   searchInput: {
     flex: 1,
-    fontSize: mScale(14),
+    fontSize: 16,
     fontWeight: '600',
+    marginLeft: 10,
     padding: 0,
   },
   headerActions: {
@@ -673,19 +661,5 @@ const styles = StyleSheet.create({
     fontSize: mScale(13),
     fontWeight: '600',
   },
-  scrollTopBtn: {
-    position: 'absolute',
-    right: SPACING.lg,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
+
 });

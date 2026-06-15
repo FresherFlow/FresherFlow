@@ -9,9 +9,11 @@ import {
   Image,
   StatusBar,
   FlatList,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, Plus, BookOpen, ChevronRight, Building, Award, PlayCircle, FolderOpen, Compass, Globe, Landmark } from 'lucide-react-native';
+import { Search, Plus, BookOpen, ChevronRight, Building, Award, PlayCircle, FolderOpen, Compass, Globe, Landmark, FileText, Bookmark, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 
@@ -20,13 +22,17 @@ import { alpha } from '@/theme';
 import { RootStackParamList } from '@/navigation/types';
 import { useResourcesFeed } from '@/hooks/useResourcesFeed';
 import { useSectorStore } from '@/store/useSectorStore';
+import { useSavedJobs } from '@/hooks/useSavedJobs';
+import { useSavedItems } from '@/hooks/useSavedItems';
+import { openExternalURL } from '@/utils/browser';
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
 import { ShareResourceModal } from './ShareResourceModal';
+import { ResourceCollectionCard } from '@/system/components/ResourceCollectionCard';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ResourcesDirectory'>;
 
-export const ResourcesDirectoryScreen: React.FC<Props> = ({ navigation }) => {
+export const ResourcesDirectoryScreen: React.FC<Props> = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
   const { sector } = useSectorStore();
@@ -35,33 +41,94 @@ export const ResourcesDirectoryScreen: React.FC<Props> = ({ navigation }) => {
   // State
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
+  const [activeFilterSkills, setActiveFilterSkills] = useState<string[] | undefined>(route.params?.filterSkills);
+  const [isSkillsExpanded, setIsSkillsExpanded] = useState(false);
+
+  React.useEffect(() => {
+    if (route.params?.filterSkills) {
+      setActiveFilterSkills(route.params.filterSkills);
+    }
+  }, [route.params?.filterSkills]);
 
   const companies = useMemo(() => getCompanyGroups(), [getCompanyGroups]);
   const skills = useMemo(() => getSkillGroups(), [getSkillGroups]);
+  const { isSavedResource, toggleSaveResource } = useSavedJobs();
+  const { isItemSaved, toggleSaveItem } = useSavedItems();
 
+  const filteredBySkillsResources = useMemo(() => {
+    if (!activeFilterSkills || activeFilterSkills.length === 0) return resources;
+    return resources.filter(res => 
+      res.skills.some(skill => 
+        activeFilterSkills.some(fSkill => fSkill.toLowerCase() === skill.toLowerCase())
+      )
+    );
+  }, [resources, activeFilterSkills]);
 
-  const getResourceColor = (type: string, opacity: number = 1) => {
+  const renderCollectionCard = (item: any) => {
+    return (
+      <ResourceCollectionCard
+        key={item.id}
+        collection={item}
+        isSaved={isSavedResource(item.id)}
+        onToggleSave={() => toggleSaveResource(item)}
+        onPressTitle={() => navigation.navigate('ResourceCollectionDetail', { collectionId: item.id, collectionTitle: item.title })}
+        onPressViewAll={() => navigation.navigate('ResourceCollectionDetail', { collectionId: item.id, collectionTitle: item.title })}
+        isItemSaved={isItemSaved}
+        onToggleSaveItem={(item) => toggleSaveItem(item.id)}
+      />
+    );
+  };
+
+  const getDomainFromUrl = (url: string): string => {
+    try {
+      return url.replace(/^(https?:\/\/)?(www\.)?/, '').split('/')[0];
+    } catch {
+      return 'link';
+    }
+  };
+
+  // Derive colour from URL or Type
+  const getColorByUrl = (url: string, type?: string, opacity: number = 1) => {
+    const u = url.toLowerCase();
     let hex = currentTheme.colors.primary;
-    if (type === 'YOUTUBE') hex = '#EF4444';
-    else if (type === 'GOOGLE_DRIVE') hex = '#10B981';
-    else if (type === 'ROADMAP') hex = '#3B82F6';
+    if (type === 'YOUTUBE' || u.includes('youtube.com') || u.includes('youtu.be')) hex = '#EF4444';
+    else if (type === 'PDF' || u.endsWith('.pdf')) hex = '#EA580C';
+    else if (type === 'ROADMAP' || u.includes('roadmap.sh')) hex = '#3B82F6';
+    else if (
+      type === 'FOLDER' ||
+      type === 'FILE' ||
+      u.includes('drive.google.com') ||
+      u.includes('dropbox.com') ||
+      u.includes('onedrive') ||
+      u.includes('box.com') ||
+      u.includes('sharepoint')
+    ) hex = '#10B981';
     else hex = '#8B5CF6';
     return alpha(hex, opacity);
   };
 
-  const getResourceIcon = (type: string, size = 18) => {
-    const color = getResourceColor(type, 1);
-    switch (type) {
-      case 'YOUTUBE':
-        return <PlayCircle size={size} color={color} />;
-      case 'GOOGLE_DRIVE':
-        return <FolderOpen size={size} color={color} />;
-      case 'ROADMAP':
-        return <Compass size={size} color={color} />;
-      default:
-        return <Globe size={size} color={color} />;
+  const getIconByUrl = (url: string, type?: string, size = 18) => {
+    const u = url.toLowerCase();
+    const color = getColorByUrl(url, type, 1);
+    if (type === 'YOUTUBE' || u.includes('youtube.com') || u.includes('youtu.be')) return <PlayCircle size={size} color={color} />;
+    if (type === 'PDF' || u.endsWith('.pdf')) return <FileText size={size} color={color} />;
+    if (type === 'ROADMAP' || u.includes('roadmap.sh')) return <Compass size={size} color={color} />;
+    if (type === 'FOLDER') return <FolderOpen size={size} color={color} />;
+    if (type === 'FILE') return <FileText size={size} color={color} />;
+    if (
+      u.includes('drive.google.com') ||
+      u.includes('dropbox.com') ||
+      u.includes('onedrive') ||
+      u.includes('box.com') ||
+      u.includes('sharepoint')
+    ) {
+      return (u.includes('folder') || u.includes('folders') || u.includes('id='))
+        ? <FolderOpen size={size} color={color} />
+        : <FileText size={size} color={color} />;
     }
+    return <Globe size={size} color={color} />;
   };
+
 
   // Handle Dynamic Group Navigation
   const handleGroupPress = (type: 'COMPANY' | 'SKILL', name: string, logoUrl?: string) => {
@@ -106,25 +173,24 @@ export const ResourcesDirectoryScreen: React.FC<Props> = ({ navigation }) => {
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
       <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
 
+      {/* Static Header outside ScrollView to respect Safe Area */}
+      <View style={{ paddingTop: insets.top, backgroundColor: currentTheme.colors.background, paddingBottom: 12 }}>
+        <PremiumHeader
+          title={sector === 'GOVERNMENT' ? "Govt Exam Prep" : "Prep Resources"}
+          subtitle={sector === 'GOVERNMENT' ? "Syllabus, subjects & exam roadmaps" : "Roadmaps, video tutorials & interview guides"}
+          showBack={true}
+        />
+      </View>
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.scrollContent,
           {
-            paddingTop: insets.top + 20,
             paddingBottom: insets.bottom + 100,
           },
         ]}
-        stickyHeaderIndices={[0]}
       >
-        {/* Sticky Header */}
-        <View style={{ backgroundColor: currentTheme.colors.background, paddingBottom: 12 }}>
-          <PremiumHeader
-            title={sector === 'GOVERNMENT' ? "Govt Exam Prep" : "Prep Resources"}
-            subtitle={sector === 'GOVERNMENT' ? "Syllabus, subjects & exam roadmaps" : "Roadmaps, video tutorials & interview guides"}
-            showBack={true}
-          />
-        </View>
 
         <View style={styles.container}>
           {/* Search Box */}
@@ -152,6 +218,36 @@ export const ResourcesDirectoryScreen: React.FC<Props> = ({ navigation }) => {
             )}
           </View>
 
+          {/* Matched Job Skills Filter Banner */}
+          {activeFilterSkills && activeFilterSkills.length > 0 && (
+            <View
+              style={[
+                styles.filterBanner,
+                {
+                  backgroundColor: alpha(currentTheme.colors.primary, 0.05),
+                  borderColor: alpha(currentTheme.colors.primary, 0.1),
+                }
+              ]}
+            >
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.filterBannerTitle, { color: currentTheme.colors.text }]}>Matched Job Skills</Text>
+                <Text style={{ fontSize: 11, color: currentTheme.colors.textMuted, marginTop: 2 }}>
+                  Showing resources matching: {activeFilterSkills.join(', ')}
+                </Text>
+              </View>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setActiveFilterSkills(undefined);
+                }}
+                style={[styles.clearFilterBtn, { backgroundColor: currentTheme.colors.primary }]}
+              >
+                <Text style={{ fontSize: 11, fontWeight: '800', color: currentTheme.colors.background }}>Clear</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
           {searchQuery.trim().length > 0 ? (
             /* Search Results View */
             <View style={styles.searchResultsSection}>
@@ -169,38 +265,43 @@ export const ResourcesDirectoryScreen: React.FC<Props> = ({ navigation }) => {
                       <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted, marginBottom: 10 }]}>
                         COMPANY PREP GUIDES ({matchingCompanyGuides.length})
                       </Text>
-                      {matchingCompanyGuides.map((item) => (
-                        <TouchableOpacity
-                          key={item.id}
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            if (item.company) {
-                              handleGroupPress('COMPANY', item.company);
-                            }
-                          }}
-                          style={{ marginBottom: 10 }}
-                        >
-                          <SurfaceCard style={[styles.searchResultCard, { borderWidth: 1, borderColor: alpha(currentTheme.colors.border, 0.05) }]}>
-                            <View style={[styles.iconWrapper, { backgroundColor: getResourceColor(item.type, 0.08) }]}>
-                              {getResourceIcon(item.type)}
-                            </View>
-                            <View style={{ flex: 1, marginLeft: 12 }}>
-                              <Text style={[styles.resultTitle, { color: currentTheme.colors.text }]} numberOfLines={2}>
-                                {item.title}
-                              </Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                <Text style={[styles.resultBadge, { color: getResourceColor(item.type, 1), backgroundColor: getResourceColor(item.type, 0.08) }]}>
-                                  {item.type}
-                                </Text>
-                                <Text style={{ fontSize: 11, fontWeight: '700', color: currentTheme.colors.textMuted }}>
-                                  • {item.company}
-                                </Text>
+                      {matchingCompanyGuides.map((item) => {
+                        const representativeUrl = item.items?.[0]?.url ?? '';
+                        const representativeType = item.items?.[0]?.type;
+                        return (
+                          <TouchableOpacity
+                            key={item.id}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              navigation.navigate('ResourceCollectionDetail', {
+                                collectionId: item.id,
+                                collectionTitle: item.title,
+                              });
+                            }}
+                            style={{ marginBottom: 10 }}
+                          >
+                            <SurfaceCard style={[styles.searchResultCard, { borderWidth: 1, borderColor: alpha(currentTheme.colors.border, 0.05) }]}>
+                              <View style={[styles.iconWrapper, { backgroundColor: getColorByUrl(representativeUrl, representativeType, 0.08) }]}>
+                                {getIconByUrl(representativeUrl, representativeType)}
                               </View>
-                            </View>
-                            <ChevronRight size={16} color={alpha(currentTheme.colors.textMuted, 0.3)} />
-                          </SurfaceCard>
-                        </TouchableOpacity>
-                      ))}
+                              <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={[styles.resultTitle, { color: currentTheme.colors.text }]} numberOfLines={2}>
+                                  {item.title}
+                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                  <Text style={[styles.resultBadge, { color: getColorByUrl(representativeUrl, representativeType, 1), backgroundColor: getColorByUrl(representativeUrl, representativeType, 0.08) }]}>
+                                    {item.items?.length ?? 0} resources
+                                  </Text>
+                                  <Text style={{ fontSize: 11, fontWeight: '700', color: currentTheme.colors.textMuted }}>
+                                    • {item.company}
+                                  </Text>
+                                </View>
+                              </View>
+                              <ChevronRight size={16} color={alpha(currentTheme.colors.textMuted, 0.3)} />
+                            </SurfaceCard>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                   )}
 
@@ -209,40 +310,45 @@ export const ResourcesDirectoryScreen: React.FC<Props> = ({ navigation }) => {
                       <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted, marginBottom: 10 }]}>
                         SKILL GUIDES & TOPICS ({matchingGeneralGuides.length})
                       </Text>
-                      {matchingGeneralGuides.map((item) => (
-                        <TouchableOpacity
-                          key={item.id}
-                          activeOpacity={0.7}
-                          onPress={() => {
-                            if (item.skills.length > 0) {
-                              handleGroupPress('SKILL', item.skills[0]);
-                            }
-                          }}
-                          style={{ marginBottom: 10 }}
-                        >
-                          <SurfaceCard style={[styles.searchResultCard, { borderWidth: 1, borderColor: alpha(currentTheme.colors.border, 0.05) }]}>
-                            <View style={[styles.iconWrapper, { backgroundColor: getResourceColor(item.type, 0.08) }]}>
-                              {getResourceIcon(item.type)}
-                            </View>
-                            <View style={{ flex: 1, marginLeft: 12 }}>
-                              <Text style={[styles.resultTitle, { color: currentTheme.colors.text }]} numberOfLines={2}>
-                                {item.title}
-                              </Text>
-                              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
-                                <Text style={[styles.resultBadge, { color: getResourceColor(item.type, 1), backgroundColor: getResourceColor(item.type, 0.08) }]}>
-                                  {item.type}
-                                </Text>
-                                {item.skills.length > 0 && (
-                                  <Text style={{ fontSize: 11, fontWeight: '700', color: currentTheme.colors.textMuted }} numberOfLines={1}>
-                                    • {item.skills.join(', ')}
-                                  </Text>
-                                )}
+                      {matchingGeneralGuides.map((item) => {
+                        const representativeUrl = item.items?.[0]?.url ?? '';
+                        const representativeType = item.items?.[0]?.type;
+                        return (
+                          <TouchableOpacity
+                            key={item.id}
+                            activeOpacity={0.7}
+                            onPress={() => {
+                              navigation.navigate('ResourceCollectionDetail', {
+                                collectionId: item.id,
+                                collectionTitle: item.title,
+                              });
+                            }}
+                            style={{ marginBottom: 10 }}
+                          >
+                            <SurfaceCard style={[styles.searchResultCard, { borderWidth: 1, borderColor: alpha(currentTheme.colors.border, 0.05) }]}>
+                              <View style={[styles.iconWrapper, { backgroundColor: getColorByUrl(representativeUrl, representativeType, 0.08) }]}>
+                                {getIconByUrl(representativeUrl, representativeType)}
                               </View>
-                            </View>
-                            <ChevronRight size={16} color={alpha(currentTheme.colors.textMuted, 0.3)} />
-                          </SurfaceCard>
-                        </TouchableOpacity>
-                      ))}
+                              <View style={{ flex: 1, marginLeft: 12 }}>
+                                <Text style={[styles.resultTitle, { color: currentTheme.colors.text }]} numberOfLines={2}>
+                                  {item.title}
+                                </Text>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 }}>
+                                  <Text style={[styles.resultBadge, { color: getColorByUrl(representativeUrl, representativeType, 1), backgroundColor: getColorByUrl(representativeUrl, representativeType, 0.08) }]}>
+                                    {item.items?.length ?? 0} resources
+                                  </Text>
+                                  {item.skills.length > 0 && (
+                                    <Text style={{ fontSize: 11, fontWeight: '700', color: currentTheme.colors.textMuted }} numberOfLines={1}>
+                                      • {item.skills.join(', ')}
+                                    </Text>
+                                  )}
+                                </View>
+                              </View>
+                              <ChevronRight size={16} color={alpha(currentTheme.colors.textMuted, 0.3)} />
+                            </SurfaceCard>
+                          </TouchableOpacity>
+                        );
+                      })}
                     </View>
                   )}
                 </>
@@ -251,83 +357,138 @@ export const ResourcesDirectoryScreen: React.FC<Props> = ({ navigation }) => {
           ) : (
             /* Directory Directories View */
             <>
-              {/* Companies Carousel */}
-              <View style={styles.section}>
+              {(!activeFilterSkills || activeFilterSkills.length === 0) && (
+                <>
+                  {/* Companies Carousel */}
+                  <View style={styles.section}>
+                    <View style={styles.sectionHeader}>
+                      {sector === 'GOVERNMENT' ? (
+                        <Landmark size={16} color={currentTheme.colors.primary} />
+                      ) : (
+                        <Building size={16} color={currentTheme.colors.primary} />
+                      )}
+                      <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>
+                        {sector === 'GOVERNMENT' ? "GOVT EXAM GUIDES" : "COMPANIES PREP PACKS"}
+                      </Text>
+                    </View>
+
+                    <FlatList
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      data={companies}
+                      keyExtractor={(item) => item.id}
+                      renderItem={({ item }) => (
+                        <TouchableOpacity
+                          activeOpacity={0.8}
+                          onPress={() => handleGroupPress('COMPANY', item.name, item.logoUrl)}
+                        >
+                          <SurfaceCard style={[styles.companyCard, { borderColor: alpha(currentTheme.colors.border, 0.05), borderWidth: 1 }]}>
+                            <View style={[styles.logoContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
+                              {item.logoUrl ? (
+                                <Image source={{ uri: item.logoUrl }} style={styles.logoImage} />
+                              ) : (
+                                sector === 'GOVERNMENT' ? (
+                                  <Landmark size={24} color={currentTheme.colors.textMuted} strokeWidth={1.5} />
+                                ) : (
+                                  <Building size={24} color={currentTheme.colors.textMuted} strokeWidth={1.5} />
+                                )
+                              )}
+                            </View>
+                            <Text style={[styles.companyName, { color: currentTheme.colors.text }]} numberOfLines={1}>
+                              {item.name}
+                            </Text>
+                            <View style={[styles.guideCountBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                              <Text style={[styles.guideCountBadgeText, { color: currentTheme.colors.primary }]}>
+                                {item.count} Guide{item.count !== 1 ? 's' : ''}
+                              </Text>
+                            </View>
+                          </SurfaceCard>
+                        </TouchableOpacity>
+                      )}
+                      contentContainerStyle={{ gap: 12, paddingRight: 24 }}
+                    />
+                  </View>
+
+                  {/* Skills directory */}
+                  <View style={[styles.section, { marginTop: 24 }]}>
+                    <View style={styles.sectionHeader}>
+                      <Award size={16} color={currentTheme.colors.primary} />
+                      <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>
+                        {sector === 'GOVERNMENT' ? "SUBJECT HUBS" : "SKILL TOPIC HUBS"}
+                      </Text>
+                    </View>
+
+                    <View style={styles.skillsGrid}>
+                      {(isSkillsExpanded ? skills : skills.slice(0, 8)).map((item) => (
+                        <TouchableOpacity
+                          key={item.id}
+                          activeOpacity={0.8}
+                          onPress={() => handleGroupPress('SKILL', item.name)}
+                          style={[styles.skillTagCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.04), borderColor: alpha(currentTheme.colors.primary, 0.08) }]}
+                        >
+                          <BookOpen size={13} color={currentTheme.colors.primary} style={{ marginRight: 6 }} />
+                          <Text style={[styles.skillTagName, { color: currentTheme.colors.primary }]}>{item.name}</Text>
+                          <View style={[styles.skillTagCountBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                            <Text style={[styles.skillTagCount, { color: currentTheme.colors.primary }]}>
+                              {item.count}
+                            </Text>
+                          </View>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+
+                    {skills.length > 8 && (
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => {
+                          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                          setIsSkillsExpanded(!isSkillsExpanded);
+                        }}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: 6,
+                          marginTop: 14,
+                          paddingVertical: 10,
+                          backgroundColor: alpha(currentTheme.colors.primary, 0.03),
+                          borderRadius: 14,
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '800', color: currentTheme.colors.primary }}>
+                          {isSkillsExpanded ? "Show Less" : `Show all ${skills.length} skills`}
+                        </Text>
+                        {isSkillsExpanded ? (
+                          <ChevronUp size={14} color={currentTheme.colors.primary} />
+                        ) : (
+                          <ChevronDown size={14} color={currentTheme.colors.primary} />
+                        )}
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                </>
+              )}
+
+              {/* Prep Guides Feed */}
+              <View style={{ marginTop: 32, marginBottom: 16 }}>
                 <View style={styles.sectionHeader}>
-                  {sector === 'GOVERNMENT' ? (
-                    <Landmark size={16} color={currentTheme.colors.primary} />
-                  ) : (
-                    <Building size={16} color={currentTheme.colors.primary} />
-                  )}
+                  <BookOpen size={16} color={currentTheme.colors.primary} />
                   <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>
-                    {sector === 'GOVERNMENT' ? "GOVT EXAM GUIDES" : "COMPANIES PREP PACKS"}
+                    {activeFilterSkills && activeFilterSkills.length > 0 ? "MATCHED PREP GUIDES" : "EXPLORE ALL PREP GUIDES"}
                   </Text>
                 </View>
 
-                <FlatList
-                  horizontal
-                  showsHorizontalScrollIndicator={false}
-                  data={companies}
-                  keyExtractor={(item) => item.id}
-                  renderItem={({ item }) => (
-                    <TouchableOpacity
-                      activeOpacity={0.8}
-                      onPress={() => handleGroupPress('COMPANY', item.name, item.logoUrl)}
-                    >
-                      <SurfaceCard style={[styles.companyCard, { borderColor: alpha(currentTheme.colors.border, 0.05), borderWidth: 1 }]}>
-                        <View style={[styles.logoContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
-                          {item.logoUrl ? (
-                            <Image source={{ uri: item.logoUrl }} style={styles.logoImage} />
-                          ) : (
-                            sector === 'GOVERNMENT' ? (
-                              <Landmark size={24} color={currentTheme.colors.textMuted} strokeWidth={1.5} />
-                            ) : (
-                              <Building size={24} color={currentTheme.colors.textMuted} strokeWidth={1.5} />
-                            )
-                          )}
-                        </View>
-                        <Text style={[styles.companyName, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                          {item.name}
-                        </Text>
-                        <View style={[styles.guideCountBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
-                          <Text style={[styles.guideCountBadgeText, { color: currentTheme.colors.primary }]}>
-                            {item.count} Guide{item.count !== 1 ? 's' : ''}
-                          </Text>
-                        </View>
-                      </SurfaceCard>
-                    </TouchableOpacity>
-                  )}
-                  contentContainerStyle={{ gap: 12, paddingRight: 24 }}
-                />
-              </View>
-
-              {/* Skills directory */}
-              <View style={[styles.section, { marginTop: 24 }]}>
-                <View style={styles.sectionHeader}>
-                  <Award size={16} color={currentTheme.colors.primary} />
-                  <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>
-                    {sector === 'GOVERNMENT' ? "SUBJECT HUBS" : "SKILL TOPIC HUBS"}
+                {loading ? (
+                  <ActivityIndicator size="small" color={currentTheme.colors.primary} style={{ marginTop: 20 }} />
+                ) : filteredBySkillsResources.length === 0 ? (
+                  <Text style={{ color: currentTheme.colors.textMuted, textAlign: 'center', marginTop: 20, fontSize: 14, fontWeight: '600' }}>
+                    No matching guides available for your skills.
                   </Text>
-                </View>
-
-                <View style={styles.skillsGrid}>
-                  {skills.map((item) => (
-                    <TouchableOpacity
-                      key={item.id}
-                      activeOpacity={0.8}
-                      onPress={() => handleGroupPress('SKILL', item.name)}
-                      style={[styles.skillTagCard, { backgroundColor: alpha(currentTheme.colors.primary, 0.04), borderColor: alpha(currentTheme.colors.primary, 0.08) }]}
-                    >
-                      <BookOpen size={13} color={currentTheme.colors.primary} style={{ marginRight: 6 }} />
-                      <Text style={[styles.skillTagName, { color: currentTheme.colors.primary }]}>{item.name}</Text>
-                      <View style={[styles.skillTagCountBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                        <Text style={[styles.skillTagCount, { color: currentTheme.colors.primary }]}>
-                          {item.count}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                </View>
+                ) : (
+                  <View style={{ gap: 16 }}>
+                    {filteredBySkillsResources.map(renderCollectionCard)}
+                  </View>
+                )}
               </View>
             </>
           )}
@@ -524,5 +685,59 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
+  },
+  resourceCardContainer: {
+    borderRadius: 20,
+    marginBottom: 12,
+  },
+  resourceTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
+  miniSkillTag: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    borderWidth: 1,
+  },
+  miniSkillTagText: {
+    fontSize: 8,
+    fontWeight: '800',
+  },
+  itemLinkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    gap: 10,
+  },
+  itemLinkTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    lineHeight: 18,
+  },
+  resourceMeta: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  filterBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 14,
+    borderRadius: 16,
+    borderWidth: 1,
+    marginTop: 12,
+    marginHorizontal: 20,
+    gap: 12,
+  },
+  filterBannerTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  clearFilterBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
 });

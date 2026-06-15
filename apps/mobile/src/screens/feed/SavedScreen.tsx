@@ -13,13 +13,18 @@ import {
     Platform,
     Animated,
     Linking,
+    Image,
+    InteractionManager,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bookmark, Compass, Bell, ChevronUp, ExternalLink } from 'lucide-react-native';
+import { Bookmark, Compass, Bell, ExternalLink, PlayCircle, FolderOpen, Globe, FileText } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
-import { useScrollToTop } from '@react-navigation/native';
+import { useScrollToTop, useFocusEffect } from '@react-navigation/native';
+import { useScrollTracker } from '@/hooks/useScrollTracker';
 import { useSavedJobs } from '@/hooks/useSavedJobs';
+import { useSavedItems } from '@/hooks/useSavedItems';
+import { openExternalURL } from '@/utils/browser';
 import { Opportunity } from '@fresherflow/types';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { saveDetailCache } from '@/utils/cache/offlineCache';
@@ -32,10 +37,12 @@ import { UsernameNudgeCard } from '@/system/components/UsernameNudgeCard';
 import { useSectorStore } from '@/store/useSectorStore';
 import { GovtJobCard } from '@/system/components/GovtJobCard';
 import { ResourcePreviewCard } from '@/system/components/ResourcePreviewCard';
+import { useFeedStore } from '@/store/useFeedStore';
+import { ResourceCollectionCard } from '@/system/components/ResourceCollectionCard';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, PremiumRefreshControl } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, PremiumRefreshControl, ScrollToTopButton, SurfaceCard } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'SavedList'>;
 
@@ -53,21 +60,25 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { currentTheme } = useTheme();
     const { sector } = useSectorStore();
     const { savedJobs, savedResources, isSavedResource, toggleSaveResource, loading, refresh } = useSavedJobs();
+    const { isItemSaved, toggleSaveItem } = useSavedItems();
     const { hideTabBar, showTabBar } = useUI();
     const { unreadCount } = useNotifications();
     const { isSaved, toggleSave } = useSaved();
     const { showSuccess } = useToast();
+    const openedIds = useFeedStore(s => s.openedIds);
     
     const [activeTab, setActiveTab] = React.useState<'JOBS' | 'RESOURCES'>('JOBS');
-    
-    // Track scroll position for hide/show tab bar
-    const scrollOffset = useRef(0);
-    const [showScrollTop, setShowScrollTop] = React.useState(false);
+    const flashListRef = React.useRef<any>(null);
 
-    const flashListRef = useRef<any>(null);
+    const { showScrollTop, handleScroll, scrollOffset } = useScrollTracker({
+        threshold: 1200,
+        scrollUpRequired: 200,
+        hideShowTabBar: true
+    });
 
     const smoothScrollToTop = useCallback(() => {
         if (!flashListRef.current) return;
+        
         if (scrollOffset.current > 2000) {
             flashListRef.current.scrollToOffset({ offset: 0, animated: false });
         } else {
@@ -78,33 +89,22 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const scrollToTopRef = useRef({ scrollToTop: smoothScrollToTop });
     useScrollToTop(scrollToTopRef);
 
+    useFocusEffect(
+        useCallback(() => {
+            const task = InteractionManager.runAfterInteractions(() => {
+                void useFeedStore.getState().refreshBehavioralData();
+            });
+            return () => task.cancel();
+        }, [])
+    );
+
     const handleToggleSave = useCallback((opportunity: Opportunity) => {
         const wasSaved = isSaved(opportunity.id);
         toggleSave(opportunity);
         showSuccess(wasSaved ? 'Opportunity removed from saved' : 'Opportunity saved successfully!');
     }, [isSaved, toggleSave, showSuccess]);
 
-    const handleScroll = useCallback((event: any) => {
-        const currentOffset = event.nativeEvent.contentOffset.y;
-        const direction = currentOffset > scrollOffset.current ? 'down' : 'up';
-
-        if (currentOffset > 600) {
-            if (Math.abs(currentOffset - scrollOffset.current) > 10) {
-                setShowScrollTop(direction === 'up');
-            }
-        } else {
-            setShowScrollTop(false);
-        }
-
-        if (Math.abs(currentOffset - scrollOffset.current) > 20) {
-            if (direction === 'down' && currentOffset > 100) {
-                hideTabBar();
-            } else if (direction === 'up' || currentOffset < 50) {
-                showTabBar();
-            }
-            scrollOffset.current = currentOffset;
-        }
-    }, [hideTabBar, showTabBar]);
+    // scroll handling is coordinated by useScrollTracker above
 
     const renderEmpty = useCallback(() => {
         return (
@@ -211,27 +211,19 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         }
 
         if (activeTab === 'RESOURCES') {
+            const res = item;
             return (
-                <TouchableOpacity 
-                    activeOpacity={0.75}
-                    onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                        void Linking.openURL(item.url);
-                    }}
-                    style={{ marginBottom: 12, paddingHorizontal: SPACING.lg }}
-                >
-                    <View pointerEvents="box-none">
-                        <ResourcePreviewCard 
-                            url={item.url} 
-                            isSaved={isSavedResource(item.id)}
-                            onSave={() => {
-                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                                toggleSaveResource(item);
-                            }}
-                            addedByUsername={item.addedByUsername}
-                        />
-                    </View>
-                </TouchableOpacity>
+                <View style={{ paddingHorizontal: SPACING.lg }}>
+                    <ResourceCollectionCard
+                        collection={res}
+                        isSaved={isSavedResource(res.id)}
+                        onToggleSave={() => toggleSaveResource(res)}
+                        onPressTitle={() => navigation.navigate('ResourceCollectionDetail', { collectionId: res.id, collectionTitle: res.title })}
+                        onPressViewAll={() => navigation.navigate('ResourceCollectionDetail', { collectionId: res.id, collectionTitle: res.title })}
+                        isItemSaved={isItemSaved}
+                        onToggleSaveItem={(item) => toggleSaveItem(item.id)}
+                    />
+                </View>
             );
         }
 
@@ -241,12 +233,12 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     opportunity={item}
                     index={index - 1}
                     onPress={() => {
-                        requestAnimationFrame(() => {
-                            navigation.navigate('GovtJobDetail', { opportunity: item, opportunityId: item.id });
-                        });
+                        void useFeedStore.getState().markAsOpened(item.id);
+                        navigation.navigate('GovtJobDetail', { opportunity: item, opportunityId: item.id });
                     }}
                     isSaved={isSaved(item.id)}
                     onSave={handleToggleSave}
+                    isViewed={openedIds.has(item.id)}
                 />
             );
         }
@@ -256,15 +248,15 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 opportunity={item}
                 index={index - 1}
                 onPress={() => {
-                    requestAnimationFrame(() => {
-                        navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
-                    });
+                    void useFeedStore.getState().markAsOpened(item.id);
+                    navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
                 }}
                 isSaved={isSaved(item.id)}
                 onSave={handleToggleSave}
+                isViewed={openedIds.has(item.id)}
             />
         );
-    }, [filteredSavedJobs, savedResources, activeTab, isSavedResource, toggleSaveResource, renderEmpty, loading, currentTheme, isSaved, handleToggleSave, navigation, sector]);
+    }, [filteredSavedJobs, savedResources, activeTab, isSavedResource, toggleSaveResource, renderEmpty, loading, currentTheme, isSaved, handleToggleSave, navigation, sector, openedIds]);
 
     return (
         <Screen safe={false}>
@@ -311,25 +303,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 }
             />
 
-            {showScrollTop && (
-                <TouchableOpacity
-                    activeOpacity={0.8}
-                    onPress={() => {
-                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                        smoothScrollToTop();
-                    }}
-                    style={[
-                        styles.scrollTopBtn,
-                        {
-                            backgroundColor: currentTheme.colors.surface,
-                            borderColor: alpha(currentTheme.colors.border, 0.3),
-                            bottom: insets.bottom + 110,
-                        },
-                    ]}
-                >
-                    <ChevronUp size={20} color={currentTheme.colors.primary} />
-                </TouchableOpacity>
-            )}
+            <ScrollToTopButton visible={showScrollTop} onPress={smoothScrollToTop} bottomOffset={insets.bottom + 110} />
         </Screen>
     );
 });
@@ -413,28 +387,7 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         letterSpacing: 1,
     },
-    scrollTopBtn: {
-        position: 'absolute',
-        right: 28,
-        width: 44,
-        height: 44,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        zIndex: 9999,
-        ...Platform.select({
-            ios: {
-                shadowColor: '#000',
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.15,
-                shadowRadius: 8,
-            },
-            android: {
-                elevation: 4,
-            },
-        }),
-    },
+
     resourceCard: {
         marginBottom: 16,
         padding: 16,
