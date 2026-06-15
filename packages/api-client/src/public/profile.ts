@@ -44,6 +44,19 @@ export const profileApi = {
             body: JSON.stringify(data)
         }),
 
+    updateDemographics: (data: {
+        dob?: string;
+        gender?: string;
+        category?: string;
+        isPwBD?: boolean;
+        isExServicemen?: boolean;
+        homeState?: string;
+    }) =>
+        apiClient('/api/profile/demographics', {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        }),
+
     getCompletion: () => apiClient('/api/profile/completion'),
 
     registerPushToken: (token: string, platform: string) =>

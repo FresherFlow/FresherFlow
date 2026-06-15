@@ -52,6 +52,20 @@ export enum Role {
     ADMIN = 'ADMIN'
 }
 
+export enum ReservationCategory {
+    GENERAL = 'GENERAL',
+    OBC = 'OBC',
+    SC = 'SC',
+    ST = 'ST',
+    EWS = 'EWS'
+}
+
+export enum Gender {
+    MALE = 'MALE',
+    FEMALE = 'FEMALE',
+    OTHER = 'OTHER'
+}
+
 export enum UserTrustLevel {
     BANNED = 'BANNED',
     NEW = 'NEW',
@@ -68,6 +82,8 @@ export enum OpportunityStatus {
 }
 
 export enum EducationLevel {
+    TENTH = 'TENTH',
+    INTER = 'INTER',
     DIPLOMA = 'DIPLOMA',
     DEGREE = 'DEGREE',
     PG = 'PG'
@@ -208,6 +224,14 @@ export interface Profile {
     availability: Availability | null;
     skills: string[];
     skillTags?: string[]; // UI Mapping alias
+
+    // Government Job Eligibility Fields
+    dob?: Date | string | null;
+    gender?: Gender | null;
+    category?: ReservationCategory | null;
+    isPwBD?: boolean | null;
+    isExServicemen?: boolean | null;
+    homeState?: string | null;
 }
 
 export interface Admin {
@@ -807,6 +831,11 @@ export interface ResourceItem {
     updatedAt: string | Date;
 }
 
+export enum ResourceSector {
+    PRIVATE = 'PRIVATE',
+    GOVERNMENT = 'GOVERNMENT'
+}
+
 export interface ResourceCollection {
     id: string;
     title: string;
@@ -820,6 +849,7 @@ export interface ResourceCollection {
     createdAt: string | Date;
     updatedAt: string | Date;
     items: ResourceItem[];
+    sector: ResourceSector;
 }
 
 export type SharedResource = ResourceCollection;
@@ -855,6 +885,7 @@ export interface AdminUpdateResourceRequest {
     skills?: string[];
     tags?: string[];
     status?: ResourceItemStatus;
+    sector?: ResourceSector;
     items?: {
         id?: string;
         title: string;
@@ -870,9 +901,11 @@ export interface AdminCreateResourceRequest {
     skills?: string[];
     tags?: string[];
     status?: ResourceItemStatus;
+    sector?: ResourceSector;
     items: {
         title: string;
         type: ResourceItemType;
         url: string;
     }[];
 }
+

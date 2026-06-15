@@ -22,6 +22,20 @@ enum Role {
   ADMIN
 }
 
+enum ReservationCategory {
+  GENERAL
+  OBC
+  SC
+  ST
+  EWS
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
 enum OpportunityType {
   JOB
   INTERNSHIP
@@ -100,6 +114,8 @@ enum AppFeedbackType {
 }
 
 enum EducationLevel {
+  TENTH
+  INTER
   DIPLOMA
   DEGREE
   PG
@@ -391,6 +407,14 @@ model Profile {
   // Readiness Status (20% weight)
   availability Availability?
   skills       String[] // admin-controlled tags
+
+  // Government Job Eligibility Fields
+  dob            DateTime?
+  gender         Gender?
+  category       ReservationCategory?
+  isPwBD         Boolean?             @default(false)
+  isExServicemen Boolean?             @default(false)
+  homeState      String?
 
   // DERIVED FIELD - Never manually updated, always recalculated
   completionPercentage Int @default(0)
@@ -1058,9 +1082,12 @@ model ResourceCollection {
   updatedAt       DateTime           @updatedAt
   items           ResourceItem[]
 
+  sector          ResourceSector     @default(PRIVATE)
+
   @@index([company])
   @@index([skills], type: Gin)
   @@index([status])
+  @@index([sector])
 }
 
 model ResourceItem {
@@ -1075,3 +1102,9 @@ model ResourceItem {
 
   @@index([collectionId])
 }
+
+enum ResourceSector {
+  PRIVATE
+  GOVERNMENT
+}
+

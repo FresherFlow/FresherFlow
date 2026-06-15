@@ -1,0 +1,3 @@
+-- AlterEnum
+ALTER TYPE "EducationLevel" ADD VALUE 'TENTH' BEFORE 'DIPLOMA';
+ALTER TYPE "EducationLevel" ADD VALUE 'INTER' BEFORE 'DIPLOMA';

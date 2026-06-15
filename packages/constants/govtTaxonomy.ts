@@ -92,12 +92,12 @@ export const QUALIFICATION_PATTERNS: QualificationPattern[] = [
     },
     {
         pattern: /\b(12th|intermediate|hsc|10\+2|class\s*12|higher\s+secondary)\b/i,
-        level: EducationLevel.DEGREE, // no TWELFTH bucket exists, DEGREE is safest
+        level: EducationLevel.INTER,
         label: '12th / Intermediate',
     },
     {
         pattern: /\b(10th|ssc|matriculation|class\s*10|secondary)\b/i,
-        level: EducationLevel.DEGREE,
+        level: EducationLevel.TENTH,
         label: '10th / SSC',
     },
 ];
