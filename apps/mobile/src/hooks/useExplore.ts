@@ -1,19 +1,21 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { Opportunity, OpportunityType, WorkMode, Profile, ActionType } from '@fresherflow/types';
-import { readFeedCache, saveFeedCache, saveLastSyncTimestamp, readTrackerCacheSync } from '@/utils/cache/offlineCache';
+import { readFeedCache, saveFeedCache, saveLastSyncTimestamp, readTrackerCacheSync, readFeedCacheSync } from '@/utils/cache/offlineCache';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import debounce from 'lodash.debounce';
 import Fuse from 'fuse.js';
 import axios from 'axios';
-import { BOOTSTRAP_FEED_URL } from '@/config/api';
+import { BOOTSTRAP_FEED_URL, GOVERNMENT_FEED_URL } from '@/config/api';
 import { normalizeQuery } from '@/utils/text';
 import { useUIStore } from '@/store/useUIStore';
+import { useSectorStore } from '@/store/useSectorStore';
 import { useSaved } from '@repo/frontend-core';
 import { getRecentSearchKeywords, saveRecentSearchKeyword } from '@/utils/userBehavior';
 import { getLocalProfile } from '@/utils/cache/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
-import { getOpenedIds } from '@/utils/cache/seenJobs';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useFeedStore } from '@/store/useFeedStore';
 
 
 export interface ExploreFilters {
@@ -26,6 +28,7 @@ export interface ExploreFilters {
 
 export function useExplore() {
     const { user } = useAuthStore();
+    const { sector } = useSectorStore();
     const [searchQuery, setSearchQuery] = useState('');
 
     const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
@@ -33,22 +36,43 @@ export function useExplore() {
     const setFilters = useUIStore(s => s.setExploreFilters);
     const resetExploreFilters = useUIStore(s => s.resetExploreFilters);
 
-    const [cachedItems, setCachedItems] = useState<Opportunity[]>([]);
-    const [isBootstrapping, setIsBootstrapping] = useState(true);
+    const [cachedItems, setCachedItems] = useState<Opportunity[]>(() => {
+        try {
+            const cache = readFeedCacheSync(sector || undefined);
+            return cache?.items || [];
+        } catch {
+            return [];
+        }
+    });
+    const [isBootstrapping, setIsBootstrapping] = useState(() => {
+        try {
+            const cache = readFeedCacheSync(sector || undefined);
+            return !(cache && cache.items.length > 0);
+        } catch {
+            return true;
+        }
+    });
+
+    // Sync state synchronously when sector changes (prevents a stale frame/flash)
+    const lastSectorRef = useRef(sector);
+    if (lastSectorRef.current !== sector) {
+        lastSectorRef.current = sector;
+        const cache = readFeedCacheSync(sector || undefined);
+        const items = cache?.items || [];
+        setCachedItems(items);
+        setIsBootstrapping(items.length === 0);
+    }
+
     const [isSyncing, setIsSyncing] = useState(false);
     const [syncError, setSyncError] = useState<string | null>(null);
 
     // Personalized relevance states
     const { savedJobs } = useSaved();
     const [localProfile, setLocalProfile] = useState<Profile | null>(null);
-    const [openedIds, setOpenedIds] = useState<Set<string>>(new Set());
+    // Use global store for openedIds so tapping a job immediately dims it everywhere
+    const openedIds = useFeedStore(s => s.openedIds);
     const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
     const [recentKeywords, setRecentKeywords] = useState<string[]>([]);
-
-    const loadOpenedIds = useCallback(async () => {
-        const ids = await getOpenedIds();
-        setOpenedIds(ids);
-    }, []);
 
     const loadAppliedIds = useCallback(() => {
         const set = new Set<string>();
@@ -63,7 +87,7 @@ export function useExplore() {
                 });
             }
         } catch (e) {
-            console.warn('[useExplore] Failed to parse tracker cache for applied IDs:', e);
+            if (__DEV__) { console.warn('[useExplore] Failed to parse tracker cache for applied IDs:', e) }
         }
         setAppliedIds(set);
     }, []);
@@ -106,15 +130,18 @@ export function useExplore() {
 
     // 1. Client-First Hydration (Instant Render from Cache)
     const hydrate = useCallback(async () => {
-        setIsBootstrapping(true);
-        try {
-            const cache = await readFeedCache();
-            if (cache && cache.items.length > 0) {
-                setCachedItems(cache.items);
-            } else {
+        const cache = readFeedCacheSync(sector || undefined);
+        if (cache && cache.items.length > 0) {
+            setCachedItems(cache.items);
+            setIsBootstrapping(false);
+        } else {
+            setIsBootstrapping(true);
+            try {
+                const path = sector === 'GOVERNMENT' ? '/government-feed.json' : '/bootstrap-feed.min.json';
+                const url = sector === 'GOVERNMENT' ? GOVERNMENT_FEED_URL : BOOTSTRAP_FEED_URL;
                 // Generate secure signatures to bypass Cloudflare Worker block
-                const sigParams = generateCdnSignature('/bootstrap-feed.min.json');
-                const signedUrl = `${BOOTSTRAP_FEED_URL}?t=${sigParams.t}&sig=${sigParams.sig}`;
+                const sigParams = generateCdnSignature(path);
+                const signedUrl = `${url}?t=${sigParams.t}&sig=${sigParams.sig}`;
 
                 // If cache is empty, bootstrap directly from CDN
                 const response = await axios.get(signedUrl, { 
@@ -123,19 +150,18 @@ export function useExplore() {
                 if (response.data?.opportunities) {
                     const ops = response.data.opportunities as Opportunity[];
                     setCachedItems(ops);
-                    await saveFeedCache(ops);
+                    await saveFeedCache(ops, sector || undefined);
                 }
+            } catch (e) {
+                if (__DEV__) { console.warn('[useExplore] Cache hydration failed:', (e as Error).message) }
+            } finally {
+                setIsBootstrapping(false);
             }
-            // Load user behavior records on mount
-            void loadOpenedIds();
-            loadAppliedIds();
-            loadRecentKeywords();
-        } catch (e) {
-            console.warn('[useExplore] Cache hydration failed:', (e as Error).message);
-        } finally {
-            setIsBootstrapping(false);
         }
-    }, [loadOpenedIds, loadAppliedIds, loadRecentKeywords]);
+        // Load user behavior records on mount
+        loadAppliedIds();
+        loadRecentKeywords();
+    }, [sector, loadAppliedIds, loadRecentKeywords]);
 
     useEffect(() => {
         void hydrate();
@@ -147,12 +173,13 @@ export function useExplore() {
         setSyncError(null);
         try {
             // Reload user behavior records on manual refresh
-            void loadOpenedIds();
             loadAppliedIds();
             loadRecentKeywords();
 
-            const sigParams = generateCdnSignature('/bootstrap-feed.min.json');
-            const signedUrl = `${BOOTSTRAP_FEED_URL}?t=${sigParams.t}&sig=${sigParams.sig}`;
+            const path = sector === 'GOVERNMENT' ? '/government-feed.json' : '/bootstrap-feed.min.json';
+            const url = sector === 'GOVERNMENT' ? GOVERNMENT_FEED_URL : BOOTSTRAP_FEED_URL;
+            const sigParams = generateCdnSignature(path);
+            const signedUrl = `${url}?t=${sigParams.t}&sig=${sigParams.sig}`;
 
             const response = await axios.get(signedUrl, { 
                 timeout: 5000,
@@ -165,17 +192,17 @@ export function useExplore() {
             if (response.data?.opportunities) {
                 const opportunities = response.data.opportunities as Opportunity[];
                 setCachedItems(opportunities);
-                await saveFeedCache(opportunities);
+                await saveFeedCache(opportunities, sector || undefined);
                 await saveLastSyncTimestamp(response.data.timestamp || Date.now());
             }
         } catch (e) {
             const errMsg = (e as Error).message;
-            console.warn('[useExplore] CDN static sync failed:', errMsg);
+            if (__DEV__) { console.warn('[useExplore] CDN static sync failed:', errMsg) }
             setSyncError(errMsg);
         } finally {
             setIsSyncing(false);
         }
-    }, [loadOpenedIds, loadAppliedIds, loadRecentKeywords]);
+    }, [sector, loadAppliedIds, loadRecentKeywords]);
 
     const savedJobsData = useMemo(() => {
         const skills = new Set<string>();
@@ -232,6 +259,12 @@ export function useExplore() {
     // 3. High-Speed Local Filter & Sort Pipeline (Parsed in <3ms)
     const rawResults = useMemo(() => {
         let items = cachedItems;
+
+        // Ensure we filter out items that don't belong to the active sector
+        items = items.filter(j => {
+            if (sector === 'GOVERNMENT') return j.type === 'GOVERNMENT';
+            return j.type !== 'GOVERNMENT';
+        });
 
         // Apply Filters Locally
         if (filters.types && filters.types.length > 0) {
@@ -385,7 +418,7 @@ export function useExplore() {
         }
 
         return items;
-    }, [cachedItems, filters, localProfile]);
+    }, [cachedItems, filters, localProfile, sector]);
 
     // 4. Fuse.js Fuzzy Search Index (Lazy-loaded to prevent blocking UI on filter changes)
     const fuseIndex = useMemo(() => {
@@ -437,5 +470,6 @@ export function useExplore() {
         suggestions,
         isBootstrapping,
         error: syncError,
+        openedIds,
     };
 }

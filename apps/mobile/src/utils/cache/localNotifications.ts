@@ -423,7 +423,7 @@ export async function diffAndNotify(freshJobs: Opportunity[]): Promise<number> {
 
     return pushFiredCount;
   } catch (error) {
-    console.error('[localNotifications] diffAndNotify failed:', error);
+    if (__DEV__) { console.error('[localNotifications] diffAndNotify failed:', error) }
     return 0;
   }
 }
@@ -462,7 +462,7 @@ export async function processNextDripAlertIfNeeded(): Promise<boolean> {
     await recordDripTrigger();
     return true;
   } catch (error) {
-    console.error('[localNotifications] Drip processing failed:', error);
+    if (__DEV__) { console.error('[localNotifications] Drip processing failed:', error) }
     return false;
   }
 }
@@ -493,7 +493,7 @@ export async function saveLocalAlerts(
     const updated = [...newAlerts, ...existing].slice(0, MAX_LOCAL_ALERTS);
     await AsyncStorage.setItem(LOCAL_ALERTS_KEY, JSON.stringify(updated));
   } catch (e) {
-    console.warn('[localNotifications] Failed to save local alerts', e);
+    if (__DEV__) { console.warn('[localNotifications] Failed to save local alerts', e) }
   }
 }
 
@@ -533,6 +533,25 @@ export async function markAllLocalAlertsAsRead(sector?: 'PRIVATE' | 'GOVERNMENT'
     // ignore
   }
 }
+
+export async function clearAllLocalAlerts(sector?: 'PRIVATE' | 'GOVERNMENT'): Promise<void> {
+  try {
+    const alerts = await getLocalAlerts();
+    const updated = alerts.filter(a => {
+        if (!sector) return false;
+        const isGov = a.opportunity.type === 'GOVERNMENT';
+        if (sector === 'GOVERNMENT') {
+            return !isGov;
+        } else {
+            return isGov;
+        }
+    });
+    await AsyncStorage.setItem(LOCAL_ALERTS_KEY, JSON.stringify(updated));
+  } catch {
+    // ignore
+  }
+}
+
 
 export async function deleteLocalAlert(id: string): Promise<void> {
   try {

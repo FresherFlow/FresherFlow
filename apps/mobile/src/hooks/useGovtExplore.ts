@@ -1,6 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { useFeedStore } from '@/store/useFeedStore';
 import { Opportunity, EducationLevel } from '@fresherflow/types';
+import Fuse from 'fuse.js';
 
 export interface GovtExploreFilters {
   govLevels: string[];    // CENTRAL, STATE, BANKING...
@@ -74,19 +75,41 @@ export const useGovtExplore = (
 ): Opportunity[] => {
   const cachedItems = useFeedStore((state) => state.cachedItems);
 
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+    return () => clearTimeout(t);
+  }, [searchQuery]);
+
+  const govtOpportunities = useMemo(() => {
+    return cachedItems.filter((job) => !!job.governmentJobDetails);
+  }, [cachedItems]);
+
+  const fuseIndex = useMemo(() => {
+    if (govtOpportunities.length === 0 || debouncedSearchQuery.trim().length < 2) return null;
+    return new Fuse(govtOpportunities, {
+      keys: [
+        'title',
+        'company',
+        'governmentJobDetails.examName',
+        'governmentJobDetails.recruitingBody',
+        'governmentJobDetails.posts.name',
+        'jobFunction',
+        'locations'
+      ],
+      threshold: 0.3,
+    });
+  }, [govtOpportunities, debouncedSearchQuery]);
+
   return useMemo(() => {
     // 1. Fetch and filter strictly to 'GOVERNMENT' opportunities
-    let govtJobs = cachedItems.filter((job) => !!job.governmentJobDetails);
+    let govtJobs = govtOpportunities;
 
-    // 2. Filter based on search query (title, description, or company)
+    // 2. Filter based on search query
     if (searchQuery.trim()) {
-      const query = searchQuery.toLowerCase().trim();
-      govtJobs = govtJobs.filter(
-        (job) =>
-          job.title?.toLowerCase().includes(query) ||
-          job.description?.toLowerCase().includes(query) ||
-          job.company?.toLowerCase().includes(query)
-      );
+      if (fuseIndex && debouncedSearchQuery.trim().length >= 2) {
+        govtJobs = fuseIndex.search(debouncedSearchQuery).map(r => r.item);
+      }
     }
 
     // 3. Filter by govLevels (checks governmentJobDetails.governmentLevel matches one if not empty)
@@ -165,5 +188,5 @@ export const useGovtExplore = (
     }
 
     return govtJobs;
-  }, [cachedItems, searchQuery, filters]);
+  }, [govtOpportunities, searchQuery, debouncedSearchQuery, fuseIndex, filters]);
 };

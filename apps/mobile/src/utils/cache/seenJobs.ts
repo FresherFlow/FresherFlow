@@ -12,7 +12,7 @@ export async function markJobAsSeen(id: string): Promise<void> {
       return [...list, id].slice(-MAX_SEEN);
     });
   } catch (error) {
-    console.error('[seenJobs] Failed to mark as seen:', error);
+    if (__DEV__) { console.error('[seenJobs] Failed to mark as seen:', error) }
   }
 }
 
@@ -21,7 +21,16 @@ export async function getSeenIds(): Promise<Set<string>> {
     const list = getJSON<string[]>(SEEN_KEY) || [];
     return new Set(list);
   } catch (error) {
-    console.error('[seenJobs] Failed to get seen IDs:', error);
+    if (__DEV__) { console.error('[seenJobs] Failed to get seen IDs:', error) }
+    return new Set();
+  }
+}
+
+export function getSeenIdsSync(): Set<string> {
+  try {
+    const list = getJSON<string[]>(SEEN_KEY) || [];
+    return new Set(list);
+  } catch (error) {
     return new Set();
   }
 }
@@ -39,7 +48,7 @@ export async function markJobAsOpened(id: string): Promise<void> {
       return [...list, id].slice(-MAX_SEEN);
     });
   } catch (error) {
-    console.error('[seenJobs] Failed to mark as opened:', error);
+    if (__DEV__) { console.error('[seenJobs] Failed to mark as opened:', error) }
   }
 }
 
@@ -48,7 +57,16 @@ export async function getOpenedIds(): Promise<Set<string>> {
     const list = getJSON<string[]>(OPENED_KEY) || [];
     return new Set(list);
   } catch (error) {
-    console.error('[seenJobs] Failed to get opened IDs:', error);
+    if (__DEV__) { console.error('[seenJobs] Failed to get opened IDs:', error) }
+    return new Set();
+  }
+}
+
+export function getOpenedIdsSync(): Set<string> {
+  try {
+    const list = getJSON<string[]>(OPENED_KEY) || [];
+    return new Set(list);
+  } catch (error) {
     return new Set();
   }
 }
@@ -57,4 +75,5 @@ export async function isJobOpened(id: string): Promise<boolean> {
   const opened = await getOpenedIds();
   return opened.has(id);
 }
+
 

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { OpportunityType, Profile } from '@fresherflow/types';
 import { useSaved } from '@repo/frontend-core';
 import { useFollows } from '@/hooks/useFollows';
@@ -13,7 +13,9 @@ export const useFeed = (initialFeedType: string | null = null) => {
     const { savedJobs } = useSaved();
     const { follows } = useFollows();
     
-    const [localProfile, setLocalProfile] = useState<Profile | null>(null);
+    const [localProfile, setLocalProfile] = useState<Profile | null>(() => {
+        return (user?.profile as Profile) || null;
+    });
     const [searchQuery, setSearchQuery] = useState('');
     const [activeFilter, setActiveFilter] = useState<'ALL' | OpportunityType>('ALL');
     const [activeCity, setActiveCity] = useState('ALL');
@@ -45,6 +47,7 @@ export const useFeed = (initialFeedType: string | null = null) => {
     }, [user?.id, user?.profile]);
 
 
+
     const hasProfileData = useMemo(() => {
         const profile = localProfile;
         return !!(profile && (
@@ -56,13 +59,21 @@ export const useFeed = (initialFeedType: string | null = null) => {
     }, [localProfile]);
 
     // 4. In-Memory Fuzzy Search Index (Fuse.js)
+    // Index is built once per dataset change (cachedItems) and query is debounced 300ms
+    // to prevent rebuilding the O(n) index on every keystroke.
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearchQuery(searchQuery), 300);
+        return () => clearTimeout(t);
+    }, [searchQuery]);
+
     const fuseIndex = useMemo(() => {
-        if (cachedItems.length === 0) return null;
+        if (cachedItems.length === 0 || debouncedSearchQuery.trim().length < 2) return null;
         return new Fuse(cachedItems, {
             keys: ['title', 'company', 'jobFunction', 'locations'],
             threshold: 0.3,
         });
-    }, [cachedItems]);
+    }, [cachedItems, debouncedSearchQuery]);
 
     const savedJobsData = useMemo(() => {
         const skills = new Set<string>();
@@ -94,7 +105,11 @@ export const useFeed = (initialFeedType: string | null = null) => {
         return { skills, functions };
     }, [cachedItems, openedIds]);
 
-    const followSets = useMemo(() => {
+    // Debounce followSets: Firebase RTDB can fire multiple snapshots per session.
+    // Without debouncing, every RTDB update would invalidate the filteredOpportunities memo
+    // and rescore the entire feed synchronously on the JS thread.
+    const followSetsRef = useRef({ companies: new Set<string>(), tags: new Set<string>(), contributors: new Set<string>() });
+    const rawFollowSets = useMemo(() => {
         const companies = new Set<string>();
         const tags = new Set<string>();
         const contributors = new Set<string>();
@@ -105,6 +120,16 @@ export const useFeed = (initialFeedType: string | null = null) => {
 
         return { companies, tags, contributors };
     }, [follows]);
+
+    // Debounce: only propagate follow set changes after 500ms of stability
+    useEffect(() => {
+        const t = setTimeout(() => {
+            followSetsRef.current = rawFollowSets;
+        }, 500);
+        return () => clearTimeout(t);
+    }, [rawFollowSets]);
+
+    const followSets = followSetsRef.current;
 
     // 5. Behavioral Snapshotting
     // To prevent the feed from wildly re-sorting or re-bucketing when a user saves or clicks a job,
@@ -141,10 +166,15 @@ export const useFeed = (initialFeedType: string | null = null) => {
             result = result.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.includes(2026));
         } else if (feedType === 'internships') {
             result = result.filter(j => j.type === 'INTERNSHIP');
+        } else if (feedType === 'walkins') {
+            result = result.filter(j => j.type === 'WALKIN');
+        } else if (feedType && /^\d{4}$/.test(feedType)) {
+            const year = Number(feedType);
+            result = result.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.includes(year));
         }
 
         if (searchQuery.trim() && fuseIndex) {
-            result = fuseIndex.search(searchQuery).map(r => r.item);
+            result = fuseIndex.search(debouncedSearchQuery).map(r => r.item);
         }
 
         const now = Date.now();
@@ -288,7 +318,7 @@ export const useFeed = (initialFeedType: string | null = null) => {
         }
 
         return activeItems.sort(sortByEligibleAndDate);
-    }, [cachedItems, fuseIndex, searchQuery, activeFilter, feedType, snapshot, recentKeywords, followSets, localProfile]);
+    }, [cachedItems, fuseIndex, debouncedSearchQuery, searchQuery, activeFilter, feedType, snapshot, recentKeywords, followSets, localProfile]);
 
     const profileMatchedOpportunities = useMemo(() => {
         return filteredOpportunities.filter(j => j.isEligible && (j.matchScore || 0) > 0);
@@ -342,5 +372,6 @@ export const useFeed = (initialFeedType: string | null = null) => {
         totalResults: filteredOpportunities.length,
         hasMore: false, // We have the full, complete set of active jobs locally
         isBootstrapping,
+        isCacheEmpty: cachedItems.length === 0,
     };
 };

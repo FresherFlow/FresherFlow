@@ -133,7 +133,7 @@ export const useProfile = () => {
             lastStatsFetchTime = Date.now();
             updateGlobalStats(res);
         } catch (e) {
-            console.warn('Failed to fetch user stats', e);
+            if (__DEV__) { console.warn('Failed to fetch user stats', e) }
         } finally {
             activeStatsPromise = null;
         }
@@ -181,13 +181,13 @@ export const useProfile = () => {
                 lastProfileFetchTime = Date.now();
                 updateGlobalProfile(res.profile);
                 await saveLocalProfile(res.profile, user.id);
-                console.log(`[useProfile] Profile loaded from ${res.source}`);
+                if (__DEV__) { console.log(`[useProfile] Profile loaded from ${res.source}`) }
                 // Trigger instant real-time full sync of jobs from CDN
                 const feedStore = useFeedStore.getState();
                 void feedStore.performSync(true, true);
             }
         } catch (e) {
-            console.warn('[useProfile] Failed to fetch profile', e);
+            if (__DEV__) { console.warn('[useProfile] Failed to fetch profile', e) }
         } finally {
             setLoadingProfile(false);
             activeProfilePromise = null;
@@ -229,7 +229,7 @@ export const useProfile = () => {
                 await profileApi.updateEducation(data);
                 lastProfileFetchTime = 0;
             } catch (e) {
-                console.warn('[useProfile] Education API sync failed, queued for retry', e);
+                if (__DEV__) { console.warn('[useProfile] Education API sync failed, queued for retry', e) }
                 if (user?.id) enqueueProfileSync(user.id, 'education', data);
             }
         })();
@@ -262,7 +262,7 @@ export const useProfile = () => {
                 await profileApi.updatePreferences(data);
                 lastProfileFetchTime = 0;
             } catch (e) {
-                console.warn('[useProfile] Preferences API sync failed, queued for retry', e);
+                if (__DEV__) { console.warn('[useProfile] Preferences API sync failed, queued for retry', e) }
                 if (user?.id) enqueueProfileSync(user.id, 'preferences', data);
             }
         })();
@@ -291,8 +291,39 @@ export const useProfile = () => {
                 await profileApi.updateReadiness(data);
                 lastProfileFetchTime = 0;
             } catch (e) {
-                console.warn('[useProfile] Readiness API sync failed, queued for retry', e);
+                if (__DEV__) { console.warn('[useProfile] Readiness API sync failed, queued for retry', e) }
                 if (user?.id) enqueueProfileSync(user.id, 'readiness', data);
+            }
+        })();
+    }, [fullProfile, isAnonymous, user?.id]);
+
+
+    const updateDemographics = useCallback(async (data: {
+        dob?: string;
+        gender?: string;
+        category?: string;
+        isPwBD?: boolean;
+        isExServicemen?: boolean;
+        homeState?: string;
+    }) => {
+        // 1. Local-first: update in-memory and persist immediately
+        const merged = { ...(fullProfile || {} as Profile), ...data } as Profile;
+        updateGlobalProfile(merged);
+        await saveLocalProfile(merged, user?.id);
+
+        if (isAnonymous) return;
+
+        // 2. Write to Firebase RTDB (primary fast store) — fire-and-forget
+        if (firebaseUid) void writeFirebaseProfile(firebaseUid, merged);
+
+        // 3. Background sync to API (Neon DB for backend matching)
+        void (async () => {
+            try {
+                await profileApi.updateDemographics(data);
+                lastProfileFetchTime = 0;
+            } catch (e) {
+                if (__DEV__) { console.warn('[useProfile] Demographics API sync failed, queued for retry', e) }
+                if (user?.id) enqueueProfileSync(user.id, 'demographics', data);
             }
         })();
     }, [fullProfile, isAnonymous, user?.id]);
@@ -328,5 +359,6 @@ export const useProfile = () => {
         updateEducation,
         updatePreferences,
         updateReadiness,
+        updateDemographics,
     };
 };

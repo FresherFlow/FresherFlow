@@ -19,6 +19,7 @@ export function useNotifications() {
     const fetchAlerts = useNotificationStore(s => s.fetchAlerts);
     const markRead = useNotificationStore(s => s.markRead);
     const markAllRead = useNotificationStore(s => s.markAllRead);
+    const clearAll = useNotificationStore(s => s.clearAll);
     const deleteAlert = useNotificationStore(s => s.deleteAlert);
 
     const unreadCount = sector === 'GOVERNMENT' ? govtUnreadCount : privateUnreadCount;
@@ -44,6 +45,7 @@ export function useNotifications() {
         refreshing,
         markRead,
         markAllRead: () => markAllRead(sector || 'PRIVATE'),
+        clearAll: () => clearAll(sector || 'PRIVATE'),
         deleteAlert,
         refresh: () => fetchAlerts(true),
     };

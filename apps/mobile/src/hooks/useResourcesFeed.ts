@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RESOURCES_FEED_URL } from '@/config/api';
 import { SharedResource, ResourcesFeed, ResourceItemType, ResourceItemStatus, CompanyResourceMetadata } from '@fresherflow/types';
@@ -21,7 +22,12 @@ export function useResourcesFeed() {
     retry: 1,
   });
 
-  const feedResources = data?.resources || MOCK_RESOURCES;
+  const feedResources = useMemo(() => {
+    const rawResources = data?.resources || MOCK_RESOURCES;
+    const targetSector = sector || 'PRIVATE';
+    return rawResources.filter((res) => res.sector === targetSector);
+  }, [data?.resources, sector]);
+
   const feedCompanyMetadata = data?.companyMetadata || MOCK_COMPANY_METADATA;
 
   // Dynamic selector for Company groups

@@ -5,7 +5,26 @@
  * 
  * Works identically across: React Native (JSC / Hermes), iOS, Android, and Web.
  * Computes standard HMAC-SHA256 hashes to secure static JSON requests.
+ *
+ * SECURITY NOTE: The CDN signing secret is read from expo-constants (app.config.js
+ * extra.cdnSignatureSecret), which is baked into the native binary at build time
+ * via EAS Build secrets — NOT from EXPO_PUBLIC_ env vars (which are inlined into
+ * the JS bundle and trivially extractable). Set CDN_SIGNATURE_SECRET in your
+ * EAS Build environment and reference it in app.config.js:
+ *   extra: { cdnSignatureSecret: process.env.CDN_SIGNATURE_SECRET }
  */
+import Constants from 'expo-constants';
+
+/** Read the signing secret from build-time constants (never from EXPO_PUBLIC_) */
+const getCdnSecret = (): string | undefined => {
+    // Primary: EAS Build secret baked in via app.config.js extra
+    const fromConstants = (Constants.expoConfig?.extra as any)?.cdnSignatureSecret;
+    if (fromConstants) return fromConstants;
+    // Fallback: Use EXPO_PUBLIC_ env var to support OTA updates without a new native release.
+    // Note: This embeds the secret in the JS bundle.
+    return process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET;
+};
+
 
 // 1. Core SHA-256 Bitwise Functions
 function sha256(ascii: string): string {
@@ -145,11 +164,11 @@ export function hmacSHA256(message: string, key: string): string {
 
 // 3. Dynamic Request Signature generator
 export function generateCdnSignature(
-    pathname: string, 
-    secret: string | undefined = process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET
+    pathname: string,
+    secret: string | undefined = getCdnSecret()
 ): { t: string; sig: string } {
     if (!secret) {
-        throw new Error('Missing EXPO_PUBLIC_CDN_SIGNATURE_SECRET');
+        throw new Error('CDN signature secret not configured. Set CDN_SIGNATURE_SECRET in EAS Build env and reference it in app.config.js extra.cdnSignatureSecret');
     }
 
     const t = Math.floor(Date.now() / 1000).toString();
@@ -161,10 +180,10 @@ export function generateCdnSignature(
 export function generateVersionedCdnSignature(
     pathname: string,
     version: string,
-    secret: string | undefined = process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET
+    secret: string | undefined = getCdnSecret()
 ): { v: string; sig: string } {
     if (!secret) {
-        throw new Error('Missing EXPO_PUBLIC_CDN_SIGNATURE_SECRET');
+        throw new Error('CDN signature secret not configured. Set CDN_SIGNATURE_SECRET in EAS Build env and reference it in app.config.js extra.cdnSignatureSecret');
     }
 
     const message = `${pathname}:${version}`;

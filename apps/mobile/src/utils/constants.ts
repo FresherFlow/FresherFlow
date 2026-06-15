@@ -1,4 +1,4 @@
-export const EDUCATION_LEVELS = ['DIPLOMA', 'DEGREE', 'PG'] as const;
+export const EDUCATION_LEVELS = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'] as const;
 export const OPPORTUNITY_TYPES = ['JOB', 'INTERNSHIP', 'WALKIN'] as const;
 export const WORK_MODES = ['ONSITE', 'HYBRID', 'REMOTE'] as const;
 

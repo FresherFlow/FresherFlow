@@ -89,6 +89,21 @@ export const readFeedCache = async (sector?: JobSector): Promise<{ items: Opport
     };
 };
 
+export const readFeedCacheSync = (sector?: JobSector): { items: Opportunity[], timestamp: number } | null => {
+    const targetSector = sector || getActiveSector();
+    const index = getJSON<FeedIndex>(getFEED_INDEX_KEY(targetSector));
+    if (!index || !index.ids || index.ids.length === 0) return null;
+
+    const items: Opportunity[] = index.ids
+        .map(id => getJSON<Opportunity>(`${getJOB_PREFIX(targetSector)}${id}`))
+        .filter((j): j is Opportunity => j !== null);
+
+    return {
+        items,
+        timestamp: index.timestamp
+    };
+};
+
 export const saveSharesCache = async (shares: unknown[], resources: unknown[], stats: unknown) => {
     const cache = {
         items: shares,
@@ -152,8 +167,15 @@ export const saveDetailCache = async (opportunity: Opportunity) => {
     setJSON(`${getDETAIL_CACHE_PREFIX()}${opportunity.id}`, cache);
 };
 
-export const readDetailCache = async (id: string): Promise<Opportunity & { _cachedAt?: number } | null> => {
-    return getJSON(`${getDETAIL_CACHE_PREFIX()}${id}`);
+export const readDetailCache = async (id: string, maxAgeMs = 24 * 60 * 60 * 1000): Promise<Opportunity & { _cachedAt?: number } | null> => {
+    const cached = await getJSON<Opportunity & { _cachedAt?: number }>(`${getDETAIL_CACHE_PREFIX()}${id}`);
+    if (!cached) return null;
+    if (cached._cachedAt && Date.now() - cached._cachedAt > maxAgeMs) {
+        // Stale — evict and return null so caller fetches fresh data
+        remove(`${getDETAIL_CACHE_PREFIX()}${id}`);
+        return null;
+    }
+    return cached;
 };
 
 export interface SimilarCache {
@@ -169,8 +191,14 @@ export const saveSimilarCache = async (opportunityId: string, opportunities: Opp
     setJSON(`${getSIMILAR_CACHE_PREFIX()}${opportunityId}`, cache);
 };
 
-export const readSimilarCache = async (opportunityId: string): Promise<SimilarCache | null> => {
-    return getJSON(`${getSIMILAR_CACHE_PREFIX()}${opportunityId}`);
+export const readSimilarCache = async (opportunityId: string, maxAgeMs = 24 * 60 * 60 * 1000): Promise<SimilarCache | null> => {
+    const cached = await getJSON<SimilarCache>(`${getSIMILAR_CACHE_PREFIX()}${opportunityId}`);
+    if (!cached) return null;
+    if (cached.timestamp && Date.now() - cached.timestamp > maxAgeMs) {
+        remove(`${getSIMILAR_CACHE_PREFIX()}${opportunityId}`);
+        return null;
+    }
+    return cached;
 };
 
 /**
@@ -200,7 +228,7 @@ export const findJobsByCompanyLocally = async (
                     }
                 });
             } catch (e) {
-                console.warn('Failed to parse explore cache chunk', e);
+                if (__DEV__) { console.warn('Failed to parse explore cache chunk', e) }
             }
         }
 
@@ -220,7 +248,7 @@ export const findJobsByCompanyLocally = async (
             return false;
         });
     } catch (error) {
-        console.warn('Local company job search failed', error);
+        if (__DEV__) { console.warn('Local company job search failed', error) }
         return [];
     }
 };
@@ -242,7 +270,7 @@ export const pruneGhostJobs = async (currentIds: string[], sector?: JobSector) =
             remove(`${getJOB_PREFIX(targetSector)}${id}`);
             remove(`${getDETAIL_CACHE_PREFIX()}${id}`);
         });
-        console.log(`[OfflineCache] GC: Pruned ${ghostIds.length} ghost jobs from disk for ${targetSector}`);
+        if (__DEV__) { console.log(`[OfflineCache] GC: Pruned ${ghostIds.length} ghost jobs from disk for ${targetSector}`) }
     }
 };
 /**
@@ -251,7 +279,7 @@ export const pruneGhostJobs = async (currentIds: string[], sector?: JobSector) =
  */
 export const clearAllCache = async () => {
     storage.clearAll();
-    console.log(`[OfflineCache] Successfully cleared all MMKV storage`);
+    if (__DEV__) { console.log(`[OfflineCache] Successfully cleared all MMKV storage`) }
 };
 export const saveTrackerCache = async (actions: unknown[]) => {
     const cache = {
