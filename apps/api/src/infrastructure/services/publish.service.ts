@@ -3,7 +3,6 @@ import TelegramService from './telegram.service';
 import { sendNewJobAlerts } from './notification.service';
 import { invalidatePublicOpportunityCache } from './publicOpportunityCache.service';
 import { logger } from '@fresherflow/logger';
-import { discoveryEmitter } from '../events/DiscoveryEmitter';
 import { MetadataService } from './metadata.service';
 import { generateAndUploadOgImage } from './ogImage.service';
 
@@ -90,7 +89,8 @@ export async function handleOpportunityPublished(
 
   // 6. Static Feed Regeneration (CDN Sharding)
   // Decoupled via Emitter with debounce to prevent compute thrashing
-  discoveryEmitter.trigger();
+  // discoveryEmitter.trigger(); // Commented out to prevent automatic builds on publish
+
 
   // 7. Append new opportunity metadata to R2 CDN files
   MetadataService.appendOpportunityMetadata(opportunity).catch((err) => {

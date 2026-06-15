@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { OpportunityType, OpportunityStatus, WorkMode, EducationLevel, Availability, ActionType, FeedbackReason, SalaryPeriod, AppFeedbackType } from '@fresherflow/types';
+import { OpportunityType, OpportunityStatus, WorkMode, EducationLevel, Availability, ActionType, FeedbackReason, SalaryPeriod, AppFeedbackType, ReservationCategory, Gender } from '@fresherflow/types';
 
 const governmentApplicationFeeSchema = z.object({
     general: z.number().nonnegative().optional(),
@@ -100,7 +100,21 @@ export const educationSchema = z.object({
     // PG (Optional)
     pgCourse: z.string().optional(),
     pgSpecialization: z.string().optional(),
-    pgYear: z.number().int().min(1000, 'Year must be 4 digits').max(9999, 'Year must be 4 digits').optional()
+    pgYear: z.number().int().min(1000, 'Year must be 4 digits').max(9999, 'Year must be 4 digits').optional(),
+
+    // Government Job Eligibility Fields
+    dob: z.preprocess((val) => {
+        if (typeof val === 'string' && val.trim() !== '') {
+            const d = new Date(val);
+            if (!isNaN(d.getTime())) return d;
+        }
+        return val === '' ? undefined : val;
+    }, z.date().optional().nullable()),
+    gender: z.nativeEnum(Gender).optional().nullable(),
+    category: z.nativeEnum(ReservationCategory).optional().nullable(),
+    isPwBD: z.boolean().optional().nullable(),
+    isExServicemen: z.boolean().optional().nullable(),
+    homeState: z.string().optional().nullable()
 });
 
 export const preferencesSchema = z.object({

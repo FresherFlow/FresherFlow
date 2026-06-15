@@ -83,7 +83,7 @@ export class OpportunityService {
             },
         });
 
-        discoveryEmitter.trigger();
+        // discoveryEmitter.trigger(); // Commented out to prevent automatic builds on publish
         return published;
     }
 

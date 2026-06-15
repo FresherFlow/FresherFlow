@@ -56,7 +56,7 @@ export const degreeRule: EligibilityRule = {
 
         // 3. Level restrictions are also strict when provided.
         if (hasLevelRestrictions) {
-            const levels = ['DIPLOMA', 'DEGREE', 'PG'];
+            const levels = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
             const userLevelIndex = levels.indexOf(profile.educationLevel);
 
             const levelMatch = opp.allowedDegrees.some(deg => {
@@ -166,12 +166,217 @@ export const workModeRule: EligibilityRule = {
 };
 
 /**
+ * Age Eligibility Rule (Hard Rule)
+ * Checks if candidate is within allowed age range, considering relaxation.
+ */
+export const ageRule: EligibilityRule = {
+    name: 'AGE_MATCH',
+    check: (opp, profile) => {
+        const ageMin = opp.governmentJobDetails?.ageMin;
+        const ageMax = opp.governmentJobDetails?.ageMax;
+
+        // If no age restrictions, open to all
+        if (ageMin === undefined && ageMax === undefined) return true;
+        if (ageMin === null && ageMax === null) return true;
+
+        if (!profile.dob) return false;
+
+        const dob = new Date(profile.dob);
+        if (isNaN(dob.getTime())) return false;
+
+        let cutoffDate = new Date();
+        const governmentDetails = opp.governmentJobDetails;
+        if (governmentDetails?.notificationIssuedDate) {
+            const d = new Date(governmentDetails.notificationIssuedDate);
+            if (!isNaN(d.getTime())) {
+                cutoffDate = d;
+            }
+        } else if (opp.postedAt) {
+            const d = new Date(opp.postedAt);
+            if (!isNaN(d.getTime())) {
+                cutoffDate = d;
+            }
+        }
+
+        let age = cutoffDate.getFullYear() - dob.getFullYear();
+        const monthDiff = cutoffDate.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && cutoffDate.getDate() < dob.getDate())) {
+            age--;
+        }
+
+        // Compute age relaxation
+        let relaxation = 0;
+        const rules = governmentDetails?.ageRelaxationRules;
+        if (Array.isArray(rules) && rules.length > 0) {
+            for (const rule of rules) {
+                let isMatch = false;
+                const cat = (rule.category || '').toUpperCase();
+                if (cat.includes('OBC') && profile.category === 'OBC') isMatch = true;
+                if ((cat.includes('SC') || cat.includes('ST')) && (profile.category === 'SC' || profile.category === 'ST')) isMatch = true;
+                if (cat.includes('EWS') && profile.category === 'EWS') isMatch = true;
+                if ((cat.includes('PWBD') || cat.includes('PH') || cat.includes('DISAB')) && profile.isPwBD) isMatch = true;
+                if ((cat.includes('EX-SERVICEMEN') || cat.includes('EX SERVICEMEN') || cat.includes('EX-SERV') || cat.includes('EXSERV')) && profile.isExServicemen) isMatch = true;
+                if ((cat.includes('WOMEN') || cat.includes('FEMALE')) && profile.gender === 'FEMALE') isMatch = true;
+
+                if (isMatch) {
+                    let years = 0;
+                    if (typeof rule.years === 'number') {
+                        years = rule.years;
+                    } else if (typeof rule.relaxation === 'string') {
+                        const match = rule.relaxation.match(/(\d+)/);
+                        if (match) {
+                            years = parseInt(match[1], 10);
+                        }
+                    } else if (typeof rule.relaxation === 'number') {
+                        years = rule.relaxation;
+                    } else if (typeof rule.years === 'string') {
+                        const match = rule.years.match(/(\d+)/);
+                        if (match) {
+                            years = parseInt(match[1], 10);
+                        }
+                    }
+                    if (years > relaxation) {
+                        relaxation = years;
+                    }
+                }
+            }
+        } else {
+            // Default fallback relaxations
+            if (profile.category === 'OBC') relaxation += 3;
+            else if (profile.category === 'SC' || profile.category === 'ST') relaxation += 5;
+            if (profile.isPwBD) relaxation += 10;
+            if (profile.isExServicemen) relaxation += 3;
+            if (profile.gender === 'FEMALE') relaxation += 5;
+        }
+
+        if (ageMin !== undefined && ageMin !== null && age < ageMin) return false;
+        if (ageMax !== undefined && ageMax !== null && age > (ageMax + relaxation)) return false;
+
+        return true;
+    },
+    getReason: (opp, profile) => {
+        const ageMin = opp.governmentJobDetails?.ageMin;
+        const ageMax = opp.governmentJobDetails?.ageMax;
+
+        if (!profile.dob) {
+            return 'Date of birth is required to check age eligibility.';
+        }
+
+        const dob = new Date(profile.dob);
+        let cutoffDate = new Date();
+        const governmentDetails = opp.governmentJobDetails;
+        if (governmentDetails?.notificationIssuedDate) {
+            const d = new Date(governmentDetails.notificationIssuedDate);
+            if (!isNaN(d.getTime())) {
+                cutoffDate = d;
+            }
+        } else if (opp.postedAt) {
+            const d = new Date(opp.postedAt);
+            if (!isNaN(d.getTime())) {
+                cutoffDate = d;
+            }
+        }
+
+        let age = cutoffDate.getFullYear() - dob.getFullYear();
+        const monthDiff = cutoffDate.getMonth() - dob.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && cutoffDate.getDate() < dob.getDate())) {
+            age--;
+        }
+
+        // Compute age relaxation
+        let relaxation = 0;
+        const rules = governmentDetails?.ageRelaxationRules;
+        if (Array.isArray(rules) && rules.length > 0) {
+            for (const rule of rules) {
+                let isMatch = false;
+                const cat = (rule.category || '').toUpperCase();
+                if (cat.includes('OBC') && profile.category === 'OBC') isMatch = true;
+                if ((cat.includes('SC') || cat.includes('ST')) && (profile.category === 'SC' || profile.category === 'ST')) isMatch = true;
+                if (cat.includes('EWS') && profile.category === 'EWS') isMatch = true;
+                if ((cat.includes('PWBD') || cat.includes('PH') || cat.includes('DISAB')) && profile.isPwBD) isMatch = true;
+                if ((cat.includes('EX-SERVICEMEN') || cat.includes('EX SERVICEMEN') || cat.includes('EX-SERV') || cat.includes('EXSERV')) && profile.isExServicemen) isMatch = true;
+                if ((cat.includes('WOMEN') || cat.includes('FEMALE')) && profile.gender === 'FEMALE') isMatch = true;
+
+                if (isMatch) {
+                    let years = 0;
+                    if (typeof rule.years === 'number') {
+                        years = rule.years;
+                    } else if (typeof rule.relaxation === 'string') {
+                        const match = rule.relaxation.match(/(\d+)/);
+                        if (match) {
+                            years = parseInt(match[1], 10);
+                        }
+                    } else if (typeof rule.relaxation === 'number') {
+                        years = rule.relaxation;
+                    } else if (typeof rule.years === 'string') {
+                        const match = rule.years.match(/(\d+)/);
+                        if (match) {
+                            years = parseInt(match[1], 10);
+                        }
+                    }
+                    if (years > relaxation) {
+                        relaxation = years;
+                    }
+                }
+            }
+        } else {
+            // Default fallback relaxations
+            if (profile.category === 'OBC') relaxation += 3;
+            else if (profile.category === 'SC' || profile.category === 'ST') relaxation += 5;
+            if (profile.isPwBD) relaxation += 10;
+            if (profile.isExServicemen) relaxation += 3;
+            if (profile.gender === 'FEMALE') relaxation += 5;
+        }
+
+        if (ageMin !== undefined && ageMin !== null && age < ageMin) {
+            return `Your age (${age}) is below the minimum required age of ${ageMin}.`;
+        }
+        if (ageMax !== undefined && ageMax !== null && age > (ageMax + relaxation)) {
+            return `Your age (${age}) exceeds the maximum allowed age of ${ageMax} (with ${relaxation} years of relaxation applied).`;
+        }
+        return 'Age matches opportunity requirements.';
+    }
+};
+
+/**
+ * State Residency Eligibility Rule (Hard Rule)
+ * Checks if candidate homeState matches the job locations for STATE government level.
+ */
+export const stateResidencyRule: EligibilityRule = {
+    name: 'STATE_RESIDENCY_MATCH',
+    check: (opp, profile) => {
+        if (opp.governmentJobDetails?.governmentLevel !== 'STATE') {
+            return true;
+        }
+        if (!profile.homeState) return false;
+
+        const homeStateNormalized = profile.homeState.trim().toLowerCase();
+        const locations = opp.locations || [];
+
+        return locations.some(loc => {
+            const locNormalized = loc.trim().toLowerCase();
+            return locNormalized === homeStateNormalized || 
+                   locNormalized.includes(homeStateNormalized) || 
+                   homeStateNormalized.includes(locNormalized);
+        });
+    },
+    getReason: (opp, profile) => {
+        if (!profile.homeState) {
+            return 'Home state is required to check state residency eligibility.';
+        }
+        return `This state-level opportunity is restricted to residents of: ${(opp.locations || []).join(', ')}. Your home state: ${profile.homeState}.`;
+    }
+};
+
+/**
  * All Hard Rules (Must Pass)
  * These are non-negotiable eligibility criteria
  */
 export const HARD_RULES: EligibilityRule[] = [
     degreeRule,
     passoutYearRule,
+    ageRule,
+    stateResidencyRule,
 ];
 
 /**

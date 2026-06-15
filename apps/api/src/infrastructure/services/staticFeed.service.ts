@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import prisma from '../database/prisma';
 import { Prisma } from '@prisma/client';
-import { OpportunityStatus } from '@fresherflow/types';
+import { OpportunityStatus, Opportunity } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
@@ -210,6 +210,7 @@ export class StaticFeedService {
             postedAt: true,
             publishedAt: true,
             expiresAt: true,
+            updatedAt: true,
 
             // Engagement stats (public)
             trendingScore: true,
@@ -705,6 +706,9 @@ export class StaticFeedService {
     /**
      * MASTER REFRESH
      */
+    /**
+     * MASTER REFRESH (Optimized to prevent OOM errors on 512MB RAM server tier)
+     */
     static async refresh() {
         try {
             logger.info('Starting full static asset regeneration...');
@@ -714,39 +718,73 @@ export class StaticFeedService {
                 if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
             });
 
-            // 2. Generate data
-            const bootstrap = await this.generateBootstrapFeed();
-            const government = await this.generateGovernmentFeed();
-            const expired = await this.generateExpiredFeed();
-            const companyShards = await this.generateCompanyShards();
-            // const categoryShards = await this.generateCategoryShards();
-            const stats = await this.generateStats();
-            const sitemap = await this.generateSitemap();
-            const sitemapData = await this.generateSitemapData();
-            const usernames = await this.generateTakenUsernames();
-            const linksFeed = await this.generateLinksFeed();
-            const resourcesFeed = await this.generateResourcesFeed();
+            // 2. Fetch all published opportunities once (Consolidated Query)
+            const allOpportunities = await this.withDbRetry(async () => {
+                return prisma.opportunity.findMany({
+                    where: {
+                        status: OpportunityStatus.PUBLISHED,
+                        deletedAt: null,
+                    },
+                    orderBy: { postedAt: 'desc' },
+                });
+            });
 
-            // 3. Write files & upload to R2
+            const allMapped = this.mapFeedOpportunities(allOpportunities as unknown as Record<string, unknown>[]) as unknown as Array<Record<string, unknown> & { expiresAt?: string | Date | null }>;
+            const now = new Date();
+
+            // 3. Filter Active/Unexpired Opportunities
+            const activeMapped = allMapped.filter(opp => {
+                if (!opp.expiresAt) return true;
+                const exp = new Date(opp.expiresAt as string | Date);
+                return exp > now;
+            });
+
+            // 4. Generate & Upload Master Bootstrap Feed
+            const bootstrap = {
+                opportunities: activeMapped,
+                timestamp: Date.now(),
+                generatedAt: now.toISOString(),
+                count: activeMapped.length
+            };
             const bootstrapBody = JSON.stringify(bootstrap);
             fs.writeFileSync(this.BOOTSTRAP_PATH, bootstrapBody);
             await this.uploadToR2('bootstrap-feed.min.json', bootstrapBody, 'application/json');
 
+            // 5. Generate & Upload Government Feed
+            const governmentMapped = activeMapped.filter(opp => opp.governmentJobDetails !== null);
+            const government = {
+                opportunities: governmentMapped,
+                timestamp: Date.now(),
+                generatedAt: now.toISOString(),
+                count: governmentMapped.length
+            };
             const governmentBody = JSON.stringify(government);
             fs.writeFileSync(this.GOVERNMENT_PATH, governmentBody);
             await this.uploadToR2('government-feed.json', governmentBody, 'application/json');
 
+            // 6. Generate & Upload Expired Feed (Past 45 Days)
+            const fortyFiveDaysAgo = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+            const expiredMapped = allMapped.filter(opp => {
+                if (!opp.expiresAt) return false;
+                const exp = new Date(opp.expiresAt as string | Date);
+                return exp <= now && exp > fortyFiveDaysAgo;
+            });
+            const expired = {
+                opportunities: expiredMapped,
+                timestamp: Date.now(),
+                generatedAt: now.toISOString(),
+                count: expiredMapped.length
+            };
             const expiredBody = JSON.stringify(expired);
             fs.writeFileSync(this.EXPIRED_FEED_PATH, expiredBody);
             await this.uploadToR2('expired-feed.min.json', expiredBody, 'application/json');
 
-            // Sync syllabus.json from R2 to local public folder, or upload local as fallback
+            // 7. Sync syllabus.json from R2
             try {
                 const syllabusBody = await this.fetchFromR2('syllabus.json');
                 if (syllabusBody) {
                     fs.writeFileSync(this.SYLLABUS_PATH, syllabusBody);
                 } else if (fs.existsSync(this.SYLLABUS_PATH)) {
-                    // Fallback: If not on R2 but exists locally, upload local to R2 as the baseline
                     const localSyllabus = fs.readFileSync(this.SYLLABUS_PATH, 'utf-8');
                     await this.uploadToR2('syllabus.json', localSyllabus, 'application/json');
                 }
@@ -754,53 +792,134 @@ export class StaticFeedService {
                 logger.error('[StaticFeedService] Failed to sync syllabus.json from R2', err);
             }
 
-            // Generate and upload dynamic feed-version.json cache buster
+            // 8. Generate and upload dynamic feed-version.json cache buster
             const feedVersion = Date.now().toString();
             const versionBody = JSON.stringify({ version: feedVersion });
             fs.writeFileSync(path.join(this.PUBLIC_ROOT, 'feed-version.json'), versionBody);
             await this.uploadToR2('feed-version.json', versionBody, 'application/json');
 
+            // 9. Generate & Upload Stats
+            const stats = { opportunities: activeMapped.length, timestamp: Date.now() };
             const statsBody = JSON.stringify(stats);
             fs.writeFileSync(this.STATS_PATH, statsBody);
             await this.uploadToR2('stats.json', statsBody, 'application/json');
 
-            fs.writeFileSync(this.SITEMAP_PATH, sitemap);
-            await this.uploadToR2('sitemap.xml', sitemap, 'application/xml');
+            // 10. Generate & Upload Sitemap XML and JSON Data
+            const sitemapOpps = allOpportunities.slice(0, 1000);
+            const companiesSet = new Set<string>();
+            allOpportunities.forEach((opp) => {
+                if (opp.company) companiesSet.add(opp.company);
+            });
 
+            const baseUrl = (process.env.FRONTEND_URL || 'https://fresherflow.in').replace(/\/+$/, '');
+            const staticDate = '2026-05-01';
+            const staticRoutes = [
+                '',
+                '/opportunities',
+                '/jobs',
+                '/internships',
+                '/walk-ins',
+                '/about',
+                '/blog',
+                '/contact',
+                '/privacy',
+                '/terms',
+                '/feedback',
+                '/submit-link',
+                '/app'
+            ];
+
+            let sitemapXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+            sitemapXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+            staticRoutes.forEach(r => sitemapXml += `  <url><loc>${baseUrl}${r}</loc><lastmod>${staticDate}</lastmod></url>\n`);
+            companiesSet.forEach(c => sitemapXml += `  <url><loc>${baseUrl}/companies/${this.slugify(c)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+            sitemapOpps.forEach(opp => {
+                const slugOrId = opp.slug || opp.id;
+                const prefix = '/';
+                const rawDate = opp.updatedAt || opp.postedAt;
+                const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
+                sitemapXml += `  <url><loc>${baseUrl}${prefix}${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
+            });
+            sitemapXml += '</urlset>';
+
+            fs.writeFileSync(this.SITEMAP_PATH, sitemapXml);
+            await this.uploadToR2('sitemap.xml', sitemapXml, 'application/xml');
+
+            const sitemapData = {
+                companies: Array.from(companiesSet).map(name => ({
+                    name,
+                    slug: this.slugify(name)
+                })),
+                opportunities: sitemapOpps.map(opp => ({
+                    id: opp.id,
+                    slug: opp.slug,
+                    type: opp.type,
+                    postedAt: opp.postedAt,
+                    updatedAt: opp.updatedAt
+                })),
+                timestamp: Date.now()
+            };
             const sitemapDataBody = JSON.stringify(sitemapData);
             fs.writeFileSync(this.SITEMAP_DATA_PATH, sitemapDataBody);
             await this.uploadToR2('sitemap-data.json', sitemapDataBody, 'application/json');
 
+            // 11. Generate & Upload Taken Usernames
+            const usernames = await this.generateTakenUsernames();
             const usernamesBody = JSON.stringify(usernames);
             fs.writeFileSync(this.USERNAMES_PATH, usernamesBody);
             await this.uploadToR2('taken-usernames.min.json', usernamesBody, 'application/json');
 
+            // 12. Generate & Upload Links Feed
+            const linksOpps = activeMapped.map(opp => ({
+                id: opp.id,
+                slug: opp.slug,
+                title: opp.title,
+                company: opp.company,
+                type: opp.type,
+                status: opp.status,
+                locations: opp.locations,
+                expiresAt: opp.expiresAt,
+                companyLogoUrl: opp.companyLogoUrl,
+                events: opp.events
+            }));
+            const linksFeed = { opportunities: linksOpps, timestamp: Date.now(), count: linksOpps.length };
             const linksBody = JSON.stringify(linksFeed);
             fs.writeFileSync(this.LINKS_PATH, linksBody);
             await this.uploadToR2('links.min.json', linksBody, 'application/json');
 
+            // 13. Generate & Upload Resources Feed
+            const resourcesFeed = await this.generateResourcesFeed();
             const resourcesBody = JSON.stringify(resourcesFeed);
             fs.writeFileSync(this.RESOURCES_PATH, resourcesBody);
             await this.uploadToR2('resources-feed.json', resourcesBody, 'application/json');
 
-            for (const s of companyShards) {
-                const body = JSON.stringify(s.data);
-                fs.writeFileSync(path.join(this.COMPANIES_DIR, `${s.slug}.json`), body);
-                await this.uploadToR2(`companies/${s.slug}.json`, body, 'application/json');
+            // 14. Group & Upload Company Shards sequentially (garbage collect references)
+            const groupedCompanies = new Map<string, typeof activeMapped>();
+            for (const opp of activeMapped) {
+                if (!opp.company) continue;
+                const key = (opp.company as string).trim();
+                const list = groupedCompanies.get(key) || [];
+                list.push(opp);
+                groupedCompanies.set(key, list);
             }
 
-            /*
-            for (const s of categoryShards) {
-                const body = JSON.stringify(s.data);
-                fs.writeFileSync(path.join(this.CATEGORIES_DIR, `${s.id}.json`), body);
-                await this.uploadToR2(`categories/${s.id}.json`, body, 'application/json');
+            const companyShardsCount = groupedCompanies.size;
+            for (const [company, jobs] of groupedCompanies.entries()) {
+                const slug = this.slugify(company);
+                const shardData = {
+                    company,
+                    opportunities: jobs,
+                    count: jobs.length,
+                    timestamp: Date.now()
+                };
+                const body = JSON.stringify(shardData);
+                fs.writeFileSync(path.join(this.COMPANIES_DIR, `${slug}.json`), body);
+                await this.uploadToR2(`companies/${slug}.json`, body, 'application/json');
             }
-            */
 
             logger.info('Static shards regenerated successfully', {
-                companies: companyShards.length,
-                // categories: categoryShards.length,
-                jobsInBootstrap: bootstrap.opportunities.length,
+                companies: companyShardsCount,
+                jobsInBootstrap: activeMapped.length,
                 usernamesCount: usernames.length
             });
         } catch (error) {

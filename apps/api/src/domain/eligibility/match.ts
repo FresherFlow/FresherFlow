@@ -229,7 +229,7 @@ function getEducationLevelScore(opportunity: Opportunity, profile: Profile): num
     if (allowed.includes(profile.educationLevel)) return 1;
 
     // Higher education should still partially match lower requirement buckets.
-    const hierarchy = ['DIPLOMA', 'DEGREE', 'PG'];
+    const hierarchy = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
     const userLevel = hierarchy.indexOf(profile.educationLevel);
     const hasLowerAllowed = allowed.some((deg) => hierarchy.indexOf(deg) <= userLevel);
     return hasLowerAllowed ? 0.6 : 0;
