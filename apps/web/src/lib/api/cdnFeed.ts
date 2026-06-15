@@ -398,9 +398,15 @@ export async function fetchSkillsMetadata(): Promise<string[] | null> {
 export async function fetchCompaniesMetadata(): Promise<string[] | null> {
     try {
         const url = await signUrlIfServer(COMPANIES_METADATA_URL);
+        const controller = new AbortController();
+        // 3.5s hard cap — same as shard fetches. Without this, a CDN cache miss
+        // causes the function to hang indefinitely, producing 51s+ P75 latency.
+        const timeoutId = setTimeout(() => controller.abort(), 3500);
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache',
+            signal: controller.signal,
         }));
+        clearTimeout(timeoutId);
         if (!res.ok) return null;
         const data = await res.json() as string[]; // Based on backend MetadataService saving companies as string array
         return data;

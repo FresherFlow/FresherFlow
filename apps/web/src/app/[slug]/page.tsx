@@ -26,11 +26,10 @@ export const revalidate = false;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
-    // const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    // const feed = await fetchBootstrapFeed();
-    // if (!feed?.opportunities) return [];
-    // return feed.opportunities.map((opp) => ({ slug: opp.slug ?? opp.id }));
-    return [];
+    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+    const feed = await fetchBootstrapFeed();
+    if (!feed?.opportunities) return [];
+    return feed.opportunities.map((opp) => ({ slug: opp.slug ?? opp.id }));
 }
 
 // Generate dynamic SEO metadata

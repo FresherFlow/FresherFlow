@@ -8,26 +8,25 @@ export const dynamicParams = true;
 export async function generateStaticParams() {
     // Only pre-build cities that actually have walk-in data.
     // When there are zero walk-ins, returns [] — no wasted ISR entries.
-    // try {
-    //     const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    //     const feed = await fetchBootstrapFeed();
-    //     if (!feed?.opportunities) return [];
-    //
-    //     const cities = new Set<string>();
-    //     for (const opp of feed.opportunities) {
-    //         if (opp.type !== 'WALKIN') continue;
-    //         for (const loc of opp.locations ?? []) {
-    //             const city = loc.trim().toLowerCase().replace(/\s+/g, '-');
-    //             if (city && city !== 'pan-india' && city !== 'remote' && city !== 'worldwide') {
-    //                 cities.add(city);
-    //             }
-    //         }
-    //     }
-    //     return Array.from(cities).map((city) => ({ city }));
-    // } catch {
-    //     return [];
-    // }
-    return [];
+    try {
+        const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+        const feed = await fetchBootstrapFeed();
+        if (!feed?.opportunities) return [];
+
+        const cities = new Set<string>();
+        for (const opp of feed.opportunities) {
+            if (opp.type !== 'WALKIN') continue;
+            for (const loc of opp.locations ?? []) {
+                const city = loc.trim().toLowerCase().replace(/\s+/g, '-');
+                if (city && city !== 'pan-india' && city !== 'remote' && city !== 'worldwide') {
+                    cities.add(city);
+                }
+            }
+        }
+        return Array.from(cities).map((city) => ({ city }));
+    } catch {
+        return [];
+    }
 }
 
 const formatLabel = (value: string) =>

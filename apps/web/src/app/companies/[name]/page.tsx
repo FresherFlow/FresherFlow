@@ -14,23 +14,22 @@ export async function generateStaticParams() {
     // Use bootstrap feed (active jobs only) instead of sitemap data (includes expired company slugs).
     // Expired companies have no CDN shard file — their shard fetch returns 404 every time,
     // which Next.js never caches, causing 0% data cache hit and unnecessary ISR writes.
-    // const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    // const feed = await fetchBootstrapFeed();
-    // if (!feed?.opportunities) return [];
+    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+    const feed = await fetchBootstrapFeed();
+    if (!feed?.opportunities) return [];
 
-    // const { slugify } = await import('@fresherflow/utils');
-    // const seen = new Set<string>();
-    // const params: { name: string }[] = [];
-    // for (const opp of feed.opportunities) {
-    //     if (!opp.company) continue;
-    //     const slug = slugify(opp.company);
-    //     if (!seen.has(slug)) {
-    //         seen.add(slug);
-    //         params.push({ name: slug });
-    //     }
-    // }
-    // return params;
-    return [];
+    const { slugify } = await import('@fresherflow/utils');
+    const seen = new Set<string>();
+    const params: { name: string }[] = [];
+    for (const opp of feed.opportunities) {
+        if (!opp.company) continue;
+        const slug = slugify(opp.company);
+        if (!seen.has(slug)) {
+            seen.add(slug);
+            params.push({ name: slug });
+        }
+    }
+    return params;
 }
 
 export async function generateMetadata(
