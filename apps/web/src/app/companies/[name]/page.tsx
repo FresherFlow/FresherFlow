@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { permanentRedirect } from 'next/navigation';
+import { permanentRedirect, notFound } from 'next/navigation';
 import JobCard from '@/features/opportunities/components/JobCard';
 import { GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
@@ -82,7 +82,25 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         permanentRedirect(`/companies/${slug}`);
     }
 
-    const { fetchCompanyShard } = await import('@/lib/api/cdnFeed');
+    const { fetchCompanyShard, fetchCompaniesMetadata } = await import('@/lib/api/cdnFeed');
+
+    // Fast-fail: reject unknown company slugs before the expensive 3.5s shard fetch.
+    // companies.json is a small cached list — one quick CDN hit instead of a full shard timeout.
+    const companyDirectory = await fetchCompaniesMetadata();
+    if (companyDirectory && companyDirectory.length > 0) {
+        // companies.json entries are { name, url, logo_url } objects
+        const knownSlugs = new Set(
+            (companyDirectory as unknown as { name: string }[])
+                .map(c => slugify(c?.name || ''))
+                .filter(Boolean)
+        );
+        if (!knownSlugs.has(slug)) {
+            const { unstable_noStore } = await import('next/cache');
+            unstable_noStore();
+            notFound();
+        }
+    }
+
     const feed = await fetchCompanyShard(slug);
     
     const companyJobs = feed?.opportunities || [];
