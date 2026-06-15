@@ -216,7 +216,7 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <View style={styles.content}>
                         {!hasData && (
                             <View style={styles.heroSection}>
-                                <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Aim with{'\n'}precision.</Text>
+                                <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Job Preferences</Text>
                                 <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
                                     Tell us where you want to go. We'll filter the signals to match your intent.
                                 </Text>

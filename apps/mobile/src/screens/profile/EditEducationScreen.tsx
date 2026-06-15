@@ -178,9 +178,9 @@ const EditEducationScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const showPGFields = hasPG || educationLevel === 'PG';
 
     const onSave = useCallback(() => {
-        void handleSubmit((data: EducationFormData) => {
+        void handleSubmit(async (data: EducationFormData) => {
             void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-            handleSave(data);
+            await handleSave(data);
             navigation.goBack();
         })();
     }, [handleSubmit, handleSave, navigation]);
@@ -218,7 +218,7 @@ const EditEducationScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                         <View style={styles.content}>
                             {!hasData && (
                                 <View style={styles.heroSection}>
-                                    <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Share your{'\n'}records.</Text>
+                                    <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Education Records</Text>
                                     <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
                                         Academic history helps match you to the right opportunities.
                                     </Text>

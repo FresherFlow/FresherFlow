@@ -6,7 +6,6 @@ import {
     Modal,
     TouchableOpacity,
     Animated,
-    Platform,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -16,6 +15,7 @@ interface PopupAction {
     text: string;
     onPress: () => void;
     style?: 'default' | 'cancel' | 'destructive';
+    autoDismiss?: boolean;
 }
 
 interface PremiumPopupProps {
@@ -24,6 +24,7 @@ interface PremiumPopupProps {
     description?: string;
     actions: PopupAction[];
     onDismiss: () => void;
+    children?: React.ReactNode;
 }
 
 export const PremiumPopup: React.FC<PremiumPopupProps> = ({
@@ -32,9 +33,10 @@ export const PremiumPopup: React.FC<PremiumPopupProps> = ({
     description,
     actions,
     onDismiss,
+    children,
 }) => {
     const { currentTheme } = useTheme();
-    const scaleAnim = React.useRef(new Animated.Value(0.9)).current;
+    const scaleAnim = React.useRef(new Animated.Value(0.95)).current;
     const opacityAnim = React.useRef(new Animated.Value(0)).current;
 
     React.useEffect(() => {
@@ -43,17 +45,17 @@ export const PremiumPopup: React.FC<PremiumPopupProps> = ({
                 Animated.spring(scaleAnim, {
                     toValue: 1,
                     useNativeDriver: true,
-                    tension: 50,
-                    friction: 7,
+                    tension: 65,
+                    friction: 8,
                 }),
                 Animated.timing(opacityAnim, {
                     toValue: 1,
-                    duration: 200,
+                    duration: 180,
                     useNativeDriver: true,
                 }),
             ]).start();
         } else {
-            scaleAnim.setValue(0.9);
+            scaleAnim.setValue(0.95);
             opacityAnim.setValue(0);
         }
     }, [visible, scaleAnim, opacityAnim]);
@@ -63,6 +65,15 @@ export const PremiumPopup: React.FC<PremiumPopupProps> = ({
         return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
     };
 
+    // Sort actions so Cancel is at the left (first), others at the right (last)
+    const sortedActions = React.useMemo(() => {
+        return [...actions].sort((a, b) => {
+            if (a.style === 'cancel') return -1;
+            if (b.style === 'cancel') return 1;
+            return 0;
+        });
+    }, [actions]);
+
     return (
         <Modal
             visible={visible}
@@ -70,7 +81,7 @@ export const PremiumPopup: React.FC<PremiumPopupProps> = ({
             animationType="none"
             onRequestClose={onDismiss}
         >
-            <View style={styles.overlay}>
+            <View style={[styles.overlay, { backgroundColor: currentTheme.colors.blackOverlay }]}>
                 <TouchableOpacity
                     activeOpacity={1}
                     style={StyleSheet.absoluteFill}
@@ -88,7 +99,7 @@ export const PremiumPopup: React.FC<PremiumPopupProps> = ({
                         styles.popupContainer,
                         {
                             backgroundColor: currentTheme.colors.surface,
-                            borderColor: alpha(currentTheme.colors.border, 0.5),
+                            borderColor: alpha(currentTheme.colors.border, 0.15),
                             opacity: opacityAnim,
                             transform: [{ scale: scaleAnim }],
                         },
@@ -103,43 +114,50 @@ export const PremiumPopup: React.FC<PremiumPopupProps> = ({
                                 {description}
                             </Text>
                         )}
+                        {children}
                     </View>
 
-                    <View style={[styles.actionsContainer, { borderTopColor: alpha(currentTheme.colors.border, 0.1) }]}>
-                        {actions.map((action, index) => {
+                    <View style={styles.actionsContainer}>
+                        {sortedActions.map((action, index) => {
                             const isDestructive = action.style === 'destructive';
                             const isCancel = action.style === 'cancel';
                             
                             return (
                                 <TouchableOpacity
                                     key={index}
-                                    activeOpacity={0.7}
+                                    activeOpacity={0.85}
                                     style={[
                                         styles.actionButton,
-                                        index < actions.length - 1 && {
-                                            borderRightWidth: 1,
-                                            borderRightColor: alpha(currentTheme.colors.border, 0.1),
+                                        isCancel && {
+                                            backgroundColor: alpha(currentTheme.colors.text, 0.05),
+                                            borderColor: alpha(currentTheme.colors.border, 0.1),
+                                            borderWidth: 1,
                                         },
+                                        !isCancel && {
+                                            backgroundColor: isDestructive 
+                                                ? currentTheme.colors.error 
+                                                : currentTheme.colors.primary,
+                                        }
                                     ]}
                                     onPress={() => {
                                         action.onPress();
-                                        onDismiss();
+                                        if (action.autoDismiss !== false) {
+                                            onDismiss();
+                                        }
                                     }}
                                 >
                                     <Text
                                         style={[
                                             styles.actionText,
                                             {
-                                                color: isDestructive
-                                                    ? currentTheme.colors.error
-                                                    : isCancel
-                                                    ? currentTheme.colors.textMuted
-                                                    : currentTheme.colors.primary,
-                                                fontWeight: isDestructive || !isCancel ? '800' : '600',
+                                                color: isCancel 
+                                                    ? currentTheme.colors.text 
+                                                    : (isDestructive ? currentTheme.colors.background : currentTheme.colors.inverseText),
+                                                fontWeight: '800',
                                             },
                                         ]}
                                     >
-                                        {action.text.toUpperCase()}
+                                        {action.text}
                                     </Text>
                                 </TouchableOpacity>
                             );
@@ -156,46 +174,50 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        padding: SPACING.xl,
+        padding: SPACING.lg,
     },
     popupContainer: {
         width: '100%',
         maxWidth: 340,
-        borderRadius: RADIUS.xl,
+        borderRadius: 24,
         borderWidth: 1,
         overflow: 'hidden',
+        padding: SPACING.md,
     },
     content: {
-        padding: SPACING.xl,
+        padding: SPACING.md,
         alignItems: 'center',
     },
     title: {
-        fontSize: mScale(20),
+        fontSize: mScale(18),
         fontWeight: '900',
         textAlign: 'center',
-        letterSpacing: -0.8,
+        letterSpacing: -0.5,
     },
     description: {
         fontSize: mScale(14),
         fontWeight: '500',
         textAlign: 'center',
-        marginTop: SPACING.md,
+        marginTop: SPACING.sm,
         lineHeight: mScale(20),
         opacity: 0.8,
     },
     actionsContainer: {
-        borderTopWidth: 1,
         flexDirection: 'row',
+        paddingHorizontal: SPACING.md,
+        paddingBottom: SPACING.md,
+        width: '100%',
+        gap: 12,
     },
     actionButton: {
         flex: 1,
-        height: 56,
+        height: 46,
+        borderRadius: 14,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: SPACING.md,
     },
     actionText: {
-        fontSize: mScale(13),
-        letterSpacing: 1.2,
+        fontSize: mScale(14),
+        letterSpacing: 0.5,
     },
 });

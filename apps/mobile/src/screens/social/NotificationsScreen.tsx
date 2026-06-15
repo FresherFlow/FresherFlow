@@ -283,10 +283,19 @@ const AlertRow = memo(({
 const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
-    const { alerts, unreadCount, refreshing, markRead, markAllRead, deleteAlert, refresh } = useNotifications();
+    const { alerts, unreadCount, refreshing, markRead, markAllRead, clearAll, deleteAlert, refresh } = useNotifications();
     const { user, profile, loadingProfile: isLoadingProfile } = useProfile();
     const { sector } = useSectorStore();
     const isAnonymous = !user || user.isAnonymous;
+
+    const sectorAlertsCount = useMemo(() => {
+        return alerts
+            .filter(a => a.opportunity.matchReason !== 'Complete profile to see eligibility')
+            .filter(a => {
+                if (sector === 'GOVERNMENT') return a.opportunity.type === 'GOVERNMENT';
+                return a.opportunity.type !== 'GOVERNMENT';
+            }).length;
+    }, [alerts, sector]);
 
     const isSetup = useMemo(() => isProfileSetupComplete(profile), [profile]);
 
@@ -415,9 +424,15 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
         </View>
     );
 
-    const handleClearAll = () => {
+    const handleMarkAllRead = () => {
         void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         markAllRead();
+    };
+
+    const handleClearAll = () => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        clearAll();
     };
 
     return (
@@ -436,6 +451,10 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                     }
                     subtitleRightSlot={
                         unreadCount > 0 ? (
+                            <TouchableOpacity onPress={handleMarkAllRead} style={styles.clearBtn}>
+                                <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Read All</Text>
+                            </TouchableOpacity>
+                        ) : sectorAlertsCount > 0 ? (
                             <TouchableOpacity onPress={handleClearAll} style={styles.clearBtn}>
                                 <Text style={[styles.markAll, { color: currentTheme.colors.primary }]}>Clear All</Text>
                             </TouchableOpacity>

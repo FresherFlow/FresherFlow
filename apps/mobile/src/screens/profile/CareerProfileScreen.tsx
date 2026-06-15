@@ -11,6 +11,7 @@ import * as Haptics from 'expo-haptics';
 import { EducationView } from './EditEducationScreen';
 import { SkillsView } from './EditSkillsScreen';
 import { PreferencesView } from './EditPreferencesScreen';
+import { PersonalDetailsView } from './EditDemographicsScreen';
 import { AVAILABILITY_OPTIONS } from '@/utils/constants';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'CareerProfile'>;
@@ -49,6 +50,11 @@ const CareerProfileScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
       >
+        <PersonalDetailsView
+            onEdit={() => onNavigate('EditDemographics')}
+            currentTheme={currentTheme}
+        />
+
         <View style={styles.container}>
             <Text style={[styles.sectionLabel, { color: currentTheme.colors.textMuted }]}>Professional Identity</Text>
         </View>

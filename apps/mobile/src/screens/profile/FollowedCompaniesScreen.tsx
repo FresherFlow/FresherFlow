@@ -10,7 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Search, X, ChevronRight, Check, Plus, Building2, ChevronUp, Landmark } from 'lucide-react-native';
+import { Search, X, ChevronRight, Check, Plus, Building2, Landmark } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useScrollToTop } from '@react-navigation/native';
@@ -19,7 +19,7 @@ import { useFeedStore } from '@/store/useFeedStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useSectorStore } from '@/store/useSectorStore';
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, SurfaceCard } from '@/system/components/PremiumPrimitives';
+import { PremiumHeader, SurfaceCard, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
 import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING, RADIUS } from '@/system/constants/dimensions';
 import { useToast } from '@/contexts/ToastContext';
@@ -171,7 +171,7 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
         }
       }
     } catch (err) {
-      console.error('Failed to toggle company follow:', err);
+      if (__DEV__) { console.error('Failed to toggle company follow:', err) }
       showToast('Failed to toggle follow status', 'error');
     }
   };
@@ -341,25 +341,7 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
         />
       </View>
 
-      {showScrollTop && (
-        <TouchableOpacity
-          activeOpacity={0.8}
-          onPress={() => {
-            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-            smoothScrollToTop();
-          }}
-          style={[
-            styles.scrollTopBtn,
-            {
-              backgroundColor: currentTheme.colors.surface,
-              borderColor: alpha(currentTheme.colors.border, 0.3),
-              bottom: insets.bottom + 110,
-            },
-          ]}
-        >
-          <ChevronUp size={20} color={currentTheme.colors.primary} />
-        </TouchableOpacity>
-      )}
+      <ScrollToTopButton visible={showScrollTop} onPress={smoothScrollToTop} bottomOffset={insets.bottom + 110} />
     </Screen>
   );
 });
@@ -461,28 +443,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-  scrollTopBtn: {
-    position: 'absolute',
-    right: 28,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    zIndex: 9999,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  }
+
 });
 
 export default FollowedCompaniesScreen;

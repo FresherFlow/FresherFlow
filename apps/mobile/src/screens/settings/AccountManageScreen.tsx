@@ -6,6 +6,7 @@ import {
     ScrollView,
     TouchableOpacity,
     StatusBar,
+    Image,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Modal } from 'react-native';
@@ -17,6 +18,7 @@ import {
     Info,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import Constants from 'expo-constants';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
@@ -40,6 +42,7 @@ const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const { currentTheme } = useTheme();
     const { user } = useProfile();
     const logout = useAuthStore(state => state.logout);
+    const firebaseUser = useAuthStore(state => state.firebaseUser);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
     const onLogoutPress = () => {
@@ -72,11 +75,31 @@ const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 40 }]}
             >
                 <View style={styles.content}>
-                    <View style={styles.heroSection}>
-                        <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Safe &{'\n'}Secure.</Text>
-                        <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
-                            Manage your professional identity and data privacy.
-                        </Text>
+                    <View style={[
+                        styles.profileHeader, 
+                        { 
+                            backgroundColor: alpha(currentTheme.colors.surface, 0.5),
+                            borderColor: alpha(currentTheme.colors.border, 0.1) 
+                        }
+                    ]}>
+                        {firebaseUser?.photoURL ? (
+                            <Image 
+                                source={{ uri: firebaseUser.photoURL }} 
+                                style={[styles.avatar, { borderColor: alpha(currentTheme.colors.primary, 0.3) }]} 
+                            />
+                        ) : (
+                            <View style={[styles.avatarFallback, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                                <UserCircle size={32} color={currentTheme.colors.primary} />
+                            </View>
+                        )}
+                        <View style={styles.profileInfo}>
+                            <Text style={[styles.profileName, { color: currentTheme.colors.text }]}>
+                                {user?.fullName || firebaseUser?.displayName || 'Guest Explorer'}
+                            </Text>
+                            <Text style={[styles.profileEmail, { color: currentTheme.colors.textMuted }]}>
+                                {user?.email || firebaseUser?.email || 'Sign in to sync your profile'}
+                            </Text>
+                        </View>
                     </View>
 
                     <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Identity</Text>
@@ -116,7 +139,7 @@ const AccountManageScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <View style={styles.footerInfo}>
                         <Info size={16} color={currentTheme.colors.textMuted} />
                         <Text style={[styles.footerText, { color: currentTheme.colors.textMuted }]}>
-                            FresherFlow v1.0.4 (Production Build)
+                            FresherFlow v{Constants.expoConfig?.version || '1.0.0'} (Production Build)
                         </Text>
                     </View>
                 </View>
@@ -219,6 +242,42 @@ const styles = StyleSheet.create({
         marginTop: 12,
         lineHeight: 22,
         fontWeight: '500',
+    },
+    profileHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginTop: 20,
+        marginBottom: 24,
+        padding: 16,
+        borderRadius: 20,
+        borderWidth: 1,
+    },
+    avatar: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        borderWidth: 2,
+    },
+    avatarFallback: {
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    profileInfo: {
+        marginLeft: 16,
+        flex: 1,
+    },
+    profileName: {
+        fontSize: 18,
+        fontWeight: '800',
+        letterSpacing: -0.5,
+    },
+    profileEmail: {
+        fontSize: 12,
+        fontWeight: '500',
+        marginTop: 2,
     },
     groupLabel: {
         ...TYPOGRAPHY.label,

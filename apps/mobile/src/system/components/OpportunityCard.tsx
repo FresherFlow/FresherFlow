@@ -19,6 +19,7 @@ interface Props {
   onPress: () => void;
   onSave?: (opportunity: Opportunity) => void;
   isSaved?: boolean;
+  isViewed?: boolean;
   heatBadge?: 'TRENDING' | 'FAST_FILLING' | 'MOST_SAVED';
   matchScore?: number;
   index?: number;
@@ -47,6 +48,7 @@ export const OpportunityCard = memo(({
   onPress,
   onSave,
   isSaved,
+  isViewed,
   heatBadge,
   matchScore,
 }: Props) => {
@@ -114,6 +116,7 @@ export const OpportunityCard = memo(({
                 }
             ]}
         >
+            {/* Removed unreadDot */}
       <View style={styles.header}>
         <View style={styles.titleArea}>
             <View style={styles.badgeRow}>
@@ -171,7 +174,18 @@ export const OpportunityCard = memo(({
                     size={mScale(40)}
                 />
                 <View style={styles.titleWrapper}>
-                    <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={2}>{opportunity.title}</Text>
+                    <Text 
+                        style={[
+                            styles.title, 
+                            { 
+                                color: isViewed ? alpha(currentTheme.colors.text, 0.8) : currentTheme.colors.text,
+                                fontWeight: isViewed ? '700' : '900'
+                            }
+                        ]} 
+                        numberOfLines={2}
+                    >
+                        {opportunity.title}
+                    </Text>
                     <Text style={[styles.company, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>{opportunity.company}</Text>
                 </View>
             </View>
@@ -337,6 +351,7 @@ export const OpportunityCard = memo(({
 function propsAreEqual(prevProps: Props, nextProps: Props) {
     return prevProps.opportunity.id === nextProps.opportunity.id &&
            prevProps.isSaved === nextProps.isSaved &&
+           prevProps.isViewed === nextProps.isViewed &&
            prevProps.index === nextProps.index &&
            prevProps.matchScore === nextProps.matchScore &&
            prevProps.heatBadge === nextProps.heatBadge;
@@ -354,6 +369,7 @@ const styles = StyleSheet.create({
     container: {
         padding: SPACING.md,
     },
+
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',

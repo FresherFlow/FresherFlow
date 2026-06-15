@@ -1,6 +1,6 @@
 import React, { useRef, useEffect } from 'react';
-import { StyleSheet, View, Text, ViewStyle, StyleProp, TextStyle, Animated, TouchableOpacity, RefreshControl, RefreshControlProps } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
+import { StyleSheet, View, Text, ViewStyle, StyleProp, TextStyle, Animated, TouchableOpacity, RefreshControl, RefreshControlProps, Platform } from 'react-native';
+import { ChevronLeft, ChevronUp } from 'lucide-react-native';
 import { BlurView } from 'expo-blur';
 import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -8,6 +8,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { alpha } from '@/theme';
 import { mScale, SPACING, RADIUS } from '../constants/dimensions';
 import { TYPOGRAPHY } from '../constants/typography';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 
 interface AppTextProps {
     variant?: 'h2' | 'body' | 'label' | 'sectionTitle' | 'value' | 'badge';
@@ -152,7 +154,7 @@ export const PremiumHeader: React.FC<{
                             <ChevronLeft size={mScale(24)} color={currentTheme.colors.primary} />
                         </TouchableOpacity>
                     )}
-                    {leftSlot && <View style={{ marginTop: compact ? 0 : 4 }}>{leftSlot}</View>}
+                    {leftSlot && <View style={{ flex: !title ? 1 : undefined, marginTop: compact ? 0 : 4 }}>{leftSlot}</View>}
                     <View style={{ flex: 1 }}>
                         <Text
                             style={[styles.headerTitle, { color: currentTheme.colors.text }, titleStyle]}
@@ -304,6 +306,25 @@ export const AnimatedSecondaryHeader: React.FC<{
     );
 };
 
+export const PremiumToggleGroup: React.FC<{
+    children: React.ReactNode;
+    style?: StyleProp<ViewStyle>;
+}> = ({ children, style }) => {
+    const { currentTheme } = useTheme();
+    return (
+        <View style={[
+            styles.toggleGroup,
+            {
+                backgroundColor: currentTheme.colors.surface,
+                borderColor: alpha(currentTheme.colors.border, 0.2),
+            },
+            style
+        ]}>
+            {children}
+        </View>
+    );
+};
+
 export const PremiumToggle: React.FC<{
     value: boolean;
     onValueChange: (value: boolean) => void;
@@ -311,7 +332,9 @@ export const PremiumToggle: React.FC<{
     description?: string;
     icon?: React.ElementType;
     disabled?: boolean;
-}> = ({ value, onValueChange, title, description, icon: Icon, disabled }) => {
+    position?: 'first' | 'middle' | 'last' | 'single';
+    onLongPress?: () => void;
+}> = ({ value, onValueChange, title, description, icon: Icon, disabled, position = 'single', onLongPress }) => {
     const { currentTheme } = useTheme();
     const animValue = useRef(new Animated.Value(value ? 1 : 0)).current;
 
@@ -334,13 +357,17 @@ export const PremiumToggle: React.FC<{
             activeOpacity={0.9}
             disabled={disabled}
             onPress={() => onValueChange(!value)}
+            onLongPress={onLongPress}
             style={[
                 styles.toggleRow,
-                {
+                position === 'single' && styles.toggleSingle,
+                position !== 'single' && styles.toggleGrouped,
+                position !== 'single' && position !== 'last' && { borderBottomWidth: 0.5, borderBottomColor: alpha(currentTheme.colors.border, 0.1) },
+                position === 'single' && {
                     backgroundColor: currentTheme.colors.surface,
                     borderColor: alpha(currentTheme.colors.border, 0.08),
-                    opacity: disabled ? 0.5 : 1
-                }
+                },
+                { opacity: disabled ? 0.5 : 1 }
             ]}
         >
             <View style={styles.toggleLeft}>
@@ -368,8 +395,8 @@ export const PremiumToggle: React.FC<{
                     {
                         backgroundColor: value 
                             ? currentTheme.colors.background 
-                            : (currentTheme.mode === 'dark' ? '#8E8E93' : '#FFFFFF'),
-                        shadowColor: '#000000',
+                            : currentTheme.colors.textMuted,
+                        shadowColor: currentTheme.colors.shadowMedium,
                         transform: [{ translateX }],
                     }
                 ]} />
@@ -469,8 +496,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: SPACING.md,
+    },
+    toggleSingle: {
         borderRadius: RADIUS.lg,
         borderWidth: 1,
+    },
+    toggleGrouped: {
+        borderWidth: 0,
+        borderRadius: 0,
+    },
+    toggleGroup: {
+        borderRadius: RADIUS.lg,
+        borderWidth: 1,
+        overflow: 'hidden',
     },
     toggleLeft: {
         flexDirection: 'row',
@@ -513,5 +551,58 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 1,
         elevation: 1,
+    },
+    scrollTopBtn: {
+        position: 'absolute',
+        right: 28,
+        width: 44,
+        height: 44,
+        borderRadius: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        borderWidth: 1,
+        zIndex: 9999,
+        ...Platform.select({
+            android: {
+                elevation: 4,
+            },
+        }),
     }
 });
+
+export const ScrollToTopButton: React.FC<{
+    visible: boolean;
+    onPress: () => void;
+    bottomOffset?: number;
+}> = ({ visible, onPress, bottomOffset }) => {
+    const { currentTheme } = useTheme();
+    const insets = useSafeAreaInsets();
+    
+    if (!visible) return null;
+    
+    const handlePress = () => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        onPress();
+    };
+    
+    return (
+        <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={handlePress}
+            style={[
+                styles.scrollTopBtn,
+                {
+                    backgroundColor: currentTheme.colors.surface,
+                    borderColor: currentTheme.colors.border,
+                    bottom: bottomOffset ?? (insets.bottom + mScale(100)),
+                    shadowColor: currentTheme.colors.shadowMedium,
+                    shadowOffset: { width: 0, height: 4 },
+                    shadowOpacity: 1,
+                    shadowRadius: 8,
+                },
+            ]}
+        >
+            <ChevronUp size={20} color={currentTheme.colors.text} />
+        </TouchableOpacity>
+    );
+};

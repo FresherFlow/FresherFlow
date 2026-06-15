@@ -1,4 +1,4 @@
-import React, { memo, useState, useMemo, useRef, useCallback } from 'react';
+import React, { memo, useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import {
     StyleSheet,
     Text,
@@ -18,16 +18,26 @@ import {
     Trash2, 
     ChevronRight,
     Landmark,
+    Calendar,
+    FileText,
+    CheckCircle2,
+    XCircle,
+    UserCheck,
+    ArrowRightLeft,
+    Clock,
+    Sparkles,
+    Search,
+    Share2,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { useTheme } from '@/contexts/ThemeContext';
+import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { useTracker } from '@/hooks/useTracker';
 import { useSectorStore } from '@/store/useSectorStore';
 import { ActionType, Opportunity } from '@fresherflow/types';
-// import LottieView from 'lottie-react-native';
 import { Share } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
+import { alpha } from '@/theme';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
@@ -79,9 +89,77 @@ const getStatusLabel = (status: string, isGovt: boolean): string => {
     return STATUS_LABEL[status] || status;
 };
 
-const alpha = (color: string, opacity: number) => {
-    if (color.startsWith('rgba')) return color;
-    return `${color}${Math.floor(opacity * 255).toString(16).padStart(2, '0')}`;
+const STATUS_COLORS = (theme: AppTheme) => ({
+    PLANNED: {
+        bg: alpha(theme.colors.textMuted, 0.08),
+        text: theme.colors.textMuted,
+        border: alpha(theme.colors.textMuted, 0.15),
+    },
+    APPLIED: {
+        bg: alpha(theme.colors.indigo || '#6366F1', 0.1),
+        text: theme.colors.indigo || '#6366F1',
+        border: alpha(theme.colors.indigo || '#6366F1', 0.2),
+    },
+    OA: {
+        bg: alpha(theme.colors.accent || '#3B82F6', 0.1),
+        text: theme.colors.accent || '#3B82F6',
+        border: alpha(theme.colors.accent || '#3B82F6', 0.2),
+    },
+    INTERVIEWED: {
+        bg: alpha(theme.colors.warning || '#FBBF24', 0.12),
+        text: theme.colors.warning || '#FBBF24',
+        border: alpha(theme.colors.warning || '#FBBF24', 0.25),
+    },
+    SELECTED: {
+        bg: alpha(theme.colors.success || '#4ADE80', 0.12),
+        text: theme.colors.success || '#4ADE80',
+        border: alpha(theme.colors.success || '#4ADE80', 0.25),
+    },
+    REJECTED: {
+        bg: alpha(theme.colors.error || '#FF5252', 0.08),
+        text: theme.colors.error || '#FF5252',
+        border: alpha(theme.colors.error || '#FF5252', 0.18),
+    },
+});
+
+const getStatusIcon = (status: ActionType, size = 16, color?: string) => {
+    switch (status) {
+        case ActionType.PLANNED:
+            return <Calendar size={size} color={color} />;
+        case ActionType.APPLIED:
+            return <FileText size={size} color={color} />;
+        case ActionType.OA:
+            return <Sparkles size={size} color={color} />;
+        case ActionType.INTERVIEWED:
+            return <UserCheck size={size} color={color} />;
+        case ActionType.SELECTED:
+            return <CheckCircle2 size={size} color={color} />;
+        case ActionType.REJECTED:
+            return <XCircle size={size} color={color} />;
+        default:
+            return <Briefcase size={size} color={color} />;
+    }
+};
+
+const getRelativeTime = (dateInput: string | Date | undefined) => {
+    if (!dateInput) return '';
+    try {
+        const date = typeof dateInput === 'string' ? new Date(dateInput) : dateInput;
+        const now = new Date();
+        const diffMs = now.getTime() - date.getTime();
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays === 1) return 'Yesterday';
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch {
+        return '';
+    }
 };
 
 interface TrackerTabContentProps {
@@ -92,61 +170,22 @@ interface TrackerTabContentProps {
     actionsLength: number;
     refresh: () => void;
     refreshing: boolean;
-    currentTheme: {
-        colors: {
-            primary: string;
-            text: string;
-            textMuted: string;
-            background: string;
-            border: string;
-            error: string;
-        };
-    };
+    currentTheme: any;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     onScroll: any;
     contentPaddingTop: number;
     isGovt: boolean;
+    navigation: any;
 }
 
 import { MotiView } from 'moti';
 
-const TrackerSkeleton = memo(({ currentTheme }: { currentTheme: any }) => (
-    <SurfaceCard style={styles.jobCard}>
-        <View style={styles.cardHeader}>
-            <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 16 }}>
-                <MotiView
-                    from={{ opacity: 0.5 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ type: 'timing', duration: 1000, loop: true }}
-                    style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: alpha(currentTheme.colors.textMuted, 0.2) }}
-                />
-                <View style={{ flex: 1, gap: 8 }}>
-                    <MotiView
-                        from={{ opacity: 0.5 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ type: 'timing', duration: 1000, loop: true }}
-                        style={{ width: '70%', height: 16, borderRadius: 4, backgroundColor: alpha(currentTheme.colors.textMuted, 0.2) }}
-                    />
-                    <MotiView
-                        from={{ opacity: 0.5 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ type: 'timing', duration: 1000, loop: true }}
-                        style={{ width: '40%', height: 12, borderRadius: 4, backgroundColor: alpha(currentTheme.colors.textMuted, 0.2) }}
-                    />
-                </View>
-            </View>
-        </View>
-    </SurfaceCard>
-));
-
-const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLength, refresh, refreshing, currentTheme, onScroll, contentPaddingTop, isGovt }: TrackerTabContentProps) => {
+const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLength, refresh, refreshing, currentTheme, onScroll, contentPaddingTop, isGovt, navigation }: TrackerTabContentProps) => {
     return (
         <View style={{ width: SCREEN_WIDTH, flex: 1 }}>
             {loading && actionsLength === 0 ? (
-                <View style={[styles.listContent, { paddingTop: contentPaddingTop }]}>
-                    <TrackerSkeleton currentTheme={currentTheme} />
-                    <TrackerSkeleton currentTheme={currentTheme} />
-                    <TrackerSkeleton currentTheme={currentTheme} />
+                <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 120 }}>
+                    <ActivityIndicator size="large" color={currentTheme.colors.primary} />
                 </View>
             ) : (
                 <FlashList
@@ -159,12 +198,17 @@ const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLen
                     scrollEventThrottle={16}
                     contentContainerStyle={[styles.listContent, { paddingTop: contentPaddingTop }]}
                     ListEmptyComponent={
-                        <View style={styles.emptyContainer}>
-                            <View style={[styles.emptyIconBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03) }]}>
+                        <MotiView 
+                            from={{ opacity: 0, translateY: 10 }}
+                            animate={{ opacity: 1, translateY: 0 }}
+                            transition={{ type: 'timing', duration: 450 }}
+                            style={styles.emptyContainer}
+                        >
+                            <View style={[styles.emptyIconBox, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}>
                                 {isGovt ? (
-                                    <Landmark size={32} color={currentTheme.colors.primary} />
+                                    <Landmark size={36} color={currentTheme.colors.primary} />
                                 ) : (
-                                    <Briefcase size={32} color={currentTheme.colors.primary} />
+                                    <Briefcase size={36} color={currentTheme.colors.primary} />
                                 )}
                             </View>
                             <Text style={[styles.emptyTitle, { color: currentTheme.colors.text }]}>Nothing here yet</Text>
@@ -173,7 +217,21 @@ const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLen
                                   ? `Track your ${getStatusLabel(status, true).toLowerCase()} exams to manage your prep pipeline.`
                                   : `Track your ${getStatusLabel(status, false).toLowerCase()} applications to manage your pipeline.`}
                             </Text>
-                        </View>
+
+                            <TouchableOpacity
+                                onPress={() => {
+                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    navigation.navigate('Main', { screen: isGovt ? 'Explore' : 'Feed' });
+                                }}
+                                style={[styles.emptyCta, { backgroundColor: currentTheme.colors.primary }]}
+                                activeOpacity={0.8}
+                            >
+                                <Search size={16} color={currentTheme.colors.background} />
+                                <Text style={[styles.emptyCtaText, { color: currentTheme.colors.background }]}>
+                                    {isGovt ? 'Find Govt Exams' : 'Find Opportunities'}
+                                </Text>
+                            </TouchableOpacity>
+                        </MotiView>
                     }
                     refreshControl={
                         <PremiumRefreshControl refreshing={refreshing} onRefresh={refresh} />
@@ -214,6 +272,30 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
     
     const isGovt = sector === 'GOVERNMENT';
 
+    const celebrateScale = useRef(new Animated.Value(0.9)).current;
+    const celebrateOpacity = useRef(new Animated.Value(0)).current;
+
+    useEffect(() => {
+        if (celebrateJob) {
+            Animated.parallel([
+                Animated.spring(celebrateScale, {
+                    toValue: 1,
+                    useNativeDriver: true,
+                    tension: 50,
+                    friction: 7,
+                }),
+                Animated.timing(celebrateOpacity, {
+                    toValue: 1,
+                    duration: 250,
+                    useNativeDriver: true,
+                })
+            ]).start();
+        } else {
+            celebrateScale.setValue(0.9);
+            celebrateOpacity.setValue(0);
+        }
+    }, [celebrateJob]);
+
     const handleShareSuccess = async () => {
         if (!celebrateJob) return;
         try {
@@ -227,7 +309,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                 });
             }
         } catch (error) {
-            console.log(error);
+            if (__DEV__) { console.log(error) }
         }
     };
 
@@ -342,14 +424,26 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
         const opp = item.opportunity;
         if (!opp) return null;
 
+        const colorsMap = STATUS_COLORS(currentTheme);
+        const statusColors = (colorsMap as Record<string, any>)[item.actionType] || colorsMap.PLANNED;
+        const statusLabel = getStatusLabel(item.actionType, isGovt);
+        const relativeTime = getRelativeTime(item.createdAt);
+
         return (
-            <SurfaceCard style={styles.jobCard}>
+            <SurfaceCard style={[styles.jobCard, { borderColor: alpha(statusColors.text, 0.15), borderWidth: 1 }]}>
+                {/* Accent status line at top of card */}
+                <View style={[styles.statusAccentBar, { backgroundColor: statusColors.text }]} />
+                
                 <View style={styles.cardHeader}>
                     <TouchableOpacity 
                         activeOpacity={0.7}
                         onPress={() => {
                             void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                            navigation.navigate('JobDetail', { opportunityId: opp.id });
+                            if (isGovt) {
+                                navigation.navigate('GovtJobDetail', { opportunity: opp, opportunityId: opp.id });
+                            } else {
+                                navigation.navigate('JobDetail', { opportunity: opp, opportunityId: opp.id });
+                            }
                         }}
                         onLongPress={() => handleCardLongPress(opp, item.actionType)}
                         style={styles.cardInfoContainer}
@@ -359,7 +453,7 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                             website={opp.companyWebsite}
                             applyLink={opp.applyLink}
                             logoUrl={opp.companyLogoUrl} 
-                            size={44} 
+                            size={46} 
                         />
                         <View style={styles.cardInfo}>
                             <Text style={[styles.jobTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>
@@ -368,6 +462,14 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                             <Text style={[styles.companyName, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>
                                 {opp.company}
                             </Text>
+                            {relativeTime ? (
+                                <View style={styles.timeContainer}>
+                                    <Clock size={10} color={currentTheme.colors.textMuted} />
+                                    <Text style={[styles.timeText, { color: currentTheme.colors.textMuted }]}>
+                                        Updated {relativeTime}
+                                    </Text>
+                                </View>
+                            ) : null}
                         </View>
                     </TouchableOpacity>
 
@@ -375,7 +477,48 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                         <TouchableOpacity onPress={() => handleRemove(opp.id)} style={styles.cardTrashBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
                             <Trash2 size={16} color={currentTheme.colors.error} opacity={0.6} />
                         </TouchableOpacity>
-                        <ChevronRight size={18} color={currentTheme.colors.textMuted} opacity={0.3} />
+                    </View>
+                </View>
+
+                {/* Card footer with interactive pill and quick CTAs */}
+                <View style={[styles.cardFooter, { borderTopColor: alpha(currentTheme.colors.border, 0.08) }]}>
+                    <TouchableOpacity 
+                        onPress={() => handleCardLongPress(opp, item.actionType)}
+                        style={[styles.statusBadge, { 
+                            backgroundColor: statusColors.bg, 
+                            borderColor: statusColors.border 
+                        }]}
+                        activeOpacity={0.8}
+                    >
+                        {getStatusIcon(item.actionType, 12, statusColors.text)}
+                        <Text style={[styles.statusBadgeText, { color: statusColors.text }]}>
+                            {statusLabel}
+                        </Text>
+                    </TouchableOpacity>
+
+                    <View style={styles.footerCTAs}>
+                        <TouchableOpacity
+                            onPress={() => handleCardLongPress(opp, item.actionType)}
+                            style={[styles.footerBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.03) }]}
+                        >
+                            <ArrowRightLeft size={11} color={currentTheme.colors.text} />
+                            <Text style={[styles.footerBtnText, { color: currentTheme.colors.text }]}>Move</Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity
+                            onPress={() => {
+                                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                if (isGovt) {
+                                    navigation.navigate('GovtJobDetail', { opportunity: opp, opportunityId: opp.id });
+                                } else {
+                                    navigation.navigate('JobDetail', { opportunity: opp, opportunityId: opp.id });
+                                }
+                            }}
+                            style={[styles.footerBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                        >
+                            <Text style={[styles.footerBtnText, { color: currentTheme.colors.primary, fontWeight: '700' }]}>Details</Text>
+                            <ChevronRight size={11} color={currentTheme.colors.primary} />
+                        </TouchableOpacity>
                     </View>
                 </View>
             </SurfaceCard>
@@ -401,64 +544,34 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                         >
                             {STATUS_ORDER.map((status, index) => {
                                 const isActive = activeStatus === status;
-                                const isPast = STATUS_ORDER.indexOf(activeStatus) > index;
                                 const count = grouped[status]?.length || 0;
-                                const isLast = index === STATUS_ORDER.length - 1;
+                                const colorsMap = STATUS_COLORS(currentTheme) as Record<string, any>;
+                                const activeColor = colorsMap[status]?.text || currentTheme.colors.primary;
 
                                 return (
-                                    <View key={status} style={styles.pipelineNodeContainer}>
-                                        <TouchableOpacity
-                                            activeOpacity={0.8}
-                                            onLayout={(e) => {
-                                                const { x, width } = e.nativeEvent.layout;
-                                                setTabLayouts(prev => ({ ...prev, [index]: { x, width } }));
-                                            }}
-                                            onPress={() => handleTabPress(status, index)}
-                                            style={styles.pipelineNodeClickable}
-                                        >
-                                            {/* Circular Node */}
-                                            <View style={[
-                                                styles.pipelineCircle,
-                                                { 
-                                                    backgroundColor: isActive 
-                                                        ? currentTheme.colors.primary 
-                                                        : (isPast ? alpha(currentTheme.colors.primary, 0.2) : alpha(currentTheme.colors.text, 0.05)),
-                                                    borderColor: isActive ? currentTheme.colors.background : 'transparent',
-                                                    borderWidth: isActive ? 2 : 0,
-                                                    shadowColor: isActive ? currentTheme.colors.primary : 'transparent',
-                                                    shadowOpacity: isActive ? 0.3 : 0,
-                                                    shadowRadius: 4,
-                                                    elevation: isActive ? 4 : 0,
-                                                }
-                                            ]}>
-                                                <Text style={[
-                                                    styles.pipelineCountText,
-                                                    { color: isActive ? currentTheme.colors.background : (isPast ? currentTheme.colors.primary : currentTheme.colors.textMuted) }
-                                                ]}>
-                                                    {count}
-                                                </Text>
-                                            </View>
-
-                                            {/* Label Below Node */}
-                                            <Text style={[
-                                                styles.pipelineLabel, 
-                                                { 
-                                                    color: isActive ? currentTheme.colors.primary : currentTheme.colors.textMuted,
-                                                    opacity: isActive ? 1 : 0.7,
-                                                }
-                                            ]}>
-                                                {getStatusLabel(status, isGovt)}
-                                            </Text>
-                                        </TouchableOpacity>
-
-                                        {/* Connecting Line (except for last node) */}
-                                        {!isLast && (
-                                            <View style={[
-                                                styles.pipelineConnector,
-                                                { backgroundColor: isPast ? alpha(currentTheme.colors.primary, 0.3) : alpha(currentTheme.colors.border, 0.5) }
-                                            ]} />
-                                        )}
-                                    </View>
+                                    <TouchableOpacity
+                                        key={status}
+                                        activeOpacity={0.8}
+                                        onLayout={(e) => {
+                                            const { x, width } = e.nativeEvent.layout;
+                                            setTabLayouts(prev => ({ ...prev, [index]: { x, width } }));
+                                        }}
+                                        onPress={() => handleTabPress(status, index)}
+                                        style={[
+                                            styles.pipelineTab,
+                                            isActive && { borderBottomColor: activeColor }
+                                        ]}
+                                    >
+                                        <Text style={[
+                                            styles.pipelineTabText,
+                                            { 
+                                                color: isActive ? activeColor : currentTheme.colors.textMuted,
+                                                fontWeight: isActive ? '800' : '600',
+                                            }
+                                        ]}>
+                                            {getStatusLabel(status, isGovt)} <Text style={{ opacity: 0.5, fontSize: 11 }}>({count})</Text>
+                                        </Text>
+                                    </TouchableOpacity>
                                 );
                             })}
                         </ScrollView>
@@ -495,38 +608,71 @@ const ApplicationTrackerScreen: React.FC<Props> = memo(({ navigation }: Props) =
                         onScroll={null}
                         contentPaddingTop={10}
                         isGovt={isGovt}
+                        navigation={navigation}
                     />
                 )}
             />
 
             {/* Celebrate Modal */}
             {celebrateJob && (
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: alpha(currentTheme.colors.background, 0.95), zIndex: 1000, justifyContent: 'center', alignItems: 'center', padding: 24 }]}>
-                    <Text style={{ fontSize: 80, marginBottom: 20 }}>🎉</Text>
-                    <Text style={{ fontSize: 32, fontWeight: '900', color: currentTheme.colors.text, textAlign: 'center', marginBottom: 12 }}>
-                        {isGovt ? "Exam Cleared!" : "You Got Hired!"}
-                    </Text>
-                    <Text style={{ fontSize: 16, color: currentTheme.colors.textMuted, textAlign: 'center', marginBottom: 40, lineHeight: 24 }}>
-                        {isGovt ? (
-                            <>Congratulations on your selection in the merit list of <Text style={{ color: currentTheme.colors.primary, fontWeight: '800' }}>{celebrateJob.company}</Text> for the <Text style={{ color: currentTheme.colors.text, fontWeight: '800' }}>{celebrateJob.title}</Text> exam!</>
-                        ) : (
-                            <>Congratulations on your offer from <Text style={{ color: currentTheme.colors.primary, fontWeight: '800' }}>{celebrateJob.company}</Text> for the <Text style={{ color: currentTheme.colors.text, fontWeight: '800' }}>{celebrateJob.title}</Text> role!</>
-                        )}
-                    </Text>
-                    <TouchableOpacity 
-                        onPress={handleShareSuccess}
-                        style={{ backgroundColor: '#0A66C2', paddingHorizontal: 32, paddingVertical: 16, borderRadius: 100, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 20, width: '100%', justifyContent: 'center' }}
-                    >
-                        <Text style={{ color: '#FFF', fontWeight: '900', fontSize: 16 }}>{isGovt ? "Share Success" : "Share on LinkedIn"}</Text>
-                    </TouchableOpacity>
-                    
-                    <TouchableOpacity 
-                        onPress={() => setCelebrateJob(null)}
-                        style={{ padding: 16 }}
-                    >
-                        <Text style={{ color: currentTheme.colors.textMuted, fontWeight: '700' }}>Close</Text>
-                    </TouchableOpacity>
-                </View>
+                <Animated.View style={[
+                    StyleSheet.absoluteFill,
+                    {
+                        backgroundColor: alpha(currentTheme.colors.background, 0.96),
+                        zIndex: 1000,
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        padding: 24,
+                        opacity: celebrateOpacity,
+                    }
+                ]}>
+                    <Animated.View style={[
+                        styles.celebrateCard,
+                        {
+                            backgroundColor: currentTheme.colors.surface,
+                            borderColor: alpha(currentTheme.colors.success || '#4ADE80', 0.2),
+                            borderWidth: 1.5,
+                            transform: [{ scale: celebrateScale }],
+                        }
+                    ]}>
+                        <View style={[styles.celebrateIconBg, { backgroundColor: alpha(currentTheme.colors.success || '#4ADE80', 0.1) }]}>
+                            <Sparkles size={40} color={currentTheme.colors.success || '#4ADE80'} />
+                        </View>
+                        
+                        <Text style={[styles.celebrateEmoji]}>🎉</Text>
+                        
+                        <Text style={[styles.celebrateTitle, { color: currentTheme.colors.text }]}>
+                            {isGovt ? "Exam Cleared!" : "You're Hired!"}
+                        </Text>
+                        
+                        <Text style={[styles.celebrateSub, { color: currentTheme.colors.textMuted }]}>
+                            {isGovt ? (
+                                <>Selected in the merit list of <Text style={{ color: currentTheme.colors.primary, fontWeight: '800' }}>{celebrateJob.company}</Text> for the <Text style={{ color: currentTheme.colors.text, fontWeight: '800' }}>{celebrateJob.title}</Text> exam!</>
+                            ) : (
+                                <>Congratulations on your offer from <Text style={{ color: currentTheme.colors.primary, fontWeight: '800' }}>{celebrateJob.company}</Text> for the <Text style={{ color: currentTheme.colors.text, fontWeight: '800' }}>{celebrateJob.title}</Text> role!</>
+                            )}
+                        </Text>
+                        
+                        <TouchableOpacity 
+                            onPress={handleShareSuccess}
+                            style={styles.shareLinkedInBtn}
+                            activeOpacity={0.8}
+                        >
+                            <Share2 size={16} color="#FFF" />
+                            <Text style={styles.shareLinkedInText}>
+                                {isGovt ? "Share Success" : "Share on LinkedIn"}
+                            </Text>
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                            onPress={() => setCelebrateJob(null)}
+                            style={styles.celebrateCloseBtn}
+                            activeOpacity={0.7}
+                        >
+                            <Text style={[styles.celebrateCloseText, { color: currentTheme.colors.textMuted }]}>Close</Text>
+                        </TouchableOpacity>
+                    </Animated.View>
+                </Animated.View>
             )}
 
             <TrackerStatusSheet
@@ -583,42 +729,18 @@ const styles = StyleSheet.create({
     },
     pipelineScroll: {
         paddingHorizontal: 20,
-        paddingVertical: 16,
+        paddingVertical: 14,
         alignItems: 'center',
     },
-    pipelineNodeContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
+    pipelineTab: {
+        paddingVertical: 12,
+        paddingHorizontal: 16,
+        borderBottomWidth: 2,
+        borderBottomColor: 'transparent',
     },
-    pipelineNodeClickable: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 65,
-    },
-    pipelineCircle: {
-        width: 34,
-        height: 34,
-        borderRadius: 17,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginBottom: 8,
-        zIndex: 2,
-    },
-    pipelineCountText: {
-        fontSize: 12,
-        fontWeight: '900',
-    },
-    pipelineLabel: {
-        fontSize: 11,
-        fontWeight: '800',
-        textAlign: 'center',
-    },
-    pipelineConnector: {
-        width: 30,
-        height: 3,
-        marginBottom: 20,
-        borderRadius: 2,
-        zIndex: 1,
+    pipelineTabText: {
+        fontSize: 13,
+        letterSpacing: 0.3,
     },
     listContent: {
         padding: 20,
@@ -629,6 +751,10 @@ const styles = StyleSheet.create({
         borderRadius: 16,
         marginBottom: 16,
         overflow: 'hidden',
+    },
+    statusAccentBar: {
+        height: 3.5,
+        width: '100%',
     },
     cardHeader: {
         flexDirection: 'row',
@@ -665,35 +791,54 @@ const styles = StyleSheet.create({
         fontWeight: '600',
         marginTop: 2,
     },
-    divider: {
-        height: 1,
-        width: '100%',
-    },
-    actionRow: {
+    timeContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        paddingLeft: 16,
+        gap: 4,
+        marginTop: 6,
     },
-    statusScroll: {
-        gap: 8,
-        paddingRight: 12,
+    timeText: {
+        fontSize: 11,
+        fontWeight: '600',
     },
-    statusBtn: {
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        borderRadius: 12,
+    cardFooter: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderTopWidth: 1,
     },
-    statusBtnText: {
+    statusBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        gap: 6,
+    },
+    statusBadgeText: {
         fontSize: 11,
         fontWeight: '800',
+        letterSpacing: 0.2,
     },
-    deleteBtn: {
-        width: 36,
-        height: 36,
+    footerCTAs: {
+        flexDirection: 'row',
         alignItems: 'center',
-        justifyContent: 'center',
-        borderRadius: 10,
+        gap: 8,
+    },
+    footerBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        gap: 4,
+    },
+    footerBtnText: {
+        fontSize: 11,
+        fontWeight: '800',
     },
     emptyContainer: {
         alignItems: 'center',
@@ -718,7 +863,88 @@ const styles = StyleSheet.create({
         fontSize: 14,
         textAlign: 'center',
         lineHeight: 20,
-    }
+        marginBottom: 16,
+    },
+    emptyCta: {
+        marginTop: 16,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 12,
+        borderRadius: 100,
+        gap: 8,
+        elevation: 2,
+        shadowColor: '#000',
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 2 },
+    },
+    emptyCtaText: {
+        fontSize: 13,
+        fontWeight: '900',
+    },
+    celebrateCard: {
+        width: SCREEN_WIDTH - 48,
+        borderRadius: 24,
+        padding: 32,
+        alignItems: 'center',
+        elevation: 10,
+        shadowColor: '#000',
+        shadowOpacity: 0.2,
+        shadowRadius: 15,
+        shadowOffset: { width: 0, height: 10 },
+    },
+    celebrateIconBg: {
+        width: 80,
+        height: 80,
+        borderRadius: 40,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginBottom: 16,
+    },
+    celebrateEmoji: {
+        fontSize: 40,
+        marginBottom: 12,
+    },
+    celebrateTitle: {
+        fontSize: 26,
+        fontWeight: '900',
+        textAlign: 'center',
+        marginBottom: 12,
+        letterSpacing: -0.5,
+    },
+    celebrateSub: {
+        fontSize: 14,
+        textAlign: 'center',
+        lineHeight: 22,
+        marginBottom: 32,
+    },
+    shareLinkedInBtn: {
+        backgroundColor: '#0A66C2',
+        paddingHorizontal: 24,
+        paddingVertical: 14,
+        borderRadius: 12,
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+        width: '100%',
+        justifyContent: 'center',
+        marginBottom: 16,
+    },
+    shareLinkedInText: {
+        color: '#FFF',
+        fontWeight: '800',
+        fontSize: 14,
+    },
+    celebrateCloseBtn: {
+        paddingVertical: 8,
+        width: '100%',
+        alignItems: 'center',
+    },
+    celebrateCloseText: {
+        fontSize: 13,
+        fontWeight: '700',
+    },
 });
 
 export default ApplicationTrackerScreen;

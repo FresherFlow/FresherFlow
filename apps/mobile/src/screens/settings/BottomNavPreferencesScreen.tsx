@@ -7,19 +7,22 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Globe, LayoutGrid } from 'lucide-react-native';
+import { LayoutGrid, Compass, PlusCircle, Bookmark } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
+import { useFocusEffect } from '@react-navigation/native';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useUI } from '@/contexts/UIContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useAppPreferencesStore, TabId } from '@/store/useAppPreferencesStore';
+import { useToast } from '@/contexts/ToastContext';
 
 // Premium System
 import { mScale } from '@/system/constants/dimensions';
 import { TYPOGRAPHY } from '@/system/constants/typography';
 import { Screen } from '@/system/layout/Layout';
-import { SecondaryHeader, PremiumToggle } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, PremiumToggle, PremiumToggleGroup } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'BottomNavPreferences'>;
 
@@ -32,6 +35,14 @@ const BottomNavPreferencesScreen = ({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme } = useTheme();
   const { hiddenTabs, toggleTabVisibility } = useAppPreferencesStore();
+  const { showError } = useToast();
+  const { hideTabBar, showTabBar } = useUI();
+
+  useFocusEffect(
+    useCallback(() => {
+      showTabBar();
+    }, [showTabBar])
+  );
 
   const handleTabToggle = useCallback((tabId: TabId) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -55,36 +66,44 @@ const BottomNavPreferencesScreen = ({ navigation }: Props) => {
         />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + 100 }]} showsVerticalScrollIndicator={false}>
 
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>Bottom Tabs</Text>
-          <View style={{ gap: 16 }}>
+          <PremiumToggleGroup>
             <PremiumToggle 
                 title="Feed Tab"
                 description="Show the main scrolling feed."
                 value={!hiddenTabs.includes('Feed')}
                 onValueChange={() => handleTabToggle('Feed')}
+                icon={LayoutGrid}
+                position="first"
             />
             <PremiumToggle 
                 title="Explore Tab"
                 description="Show the search and discover section."
                 value={!hiddenTabs.includes('Explore')}
                 onValueChange={() => handleTabToggle('Explore')}
+                icon={Compass}
+                position="middle"
             />
             <PremiumToggle 
                 title="Share Tab"
                 description="Show the central button to post content."
                 value={!hiddenTabs.includes('Share')}
                 onValueChange={() => handleTabToggle('Share')}
+                icon={PlusCircle}
+                position="middle"
             />
             <PremiumToggle 
                 title="Saved Tab"
                 description="Show your bookmarks and saved items."
                 value={!hiddenTabs.includes('Saved')}
                 onValueChange={() => handleTabToggle('Saved')}
+                icon={Bookmark}
+                position="last"
             />
-          </View>
+          </PremiumToggleGroup>
         </View>
       </ScrollView>
     </Screen>

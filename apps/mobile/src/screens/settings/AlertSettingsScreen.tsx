@@ -26,7 +26,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { SecondaryHeader, SurfaceCard, PremiumToggle } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader, SurfaceCard, PremiumToggle, PremiumToggleGroup } from '@/system/components/PremiumPrimitives';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'AlertSettings'>;
 
@@ -103,32 +103,36 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     </View>
 
                     <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Channels</Text>
-                    <Controller
-                        control={control}
-                        name="privateJobs"
-                        render={({ field: { value, onChange } }) => (
-                            <PremiumToggle 
-                                icon={Bell} 
-                                title="Private Jobs" 
-                                description="Receive push alerts for top tech and corporate roles"
-                                value={value}
-                                onValueChange={(v) => { onChange(v); updatePref({ privateJobs: v }); }}
-                            />
-                        )}
-                    />
-                    <Controller
-                        control={control}
-                        name="governmentJobs"
-                        render={({ field: { value, onChange } }) => (
-                            <PremiumToggle 
-                                icon={Bell} 
-                                title="Government Jobs" 
-                                description="Receive push alerts for SSC, UPSC, Banking, etc"
-                                value={value}
-                                onValueChange={(v) => { onChange(v); updatePref({ governmentJobs: v }); }}
-                            />
-                        )}
-                    />
+                    <PremiumToggleGroup>
+                        <Controller
+                            control={control}
+                            name="privateJobs"
+                            render={({ field: { value, onChange } }) => (
+                                <PremiumToggle 
+                                    icon={Bell} 
+                                    title="Private Jobs" 
+                                    description="Receive push alerts for top tech and corporate roles"
+                                    value={value}
+                                    position="first"
+                                    onValueChange={(v) => { onChange(v); updatePref({ privateJobs: v }); }}
+                                />
+                            )}
+                        />
+                        <Controller
+                            control={control}
+                            name="governmentJobs"
+                            render={({ field: { value, onChange } }) => (
+                                <PremiumToggle 
+                                    icon={Bell} 
+                                    title="Government Jobs" 
+                                    description="Receive push alerts for SSC, UPSC, Banking, etc"
+                                    value={value}
+                                    position="last"
+                                    onValueChange={(v) => { onChange(v); updatePref({ governmentJobs: v }); }}
+                                />
+                            )}
+                        />
+                    </PremiumToggleGroup>
 
                     <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Preferences</Text>
                     <Controller

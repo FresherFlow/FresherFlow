@@ -15,6 +15,7 @@ interface Props {
   onPress: () => void;
   onSave?: (opportunity: Opportunity) => void;
   isSaved?: boolean;
+  isViewed?: boolean;
   index?: number;
 }
 
@@ -63,6 +64,7 @@ export const GovtJobCard = memo(({
   onPress,
   onSave,
   isSaved,
+  isViewed,
   index,
 }: Props) => {
   const { currentTheme } = useTheme();
@@ -91,6 +93,7 @@ export const GovtJobCard = memo(({
         }}
         style={styles.container}
       >
+        {/* Removed unreadDot */}
         <View style={styles.header}>
           <View style={styles.companyLogoRow}>
             <CompanyLogo
@@ -107,7 +110,16 @@ export const GovtJobCard = memo(({
                   {recruitingBody}
                 </Text>
               </View>
-              <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={2}>
+              <Text 
+                style={[
+                  styles.title, 
+                  { 
+                    color: isViewed ? alpha(currentTheme.colors.text, 0.8) : currentTheme.colors.text,
+                    fontWeight: isViewed ? '700' : '900'
+                  }
+                ]} 
+                numberOfLines={2}
+              >
                 {opportunity.title}
               </Text>
             </View>
@@ -188,6 +200,7 @@ export const GovtJobCard = memo(({
 function propsAreEqual(prevProps: Props, nextProps: Props) {
   return prevProps.opportunity.id === nextProps.opportunity.id &&
          prevProps.isSaved === nextProps.isSaved &&
+         prevProps.isViewed === nextProps.isViewed &&
          prevProps.index === nextProps.index;
 }
 
@@ -199,6 +212,7 @@ const styles = StyleSheet.create({
   container: {
     padding: SPACING.md,
   },
+
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

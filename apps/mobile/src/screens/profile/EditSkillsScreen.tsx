@@ -196,7 +196,7 @@ const EditSkillsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <View style={styles.content}>
                         {!hasData && (
                             <View style={styles.heroSection}>
-                                <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>What can you{'\n'}deliver?</Text>
+                                <Text style={[styles.heroTitle, { color: currentTheme.colors.text }]}>Skills & Expertise</Text>
                                 <Text style={[styles.heroSub, { color: currentTheme.colors.textMuted }]}>
                                     Add your skills and availability. More signals = better matches.
                                 </Text>

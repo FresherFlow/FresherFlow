@@ -51,7 +51,7 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
     const [updateMetadata, setUpdateMetadata] = useState<{
         version: string;
         createdAt: string;
-        changelog: string[];
+        message: string;
     } | null>(null);
 
     // Reanimated Spinner rotation
@@ -98,19 +98,14 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
 
         // Simulation Block — only in true Expo Go / metro __DEV__ mode, NOT standalone APKs
         if (isSimulated) {
-            console.log('[OTA] Dev mode detected. Mocking update check...');
+            if (__DEV__) { console.log('[OTA] Dev mode detected. Mocking update check...') }
             setTimeout(() => {
                 stopSpinner();
                 setStatus('available');
                 setUpdateMetadata({
                     version: `${Constants.expoConfig?.version || appVersion}-ota (simulated)`,
                     createdAt: new Date().toLocaleDateString(undefined, { dateStyle: 'medium' }),
-                    changelog: [
-                        '⚡ High-Performance profile MMKV initialization.',
-                        '🚀 Absolute 0ms local auth gate transition logic.',
-                        '📦 Persistent offline Job Tracker status queuing.',
-                        '🎨 Refined ultra-compact claimed handles badge card.',
-                    ]
+                    message: 'Simulated OTA update: Optimized local auth gate transitions and persistent offline queues.'
                 });
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             }, 2000);
@@ -142,11 +137,7 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
                 setUpdateMetadata({
                     version: manifest?.id ? `${version} (${manifest.id.substring(0, 8)})` : version,
                     createdAt: createdAt,
-                    changelog: [
-                        '⚡ Optimized React Query persist caches.',
-                        '🚀 High-fidelity zero-latency offline action queue sync.',
-                        '🛡️ Strengthened security identity mapping check.',
-                    ]
+                    message: manifest?.message || manifest?.extra?.eas?.message || 'New update version released.'
                 });
                 void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
             } else {
@@ -337,16 +328,15 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
                             </View>
                         </View>
 
-                        {/* Changelog */}
-                        <Text style={[styles.changelogHeader, { color: currentTheme.colors.text }]}>What's New:</Text>
-                        <View style={styles.changelogList}>
-                            {updateMetadata.changelog.map((item, index) => (
-                                <View key={index} style={styles.changelogItem}>
-                                    <View style={[styles.bullet, { backgroundColor: currentTheme.colors.primary }]} />
-                                    <Text style={[styles.changelogText, { color: currentTheme.colors.textMuted }]}>{item}</Text>
-                                </View>
-                            ))}
-                        </View>
+                        {/* Update message */}
+                        {!!updateMetadata.message && (
+                            <View style={{ marginTop: 12 }}>
+                                <Text style={[styles.changelogHeader, { color: currentTheme.colors.text, marginBottom: 6 }]}>Release Notes:</Text>
+                                <Text style={[styles.changelogText, { color: currentTheme.colors.textMuted, fontSize: 13, lineHeight: 18 }]}>
+                                    {updateMetadata.message}
+                                </Text>
+                            </View>
+                        )}
                     </SurfaceCard>
                 )}
 
@@ -426,7 +416,7 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
                             try {
                                 await Updates.reloadAsync();
                             } catch (err) {
-                                console.warn('[OTA] Reload failed:', err);
+                                if (__DEV__) { console.warn('[OTA] Reload failed:', err) }
                             }
                         }
                     }
