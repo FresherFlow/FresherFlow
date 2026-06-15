@@ -41,18 +41,20 @@ export function UIProvider({ children }: { children: ReactNode }) {
   }, [tabBarTranslateY]);
 
   const hideTabBar = React.useCallback(() => {
-    Animated.timing(tabBarTranslateY, {
+    Animated.spring(tabBarTranslateY, {
       toValue: 100,
-      duration: 300,
       useNativeDriver: true,
+      bounciness: 0,
+      speed: 20,
     }).start();
   }, [tabBarTranslateY]);
 
   const showTabBar = React.useCallback(() => {
-    Animated.timing(tabBarTranslateY, {
+    Animated.spring(tabBarTranslateY, {
       toValue: 0,
-      duration: 300,
       useNativeDriver: true,
+      bounciness: 0,
+      speed: 20,
     }).start();
   }, [tabBarTranslateY]);
 

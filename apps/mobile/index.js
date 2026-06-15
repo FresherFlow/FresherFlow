@@ -9,4 +9,18 @@ messaging().setBackgroundMessageHandler(async remoteMessage => {
   console.log('[FCM] Message handled in the background!', remoteMessage);
 });
 
+// Show a local notification when an FCM data/notification message arrives while the app is foregrounded
+messaging().onMessage(async remoteMessage => {
+  const { Notifications } = require('expo-notifications');
+  await Notifications.scheduleNotificationAsync({
+    content: {
+      title: remoteMessage.notification?.title ?? remoteMessage.data?.title ?? 'FresherFlow',
+      body:  remoteMessage.notification?.body  ?? remoteMessage.data?.body  ?? '',
+      data:  remoteMessage.data ?? {},
+      sound: 'default',
+    },
+    trigger: null, // deliver immediately
+  });
+});
+
 registerRootComponent(App);

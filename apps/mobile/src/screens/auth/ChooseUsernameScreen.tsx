@@ -31,10 +31,10 @@ import { generateCdnSignature } from '@/utils/cdnSignature';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChooseUsername' | 'ProfileChooseUsername'>;
 
-export const ChooseUsernameScreen: React.FC<Props> = ({ route, navigation }) => {
+export const ChooseUsernameScreen: React.FC<Props & { isOnboarding?: boolean }> = ({ route, navigation, isOnboarding: propIsOnboarding }) => {
     const { currentTheme } = useTheme();
-    const { user, skipUsernameSetup, isSyncing, updateUser, skipUsername } = useAuthStore();
-    const isOnboarding = route.params?.isOnboarding;
+    const { user, skipUsernameSetup, isSyncing, updateUser } = useAuthStore();
+    const isOnboarding = propIsOnboarding ?? route.params?.isOnboarding;
     
     const [username, setUsername] = useState('');
     const [isChecking, setIsChecking] = useState(false);
@@ -309,30 +309,7 @@ export const ChooseUsernameScreen: React.FC<Props> = ({ route, navigation }) => 
                         )}
                     </TouchableOpacity>
 
-                    {!isKeyboardVisible && (
-                        <TouchableOpacity
-                            style={styles.skipBtn}
-                            onPress={() => {
-                            if (isSkipping) return;
-                            setIsSkipping(true);
-                            haptic.medium();
-                            if (navigation.canGoBack()) {
-                                navigation.goBack();
-                            } else {
-                                skipUsername();
-                            }
-                        }}
-                        disabled={isClaiming || isSkipping}
-                    >
-                        {isSkipping ? (
-                            <ActivityIndicator size="small" color={currentTheme.colors.primary} />
-                        ) : (
-                            <Text style={[styles.skipBtnText, { color: currentTheme.colors.textMuted }]}>
-                                Skip for now
-                            </Text>
-                        )}
-                    </TouchableOpacity>
-                    )}
+
                 </View>
             </KeyboardAvoidingView>
         </Screen>

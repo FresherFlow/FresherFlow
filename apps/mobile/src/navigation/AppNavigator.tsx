@@ -1,5 +1,5 @@
-import React, { useRef, useEffect } from 'react';
-import { Platform, Animated, View, StyleSheet, TouchableOpacity, Text, ActivityIndicator } from 'react-native';
+import React, { useRef, useEffect, useCallback } from 'react';
+import { Platform, Animated, View, StyleSheet, Pressable, Text, ActivityIndicator } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Home, Compass, PlusCircle, Bookmark, User } from 'lucide-react-native';
@@ -27,6 +27,7 @@ import FeedTabsPreferencesScreen from '@/screens/settings/FeedTabsPreferencesScr
 import EditEducationScreen from '@/screens/profile/EditEducationScreen';
 import EditSkillsScreen from '@/screens/profile/EditSkillsScreen';
 import EditPreferencesScreen from '@/screens/profile/EditPreferencesScreen';
+import EditDemographicsScreen from '@/screens/profile/EditDemographicsScreen';
 import CareerProfileScreen from '@/screens/profile/CareerProfileScreen';
 import DashboardScreen from '@/screens/profile/DashboardScreen';
 import InviteScreen from '@/screens/social/InviteScreen';
@@ -48,6 +49,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // Prep Resources Screens
 import { ResourcesDirectoryScreen } from '@/screens/resources/ResourcesDirectoryScreen';
 import { ResourceGroupDetailScreen } from '@/screens/resources/ResourceGroupDetailScreen';
+import { ResourceCollectionDetailScreen } from '@/screens/resources/ResourceCollectionDetailScreen';
 
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -56,6 +58,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useSectorStore } from '@/store/useSectorStore';
 import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
 import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { getString, setString } from '@/utils/storage';
 
 import { RootStackParamList } from './types';
 export type { RootStackParamList };
@@ -73,10 +76,10 @@ const TabIcon = React.memo(({ focused, color, IconComponent }: {
 
   useEffect(() => {
     Animated.spring(scaleAnim, {
-      toValue: focused ? 1.2 : 1,
+      toValue: focused ? 1.12 : 1,
       useNativeDriver: true,
-      friction: 8,
-      tension: 100,
+      bounciness: 0,
+      speed: 40,
     }).start();
   }, [focused]);
 
@@ -144,7 +147,7 @@ const ProfileStackNav = createNativeStackNavigator<RootStackParamList>();
 
 const ProfileStack = () => (
   <ScreenErrorBoundary>
-    <ProfileStackNav.Navigator screenOptions={{ headerShown: false, animation: 'fade' }}>
+    <ProfileStackNav.Navigator screenOptions={{ headerShown: false, animation: 'none' }}>
       <ProfileStackNav.Screen name="ProfileMain" component={SettingsScreen} />
       <ProfileStackNav.Screen name="Appearance" component={AppearanceScreen} />
       <ProfileStackNav.Screen name="AppPreferences" component={AppPreferencesScreen} />
@@ -155,7 +158,7 @@ const ProfileStack = () => (
   </ScreenErrorBoundary>
 );
 
-const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => {
+const CustomTabBar = React.memo(({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { currentTheme } = useTheme();
   const { tabBarTranslateY, isKeyboardVisible } = useUI();
 
@@ -176,6 +179,15 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
       <View style={styles.tabBarInner}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
+
+          // Support hiding tabs by checking if tabBarButton is overridden to return null
+          if (options.tabBarButton) {
+            const renderBtn = options.tabBarButton;
+            if (typeof renderBtn === 'function' && renderBtn({} as any) === null) {
+              return null;
+            }
+          }
+
           const label =
             typeof options.tabBarLabel === 'string'
               ? options.tabBarLabel
@@ -204,11 +216,11 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
           if (route.name === 'Profile') Icon = User;
 
           return (
-            <TouchableOpacity
+            <Pressable
               key={route.key}
               onPress={onPress}
               style={styles.tabItem}
-              activeOpacity={0.7}
+              hitSlop={8}
             >
               <View>
                 <TabIcon
@@ -223,13 +235,13 @@ const CustomTabBar = ({ state, descriptors, navigation }: BottomTabBarProps) => 
               ]}>
                 {label}
               </Text>
-            </TouchableOpacity>
+            </Pressable>
           );
         })}
       </View>
     </Animated.View>
   );
-};
+});
 
 const renderTabBar = (props: BottomTabBarProps) => <CustomTabBar {...props} />;
 
@@ -242,12 +254,43 @@ const TabNavigator = () => {
       screenOptions={{ 
         headerShown: false,
         freezeOnBlur: true,
+        lazy: false,
       }}
     >
-      {!hiddenTabs.includes('Feed') && <Tab.Screen name="Feed" component={FeedStack} options={{ tabBarLabel: 'Feed' }} />}
-      {!hiddenTabs.includes('Explore') && <Tab.Screen name="Explore" component={ExploreStack} options={{ tabBarLabel: 'Explore' }} />}
-      {!hiddenTabs.includes('Share') && <Tab.Screen name="Share" component={ShareStack} options={{ tabBarLabel: 'Share' }} />}
-      {!hiddenTabs.includes('Saved') && <Tab.Screen name="Saved" component={SavedStack} options={{ tabBarLabel: 'Saved' }} />}
+      {/* Keep all screens always mounted to avoid remount cost when toggling visibility.
+          Tab visibility is controlled by hiding the tab bar button instead of removing the screen. */}
+      <Tab.Screen
+        name="Feed"
+        component={FeedStack}
+        options={{
+          tabBarLabel: 'Feed',
+          tabBarButton: hiddenTabs.includes('Feed') ? () => null : undefined,
+        }}
+      />
+      <Tab.Screen
+        name="Explore"
+        component={ExploreStack}
+        options={{
+          tabBarLabel: 'Explore',
+          tabBarButton: hiddenTabs.includes('Explore') ? () => null : undefined,
+        }}
+      />
+      <Tab.Screen
+        name="Share"
+        component={ShareStack}
+        options={{
+          tabBarLabel: 'Share',
+          tabBarButton: hiddenTabs.includes('Share') ? () => null : undefined,
+        }}
+      />
+      <Tab.Screen
+        name="Saved"
+        component={SavedStack}
+        options={{
+          tabBarLabel: 'Saved',
+          tabBarButton: hiddenTabs.includes('Saved') ? () => null : undefined,
+        }}
+      />
       <Tab.Screen name="Profile" component={ProfileStack} options={{ tabBarLabel: 'Profile' }} />
     </Tab.Navigator>
   );
@@ -300,7 +343,10 @@ const styles = StyleSheet.create({
 // Auth is a modal inside here — guest users can navigate to it contextually.
 const AppStack = ({ initialRouteName = 'Main' }: { initialRouteName?: keyof RootStackParamList }) => (
   <Stack.Navigator
-    screenOptions={{ headerShown: false, animation: 'fade' }}
+    screenOptions={{ 
+      headerShown: false, 
+      animation: 'none' 
+    }}
     initialRouteName={initialRouteName}
   >
     <Stack.Screen name="Main" component={TabNavigator} />
@@ -316,6 +362,7 @@ const AppStack = ({ initialRouteName = 'Main' }: { initialRouteName?: keyof Root
     <Stack.Screen name="EditEducation" component={EditEducationScreen} />
     <Stack.Screen name="EditSkills" component={EditSkillsScreen} />
     <Stack.Screen name="EditPreferences" component={EditPreferencesScreen} />
+    <Stack.Screen name="EditDemographics" component={EditDemographicsScreen} />
     <Stack.Screen name="CareerProfile" component={CareerProfileScreen} />
     <Stack.Screen name="MyShares" component={MySharesScreen} />
     <Stack.Screen name="FollowedCompanies" component={FollowedCompaniesScreen} />
@@ -331,6 +378,7 @@ const AppStack = ({ initialRouteName = 'Main' }: { initialRouteName?: keyof Root
     <Stack.Screen name="OTAUpdates" component={OTAUpdatesScreen} />
     <Stack.Screen name="ResourcesDirectory" component={ResourcesDirectoryScreen} />
     <Stack.Screen name="ResourceGroupDetail" component={ResourceGroupDetailScreen} />
+    <Stack.Screen name="ResourceCollectionDetail" component={ResourceCollectionDetailScreen} />
     {/* Auth is a contextual modal — anonymous users land here when they try an auth-gated action */}
     <Stack.Screen name="Auth" component={AuthScreen} options={{ presentation: 'modal' }} />
   </Stack.Navigator>
@@ -361,13 +409,18 @@ export const AppNavigator = () => {
   React.useEffect(() => {
     hydrateSector();
     hydratePrefs();
-    // Check onboarding state in the background
-    AsyncStorage.getItem('ff_onboarding_completed').then((val) => {
+    // Read onboarding flag synchronously from MMKV (migrated from AsyncStorage)
+    const val = getString('ff_onboarding_completed');
+    if (val !== null && val !== undefined) {
       setIsOnboardingCompleted(val === 'true');
-    }).catch(() => {
-      // If AsyncStorage fails, assume they need to onboard just to be safe
-      setIsOnboardingCompleted(false);
-    });
+    } else {
+      // Async fallback for users who set the flag before the MMKV migration
+      AsyncStorage.getItem('ff_onboarding_completed').then((asyncVal) => {
+        setIsOnboardingCompleted(asyncVal === 'true');
+        // Migrate to MMKV for future reads
+        if (asyncVal !== null) setString('ff_onboarding_completed', asyncVal);
+      }).catch(() => setIsOnboardingCompleted(false));
+    }
   }, [hydrateSector, hydratePrefs]);
 
   // Block rendering until auth store, sector, prefs, and onboarding state are resolved

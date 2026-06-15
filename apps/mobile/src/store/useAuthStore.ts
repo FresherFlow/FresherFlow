@@ -37,7 +37,6 @@ interface AuthState {
   logout: () => Promise<void>;
   clearAuth: () => void;
   updateUser: (user: Partial<User>) => void;
-  skipUsername: () => void;
   ensureSession: () => Promise<void>;
 }
 
@@ -45,14 +44,12 @@ interface AuthState {
 const getCachedUserSync = (): User | null => {
   try {
     const raw = getString('ff_cached_user_profile_v3');
-    console.log('[Auth] MMKV getCachedUserSync raw payload:', raw);
     if (raw) {
       const parsed = JSON.parse(raw);
-      console.log('[Auth] MMKV getCachedUserSync parsed profile:', parsed);
       if (parsed && parsed.id) return parsed;
     }
   } catch (e) {
-    console.error('[Auth] MMKV getCachedUserSync failed:', e);
+    if (__DEV__) console.error('[Auth] MMKV getCachedUserSync failed:', e);
   }
   return null;
 };
@@ -78,7 +75,6 @@ export const useAuthStore = create<AuthState>()(
       });
     },
     setAuth: (user, token) => {
-      console.log('[Auth] setAuth called. Saving to MMKV...', user);
       const currentState = get();
       const canKeepLocalUsername =
         !currentState.user?.isAnonymous &&
@@ -130,25 +126,19 @@ export const useAuthStore = create<AuthState>()(
       });
     },
     setFirebaseUser: (fbUser) => {
-      console.log('[Auth] setFirebaseUser listener triggered. fbUser UID:', fbUser?.uid || 'null');
       set((state) => {
         state.firebaseUser = fbUser;
         state.isAnonymous = fbUser?.isAnonymous ?? false;
         state.isSyncing = false;
 
         if (!fbUser) {
-            // Keep the real, active cached user session on offline boot to prevent automated logouts
             if (!state.user || state.user.isOptimistic) {
-                console.log('[Auth] No Firebase user and no active real cached session. Clearing store.');
                 state.user = null;
                 state.token = null;
                 state.isAuthenticated = false;
-            } else {
-                console.log('[Auth] Offline/boot transient null. Preserving active cached session:', state.user.username);
             }
         } else if (fbUser.isAnonymous) {
             if (!state.user || state.user.id !== fbUser.uid || !state.user.isAnonymous) {
-                console.log('[Auth] Active Firebase session is anonymous. Using guest session:', fbUser.uid);
                 if (state.user && !state.user.isAnonymous) {
                     state.token = null;
                     remove('ff_cached_user_profile_v3');
@@ -193,7 +183,7 @@ export const useAuthStore = create<AuthState>()(
                     isOptimistic: cached.user.isOptimistic ?? !cached.user.username,
                 }
                 : fallbackUser;
-            console.log('[Auth] Hydrating real Firebase user from onboarding cache:', cachedUser.username || 'no-handle');
+            if (__DEV__) console.log('[Auth] Hydrating real Firebase user from onboarding cache:', cachedUser.username || 'no-handle');
             state.user = cachedUser;
             state.isAuthenticated = true;
             if (cached?.skipUsernameSetup) {
@@ -231,7 +221,7 @@ export const useAuthStore = create<AuthState>()(
                     });
             }
         } else {
-            console.log('[Auth] Preserving fully-hydrated cached user profile:', state.user.username);
+            if (__DEV__) console.log('[Auth] Preserving fully-hydrated cached user profile:', state.user.username);
         }
       });
     },
@@ -248,11 +238,11 @@ export const useAuthStore = create<AuthState>()(
     ensureSession: async () => {
         if (!isFirebaseAuthAvailable()) return;
         if (!auth().currentUser) {
-            console.log('[Auth] No session found on startup. Ensuring anonymous session...');
+            if (__DEV__) console.log('[Auth] No session found. Ensuring anonymous session...');
             try {
                 await auth().signInAnonymously();
             } catch (err) {
-                console.error('[Auth] Failed to sign in anonymously:', err);
+                if (__DEV__) console.error('[Auth] Failed to sign in anonymously:', err);
             }
         }
     },
@@ -275,13 +265,12 @@ export const useAuthStore = create<AuthState>()(
         }
         get().clearAuth();
       } catch (error) {
-        console.error('[Auth] Logout failed:', error);
+        if (__DEV__) { console.error('[Auth] Logout failed:', error) }
         // Still clear local auth even if firebase signout fails
         get().clearAuth();
       }
     },
     clearAuth: () => {
-      console.log('[Auth] clearAuth triggered. Wiping local MMKV profile cache.');
       Analytics.identify(null);
       void secureStorage.deleteItemAsync('ff_auth_token_v1');
       remove('ff_cached_user_profile_v3');
@@ -297,7 +286,6 @@ export const useAuthStore = create<AuthState>()(
       });
     },
     updateUser: (updatedFields) => {
-      console.log('[AuthStore] updateUser called with:', updatedFields);
       set((state) => {
         if (state.user) {
           state.user = { ...state.user, ...updatedFields };
@@ -314,27 +302,7 @@ export const useAuthStore = create<AuthState>()(
         }
       });
     },
-    skipUsername: () => {
-      console.log('[AuthStore] skipUsername called');
-      void secureStorage.setItem('ff_skip_username_setup_v1', 'true');
-      set((state) => {
-        console.log('[AuthStore] Setting skipUsernameSetup to true in Zustand state');
-        state.skipUsernameSetup = true;
-        state.isSkipLoaded = true; // Prevents startup async read from overwriting this
-        if (state.user && !state.user.isAnonymous) {
-          writeOnboardingSnapshot(state.user.id, {
-            user: state.user,
-            profile: state.user.profile || readOnboardingSnapshot(state.user.id)?.profile || null,
-            skipUsernameSetup: true,
-          });
-          void writeFirebaseOnboardingRecord(state.firebaseUser, {
-            username: state.user.username,
-            fullName: state.user.fullName,
-            skipUsernameSetup: true,
-          });
-        }
-      });
-    },
+
   }))
 );
 
@@ -345,7 +313,7 @@ export const AuthManager = {
     const startupTimeout = setTimeout(() => {
       const state = useAuthStore.getState();
       if (state.isSyncing || !state.isSkipLoaded) {
-        console.warn('[Auth] Startup timeout fired. Force-unblocking app.');
+        if (__DEV__) { console.warn('[Auth] Startup timeout fired. Force-unblocking app.') }
         useAuthStore.setState({ isSyncing: false, isSkipLoaded: true });
       }
     }, 8000);
@@ -356,16 +324,18 @@ export const AuthManager = {
     // 0. Load the JWT token locally so the app can start making API calls immediately without a backend handshake
     void secureStorage.getItem('ff_auth_token_v1').then(token => {
       if (token) {
-        console.log('[Auth] Restored JWT token from secureStorage');
+        if (__DEV__) { console.log('[Auth] Restored JWT token from secureStorage') }
         useAuthStore.setState({ token });
       }
     });
 
-    // 1. Asynchronous Hybrid Hydration Fallback
+    // 1. Asynchronous Hybrid Hydration Fallback (skipped if MMKV already has a real user)
     try {
       const currentStoreUser = useAuthStore.getState().user;
+      // EARLY EXIT: If MMKV already gave us a real, non-optimistic user skip AsyncStorage scan entirely.
+      // AsyncStorage.getAllKeys() is expensive on older Android — avoid it on every boot.
       if (!currentStoreUser || currentStoreUser.isOptimistic) {
-        console.log('[Auth] Profile empty or optimistic. Running async hybrid hydration fallback...');
+        if (__DEV__) console.log('[Auth] Profile empty or optimistic. Running async hybrid hydration fallback...');
         const keys = await AsyncStorage.getAllKeys();
         const targetKey = keys.find((k: string) => k.endsWith('ff_cached_user_profile_v3'));
         if (targetKey) {
@@ -373,7 +343,7 @@ export const AuthManager = {
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed && parsed.id) {
-              console.log('[Auth] Hybrid Hydration fallback successful:', parsed.username);
+              if (__DEV__) console.log('[Auth] Hybrid Hydration fallback successful:', parsed.username);
               useAuthStore.setState({
                 user: parsed,
                 isAuthenticated: !parsed.isAnonymous,
@@ -385,7 +355,7 @@ export const AuthManager = {
         }
       }
     } catch (err) {
-      console.warn('[Auth] Hybrid Hydration fallback failed:', err);
+      if (__DEV__) console.warn('[Auth] Hybrid Hydration fallback failed:', err);
     }
 
     // 2. Load pending referral code
@@ -408,7 +378,7 @@ export const AuthManager = {
     });
 
     if (!isFirebaseAuthAvailable()) {
-      console.warn('[Auth] Firebase native auth unavailable. Skipping Firebase listeners.');
+      if (__DEV__) { console.warn('[Auth] Firebase native auth unavailable. Skipping Firebase listeners.') }
       useAuthStore.setState({ isSyncing: false, isSkipLoaded: true });
       clearTimeout(startupTimeout);
       return;
@@ -426,16 +396,11 @@ export const AuthManager = {
           // Only initiate automatic guest session if onboarding has already been completed in the past
           AsyncStorage.getItem('ff_onboarding_completed').then((completed) => {
             if (completed === 'true') {
-              console.log('[Auth] No active session restored. Initiating automatic guest session...');
               void useAuthStore.getState().ensureSession();
-            } else {
-              console.log('[Auth] First run / Onboarding active. Bypassing automatic guest session to let user authenticate.');
             }
-          }).catch(() => {
-            console.log('[Auth] Error reading onboarding status. Bypassing automatic guest session.');
-          });
+          }).catch(() => {});
         } else {
-          console.log('[Auth] Restored active session on boot:', fbUser.uid, fbUser.isAnonymous ? '(Guest)' : '(Member)');
+          if (__DEV__) console.log('[Auth] Restored active session on boot:', fbUser.uid, fbUser.isAnonymous ? '(Guest)' : '(Member)');
         }
       }
     });

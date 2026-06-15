@@ -95,6 +95,7 @@ export const GET_CATEGORY_SHARD_URL = (id: string) => `${CDN_URL}/categories/${i
 export const EDUCATION_METADATA_URL = `${CDN_URL}/education.json`;
 export const SKILLS_METADATA_URL = `${CDN_URL}/skills.json`;
 export const CITIES_METADATA_URL = `${CDN_URL}/cities.json`;
+export const COMPANIES_METADATA_URL = `${CDN_URL}/companies.json`;
 export const RESOURCES_FEED_URL = `${CDN_URL}/resources-feed.json`;
 export const GOVERNMENT_FEED_URL = `${CDN_URL}/government-feed.json`;
 

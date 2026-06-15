@@ -4,6 +4,7 @@ import {
     getUnseenCount, 
     markLocalAlertAsRead, 
     markAllLocalAlertsAsRead, 
+    clearAllLocalAlerts,
     deleteLocalAlert,
     processNextDripAlertIfNeeded,
     LocalAlert
@@ -23,6 +24,7 @@ interface NotificationState {
     fetchUnreadCount: () => Promise<void>;
     markRead: (id: string) => Promise<void>;
     markAllRead: (sector?: 'PRIVATE' | 'GOVERNMENT') => Promise<void>;
+    clearAll: (sector?: 'PRIVATE' | 'GOVERNMENT') => Promise<void>;
     deleteAlert: (id: string) => Promise<void>;
     hydrate: () => Promise<void>;
     startPolling: (userId?: string) => void;
@@ -76,7 +78,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                 lastFetched: Date.now()
             });
         } catch (error) {
-            console.error('[NotificationStore] fetchAlerts failed:', error);
+            if (__DEV__) { console.error('[NotificationStore] fetchAlerts failed:', error) }
             set({ loading: false, refreshing: false });
         }
     },
@@ -94,7 +96,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                 unseenFeedCount: unseenFeed
             });
         } catch (error) {
-            console.error('[NotificationStore] fetchUnreadCount failed:', error);
+            if (__DEV__) { console.error('[NotificationStore] fetchUnreadCount failed:', error) }
         }
     },
 
@@ -106,7 +108,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
             await markLocalAlertAsRead(id);
         } catch (error) {
-            console.error('[NotificationStore] markRead failed:', error);
+            if (__DEV__) { console.error('[NotificationStore] markRead failed:', error) }
         }
     },
 
@@ -123,7 +125,27 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
             await markAllLocalAlertsAsRead(sector);
         } catch (error) {
-            console.error('[NotificationStore] markAllRead failed:', error);
+            if (__DEV__) { console.error('[NotificationStore] markAllRead failed:', error) }
+        }
+    },
+
+    clearAll: async (sector?: 'PRIVATE' | 'GOVERNMENT') => {
+        try {
+            const currentAlerts = get().alerts;
+            const updated = currentAlerts.filter(a => {
+                if (!sector) return false;
+                const isGov = a.opportunity.type === 'GOVERNMENT';
+                if (sector === 'GOVERNMENT') {
+                    return !isGov;
+                } else {
+                    return isGov;
+                }
+            });
+            set({ alerts: updated, ...getCounts(updated) });
+
+            await clearAllLocalAlerts(sector);
+        } catch (error) {
+            if (__DEV__) { console.error('[NotificationStore] clearAll failed:', error) }
         }
     },
 
@@ -135,7 +157,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
 
             await deleteLocalAlert(id);
         } catch (error) {
-            console.error('[NotificationStore] deleteAlert failed:', error);
+            if (__DEV__) { console.error('[NotificationStore] deleteAlert failed:', error) }
         }
     },
 
@@ -155,7 +177,7 @@ export const useNotificationStore = create<NotificationState>((set, get) => ({
                 loading: false
             });
         } catch (error) {
-            console.error('[NotificationStore] hydrate failed:', error);
+            if (__DEV__) { console.error('[NotificationStore] hydrate failed:', error) }
             set({ loading: false });
         }
     },

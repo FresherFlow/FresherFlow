@@ -21,6 +21,7 @@ export type RootStackParamList = {
   Auth: { prefilledEmail?: string; isOnboarding?: boolean } | undefined;
   Main: undefined;
   EditEducation: { startInEditMode?: boolean; isOnboarding?: boolean } | undefined;
+  EditDemographics: { isOnboarding?: boolean } | undefined;
   EditSkills: { startInEditMode?: boolean; isOnboarding?: boolean } | undefined;
   EditPreferences: { startInEditMode?: boolean; isOnboarding?: boolean } | undefined;
   CareerProfile: { isOnboarding?: boolean } | undefined;
@@ -46,6 +47,7 @@ export type RootStackParamList = {
   FollowedCompanies: undefined;
   Onboarding: undefined;
   SkillSearch: { skill: string };
-  ResourcesDirectory: undefined;
+  ResourcesDirectory: { filterSkills?: string[] } | undefined;
   ResourceGroupDetail: { groupType: 'COMPANY' | 'SKILL'; groupId: string; groupName: string; logoUrl?: string };
+  ResourceCollectionDetail: { collectionId: string; collectionTitle: string };
 };

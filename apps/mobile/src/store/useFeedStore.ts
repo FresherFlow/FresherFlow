@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Opportunity, ActionType } from '@fresherflow/types';
 import { useNotificationStore } from './useNotificationStore';
-import { saveFeedCache, readFeedCache, saveLastSyncTimestamp, readTrackerCacheSync } from '@/utils/cache/offlineCache';
+import { saveFeedCache, readFeedCache, saveLastSyncTimestamp, readTrackerCacheSync, readFeedCacheSync } from '@/utils/cache/offlineCache';
 import { diffAndNotify } from '@/utils/cache/localNotifications';
 import { getLocalProfile } from '@/utils/cache/localProfile';
 import { calculateMatchScore } from '@/utils/matchScoring';
@@ -9,18 +9,51 @@ import { useSectorStore } from './useSectorStore';
 import { generateCdnSignature, generateVersionedCdnSignature } from '@/utils/cdnSignature';
 import axios from 'axios';
 import { BOOTSTRAP_FEED_URL, FEED_VERSION_URL, GOVERNMENT_FEED_URL, getApiUrlForSector } from '@/config/api';
-import { getString, setString } from '@/utils/storage';
-import { getSeenIds, getOpenedIds } from '@/utils/cache/seenJobs';
+import { getString, setString, storage } from '@/utils/storage';
+import { getSeenIds, getOpenedIds, getSeenIdsSync, getOpenedIdsSync, markJobAsOpened, markJobAsSeen } from '@/utils/cache/seenJobs';
 import { getRecentSearchKeywords } from '@/utils/userBehavior';
 import { Image as ExpoImage } from 'expo-image';
 import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
-import { storage } from '@repo/frontend-core';
 import { useAuthStore } from './useAuthStore';
 import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { storage as coreStorage } from '@repo/frontend-core';
 
 const fsWithDir = FileSystem as any;
+
+// Resolved IDs are persisted in MMKV to survive app restarts,
+// preventing redundant network requests on every cold boot.
+const RESOLVED_IDS_KEY = 'ff_logo_resolved_ids_v1';
+const _loadResolvedIds = (): Set<string> => {
+    try {
+        const raw = getString(RESOLVED_IDS_KEY);
+        if (raw) return new Set<string>(JSON.parse(raw));
+    } catch {}
+    return new Set<string>();
+};
+const resolvedIds: Set<string> = _loadResolvedIds();
+const _persistResolvedIds = () => {
+    try {
+        setString(RESOLVED_IDS_KEY, JSON.stringify(Array.from(resolvedIds)));
+    } catch {}
+};
+
+let bootstrapRetryScheduled = false;
+
+const cacheLogo = (key: string, value: string) => {
+    try {
+        storage.set(key, value);
+        const rawKeys = storage.getString('ff_logo_cache_keys_v1');
+        const keys = rawKeys ? JSON.parse(rawKeys) : [];
+        if (!keys.includes(key)) {
+            keys.push(key);
+            storage.set('ff_logo_cache_keys_v1', JSON.stringify(keys));
+        }
+    } catch {}
+    try {
+        void coreStorage.setItem(key, value);
+    } catch {}
+};
 
 export const getLogoCacheKey = (opp: Opportunity): string => {
     const name = opp.company;
@@ -52,16 +85,14 @@ export const getLogoCacheKey = (opp: Opportunity): string => {
     return candidates.join('|');
 };
 
-const resolvedIds = new Set<string>();
-let bootstrapRetryScheduled = false;
-
 const preResolveAndCacheLogos = async (opportunities: Opportunity[]) => {
     const toResolve = opportunities.filter(o => !resolvedIds.has(o.id));
     if (toResolve.length === 0) return;
     
     toResolve.forEach(o => resolvedIds.add(o.id));
+    _persistResolvedIds();
     
-    console.log(`[useFeedStore] Starting background logo pre-resolution engine for ${toResolve.length} opportunities...`);
+    if (__DEV__) console.log(`[useFeedStore] Logo engine: resolving ${toResolve.length} items...`);
     
     // Process in batches of 5 to avoid network/bridge congestion
     for (let i = 0; i < toResolve.length; i += 5) {
@@ -74,7 +105,7 @@ const preResolveAndCacheLogos = async (opportunities: Opportunity[]) => {
                 const candidates = isNameFallback ? [] : cacheKey.split('|');
                 if (candidates.length === 0) return;
 
-                const cachedValue = await storage.getItem(`logo_${cacheKey}`);
+                const cachedValue = storage.getString(`logo_${cacheKey}`);
                 if (cachedValue) {
                     if (cachedValue.startsWith('file://')) {
                         try {
@@ -105,7 +136,7 @@ const preResolveAndCacheLogos = async (opportunities: Opportunity[]) => {
                             }
 
                             if (Platform.OS === 'web' || !fsWithDir.documentDirectory) {
-                                await storage.setItem(`logo_${cacheKey}`, url);
+                                cacheLogo(`logo_${cacheKey}`, url);
                                 void ExpoImage.prefetch([url]).catch(() => {});
                                 break;
                             }
@@ -116,10 +147,10 @@ const preResolveAndCacheLogos = async (opportunities: Opportunity[]) => {
 
                             try {
                                 const { uri } = await fsWithDir.downloadAsync(url, localUri);
-                                await storage.setItem(`logo_${cacheKey}`, uri);
+                                cacheLogo(`logo_${cacheKey}`, uri);
                                 void ExpoImage.prefetch([uri]).catch(() => {});
                             } catch (e) {
-                                await storage.setItem(`logo_${cacheKey}`, url);
+                                cacheLogo(`logo_${cacheKey}`, url);
                                 void ExpoImage.prefetch([url]).catch(() => {});
                             }
                             break;
@@ -129,11 +160,11 @@ const preResolveAndCacheLogos = async (opportunities: Opportunity[]) => {
                     }
                 }
             } catch (err) {
-                console.warn('[useFeedStore] Logo engine pre-resolution skipped for opportunity:', err);
+                if (__DEV__) { console.warn('[useFeedStore] Logo engine pre-resolution skipped for opportunity:', err) }
             }
         }));
     }
-    console.log('[useFeedStore] Background logo pre-resolution engine finished.');
+    if (__DEV__) console.log('[useFeedStore] Logo engine finished.');
 };
 
 interface FeedStoreState {
@@ -156,21 +187,69 @@ interface FeedStoreState {
     computeScoringAndCache: (opportunities: Opportunity[]) => Promise<void>;
     recalculateScores: () => Promise<void>;
     refreshBehavioralData: () => Promise<void>;
+    markAsOpened: (id: string) => Promise<void>;
 }
 
+// Synchronously read initial cache & behavioral state from MMKV on startup
+const getInitialFeedState = () => {
+    try {
+        const storedSector = getString('fresherflow_active_sector') || 'PRIVATE';
+        const cachedPrivate = readFeedCacheSync('PRIVATE');
+        const cachedGovt = readFeedCacheSync('GOVERNMENT');
+        const privateItems = cachedPrivate?.items || [];
+        const govtItems = cachedGovt?.items || [];
+        const activeItems = storedSector === 'GOVERNMENT' ? govtItems : privateItems;
+
+        const seen = getSeenIdsSync();
+        const opened = getOpenedIdsSync();
+        const applied = new Set<string>();
+        try {
+            const trackerCache = readTrackerCacheSync();
+            if (trackerCache?.items) {
+                (trackerCache.items as Array<{ actionType: ActionType; opportunityId?: string; opportunity?: { id?: string } }>).forEach((item) => {
+                    if (item?.actionType === ActionType.APPLIED) {
+                        const id = item?.opportunityId || item?.opportunity?.id;
+                        if (id) applied.add(id);
+                    }
+                });
+            }
+        } catch {}
+
+        const keywords = getRecentSearchKeywords();
+
+        return {
+            cachedItems: activeItems,
+            privateCachedItems: privateItems,
+            govtCachedItems: govtItems,
+            seenIds: seen,
+            openedIds: opened,
+            appliedIds: applied,
+            recentKeywords: keywords,
+            isBootstrapping: activeItems.length === 0,
+            hasHydrated: true,
+        };
+    } catch (e) {
+        return {
+            cachedItems: [],
+            privateCachedItems: [],
+            govtCachedItems: [],
+            seenIds: new Set<string>(),
+            openedIds: new Set<string>(),
+            appliedIds: new Set<string>(),
+            recentKeywords: [],
+            isBootstrapping: true,
+            hasHydrated: false,
+        };
+    }
+};
+
+const initialFeedState = getInitialFeedState();
+
 export const useFeedStore = create<FeedStoreState>((set, get) => ({
-    cachedItems: [],
-    privateCachedItems: [],
-    govtCachedItems: [],
-    seenIds: new Set(),
-    openedIds: new Set(),
-    appliedIds: new Set(),
-    recentKeywords: [],
-    isBootstrapping: true,
+    ...initialFeedState,
     isSyncing: false,
     isRefreshing: false,
     syncError: null,
-    hasHydrated: false,
 
     cleanupOrphanedLogos: async () => {
         try {
@@ -181,22 +260,31 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
             cachedItems.forEach(opp => {
                 activeKeys.add(`logo_${getLogoCacheKey(opp)}`);
             });
-            // Clean MMKV storage
-            const allKeys = await AsyncStorage.getAllKeys();
-            const logoKeys = allKeys.filter(k => k.startsWith('logo_'));
+
+            // Read the tracked logo keys from MMKV
+            const rawKeys = storage.getString('ff_logo_cache_keys_v1');
+            const logoKeys: string[] = rawKeys ? JSON.parse(rawKeys) : [];
             
             const validFileUris = new Set<string>();
+            const remainingKeys: string[] = [];
             
             for (const key of logoKeys) {
                 if (!activeKeys.has(key)) {
-                    await AsyncStorage.removeItem(key);
+                    storage.delete(key);
+                    try {
+                        void coreStorage.removeItem(key);
+                    } catch {}
                 } else {
-                    const uri = await AsyncStorage.getItem(key);
+                    const uri = storage.getString(key);
                     if (uri && uri.startsWith('file://')) {
                         validFileUris.add(uri);
                     }
+                    remainingKeys.push(key);
                 }
             }
+            
+            // Save updated key list back to MMKV
+            storage.set('ff_logo_cache_keys_v1', JSON.stringify(remainingKeys));
             // Clean Document Directory
             const files = await fsWithDir.readDirectoryAsync(fsWithDir.documentDirectory);
             const logoFiles = (files as string[]).filter((f: string) => f.startsWith('logo_'));
@@ -208,11 +296,11 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
                     deleted++;
                 }
             }
-            if (deleted > 0) {
-                console.log(`[useFeedStore] Garbage collection removed ${deleted} orphaned logos from disk.`);
+            if (__DEV__ && deleted > 0) {
+                if (__DEV__) { console.log(`[useFeedStore] GC removed ${deleted} orphaned logos.`) }
             }
         } catch (e) {
-            console.warn('[useFeedStore] Logo cleanup failed:', e);
+            if (__DEV__) console.warn('[useFeedStore] Logo cleanup failed:', e);
         }
     },
 
@@ -238,7 +326,7 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
                 });
             }
         } catch (e) {
-            console.warn('[useFeedStore] Failed to parse tracker cache for applied IDs:', e);
+            if (__DEV__) { console.warn('[useFeedStore] Failed to parse tracker cache for applied IDs:', e) }
         }
 
         const keywords = getRecentSearchKeywords();
@@ -249,6 +337,22 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
             appliedIds: applied,
             recentKeywords: keywords
         });
+    },
+
+    markAsOpened: async (id: string) => {
+        // Optimistic update: dim the card immediately, then persist to disk
+        const nextOpened = new Set(get().openedIds);
+        nextOpened.add(id);
+        const nextSeen = new Set(get().seenIds);
+        nextSeen.add(id);
+        set({ openedIds: nextOpened, seenIds: nextSeen });
+
+        try {
+            await markJobAsOpened(id);
+            await markJobAsSeen(id);
+        } catch (e) {
+            if (__DEV__) { console.error('[useFeedStore] Failed to persist opened state:', e) }
+        }
     },
 
     computeScoringAndCache: async (opportunities: Opportunity[]) => {
@@ -303,21 +407,21 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
         if (scoredOpportunities.length > 0) {
             await saveFeedCache(scoredOpportunities, activeSector);
             
-            // 1. Pre-resolve the top 10 items in the background so feed renders instantly
-            void preResolveAndCacheLogos(scoredOpportunities.slice(0, 10));
-
-            // 2. Push to UI
+            // Push to UI first so the user sees content immediately
             if (activeSector === 'GOVERNMENT') {
                 set({ govtCachedItems: scoredOpportunities, cachedItems: scoredOpportunities });
             } else {
                 set({ privateCachedItems: scoredOpportunities, cachedItems: scoredOpportunities });
             }
             
-            // 3. Pre-resolve the remaining jobs in the background (silent)
-            void preResolveAndCacheLogos(scoredOpportunities.slice(10));
-
-            // 4. Run garbage collector to delete expired/orphaned logos
-            void get().cleanupOrphanedLogos();
+            // Defer logo resolution so it runs AFTER the UI renders (3s delay)
+            setTimeout(() => {
+                void preResolveAndCacheLogos(scoredOpportunities.slice(0, 10));
+                setTimeout(() => {
+                    void preResolveAndCacheLogos(scoredOpportunities.slice(10));
+                    void get().cleanupOrphanedLogos();
+                }, 2000);
+            }, 3000);
 
             void diffAndNotify(scoredOpportunities).then(() => {
                 void useNotificationStore.getState().fetchUnreadCount();
@@ -335,7 +439,7 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
         const lastSync = lastSyncStr ? parseInt(lastSyncStr, 10) : 0;
         const now = Date.now();
         
-        if (!force && now - lastSync < 300000) return;
+        if (!force && now - lastSync < 300000 && get().cachedItems.length > 0) return;
 
         if (isUserInitiated) {
             set({ isRefreshing: true });
@@ -357,7 +461,7 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
                     });
                     if (versionRes.data?.version) feedVersion = versionRes.data.version;
                 } catch (e) {
-                    console.warn('[mobile] Failed to fetch feed version, using timestamp:', e);
+                    if (__DEV__) { console.warn('[mobile] Failed to fetch feed version, using timestamp:', e) }
                     feedVersion = Math.floor(Date.now() / 300000).toString();
                 }
 
@@ -383,7 +487,7 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
                     });
                     if (versionRes.data?.version) feedVersion = versionRes.data.version;
                 } catch (e) {
-                    console.warn('[mobile] Failed to fetch feed version, using timestamp:', e);
+                    if (__DEV__) { console.warn('[mobile] Failed to fetch feed version, using timestamp:', e) }
                     feedVersion = Math.floor(Date.now() / 300000).toString();
                 }
 
@@ -409,7 +513,7 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
             }
         } catch (e) {
             const errMsg = (e as Error).message;
-            console.warn('[useFeedStore] Feed sync failed:', errMsg);
+            if (__DEV__) console.warn('[useFeedStore] Feed sync failed:', errMsg);
             set({ syncError: errMsg });
         } finally {
             set({ isSyncing: false, isRefreshing: false });
@@ -417,51 +521,13 @@ export const useFeedStore = create<FeedStoreState>((set, get) => ({
     },
 
     hydrate: async () => {
-        const { hasHydrated, performSync, refreshBehavioralData } = get();
-        if (hasHydrated) {
-            if (get().cachedItems.length === 0 && !get().isSyncing) {
-                void performSync(true);
-            }
-            return;
-        }
-
-        set({ isBootstrapping: true, hasHydrated: true });
-        try {
-            const [cachedPrivate, cachedGovt] = await Promise.all([
-                readFeedCache('PRIVATE'),
-                readFeedCache('GOVERNMENT'),
-                refreshBehavioralData()
-            ]);
-            const activeSector = useSectorStore.getState().sector || 'PRIVATE';
-            const privateItems = cachedPrivate?.items || [];
-            const govtItems = cachedGovt?.items || [];
-            const activeItems = activeSector === 'GOVERNMENT' ? govtItems : privateItems;
-
-            set({
-                privateCachedItems: privateItems,
-                govtCachedItems: govtItems,
-                cachedItems: activeItems,
-                isBootstrapping: false
-            });
-
-            // If we have cache for current sector, perform sync in the background so it doesn't block the UI
-            if (activeItems.length > 0) {
-                void performSync();
-            } else {
-                await performSync();
-                if (get().cachedItems.length === 0 && !bootstrapRetryScheduled) {
-                    bootstrapRetryScheduled = true;
-                    setTimeout(() => {
-                        bootstrapRetryScheduled = false;
-                        if (get().cachedItems.length === 0) {
-                            void get().performSync(true);
-                        }
-                    }, 2500);
-                }
-            }
-        } catch (e) {
-            console.warn('[useFeedStore] Offline cache read failed:', (e as Error).message);
-        } finally {
+        const { performSync } = get();
+        // Since we are already hydrated synchronously from MMKV, we just trigger a background sync on app start.
+        if (get().cachedItems.length > 0) {
+            void performSync();
+        } else {
+            set({ isBootstrapping: true });
+            await performSync();
             set({ isBootstrapping: false });
         }
     }

@@ -10,8 +10,8 @@ import {
     Platform,
     StatusBar,
     ScrollView,
-    Image,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Controller } from 'react-hook-form';
 import { Mail, ArrowRight, Apple } from 'lucide-react-native';
@@ -22,10 +22,12 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useAuthStore } from '@/store/useAuthStore';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
+import Animated, { useSharedValue, useAnimatedStyle, withRepeat, withTiming, withSequence, Easing } from 'react-native-reanimated';
+import { useRandomCompanyLogos } from '@/hooks/useRandomCompanyLogos';
 
 // Premium System
 import { Screen } from '@/system/layout/Layout';
-import { PremiumHeader, SecondaryHeader } from '@/system/components/PremiumPrimitives';
+import { SecondaryHeader } from '@/system/components/PremiumPrimitives';
 import { mScale } from '@/system/constants/dimensions';
 import auth from '@/config/firebase';
 
@@ -50,7 +52,195 @@ const logoBlack = require('../../../assets/logo.png');
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const logoWhite = require('../../../assets/logo-white.png');
 
-const AuthScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
+interface CubeProps {
+    logoUrl?: string;
+    isCenter?: boolean;
+    centerLogo?: any;
+    currentTheme: any;
+    onLogoError?: (url: string) => void;
+}
+
+const Cube: React.FC<CubeProps> = memo(({ logoUrl, isCenter, centerLogo, currentTheme, onLogoError }) => {
+    // The center cube must exactly equal 2 outer cubes + 1 gap to perfectly fill the hole
+    const boxSize = mScale(44);
+    const gap = mScale(10);
+    const centerSpan = (boxSize * 2) + gap;
+    const cubeSize = isCenter ? centerSpan : boxSize;
+
+    if (isCenter) {
+        return (
+            <View style={[
+                styles.cubeContainer,
+                {
+                    width: cubeSize,
+                    height: cubeSize,
+                    backgroundColor: 'transparent',
+                    borderWidth: 0,
+                    justifyContent: 'center',
+                    alignItems: 'center'
+                }
+            ]}>
+                <Image 
+                    source={currentTheme.mode === 'dark' ? logoWhite : logoBlack} 
+                    style={{ width: '90%', height: '90%' }} 
+                    contentFit="contain"
+                />
+            </View>
+        );
+    }
+
+    return (
+        <View style={[
+            styles.cubeContainer,
+            {
+                width: cubeSize,
+                height: cubeSize,
+                backgroundColor: 'transparent',
+                borderWidth: 0,
+                justifyContent: 'center',
+                alignItems: 'center',
+            }
+        ]}>
+            {logoUrl ? (
+                <View style={{
+                    width: '85%',
+                    height: '85%',
+                    position: 'absolute',
+                    backgroundColor: '#FFFFFF',
+                    borderRadius: mScale(12),
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    shadowColor: '#000',
+                    shadowOpacity: 0.05,
+                    shadowRadius: 3,
+                    shadowOffset: { width: 0, height: 1 },
+                    elevation: 1,
+                    overflow: 'hidden',
+                    padding: mScale(4),
+                }}>
+                    <Image
+                        source={{ uri: logoUrl }}
+                        style={{ width: '100%', height: '100%' }}
+                        contentFit="contain"
+                        transition={1000}
+                        cachePolicy="memory-disk"
+                        onError={() => {
+                            if (onLogoError) onLogoError(logoUrl);
+                        }}
+                    />
+                </View>
+            ) : null}
+        </View>
+    );
+});
+
+const CompanyLogosGrid: React.FC<{ logo: any; currentTheme: any }> = memo(({ logo, currentTheme }) => {
+    const pool = useRandomCompanyLogos();
+    const poolRef = React.useRef(pool);
+    // Track 12 boxes instead of 8
+    const [gridLogos, setGridLogos] = React.useState<string[]>(() => pool.slice(0, 12));
+    const rotationCursor = React.useRef(0);
+
+    const handleLogoError = React.useCallback((brokenUrl: string) => {
+        setGridLogos(prev => {
+            const next = [...prev];
+            const idx = next.indexOf(brokenUrl);
+            if (idx === -1) return prev;
+            
+            const currentPool = poolRef.current;
+            const unused = currentPool.filter(l => !next.includes(l) && l !== brokenUrl);
+            if (unused.length === 0) return prev;
+            
+            next[idx] = unused[Math.floor(Math.random() * unused.length)];
+            return next;
+        });
+    }, []);
+
+    React.useEffect(() => {
+        poolRef.current = pool;
+
+        if (pool.length >= 12) {
+            setGridLogos(prev => {
+                const next = [...prev];
+                let changed = false;
+                const inUse = new Set(next.filter(Boolean));
+                for (let i = 0; i < 12; i++) {
+                    if (!next[i]) {
+                        const fresh = pool.find(u => !inUse.has(u));
+                        if (fresh) { next[i] = fresh; inUse.add(fresh); changed = true; }
+                    }
+                }
+                return changed ? next : prev;
+            });
+        }
+    }, [pool]);
+
+    React.useEffect(() => {
+        const interval = setInterval(() => {
+            setGridLogos(prev => {
+                const currentPool = poolRef.current;
+                if (currentPool.length < 12) return prev;
+
+                const unused = currentPool.filter(l => !prev.includes(l));
+                if (unused.length < 3) return prev;
+
+                const nextGrid = [...prev];
+                for (let i = 0; i < 3; i++) {
+                    // Update 3 random cubes out of 12
+                    const slot = (rotationCursor.current + i) % 12;
+                    const randomIdx = Math.floor(Math.random() * unused.length);
+                    nextGrid[slot] = unused[randomIdx];
+                    unused.splice(randomIdx, 1);
+                }
+                rotationCursor.current += 3;
+                
+                return nextGrid;
+            });
+        }, 2200);
+
+        return () => clearInterval(interval);
+    }, []);
+
+    // Layout math for 12 cubes
+    const boxSize = mScale(44);
+    const gap = mScale(10);
+    // The center spans 2 boxes and 1 gap, perfectly filling the middle hole
+    const centerSpan = (boxSize * 2) + gap;
+
+    return (
+        <View style={styles.gridContainer}>
+            {/* Massive absolute center box perfectly overlaid on the hole */}
+            <View style={{ position: 'absolute', top: boxSize + gap, left: boxSize + gap, zIndex: 10 }}>
+                <Cube isCenter centerLogo={logo} currentTheme={currentTheme} />
+            </View>
+
+            <View style={styles.gridRow}>
+                <Cube logoUrl={gridLogos[0]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+                <Cube logoUrl={gridLogos[1]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+                <Cube logoUrl={gridLogos[2]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+                <Cube logoUrl={gridLogos[3]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+            </View>
+            <View style={styles.gridRow}>
+                <Cube logoUrl={gridLogos[4]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+                <View style={{ width: centerSpan, height: boxSize }} />
+                <Cube logoUrl={gridLogos[5]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+            </View>
+            <View style={styles.gridRow}>
+                <Cube logoUrl={gridLogos[6]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+                <View style={{ width: centerSpan, height: boxSize }} />
+                <Cube logoUrl={gridLogos[7]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+            </View>
+            <View style={styles.gridRow}>
+                <Cube logoUrl={gridLogos[8]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+                <Cube logoUrl={gridLogos[9]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+                <Cube logoUrl={gridLogos[10]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+                <Cube logoUrl={gridLogos[11]} currentTheme={currentTheme} onLogoError={handleLogoError} />
+            </View>
+        </View>
+    );
+});
+
+const AuthScreen: React.FC<Props & { isOnboarding?: boolean }> = memo(({ route, navigation, isOnboarding: propIsOnboarding }: Props & { isOnboarding?: boolean }) => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
     const {
@@ -77,7 +267,7 @@ const AuthScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
     }, []);
 
     const { isAuthenticated, user, skipUsernameSetup, isSyncing, isHandshaking } = useAuthStore();
-    const isOnboarding = route.params?.isOnboarding;
+    const isOnboarding = propIsOnboarding ?? route.params?.isOnboarding;
     const [guestLoading, setGuestLoading] = React.useState(false);
     const handleContinueAsGuest = async () => {
         setGuestLoading(true);
@@ -105,8 +295,8 @@ const AuthScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
 
         if (isAuthenticated && user && !user.isAnonymous) {
             const hasUsername = Boolean(user.username?.trim());
-            if (hasUsername || skipUsernameSetup) {
-                // Fully onboarded (or skipped), close the auth modal and return to previous screen
+            if (hasUsername) {
+                // Fully onboarded, close the auth modal and return to previous screen
                 if (isOnboarding) {
                     navigation.replace('Main'); // Or wherever Onboarding leads to if fully setup
                 } else if (navigation.canGoBack()) {
@@ -157,11 +347,7 @@ const AuthScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
                     <View style={styles.content}>
                         <View style={styles.headerSection}>
                             {!otpSent && (
-                                <View style={{ alignItems: 'center' }}>
-                                    <View style={styles.logoBox}>
-                                        <Image source={logo} style={styles.logoImage} />
-                                    </View>
-                                </View>
+                                <CompanyLogosGrid logo={logo} currentTheme={currentTheme} />
                             )}
                             <Text style={[styles.title, { color: currentTheme.colors.text }]}>
                                 {otpSent ? "Check your email" : "Continue to FresherFlow"}
@@ -242,7 +428,7 @@ const AuthScreen: React.FC<Props> = memo(({ route, navigation }: Props) => {
                                         </>
                                     ) : null}
 
-                                    <View style={{ gap: 16 }}>
+                                    <View style={{ gap: mScale(16) }}>
                                         <TouchableOpacity
                                             style={[styles.socialBtn, { backgroundColor: currentTheme.colors.text, borderColor: 'transparent' }]}
                                             onPress={handleGoogleSignIn}
@@ -383,7 +569,7 @@ const styles = StyleSheet.create({
     scrollContent: {
         flexGrow: 1,
         paddingBottom: mScale(40),
-        paddingTop: mScale(12),
+        paddingTop: mScale(4),
     },
     content: {
         flex: 1,
@@ -391,8 +577,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
     },
     headerSection: {
-        marginBottom: mScale(48),
-        marginTop: mScale(20),
+        marginBottom: mScale(20),
+        marginTop: mScale(0),
     },
     title: {
         fontSize: mScale(32),
@@ -522,7 +708,6 @@ const styles = StyleSheet.create({
         width: mScale(120),
         height: mScale(120),
         borderRadius: mScale(60),
-        backgroundColor: 'rgba(0,0,0,0.05)',
         alignItems: 'center',
         justifyContent: 'center',
         marginBottom: mScale(24),
@@ -551,6 +736,30 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: mScale(18),
         fontWeight: '500',
+    },
+    gridContainer: {
+        alignSelf: 'center',
+        gap: mScale(10),
+        marginBottom: mScale(16),
+        marginTop: mScale(0),
+        transform: [{ translateY: mScale(-30) }], // Shifts ONLY the 9 cards up
+    },
+    gridRow: {
+        flexDirection: 'row',
+        gap: mScale(10),
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    cubeContainer: {
+        borderRadius: mScale(14),
+        alignItems: 'center',
+        justifyContent: 'center',
+        overflow: 'hidden',
+    },
+    cubePlaceholder: {
+        width: '100%',
+        height: '100%',
+        borderRadius: mScale(14),
     },
 });
 

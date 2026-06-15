@@ -98,13 +98,13 @@ export const OnboardingScreen: React.FC<Props> = ({ navigation, route }) => {
             <View style={styles.content}>
                 {step === 0 && (
                     <View style={styles.flex}>
-                        <AuthScreen navigation={navigation} route={route} />
+                        <AuthScreen navigation={navigation} route={route} isOnboarding={true} />
                     </View>
                 )}
 
                 {step === 1 && (
                     <View style={styles.flex}>
-                        <ChooseUsernameScreen navigation={navigation} route={route} />
+                        <ChooseUsernameScreen navigation={navigation} route={route} isOnboarding={true} />
                     </View>
                 )}
             </View>

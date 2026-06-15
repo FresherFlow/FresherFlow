@@ -2,7 +2,7 @@ import { Role, User, Profile } from '@fresherflow/types';
 import { profileApi, usernameApi } from '@fresherflow/api-client';
 import { getJSON, setJSON, remove } from './storage';
 
-type ProfileSyncKind = 'education' | 'preferences' | 'readiness';
+type ProfileSyncKind = 'education' | 'preferences' | 'readiness' | 'demographics';
 
 type SyncQueueItem =
   | { id: string; userId: string; firebaseUid?: string; kind: 'username'; username: string; createdAt: number }
@@ -163,7 +163,7 @@ export async function flushOnboardingSyncQueue(userId: string, firebaseUid?: str
 
     // Drop stale items to prevent queue bloat (older than 7 days)
     if (now - item.createdAt > QUEUE_ITEM_MAX_AGE_MS) {
-      console.warn('[onboardingState] Dropping stale sync item (>7 days):', item.kind);
+      if (__DEV__) { console.warn('[onboardingState] Dropping stale sync item (>7 days):', item.kind) }
       continue;
     }
 
@@ -176,15 +176,17 @@ export async function flushOnboardingSyncQueue(userId: string, firebaseUid?: str
         await profileApi.updatePreferences(item.payload as Parameters<typeof profileApi.updatePreferences>[0]);
       } else if (item.kind === 'readiness') {
         await profileApi.updateReadiness(item.payload as Parameters<typeof profileApi.updateReadiness>[0]);
+      } else if (item.kind === 'demographics') {
+        await profileApi.updateDemographics(item.payload as Parameters<typeof profileApi.updateDemographics>[0]);
       }
       flushed += 1;
-      console.log('[onboardingState] Flushed sync item:', item.kind);
+      if (__DEV__) { console.log('[onboardingState] Flushed sync item:', item.kind) }
     } catch (error) {
       if (isPermanentSyncError(error, item.kind)) {
-        console.warn('[onboardingState] Dropping permanent sync failure:', item.kind, (error as any)?.status);
+        if (__DEV__) { console.warn('[onboardingState] Dropping permanent sync failure:', item.kind, (error as any)?.status) }
       } else {
         // Auth/network/server error — keep in queue for next flush
-        console.warn('[onboardingState] Keeping sync item for retry:', item.kind, (error as any)?.status);
+        if (__DEV__) { console.warn('[onboardingState] Keeping sync item for retry:', item.kind, (error as any)?.status) }
         remaining.push(item);
       }
     }

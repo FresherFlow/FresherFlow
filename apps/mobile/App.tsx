@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 // import * as Sentry from '@sentry/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { enableScreens, enableFreeze } from 'react-native-screens';
+
+enableScreens(true);
+enableFreeze(true);
 
 // Sentry.init({
 //   dsn: 'https://e23ea3b19c0247d5f0366941f9e490c8@o4511002230849536.ingest.us.sentry.io/4511449039175680',
@@ -18,6 +22,7 @@ import { OfflineBanner } from './src/system/components/OfflineBanner';
 import * as Notifications from 'expo-notifications';
 import * as Updates from 'expo-updates';
 import * as Linking from 'expo-linking';
+import { useShallow } from 'zustand/react/shallow';
 import axios from 'axios';
 import { getOpportunityAtomic, readDetailCache } from './src/utils/cache/offlineCache';
 import { useNotificationStore } from './src/store/useNotificationStore';
@@ -37,7 +42,7 @@ SplashScreen.preventAutoHideAsync().catch(() => {
     if (job) return job;
     return await readDetailCache(id);
   } catch (e) {
-    console.warn('[GlobalCache] Failed to read job details:', e);
+    if (__DEV__) { console.warn('[GlobalCache] Failed to read job details:', e) }
     return null;
   }
 };
@@ -96,7 +101,9 @@ import { getFirebaseDatabaseUrl } from './src/config/firebase';
 // while the mobile app remains "Zustand-first".
 const AuthBridge = ({ children }: { children: React.ReactNode }) => {
   const { user, firebaseUser } = useAuthStore();
-  const feedItems = useFeedStore(state => state.cachedItems);
+  // Subscribe to IDs only (not the full array) to avoid re-rendering the entire app tree
+  // on every sync cycle (every 5min). SavedProvider only needs IDs for cross-referencing.
+  const feedItemIds = useFeedStore(useShallow(state => state.cachedItems.map(i => i.id)));
   // RTDB paths are keyed by Firebase UID (auth.uid), NOT the Postgres UUID (user.id)
   const rtdbUserId = firebaseUser?.uid ?? user?.id;
   return (
@@ -108,7 +115,7 @@ const AuthBridge = ({ children }: { children: React.ReactNode }) => {
         userId={rtdbUserId} 
         anonSessionId={null} 
         firebaseDatabaseUrl={getFirebaseDatabaseUrl()}
-        feedItems={feedItems}
+        feedItems={feedItemIds as any}
       >
         {/* @ts-expect-error - ReactNode version mismatch in monorepo */}
         {children}
@@ -140,7 +147,9 @@ const AppContent = () => {
   const isDark = currentTheme.mode === 'dark';
   const baseTheme = isDark ? DarkTheme : DefaultTheme;
   const navigationRef = useNavigationContainerRef<RootStackParamList>();
-  const { user, isSyncing: isLoading } = useAuthStore();
+  const { user, isSyncing: authLoading } = useAuthStore();
+  const feedHydrated = useFeedStore(s => s.hasHydrated);
+  const isLoading = authLoading || !feedHydrated;
 
   const { isUpdatePending } = Updates.useUpdates();
 
@@ -169,14 +178,14 @@ const AppContent = () => {
 
     const timer = setTimeout(async () => {
       try {
-        console.log('[OTA] Running deferred startup update check...');
+        if (__DEV__) { console.log('[OTA] Running deferred startup update check...') }
         const check = await Updates.checkForUpdateAsync();
         if (check.isAvailable) {
-          console.log('[OTA] Update available, fetching in background...');
+          if (__DEV__) { console.log('[OTA] Update available, fetching in background...') }
           await Updates.fetchUpdateAsync();
         }
       } catch (err) {
-        console.log('[OTA] Deferred startup update check skipped or failed:', err);
+        if (__DEV__) { console.log('[OTA] Deferred startup update check skipped or failed:', err) }
       }
     }, 5000); // 5 seconds delay to allow UI/main thread to settle
 
@@ -193,7 +202,7 @@ const AppContent = () => {
         if (navigationRef.isReady()) {
           navigationRef.navigate(screen as any, params);
         } else {
-          console.log('[Push] Navigation container not ready. Queueing cold-start deep link:', screen, params);
+          if (__DEV__) { console.log('[Push] Navigation container not ready. Queueing cold-start deep link:', screen, params) }
           pendingNavigationRef.current = { screen, params };
         }
       };
@@ -231,7 +240,7 @@ const AppContent = () => {
       <FirstRunGate onDismiss={() => {
         const { isAuthenticated } = useAuthStore.getState();
         if (!isAuthenticated && navigationRef.isReady()) {
-          console.log('[FirstRunGate] Onboarding complete. Triggering authentication modal.');
+          if (__DEV__) { console.log('[FirstRunGate] Onboarding complete. Triggering authentication modal.') }
           navigationRef.navigate('Auth');
         }
       }}>
@@ -242,7 +251,7 @@ const AppContent = () => {
           onReady={() => {
             if (pendingNavigationRef.current) {
               const { screen, params } = pendingNavigationRef.current;
-              console.log('[Push] Navigation container is ready. Draining cold-start deep link queue:', screen, params);
+              if (__DEV__) { console.log('[Push] Navigation container is ready. Draining cold-start deep link queue:', screen, params) }
               navigationRef.navigate(screen as any, params);
               pendingNavigationRef.current = null;
             }
@@ -270,7 +279,7 @@ const AppContent = () => {
             onPress: () => {
               setUpdatePopupVisible(false);
               Updates.reloadAsync().catch((err) => {
-                console.warn('[OTA] Reload failed:', err);
+                if (__DEV__) { console.warn('[OTA] Reload failed:', err) }
               });
             }
           }
