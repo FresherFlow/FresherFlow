@@ -69,7 +69,7 @@ export function calculateOpportunityMatch(profile: Profile | null | undefined, o
         }
 
         if (hasLevelRestrictions) {
-            const levels = ['DIPLOMA', 'DEGREE', 'PG'];
+            const levels = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
             const userLevelIndex = levels.indexOf(profile.educationLevel);
             const levelMatch = allowedDegrees.some((deg) => {
                 const degIndex = levels.indexOf(deg as string);

@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { ALL_COURSE_OPTIONS, ALL_SPECIALIZATION_OPTIONS } from '@/features/profile/profileConstants';
 import { useOpportunityForm } from '@/features/admin/opportunities/useOpportunityForm';
 
-const commonDegrees = ['DIPLOMA', 'DEGREE', 'PG'];
+const commonDegrees = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
 
 export function useOpportunityFormDerived(form: ReturnType<typeof useOpportunityForm>) {
     const customDegrees = useMemo(() => 

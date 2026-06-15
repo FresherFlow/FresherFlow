@@ -2,7 +2,6 @@ import { LinkIcon } from '@heroicons/react/24/outline';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
 
 interface ApplyLinkSectionProps {
-    type: 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT';
     sourceLink: string;
     setSourceLink: (val: string) => void;
     applyLink: string;
@@ -11,7 +10,6 @@ interface ApplyLinkSectionProps {
 }
 
 export function ApplyLinkSection({
-    type,
     sourceLink, setSourceLink,
     applyLink, setApplyLink,
     showUrlError = false

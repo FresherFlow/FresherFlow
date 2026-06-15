@@ -13,9 +13,6 @@ export interface SmartInputProps
 
 const SmartInput = React.forwardRef<HTMLInputElement, SmartInputProps>(
     ({ className, value, label, icon, containerClassName, labelClassName, helpText, required, ...props }, ref) => {
-        // Determine if empty
-        const isEmpty = value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
-
         return (
             <div className={cn("space-y-1.5 w-full", containerClassName)}>
                 {label && (

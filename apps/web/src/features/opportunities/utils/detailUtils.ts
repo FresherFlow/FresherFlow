@@ -63,7 +63,7 @@ export function buildEligibilitySnapshot(opportunity: Opportunity, profile: Prof
         }
     }
 
-    const levels = ['DIPLOMA', 'DEGREE', 'PG'];
+    const levels = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
     const allowedDegrees = opportunity.allowedDegrees || [];
     if (allowedDegrees.length > 0) {
         if (!profile.educationLevel) {
@@ -173,6 +173,8 @@ export function isClosingSoon(opportunity: Opportunity) {
 
 function formatEducationLevel(degree: string): string {
     switch (degree) {
+        case 'TENTH': return '10th / SSC';
+        case 'INTER': return '12th / Intermediate';
         case 'DIPLOMA': return 'Diploma';
         case 'DEGREE': return 'Any Graduate';
         case 'PG': return 'Postgraduate';

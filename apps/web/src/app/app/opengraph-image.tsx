@@ -174,27 +174,6 @@ export default function DownloadOpenGraphImage() {
                             boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
                         }}
                     >
-                        {/* Camera/Speaker Notch Overlay */}
-                        <div
-                            style={{
-                                position: 'absolute',
-                                top: 0,
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                width: '80px',
-                                height: '18px',
-                                background: '#1f1f1f',
-                                borderBottomLeftRadius: '10px',
-                                borderBottomRightRadius: '10px',
-                                zIndex: 10,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                            }}
-                        >
-                            <div style={{ width: '30px', height: '2px', background: '#333333', borderRadius: '999px' }} />
-                        </div>
-
                         {/* Screenshot image */}
                         {screenshotUrl ? (
                             // eslint-disable-next-line @next/next/no-img-element
@@ -210,6 +189,26 @@ export default function DownloadOpenGraphImage() {
                                 }}
                             />
                         ) : null}
+
+                        {/* Camera/Speaker Notch Overlay */}
+                        <div
+                            style={{
+                                position: 'absolute',
+                                top: 0,
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                width: '80px',
+                                height: '18px',
+                                background: '#1f1f1f',
+                                borderBottomLeftRadius: '10px',
+                                borderBottomRightRadius: '10px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                            }}
+                        >
+                            <div style={{ width: '30px', height: '2px', background: '#333333', borderRadius: '999px' }} />
+                        </div>
                     </div>
                 </div>
             </div>

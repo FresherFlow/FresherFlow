@@ -1,4 +1,4 @@
-import { InformationCircleIcon, TrashIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { InformationCircleIcon } from '@heroicons/react/24/outline';
 import { SmartSelect } from '@/features/admin/ui/SmartSelect';
 import type { TimelineEvent } from '@/features/admin/opportunities/formUtils';
 

@@ -30,6 +30,28 @@ interface EligibilitySectionProps {
     customDegrees: string[];
 }
 
+const getDegreeLabel = (deg: string) => {
+    switch (deg) {
+        case 'TENTH': return '10th / SSC';
+        case 'INTER': return '12th / Intermediate';
+        case 'DIPLOMA': return 'Diploma (Specialized)';
+        case 'DEGREE': return 'UG (Graduate)';
+        case 'PG': return 'PG (Postgrad)';
+        default: return deg;
+    }
+};
+
+const getDegreeBadgeLabel = (deg: string) => {
+    switch (deg) {
+        case 'TENTH': return '10th';
+        case 'INTER': return '12th';
+        case 'DIPLOMA': return 'Diploma';
+        case 'DEGREE': return 'UG';
+        case 'PG': return 'PG';
+        default: return deg;
+    }
+};
+
 export function EligibilitySection({
     allowedDegrees, handleDegreeToggle,
     allowedCourses, handleCourseToggle,
@@ -44,7 +66,7 @@ export function EligibilitySection({
     commonDegrees,
     visibleCourseOptions,
     visibleSpecializationOptions,
-    customDegrees
+    customDegrees,
 }: EligibilitySectionProps) {
     return (
         <div className="space-y-5 border border-border rounded-lg p-4 md:p-5 bg-card shadow-sm">
@@ -63,7 +85,7 @@ export function EligibilitySection({
                             }
                         }}
                         options={commonDegrees.map(deg => ({
-                            label: `${allowedDegrees.includes(deg) ? '✓ ' : ''}${deg === 'DEGREE' ? 'UG (Graduate)' : deg === 'PG' ? 'PG (Postgrad)' : 'Diploma (Specialized)'}`,
+                            label: `${allowedDegrees.includes(deg) ? '✓ ' : ''}${getDegreeLabel(deg)}`,
                             value: deg
                         }))}
                     />
@@ -71,7 +93,7 @@ export function EligibilitySection({
                         <div className="flex flex-wrap gap-1.5 justify-end">
                             {allowedDegrees.map(deg => (
                                 <span key={deg} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-semibold bg-primary text-primary-foreground">
-                                    {deg === 'DEGREE' ? 'UG' : deg}
+                                    {getDegreeBadgeLabel(deg)}
                                     <button type="button" onClick={() => handleDegreeToggle(deg)} className="hover:text-red-200 ml-0.5">×</button>
                                 </span>
                             ))}

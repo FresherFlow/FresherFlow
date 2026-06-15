@@ -245,7 +245,6 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                         <ApplyLinkSection
                             sourceLink={form.sourceLink} setSourceLink={form.setSourceLink}
                             applyLink={form.applyLink} setApplyLink={form.setApplyLink}
-                            type={form.type}
                             showUrlError={form.showUrlError}
                         />
 

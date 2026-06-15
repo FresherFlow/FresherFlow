@@ -14,6 +14,7 @@ import {
 import { database } from '@/lib/api/firebase';
 import { ref, onValue } from 'firebase/database';
 import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
+import { adminApi } from '@/lib/api/admin';
 
 
 interface DashboardState {
@@ -54,6 +55,31 @@ export default function AdminDashboardHome() {
         loading: true,
         error: false,
     });
+
+    const [regenerating, setRegenerating] = useState(false);
+    const [regenStatus, setRegenStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+    const handleRegenerate = async () => {
+        setRegenerating(true);
+        setRegenStatus(null);
+        try {
+            const res = await adminApi.regenerateStaticFeeds();
+            if (res && res.success) {
+                setRegenStatus({ type: 'success', message: 'Feeds successfully regenerated!' });
+                // Invalidate lists and reload to pull new CDN feed timestamp
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                setRegenStatus({ type: 'error', message: res?.message || 'Failed to regenerate feeds' });
+            }
+        } catch (err: any) {
+            console.error('[Regenerate Feeds Error]', err);
+            setRegenStatus({ type: 'error', message: err?.message || 'An unexpected error occurred' });
+        } finally {
+            setRegenerating(false);
+        }
+    };
 
     // ─── CDN Metadata Fetching ───────────────────────────────────────────────────
     useEffect(() => {
@@ -318,6 +344,33 @@ export default function AdminDashboardHome() {
                                     <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-1">Skills Configured</p>
                                     <p className="text-2xl font-bold tracking-tight text-foreground">{cdnStats.skillsCount !== null ? cdnStats.skillsCount.toLocaleString() : 'N/A'}</p>
                                 </div>
+                            </div>
+                        )}
+
+                        {!cdnStats.loading && !cdnStats.error && (
+                            <div className="pt-2">
+                                <button
+                                    onClick={handleRegenerate}
+                                    disabled={regenerating}
+                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-border rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all text-xs shadow-sm hover:shadow-md cursor-pointer"
+                                >
+                                    {regenerating ? (
+                                        <>
+                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                                            </svg>
+                                            Regenerating Feeds...
+                                        </>
+                                    ) : (
+                                        'Regenerate CDN Feeds'
+                                    )}
+                                </button>
+                                {regenStatus && (
+                                    <p className={`text-center text-xs font-semibold mt-2 ${regenStatus.type === 'success' ? 'text-emerald-500' : 'text-red-500'}`}>
+                                        {regenStatus.message}
+                                    </p>
+                                )}
                             </div>
                         )}
                     </div>

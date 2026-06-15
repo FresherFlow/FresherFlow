@@ -71,7 +71,6 @@ export default function OpenGraphImage() {
                         height: '100%',
                         padding: '46px 54px 40px',
                         position: 'relative',
-                        zIndex: 2,
                     }}
                 >
                     <div

@@ -15,7 +15,7 @@ export {
     normalizeSkillName,
 };
 
-export const EDUCATION_LEVELS = ['DIPLOMA', 'DEGREE', 'PG'];
+export const EDUCATION_LEVELS = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
 export const OPPORTUNITY_TYPES = ['JOB', 'INTERNSHIP', 'WALKIN'];
 export const WORK_MODES = ['ONSITE', 'HYBRID', 'REMOTE'];
 

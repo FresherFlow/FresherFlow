@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { adminApi } from '@/lib/api/admin';
-import { SharedResource, ResourceItemStatus, ResourceItemType } from '@fresherflow/types';
+import { SharedResource, ResourceItemStatus, ResourceItemType, ResourceSector } from '@fresherflow/types';
 import { 
     CheckCircleIcon, 
     XCircleIcon, 
@@ -214,6 +214,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
         company: '',
         skills: '',
         status: ResourceItemStatus.PENDING_REVIEW,
+        sector: ResourceSector.PRIVATE,
         items: [] as { id?: string; title: string; type: string; url: string }[]
     });
     const [isSaving, setIsSaving] = useState(false);
@@ -289,6 +290,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
             company: resource.company || '',
             skills: resource.skills?.join(', ') || '',
             status: resource.status,
+            sector: resource.sector || ResourceSector.PRIVATE,
             items: resource.items?.map(item => ({
                 id: item.id,
                 title: item.title,
@@ -308,6 +310,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
             company: '',
             skills: '',
             status: ResourceItemStatus.APPROVED,
+            sector: ResourceSector.PRIVATE,
             items: [{ title: '', type: 'LINK', url: '' }]
         });
         setIsCreateModalOpen(true);
@@ -366,6 +369,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                     company: formState.company || null,
                     skills: skillsArray,
                     status: formState.status,
+                    sector: formState.sector,
                     // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     items: itemsToSubmit.map(({ id, ...rest }) => rest)
                 });
@@ -377,6 +381,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                     company: formState.company || null,
                     skills: skillsArray,
                     status: formState.status,
+                    sector: formState.sector,
                     items: itemsToSubmit
                 });
                 toast.success('Resource updated successfully');
@@ -452,8 +457,8 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
             
             <form onSubmit={handleModalSubmit} className="space-y-5">
                 {uiMode === 'SINGLE' ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div className="md:col-span-2">
+                    <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
+                        <div className="md:col-span-6">
                             <SmartInput 
                                 label="Resource Title"
                                 type="text" 
@@ -463,7 +468,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                 placeholder="e.g. Complete Java Roadmap"
                             />
                         </div>
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-6">
                             <SmartInput 
                                 label="Target URL"
                                 type="url" 
@@ -473,7 +478,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                 placeholder="https://..."
                             />
                         </div>
-                        <div>
+                        <div className="md:col-span-3">
                             <SmartSelect
                                 label="Resource Type"
                                 required
@@ -495,14 +500,7 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                 ]}
                             />
                         </div>
-                        <AutocompleteInput
-                            label="Company"
-                            value={formState.company}
-                            onChange={(val) => setFormState(f => ({...f, company: val}))}
-                            options={availableCompanies}
-                            placeholder="Optional..."
-                        />
-                        <div>
+                        <div className="md:col-span-3">
                             <SmartSelect
                                 label="Status"
                                 required
@@ -514,14 +512,37 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                 ]}
                             />
                         </div>
-                        <AutocompleteInput
-                            label="Skills"
-                            value={formState.skills}
-                            onChange={(val) => setFormState(f => ({...f, skills: val}))}
-                            options={availableSkills}
-                            placeholder="Optional..."
-                            isMulti={true}
-                        />
+                        <div className="md:col-span-3">
+                            <SmartSelect
+                                label="Sector"
+                                required
+                                value={formState.sector}
+                                onChange={(val) => setFormState(f => ({...f, sector: val as ResourceSector}))}
+                                options={[
+                                    { value: ResourceSector.PRIVATE, label: 'Private' },
+                                    { value: ResourceSector.GOVERNMENT, label: 'Government' },
+                                ]}
+                            />
+                        </div>
+                        <div className="md:col-span-3">
+                            <AutocompleteInput
+                                label="Company"
+                                value={formState.company}
+                                onChange={(val) => setFormState(f => ({...f, company: val}))}
+                                options={availableCompanies}
+                                placeholder="Optional..."
+                            />
+                        </div>
+                        <div className="md:col-span-12">
+                            <AutocompleteInput
+                                label="Skills"
+                                value={formState.skills}
+                                onChange={(val) => setFormState(f => ({...f, skills: val}))}
+                                options={availableSkills}
+                                placeholder="Optional..."
+                                isMulti={true}
+                            />
+                        </div>
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
@@ -553,14 +574,24 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                         { value: ResourceItemStatus.APPROVED, label: 'Approved' },
                                     ]}
                                 />
-                                <AutocompleteInput
-                                    label="Company"
-                                    value={formState.company}
-                                    onChange={(val) => setFormState(f => ({...f, company: val}))}
-                                    options={availableCompanies}
-                                    placeholder="Optional..."
+                                <SmartSelect
+                                    label="Sector"
+                                    required
+                                    value={formState.sector}
+                                    onChange={(val) => setFormState(f => ({...f, sector: val as ResourceSector}))}
+                                    options={[
+                                        { value: ResourceSector.PRIVATE, label: 'Private' },
+                                        { value: ResourceSector.GOVERNMENT, label: 'Government' },
+                                    ]}
                                 />
                             </div>
+                            <AutocompleteInput
+                                label="Company"
+                                value={formState.company}
+                                onChange={(val) => setFormState(f => ({...f, company: val}))}
+                                options={availableCompanies}
+                                placeholder="Optional..."
+                            />
                             <AutocompleteInput
                                 label="Skills"
                                 value={formState.skills}
@@ -680,158 +711,184 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
 
     return (
         <div className="space-y-4">
-            <div className="flex items-center justify-between bg-card border border-border p-2 rounded-lg shadow-sm">
-                <div className="flex bg-muted p-1 rounded-md">
+            {!(isCreateModalOpen || editingResource) && (
+                <div className="flex items-center justify-between gap-3 bg-card border border-border p-2 rounded-lg shadow-sm">
+                    <div className="flex bg-muted p-1 rounded-md">
+                        <button
+                            className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                activeTab === ResourceItemStatus.PENDING_REVIEW 
+                                    ? 'bg-background shadow-sm text-foreground' 
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                            }`}
+                            onClick={() => { setActiveTab(ResourceItemStatus.PENDING_REVIEW); setPage(1); }}
+                        >
+                            Pending Review
+                        </button>
+                        <button
+                            className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
+                                activeTab === ResourceItemStatus.APPROVED 
+                                    ? 'bg-background shadow-sm text-foreground' 
+                                    : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
+                            }`}
+                            onClick={() => { setActiveTab(ResourceItemStatus.APPROVED); setPage(1); }}
+                        >
+                            Approved
+                        </button>
+                    </div>
                     <button
-                        className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
-                            activeTab === ResourceItemStatus.PENDING_REVIEW 
-                                ? 'bg-background shadow-sm text-foreground' 
-                                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-                        }`}
-                        onClick={() => { setActiveTab(ResourceItemStatus.PENDING_REVIEW); setPage(1); }}
+                        onClick={openCreateModal}
+                        className="hidden md:flex items-center justify-center gap-1.5 px-4 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 shadow-sm transition-colors shrink-0"
+                        aria-label="Create Resource"
                     >
-                        Pending Review
-                    </button>
-                    <button
-                        className={`px-4 py-1.5 text-sm font-medium rounded transition-colors ${
-                            activeTab === ResourceItemStatus.APPROVED 
-                                ? 'bg-background shadow-sm text-foreground' 
-                                : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
-                        }`}
-                        onClick={() => { setActiveTab(ResourceItemStatus.APPROVED); setPage(1); }}
-                    >
-                        Approved
+                        <PlusIcon className="w-4 h-4" />
+                        <span>Create Resource</span>
                     </button>
                 </div>
+            )}
+
+            {!(isCreateModalOpen || editingResource) && (
                 <button
                     onClick={openCreateModal}
-                    className="flex items-center gap-1.5 px-4 py-1.5 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:bg-primary/90 shadow-sm transition-colors"
+                    className="md:hidden fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg hover:bg-primary/90 transition-transform active:scale-95 border border-border"
+                    aria-label="Create Resource"
                 >
-                    <PlusIcon className="w-4 h-4" />
-                    Create Resource
+                    <PlusIcon className="w-6 h-6" />
                 </button>
-            </div>
+            )}
 
             {formPanelContent}
 
-            <div className="border border-border rounded-lg bg-card shadow-sm overflow-hidden">
-                {isLoading ? (
-                    <div className="p-10 text-center text-sm font-medium text-muted-foreground flex items-center justify-center gap-2">
-                        <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                        Loading resources...
-                    </div>
-                ) : resources.length === 0 ? (
-                    <div className="p-10 text-center flex flex-col items-center">
-                        <DocumentTextIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
-                        <h3 className="text-sm font-medium text-foreground">No resources found</h3>
-                        <p className="text-xs text-muted-foreground mt-1">There are no {activeTab.toLowerCase().replace('_', ' ')} resources to display.</p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="w-full text-sm text-left whitespace-nowrap">
-                            <thead className="text-xs text-muted-foreground bg-muted/50 border-b border-border uppercase tracking-wider">
-                                <tr>
-                                    <th className="px-4 py-3 font-semibold">Title & Items</th>
-                                    <th className="px-4 py-3 font-semibold">Type</th>
-                                    <th className="px-4 py-3 font-semibold">Metadata</th>
-                                    <th className="px-4 py-3 font-semibold">Date</th>
-                                    <th className="px-4 py-3 font-semibold text-right">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-border">
-                                {resources.map((resource) => (
-                                    <tr key={resource.id} className="hover:bg-muted/20 transition-colors">
-                                        <td className="px-4 py-3 align-top max-w-[300px] whitespace-normal">
-                                            <div className="font-medium text-foreground text-sm leading-tight mb-1">{resource.title}</div>
-                                            {resource.description && (
-                                                <div className="text-xs text-muted-foreground line-clamp-1 mb-2">{resource.description}</div>
-                                            )}
-                                            {resource.items && resource.items.length > 0 && (
-                                                <div className="space-y-1">
-                                                    {resource.items.slice(0, 2).map((item) => (
-                                                        <a href={item.url} target="_blank" rel="noopener noreferrer" key={item.id} className="inline-flex items-center gap-1 text-xs text-primary hover:underline bg-primary/5 px-1.5 py-0.5 rounded mr-1 mb-1 border border-primary/10">
-                                                            <DocumentTextIcon className="w-3 h-3" />
-                                                            <span className="truncate max-w-[150px]">{item.title}</span>
-                                                            <ArrowTopRightOnSquareIcon className="w-3 h-3" />
-                                                        </a>
-                                                    ))}
-                                                    {(resource.items.length > 2) && (
-                                                        <span className="inline-flex text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
-                                                            +{resource.items.length - 2} more
-                                                        </span>
+            {!(isCreateModalOpen || editingResource) && (
+                <>
+                    <div className="border border-border rounded-lg bg-card shadow-sm overflow-hidden">
+                        {isLoading ? (
+                            <div className="p-10 text-center text-sm font-medium text-muted-foreground flex items-center justify-center gap-2">
+                                <div className="w-4 h-4 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
+                                Loading resources...
+                            </div>
+                        ) : resources.length === 0 ? (
+                            <div className="p-10 text-center flex flex-col items-center">
+                                <DocumentTextIcon className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                                <h3 className="text-sm font-medium text-foreground">No resources found</h3>
+                                <p className="text-xs text-muted-foreground mt-1">There are no {activeTab.toLowerCase().replace('_', ' ')} resources to display.</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left whitespace-nowrap">
+                                    <thead className="text-xs text-muted-foreground bg-muted/50 border-b border-border uppercase tracking-wider">
+                                        <tr>
+                                            <th className="px-4 py-3 font-semibold">Title & Items</th>
+                                            <th className="px-4 py-3 font-semibold">Type</th>
+                                            <th className="px-4 py-3 font-semibold">Metadata</th>
+                                            <th className="px-4 py-3 font-semibold">Date</th>
+                                            <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-border">
+                                        {resources.map((resource) => (
+                                            <tr key={resource.id} className="hover:bg-muted/20 transition-colors">
+                                                <td className="px-4 py-3 align-top max-w-[300px] whitespace-normal">
+                                                    <div className="font-medium text-foreground text-sm leading-tight mb-1">{resource.title}</div>
+                                                    {resource.description && (
+                                                        <div className="text-xs text-muted-foreground line-clamp-1 mb-2">{resource.description}</div>
                                                     )}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 align-top">
-                                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
-                                                {resource.items?.length === 1 ? 'Single' : 'Collection'}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 align-top max-w-[200px] whitespace-normal">
-                                            <div className="flex flex-col gap-1.5">
-                                                {resource.company && (
-                                                    <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{resource.company}</span>
-                                                )}
-                                                {resource.skills && resource.skills.length > 0 && (
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {resource.skills.map((skill, i) => (
-                                                            <span key={i} className="px-1.5 py-0.5 bg-background shadow-sm border border-border text-[10px] rounded text-foreground font-medium">
-                                                                {skill}
+                                                    {resource.items && resource.items.length > 0 && (
+                                                        <div className="space-y-1">
+                                                            {resource.items.slice(0, 2).map((item) => (
+                                                                <a href={item.url} target="_blank" rel="noopener noreferrer" key={item.id} className="inline-flex items-center gap-1 text-xs text-primary hover:underline bg-primary/5 px-1.5 py-0.5 rounded mr-1 mb-1 border border-primary/10">
+                                                                    <DocumentTextIcon className="w-3 h-3" />
+                                                                    <span className="truncate max-w-[150px]">{item.title}</span>
+                                                                    <ArrowTopRightOnSquareIcon className="w-3 h-3" />
+                                                                </a>
+                                                            ))}
+                                                            {(resource.items.length > 2) && (
+                                                                <span className="inline-flex text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
+                                                                    +{resource.items.length - 2} more
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 align-top">
+                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
+                                                        {resource.items?.length === 1 ? 'Single' : 'Collection'}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 align-top max-w-[200px] whitespace-normal">
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
+                                                                resource.sector === ResourceSector.GOVERNMENT
+                                                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-900/50'
+                                                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-900/50'
+                                                            }`}>
+                                                                {resource.sector || ResourceSector.PRIVATE}
                                                             </span>
-                                                        ))}
+                                                            {resource.company && (
+                                                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{resource.company}</span>
+                                                            )}
+                                                        </div>
+                                                        {resource.skills && resource.skills.length > 0 && (
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {resource.skills.map((skill, i) => (
+                                                                    <span key={i} className="px-1.5 py-0.5 bg-background shadow-sm border border-border text-[10px] rounded text-foreground font-medium">
+                                                                        {skill}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
                                                     </div>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 align-top text-xs text-muted-foreground">
-                                            {new Date(resource.createdAt).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-4 py-3 align-top text-right">
-                                            <div className="flex items-center justify-end gap-1">
-                                                {activeTab === ResourceItemStatus.PENDING_REVIEW && (
-                                                    <button onClick={() => handleApprove(resource.id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Approve">
-                                                        <CheckCircleIcon className="w-4 h-4" />
-                                                    </button>
-                                                )}
-                                                <button onClick={() => openEditModal(resource)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit">
-                                                    <PencilSquareIcon className="w-4 h-4" />
-                                                </button>
-                                                <button onClick={() => handleReject(resource.id)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md transition-colors" title="Delete">
-                                                    <TrashIcon className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                                </td>
+                                                <td className="px-4 py-3 align-top text-xs text-muted-foreground">
+                                                    {new Date(resource.createdAt).toLocaleDateString()}
+                                                </td>
+                                                <td className="px-4 py-3 align-top text-right">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {activeTab === ResourceItemStatus.PENDING_REVIEW && (
+                                                            <button onClick={() => handleApprove(resource.id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Approve">
+                                                                <CheckCircleIcon className="w-4 h-4" />
+                                                            </button>
+                                                        )}
+                                                        <button onClick={() => openEditModal(resource)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit">
+                                                            <PencilSquareIcon className="w-4 h-4" />
+                                                        </button>
+                                                        <button onClick={() => handleReject(resource.id)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md transition-colors" title="Delete">
+                                                            <TrashIcon className="w-4 h-4" />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
 
-            {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg shadow-sm">
-                    <span className="text-xs font-medium text-muted-foreground">
-                        Showing page {page} of {totalPages}
-                    </span>
-                    <div className="flex items-center gap-2">
-                        <button 
-                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                            disabled={page === 1}
-                            className="px-3 py-1 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted disabled:opacity-50 disabled:hover:bg-background transition-colors"
-                        >
-                            Previous
-                        </button>
-                        <button 
-                            onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                            disabled={page === totalPages}
-                            className="px-3 py-1 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted disabled:opacity-50 disabled:hover:bg-background transition-colors"
-                        >
-                            Next
-                        </button>
-                    </div>
-                </div>
+                    {totalPages > 1 && (
+                        <div className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-lg shadow-sm">
+                            <span className="text-xs font-medium text-muted-foreground">
+                                Showing page {page} of {totalPages}
+                            </span>
+                            <div className="flex items-center gap-2">
+                                <button 
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="px-3 py-1 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted disabled:opacity-50 disabled:hover:bg-background transition-colors"
+                                >
+                                    Previous
+                                </button>
+                                <button 
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages}
+                                    className="px-3 py-1 text-xs font-medium rounded-md border border-border bg-background hover:bg-muted disabled:opacity-50 disabled:hover:bg-background transition-colors"
+                                >
+                                    Next
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
             )}
 
             {resourceToDelete && (

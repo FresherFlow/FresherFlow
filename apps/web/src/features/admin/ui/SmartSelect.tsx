@@ -51,7 +51,7 @@ export function SmartSelect({
     const isEmpty = !selectedOption;
 
     return (
-        <div className={cn("space-y-1.5 w-full relative", containerClassName)} ref={containerRef}>
+        <div className={cn("space-y-1.5 w-full", containerClassName)} ref={containerRef}>
             {label && (
                 <label className={cn("text-sm font-medium text-muted-foreground/80 flex items-center gap-1.5", labelClassName)}>
                     {icon}
@@ -63,48 +63,50 @@ export function SmartSelect({
                     {helpText}
                 </div>
             )}
-            <button
-                type="button"
-                onClick={() => setIsOpen(!isOpen)}
-                className={cn(
-                    "flex w-full items-center justify-between rounded-sm px-2.5 py-1.5 text-sm outline-none transition-none",
-                    "border border-solid text-left border-input bg-background",
-                    !isEmpty ? "text-foreground" : "text-muted-foreground/50",
-                    isOpen ? "border-primary" : "focus:border-primary",
-                )}
-            >
-                <span>{selectedOption ? selectedOption.label : placeholder}</span>
-                <ChevronDownIcon
+            <div className="relative">
+                <button
+                    type="button"
+                    onClick={() => setIsOpen(!isOpen)}
                     className={cn(
-                        "h-4 w-4 text-muted-foreground transition-transform duration-200",
-                        isOpen ? "rotate-180" : ""
+                        "flex w-full items-center justify-between rounded-sm px-2.5 py-1.5 text-sm outline-none transition-none",
+                        "border border-solid text-left border-input bg-background",
+                        !isEmpty ? "text-foreground" : "text-muted-foreground/50",
+                        isOpen ? "border-primary" : "focus:border-primary",
                     )}
-                />
-            </button>
+                >
+                    <span>{selectedOption ? selectedOption.label : placeholder}</span>
+                    <ChevronDownIcon
+                        className={cn(
+                            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+                            isOpen ? "rotate-180" : ""
+                        )}
+                    />
+                </button>
 
-            {isOpen && (
-                <ul className="absolute left-0 top-full mt-1 w-full max-h-60 overflow-y-auto bg-background border border-input rounded-sm z-50 outline-none">
-                    {options.map((option) => (
-                        <li key={option.value}>
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    onChange(option.value);
-                                    setIsOpen(false);
-                                }}
-                                className={cn(
-                                    "w-full text-left px-2.5 py-1.5 text-sm transition-none",
-                                    option.value === value
-                                        ? "bg-primary text-primary-foreground font-medium"
-                                        : "text-foreground hover:bg-muted"
-                                )}
-                            >
-                                {option.label}
-                            </button>
-                        </li>
-                    ))}
-                </ul>
-            )}
+                {isOpen && (
+                    <ul className="absolute left-0 top-full mt-1 w-full max-h-60 overflow-y-auto bg-background border border-input rounded-sm z-50 outline-none">
+                        {options.map((option) => (
+                            <li key={option.value}>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        onChange(option.value);
+                                        setIsOpen(false);
+                                    }}
+                                    className={cn(
+                                        "w-full text-left px-2.5 py-1.5 text-sm transition-none",
+                                        option.value === value
+                                            ? "bg-primary text-primary-foreground font-medium"
+                                            : "text-foreground hover:bg-muted"
+                                    )}
+                                >
+                                    {option.label}
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                )}
+            </div>
         </div>
     );
 }

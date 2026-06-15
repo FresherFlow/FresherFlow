@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
-import { Opportunity } from '@fresherflow/types';
+import { useEffect, useState } from 'react';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 
 interface LandingStatsProps {
