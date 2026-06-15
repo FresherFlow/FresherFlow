@@ -93,8 +93,8 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     // Empty state: company exists in sitemap but currently has no active listings.
     // Return a proper page (not 404) so Google keeps it indexed.
     if (companyJobs.length === 0) {
-        // const { unstable_noStore } = await import('next/cache');
-        // unstable_noStore();
+        const { unstable_noStore } = await import('next/cache');
+        unstable_noStore();
         return (
             <div className="min-h-screen bg-background pb-20">
                 <main className="max-w-5xl mx-auto px-4 py-16 text-center space-y-4">
