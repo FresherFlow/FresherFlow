@@ -817,10 +817,15 @@ export class StaticFeedService {
 
             // 10. Generate & Upload Sitemap XML and JSON Data
             if (target === 'all' || target === 'sitemap' || target === 'bootstrap' || target === 'govt') {
-                const sitemapOpps = allOpportunities.slice(0, 1000);
+                const fortyFiveDaysAgo = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+                const sitemapOpps = allMapped.filter(opp => {
+                    if (!opp.expiresAt) return true;
+                    const exp = new Date(opp.expiresAt as string | Date);
+                    return exp > fortyFiveDaysAgo;
+                });
                 const companiesSet = new Set<string>();
-                allOpportunities.forEach((opp) => {
-                    if (opp.company) companiesSet.add(opp.company);
+                allMapped.forEach((opp) => {
+                    if (opp.company) companiesSet.add(opp.company as string);
                 });
 
                 const baseUrl = (process.env.FRONTEND_URL || 'https://fresherflow.in').replace(/\/+$/, '');
@@ -831,6 +836,7 @@ export class StaticFeedService {
                     '/jobs',
                     '/internships',
                     '/walk-ins',
+                    '/government-jobs',
                     '/about',
                     '/blog',
                     '/contact',
@@ -846,9 +852,9 @@ export class StaticFeedService {
                 staticRoutes.forEach(r => sitemapXml += `  <url><loc>${baseUrl}${r}</loc><lastmod>${staticDate}</lastmod></url>\n`);
                 companiesSet.forEach(c => sitemapXml += `  <url><loc>${baseUrl}/companies/${this.slugify(c)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 sitemapOpps.forEach(opp => {
-                    const slugOrId = opp.slug || opp.id;
+                    const slugOrId = (opp.slug || opp.id) as string;
                     const prefix = '/';
-                    const rawDate = opp.updatedAt || opp.postedAt;
+                    const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
                     const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
                     sitemapXml += `  <url><loc>${baseUrl}${prefix}${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
                 });
