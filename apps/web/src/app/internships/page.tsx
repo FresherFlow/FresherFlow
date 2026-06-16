@@ -38,7 +38,7 @@ export default async function InternshipsPage() {
     const bootstrapData = await fetchBootstrapFeed();
     const initialData = bootstrapData ? {
         opportunities: bootstrapData.opportunities.filter(o => o.type === OpportunityType.INTERNSHIP),
-        total: bootstrapData.count,
+        total: bootstrapData.opportunities.filter(o => o.type === OpportunityType.INTERNSHIP).length,
         cachedAt: new Date(bootstrapData.generatedAt).getTime(),
     } : null;
 

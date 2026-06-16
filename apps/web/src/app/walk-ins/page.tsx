@@ -38,7 +38,7 @@ export default async function WalkInsPage() {
     const bootstrapData = await fetchBootstrapFeed();
     const initialData = bootstrapData ? {
         opportunities: bootstrapData.opportunities.filter(o => o.type === OpportunityType.WALKIN),
-        total: bootstrapData.count,
+        total: bootstrapData.opportunities.filter(o => o.type === OpportunityType.WALKIN).length,
         cachedAt: new Date(bootstrapData.generatedAt).getTime(),
     } : null;
 

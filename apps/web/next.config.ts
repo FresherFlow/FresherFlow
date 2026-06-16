@@ -227,6 +227,11 @@ const nextConfig: NextConfig = {
         permanent: true,
       },
       {
+        source: "/home",
+        destination: "/",
+        permanent: true,
+      },
+      {
         source: "/download",
         destination: "/app",
         permanent: true,

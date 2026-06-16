@@ -1,65 +1,56 @@
 import type { Metadata } from 'next';
 import { notFound, redirect } from 'next/navigation';
-import { API_URL } from '@/lib/utils/runtimeConfig';
+import { logRouteResult } from '@/lib/observability';
 import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
+import { fetchGovernmentFeed } from '@/lib/api/cdnFeed';
+import { cache } from 'react';
 
 type Props = {
     params: Promise<{ id: string }>;
 };
 
-export const dynamic = 'force-dynamic';
+export const revalidate = false;
+export const dynamicParams = false;
 
-async function fetchGovernmentJob(id: string) {
+// Redirect page does not need custom SEO indexing.
+export const metadata: Metadata = {
+    robots: {
+        index: false,
+        follow: true,
+    },
+};
+
+const fetchGovernmentOpportunity = cache(async (id: string) => {
     try {
-        const response = await fetch(`${API_URL}/api/public/government-jobs/${encodeURIComponent(id)}`, {
-            method: 'GET',
-            headers: {
-                'X-Requested-From': 'fresherflow-web',
-            },
-            next: { revalidate: 0 },
-        });
-
-        if (!response.ok) return null;
-        return await response.json();
-    } catch (e) {
-        console.error('Error fetching government job for page details', e);
+        const feed = await fetchGovernmentFeed();
+        return feed?.opportunities?.find((opp) => opp.id === id) || null;
+    } catch {
         return null;
     }
-}
+});
 
-// SEO Metadata Generation
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    const { id } = await params;
-    const job = await fetchGovernmentJob(id);
-    if (!job || !job.opportunity) {
-        return {
-            title: 'Recruitment Notice Not Found | FresherFlow',
-            description: 'This government recruitment notice is no longer available.',
-        };
+export async function generateStaticParams() {
+    try {
+        const feed = await fetchGovernmentFeed();
+        if (!feed?.opportunities) return [];
+        return feed.opportunities.map((opp) => ({ id: opp.id }));
+    } catch {
+        return [];
     }
-
-    const title = `${job.opportunity.title} Recruitment 2026 - ${job.recruitingBody || job.opportunity.company}`;
-    const description = job.opportunity.description || `Apply online for verified ${job.opportunity.title} government recruitment vacancy details, syllabus, dates and fees on FresherFlow.`;
-
-    return {
-        title: `${title} | FresherFlow`,
-        description,
-        alternates: {
-            canonical: `/government-jobs/${id}`,
-        },
-    };
 }
 
 export default async function GovernmentJobDetailPage({ params }: Props) {
     const { id } = await params;
-    const details = await fetchGovernmentJob(id);
+    const opp = await fetchGovernmentOpportunity(id);
 
-    if (!details || !details.opportunity) {
+    if (!opp) {
+        logRouteResult('/government-jobs/[id]', '404');
         notFound();
     }
 
-    const opp = details.opportunity;
-    
     // Redirect to the canonical unified slug details page
+    logRouteResult('/government-jobs/[id]', '307');
     redirect(getOpportunityPath(opp.type, opp.slug || opp.id));
 }
+
+

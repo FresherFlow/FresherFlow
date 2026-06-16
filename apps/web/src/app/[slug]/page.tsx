@@ -1,6 +1,7 @@
 import { Opportunity } from '@fresherflow/types';
 import { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
+import { logRouteResult } from '@/lib/observability';
 import { Suspense } from 'react';
 import OpportunityDetailClient from './OpportunityDetailClient';
 import { OpportunityDetailSkeleton } from '@/ui/Skeleton';
@@ -14,6 +15,8 @@ import {
     ExtendedOpportunity
 } from './opportunitySeo';
 
+const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php']);
+
 type Props = {
     params: Promise<{ slug: string }>;
 };
@@ -21,20 +24,49 @@ type Props = {
 // On-Demand Revalidation is used for this route via /api/revalidate
 export const revalidate = false;
 
-// dynamicParams = true: allows Next.js to render new job pages dynamically on-demand,
-// which is essential for development and for newly published jobs in production.
-export const dynamicParams = true;
+// dynamicParams = false: enforces static allow-list routing, immediately returning a static 404
+// for any path not returned by generateStaticParams.
+export const dynamicParams = false;
 
 export async function generateStaticParams() {
-    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    const feed = await fetchBootstrapFeed();
-    if (!feed?.opportunities) return [];
-    return feed.opportunities.map((opp) => ({ slug: opp.slug ?? opp.id }));
+    try {
+        const { fetchBootstrapFeed, fetchGovernmentFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
+        const [feed, govtFeed, expiredFeed] = await Promise.all([
+            fetchBootstrapFeed(),
+            fetchGovernmentFeed(),
+            fetchExpiredFeed()
+        ]);
+
+        const slugs = new Set<string>();
+
+        feed?.opportunities?.forEach((opp) => {
+            const slug = opp.slug || opp.id;
+            if (slug) slugs.add(slug);
+        });
+
+        govtFeed?.opportunities?.forEach((opp) => {
+            const slug = opp.slug || opp.id;
+            if (slug) slugs.add(slug);
+        });
+
+        expiredFeed?.opportunities?.forEach((opp) => {
+            const slug = opp.slug || opp.id;
+            if (slug) slugs.add(slug);
+        });
+
+        return Array.from(slugs).map((slug) => ({ slug }));
+    } catch {
+        return [];
+    }
 }
 
 // Generate dynamic SEO metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug: slugOrId } = await params;
+    if (CRAWLER_PATHS.has(slugOrId)) {
+        logRouteResult('/[slug] (crawler)', '404');
+        notFound();
+    }
     try {
         const opportunity = await fetchOpportunityForPage(slugOrId);
         if (!opportunity) throw new Error('Opportunity not found');
@@ -49,6 +81,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function OpportunityDetailPage({ params }: Props) {
     const { slug: slugOrId } = await params;
+    if (CRAWLER_PATHS.has(slugOrId)) {
+        logRouteResult('/[slug] (crawler)', '404');
+        notFound();
+    }
     let opportunityData: ExtendedOpportunity | null = null;
     let relatedOpportunitiesData: Opportunity[] = [];
 
@@ -58,8 +94,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // Job not found in CDN feed — return a real 404 so Google doesn't
         // soft-404 the page (200 with error UI = Soft 404 in GSC).
         if (!opportunityData) {
-            const { unstable_noStore } = await import('next/cache');
-            unstable_noStore();
+            logRouteResult('/[slug]', '404');
             notFound();
         }
 
@@ -67,11 +102,13 @@ export default async function OpportunityDetailPage({ params }: Props) {
 
         // SEO Enforcement: Redirect to slug if ID was used
         if (slugOrId === opportunityData.id && opportunityData.slug) {
+            logRouteResult('/[slug]', '308');
             permanentRedirect(getOpportunityPath(opportunityData.type, opportunityData.slug));
         }
 
         // Expired pages stay live for grace period, then redirect to the type hub.
         if (expiry.pastGrace) {
+            logRouteResult('/[slug]', '308');
             permanentRedirect(getTypeHubPath(opportunityData.type));
         }
 
@@ -92,6 +129,10 @@ export default async function OpportunityDetailPage({ params }: Props) {
         if (msg === 'NEXT_NOT_FOUND' || msg === 'NEXT_REDIRECT') throw err;
         // CDN is temporarily down — render client with null so it can show retry UI
         // rather than hard 404-ing on a transient error.
+    }
+
+    if (opportunityData) {
+        logRouteResult('/[slug]', '200');
     }
 
     return (

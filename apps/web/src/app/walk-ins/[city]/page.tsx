@@ -1,28 +1,42 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { logRouteResult } from '@/lib/observability';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export const revalidate = false; // on-demand only — busted via revalidateTag on publish
-export const dynamicParams = true;
+// dynamicParams = false: enforces static allow-list routing, immediately returning a static 404
+// for any path not returned by generateStaticParams.
+export const dynamicParams = false;
 
 export async function generateStaticParams() {
-    // Only pre-build cities that actually have walk-in data.
-    // When there are zero walk-ins, returns [] — no wasted ISR entries.
     try {
-        const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-        const feed = await fetchBootstrapFeed();
-        if (!feed?.opportunities) return [];
+        const { fetchBootstrapFeed, fetchGovernmentFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
+        const [feed, govtFeed, expiredFeed] = await Promise.all([
+            fetchBootstrapFeed(),
+            fetchGovernmentFeed(),
+            fetchExpiredFeed()
+        ]);
 
         const cities = new Set<string>();
-        for (const opp of feed.opportunities) {
-            if (opp.type !== 'WALKIN') continue;
-            for (const loc of opp.locations ?? []) {
-                const city = loc.trim().toLowerCase().replace(/\s+/g, '-');
-                if (city && city !== 'pan-india' && city !== 'remote' && city !== 'worldwide') {
-                    cities.add(city);
+
+        const addWalkInCities = (opportunities: any[]) => {
+            if (!opportunities) return;
+            for (const opp of opportunities) {
+                if (opp.type !== 'WALKIN') continue;
+                for (const loc of opp.locations ?? []) {
+                    const city = loc.trim().toLowerCase().replace(/\s+/g, '-');
+                    if (city && city !== 'pan-india' && city !== 'remote' && city !== 'worldwide') {
+                        cities.add(city);
+                    }
                 }
             }
-        }
+        };
+
+        if (feed?.opportunities) addWalkInCities(feed.opportunities);
+        if (govtFeed?.opportunities) addWalkInCities(govtFeed.opportunities);
+        if (expiredFeed?.opportunities) addWalkInCities(expiredFeed.opportunities);
+
         return Array.from(cities).map((city) => ({ city }));
     } catch {
         return [];
@@ -73,18 +87,18 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
     
     // Validate city against feed to prevent cache poisoning by bots
     const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    const feed = await fetchBootstrapFeed();
+    const feed = await fetchBootstrapFeed(false);
     const hasCity = feed?.opportunities?.some(opp => 
         opp.type === 'WALKIN' && 
         opp.locations?.some(loc => loc.trim().toLowerCase().replace(/\s+/g, '-') === city)
     );
 
     if (!hasCity) {
-        const { unstable_noStore } = await import('next/cache');
-        unstable_noStore();
-        const { notFound } = await import('next/navigation');
+        logRouteResult('/walk-ins/[city]', '404');
         notFound();
     }
+
+    logRouteResult('/walk-ins/[city]', '200');
 
     const cityLabel = formatLabel(city);
     const pageUrl = `${SITE_URL}/walk-ins/${city}`;

@@ -1,30 +1,15 @@
-import { redirect } from 'next/navigation';
-import type { Metadata } from 'next';
+import { NextRequest, NextResponse } from 'next/server';
 import { API_URL } from '@/lib/utils/runtimeConfig';
 
-export const metadata: Metadata = {
-    robots: {
-        index: false,
-        follow: false,
-    },
-};
-
-interface PageProps {
-    params: Promise<{ code: string }>;
-}
-
-/**
- * /r/[code] — short referral link
- *
- * Records the click server-side then redirects to login/signup.
- * Fires-and-forgets the click tracking so the redirect is instant.
- */
-export default async function ReferralRedirectPage({ params }: PageProps) {
+export async function GET(
+    request: NextRequest,
+    { params }: { params: Promise<{ code: string }> }
+) {
     const { code } = await params;
 
     // Drop malicious spam traffic before hitting the backend
     if (!code || code.length > 20 || !/^[A-Za-z0-9_-]+$/.test(code)) {
-        redirect('/');
+        return NextResponse.redirect(new URL('/', request.url), 307);
     }
 
     const apiUrl = API_URL;
@@ -38,5 +23,9 @@ export default async function ReferralRedirectPage({ params }: PageProps) {
     }).catch(() => { /* silent */ });
 
     // Redirect to signup with the short code as ref
-    redirect(`/login?intent=signup&ref=${encodeURIComponent(code.toUpperCase())}`);
+    const signupUrl = new URL('/login', request.url);
+    signupUrl.searchParams.set('intent', 'signup');
+    signupUrl.searchParams.set('ref', code.toUpperCase());
+
+    return NextResponse.redirect(signupUrl, 307);
 }

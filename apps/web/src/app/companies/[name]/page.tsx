@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { permanentRedirect, notFound } from 'next/navigation';
+import { logRouteResult } from '@/lib/observability';
 import JobCard from '@/features/opportunities/components/JobCard';
 import { GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';
@@ -7,29 +8,39 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export const revalidate = false;
-// Same as /[slug] — dynamicParams = true to support dynamically loaded new company profiles.
-export const dynamicParams = true;
+// dynamicParams = false: enforces static allow-list routing, immediately returning a static 404
+// for any path not returned by generateStaticParams.
+export const dynamicParams = false;
 
 export async function generateStaticParams() {
-    // Use bootstrap feed (active jobs only) instead of sitemap data (includes expired company slugs).
-    // Expired companies have no CDN shard file — their shard fetch returns 404 every time,
-    // which Next.js never caches, causing 0% data cache hit and unnecessary ISR writes.
-    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    const feed = await fetchBootstrapFeed();
-    if (!feed?.opportunities) return [];
+    try {
+        const { fetchCompaniesMetadata } = await import('@/lib/api/cdnFeed');
+        const { slugify } = await import('@fresherflow/utils');
+        const companyDirectory = await fetchCompaniesMetadata();
+        if (!companyDirectory) return [];
 
-    const { slugify } = await import('@fresherflow/utils');
-    const seen = new Set<string>();
-    const params: { name: string }[] = [];
-    for (const opp of feed.opportunities) {
-        if (!opp.company) continue;
-        const slug = slugify(opp.company);
-        if (!seen.has(slug)) {
-            seen.add(slug);
-            params.push({ name: slug });
+        const seen = new Set<string>();
+        const params: { name: string }[] = [];
+
+        for (const item of companyDirectory) {
+            let companyName = '';
+            if (typeof item === 'string') {
+                companyName = item;
+            } else if (item && typeof item === 'object' && 'name' in item) {
+                companyName = (item as { name: string }).name;
+            }
+
+            const slug = slugify(companyName);
+            if (slug && !seen.has(slug)) {
+                seen.add(slug);
+                params.push({ name: slug });
+            }
         }
+
+        return params;
+    } catch {
+        return [];
     }
-    return params;
 }
 
 export async function generateMetadata(
@@ -78,6 +89,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     // If the requested URL is not a perfectly clean slug (legacy %20 or uppercase),
     // 301 redirect to the clean slugified version to fix Google Search Console 404s and SEO.
     if (encodedName !== slug) {
+        logRouteResult('/companies/[name]', '308');
         permanentRedirect(`/companies/${slug}`);
     }
 
@@ -94,8 +106,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
                 .filter(Boolean)
         );
         if (!knownSlugs.has(slug)) {
-            const { unstable_noStore } = await import('next/cache');
-            unstable_noStore();
+            logRouteResult('/companies/[name]', '404');
             notFound();
         }
     }
@@ -110,8 +121,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     // Empty state: company exists in sitemap but currently has no active listings.
     // Return a proper page (not 404) so Google keeps it indexed.
     if (companyJobs.length === 0) {
-        const { unstable_noStore } = await import('next/cache');
-        unstable_noStore();
+        logRouteResult('/companies/[name]', '200');
         return (
             <div className="min-h-screen bg-background pb-20">
                 <main className="max-w-5xl mx-auto px-4 py-16 text-center space-y-4">
@@ -130,6 +140,8 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         website: firstJob.companyWebsite,
         stats: { activeJobs: companyJobs.length }
     };
+
+    logRouteResult('/companies/[name]', '200');
 
     return (
         <div className="min-h-screen bg-background pb-20">

@@ -59,8 +59,10 @@ export default async function LandingPage() {
             fetchSkillsMetadata(),
         ]);
 
+        const isBuild = process.env.NEXT_PHASE === 'phase-production-build';
+        const timeoutMs = isBuild ? 15000 : 500;
         const timeoutPromise = new Promise<[null, null, null]>((resolve) =>
-            setTimeout(() => resolve([null, null, null]), 500)
+            setTimeout(() => resolve([null, null, null]), timeoutMs)
         );
 
         const [resolvedFeed, resolvedEdu, resolvedSkills] = await Promise.race([dataPromise, timeoutPromise]);

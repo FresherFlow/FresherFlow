@@ -117,6 +117,24 @@ async function signUrlIfServer(url: string): Promise<string> {
  * concurrently from one machine — this saturates CDN connections and 3.5s
  * is too short. At runtime, 3.5s fast-fails bots hitting non-existent slugs.
  */
+// In-memory cache structures to prevent duplicate parses/fetches during builds/requests
+let cachedFeedVersion: { timestamp: number; data: FeedVersion } | null = null;
+let cachedBootstrapFeed: { version: string; data: BootstrapFeedResponse } | null = null;
+let cachedExpiredFeed: { version: string; data: BootstrapFeedResponse } | null = null;
+let cachedGovernmentFeed: { version: string; data: BootstrapFeedResponse } | null = null;
+const cachedCategoryShards = new Map<string, { version: string; data: BootstrapFeedResponse }>();
+const cachedCompanyShards = new Map<string, { version: string; data: BootstrapFeedResponse }>();
+let cachedEducationMetadata: EducationMetadata | null = null;
+let cachedSkillsMetadata: string[] | null = null;
+let cachedCompaniesMetadata: { version?: string; data: string[] } | null = null;
+let cachedSitemapData: SitemapDataResponse | null = null;
+
+/**
+ * Returns the CDN fetch timeout in ms.
+ * During production build, Next.js renders all generateStaticParams pages
+ * concurrently from one machine — this saturates CDN connections and 3.5s
+ * is too short. At runtime, 3.5s fast-fails bots hitting non-existent slugs.
+ */
 function getCDNTimeout(): number {
     return process.env.NEXT_PHASE === 'phase-production-build' ? 12000 : 3500;
 }
@@ -134,35 +152,39 @@ function getCDNFetchOptions(options: CDNFetchOptions = {}): CDNFetchOptions {
 }
 
 /**
- * Fetches the centrally stored R2 feed version without caching.
+ * Fetches the centrally stored R2 feed version with a short 5-second in-memory cache
+ * to deduplicate concurrent requests. Next.js cache handles long-term storage.
  */
 export async function fetchFeedVersion(): Promise<FeedVersion> {
+    const now = Date.now();
+    if (cachedFeedVersion && (now - cachedFeedVersion.timestamp < 5000)) {
+        return cachedFeedVersion.data;
+    }
     try {
-        // revalidate: false = cache indefinitely. Tags allow explicit invalidation via
-        // revalidateTag('feed-version') in /api/revalidate when a job is published.
-        // Previously used next: { revalidate: 3600 }, which forced EVERY page that calls
-        // fetchBootstrapFeed to show "1h" in the build route table — causing hourly ISR writes
-        // on every list/detail page regardless of whether the feed changed.
         const res = await fetch(FEED_VERSION_URL, {
             next: { revalidate: false, tags: ['feed-version'] },
         });
         if (res.ok) {
             const data = await res.json() as { version?: string };
-            if (data?.version) return { version: data.version, stable: true };
+            if (data?.version) {
+                const versionData = { version: data.version, stable: true };
+                cachedFeedVersion = { timestamp: now, data: versionData };
+                return versionData;
+            }
         }
     } catch (err) {
         console.warn('Failed to fetch feed version, using uncached fallback:', err instanceof Error ? err.message : err);
     }
-    // If feed-version.json is unavailable, do not invent a time-based cache key.
-    // A rotating fallback plus force-cache creates repeated Vercel cache writes.
-    return { version: 'fallback', stable: false };
+    const fallbackData = { version: 'fallback', stable: false };
+    cachedFeedVersion = { timestamp: now, data: fallbackData };
+    return fallbackData;
 }
 
 /**
  * Fetches the static bootstrap feed from the CDN.
  * This is used for "Zero-Spinner" instant discovery and SEO.
  */
-export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFeedResponse | null> {
+export async function fetchBootstrapFeed(forceLive = false, customTags?: string[]): Promise<BootstrapFeedResponse | null> {
     try {
         if (process.env.NODE_ENV === 'development' && !forceLive) {
             try {
@@ -178,6 +200,12 @@ export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFe
         }
 
         const feedVersion = await fetchFeedVersion();
+        
+        // Return from in-memory cache if available and version matches
+        if (!forceLive && cachedBootstrapFeed && cachedBootstrapFeed.version === feedVersion.version) {
+            return cachedBootstrapFeed.data;
+        }
+
         // Sign using the stable version string — URL stays identical until next publish event,
         // allowing Vercel / Cloudflare edges to cache it indefinitely (immutable).
         const IS_SERVER = typeof window === 'undefined';
@@ -193,7 +221,7 @@ export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFe
             // Cache only stable feed-version URLs. If feed-version.json is down,
             // use no-store so a fallback URL cannot create repeated cache writes.
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: customTags ?? ['homepage-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -212,6 +240,11 @@ export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFe
             return null;
         }
 
+        // Cache in-memory
+        if (feedVersion.stable) {
+            cachedBootstrapFeed = { version: feedVersion.version, data };
+        }
+
         return data;
     } catch (err) {
         console.warn('Bootstrap CDN fetch failed:', err instanceof Error ? err.message : err);
@@ -223,13 +256,18 @@ export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFe
  * Fetches the static expired feed from the CDN.
  * Used as a fallback by detail pages to prevent 404s for recently expired opportunities.
  */
-export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> {
+export async function fetchExpiredFeed(customTags?: string[]): Promise<BootstrapFeedResponse | null> {
     try {
         if (process.env.NODE_ENV === 'development') {
             return null; // Don't mock expired feed in dev for now
         }
 
         const feedVersion = await fetchFeedVersion();
+
+        if (cachedExpiredFeed && cachedExpiredFeed.version === feedVersion.version) {
+            return cachedExpiredFeed.data;
+        }
+
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
             ? await signUrlWithVersion(EXPIRED_FEED_URL, feedVersion.version)
@@ -240,7 +278,7 @@ export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> 
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: customTags ?? ['expired-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -257,6 +295,10 @@ export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> 
             return null;
         }
 
+        if (feedVersion.stable) {
+            cachedExpiredFeed = { version: feedVersion.version, data };
+        }
+
         return data;
     } catch (err) {
         console.warn('Expired CDN fetch failed:', err instanceof Error ? err.message : err);
@@ -267,7 +309,7 @@ export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> 
 /**
  * Fetches the static government jobs feed from the CDN.
  */
-export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapFeedResponse | null> {
+export async function fetchGovernmentFeed(forceLive = false, customTags?: string[]): Promise<BootstrapFeedResponse | null> {
     try {
         if (process.env.NODE_ENV === 'development' && !forceLive) {
             try {
@@ -281,6 +323,11 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
         }
 
         const feedVersion = await fetchFeedVersion();
+
+        if (!forceLive && cachedGovernmentFeed && cachedGovernmentFeed.version === feedVersion.version) {
+            return cachedGovernmentFeed.data;
+        }
+
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
             ? await signUrlWithVersion(GOVERNMENT_FEED_URL, feedVersion.version)
@@ -291,7 +338,7 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: customTags ?? ['government-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -309,6 +356,10 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
             return null;
         }
 
+        if (feedVersion.stable) {
+            cachedGovernmentFeed = { version: feedVersion.version, data };
+        }
+
         return data;
     } catch (err) {
         console.warn('Government CDN fetch failed:', err instanceof Error ? err.message : err);
@@ -319,9 +370,15 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
 /**
  * Fetches a specific category shard (e.g. trending, remote, 2026)
  */
-export async function fetchCategoryShard(id: string): Promise<BootstrapFeedResponse | null> {
+export async function fetchCategoryShard(id: string, customTags?: string[]): Promise<BootstrapFeedResponse | null> {
     try {
         const feedVersion = await fetchFeedVersion();
+
+        const cached = cachedCategoryShards.get(id);
+        if (cached && cached.version === feedVersion.version) {
+            return cached.data;
+        }
+
         const IS_SERVER = typeof window === 'undefined';
         const rawUrl = GET_CATEGORY_SHARD_URL(id);
         const url = IS_SERVER
@@ -333,13 +390,18 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
 
         const res = await fetch(url, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: customTags ?? [`category-${id}`] } } : {}),
             signal: controller.signal,
         }));
 
         clearTimeout(timeoutId);
         if (!res.ok) return null;
-        return await res.json() as BootstrapFeedResponse;
+        const data = await res.json() as BootstrapFeedResponse;
+
+        if (feedVersion.stable) {
+            cachedCategoryShards.set(id, { version: feedVersion.version, data });
+        }
+        return data;
     } catch (err) {
         console.warn(`Failed to fetch shard ${id}:`, err);
         return null;
@@ -349,9 +411,15 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
 /**
  * Fetches a specific company shard (e.g. google, microsoft)
  */
-export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResponse | null> {
+export async function fetchCompanyShard(slug: string, customTags?: string[]): Promise<BootstrapFeedResponse | null> {
     try {
         const feedVersion = await fetchFeedVersion();
+
+        const cached = cachedCompanyShards.get(slug);
+        if (cached && cached.version === feedVersion.version) {
+            return cached.data;
+        }
+
         const IS_SERVER = typeof window === 'undefined';
         const rawUrl = GET_COMPANY_SHARD_URL(slug);
         const url = IS_SERVER
@@ -359,19 +427,22 @@ export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResp
             : `${rawUrl}?v=${feedVersion.version}`;
 
         const controller = new AbortController();
-        // 3.5s at runtime (fast-fail bots on non-existent slugs before Vercel's ~9s ceiling).
-        // 12s during build (concurrent static generation saturates CDN connections).
         const timeoutId = setTimeout(() => controller.abort(), getCDNTimeout());
 
         const res = await fetch(url, getCDNFetchOptions({
             cache: feedVersion.stable ? 'force-cache' : 'no-store',
-            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: customTags ?? [`company-${slug}`] } } : {}),
             signal: controller.signal,
         }));
 
         clearTimeout(timeoutId);
         if (!res.ok) return null;
-        return await res.json() as BootstrapFeedResponse;
+        const data = await res.json() as BootstrapFeedResponse;
+
+        if (feedVersion.stable) {
+            cachedCompanyShards.set(slug, { version: feedVersion.version, data });
+        }
+        return data;
     } catch (err) {
         console.warn(`Failed to fetch company shard ${slug}:`, err);
         return null;
@@ -385,16 +456,19 @@ export interface EducationMetadata {
 }
 
 /**
- * Fetches education metadata from CDN.
+ * Fetches education metadata from CDN. Cached indefinitely in-memory.
  */
 export async function fetchEducationMetadata(): Promise<EducationMetadata | null> {
     try {
+        if (cachedEducationMetadata) return cachedEducationMetadata;
         const url = await signUrlIfServer(EDUCATION_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache', // Static metadata — changes rarely, no hourly/daily timer
         }));
         if (!res.ok) return null;
-        return await res.json() as EducationMetadata;
+        const data = await res.json() as EducationMetadata;
+        cachedEducationMetadata = data;
+        return data;
     } catch (err) {
         console.warn('Failed to fetch education metadata from CDN:', err);
         return null;
@@ -402,16 +476,19 @@ export async function fetchEducationMetadata(): Promise<EducationMetadata | null
 }
 
 /**
- * Fetches skills list from CDN.
+ * Fetches skills list from CDN. Cached indefinitely in-memory.
  */
 export async function fetchSkillsMetadata(): Promise<string[] | null> {
     try {
+        if (cachedSkillsMetadata) return cachedSkillsMetadata;
         const url = await signUrlIfServer(SKILLS_METADATA_URL);
         const res = await fetch(url, getCDNFetchOptions({
             cache: 'force-cache', // Static metadata — changes rarely, no hourly/daily timer
         }));
         if (!res.ok) return null;
-        return await res.json() as string[];
+        const data = await res.json() as string[];
+        cachedSkillsMetadata = data;
+        return data;
     } catch (err) {
         console.warn('Failed to fetch skills metadata from CDN:', err);
         return null;
@@ -423,17 +500,26 @@ export async function fetchSkillsMetadata(): Promise<string[] | null> {
  */
 export async function fetchCompaniesMetadata(): Promise<string[] | null> {
     try {
+        const feedVersion = await fetchFeedVersion();
+        if (cachedCompaniesMetadata && cachedCompaniesMetadata.version === feedVersion.version) {
+            return cachedCompaniesMetadata.data;
+        }
+
         const url = await signUrlIfServer(COMPANIES_METADATA_URL);
         const controller = new AbortController();
-        // 3.5s at runtime (fast-fail). 12s during build (concurrent static generation).
         const timeoutId = setTimeout(() => controller.abort(), getCDNTimeout());
         const res = await fetch(url, getCDNFetchOptions({
-            cache: 'no-store',
+            cache: 'force-cache',
+            next: { revalidate: false, tags: ['companies-metadata'] },
             signal: controller.signal,
         }));
         clearTimeout(timeoutId);
         if (!res.ok) return null;
-        const data = await res.json() as string[]; // Based on backend MetadataService saving companies as string array
+        const data = await res.json() as string[];
+        
+        if (feedVersion.stable) {
+            cachedCompaniesMetadata = { version: feedVersion.version, data };
+        }
         return data;
     } catch (err) {
         console.warn('Failed to fetch companies metadata from CDN:', err);
@@ -458,6 +544,7 @@ export interface SitemapDataResponse {
  */
 export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
     try {
+        if (cachedSitemapData) return cachedSitemapData;
         const url = await signUrlIfServer(SITEMAP_DATA_URL);
 
         const controller = new AbortController();
@@ -483,6 +570,7 @@ export async function fetchSitemapData(): Promise<SitemapDataResponse | null> {
             return null;
         }
 
+        cachedSitemapData = data;
         return data;
     } catch (err) {
         console.warn('Sitemap CDN fetch failed:', err instanceof Error ? err.message : err);

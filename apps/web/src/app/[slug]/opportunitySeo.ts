@@ -118,7 +118,8 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
         // This prevents Render backend wake-ups, OOMs, and database connection limits during Vercel builds or revalidations.
         const { fetchBootstrapFeed, fetchExpiredFeed, fetchGovernmentFeed } = await import('@/lib/api/cdnFeed');
         
-        const feed = await fetchBootstrapFeed();
+        // 1. Try active bootstrap feed (most common)
+        const feed = await fetchBootstrapFeed(false);
         if (feed?.opportunities) {
             const opportunity = feed.opportunities.find(
                 (opp) => opp.slug === slugOrId || opp.id === slugOrId
@@ -128,7 +129,8 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
             }
         }
 
-        const govtFeed = await fetchGovernmentFeed();
+        // 2. Try government jobs feed (less common)
+        const govtFeed = await fetchGovernmentFeed(false);
         if (govtFeed?.opportunities) {
             const govtOpportunity = govtFeed.opportunities.find(
                 (opp) => opp.slug === slugOrId || opp.id === slugOrId
@@ -138,7 +140,7 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
             }
         }
 
-        // FALLBACK: If not in the main active feed, check the secondary expired feed
+        // 3. Fallback: Try expired feed
         const expiredFeed = await fetchExpiredFeed();
         if (expiredFeed?.opportunities) {
             const expiredOpportunity = expiredFeed.opportunities.find(

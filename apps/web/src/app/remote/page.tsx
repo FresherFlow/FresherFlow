@@ -25,7 +25,10 @@ export default async function RemotePage() {
             o.type === OpportunityType.JOB && 
             o.locations?.some(loc => loc.toLowerCase().includes('remote') || loc.toLowerCase().includes('wfh'))
         ),
-        total: bootstrapData.count,
+        total: bootstrapData.opportunities.filter(o => 
+            o.type === OpportunityType.JOB && 
+            o.locations?.some(loc => loc.toLowerCase().includes('remote') || loc.toLowerCase().includes('wfh'))
+        ).length,
         cachedAt: new Date(bootstrapData.generatedAt).getTime(),
     } : null;
 

@@ -38,7 +38,7 @@ export default async function JobsPage() {
     const bootstrapData = await fetchBootstrapFeed();
     const initialData = bootstrapData ? {
         opportunities: bootstrapData.opportunities.filter(o => o.type === OpportunityType.JOB),
-        total: bootstrapData.count,
+        total: bootstrapData.opportunities.filter(o => o.type === OpportunityType.JOB).length,
         cachedAt: new Date(bootstrapData.generatedAt).getTime(),
     } : null;
 
