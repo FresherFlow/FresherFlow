@@ -725,6 +725,7 @@ export class StaticFeedService {
                         status: OpportunityStatus.PUBLISHED,
                         deletedAt: null,
                     },
+                    select: this.getFeedSelectFields(),
                     orderBy: { postedAt: 'desc' },
                 });
             });
@@ -751,7 +752,7 @@ export class StaticFeedService {
             await this.uploadToR2('bootstrap-feed.min.json', bootstrapBody, 'application/json');
 
             // 5. Generate & Upload Government Feed
-            const governmentMapped = activeMapped.filter(opp => opp.governmentJobDetails !== null);
+            const governmentMapped = activeMapped.filter(opp => opp.type === 'GOVERNMENT');
             const government = {
                 opportunities: governmentMapped,
                 timestamp: Date.now(),

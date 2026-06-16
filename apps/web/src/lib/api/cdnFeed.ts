@@ -19,6 +19,18 @@ export interface BootstrapFeedResponse {
     generatedAt: string;
 }
 
+type FeedVersion = {
+    version: string;
+    stable: boolean;
+};
+
+type CDNFetchOptions = RequestInit & {
+    next?: {
+        revalidate?: false | number;
+        tags?: string[];
+    };
+};
+
 async function signMessage(message: string, secret: string): Promise<string> {
     const encoder = new TextEncoder();
     const keyData = encoder.encode(secret);
@@ -112,7 +124,7 @@ function getCDNTimeout(): number {
 /**
  * Generates correct fetch options for the static CDN.
  */
-function getCDNFetchOptions(options: RequestInit = {}): RequestInit {
+function getCDNFetchOptions(options: CDNFetchOptions = {}): CDNFetchOptions {
     const headers = new Headers(options.headers || {});
     headers.set('Origin', SITE_URL || 'https://fresherflow.com');
     return {
@@ -124,7 +136,7 @@ function getCDNFetchOptions(options: RequestInit = {}): RequestInit {
 /**
  * Fetches the centrally stored R2 feed version without caching.
  */
-export async function fetchFeedVersion(): Promise<string> {
+export async function fetchFeedVersion(): Promise<FeedVersion> {
     try {
         // revalidate: false = cache indefinitely. Tags allow explicit invalidation via
         // revalidateTag('feed-version') in /api/revalidate when a job is published.
@@ -136,13 +148,14 @@ export async function fetchFeedVersion(): Promise<string> {
         });
         if (res.ok) {
             const data = await res.json() as { version?: string };
-            if (data?.version) return data.version;
+            if (data?.version) return { version: data.version, stable: true };
         }
     } catch (err) {
-        console.warn('Failed to fetch feed version, using timestamp:', err instanceof Error ? err.message : err);
+        console.warn('Failed to fetch feed version, using uncached fallback:', err instanceof Error ? err.message : err);
     }
-    // Fallback to a rounded 5-minute timestamp if R2 is down or unpopulated
-    return Math.floor(Date.now() / 300000).toString();
+    // If feed-version.json is unavailable, do not invent a time-based cache key.
+    // A rotating fallback plus force-cache creates repeated Vercel cache writes.
+    return { version: 'fallback', stable: false };
 }
 
 /**
@@ -164,23 +177,23 @@ export async function fetchBootstrapFeed(forceLive = false): Promise<BootstrapFe
             return await res.json() as BootstrapFeedResponse;
         }
 
-        const version = await fetchFeedVersion();
+        const feedVersion = await fetchFeedVersion();
         // Sign using the stable version string — URL stays identical until next publish event,
         // allowing Vercel / Cloudflare edges to cache it indefinitely (immutable).
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
-            ? await signUrlWithVersion(BOOTSTRAP_FEED_URL, version)
-            : `${BOOTSTRAP_FEED_URL}?v=${version}`;
+            ? await signUrlWithVersion(BOOTSTRAP_FEED_URL, feedVersion.version)
+            : `${BOOTSTRAP_FEED_URL}?v=${feedVersion.version}`;
 
         const controller = new AbortController();
         // 10s timeout — a cache hit should respond in <100ms; this guards only cold misses
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
-            // force-cache: version-pinned URLs mean each URL is immutable until next publish.
-            // Pages are statically cached at Edge after first visit — zero compute on repeat visits.
-            // ISR writes stay low: build-time pre-render + 1 per job publish (not 257k).
-            cache: 'force-cache',
+            // Cache only stable feed-version URLs. If feed-version.json is down,
+            // use no-store so a fallback URL cannot create repeated cache writes.
+            cache: feedVersion.stable ? 'force-cache' : 'no-store',
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -216,17 +229,18 @@ export async function fetchExpiredFeed(): Promise<BootstrapFeedResponse | null> 
             return null; // Don't mock expired feed in dev for now
         }
 
-        const version = await fetchFeedVersion();
+        const feedVersion = await fetchFeedVersion();
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
-            ? await signUrlWithVersion(EXPIRED_FEED_URL, version)
-            : `${EXPIRED_FEED_URL}?v=${version}`;
+            ? await signUrlWithVersion(EXPIRED_FEED_URL, feedVersion.version)
+            : `${EXPIRED_FEED_URL}?v=${feedVersion.version}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
-            cache: 'force-cache',
+            cache: feedVersion.stable ? 'force-cache' : 'no-store',
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -266,17 +280,18 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
             }
         }
 
-        const version = await fetchFeedVersion();
+        const feedVersion = await fetchFeedVersion();
         const IS_SERVER = typeof window === 'undefined';
         const signedUrl = IS_SERVER
-            ? await signUrlWithVersion(GOVERNMENT_FEED_URL, version)
-            : `${GOVERNMENT_FEED_URL}?v=${version}`;
+            ? await signUrlWithVersion(GOVERNMENT_FEED_URL, feedVersion.version)
+            : `${GOVERNMENT_FEED_URL}?v=${feedVersion.version}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
         const res = await fetch(signedUrl, getCDNFetchOptions({
-            cache: 'force-cache',
+            cache: feedVersion.stable ? 'force-cache' : 'no-store',
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -306,18 +321,19 @@ export async function fetchGovernmentFeed(forceLive = false): Promise<BootstrapF
  */
 export async function fetchCategoryShard(id: string): Promise<BootstrapFeedResponse | null> {
     try {
-        const version = await fetchFeedVersion();
+        const feedVersion = await fetchFeedVersion();
         const IS_SERVER = typeof window === 'undefined';
         const rawUrl = GET_CATEGORY_SHARD_URL(id);
         const url = IS_SERVER
-            ? await signUrlWithVersion(rawUrl, version)
-            : `${rawUrl}?v=${version}`;
+            ? await signUrlWithVersion(rawUrl, feedVersion.version)
+            : `${rawUrl}?v=${feedVersion.version}`;
 
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 3500);
 
         const res = await fetch(url, getCDNFetchOptions({
-            cache: 'force-cache',
+            cache: feedVersion.stable ? 'force-cache' : 'no-store',
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -335,12 +351,12 @@ export async function fetchCategoryShard(id: string): Promise<BootstrapFeedRespo
  */
 export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResponse | null> {
     try {
-        const version = await fetchFeedVersion();
+        const feedVersion = await fetchFeedVersion();
         const IS_SERVER = typeof window === 'undefined';
         const rawUrl = GET_COMPANY_SHARD_URL(slug);
         const url = IS_SERVER
-            ? await signUrlWithVersion(rawUrl, version)
-            : `${rawUrl}?v=${version}`;
+            ? await signUrlWithVersion(rawUrl, feedVersion.version)
+            : `${rawUrl}?v=${feedVersion.version}`;
 
         const controller = new AbortController();
         // 3.5s at runtime (fast-fail bots on non-existent slugs before Vercel's ~9s ceiling).
@@ -348,7 +364,8 @@ export async function fetchCompanyShard(slug: string): Promise<BootstrapFeedResp
         const timeoutId = setTimeout(() => controller.abort(), getCDNTimeout());
 
         const res = await fetch(url, getCDNFetchOptions({
-            cache: 'force-cache',
+            cache: feedVersion.stable ? 'force-cache' : 'no-store',
+            ...(feedVersion.stable ? { next: { revalidate: false, tags: ['bootstrap-feed'] } } : {}),
             signal: controller.signal,
         }));
 
@@ -411,7 +428,7 @@ export async function fetchCompaniesMetadata(): Promise<string[] | null> {
         // 3.5s at runtime (fast-fail). 12s during build (concurrent static generation).
         const timeoutId = setTimeout(() => controller.abort(), getCDNTimeout());
         const res = await fetch(url, getCDNFetchOptions({
-            cache: 'force-cache',
+            cache: 'no-store',
             signal: controller.signal,
         }));
         clearTimeout(timeoutId);
