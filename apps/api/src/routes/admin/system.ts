@@ -78,10 +78,12 @@ router.post('/alerts/run', requireAdmin, async (_req: Request, res: Response, ne
 /**
  * Manually trigger static CDN feeds regeneration
  */
-router.post('/regenerate-feeds', requireAdmin, async (_req: Request, res: Response, next: NextFunction) => {
+router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        await StaticFeedService.refresh();
-        res.json({ success: true, message: 'Static feeds successfully regenerated.' });
+        const { target } = req.body;
+        const targetStr = typeof target === 'string' ? target : 'all';
+        await StaticFeedService.refresh(targetStr);
+        res.json({ success: true, message: `Static feeds (${targetStr}) successfully regenerated.` });
     } catch (error) {
         next(error);
     }

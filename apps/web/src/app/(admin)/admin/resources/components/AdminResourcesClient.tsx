@@ -773,95 +773,174 @@ export default function AdminResourcesClient({ initialSkills = [], initialCompan
                                 <p className="text-xs text-muted-foreground mt-1">There are no {activeTab.toLowerCase().replace('_', ' ')} resources to display.</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-sm text-left whitespace-nowrap">
-                                    <thead className="text-xs text-muted-foreground bg-muted/50 border-b border-border uppercase tracking-wider">
-                                        <tr>
-                                            <th className="px-4 py-3 font-semibold">Title & Items</th>
-                                            <th className="px-4 py-3 font-semibold">Type</th>
-                                            <th className="px-4 py-3 font-semibold">Metadata</th>
-                                            <th className="px-4 py-3 font-semibold">Date</th>
-                                            <th className="px-4 py-3 font-semibold text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
-                                        {resources.map((resource) => (
-                                            <tr key={resource.id} className="hover:bg-muted/20 transition-colors">
-                                                <td className="px-4 py-3 align-top max-w-[300px] whitespace-normal">
+                            <>
+                                {/* Mobile View (Cards) */}
+                                <div className="md:hidden flex flex-col divide-y divide-border">
+                                    {resources.map((resource) => (
+                                        <div key={resource.id} className="p-4 space-y-3">
+                                            <div className="flex justify-between items-start gap-2">
+                                                <div>
                                                     <div className="font-medium text-foreground text-sm leading-tight mb-1">{resource.title}</div>
                                                     {resource.description && (
-                                                        <div className="text-xs text-muted-foreground line-clamp-1 mb-2">{resource.description}</div>
+                                                        <div className="text-xs text-muted-foreground line-clamp-2">{resource.description}</div>
                                                     )}
-                                                    {resource.items && resource.items.length > 0 && (
-                                                        <div className="space-y-1">
-                                                            {resource.items.slice(0, 2).map((item) => (
-                                                                <a href={item.url} target="_blank" rel="noopener noreferrer" key={item.id} className="inline-flex items-center gap-1 text-xs text-primary hover:underline bg-primary/5 px-1.5 py-0.5 rounded mr-1 mb-1 border border-primary/10">
-                                                                    <DocumentTextIcon className="w-3 h-3" />
-                                                                    <span className="truncate max-w-[150px]">{item.title}</span>
-                                                                    <ArrowTopRightOnSquareIcon className="w-3 h-3" />
-                                                                </a>
-                                                            ))}
-                                                            {(resource.items.length > 2) && (
-                                                                <span className="inline-flex text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-medium">
-                                                                    +{resource.items.length - 2} more
-                                                                </span>
-                                                            )}
-                                                        </div>
+                                                </div>
+                                                <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/10 shrink-0">
+                                                    {resource.items?.length === 1 ? 'Single' : 'Collection'}
+                                                </span>
+                                            </div>
+
+                                            {resource.items && resource.items.length > 0 && (
+                                                <div className="space-y-1">
+                                                    {resource.items.slice(0, 2).map((item) => (
+                                                        <a href={item.url} target="_blank" rel="noopener noreferrer" key={item.id} className="inline-flex items-center gap-1 text-xs text-blue-700 hover:underline bg-blue-50 px-1.5 py-0.5 rounded mr-1 mb-1 ring-1 ring-inset ring-blue-600/20">
+                                                            <DocumentTextIcon className="w-3 h-3" />
+                                                            <span className="truncate max-w-[150px]">{item.title}</span>
+                                                            <ArrowTopRightOnSquareIcon className="w-3 h-3" />
+                                                        </a>
+                                                    ))}
+                                                    {(resource.items.length > 2) && (
+                                                        <span className="inline-flex text-[10px] text-slate-600 bg-slate-50 ring-1 ring-inset ring-slate-500/10 px-1.5 py-0.5 rounded font-medium">
+                                                            +{resource.items.length - 2} more
+                                                        </span>
                                                     )}
-                                                </td>
-                                                <td className="px-4 py-3 align-top">
-                                                    <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-muted text-muted-foreground border border-border">
-                                                        {resource.items?.length === 1 ? 'Single' : 'Collection'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 align-top max-w-[200px] whitespace-normal">
-                                                    <div className="flex flex-col gap-1.5">
-                                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                                                                resource.sector === ResourceSector.GOVERNMENT
-                                                                    ? 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 border-amber-200 dark:border-amber-900/50'
-                                                                    : 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 border-blue-200 dark:border-blue-900/50'
-                                                            }`}>
-                                                                {resource.sector || ResourceSector.PRIVATE}
-                                                            </span>
-                                                            {resource.company && (
-                                                                <span className="text-xs font-semibold text-blue-600 dark:text-blue-400">{resource.company}</span>
-                                                            )}
-                                                        </div>
-                                                        {resource.skills && resource.skills.length > 0 && (
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {resource.skills.map((skill, i) => (
-                                                                    <span key={i} className="px-1.5 py-0.5 bg-background shadow-sm border border-border text-[10px] rounded text-foreground font-medium">
-                                                                        {skill}
-                                                                    </span>
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/50">
+                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset ${
+                                                    resource.sector === ResourceSector.GOVERNMENT
+                                                        ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                                                        : 'bg-blue-50 text-blue-700 ring-blue-600/20'
+                                                }`}>
+                                                    {resource.sector || ResourceSector.PRIVATE}
+                                                </span>
+                                                {resource.company && (
+                                                    <span className="text-xs font-semibold text-foreground">{resource.company}</span>
+                                                )}
+                                                <span className="text-[10px] text-muted-foreground ml-auto">
+                                                    {new Date(resource.createdAt).toLocaleDateString()}
+                                                </span>
+                                            </div>
+                                            
+                                            {resource.skills && resource.skills.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {resource.skills.map((skill, i) => (
+                                                        <span key={i} className="px-1.5 py-0.5 bg-slate-50 ring-1 ring-inset ring-slate-500/10 text-[10px] rounded-md text-slate-700 font-medium">
+                                                            {skill}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50 mt-2">
+                                                {activeTab === ResourceItemStatus.PENDING_REVIEW && (
+                                                    <button onClick={() => handleApprove(resource.id)} className="px-3 py-1 text-xs font-medium border border-transparent rounded text-emerald-600 hover:bg-emerald-50 transition-colors">
+                                                        Approve
+                                                    </button>
+                                                )}
+                                                <button onClick={() => openEditModal(resource)} className="px-3 py-1 text-xs font-medium border border-transparent rounded text-blue-600 hover:bg-blue-50 transition-colors">
+                                                    Edit
+                                                </button>
+                                                <button onClick={() => handleReject(resource.id)} className="px-3 py-1 text-xs font-medium border border-transparent rounded text-rose-600 hover:bg-rose-50 transition-colors">
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Desktop View (Table) */}
+                                <div className="hidden md:block overflow-x-auto">
+                                    <table className="w-full text-sm text-left whitespace-nowrap">
+                                        <thead className="text-xs text-muted-foreground bg-muted/50 border-b border-border uppercase tracking-wider">
+                                            <tr>
+                                                <th className="px-4 py-3 font-semibold">Title & Items</th>
+                                                <th className="px-4 py-3 font-semibold">Type</th>
+                                                <th className="px-4 py-3 font-semibold">Metadata</th>
+                                                <th className="px-4 py-3 font-semibold">Date</th>
+                                                <th className="px-4 py-3 font-semibold text-right">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border">
+                                            {resources.map((resource) => (
+                                                <tr key={resource.id} className="hover:bg-muted/20 transition-colors">
+                                                    <td className="px-4 py-3 align-top max-w-[300px] whitespace-normal">
+                                                        <div className="font-medium text-foreground text-sm leading-tight mb-1">{resource.title}</div>
+                                                        {resource.description && (
+                                                            <div className="text-xs text-muted-foreground line-clamp-1 mb-2">{resource.description}</div>
+                                                        )}
+                                                        {resource.items && resource.items.length > 0 && (
+                                                            <div className="space-y-1">
+                                                                {resource.items.slice(0, 2).map((item) => (
+                                                                    <a href={item.url} target="_blank" rel="noopener noreferrer" key={item.id} className="inline-flex items-center gap-1 text-xs text-blue-700 hover:underline bg-blue-50 px-1.5 py-0.5 rounded mr-1 mb-1 ring-1 ring-inset ring-blue-600/20">
+                                                                        <DocumentTextIcon className="w-3 h-3" />
+                                                                        <span className="truncate max-w-[150px]">{item.title}</span>
+                                                                        <ArrowTopRightOnSquareIcon className="w-3 h-3" />
+                                                                    </a>
                                                                 ))}
+                                                                {(resource.items.length > 2) && (
+                                                                    <span className="inline-flex text-[10px] text-slate-600 bg-slate-50 ring-1 ring-inset ring-slate-500/10 px-1.5 py-0.5 rounded font-medium">
+                                                                        +{resource.items.length - 2} more
+                                                                    </span>
+                                                                )}
                                                             </div>
                                                         )}
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 align-top text-xs text-muted-foreground">
-                                                    {new Date(resource.createdAt).toLocaleDateString()}
-                                                </td>
-                                                <td className="px-4 py-3 align-top text-right">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        {activeTab === ResourceItemStatus.PENDING_REVIEW && (
-                                                            <button onClick={() => handleApprove(resource.id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Approve">
-                                                                <CheckCircleIcon className="w-4 h-4" />
+                                                    </td>
+                                                    <td className="px-4 py-3 align-top">
+                                                        <span className="inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider bg-slate-50 text-slate-600 ring-1 ring-inset ring-slate-500/10">
+                                                            {resource.items?.length === 1 ? 'Single' : 'Collection'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 align-top max-w-[200px] whitespace-normal">
+                                                        <div className="flex flex-col gap-1.5">
+                                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ring-1 ring-inset ${
+                                                                    resource.sector === ResourceSector.GOVERNMENT
+                                                                        ? 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                                                                        : 'bg-blue-50 text-blue-700 ring-blue-600/20'
+                                                                }`}>
+                                                                    {resource.sector || ResourceSector.PRIVATE}
+                                                                </span>
+                                                                {resource.company && (
+                                                                    <span className="text-xs font-semibold text-foreground">{resource.company}</span>
+                                                                )}
+                                                            </div>
+                                                            {resource.skills && resource.skills.length > 0 && (
+                                                                <div className="flex flex-wrap gap-1">
+                                                                    {resource.skills.map((skill, i) => (
+                                                                        <span key={i} className="px-1.5 py-0.5 bg-slate-50 ring-1 ring-inset ring-slate-500/10 text-[10px] rounded-md text-slate-700 font-medium">
+                                                                            {skill}
+                                                                        </span>
+                                                                    ))}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 align-top text-xs text-muted-foreground">
+                                                        {new Date(resource.createdAt).toLocaleDateString()}
+                                                    </td>
+                                                    <td className="px-4 py-3 align-top text-right">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            {activeTab === ResourceItemStatus.PENDING_REVIEW && (
+                                                                <button onClick={() => handleApprove(resource.id)} className="p-1.5 text-emerald-600 hover:bg-emerald-50 rounded-md transition-colors" title="Approve">
+                                                                    <CheckCircleIcon className="w-4 h-4" />
+                                                                </button>
+                                                            )}
+                                                            <button onClick={() => openEditModal(resource)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit">
+                                                                <PencilSquareIcon className="w-4 h-4" />
                                                             </button>
-                                                        )}
-                                                        <button onClick={() => openEditModal(resource)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-md transition-colors" title="Edit">
-                                                            <PencilSquareIcon className="w-4 h-4" />
-                                                        </button>
-                                                        <button onClick={() => handleReject(resource.id)} className="p-1.5 text-destructive hover:bg-destructive/10 rounded-md transition-colors" title="Delete">
-                                                            <TrashIcon className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
+                                                            <button onClick={() => handleReject(resource.id)} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-md transition-colors" title="Delete">
+                                                                <TrashIcon className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </>
                         )}
                     </div>
 

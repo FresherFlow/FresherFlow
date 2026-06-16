@@ -252,9 +252,10 @@ export const adminApi = {
             })
     },
 
-    regenerateStaticFeeds: () =>
+    regenerateStaticFeeds: (target?: string) =>
         apiClient<{ success: boolean; message: string }>('/api/admin/system/regenerate-feeds', {
-            method: 'POST'
+            method: 'POST',
+            body: JSON.stringify({ target })
         }),
 
     adminPushApi: {

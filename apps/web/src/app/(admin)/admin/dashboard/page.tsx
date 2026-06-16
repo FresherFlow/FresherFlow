@@ -59,13 +59,13 @@ export default function AdminDashboardHome() {
     const [regenerating, setRegenerating] = useState(false);
     const [regenStatus, setRegenStatus] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
-    const handleRegenerate = async () => {
+    const handleRegenerate = async (target: string = 'all') => {
         setRegenerating(true);
         setRegenStatus(null);
         try {
-            const res = await adminApi.regenerateStaticFeeds();
+            const res = await adminApi.regenerateStaticFeeds(target);
             if (res && res.success) {
-                setRegenStatus({ type: 'success', message: 'Feeds successfully regenerated!' });
+                setRegenStatus({ type: 'success', message: `${target === 'all' ? 'All feeds' : target + ' feed'} successfully regenerated!` });
                 // Invalidate lists and reload to pull new CDN feed timestamp
                 setTimeout(() => {
                     window.location.reload();
@@ -346,33 +346,6 @@ export default function AdminDashboardHome() {
                                 </div>
                             </div>
                         )}
-
-                        {!cdnStats.loading && !cdnStats.error && (
-                            <div className="pt-2">
-                                <button
-                                    onClick={handleRegenerate}
-                                    disabled={regenerating}
-                                    className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-border rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/90 disabled:opacity-50 transition-all text-xs shadow-sm hover:shadow-md cursor-pointer"
-                                >
-                                    {regenerating ? (
-                                        <>
-                                            <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                                                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                                                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                                            </svg>
-                                            Regenerating Feeds...
-                                        </>
-                                    ) : (
-                                        'Regenerate CDN Feeds'
-                                    )}
-                                </button>
-                                {regenStatus && (
-                                    <p className={`text-center text-xs font-semibold mt-2 ${regenStatus.type === 'success' ? 'text-emerald-500' : 'text-red-500'}`}>
-                                        {regenStatus.message}
-                                    </p>
-                                )}
-                            </div>
-                        )}
                     </div>
 
                     <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-1">
@@ -390,22 +363,77 @@ export default function AdminDashboardHome() {
                             <h3 className="text-lg font-bold">Operation shortcuts</h3>
                             <p className="text-xs text-muted-foreground">Direct path access for moderation.</p>
                         </div>
-                        <div className="space-y-2.5 pt-2">
+                        <div className="grid grid-cols-2 gap-3 pt-2">
                             <Link
                                 href="/admin/opportunities/create"
-                                className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted/40 transition-colors text-xs font-semibold text-foreground bg-secondary/20"
+                                className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted/40 transition-colors text-xs font-semibold text-foreground bg-secondary/20 col-span-2 sm:col-span-1"
                             >
                                 <span>Create New Listing</span>
                                 <BriefcaseIcon className="w-4 h-4 text-muted-foreground" />
                             </Link>
                             <Link
                                 href="/admin/feedback"
-                                className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted/40 transition-colors text-xs font-semibold text-foreground bg-secondary/20"
+                                className="flex items-center justify-between rounded-xl border border-border p-3 hover:bg-muted/40 transition-colors text-xs font-semibold text-foreground bg-secondary/20 col-span-2 sm:col-span-1"
                             >
-                                <span>Moderate Community Reports</span>
+                                <span>Moderate Reports</span>
                                 <ChatBubbleLeftRightIcon className="w-4 h-4 text-muted-foreground" />
                             </Link>
+
+                            {!cdnStats.loading && !cdnStats.error && (
+                                <>
+                                    <div className="col-span-2 border-t border-border/60 pt-3 mt-1 flex items-center justify-between">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Regenerate Feeds</span>
+                                        {regenerating && (
+                                            <span className="text-[10px] text-primary animate-pulse font-medium">Processing...</span>
+                                        )}
+                                    </div>
+                                    
+                                    <button
+                                        onClick={() => handleRegenerate('all')}
+                                        disabled={regenerating}
+                                        className="col-span-2 flex items-center justify-between px-3.5 py-2 border border-border rounded-xl bg-primary text-primary-foreground font-semibold hover:bg-primary/95 disabled:opacity-50 transition-all text-xs cursor-pointer"
+                                    >
+                                        <span>Regenerate All Feeds</span>
+                                        <CloudIcon className="w-4 h-4" />
+                                    </button>
+
+                                    <button
+                                        onClick={() => handleRegenerate('bootstrap')}
+                                        disabled={regenerating}
+                                        className="flex items-center justify-center px-2 py-1.5 border border-border rounded-lg bg-secondary/35 text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-all text-[11px] font-semibold cursor-pointer"
+                                    >
+                                        Private Feed
+                                    </button>
+                                    <button
+                                        onClick={() => handleRegenerate('govt')}
+                                        disabled={regenerating}
+                                        className="flex items-center justify-center px-2 py-1.5 border border-border rounded-lg bg-secondary/35 text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-all text-[11px] font-semibold cursor-pointer"
+                                    >
+                                        Govt Feed
+                                    </button>
+                                    <button
+                                        onClick={() => handleRegenerate('resources')}
+                                        disabled={regenerating}
+                                        className="flex items-center justify-center px-2 py-1.5 border border-border rounded-lg bg-secondary/35 text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-all text-[11px] font-semibold cursor-pointer"
+                                    >
+                                        Resources Feed
+                                    </button>
+                                    <button
+                                        onClick={() => handleRegenerate('sitemap')}
+                                        disabled={regenerating}
+                                        className="flex items-center justify-center px-2 py-1.5 border border-border rounded-lg bg-secondary/35 text-foreground hover:bg-secondary/60 disabled:opacity-50 transition-all text-[11px] font-semibold cursor-pointer"
+                                    >
+                                        Sitemaps
+                                    </button>
+                                </>
+                            )}
                         </div>
+
+                        {regenStatus && (
+                            <p className={`text-center text-xs font-semibold mt-1 ${regenStatus.type === 'success' ? 'text-emerald-500' : 'text-red-500'}`}>
+                                {regenStatus.message}
+                            </p>
+                        )}
                     </div>
 
                     <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-1">

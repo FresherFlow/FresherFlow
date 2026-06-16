@@ -53,7 +53,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
     const driveMeta = getDriveMetadata(job);
 
     // Feature: Heat & Trust Badges from Plan
-    const heatBadge = job.shareCount && job.shareCount > 10 ? 'Trending' : job.verificationFailures === 0 ? 'High Signal' : null;
+    const heatBadge = job.shareCount && job.shareCount > 10 ? 'Trending' : null;
     const isTrusted = job.verificationFailures === 0 && (job.shareCount || 0) > 5;
 
 
