@@ -24,9 +24,10 @@ type Props = {
 // On-Demand Revalidation is used for this route via /api/revalidate
 export const revalidate = false;
 
-// dynamicParams = false: enforces static allow-list routing, immediately returning a static 404
-// for any path not returned by generateStaticParams.
-export const dynamicParams = false;
+// dynamicParams = true: allows newly published jobs to be dynamically generated on their first visit,
+// rather than 404ing. This will result in 1 ISR write per new job. If we notice an ISR write burst,
+// we may need to revisit this approach or check our cache tags.
+export const dynamicParams = true;
 
 export async function generateStaticParams() {
     try {

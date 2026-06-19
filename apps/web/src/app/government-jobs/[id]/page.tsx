@@ -10,7 +10,10 @@ type Props = {
 };
 
 export const revalidate = false;
-export const dynamicParams = false;
+// dynamicParams = true: allows newly published jobs to be dynamically generated on their first visit,
+// rather than 404ing. This will result in 1 ISR write per new job. If we notice an ISR write burst,
+// we may need to revisit this approach or check our cache tags.
+export const dynamicParams = true;
 
 // Redirect page does not need custom SEO indexing.
 export const metadata: Metadata = {
