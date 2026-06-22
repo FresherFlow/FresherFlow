@@ -22,7 +22,8 @@ const TARGET_SITES = [
     { url: 'https://placementdrive.in/', name: 'placementdrive' },
     { url: 'https://freshershunt.in/', name: 'freshershunt' },
     { url: 'https://fresheropenings.com/', name: 'fresheropenings' },
-    { url: 'https://freshersjobsaadda.blogspot.com/search', name: 'freshersjobsaadda' }
+    { url: 'https://freshersjobsaadda.blogspot.com/search', name: 'freshersjobsaadda' },
+    { url: 'https://jobs.topvarsity.in/', name: 'topvarsity' }
 ];
 
 const VISITED_FILE = path.join(process.cwd(), 'visited_urls.json');
@@ -323,6 +324,7 @@ function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
             'freshersvoice.com', 'freshersnow.com', 'offcampusjobs4u.com', 'freshhiring.com', 
             'recruitnxt.com', 'fresheropenings.com', 'job4freshers.co.in', 'frontlinesmedia.in',
             'govtjobmart.in', 'findmyjobss.com', 'dailypharmajobs.in', 'ashokworld.in',
+            'topvarsity.in',
             'cookieyes.com', 'generatepress.com', 'wordpress.org', 'wordpress.com', 'gravatar.com',
             'elementor.com', 'schema.org', 'doubleclick.net', 'google-analytics.com', 'googletagmanager.com',
             'w.org', 'wp.com', 'blogspot.com', 'getrevue.co', 'revue.co',
