@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import CaptionsTool from '@/app/(admin)/admin/captions/components/CaptionsTool';
 
 export const metadata: Metadata = {
-    title: "Social Captions Generator | FresherFlow",
+    title: "Social Captions Generator",
     description: "Internal utility to compile and generate platform-optimized job opportunity captions.",
     robots: {
         index: false,

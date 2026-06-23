@@ -121,10 +121,19 @@ export function useOpportunityDetail(
     }, [id, initialData, initialRelatedData]);
 
     useEffect(() => {
-        if (!initialData && id && !hasAttemptedLoadRef.current) {
+        if (initialData) {
+            setOpp(initialData);
+            setIsLoading(false);
+            setError(null);
+        } else if (id) {
+            setOpp(null);
+            setIsLoading(true);
+            setError(null);
             hasAttemptedLoadRef.current = true;
             void loadOpportunity();
         }
+        hasTrackedDetailViewRef.current = false;
+        hasShownNotFoundRef.current = false;
     }, [id, initialData, loadOpportunity]);
 
     useEffect(() => {
@@ -159,12 +168,14 @@ export function useOpportunityDetail(
         trackView();
     }, [opp, user]);
 
+    const initialRelatedDataLength = initialRelatedData?.length || 0;
+
     useEffect(() => {
         if (initialRelatedData && initialRelatedData.length > 0) {
             setRelatedOpps(initialRelatedData);
             return;
         }
-        if (!opp) return;
+        if (!opp?.id) return;
 
         const loadRelated = async () => {
             setIsLoadingRelated(true);
@@ -184,7 +195,7 @@ export function useOpportunityDetail(
         };
 
         void loadRelated();
-    }, [opp?.id, opp?.type, opp?.requiredSkills, opp?.locations, opp?.company, opp?.workMode, initialRelatedData]); // eslint-disable-line react-hooks/exhaustive-deps
+    }, [opp?.id, initialRelatedDataLength]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleToggleSave = async () => {
         if (!opp) return;
@@ -295,7 +306,8 @@ export function useOpportunityDetail(
     };
 
     const handleShare = async () => {
-        const shareUrl = getDetailShareUrl(window.location.href);
+        const jobUrl = opp ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : window.location.href;
+        const shareUrl = getDetailShareUrl(jobUrl);
         const shareData = {
             title: `${opp?.title} at ${opp?.company}`,
             text: `Check out this opportunity: ${opp?.title} at ${opp?.company}`,
@@ -318,7 +330,8 @@ export function useOpportunityDetail(
 
     const handleCopyLink = async () => {
         try {
-            await navigator.clipboard.writeText(getDetailShareUrl(window.location.href));
+            const jobUrl = opp ? `${window.location.origin}${getOpportunityPathFromItem(opp)}` : window.location.href;
+            await navigator.clipboard.writeText(getDetailShareUrl(jobUrl));
             toast.success('Link copied to clipboard!');
         } catch (err: unknown) {
             toastError(err, 'Failed to copy link');

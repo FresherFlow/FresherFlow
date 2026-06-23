@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Opportunity } from '@fresherflow/types';
+import { Opportunity, EducationLevel } from '@fresherflow/types';
 // WEB PIVOT: keep API imports disabled while public web runs from CDN/static JSON.
 // import { opportunitiesApi, savedApi } from '@/lib/api/client';
 import { useDebounce } from '@/lib/hooks/useDebounce';
@@ -263,11 +263,21 @@ export function useOpportunitiesFeed({
                 return false;
             }
 
+            // Filter by selected type (JOB, INTERNSHIP, WALKIN)
+            if (type && type !== 'GOVERNMENT' && type !== 'REMOTE') {
+                if (opp.type !== type) {
+                    return false;
+                }
+            }
+
             const matchesSearch = !normalizedSearch || [
                 opp.title,
                 opp.normalizedRole,
                 opp.company,
                 opp.description,
+                ...(opp.allowedCourses || []),
+                ...(opp.allowedDegrees || []),
+                (opp.governmentJobDetails as any)?.minimumQualification
             ].some((value) => String(value || '').toLowerCase().includes(normalizedSearch.toLowerCase()));
 
             const matchesLoc = !selectedLoc || (opp.locations || []).some((loc) => {
@@ -294,13 +304,26 @@ export function useOpportunitiesFeed({
                 cat.toLowerCase().includes(sector.toLowerCase())
             );
 
-            const matchesQualification = !qualification || (opp.allowedDegrees || []).some(deg => 
-                deg.toLowerCase().includes(qualification.toLowerCase())
-            );
+            const qualMap: Record<string, EducationLevel> = {
+                '10th pass': EducationLevel.TENTH,
+                '12th pass': EducationLevel.INTER,
+                'diploma': EducationLevel.DIPLOMA,
+                'graduate': EducationLevel.DEGREE,
+                'postgraduate': EducationLevel.PG
+            };
+            const mappedQual = qualification ? qualMap[qualification.toLowerCase()] : null;
 
+            const matchesQualification = !qualification || 
+                (mappedQual && (opp.allowedDegrees || []).includes(mappedQual)) ||
+                ((opp.governmentJobDetails as any)?.minimumQualification && String((opp.governmentJobDetails as any).minimumQualification).toLowerCase().includes(qualification.toLowerCase()));
+
+            const courseParts = course ? course.split('/').map(p => p.trim().toLowerCase()) : [];
             const matchesCourse = !course || 
-                (opp.allowedCourses || []).some(c => c.toLowerCase().includes(course.toLowerCase())) ||
-                (opp.allowedDegrees || []).some(d => d.toLowerCase().includes(course.toLowerCase()));
+                (opp.allowedCourses || []).some(c => {
+                    const cl = c.toLowerCase();
+                    return courseParts.some(cp => cl.includes(cp));
+                }) ||
+                (course === 'Diploma' && (opp.allowedDegrees || []).includes(EducationLevel.DIPLOMA));
 
             const matchesYear = !selectedYear || 
                 !opp.allowedPassoutYears || 

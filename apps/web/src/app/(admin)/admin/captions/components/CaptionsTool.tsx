@@ -34,6 +34,7 @@ import toast from 'react-hot-toast';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { ThemeToggle } from '@repo/ui/ThemeToggle';
+import { capitalizeSkill } from '@/features/opportunities/domain/opportunityDisplay';
 
 export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean }) {
     const { theme, toggleTheme } = useTheme();
@@ -154,7 +155,7 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
         
         // Limit to 3-4 core skills
         const skillsSlice = opp.requiredSkills && opp.requiredSkills.length > 0 
-            ? opp.requiredSkills.slice(0, 4) 
+            ? opp.requiredSkills.slice(0, 4).map(capitalizeSkill) 
             : [];
         const skillsLine = skillsSlice.length > 0 ? skillsSlice.join(', ') : '';
         

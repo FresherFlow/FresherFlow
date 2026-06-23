@@ -32,6 +32,6 @@ export default async function RemotePage() {
         cachedAt: new Date(bootstrapData.generatedAt).getTime(),
     } : null;
 
-    // We can still use CategoryPage with JOB type, but it will initially render the remote jobs
-    return <CategoryPage type={OpportunityType.JOB} initialData={initialData} />;
+    // We can still use CategoryPage with REMOTE type, and it will render the remote jobs
+    return <CategoryPage type={OpportunityType.REMOTE} initialData={initialData} />;
 }

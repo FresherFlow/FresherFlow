@@ -347,3 +347,45 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
 
     return schema;
 };
+
+export const generateOpportunityBreadcrumbsJsonLd = (opportunity: Opportunity) => {
+    const base = (SITE_URL || 'https://fresherflow.in').replace(/\/+$/, '');
+    const typeLabel = opportunity.type === 'INTERNSHIP' ? 'Internships' : opportunity.type === 'WALKIN' ? 'Walk-ins' : 'Jobs';
+    const typePath = opportunity.type === 'INTERNSHIP' ? '/internships' : opportunity.type === 'WALKIN' ? '/walk-ins' : '/jobs';
+    
+    // Dynamic import to avoid build-time issues
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { slugify } = require('@fresherflow/utils');
+    const companySlug = slugify(opportunity.company || '');
+    
+    return {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+            {
+                '@type': 'ListItem',
+                position: 1,
+                name: 'Home',
+                item: `${base}`
+            },
+            {
+                '@type': 'ListItem',
+                position: 2,
+                name: typeLabel,
+                item: `${base}${typePath}`
+            },
+            {
+                '@type': 'ListItem',
+                position: 3,
+                name: opportunity.company,
+                item: `${base}/companies/${companySlug}`
+            },
+            {
+                '@type': 'ListItem',
+                position: 4,
+                name: opportunity.title,
+                item: `${base}${getOpportunityPath(opportunity.type, opportunity.slug || opportunity.id)}`
+            }
+        ]
+    };
+};

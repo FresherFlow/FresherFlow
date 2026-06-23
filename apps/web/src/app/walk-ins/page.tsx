@@ -14,7 +14,7 @@ export const metadata: Metadata = {
         canonical: '/walk-ins',
     },
     openGraph: {
-        title: 'Walk-in Interview Drives | FresherFlow',
+        title: 'Walk-in Interview Drives',
         description: 'Find direct walk-in interview drives for freshers across India.',
         type: 'website',
         images: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Walk-in Interview Drives | FresherFlow',
+        title: 'Walk-in Interview Drives',
         description: 'Find direct walk-in interview drives for freshers across India.',
         images: ['/main.png'],
     },

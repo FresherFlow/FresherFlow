@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-    title: 'Careers | FresherFlow',
+    title: 'Careers',
     description: 'Join the FresherFlow team and help us build the community-driven platform for verifying off-campus opportunities.',
     alternates: {
         canonical: '/careers',

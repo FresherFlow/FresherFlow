@@ -3,7 +3,7 @@ import PasskeyManager from "@/features/admin/components/PasskeyManager";
 import { Badge } from "@/ui/Badge";
 
 export const metadata = {
-    title: "Admin Settings | FresherFlow",
+    title: "Admin Settings",
     description: "Manage admin account settings and security."
 };
 

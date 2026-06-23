@@ -72,7 +72,17 @@ export function buildLoginFromDetailHref(path: string, source?: string | null, r
 }
 
 export function getDetailShareUrl(rawUrl: string) {
-  return buildShareUrl(rawUrl, { platform: 'other', source: 'opportunity_detail', campaign: 'opportunity_share', ref: 'share' });
+  try {
+      const url = new URL(rawUrl);
+      url.searchParams.delete('source');
+      url.searchParams.delete('medium');
+      url.searchParams.delete('campaign');
+      url.searchParams.delete('ref');
+      url.searchParams.delete('platform');
+      return url.toString();
+  } catch {
+      return rawUrl;
+  }
 }
 
 export function getRelatedOpportunities(opp: Opportunity, all: Opportunity[]) {

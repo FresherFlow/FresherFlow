@@ -146,7 +146,7 @@ export function MobileFilterDrawer({
         <div className="fixed inset-0 z-90 lg:hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-filter-title">
             <div className="absolute inset-0 bg-black/40" onClick={onClose} />
 
-            <div className="absolute bottom-18 left-0 right-0 max-h-[85vh] rounded-t-3xl bg-background border-t border-border shadow-2xl flex flex-col">
+            <div className="absolute bottom-0 pb-[env(safe-area-inset-bottom)] left-0 right-0 max-h-[85vh] rounded-t-3xl bg-background border-t border-border shadow-2xl flex flex-col">
                 <div className="flex justify-center py-3">
                     <div className="h-1.5 w-10 rounded-full bg-muted" />
                 </div>

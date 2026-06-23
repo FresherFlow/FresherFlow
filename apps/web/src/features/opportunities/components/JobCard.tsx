@@ -2,7 +2,6 @@
 
 import { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
-import { slugify } from '@fresherflow/utils';
 import { cn } from '@repo/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
@@ -28,13 +27,15 @@ import { buildShareUrl } from '@/lib/utils/share';
 interface JobCardProps {
     job: Opportunity & { matchScore?: number; matchReason?: string };
     jobId: string;
-    onClick?: () => void;
+    onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void;
     isSaved?: boolean;
     isApplied?: boolean;
     onToggleSave?: () => void;
     isAdmin?: boolean;
     priority?: boolean;
     variant?: 'default' | 'compact';
+    isSelected?: boolean;
+    className?: string;
 }
 
 type JobAction = {
@@ -48,9 +49,29 @@ type JobWithActions = Opportunity & {
 };
 
 
-export default function JobCard({ job, onClick, isApplied = false, isAdmin, priority = false, variant = 'default' }: JobCardProps) {
+function getVisibleSkills(skills: string[] = [], budget: number = 30) {
+    const visible: string[] = [];
+    let currentLen = 0;
+    for (const s of skills) {
+        const est = s.length + 3; // base length plus gap/padding estimate
+        if (currentLen + est > budget && visible.length > 0) {
+            break;
+        }
+        visible.push(s);
+        currentLen += est;
+    }
+    return {
+        visible,
+        remainingCount: skills.length - visible.length
+    };
+}
+
+export default function JobCard({ job, onClick, isApplied = false, isAdmin, priority = false, variant = 'default', isSelected = false, className }: JobCardProps) {
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
+    
+    const skillsBudget = variant === 'compact' ? 22 : 32;
+    const { visible: visibleSkills, remainingCount } = getVisibleSkills(job.requiredSkills || [], skillsBudget);
 
     // Feature: Heat & Trust Badges from Plan
     const heatBadge = job.shareCount && job.shareCount > 10 ? 'Trending' : null;
@@ -207,13 +228,110 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
         ? normalizeSalaryInput(driveMeta.maxCtcLabel) ?? null
         : getOpportunityDisplaySalary(job);
 
+    if (variant === 'compact') {
+        return (
+            <div
+                className={cn(
+                    "group relative bg-card border rounded-xl p-3.5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/40 hover:bg-card flex flex-col gap-2.5 overflow-hidden shrink-0 h-full",
+                    isSelected
+                        ? "border-primary/70 ring-1 ring-primary/15 shadow-sm"
+                        : "border-border/60",
+                    isExpired() && "opacity-60",
+                    "cursor-pointer",
+                    className
+                )}
+            >
+                <Link
+                    href={getOpportunityPathFromItem(job)}
+                    onClick={onClick}
+                    aria-label={`View ${job.title}`}
+                    className="absolute inset-0 z-10"
+                />
+
+                {/* Top Row: Company Logo + Title + Company Name */}
+                <div className="flex items-start gap-3 min-w-0 flex-1 relative">
+                    <div className="shrink-0">
+                        <CompanyLogo
+                            companyName={job.company}
+                            companyWebsite={job.companyWebsite}
+                            companyLogoUrl={job.companyLogoUrl}
+                            applyLink={job.applyLink}
+                            priority={priority}
+                            isGovernment={isGovernment}
+                            className="!w-10 !h-10"
+                        />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-muted-foreground line-clamp-1">
+                                {job.company}
+                            </span>
+                            {getPostedLabel() && (
+                                <span className={cn("text-[11px] font-medium text-muted-foreground shrink-0", isFreshlyPosted() && "text-primary")}>
+                                    {getPostedLabel()}
+                                </span>
+                            )}
+                        </div>
+                        <h3 className="mt-0.5 text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-tight line-clamp-2">
+                            {job.normalizedRole || job.title}
+                        </h3>
+                    </div>
+                </div>
+
+                {/* Middle Row: Salary & Location & Badges */}
+                <div className="flex items-center justify-between text-xs text-muted-foreground gap-2 pt-1 border-t border-border/30">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <span className="inline-flex items-center gap-1 min-w-0">
+                            <MapPinIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                            <span className="truncate">{locationInfo.shortLabel}</span>
+                        </span>
+                        {salaryLabel && (
+                            <span className="inline-flex items-center gap-1 min-w-0">
+                                <CurrencyRupeeIcon className="w-3.5 h-3.5 shrink-0" aria-hidden="true" />
+                                <span className="truncate font-semibold text-foreground/80">{salaryLabel}</span>
+                            </span>
+                        )}
+                    </div>
+                    
+                    <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-muted/80 text-foreground border border-border/60">
+                            {isDrive ? 'Drive' : job.type === 'INTERNSHIP' ? 'Intern' : job.type === 'WALKIN' ? 'Walk-in' : 'Job'}
+                        </span>
+                    </div>
+                </div>
+
+                {/* Skills Row */}
+                {visibleSkills.length > 0 && (
+                    <div className="flex flex-row flex-nowrap overflow-hidden gap-1 pt-1.5 border-t border-border/20 items-center w-full">
+                        {visibleSkills.map((skill, idx) => (
+                            <span
+                                key={`${skill}-${idx}`}
+                                className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary/5 text-primary border border-primary/10 whitespace-nowrap capitalize shrink-0"
+                            >
+                                {skill}
+                            </span>
+                        ))}
+                        {remainingCount > 0 && (
+                            <span className="inline-flex items-center px-1 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground border border-border/40 whitespace-nowrap shrink-0">
+                                +{remainingCount}
+                            </span>
+                        )}
+                    </div>
+                )}
+            </div>
+        );
+    }
+
     return (
         <div
             className={cn(
-                "group relative bg-card border border-border/50 rounded-xl p-4 md:p-5 shadow-sm transition-all duration-200 hover:border-primary/40 hover:shadow-lg hover:-translate-y-0.5 flex flex-col gap-3 overflow-hidden shrink-0",
-                isClosingSoon() && !isExpired() && "border-primary/45",
-                isExpired() && "opacity-70",
-                "cursor-pointer"
+                "group relative bg-card border rounded-2xl p-4 md:p-5 shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/35 flex flex-col gap-3 overflow-hidden shrink-0 h-full",
+                isSelected
+                    ? "border-primary/70 ring-2 ring-primary/10 shadow-md"
+                    : "border-border/60",
+                isExpired() && "opacity-60",
+                "cursor-pointer",
+                className
             )}
         >
             <Link
@@ -222,9 +340,6 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                 aria-label={`View ${job.title}`}
                 className="absolute inset-0 z-10"
             />
-            {isClosingSoon() && !isExpired() && (
-                <div className="absolute left-0 top-0 h-[2px] w-full bg-primary/45" />
-            )}
 
             {/* Top Bar: Type Badge + Heat Badge + Meta */}
             <div className="flex items-center justify-between gap-2 z-20 pointer-events-none">
@@ -247,7 +362,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                 </div>
                 <div className="flex items-center gap-2">
                    {getPostedLabel() && (
-                        <span className={cn("text-[10px] font-bold uppercase tracking-wider text-muted-foreground", isFreshlyPosted() && "text-primary")}>
+                        <span className={cn("text-[11px] font-medium text-muted-foreground", isFreshlyPosted() && "text-primary")}>
                             {getPostedLabel()}
                         </span>
                     )}
@@ -259,14 +374,10 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                 <div className="flex items-start gap-3 min-w-0 flex-1">
                     <div className="mt-1 shrink-0"><CompanyLogo companyName={job.company} companyWebsite={job.companyWebsite} companyLogoUrl={job.companyLogoUrl} applyLink={job.applyLink} priority={priority} isGovernment={job.type === 'GOVERNMENT' || Boolean(job.governmentJobDetails)} /></div>
                     <div className="min-w-0">
-                        <Link
-                            href={`/companies/${slugify(job.company)}`}
-                            onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                            className="relative z-20 text-xs font-medium text-muted-foreground line-clamp-1 hover:text-primary transition-colors cursor-pointer block"
-                        >
+                        <span className="text-xs font-medium text-muted-foreground line-clamp-1 block">
                             {job.company}
-                        </Link>
-                        <h3 className="mt-0.5 text-[17px] md:text-[18px] font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                        </span>
+                        <h3 className="mt-0.5 text-base font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
                             {job.normalizedRole || job.title}
                         </h3>
                         {isGovernment && totalVacancies && (
@@ -322,6 +433,25 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                 </div>
             </div>
 
+            {/* Skills Badges row */}
+            {visibleSkills.length > 0 && (
+                <div className="flex flex-row flex-nowrap overflow-hidden gap-1.5 z-20 pointer-events-none items-center w-full">
+                    {visibleSkills.map((skill, idx) => (
+                        <span
+                            key={`${skill}-${idx}`}
+                            className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded bg-primary/5 text-primary border border-primary/10 whitespace-nowrap capitalize shrink-0"
+                        >
+                            {skill}
+                        </span>
+                    ))}
+                    {remainingCount > 0 && (
+                        <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-muted text-muted-foreground border border-border/40 whitespace-nowrap shrink-0">
+                            +{remainingCount}
+                        </span>
+                    )}
+                </div>
+            )}
+
             {/* Key Meta */}
             <div className="flex items-center justify-between text-[13px] text-muted-foreground min-w-0 py-1">
                 <span className="inline-flex items-center gap-1.5 min-w-0">
@@ -353,9 +483,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                                 "inline-flex items-center gap-1 px-2 py-0.5 border text-[11px] font-semibold rounded-md whitespace-nowrap",
                                 isExpired()
                                     ? "bg-destructive/5 border-destructive/25 text-destructive"
-                                    : isClosingSoon()
-                                        ? "bg-amber-100/70 border-amber-400/70 text-amber-800 dark:bg-amber-500/15 dark:border-amber-400/40 dark:text-amber-300"
-                                        : "bg-muted/70 border-border/70 text-foreground/80"
+                                    : "bg-muted/70 border-border/70 text-foreground/80"
                             )}
                         >
                             <ClockIcon className="w-3 h-3" aria-hidden="true" />
@@ -374,8 +502,8 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-1 text-primary text-[13px] font-bold group-hover:translate-x-1 transition-transform duration-300 uppercase tracking-tight">
-                    <span>View Details</span>
+                <div className="flex items-center gap-1 text-primary text-[13px] font-bold group-hover:translate-x-1 transition-transform duration-300">
+                    <span>View details</span>
                     <ChevronRightIcon className="w-3.5 h-3.5" aria-hidden="true" />
                 </div>
             </div>

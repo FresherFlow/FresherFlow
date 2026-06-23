@@ -3,7 +3,7 @@
 // import DeliveryControlsPanel from "@/features/admin/components/DeliveryControlsPanel";
 
 export const metadata = {
-    title: "Broadcasts | FresherFlow Admin",
+    title: "Broadcasts | Admin",
     description: "Monitor Telegram and social channel posts, and retry failed posts."
 };
 

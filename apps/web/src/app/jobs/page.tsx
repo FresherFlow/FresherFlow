@@ -14,7 +14,7 @@ export const metadata: Metadata = {
         canonical: '/jobs',
     },
     openGraph: {
-        title: 'Jobs for Freshers | FresherFlow',
+        title: 'Jobs for Freshers',
         description: 'Discover full-time job opportunities for freshers across India.',
         type: 'website',
         images: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Jobs for Freshers | FresherFlow',
+        title: 'Jobs for Freshers',
         description: 'Discover full-time job opportunities for freshers across India.',
         images: ['/main.png'],
     },

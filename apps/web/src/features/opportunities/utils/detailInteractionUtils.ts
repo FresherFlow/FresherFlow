@@ -25,11 +25,15 @@ export function buildLoginFromDetailHref(detailPath: string, sourceParam: string
 }
 
 export function getDetailShareUrl(currentUrl: string) {
-    return buildShareUrl(currentUrl, {
-        platform: 'other',
-        source: 'opportunity_share',
-        medium: 'share',
-        campaign: 'opportunity_share',
-        ref: 'share',
-    });
+    try {
+        const url = new URL(currentUrl);
+        url.searchParams.delete('source');
+        url.searchParams.delete('medium');
+        url.searchParams.delete('campaign');
+        url.searchParams.delete('ref');
+        url.searchParams.delete('platform');
+        return url.toString();
+    } catch {
+        return currentUrl;
+    }
 }

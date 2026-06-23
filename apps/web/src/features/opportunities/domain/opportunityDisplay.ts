@@ -18,7 +18,7 @@ const REMOTE_ALIASES = new Set([
     'anywhere',
 ]);
 
-const STATE_ALIASES = new Set([
+export const STATE_ALIASES = new Set([
     'andhra pradesh',
     'arunachal pradesh',
     'assam',
@@ -57,7 +57,7 @@ const STATE_ALIASES = new Set([
     'puducherry',
 ]);
 
-const CITY_TO_STATE: Record<string, string> = {
+export const CITY_TO_STATE: Record<string, string> = {
     ahmedabad: 'Gujarat',
     bengaluru: 'Karnataka',
     bangalore: 'Karnataka',
@@ -359,3 +359,87 @@ export const parseOpportunityLocation = (locations?: string[] | null): ParsedOpp
         isRemote: false,
     };
 };
+
+export function getGroupedLocations(locations?: string[] | null): string[] {
+    const rawTokens = (locations ?? [])
+        .flatMap(l => l.split(','))
+        .map(l => l.trim())
+        .filter(l => l.toLowerCase() !== 'india' && l !== '');
+    
+    if (rawTokens.length === 0) return [];
+    
+    const toTitleCaseLocal = (value: string): string =>
+        value
+            .split(' ')
+            .filter(Boolean)
+            .map((part) => part[0]?.toUpperCase() + part.slice(1).toLowerCase())
+            .join(' ');
+            
+    const lowerTokens = rawTokens.map(t => t.toLowerCase());
+
+    const REMOTE_ALIASES = new Set(['remote', 'work from home', 'wfh', 'pan india', 'anywhere']);
+    if (lowerTokens.some(t => REMOTE_ALIASES.has(t))) {
+        return ['Remote'];
+    }
+
+    const cities = new Set<string>();
+    const states = new Set<string>();
+
+    rawTokens.forEach(token => {
+        const lower = token.toLowerCase();
+        if (STATE_ALIASES.has(lower)) {
+            states.add(toTitleCaseLocal(token));
+        } else {
+            cities.add(toTitleCaseLocal(token));
+        }
+    });
+
+    const uniqueCities = Array.from(cities);
+
+    if (uniqueCities.length === 1) {
+        const city = uniqueCities[0];
+        const lowerCity = city.toLowerCase();
+        const state = Array.from(states)[0] || CITY_TO_STATE[lowerCity];
+        if (state) {
+            return [`${city}, ${toTitleCaseLocal(state)}`];
+        }
+        return [city];
+    } else if (uniqueCities.length > 1) {
+        // If multiple cities, hide the state entirely!
+        return uniqueCities;
+    } else {
+        // Only states or other tokens
+        return Array.from(states);
+    }
+}
+
+export function formatAllowedPassoutYears(years?: string[] | null): string {
+    if (!years || years.length === 0) return 'Any';
+    const sorted = [...years].map(Number).sort((a, b) => a - b).map(String);
+    if (sorted.length <= 3) {
+        return sorted.join(', ');
+    }
+    return `${sorted.slice(0, 3).join(', ')} +${sorted.length - 3}`;
+}
+
+const ACRONYMS = new Set([
+    'sql', 'etl', 'iam', 'rbac', 'it', 'aws', 'gcp', 'api', 'db',
+    'ui', 'ux', 'html', 'css', 'js', 'ts', 'rest', 'jwt', 'pwa'
+]);
+
+export function capitalizeSkill(skill: string | null | undefined): string {
+    if (!skill) return '';
+    return skill
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((word) => {
+            const lower = word.toLowerCase();
+            if (ACRONYMS.has(lower)) {
+                return lower.toUpperCase();
+            }
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        })
+        .join(' ');
+}
+
+

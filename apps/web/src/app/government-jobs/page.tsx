@@ -14,7 +14,7 @@ export const metadata: Metadata = {
         canonical: '/government-jobs',
     },
     openGraph: {
-        title: 'Verified Government Jobs | FresherFlow',
+        title: 'Verified Government Jobs',
         description: 'Discover verified government job notifications, SSC recruitment, public sector vacancies, and exam circulars.',
         type: 'website',
         images: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Verified Government Jobs | FresherFlow',
+        title: 'Verified Government Jobs',
         description: 'Discover verified government job notifications, SSC recruitment, public sector vacancies, and exam circulars.',
         images: ['/main.png'],
     },

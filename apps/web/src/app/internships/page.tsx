@@ -14,7 +14,7 @@ export const metadata: Metadata = {
         canonical: '/internships',
     },
     openGraph: {
-        title: 'Internships for Students | FresherFlow',
+        title: 'Internships for Students',
         description: 'Find internship opportunities for students and recent graduates across India.',
         type: 'website',
         images: [
@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     },
     twitter: {
         card: 'summary_large_image',
-        title: 'Internships for Students | FresherFlow',
+        title: 'Internships for Students',
         description: 'Find internship opportunities for students and recent graduates across India.',
         images: ['/main.png'],
     },

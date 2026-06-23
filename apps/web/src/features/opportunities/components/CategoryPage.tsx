@@ -2,8 +2,9 @@
 
 import { cn } from '@repo/ui/utils/cn';
 import { useState, Suspense, useEffect, useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { OpportunityDetailPane } from './OpportunityDetailPane';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import JobCard from '@/features/opportunities/components/JobCard';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
@@ -19,9 +20,11 @@ import CheckCircleIcon from '@heroicons/react/24/solid/CheckCircleIcon';
 import KeyIcon from '@heroicons/react/24/outline/KeyIcon';
 import TrophyIcon from '@heroicons/react/24/outline/TrophyIcon';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
+import { Breadcrumb } from '@/ui/Breadcrumb';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
 import { FeedPageSkeleton, SkeletonJobCard } from '@/ui/Skeleton';
+import { EmptyState } from '@/ui/EmptyState';
 import { useOpportunitiesFeed } from '@/features/opportunities/hooks/useOpportunitiesFeed';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { FilterDropdownBar, type FilterBarFilters } from '@/features/opportunities/components/FilterDropdownBar';
@@ -131,15 +134,10 @@ function GroupedGovtView({
     }).filter(g => g.items.length > 0);
 
     if (groups.length === 0) return (
-        <div className="p-20 text-center rounded-2xl border border-dashed border-border bg-card">
-            <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
-                <MagnifyingGlassIcon className="w-6 h-6" />
-            </div>
-            <h3 className="text-lg font-bold text-foreground tracking-tight">No government jobs yet</h3>
-            <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">
-                Check back soon — new notifications are added regularly.
-            </p>
-        </div>
+        <EmptyState
+            title="No government jobs yet"
+            description="Check back soon — new notifications are added regularly."
+        />
     );
 
     return (
@@ -147,7 +145,7 @@ function GroupedGovtView({
             {groups.map(group => (
                 <div key={group.key} className="space-y-3">
                     {/* Group header */}
-                    <div className="flex items-center justify-between">
+                    <div id="category-top-header" className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <group.Icon className="w-5 h-5 text-current" />
                             <h2 className="text-sm font-bold text-foreground tracking-tight">{group.label}</h2>
@@ -216,6 +214,52 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
     const IconComponent = config.icon;
 
     const searchParams = useSearchParams();
+
+    const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
+    const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+
+    useEffect(() => {
+        setIsDesktop(window.innerWidth >= 1024);
+        const handleResize = () => setIsDesktop(window.innerWidth >= 1024);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    useEffect(() => {
+        const handlePopState = (event: PopStateEvent) => {
+            if (!event?.state || !event.state.modalOpen) {
+                setSelectedOpp(null);
+            }
+        };
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, []);
+
+    useEffect(() => {
+        if (!selectedOpp) return;
+        if (window.innerWidth >= 1024) return; // Only lock scroll on mobile
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.style.overflow = '';
+        };
+    }, [selectedOpp]);
+
+    const handleSelectOpportunity = (opp: Opportunity) => {
+        setSelectedOpp(opp);
+        window.history.pushState({ modalOpen: true }, '', window.location.href);
+    };
+
+    const handleCloseOpportunityPane = () => {
+        const mobileModal = document.getElementById('mobile-detail-modal');
+        if (mobileModal) {
+            mobileModal.classList.remove('animate-in', 'slide-in-from-bottom');
+            mobileModal.classList.add('animate-out', 'slide-out-to-bottom', 'fade-out', 'duration-300');
+        }
+        setTimeout(() => {
+            setSelectedOpp(null);
+            if (window.history.state?.modalOpen) window.history.back();
+        }, 250);
+    };
     
     const [search, setSearch]             = useState(searchParams?.get('q') || '');
     const [govtPhase, setGovtPhase]       = useState<GovtPhaseFilter>('ALL');
@@ -232,8 +276,14 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
     const [draftQualification, setDraftQualification] = useState<string | null>(null);
     const [draftCourse, setDraftCourse]               = useState<string | null>(null);
     const [mounted, setMounted]                       = useState(false);
+    const [visibleCount, setVisibleCount]             = useState(20);
 
     useEffect(() => { setMounted(true); }, []);
+
+    // Reset pagination when search or filters change
+    useEffect(() => {
+        setVisibleCount(20);
+    }, [search, type, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved]);
 
     const mobileActiveCount =
         (filters.location ? 1 : 0) + (filters.closingSoon ? 1 : 0) + (filters.saved ? 1 : 0) +
@@ -299,6 +349,13 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
         return true;
     });
 
+    // Auto-select first job on desktop
+    useEffect(() => {
+        if (isDesktop === true && !selectedOpp && visibleOpps.length > 0 && type !== OpportunityType.GOVERNMENT) {
+            setSelectedOpp(visibleOpps[0]);
+        }
+    }, [isDesktop, selectedOpp, visibleOpps, type]);
+
     // Show grouped layout when on govt + All phase + no search/saved filter
     const showGroupedView = type === OpportunityType.GOVERNMENT && govtPhase === 'ALL' && !search && !filters.saved;
 
@@ -330,32 +387,29 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                 <LiveTicker items={tickerItems} />
             )}
 
+            {/* Breadcrumb — except govt jobs as requested */}
+            {type !== OpportunityType.GOVERNMENT && (
+                <div className={cn("pt-2", selectedOpp && "hidden lg:block")}>
+                    <Breadcrumb items={[
+                        { label: 'Home', href: '/' },
+                        { label: config.title, href: '#' }
+                    ]} />
+                </div>
+            )}
+
             {/* Header */}
-            <div className="flex flex-col gap-3">
-                <div className="flex flex-row items-center justify-between gap-4 flex-wrap">
-                    <div className="flex items-center gap-2 shrink-0">
-                        <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-muted/60 border border-border">
-                            <IconComponent className="w-4 h-4 text-foreground" />
-                        </div>
-                        <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground">
-                            {config.title}
-                        </h1>
-                        {type === OpportunityType.GOVERNMENT && govtPhase !== 'ALL' && (
-                            <span className="text-xs font-semibold text-muted-foreground hidden sm:block">
-                                — {PHASE_GROUPS.find(p => p.key === govtPhase)?.label}
-                            </span>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0 self-start md:self-auto">
-                        <span className="text-[10px] font-semibold text-muted-foreground bg-muted px-2.5 py-1 rounded-full border border-border capitalize tracking-wider">
-                            {mounted ? visibleOpps.length : 0} results
-                        </span>
-                        {type !== OpportunityType.GOVERNMENT && (
-                            <Link href="/opportunities" className="text-[10px] font-semibold text-primary hover:underline capitalize tracking-widest">
-                                View all
-                            </Link>
-                        )}
-                    </div>
+            <div className="flex flex-col gap-3 pb-2">
+                <div className={cn("flex items-center justify-between gap-2", selectedOpp && "hidden lg:flex")}>
+                    <h1 className="sr-only">{config.title} Feed</h1>
+                    <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5" aria-live="polite">
+                        <ShieldCheckIcon className="w-3.5 h-3.5 text-primary shrink-0" />
+                        {mounted && visibleOpps.length > 0 ? `Showing ${visibleOpps.length} jobs` : '0 jobs'}
+                    </span>
+                    {type !== OpportunityType.GOVERNMENT && (
+                        <Link href="/opportunities" className="text-[10px] font-semibold text-primary hover:underline capitalize tracking-widest">
+                            View all
+                        </Link>
+                    )}
                 </div>
 
                 {/* Phase + Category tabs — govt only */}
@@ -375,7 +429,7 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                 )}
 
                 {/* Search + filters */}
-                <div className="flex gap-2.5 items-center justify-between flex-wrap">
+                <div className={cn("flex gap-2.5 items-center justify-between flex-wrap", selectedOpp && "hidden lg:flex")}>
                     <div className="flex items-center gap-3 flex-wrap w-full lg:w-auto">
                         <div className="flex items-center gap-2 w-full lg:w-auto flex-1 lg:flex-none">
                             <div className="relative flex-1 lg:w-96 group">
@@ -459,11 +513,12 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                     {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} />)}
                 </div>
             ) : error ? (
-                <div className="p-12 text-center rounded-2xl border border-dashed border-border bg-card">
-                    <h3 className="text-lg font-bold text-foreground tracking-tight">Feed unavailable</h3>
-                    <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">{error}</p>
-                    <Button variant="outline" onClick={reload} className="mt-6 h-10 px-6 text-xs font-bold capitalize tracking-widest">Retry</Button>
-                </div>
+                <EmptyState
+                    title="Feed unavailable"
+                    description={error}
+                    size="md"
+                    action={<Button variant="outline" onClick={reload} className="h-10 px-6 text-xs font-bold capitalize tracking-widest">Retry</Button>}
+                />
             ) : showGroupedView ? (
                 // ── "What's Happening Now" grouped layout ──────────────────────
                 <div className="space-y-2">
@@ -480,33 +535,107 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                     )}
                 </div>
             ) : visibleOpps.length === 0 ? (
-                <div className="p-20 text-center rounded-2xl border border-dashed border-border bg-card">
-                    <div className="w-12 h-12 bg-muted rounded-full flex items-center justify-center mx-auto mb-4 text-muted-foreground">
-                        <MagnifyingGlassIcon className="w-6 h-6" />
-                    </div>
-                    <h3 className="text-lg font-bold text-foreground tracking-tight">No results found</h3>
-                    <p className="text-sm font-medium text-muted-foreground mt-2 max-w-sm mx-auto">Try adjusting your filters or search keywords.</p>
-                    <Button variant="outline" onClick={clearAll} className="mt-6 h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear filters</Button>
-                </div>
+                <EmptyState
+                    title="No results found"
+                    description="Try adjusting your filters or search keywords."
+                    action={<Button variant="outline" onClick={clearAll} className="h-11 px-6 text-sm font-bold capitalize tracking-widest">Clear filters</Button>}
+                />
             ) : (
                 // ── Flat grid (filtered by phase / search) ─────────────────────
-                <div className={cn('grid gap-4 md:gap-6', type === OpportunityType.GOVERNMENT ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3')}>
-                    {visibleOpps.map(opp => (
-                        <JobCard
-                            key={opp.id}
-                            job={{ ...opp, normalizedRole: opp.title, salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined }}
-                            jobId={opp.id}
-                            isSaved={isJobSaved(opp)}
-                            isApplied={isJobApplied(opp)}
-                            onToggleSave={() => toggleSave(opp.id)}
-                            isAdmin={user?.role === 'ADMIN'}
-                        />
-                    ))}
+                <div className={cn(
+                    "w-full grid gap-6 items-start",
+                    type !== OpportunityType.GOVERNMENT ? "grid-cols-1 lg:grid-cols-[1.3fr_1.7fr]" : "grid-cols-1"
+                )}>
+                    {/* Left Column: list grid */}
+                    <div id="category-grid-container" className={cn(
+                        "min-w-0",
+                        type !== OpportunityType.GOVERNMENT && "lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar"
+                    )}>
+                        <div className={cn('grid gap-4 md:gap-6', 
+                            type === OpportunityType.GOVERNMENT 
+                                ? 'grid-cols-1 lg:grid-cols-2' 
+                                : 'grid-cols-1'
+                        )}>
+                            {visibleOpps.slice(0, visibleCount).map(opp => (
+                                <JobCard
+                                    key={opp.id}
+                                    job={{ ...opp, normalizedRole: opp.title, salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined }}
+                                    jobId={opp.id}
+                                    isSaved={isJobSaved(opp)}
+                                    isApplied={isJobApplied(opp)}
+                                    onToggleSave={() => toggleSave(opp.id)}
+                                    isAdmin={user?.role === 'ADMIN'}
+                                    isSelected={opp.id === selectedOpp?.id || opp.slug === selectedOpp?.slug}
+                                    variant={type !== OpportunityType.GOVERNMENT ? "compact" : "default"}
+                                    onClick={(e) => {
+                                        if (type !== OpportunityType.GOVERNMENT) {
+                                            e.preventDefault();
+                                            handleSelectOpportunity(opp);
+                                        }
+                                    }}
+                                />
+                            ))}
+                        </div>
+                        {visibleCount < visibleOpps.length && (
+                            <div className="flex justify-center pt-8 pb-4">
+                                <button
+                                    onClick={() => setVisibleCount(prev => prev + 20)}
+                                    className="px-6 py-2.5 rounded-full bg-muted hover:bg-muted/80 text-sm font-bold text-foreground transition-colors"
+                                >
+                                    Load more opportunities
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Right Column: Detail Panel / Empty State (Desktop only) */}
+                    {type !== OpportunityType.GOVERNMENT && (
+                        <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                            {selectedOpp ? (
+                                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                                    <OpportunityDetailPane
+                                        oppId={selectedOpp.slug || selectedOpp.id}
+                                        initialData={selectedOpp}
+                                        onClose={handleCloseOpportunityPane}
+                                    />
+                                </div>
+                            ) : visibleOpps.length > 0 ? (
+                                <div className="flex-1 p-8 animate-pulse flex flex-col gap-4">
+                                    <div className="h-8 bg-muted/50 rounded w-1/2" />
+                                    <div className="h-4 bg-muted/50 rounded w-1/4" />
+                                    <div className="h-40 bg-muted/50 rounded-xl w-full mt-4" />
+                                </div>
+                            ) : (
+                                <div className="flex-1 flex items-center justify-center bg-muted/20">
+                                    <EmptyState
+                                        title="Select an opportunity"
+                                        description="Click on an opportunity card from the list to view its complete details here."
+                                        icon="search"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Mobile Detail Modal */}
+                    {selectedOpp && (
+                        <div id="mobile-detail-modal" className={cn("lg:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300")}>
+                            <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
+                            <div className="flex-1 flex flex-col min-h-0">
+                                <OpportunityDetailPane
+                                    oppId={selectedOpp.slug || selectedOpp.id}
+                                    initialData={selectedOpp}
+                                    onClose={handleCloseOpportunityPane}
+                                    isMobile={true}
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 
             {/* Footer info / SEO blurb */}
-            <div className="mt-16 pt-8 border-t border-border/50 space-y-6 max-w-3xl">
+            <div className={cn("mt-16 pt-8 border-t border-border/50 space-y-6 max-w-3xl", selectedOpp && "hidden lg:block")}>
                 <h2 className="text-sm font-bold text-foreground uppercase tracking-wider">
                     {type === OpportunityType.WALKIN ? 'About Walk-in Interview Drives'
                     : type === OpportunityType.INTERNSHIP ? 'About Fresher Internships'
@@ -545,6 +674,22 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                     </div>
                 </div>
             </div>
+
+            {/* Mobile Detail Modal/Drawer (Mobile/Tablet only) */}
+            {selectedOpp && type !== OpportunityType.GOVERNMENT && (
+                <div id="mobile-detail-modal" className="lg:hidden fixed inset-0 z-[120] flex flex-col bg-card animate-in slide-in-from-bottom duration-300">
+                    {/* Safe area padding */}
+                    <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
+                    <div className="flex-1 flex flex-col min-h-0">
+                        <OpportunityDetailPane
+                            oppId={selectedOpp.slug || selectedOpp.id}
+                            initialData={selectedOpp}
+                            onClose={handleCloseOpportunityPane}
+                            isMobile={true}
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

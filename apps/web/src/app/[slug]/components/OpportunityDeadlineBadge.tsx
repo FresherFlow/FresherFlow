@@ -7,7 +7,7 @@ type OpportunityDeadlineBadgeProps = {
 export function OpportunityDeadlineBadge({ isExpired, isClosingSoon, deadlineLabel }: OpportunityDeadlineBadgeProps) {
     const label = deadlineLabel || 'Not specified';
     return (
-        <div className="pt-3 border-t border-border/50">
+        <div className="pt-3 border-t border-border/50 lg:hidden">
             {isExpired ? (
                 <div className="inline-flex items-center gap-2 rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-1.5 text-xs font-bold text-destructive uppercase tracking-wider">
                     Expired on {label}

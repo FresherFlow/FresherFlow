@@ -10,12 +10,24 @@ import {
     fetchOpportunityForPage,
     generateOpportunityMetadata,
     generateOpportunityJsonLd,
+    generateOpportunityBreadcrumbsJsonLd,
     getExpiryState,
     getTypeHubPath,
     ExtendedOpportunity
 } from './opportunitySeo';
 
-const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php']);
+const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined']);
+
+function isInvalidSlug(slug: string): boolean {
+    const lower = slug.toLowerCase();
+    return (
+        CRAWLER_PATHS.has(lower) ||
+        lower.startsWith('api') ||
+        lower.includes('/') ||
+        lower.includes('.') ||
+        lower.includes('\\')
+    );
+}
 
 type Props = {
     params: Promise<{ slug: string }>;
@@ -64,7 +76,7 @@ export async function generateStaticParams() {
 // Generate dynamic SEO metadata
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { slug: slugOrId } = await params;
-    if (CRAWLER_PATHS.has(slugOrId)) {
+    if (isInvalidSlug(slugOrId)) {
         logRouteResult('/[slug] (crawler)', '404');
         notFound();
     }
@@ -82,7 +94,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function OpportunityDetailPage({ params }: Props) {
     const { slug: slugOrId } = await params;
-    if (CRAWLER_PATHS.has(slugOrId)) {
+    if (isInvalidSlug(slugOrId)) {
         logRouteResult('/[slug] (crawler)', '404');
         notFound();
     }
@@ -139,10 +151,16 @@ export default async function OpportunityDetailPage({ params }: Props) {
     return (
         <>
             {opportunityData && !getExpiryState(opportunityData).isExpired && (
-                <script
-                    type="application/ld+json"
-                    dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opportunityData)) }}
-                />
+                <>
+                    <script
+                        type="application/ld+json"
+                        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityJsonLd(opportunityData)) }}
+                    />
+                    <script
+                        type="application/ld+json"
+                        dangerouslySetInnerHTML={{ __html: JSON.stringify(generateOpportunityBreadcrumbsJsonLd(opportunityData)) }}
+                    />
+                </>
             )}
             <Suspense fallback={<OpportunityDetailSkeleton />}>
                 <OpportunityDetailClient 
