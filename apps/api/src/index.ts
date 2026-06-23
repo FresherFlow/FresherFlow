@@ -369,17 +369,23 @@ app.get('/categories/:id.json', async (req, res) => {
     }
 });
 
-app.get('/sitemap.xml', async (req, res) => {
+app.get('/sitemap*.xml', async (req, res) => {
     try {
-        const filePath = path.join(process.cwd(), 'public', 'sitemap.xml');
+        const sitemapName = req.path.substring(1) || 'sitemap.xml';
+        const filePath = path.join(process.cwd(), 'public', sitemapName);
         if (fs.existsSync(filePath)) {
             res.type('application/xml').send(fs.readFileSync(filePath, 'utf-8'));
             return;
         }
 
-        // Fallback
-        const xml = await StaticFeedService.generateSitemap();
-        res.type('application/xml').send(xml);
+        // Fallback for primary sitemaps
+        if (sitemapName === 'sitemap.xml' || sitemapName === 'sitemap-index.xml') {
+            const xml = await StaticFeedService.generateSitemap();
+            res.type('application/xml').send(xml);
+            return;
+        }
+
+        res.status(404).send('Sitemap not found');
     } catch (error) {
         logger.error('Failed to serve sitemap', error);
         res.status(500).json({ error: 'Internal server error' });

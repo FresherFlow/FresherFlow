@@ -216,3 +216,150 @@ export async function generateAndUploadOgImage(opportunity: OgOpportunity): Prom
     }
 }
 
+export async function generateAndUploadHubOgImage(
+    type: 'company' | 'location' | 'skill' | 'batch' | 'role',
+    label: string,
+    slug: string
+): Promise<string | null> {
+    if (!endpoint || !accessKeyId || !secretAccessKey) {
+        logger.warn('[OgImage] R2 not configured, skipping Hub OG image generation');
+        return null;
+    }
+
+    try {
+        const [{ default: satori }, { Resvg }] = await Promise.all([
+            import('satori'),
+            import('@resvg/resvg-js'),
+        ]);
+
+        const ffLogoPath = path.join(process.cwd(), 'src', 'assets', 'images', 'logo.png');
+        const ffLogoBuf = await fs.promises.readFile(ffLogoPath);
+        const ffLogoBase64 = `data:image/png;base64,${ffLogoBuf.toString('base64')}`;
+
+        let subText = 'Verified Off-Campus Placements';
+        let headingText = label;
+        let prefixText = 'Explore opportunities';
+        let badgeColor = '#93c5fd';
+        let badgeBg = 'rgba(37,99,235,0.22)';
+        let badgeBorder = 'rgba(96,165,250,0.4)';
+
+        if (type === 'company') {
+            prefixText = 'Hiring at';
+            subText = 'Jobs & Internships for Freshers';
+            badgeColor = '#c4b5fd';
+            badgeBg = 'rgba(124,58,237,0.22)';
+            badgeBorder = 'rgba(167,139,250,0.4)';
+        } else if (type === 'location') {
+            prefixText = 'Jobs in';
+            subText = 'Entry-level openings & internships';
+            badgeColor = '#6ee7b7';
+            badgeBg = 'rgba(5,150,105,0.22)';
+            badgeBorder = 'rgba(52,211,153,0.4)';
+        } else if (type === 'skill') {
+            prefixText = 'Skills requested';
+            subText = 'Developer jobs and off-campus drives';
+        } else if (type === 'batch') {
+            prefixText = 'Graduation Year';
+            subText = 'Off-campus placement drives';
+            headingText = `${label} Batch`;
+        } else if (type === 'role') {
+            prefixText = 'Career Path';
+            subText = 'Verified jobs for freshers';
+        }
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const bottomBadges: any[] = [
+            { type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: badgeBg, border: `1px solid ${badgeBorder}`, fontSize: 24, fontWeight: 700, letterSpacing: '0.07em', color: badgeColor }, children: type.toUpperCase() } },
+            { type: 'div', props: { style: { display: 'flex', borderRadius: 12, padding: '16px 28px', background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.11)', fontSize: 24, fontWeight: 600, color: 'rgba(245,247,248,0.65)' }, children: 'India & Remote' } }
+        ];
+
+        bottomBadges.push({
+            type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }, children: [
+                { type: 'div', props: { style: { width: 12, height: 12, borderRadius: 999, background: '#4ade80', display: 'flex' } } },
+                { type: 'div', props: { style: { fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: 'Verified · fresherflow.in' } }
+            ]}
+        });
+
+        const element = {
+            type: 'div',
+            props: {
+                style: { width: '100%', height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: '#020404', color: '#F5F7F8', padding: '52px 60px', fontFamily: 'ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial' },
+                children: [
+                    {
+                        type: 'div', props: { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between' }, children: [
+                            {
+                                type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 20 }, children: [
+                                    {
+                                        type: 'div', props: { style: { width: 100, height: 100, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #1c1c1c 0%, #0c0c0c 100%)', border: '1px solid rgba(245,247,248,0.12)', fontSize: 44, fontWeight: 900, color: badgeColor }, children: headingText[0].toUpperCase() }
+                                    },
+                                    {
+                                        type: 'div', props: { style: { display: 'flex', flexDirection: 'column', gap: 6 }, children: [
+                                            { type: 'div', props: { style: { fontSize: 22, color: 'rgba(245,247,248,0.38)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }, children: prefixText } },
+                                            { type: 'div', props: { style: { fontSize: 48, fontWeight: 800, color: '#F5F7F8', letterSpacing: '-0.5px' }, children: headingText } }
+                                        ] }
+                                    }
+                                ]}
+                            },
+                            {
+                                type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 10, background: 'rgba(245,247,248,0.07)', border: '1px solid rgba(245,247,248,0.12)', borderRadius: 12, padding: '10px 20px' }, children: [
+                                    { type: 'img', props: { src: ffLogoBase64, width: 28, height: 28, style: { borderRadius: 6, objectFit: 'contain' } } },
+                                    { type: 'div', props: { style: { fontSize: 20, fontWeight: 700, color: '#F5F7F8' }, children: 'FresherFlow' } }
+                                ]}
+                            }
+                        ]}
+                    },
+                    { type: 'div', props: { style: { fontSize: 64, fontWeight: 900, lineHeight: 1.1, color: '#F5F7F8', letterSpacing: '-1px', maxWidth: '1080px' }, children: subText } },
+                    { type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 16 }, children: bottomBadges } }
+                ]
+            }
+        };
+
+        const fontPathRegular = path.join(process.cwd(), 'src', 'assets', 'fonts', 'inter_regular.ttf');
+        const fontPathBold = path.join(process.cwd(), 'src', 'assets', 'fonts', 'inter_bold.ttf');
+        const regularFont = await fs.promises.readFile(fontPathRegular);
+        const boldFont = await fs.promises.readFile(fontPathBold);
+
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const svg = await satori(element as any, {
+            width: 1200,
+            height: 630,
+            fonts: [
+                { name: 'ui-sans-serif', data: regularFont, weight: 400, style: 'normal' },
+                { name: 'ui-sans-serif', data: regularFont, weight: 600, style: 'normal' },
+                { name: 'ui-sans-serif', data: boldFont, weight: 700, style: 'normal' },
+                { name: 'ui-sans-serif', data: boldFont, weight: 800, style: 'normal' },
+                { name: 'ui-sans-serif', data: boldFont, weight: 900, style: 'normal' }
+            ],
+        });
+
+        const resvg = new Resvg(svg, { fitTo: { mode: 'width', value: 1200 } });
+        const pngBuffer = resvg.render().asPng();
+
+        let key = `og/companies/${slug}.png`;
+        if (type === 'location') key = `og/location/${slug}.png`;
+        else if (type === 'skill') key = `og/skills/${slug}.png`;
+        else if (type === 'batch') key = `og/batch/${slug}.png`;
+        else if (type === 'role') key = `og/roles/${slug}.png`;
+
+        await s3.send(new PutObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+            Body: pngBuffer,
+            ContentType: 'image/png',
+            CacheControl: 'public, max-age=31536000, immutable',
+        }));
+
+        const url = `${cdnBase}/${key}`;
+        logger.info('[OgImage] Uploaded static Hub OG image to R2', { type, slug, url });
+        return url;
+    } catch (err) {
+        logger.error('[OgImage] Failed to generate/upload Hub OG image', {
+            type,
+            slug,
+            error: err instanceof Error ? err.message : String(err),
+        });
+        return null;
+    }
+}
+
+

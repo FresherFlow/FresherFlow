@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import prisma from '../database/prisma';
 import { Prisma } from '@prisma/client';
-import { OpportunityStatus, Opportunity } from '@fresherflow/types';
+import { OpportunityStatus } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
@@ -43,6 +43,7 @@ export class StaticFeedService {
     private static readonly RESOURCES_PATH = path.join(this.PUBLIC_ROOT, 'resources-feed.json');
     private static readonly GOVERNMENT_PATH = path.join(this.PUBLIC_ROOT, 'government-feed.json');
     private static readonly SYLLABUS_PATH = path.join(this.PUBLIC_ROOT, 'syllabus.json');
+    private static readonly GENERATED_HUBS_PATH = path.join(this.PUBLIC_ROOT, 'generated-hubs.json');
 
     /**
      * Slugify a string for use as a filename/path.
@@ -380,52 +381,23 @@ export class StaticFeedService {
     static async generateSitemap() {
         return this.withDbRetry(async () => {
             const baseUrl = (process.env.FRONTEND_URL || 'https://fresherflow.in').replace(/\/+$/, '');
-            const staticDate = '2026-05-01'; // Stable modified date for static and company indexes to curb crawl pressure
+            const staticDate = new Date().toISOString().split('T')[0];
 
-            const staticRoutes = [
-                '',
-                '/opportunities',
-                '/jobs',
-                '/internships',
-                '/walk-ins',
-                '/about',
-                '/blog',
-                '/contact',
-                '/privacy',
-                '/terms',
-                '/feedback',
-                '/submit-link',
-                '/app'
+            const sitemaps = [
+                'sitemap-jobs.xml',
+                'sitemap-companies.xml',
+                'sitemap-skills.xml',
+                'sitemap-roles.xml',
+                'sitemap-locations.xml',
+                'sitemap-batches.xml'
             ];
-
-            const companies = await prisma.opportunity.findMany({
-                where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
-                distinct: ['company'],
-                select: { company: true }
+            let indexXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+            indexXml += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+            sitemaps.forEach(s => {
+                indexXml += `  <sitemap>\n    <loc>${baseUrl}/${s}</loc>\n    <lastmod>${staticDate}</lastmod>\n  </sitemap>\n`;
             });
-
-            const opportunities = await prisma.opportunity.findMany({
-                where: { status: OpportunityStatus.PUBLISHED, deletedAt: null },
-                orderBy: { postedAt: 'desc' },
-                take: 1000, // Sync with dynamic sitemap scale
-                select: { id: true, slug: true, type: true, postedAt: true, updatedAt: true }
-            });
-
-            let xml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-            xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-
-            staticRoutes.forEach(r => xml += `  <url><loc>${baseUrl}${r}</loc><lastmod>${staticDate}</lastmod></url>\n`);
-            companies.forEach(c => xml += `  <url><loc>${baseUrl}/companies/${this.slugify(c.company)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
-            opportunities.forEach(opp => {
-                const slugOrId = opp.slug || opp.id;
-                const prefix = '/';
-                const rawDate = opp.updatedAt || opp.postedAt;
-                const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
-                xml += `  <url><loc>${baseUrl}${prefix}${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
-            });
-
-            xml += '</urlset>';
-            return xml;
+            indexXml += '</sitemapindex>';
+            return indexXml;
         });
     }
 
@@ -818,18 +790,18 @@ export class StaticFeedService {
             // 10. Generate & Upload Sitemap XML and JSON Data
             if (target === 'all' || target === 'sitemap' || target === 'bootstrap' || target === 'govt') {
                 const fortyFiveDaysAgo = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
-                const sitemapOpps = allMapped.filter(opp => {
+                const sitemapOpps = (allMapped as Record<string, unknown>[]).filter(opp => {
                     if (!opp.expiresAt) return true;
                     const exp = new Date(opp.expiresAt as string | Date);
                     return exp > fortyFiveDaysAgo;
                 });
                 const companiesSet = new Set<string>();
-                allMapped.forEach((opp) => {
-                    if (opp.company) companiesSet.add(opp.company as string);
+                (allMapped as Record<string, unknown>[]).forEach((opp) => {
+                    if (opp.company && typeof opp.company === 'string') companiesSet.add(opp.company);
                 });
 
                 const baseUrl = (process.env.FRONTEND_URL || 'https://fresherflow.in').replace(/\/+$/, '');
-                const staticDate = '2026-05-01';
+                const staticDate = new Date().toISOString().split('T')[0];
                 const staticRoutes = [
                     '',
                     '/opportunities',
@@ -847,21 +819,111 @@ export class StaticFeedService {
                     '/app'
                 ];
 
-                let sitemapXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
-                sitemapXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                staticRoutes.forEach(r => sitemapXml += `  <url><loc>${baseUrl}${r}</loc><lastmod>${staticDate}</lastmod></url>\n`);
-                companiesSet.forEach(c => sitemapXml += `  <url><loc>${baseUrl}/companies/${this.slugify(c)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                // Dynamically collect skills, locations, batches, and roles
+                const skillsSet = new Set<string>();
+                const locationsSet = new Set<string>();
+                const rolesSet = new Set<string>();
+                const batchesSet = new Set<number>([2024, 2025, 2026, 2027]);
+
+                sitemapOpps.forEach(opp => {
+                    ((opp.requiredSkills as string[]) || []).forEach(s => {
+                        if (s) skillsSet.add(this.slugify(s));
+                    });
+                    ((opp.locations as string[]) || []).forEach(l => {
+                        if (l && l.toLowerCase() !== 'india' && l.toLowerCase() !== 'pan india') {
+                            locationsSet.add(this.slugify(l));
+                        }
+                    });
+                    if (opp.jobFunction) {
+                        rolesSet.add(this.slugify(opp.jobFunction as string));
+                    }
+                    ((opp.allowedPassoutYears as number[]) || []).forEach(y => {
+                        if (y) batchesSet.add(y);
+                    });
+                });
+
+                // Guarantee pre-defined items are covered
+                ['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer'].forEach(r => rolesSet.add(r));
+                ['bangalore', 'hyderabad', 'pune', 'chennai', 'mumbai', 'delhi-ncr', 'remote'].forEach(l => locationsSet.add(l));
+                ['java', 'python', 'react', 'javascript', 'sql', 'aws', 'testing', 'node-js', 'c-plus-plus', 'data-structures', 'html-css'].forEach(s => skillsSet.add(s));
+
+                // 1. sitemap-jobs.xml
+                let jobsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                jobsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                staticRoutes.forEach(r => jobsXml += `  <url><loc>${baseUrl}${r}</loc><lastmod>${staticDate}</lastmod></url>\n`);
                 sitemapOpps.forEach(opp => {
                     const slugOrId = (opp.slug || opp.id) as string;
-                    const prefix = '/';
                     const rawDate = (opp.updatedAt || opp.postedAt) as string | Date | undefined;
                     const dateStr = rawDate ? new Date(rawDate).toISOString().split('T')[0] : staticDate;
-                    sitemapXml += `  <url><loc>${baseUrl}${prefix}${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
+                    jobsXml += `  <url><loc>${baseUrl}/${encodeURIComponent(slugOrId)}</loc><lastmod>${dateStr}</lastmod><changefreq>weekly</changefreq></url>\n`;
                 });
-                sitemapXml += '</urlset>';
+                jobsXml += '</urlset>';
 
-                fs.writeFileSync(this.SITEMAP_PATH, sitemapXml);
-                await this.uploadToR2('sitemap.xml', sitemapXml, 'application/xml');
+                // 2. sitemap-companies.xml
+                let companiesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                companiesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                companiesSet.forEach(c => companiesXml += `  <url><loc>${baseUrl}/companies/${this.slugify(c)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                companiesXml += '</urlset>';
+
+                // 3. sitemap-skills.xml
+                let skillsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                skillsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                skillsSet.forEach(s => skillsXml += `  <url><loc>${baseUrl}/skills/${s}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                skillsXml += '</urlset>';
+
+                // 4. sitemap-roles.xml
+                let rolesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                rolesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                rolesSet.forEach(r => rolesXml += `  <url><loc>${baseUrl}/roles/${r}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                rolesXml += '</urlset>';
+
+                // 5. sitemap-locations.xml
+                let locationsXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                locationsXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                locationsSet.forEach(l => locationsXml += `  <url><loc>${baseUrl}/location/${l}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                locationsXml += '</urlset>';
+
+                // 6. sitemap-batches.xml
+                let batchesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                batchesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                batchesSet.forEach(b => batchesXml += `  <url><loc>${baseUrl}/batch/${b}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                batchesXml += '</urlset>';
+
+                // 7. sitemap-index.xml
+                const sitemaps = [
+                    'sitemap-jobs.xml',
+                    'sitemap-companies.xml',
+                    'sitemap-skills.xml',
+                    'sitemap-roles.xml',
+                    'sitemap-locations.xml',
+                    'sitemap-batches.xml'
+                ];
+                let indexXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
+                indexXml += '<sitemapindex xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
+                sitemaps.forEach(s => {
+                    indexXml += `  <sitemap>\n    <loc>${baseUrl}/${s}</loc>\n    <lastmod>${staticDate}</lastmod>\n  </sitemap>\n`;
+                });
+                indexXml += '</sitemapindex>';
+
+                // Write local files
+                fs.writeFileSync(path.join(this.PUBLIC_ROOT, 'sitemap-index.xml'), indexXml);
+                fs.writeFileSync(this.SITEMAP_PATH, indexXml); // Write to sitemap.xml as index sitemap
+                fs.writeFileSync(path.join(this.PUBLIC_ROOT, 'sitemap-jobs.xml'), jobsXml);
+                fs.writeFileSync(path.join(this.PUBLIC_ROOT, 'sitemap-companies.xml'), companiesXml);
+                fs.writeFileSync(path.join(this.PUBLIC_ROOT, 'sitemap-skills.xml'), skillsXml);
+                fs.writeFileSync(path.join(this.PUBLIC_ROOT, 'sitemap-roles.xml'), rolesXml);
+                fs.writeFileSync(path.join(this.PUBLIC_ROOT, 'sitemap-locations.xml'), locationsXml);
+                fs.writeFileSync(path.join(this.PUBLIC_ROOT, 'sitemap-batches.xml'), batchesXml);
+
+                // Upload to R2
+                await this.uploadToR2('sitemap-index.xml', indexXml, 'application/xml');
+                await this.uploadToR2('sitemap.xml', indexXml, 'application/xml');
+                await this.uploadToR2('sitemap-jobs.xml', jobsXml, 'application/xml');
+                await this.uploadToR2('sitemap-companies.xml', companiesXml, 'application/xml');
+                await this.uploadToR2('sitemap-skills.xml', skillsXml, 'application/xml');
+                await this.uploadToR2('sitemap-roles.xml', rolesXml, 'application/xml');
+                await this.uploadToR2('sitemap-locations.xml', locationsXml, 'application/xml');
+                await this.uploadToR2('sitemap-batches.xml', batchesXml, 'application/xml');
 
                 const sitemapData = {
                     companies: Array.from(companiesSet).map(name => ({
@@ -880,6 +942,100 @@ export class StaticFeedService {
                 const sitemapDataBody = JSON.stringify(sitemapData);
                 fs.writeFileSync(this.SITEMAP_DATA_PATH, sitemapDataBody);
                 await this.uploadToR2('sitemap-data.json', sitemapDataBody, 'application/json');
+
+                // Dynamic Hub static OG Image Generation with R2 cache check!
+                try {
+                    logger.info('[StaticFeedService] Checking and generating static OG images for hubs...');
+                    let cache: {
+                        companies: string[];
+                        locations: string[];
+                        skills: string[];
+                        batches: string[];
+                        roles: string[];
+                    } = { companies: [], locations: [], skills: [], batches: [], roles: [] };
+
+                    try {
+                        const localCache = fs.existsSync(this.GENERATED_HUBS_PATH) 
+                            ? fs.readFileSync(this.GENERATED_HUBS_PATH, 'utf-8')
+                            : await this.fetchFromR2('generated-hubs.json');
+                        if (localCache) {
+                            cache = JSON.parse(localCache);
+                            if (!cache.companies) cache.companies = [];
+                            if (!cache.locations) cache.locations = [];
+                            if (!cache.skills) cache.skills = [];
+                            if (!cache.batches) cache.batches = [];
+                            if (!cache.roles) cache.roles = [];
+                        }
+                    } catch (err) {
+                        logger.warn('[StaticFeedService] Failed to load generated-hubs.json cache, starting fresh', err);
+                    }
+
+                    const { generateAndUploadHubOgImage } = await import('./ogImage.service');
+
+                    // 1. Companies OG
+                    for (const company of Array.from(companiesSet)) {
+                        const slug = this.slugify(company);
+                        if (!slug) continue;
+                        if (!cache.companies.includes(slug)) {
+                            logger.info(`[StaticFeedService] Generating OG card for company: ${company}`);
+                            await generateAndUploadHubOgImage('company', company, slug);
+                            cache.companies.push(slug);
+                        }
+                    }
+
+                    // 2. Locations OG
+                    for (const loc of Array.from(locationsSet)) {
+                        const slug = this.slugify(loc);
+                        if (!slug) continue;
+                        if (!cache.locations.includes(slug)) {
+                            logger.info(`[StaticFeedService] Generating OG card for location: ${loc}`);
+                            await generateAndUploadHubOgImage('location', loc, slug);
+                            cache.locations.push(slug);
+                        }
+                    }
+
+                    // 3. Skills OG
+                    for (const skill of Array.from(skillsSet)) {
+                        const slug = this.slugify(skill);
+                        if (!slug) continue;
+                        if (!cache.skills.includes(slug)) {
+                            const label = skill.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                            logger.info(`[StaticFeedService] Generating OG card for skill: ${label}`);
+                            await generateAndUploadHubOgImage('skill', label, slug);
+                            cache.skills.push(slug);
+                        }
+                    }
+
+                    // 4. Batches OG
+                    for (const year of Array.from(batchesSet)) {
+                        const slug = year.toString();
+                        if (!cache.batches.includes(slug)) {
+                            logger.info(`[StaticFeedService] Generating OG card for batch: ${year}`);
+                            await generateAndUploadHubOgImage('batch', year.toString(), slug);
+                            cache.batches.push(slug);
+                        }
+                    }
+
+                    // 5. Roles OG
+                    for (const role of Array.from(rolesSet)) {
+                        const slug = this.slugify(role);
+                        if (!slug) continue;
+                        if (!cache.roles.includes(slug)) {
+                            const label = role.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                            logger.info(`[StaticFeedService] Generating OG card for role: ${label}`);
+                            await generateAndUploadHubOgImage('role', label, slug);
+                            cache.roles.push(slug);
+                        }
+                    }
+
+                    // Save updated cache
+                    const cacheBody = JSON.stringify(cache);
+                    fs.writeFileSync(this.GENERATED_HUBS_PATH, cacheBody);
+                    await this.uploadToR2('generated-hubs.json', cacheBody, 'application/json');
+                    logger.info('[StaticFeedService] Static OG cards generated and cache updated successfully!');
+                } catch (err) {
+                    logger.error('[StaticFeedService] Failed in static OG generation pipeline', err);
+                }
             }
 
             // 11. Generate & Upload Taken Usernames
