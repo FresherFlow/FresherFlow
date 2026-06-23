@@ -186,7 +186,8 @@ export async function fetchFeedVersion(): Promise<FeedVersion> {
  */
 export async function fetchBootstrapFeed(forceLive = false, customTags?: string[]): Promise<BootstrapFeedResponse | null> {
     try {
-        if (process.env.NODE_ENV === 'development' && !forceLive) {
+        const shouldBypassDevFeed = true;
+        if (process.env.NODE_ENV === 'development' && !forceLive && !shouldBypassDevFeed) {
             try {
                 const res = await fetch(`${API_URL}/bootstrap-feed.min.json`, { cache: 'no-store' });
                 if (res.ok) {

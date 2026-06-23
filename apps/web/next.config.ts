@@ -181,6 +181,10 @@ const nextConfig: NextConfig = {
         source: "/sitemap.xml",
         destination: `${cdnUrl}/sitemap.xml`,
       },
+      {
+        source: "/sitemap-:name.xml",
+        destination: `${cdnUrl}/sitemap-:name.xml`,
+      },
     ];
 
     if (process.env.NODE_ENV === 'production') {

@@ -16,7 +16,7 @@ export function LogoImage({ width, height, className }: LogoImageProps) {
     return (
         <Image
             src={src}
-            alt="FresherFlow"
+            alt=""
             width={width}
             height={height}
             priority

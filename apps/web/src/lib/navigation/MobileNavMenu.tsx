@@ -10,12 +10,18 @@ import ClipboardDocumentCheckIcon from '@heroicons/react/24/outline/ClipboardDoc
 import ArrowRightOnRectangleIcon from '@heroicons/react/24/outline/ArrowRightOnRectangleIcon';
 import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
+import ArrowDownTrayIcon from '@heroicons/react/24/outline/ArrowDownTrayIcon';
+import DevicePhoneMobileIcon from '@heroicons/react/24/outline/DevicePhoneMobileIcon';
 import { ThemeToggle } from '@repo/ui/ThemeToggle';
 import type { User } from '@fresherflow/types';
 import { cn } from '@repo/ui/utils/cn';
 import { LogoImage } from './LogoImage';
 import { useTheme } from '@/lib/providers/ThemeContext';
-import CaptionsTool from '@/app/(admin)/admin/captions/components/CaptionsTool';
+import { useInstallPrompt } from '@/lib/providers/InstallPromptContext';
+import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
+import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
+import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
+import BuildingLibraryIcon from '@heroicons/react/24/outline/BuildingLibraryIcon';
 
 function TelegramIcon({ className }: { className?: string }) {
     return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"><path d="M12 0C5.371 0 0 5.372 0 12s5.371 12 12 12 12-5.372 12-12S18.629 0 12 0Zm5.861 8.233-1.97 9.294c-.149.657-.538.818-1.088.51l-3.009-2.219-1.451 1.396c-.16.16-.295.295-.603.295l.213-3.049 5.549-5.012c.24-.213-.053-.333-.373-.12L8.27 13.65l-2.957-.922c-.642-.203-.656-.642.135-.949l11.557-4.456c.536-.198 1.006.12.856.91Z" /></svg>;
@@ -43,7 +49,7 @@ function DiscordIcon({ className }: { className?: string }) {
 }
 
 interface MobileNavMenuProps {
-    user: User;
+    user: User | null;
     unreadCount: number;
     pendingSyncCount: number;
     onClose: () => void;
@@ -52,6 +58,7 @@ interface MobileNavMenuProps {
 export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onClose }: MobileNavMenuProps) {
     const pathname = usePathname();
     const { theme, toggleTheme } = useTheme();
+    const { canInstall, promptInstall } = useInstallPrompt();
 
     const socialLinks = [
         { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppIcon },
@@ -73,6 +80,14 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
         { href: '/referral', label: 'Invite Friends', icon: UserGroupIcon },
         { href: '/alerts', label: 'Alerts', icon: BellIcon },
         { href: '/feedback', label: 'Feedback', icon: PaperAirplaneIcon },
+    ];
+
+    const guestMenu = [
+        { href: '/opportunities', label: 'Opportunities Feed', icon: MagnifyingGlassIcon },
+        { href: '/jobs', label: 'Jobs Feed', icon: BriefcaseIcon },
+        { href: '/internships', label: 'Internships', icon: AcademicCapIcon },
+        { href: '/remote', label: 'Remote Jobs', icon: BriefcaseIcon },
+        { href: '/government-jobs', label: 'Govt Jobs', icon: BuildingLibraryIcon },
     ];
 
     const renderMenuItem = (item: { href: string; label: string; icon: React.ElementType }) => {
@@ -127,11 +142,8 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
 
                 {/* Header / Brand Area */}
                 <div className="flex items-center gap-3 px-5 py-5 border-b border-border/40">
-                    <LogoImage width={32} height={32} className="w-8 h-8 rounded-lg shadow-sm" />
-                    <div className="flex flex-col">
-                        <span className="text-base font-bold tracking-tight leading-none text-foreground">FresherFlow</span>
-                        <span className="text-[12px] font-semibold text-muted-foreground mt-1">Platform</span>
-                    </div>
+                    <LogoImage width={32} height={32} className="w-8 h-8 object-contain shrink-0" />
+                    <span className="text-base font-bold tracking-tight leading-none text-foreground">FresherFlow</span>
                     <button onClick={onClose} className="ml-auto p-2 -mr-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted/50 transition-colors">
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -141,23 +153,59 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
 
                 {/* Navigation Links */}
                 <nav className="flex-1 overflow-y-auto px-4 py-5 space-y-6">
+                    {user ? (
+                        <>
+                            <div className="space-y-1.5">
+                                {topMenu.map(renderMenuItem)}
+                            </div>
 
-                    <div className="space-y-1.5">
-                        {topMenu.map(renderMenuItem)}
-                    </div>
+                            <div className="space-y-1.5">
+                                {engageMenu.map(renderMenuItem)}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="space-y-1.5">
+                                {guestMenu.map(renderMenuItem)}
+                            </div>
+                        </>
+                    )}
 
-                    <div className="space-y-1.5">
-                        {engageMenu.map(renderMenuItem)}
+                    {/* App Install / Get Options */}
+                    <div className="space-y-1 border-t border-border/40 pt-4">
+                        {canInstall && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    promptInstall('navbar');
+                                    onClose();
+                                }}
+                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-2xl text-sm font-medium text-primary hover:bg-primary/5 transition-colors"
+                            >
+                                <ArrowDownTrayIcon className="w-5 h-5 text-primary" />
+                                <span>Install App</span>
+                            </button>
+                        )}
+                        {pathname !== '/app' && (
+                            <Link
+                                href="/app"
+                                onClick={onClose}
+                                className="flex items-center gap-3.5 w-full px-3 py-3 rounded-2xl text-sm font-medium text-muted-foreground hover:bg-muted/50 hover:text-foreground transition-colors"
+                            >
+                                <DevicePhoneMobileIcon className="w-5 h-5 text-muted-foreground" />
+                                <span>Get App</span>
+                            </Link>
+                        )}
                     </div>
 
                     <div className="pt-2">
-                        <p className="px-3 pb-3 text-[12px] font-bold text-muted-foreground opacity-70">Connect</p>
-                        <div className="flex flex-wrap gap-2.5 px-3">
+                        <p className="px-3 pb-2 text-[12px] font-bold text-muted-foreground opacity-70">Connect</p>
+                        <div className="flex items-center justify-between px-3 gap-1">
                             {socialLinks.map((s) => (
                                 <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer"
-                                    className="h-9 w-9 rounded-xl border border-divider bg-muted/30 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-all hover:scale-105 hover:shadow-sm"
+                                    className="h-8 w-8 rounded-lg border border-divider bg-muted/30 flex items-center justify-center text-muted-foreground hover:bg-primary hover:text-primary-foreground hover:border-transparent transition-all hover:scale-105 hover:shadow-sm shrink-0"
                                     aria-label={s.label}>
-                                    <s.Icon className="w-4 h-4" />
+                                    <s.Icon className="w-3.5 h-3.5" />
                                 </a>
                             ))}
                         </div>
@@ -168,29 +216,30 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                 <div className="p-4 border-t border-border/40 bg-card space-y-4 shrink-0">
                     <div className="flex flex-col gap-3 px-1">
                         <div className="flex items-center justify-between text-[13px] font-medium text-muted-foreground/80">
-                            <CaptionsTool />
-                        </div>
-                        <div className="flex items-center justify-between text-[13px] font-medium text-muted-foreground/80">
                             <span>Theme</span>
                             <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
                         </div>
                     </div>
 
-                    <Link href="/logout" onClick={onClose}
-                        className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-muted-foreground hover:text-destructive transition-all rounded-xl hover:bg-destructive/5 border border-transparent hover:border-destructive/10 capitalize tracking-widest" aria-label="Sign Out">
-                        <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                        Sign out
-                    </Link>
+                    {user && (
+                        <>
+                            <Link href="/logout" onClick={onClose}
+                                className="flex items-center justify-center gap-2 w-full py-2.5 text-xs font-bold text-muted-foreground hover:text-destructive transition-all rounded-xl hover:bg-destructive/5 border border-transparent hover:border-destructive/10 capitalize tracking-widest" aria-label="Sign Out">
+                                <ArrowRightOnRectangleIcon className="w-4 h-4" />
+                                Sign out
+                            </Link>
 
-                    <Link href="/profile" onClick={onClose} className="group flex items-center gap-3 p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 transition-all border border-transparent hover:border-border">
-                        <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 capitalize font-bold text-lg shadow-sm">
-                            {user.fullName?.[0] || user.email?.[0] || 'U'}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <h3 className="text-sm font-semibold tracking-tight truncate group-hover:text-primary transition-colors">{user.fullName || 'User Profile'}</h3>
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                        </div>
-                    </Link>
+                            <Link href="/profile" onClick={onClose} className="group flex items-center gap-3 p-3 rounded-2xl bg-muted/40 hover:bg-muted/70 transition-all border border-transparent hover:border-border">
+                                <div className="w-10 h-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shrink-0 capitalize font-bold text-lg shadow-sm">
+                                    {user.fullName?.[0] || user.email?.[0] || 'U'}
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                    <h3 className="text-sm font-semibold tracking-tight truncate group-hover:text-primary transition-colors">{user.fullName || 'User Profile'}</h3>
+                                    <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                </div>
+                            </Link>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

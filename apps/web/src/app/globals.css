@@ -21,7 +21,7 @@
   --color-error: hsl(var(--error));
   --color-warning: hsl(var(--warning));
   
-  --font-sans: system-ui, sans-serif;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   
   --spacing-18: 4.5rem;
   --spacing-22: 5.5rem;
@@ -589,4 +589,56 @@ html {
 @keyframes ticker {
   0%   { transform: translateX(0); }
   100% { transform: translateX(-50%); }
+}
+
+/* Company Description / Careers Guide Prose Typography */
+.company-description-prose h3 {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.01em;
+}
+
+.company-description-prose h3:first-of-type {
+  margin-top: 0;
+}
+
+.company-description-prose p {
+  margin-bottom: 1rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+}
+
+.company-description-prose ol,
+.company-description-prose ul {
+  padding-left: 1.25rem;
+  margin-bottom: 1rem;
+  list-style-position: outside;
+}
+
+.company-description-prose ol {
+  list-style-type: decimal;
+}
+
+.company-description-prose ul {
+  list-style-type: disc;
+}
+
+.company-description-prose li {
+  margin-bottom: 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: hsl(var(--muted-foreground));
+}
+
+.company-description-prose strong {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+}
+
+.company-description-prose em {
+  font-style: italic;
 }

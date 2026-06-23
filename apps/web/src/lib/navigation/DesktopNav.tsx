@@ -38,16 +38,61 @@ export function DesktopNav() {
         return () => window.removeEventListener('scroll', onScroll);
     }, []);
 
+    const isLandingPage = pathname === '/';
+
+    const normalizedPathname = pathname?.toLowerCase() || '';
+    const isJobRelatedPage =
+        normalizedPathname.startsWith('/jobs') ||
+        normalizedPathname.startsWith('/internships') ||
+        normalizedPathname.startsWith('/walk-ins') ||
+        normalizedPathname.startsWith('/government-jobs') ||
+        normalizedPathname.startsWith('/opportunities') ||
+        normalizedPathname.startsWith('/remote') ||
+        normalizedPathname.startsWith('/companies') ||
+        normalizedPathname.startsWith('/skills') ||
+        normalizedPathname.startsWith('/location') ||
+        normalizedPathname.startsWith('/batch') ||
+        normalizedPathname.startsWith('/roles');
+
+    const segments = normalizedPathname.split('/').filter(Boolean);
+    const firstSegment = segments[0] || '';
+    const reservedSegments = new Set([
+        'about', 'alerts', 'api', 'app', 'batch', 'blog', 'captions', 'careers',
+        'companies', 'contact', 'dashboard', 'deadlines', 'dev', 'feedback',
+        'government-jobs', 'internships', 'jobs', 'join', 'location', 'login',
+        'logout', 'opportunities', 'pending', 'privacy', 'profile', 'r',
+        'referral', 'remote', 'roles', 'sentry-example-page', 'skills', 'terms',
+        'walk-ins', 'account', 'submit-link', 'admin', 'register'
+    ]);
+
+    const isDetailPage =
+        /^\/(jobs|internships|walk-ins|government-jobs|opportunities)\/[^/]+/.test(normalizedPathname) ||
+        (segments.length === 1 && !reservedSegments.has(firstSegment) && !firstSegment.includes('.'));
+
+    const isInternalHeader = isJobRelatedPage && !isDetailPage;
+    const isJobPage = isJobRelatedPage || isDetailPage;
+
     return (
         <header className={cn(
-            "fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pointer-events-none transition-all duration-500 ease-in-out",
-            scrolled ? "pt-4 px-4" : "pt-2 px-4"
+            isLandingPage
+                ? cn(
+                    "fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pointer-events-none transition-all duration-500 ease-in-out",
+                    scrolled ? "pt-4 px-4" : "pt-2 px-4"
+                  )
+                : cn(
+                    "relative w-full h-[64px] bg-background z-[100] hidden md:flex items-center justify-center",
+                    !isJobPage && "border-b border-border"
+                  )
         )}>
             <nav className={cn(
-                'pointer-events-auto w-full flex items-center justify-between gap-4 transition-all duration-500 ease-in-out px-6 shadow-none',
-                scrolled
-                    ? 'max-w-3xl h-[52px] rounded-2xl border border-border/80 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
-                    : 'max-w-7xl h-[64px] rounded-2xl border border-transparent bg-background/80 dark:bg-background/80 backdrop-blur-md'
+                isLandingPage
+                    ? cn(
+                        'pointer-events-auto w-full flex items-center justify-between gap-4 transition-all duration-500 ease-in-out px-6 shadow-none',
+                        scrolled
+                            ? 'max-w-3xl h-[52px] rounded-2xl border border-border/80 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
+                            : 'max-w-7xl h-[64px] rounded-2xl border border-transparent bg-background/80 dark:bg-background/80 backdrop-blur-md'
+                      )
+                    : 'relative w-full max-w-7xl h-full flex items-center justify-between gap-4 px-6'
             )}>
 
                 {/* Brand */}

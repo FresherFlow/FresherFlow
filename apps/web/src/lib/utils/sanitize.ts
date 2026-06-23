@@ -79,7 +79,8 @@ function formatPlainTextDescription(input: string): string {
     return parts.join('');
 }
 
-export function sanitizeHtml(html: string): string {
+export function sanitizeHtml(html: string | null | undefined): string {
+    if (!html) return '';
     const formattedHtml = /<[a-z][\s\S]*>/i.test(html) ? html : formatPlainTextDescription(html);
 
     if (typeof window === 'undefined') {

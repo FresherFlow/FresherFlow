@@ -103,8 +103,8 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
         {
             href: '/opportunities',
             label: 'Search',
-            mobileTitle: 'Search',
-            mobileLabel: 'Search',
+            mobileTitle: 'Opportunities Feed',
+            mobileLabel: 'Feed',
             showInDesktop: true,
             showInMobileTabs: true,
             icon: MagnifyingGlassIcon,
@@ -112,7 +112,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
         {
             href: '/jobs',
             label: 'Jobs',
-            mobileTitle: 'Jobs',
+            mobileTitle: 'Jobs Feed',
             mobileLabel: 'Jobs',
             showInDesktop: true,
             showInMobileTabs: true,
@@ -121,7 +121,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
         {
             href: '/internships',
             label: 'Internships',
-            mobileTitle: 'Internships',
+            mobileTitle: 'Internships Feed',
             mobileLabel: 'Internships',
             showInDesktop: true,
             showInMobileTabs: true,
@@ -130,7 +130,7 @@ export function getNavRoutes(mode: "private" | "govt" = "private"): NavRoute[] {
         {
             href: '/remote',
             label: 'Remote',
-            mobileTitle: 'Remote',
+            mobileTitle: 'Remote Jobs Feed',
             mobileLabel: 'Remote',
             showInDesktop: true,
             showInMobileTabs: true,

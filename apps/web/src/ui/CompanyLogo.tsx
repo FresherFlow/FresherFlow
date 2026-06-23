@@ -158,8 +158,8 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
     return (
         <div className={cn(
             isGovDetected
-                ? "relative w-16 h-16 shrink-0 flex items-center justify-center"
-                : "relative w-12 h-12 bg-muted/40 dark:bg-transparent border border-border rounded overflow-hidden shrink-0 flex items-center justify-center p-1",
+                ? "relative w-16 h-16 shrink-0 flex items-center justify-center bg-white rounded-lg p-1 border border-border/50 shadow-sm"
+                : "relative w-12 h-12 rounded-lg shrink-0 flex items-center justify-center bg-white p-1 border border-border/50 shadow-sm overflow-hidden",
             className
         )}>
             <Image

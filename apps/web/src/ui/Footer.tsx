@@ -49,6 +49,13 @@ export function Footer({ className }: FooterProps) {
         { href: '/internships', label: 'Student Internships' },
     ];
 
+    const directories = [
+        { href: '/companies', label: 'Top Companies' },
+        { href: '/skills', label: 'Skills & Tech' },
+        { href: '/location', label: 'Job Locations' },
+        { href: '/batch', label: 'Passing Batches' },
+    ];
+
     const resources = [
         { href: '/blog', label: 'Career Blog' },
         { href: '/sitemap.xml', label: 'Sitemap' },
@@ -76,7 +83,7 @@ export function Footer({ className }: FooterProps) {
         <footer className={cn("bg-card border-t border-border mt-auto", className)}>
             {/* Top Footer */}
             <div className="container px-4 md:px-6 mx-auto py-10 md:py-16">
-                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-x-6 gap-y-10 lg:gap-8">
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-x-6 gap-y-10 lg:gap-8">
                     
                     {/* Brand Column */}
                     <div className="col-span-2 md:col-span-4 lg:col-span-2 space-y-6">
@@ -109,6 +116,17 @@ export function Footer({ className }: FooterProps) {
                                 ))}
                             </div>
                         </div>
+
+                        {/* Android App CTA */}
+                        <Link
+                            href="/app"
+                            className="inline-flex items-center gap-2.5 px-4 py-2 rounded-xl bg-foreground text-background hover:bg-foreground/90 transition-all border border-border/20 shadow-sm group w-fit text-sm font-semibold"
+                        >
+                            <svg className="w-5 h-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M17.523 15.3414C17.078 15.3414 16.717 14.9804 16.717 14.5354C16.717 14.0904 17.078 13.7294 17.523 13.7294C17.968 13.7294 18.329 14.0904 18.329 14.5354C18.329 14.9804 17.968 15.3414 17.523 15.3414ZM6.477 15.3414C6.032 15.3414 5.671 14.9804 5.671 14.5354C5.671 14.0904 6.032 13.7294 6.477 13.7294C6.922 13.7294 7.283 14.0904 7.283 14.5354C7.283 14.9804 6.922 15.3414 6.477 15.3414ZM17.925 9.7894L19.92 6.3314C20.088 6.0394 19.988 5.6664 19.696 5.4984C19.404 5.3304 19.031 5.4304 18.863 5.7224L16.828 9.2484C15.397 8.5994 13.784 8.2414 12 8.2414C10.216 8.2414 8.603 8.5994 7.172 9.2484L5.137 5.7224C4.969 5.4304 4.596 5.3304 4.304 5.4984C4.012 5.6664 3.912 6.0394 4.08 6.3314L6.075 9.7894C2.569 11.7584 0.17 15.3764 0 19.6454H24C23.83 15.3764 21.431 11.7584 17.925 9.7894Z"/>
+                            </svg>
+                            <span>Get Android App</span>
+                        </Link>
                     </div>
 
                     {/* Links Columns */}
@@ -116,6 +134,19 @@ export function Footer({ className }: FooterProps) {
                         <h4 className="text-sm font-bold text-foreground">Opportunities</h4>
                         <ul className="space-y-2">
                             {topCategories.map((link) => (
+                                <li key={link.href}>
+                                    <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-block">
+                                        {link.label}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold text-foreground">Directories</h4>
+                        <ul className="space-y-2">
+                            {directories.map((link) => (
                                 <li key={link.href}>
                                     <Link href={link.href} className="text-sm text-muted-foreground hover:text-primary transition-colors inline-block">
                                         {link.label}

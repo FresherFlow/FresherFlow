@@ -83,14 +83,8 @@ export function MobileTopNav() {
                     </Link>
 
                     {/* Right Actions */}
-                    {user ? (
-                        <div className="flex items-center gap-1 shrink-0">
-
-                            {canInstall && (
-                                <button type="button" onClick={() => void promptInstall('navbar')} className="px-2 py-1 rounded-lg border border-primary/25 bg-primary/10 text-[10px] font-semibold text-primary" aria-label="Install app">
-                                    Install
-                                </button>
-                            )}
+                    <div className="flex items-center gap-1 shrink-0">
+                        {user && (
                             <Link href="/alerts" className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all" aria-label="Notifications">
                                 <BellIcon className="w-5 h-5" />
                                 {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full ring-2 ring-background" />}
@@ -100,30 +94,19 @@ export function MobileTopNav() {
                                     </span>
                                 )}
                             </Link>
-                            <button onClick={() => setMenuOpen(true)} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all" aria-label="Open menu">
-                                <div className="relative">
-                                    <Bars3Icon className="w-5 h-5" />
-                                    {unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary rounded-full ring-1 ring-background" />}
-                                </div>
-                            </button>
-                        </div>
-                    ) : pathname !== '/app' ? (
-                        <Link
-                            href="/app"
-                            target="_self"
-                            onClick={(event) => {
-                                if (pathname === '/app') event.preventDefault();
-                            }}
-                            className="inline-flex items-center h-8 px-3.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-85 transition-all shadow-sm shrink-0"
-                        >
-                            Get App
-                        </Link>
-                    ) : null}
+                        )}
+                        <button onClick={() => setMenuOpen(true)} className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all" aria-label="Open menu">
+                            <div className="relative">
+                                <Bars3Icon className="w-5 h-5" />
+                                {user && unreadCount > 0 && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-primary rounded-full ring-1 ring-background" />}
+                            </div>
+                        </button>
+                    </div>
                 </div>
             </header>
-
-            {user && menuOpen && (
-                <MobileNavMenu user={user} unreadCount={unreadCount} pendingSyncCount={pendingSyncCount} onClose={() => setMenuOpen(false)} />
+ 
+            {menuOpen && (
+                <MobileNavMenu user={user || null} unreadCount={unreadCount} pendingSyncCount={pendingSyncCount} onClose={() => setMenuOpen(false)} />
             )}
         </>
     );

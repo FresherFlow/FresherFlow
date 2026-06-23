@@ -88,6 +88,9 @@ export default async function RootLayout({
         <meta name="theme-color" content="#e2eaf2" id="theme-color-meta" />
         <HeadInjections />
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" />
         <link rel="preload" as="image" href="/logo-optimized.png?v=3" fetchPriority="high" />
         <link rel="preload" as="image" href="/logo-white-optimized.png?v=3" fetchPriority="high" />
         <script
@@ -100,6 +103,20 @@ export default async function RootLayout({
               ...(SITE_ORIGIN ? { url: SITE_ORIGIN } : {}),
               logo: LOGO_URL,
             }),
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if (typeof window !== 'undefined' && Element.prototype.releasePointerCapture) {
+                const originalRelease = Element.prototype.releasePointerCapture;
+                Element.prototype.releasePointerCapture = function(pointerId) {
+                  try {
+                    originalRelease.call(this, pointerId);
+                  } catch (e) {}
+                };
+              }
+            `
           }}
         />
       </head>
