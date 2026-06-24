@@ -10,20 +10,167 @@ const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^[
 const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
 
 const TARGET_SITES = [
-    { url: 'https://job4freshers.co.in/', name: 'job4freshers' },
-    { url: 'https://frontlinesmedia.in/tag/fresher-jobs/', name: 'frontlinesmedia' },
-    { url: 'https://govtjobmart.in/', name: 'govtjobmart' },
-    { url: 'https://findmyjobss.com/', name: 'findmyjobss' },
-    { url: 'https://jobs.dailypharmajobs.in/', name: 'dailypharmajobs' },
-    { url: 'https://skillbloom.ashokworld.in/', name: 'skillbloom' },
-    { url: 'https://jobsaddafreshers.com/category/freshers/', name: 'jobsaddafreshers' },
-    { url: 'https://internshipss.com/', name: 'internshipss' },
-    { url: 'https://www.freshersvoice.com/', name: 'freshersvoice' },
-    { url: 'https://placementdrive.in/', name: 'placementdrive' },
-    { url: 'https://freshershunt.in/', name: 'freshershunt' },
-    { url: 'https://fresheropenings.com/', name: 'fresheropenings' },
-    { url: 'https://freshersjobsaadda.blogspot.com/search', name: 'freshersjobsaadda' },
-    { url: 'https://jobs.topvarsity.in/', name: 'topvarsity' }
+    {
+        name: 'job4freshers',
+        urls: [
+            'https://job4freshers.co.in/',
+            'https://job4freshers.co.in/category/software-it-jobs/'
+        ]
+    },
+    {
+        name: 'frontlinesmedia',
+        urls: [
+            'https://frontlinesmedia.in/tag/fresher-jobs/'
+        ]
+    },
+    {
+        name: 'govtjobmart',
+        urls: [
+            'https://govtjobmart.in/'
+        ]
+    },
+    {
+        name: 'findmyjobss',
+        urls: [
+            'https://findmyjobss.com/',
+            'https://findmyjobss.com/category/latest-jobs/'
+        ]
+    },
+    {
+        name: 'dailypharmajobs',
+        urls: [
+            'https://jobs.dailypharmajobs.in/',
+            'https://jobs.dailypharmajobs.in/category/fresher-jobs/'
+        ]
+    },
+    {
+        name: 'jobsaddafreshers',
+        urls: [
+            'https://jobsaddafreshers.com/category/freshers/',
+            'https://jobsaddafreshers.com/category/internships/'
+        ]
+    },
+    {
+        name: 'internshipss',
+        urls: [
+            'https://internshipss.com/',
+            'https://internshipss.com/Fresher-Jobs.html',
+            'https://internshipss.com/Internships.html',
+            'https://internshipss.com/Remote-Jobs.html'
+        ]
+    },
+    {
+        name: 'freshersvoice',
+        urls: [
+            'https://www.freshersvoice.com/',
+            'https://www.freshersvoice.com/it-software-jobs',
+            'https://www.freshersvoice.com/off-campus-drives'
+        ]
+    },
+    {
+        name: 'placementdrive',
+        urls: [
+            'https://placementdrive.in/',
+            'https://placementdrive.in/category/fresher-jobs',
+            'https://placementdrive.in/category/internships',
+            'https://placementdrive.in/category/off-campus-jobs'
+        ]
+    },
+    {
+        name: 'freshershunt',
+        urls: [
+            'https://freshershunt.in/',
+            'https://freshershunt.in/off-campus-drive-jobs/off-campus-drive/',
+            'https://freshershunt.in/off-campus-drive-jobs/work-from-home/',
+            'https://freshershunt.in/off-campus-drive-jobs/internship/'
+        ]
+    },
+    {
+        name: 'fresheropenings',
+        urls: [
+            'https://fresheropenings.com/',
+            'https://fresheropenings.com/jobs/',
+            'https://fresheropenings.com/internship/'
+        ]
+    },
+    {
+        name: 'freshersjobsaadda',
+        urls: [
+            'https://freshersjobsaadda.blogspot.com/search'
+        ]
+    },
+    {
+        name: 'topvarsity',
+        urls: [
+            'https://jobs.topvarsity.in/'
+        ]
+    },
+    {
+        name: 'love2pickleball',
+        urls: [
+            'https://love2pickleball.com/category/hire_alert_jobs/'
+        ]
+    },
+    {
+        name: 'freshersnow',
+        urls: [
+            'https://www.freshersnow.com/off-campus-drives/',
+            'https://www.freshersnow.com/internship-jobs/',
+            'https://www.freshersnow.com/freshers-jobs/'
+        ]
+    },
+    {
+        name: 'softwaremuchatlu',
+        urls: [
+            'https://softwaremuchatlu.com/jobs/',
+            'https://softwaremuchatlu.com/internships/'
+        ]
+    },
+    {
+        name: 'onlinestudy4u',
+        urls: [
+            'https://onlinestudy4u.in/category/job-updates/'
+        ]
+    },
+    {
+        name: 'merademyjobs',
+        urls: [
+            'https://merademyjobs.com/index.php/category/freshers/',
+            'https://merademyjobs.com/index.php/category/internships/',
+            'https://merademyjobs.com/index.php/category/work-from-home/',
+            'https://merademyjobs.com/index.php/category/it-jobs/'
+        ]
+    },
+    {
+        name: 'fresheroffcampus',
+        urls: [
+            'https://www.fresheroffcampus.com/',
+            'https://www.fresheroffcampus.com/category/internship-jobs/'
+        ]
+    },
+    {
+        name: 'kickcharm',
+        urls: [
+            'https://kickcharm.com/',
+            'https://kickcharm.com/category/work-from-home/'
+        ]
+    },
+    {
+        name: 'offcampusjobdrives',
+        urls: [
+            'https://offcampusjobdrives.com/category/home/',
+            'https://offcampusjobdrives.com/category/fresher-jobs/',
+            'https://offcampusjobdrives.com/category/internships/'
+        ]
+    },
+    {
+        name: 'mohancareers',
+        urls: [
+            'https://mohancareers.com/',
+            'https://mohancareers.com/category/private-jobs/',
+            'https://mohancareers.com/category/work-from-home-jobs/'
+        ]
+    }
 ];
 
 const VISITED_FILE = path.join(process.cwd(), 'visited_urls.json');
@@ -325,6 +472,14 @@ function isValidApplyLink(urlStr: string, currentDomain: string): boolean {
             'recruitnxt.com', 'fresheropenings.com', 'job4freshers.co.in', 'frontlinesmedia.in',
             'govtjobmart.in', 'findmyjobss.com', 'dailypharmajobs.in', 'ashokworld.in',
             'topvarsity.in',
+            'love2pickleball.com',
+            'softwaremuchatlu.com',
+            'onlinestudy4u.in',
+            'merademyjobs.com',
+            'fresheroffcampus.com',
+            'kickcharm.com',
+            'offcampusjobdrives.com',
+            'mohancareers.com',
             'cookieyes.com', 'generatepress.com', 'wordpress.org', 'wordpress.com', 'gravatar.com',
             'elementor.com', 'schema.org', 'doubleclick.net', 'google-analytics.com', 'googletagmanager.com',
             'w.org', 'wp.com', 'blogspot.com', 'getrevue.co', 'revue.co',
@@ -456,52 +611,68 @@ async function run() {
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     });
     
-    for (const site of TARGET_SITES) {
+    // Block heavy resources (images, stylesheets, fonts, media) to speed up scraping and prevent hangs
+    await context.route('**/*', (route) => {
+        const type = route.request().resourceType();
+        if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+            route.abort();
+        } else {
+            route.continue();
+        }
+    });    for (const site of TARGET_SITES) {
         console.log(`\n--- Scraping ${site.name} ---`);
         if (!visited[site.name]) visited[site.name] = [];
         
         const page = await context.newPage();
         try {
-            await page.goto(site.url, { waitUntil: 'domcontentloaded', timeout: 30000 });
-            
-            // Very naive way to find job posts on the homepage: look for links containing "job" or "hiring" or "recruitment"
-            const allLinks = await page.$$eval('a', anchors => anchors.map(a => ({ text: a.innerText.trim(), href: a.href })));
-            
-            const siteDomain = new URL(site.url).hostname;
-            const jobLinks = [...new Set(allLinks
-                .filter(l => {
-                    try {
-                        const u = new URL(l.href);
-                        // Prevent category/tag pages from being scraped as job posts
-                        if (
-                            u.pathname === '/' || 
-                            u.pathname === '/jobs/' ||
-                            u.pathname === '/freshers/' ||
-                            u.pathname.includes('/category/') || 
-                            u.pathname.includes('/tag/') ||
-                            u.pathname.includes('/recruitment/') ||
-                            u.pathname.includes('/jobs-by-location/') ||
-                            u.pathname.includes('/jobs-by-batch-year/') ||
-                            u.pathname.includes('/jobs-by-batch/') ||
-                            u.pathname.includes('/off-campus-drive-jobs/') ||
-                            u.pathname.includes('/work-from-home/') ||
-                            u.pathname.includes('/internship/') ||
-                            u.pathname.includes('-batch-jobs') ||
-                            u.pathname.endsWith('-jobs/') ||
-                            u.pathname.endsWith('-jobs')
-                        ) return false;
-                        
-                        return u.hostname.includes(siteDomain) && 
-                               (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher'));
-                    } catch {
-                        return false;
-                    }
-                })
-                .map(l => l.href))];
+            const jobLinks: string[] = [];
+            const siteDomain = new URL(site.urls[0]).hostname;
 
-            console.log(`Found ${jobLinks.length} potential job posts on ${site.name} homepage.`);
+            for (const url of site.urls) {
+                console.log(`  -> Loading start page: ${url}`);
+                try {
+                    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 30000 });
+                    
+                    const allLinks = await page.$$eval('a', anchors => anchors.map(a => ({ text: a.innerText.trim(), href: a.href })));
+                    const filtered = allLinks
+                        .filter(l => {
+                            try {
+                                const u = new URL(l.href);
+                                if (
+                                    u.pathname === '/' || 
+                                    u.pathname === '/jobs/' ||
+                                    u.pathname === '/freshers/' ||
+                                    u.pathname.includes('/category/') || 
+                                    u.pathname.includes('/tag/') ||
+                                    u.pathname.includes('/recruitment/') ||
+                                    u.pathname.includes('/jobs-by-location/') ||
+                                    u.pathname.includes('/jobs-by-batch-year/') ||
+                                    u.pathname.includes('/jobs-by-batch/') ||
+                                    u.pathname.includes('/off-campus-drive-jobs/') ||
+                                    u.pathname.includes('/work-from-home/') ||
+                                    u.pathname.includes('/internship/') ||
+                                    u.pathname.includes('-batch-jobs') ||
+                                    u.pathname.endsWith('-jobs/') ||
+                                    u.pathname.endsWith('-jobs')
+                                ) return false;
+                                
+                                return u.hostname.includes(siteDomain) && 
+                                       (u.pathname.includes('job') || u.pathname.includes('hiring') || u.pathname.includes('recruitment') || u.pathname.includes('career') || u.pathname.includes('vacancy') || u.pathname.includes('opportunity') || u.pathname.includes('fresher'));
+                            } catch {
+                                return false;
+                            }
+                        })
+                        .map(l => l.href);
+                    jobLinks.push(...filtered);
+                } catch (gotoErr) {
+                    console.error(`  -> Failed to load start page ${url}:`, (gotoErr as Error).message);
+                }
+            }
 
-            const unvisitedLinks = jobLinks.filter(link => !visited[site.name].includes(link));
+            const uniqueJobLinks = [...new Set(jobLinks)];
+            console.log(`Found ${uniqueJobLinks.length} unique potential job posts across all start pages for ${site.name}.`);
+
+            const unvisitedLinks = uniqueJobLinks.filter(link => !visited[site.name].includes(link));
             console.log(`Found ${unvisitedLinks.length} new unvisited jobs.`);
 
             for (const jobLink of unvisitedLinks.slice(0, 20)) { // Process up to 20 NEW jobs per run

@@ -136,6 +136,16 @@ async function run() {
         userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
     });
     
+    // Block heavy resources (images, stylesheets, fonts, media) to speed up checking and prevent hangs
+    await context.route('**/*', (route) => {
+        const type = route.request().resourceType();
+        if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+            route.abort();
+        } else {
+            route.continue();
+        }
+    });
+    
     const page = await context.newPage();
 
     let checked = 0;
