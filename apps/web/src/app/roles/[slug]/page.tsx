@@ -90,8 +90,10 @@ export default async function RolePage({ params }: Props) {
     let roleInfo = VALID_ROLES[slug as keyof typeof VALID_ROLES];
 
     if (!roleInfo) {
-        const label = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-        roleInfo = { label, keywords: [label.toLowerCase()] };
+        // Unknown role slug — don't ISR-cache pages for arbitrary bot-crawled slugs.
+        const { unstable_noStore } = await import('next/cache');
+        unstable_noStore();
+        notFound();
     }
 
     const { slugify } = await import('@fresherflow/utils');

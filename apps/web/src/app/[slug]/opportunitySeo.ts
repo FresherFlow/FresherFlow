@@ -114,48 +114,47 @@ function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
 // feed JSON separately. With cache(), the second call is free.
 export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {
     try {
-        // Optimized: Fetch the complete opportunity list from the CDN JSON instead of querying the Render database backend.
-        // This prevents Render backend wake-ups, OOMs, and database connection limits during Vercel builds or revalidations.
         const { fetchBootstrapFeed, fetchExpiredFeed, fetchGovernmentFeed } = await import('@/lib/api/cdnFeed');
-        
-        // 1. Try active bootstrap feed (most common)
-        const feed = await fetchBootstrapFeed(false);
-        if (feed?.opportunities) {
-            const opportunity = feed.opportunities.find(
-                (opp) => opp.slug === slugOrId || opp.id === slugOrId
-            );
-            if (opportunity) {
-                return opportunity as ExtendedOpportunity;
-            }
-        }
 
-        // 2. Try government jobs feed (less common)
-        const govtFeed = await fetchGovernmentFeed(false);
-        if (govtFeed?.opportunities) {
-            const govtOpportunity = govtFeed.opportunities.find(
-                (opp) => opp.slug === slugOrId || opp.id === slugOrId
-            );
-            if (govtOpportunity) {
-                return govtOpportunity as ExtendedOpportunity;
-            }
-        }
+        // Fetch all three feeds in parallel — eliminates sequential 3× CDN latency on cold cache.
+        // Each uses force-cache so on a warm CDN, all three complete near-simultaneously.
+        // On a cold CDN (post-publish bust), parallel saves up to 2× the wait vs sequential.
+        const [feed, govtFeed, expiredFeed] = await Promise.all([
+            fetchBootstrapFeed(false),
+            fetchGovernmentFeed(false),
+            fetchExpiredFeed(),
+        ]);
 
-        // 3. Fallback: Try expired feed
-        const expiredFeed = await fetchExpiredFeed();
-        if (expiredFeed?.opportunities) {
-            const expiredOpportunity = expiredFeed.opportunities.find(
-                (opp) => opp.slug === slugOrId || opp.id === slugOrId
-            );
-            if (expiredOpportunity) {
-                return expiredOpportunity as ExtendedOpportunity;
-            }
-        }
+        // Check in priority order: active jobs → govt jobs → expired
+        const opportunity =
+            feed?.opportunities?.find(opp => opp.slug === slugOrId || opp.id === slugOrId) ??
+            govtFeed?.opportunities?.find(opp => opp.slug === slugOrId || opp.id === slugOrId) ??
+            expiredFeed?.opportunities?.find(opp => opp.slug === slugOrId || opp.id === slugOrId);
 
-        return null;
+        return (opportunity as ExtendedOpportunity) ?? null;
+
+        // --- SEQUENTIAL FALLBACK (restore if parallel causes issues) ---
+        // const feed = await fetchBootstrapFeed(false);
+        // if (feed?.opportunities) {
+        //     const opportunity = feed.opportunities.find(opp => opp.slug === slugOrId || opp.id === slugOrId);
+        //     if (opportunity) return opportunity as ExtendedOpportunity;
+        // }
+        // const govtFeed = await fetchGovernmentFeed(false);
+        // if (govtFeed?.opportunities) {
+        //     const govtOpportunity = govtFeed.opportunities.find(opp => opp.slug === slugOrId || opp.id === slugOrId);
+        //     if (govtOpportunity) return govtOpportunity as ExtendedOpportunity;
+        // }
+        // const expiredFeed = await fetchExpiredFeed();
+        // if (expiredFeed?.opportunities) {
+        //     const expiredOpportunity = expiredFeed.opportunities.find(opp => opp.slug === slugOrId || opp.id === slugOrId);
+        //     if (expiredOpportunity) return expiredOpportunity as ExtendedOpportunity;
+        // }
+        // return null;
     } catch {
         return null;
     }
 });
+
 
 export async function generateOpportunityMetadata(opportunity: ExtendedOpportunity): Promise<Metadata> {
     const expiry = getExpiryState(opportunity);

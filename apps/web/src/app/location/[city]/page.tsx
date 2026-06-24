@@ -100,6 +100,14 @@ export default async function LocationPage({ params }: Props) {
     const feed = await fetchBootstrapFeed();
     const opportunities = feed?.opportunities || [];
 
+    // Unknown city — don't ISR-cache pages for arbitrary bot-crawled slugs.
+    const isKnownCity = city in VALID_LOCATIONS;
+    if (!isKnownCity) {
+        const { unstable_noStore } = await import('next/cache');
+        unstable_noStore();
+        notFound();
+    }
+
     const filtered = opportunities.filter(opp => {
         if (city === 'remote') {
             if (opp.workMode === 'REMOTE') return true;

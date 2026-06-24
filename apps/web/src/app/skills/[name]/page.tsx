@@ -22,9 +22,25 @@ const TOP_SKILLS = [
 ];
 
 export async function generateStaticParams() {
-    return TOP_SKILLS.map(name => ({
-        name
-    }));
+    // Pre-build the hardcoded top skills + any additional skills found in the live feed.
+    // This prevents bots crawling skill slugs from triggering on-demand renders and ISR writes.
+    const staticParams = new Set(TOP_SKILLS);
+    try {
+        const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
+        const { slugify } = await import('@fresherflow/utils');
+        const feed = await fetchBootstrapFeed();
+        if (feed?.opportunities) {
+            for (const opp of feed.opportunities) {
+                for (const skill of opp.requiredSkills || []) {
+                    const s = slugify(skill);
+                    if (s) staticParams.add(s);
+                }
+            }
+        }
+    } catch {
+        // fallback to TOP_SKILLS only
+    }
+    return Array.from(staticParams).map(name => ({ name }));
 }
 
 type Props = {
@@ -105,6 +121,14 @@ export default async function SkillPage({ params }: Props) {
         Array.isArray(opp.requiredSkills) && 
         opp.requiredSkills.some(skill => slugify(skill) === slug)
     );
+
+    // No jobs match this skill slug — don't cache the empty page in ISR.
+    // Bots crawling arbitrary skill URLs would write thousands of empty ISR entries.
+    if (filtered.length === 0) {
+        const { unstable_noStore } = await import('next/cache');
+        unstable_noStore();
+        notFound();
+    }
 
     const { extractHubRelations } = await import('@/features/opportunities/utils/hubLinking');
     const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered, { skill: slug });
