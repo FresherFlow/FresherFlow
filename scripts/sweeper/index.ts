@@ -69,43 +69,94 @@ const EXPIRED_PHRASES = [
     "no longer open",
     "this requisition is no longer accepting applications",
     "no longer accepting applications via careers",
-    "please explore other open opportunities"
+    "please explore other open opportunities",
+    "currently not accepting applications",
+    "not accepting applications for this job",
+    "not accepting applications for this position",
+    "this job is not available",
+    "job does not exist or is not currently active",
+    "job does not exist",
+    "is not currently active",
+    "job closed",
+    "role is no longer available",
+    "position you're looking for may have been filled",
+    "we couldn't find the job posting you're looking for",
+    "we couldnt find the job posting you're looking for",
+    "may have been filled or deactivated",
+    "doesn't seem to exist or may have been removed",
+    "doesnt seem to exist or may have been removed"
 ];
 
-async function checkJob(page: Page, url: string): Promise<boolean> {
+interface SweeperCheckResult {
+    status: 'live' | 'expired' | 'review';
+}
+
+async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
     try {
-        const response = await page.goto(url, { waitUntil: 'load', timeout: 20000 });
-        if (!response) return true; // Treat as failed/expired if we can't even load it
-        if (response.status() === 404 || response.status() === 410 || response.status() === 403 || response.status() === 401) {
+        let response = null;
+        let loadFailed = false;
+        try {
+            response = await page.goto(url, { waitUntil: 'load', timeout: 20000 });
+        } catch (gotoErr) {
+            console.error(`Error loading ${url}:`, (gotoErr as Error).message);
+            const errMsg = (gotoErr as Error).message.toLowerCase();
+            if (errMsg.includes('net::err_name_not_resolved') || 
+                errMsg.includes('net::err_connection_refused') || 
+                errMsg.includes('net::err_address_unreachable') ||
+                errMsg.includes('net::err_connection_aborted') ||
+                errMsg.includes('net::err_connection_reset')
+            ) {
+                console.log(`  -> Hard network/DNS error: ${errMsg}. Marking as expired.`);
+                return { status: 'expired' };
+            }
+            loadFailed = true;
+        }
+
+        if (response && (response.status() === 404 || response.status() === 410 || response.status() === 403 || response.status() === 401)) {
             console.log(`  -> Page returned inactive status code: ${response.status()}`);
-            return true; // Hard 404/410/403/401 means expired/inactive
+            return { status: 'expired' };
+        }
+
+        const finalUrl = page.url().toLowerCase();
+        if (finalUrl.includes('not_found') || finalUrl.includes('jobnotfound') || finalUrl.includes('job-not-found') || finalUrl.includes('/jobnotfound') || finalUrl.includes('/job-not-found')) {
+            console.log(`  -> URL indicates job not found / redirect to portal: ${page.url()}. Marking for review.`);
+            return { status: 'review' };
         }
         
         // Wait a tiny bit for JS rendered ATS like Workday to paint text
         await page.waitForTimeout(4000);
         const pageTitle = await page.title().catch(() => "");
-        const lowerTitle = pageTitle.toLowerCase();
+        const lowerTitle = pageTitle.toLowerCase().trim();
         if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required')) {
-            console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}").`);
-            return true;
+            console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}"). Marking for review.`);
+            return { status: 'review' };
+        }
+        if (/^(careers|job search|jobsearch|opportunities|open positions|current openings|search jobs|search for jobs|login|sign in|welcome)$/i.test(lowerTitle)) {
+            console.log(`  -> Page title is generic ("${pageTitle}"). Marking for review.`);
+            return { status: 'review' };
         }
 
         const bodyText = await page.locator('body').innerText().catch(() => "");
-        if (!bodyText) {
-            return true; // If we can't read the page text at all, treat as closed/invalid
+        if (!bodyText || bodyText.trim().length < 100) {
+            if (loadFailed) {
+                console.log(`  -> Navigation failed and page body is empty/too short. Marking for review.`);
+                return { status: 'review' };
+            }
+            console.log(`  -> Page body is empty or too short. Marking for review.`);
+            return { status: 'review' };
         }
         const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
         for (const phrase of EXPIRED_PHRASES) {
             if (lowerText.includes(phrase)) {
-                return true;
+                return { status: 'expired' };
             }
         }
 
-        return false;
+        return { status: 'live' };
     } catch (err) {
         console.error(`Error checking ${url}:`, (err as Error).message);
-        return false; // On timeout or captcha block, don't assume expired. Better false negative than false positive.
+        return { status: 'review' };
     }
 }
 
@@ -129,6 +180,7 @@ async function run() {
     await sendTelegramMessage(`🤖 <b>Job Sweeper Started</b>\n\nChecking ${opportunities.length} active jobs...`);
 
     const expiredJobs: any[] = [];
+    const reviewJobs: any[] = [];
     const browser = await chromium.launch({ headless: true });
     
     // Limit to 1 tab for safety to avoid getting IP blocked too fast
@@ -155,11 +207,14 @@ async function run() {
         if (!targetUrl) continue;
         
         console.log(`[${checked}/${opportunities.length}] Checking: ${opp.title} @ ${opp.company}`);
-        const isExpired = await checkJob(page, targetUrl);
+        const checkResult = await checkJob(page, targetUrl);
         
-        if (isExpired) {
+        if (checkResult.status === 'expired') {
             console.log(`❌ EXPIRED: ${opp.title}`);
             expiredJobs.push(opp);
+        } else if (checkResult.status === 'review') {
+            console.log(`⚠️ REVIEW REQUIRED: ${opp.title}`);
+            reviewJobs.push(opp);
         } else {
             console.log(`✅ LIVE: ${opp.title}`);
         }
@@ -180,31 +235,59 @@ async function run() {
     }
 
     // Message 2: Results
-    if (expiredJobs.length > 0) {
-        let msg = `🚨 <b>Found ${expiredJobs.length} Expired Jobs</b> 🚨\n\n`;
-        const displayJobs = expiredJobs.slice(0, 15);
-        for (const job of displayJobs) {
-            msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.applyLink || job.sourceLink || 'None'}\n`;
+    if (expiredJobs.length > 0 || reviewJobs.length > 0) {
+        let msg = "";
+        
+        if (expiredJobs.length > 0) {
+            msg += `🚨 <b>Found ${expiredJobs.length} Expired Jobs</b> 🚨\n\n`;
+            const displayJobs = expiredJobs.slice(0, 15);
+            for (const job of displayJobs) {
+                msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.applyLink || job.sourceLink || 'None'}\n`;
+            }
+            if (expiredJobs.length > 15) {
+                msg += `...and ${expiredJobs.length - 15} more!\n\n`;
+            }
+            msg += `Please delete these from the Admin Dashboard.\n\n`;
         }
-        if (expiredJobs.length > 15) {
-            msg += `...and ${expiredJobs.length - 15} more!\n\n`;
+        
+        if (reviewJobs.length > 0) {
+            msg += `⚠️ <b>Found ${reviewJobs.length} Review Required Jobs (Generic Titles/Redirects)</b> ⚠️\n\n`;
+            const displayReview = reviewJobs.slice(0, 10);
+            for (const job of displayReview) {
+                msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.applyLink || job.sourceLink || 'None'}\n`;
+            }
+            if (reviewJobs.length > 10) {
+                msg += `...and ${reviewJobs.length - 10} more!\n\n`;
+            }
+            msg += `Please review these before deleting.`;
         }
-        msg += `\nPlease delete these from the Admin Dashboard.`;
+        
         console.log("Sending Telegram message:", msg);
         await sendTelegramMessage(msg);
     } else {
-        await sendTelegramMessage(`✅ <b>Job Sweeper Finished</b>\n\nAll ${opportunities.length} jobs appear to be live! No expired jobs found.`);
+        await sendTelegramMessage(`✅ <b>Job Sweeper Finished</b>\n\nAll ${opportunities.length} jobs appear to be live! No expired or review jobs found.`);
     }
 
     // Write summary for GitHub Actions
     if (process.env.GITHUB_STEP_SUMMARY) {
         const fs = await import('fs/promises');
-        let summary = `## Job Sweeper Results\n\nChecked ${opportunities.length} jobs. Found ${expiredJobs.length} expired jobs.\n\n`;
+        let summary = `## Job Sweeper Results\n\nChecked ${opportunities.length} jobs. Found ${expiredJobs.length} expired jobs and ${reviewJobs.length} review required jobs.\n\n`;
         if (expiredJobs.length > 0) {
             summary += `### Expired Jobs\n`;
             expiredJobs.forEach(j => {
                 summary += `- **${j.company}**: ${j.title} (Apply Link: ${j.applyLink || j.sourceLink || 'None'})\n`;
             });
+            summary += `\n`;
+        }
+        if (reviewJobs.length > 0) {
+            summary += `### Review Required Jobs (Generic Titles/Redirects)\n`;
+            reviewJobs.forEach(j => {
+                summary += `- **${j.company}**: ${j.title} (Apply Link: ${j.applyLink || j.sourceLink || 'None'})\n`;
+            });
+            summary += `\n`;
+        }
+        if (expiredJobs.length === 0 && reviewJobs.length === 0) {
+            summary += `All jobs are active and live.`;
         }
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
     }

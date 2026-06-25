@@ -204,7 +204,22 @@ const EXPIRED_PHRASES = [
     "no longer open",
     "this requisition is no longer accepting applications",
     "no longer accepting applications via careers",
-    "please explore other open opportunities"
+    "please explore other open opportunities",
+    "currently not accepting applications",
+    "not accepting applications for this job",
+    "not accepting applications for this position",
+    "this job is not available",
+    "job does not exist or is not currently active",
+    "job does not exist",
+    "is not currently active",
+    "job closed",
+    "role is no longer available",
+    "position you're looking for may have been filled",
+    "we couldn't find the job posting you're looking for",
+    "we couldnt find the job posting you're looking for",
+    "may have been filled or deactivated",
+    "doesn't seem to exist or may have been removed",
+    "doesnt seem to exist or may have been removed"
 ];
 
 // Phrases indicating it's a fresher job
@@ -357,6 +372,12 @@ function isFresherJob(text: string): boolean {
     if (standaloneExpRegex.test(lowerText)) {
         return false;
     }
+
+    // Check for standalone 1 year experience requirements (excluding 0-1 range and bonds/contracts)
+    const oneYearExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)\b(?:1|1\.0)\s*(?:years|year|yrs|yr|y|exp|experience)\b(?!\s+(?:bond|contract|training|service|agreement|warranty)\b)/gi;
+    if (oneYearExpRegex.test(lowerText)) {
+        return false;
+    }
     
     // If it explicitly asks for experience (e.g. 3+ years), it is NOT a fresher job.
     for (const phrase of EXPERIENCED_PHRASES) {
@@ -370,6 +391,66 @@ function isFresherJob(text: string): boolean {
 // Default to true to avoid missing potential entry level/fresher jobs
     return true; 
 }
+
+// Is this strictly a senior job (experience >= 3 years)?
+function isSeniorJob(text: string): boolean {
+    const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
+    
+    // Check for ranges like "3-5 years", "10-13 years", "5 to 8 years" (excluding ranges starting with 0, 1, or 2)
+    const expRangeRegex = /(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years|years'|yrs|yr|y\b)/gi;
+    if (expRangeRegex.test(lowerText)) {
+        return true;
+    }
+
+    // Check for experience requirements of 3+ years (e.g. "3 years' experience", "5 year's analytical experience")
+    const expReqRegex = /(?<!\b[0-2]\s*(?:-|–|\bto\b)\s*)(?:\b[3-9]\b|\b\d{2,}\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
+    if (expReqRegex.test(lowerText)) {
+        return true;
+    }
+
+    // Check for "3+ years", "4+ yr", "10+ years", etc. (excluding 0+, 1+, 2+)
+    const plusExpRegex = /(?<!\b[0-2]\s*(?:-|–|\bto\b)\s*)(?:\b[3-9]\b|\b\d{2,}\b)\s*\+\s*(?:years|year|yrs|yr|y\b)/gi;
+    if (plusExpRegex.test(lowerText)) {
+        return true;
+    }
+
+    // Check for "minimum of 3 years", "min 5 years", "at least 4 yrs", etc. (excluding 0, 1, 2)
+    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[3-9]\b|\b\d{2,}\b)\s*(?:years|year|yrs|yr|y\b)/gi;
+    if (minExpRegex.test(lowerText)) {
+        return true;
+    }
+    
+    // Check for standalone experience requirements of 3+ years (excluding 0, 1, 2)
+    const standaloneExpRegex = /(?<!\b[0-2]\s*(?:-|–|\bto\b)\s*)(?:\b[3-9]\b|\b\d{2,}\b)\s*(?:years|yrs|yr|y\b)/gi;
+    if (standaloneExpRegex.test(lowerText)) {
+        return true;
+    }
+    
+    const seniorPhrases = [
+        "3+ years", "4+ years", "5+ years", "6+ years", "7+ years", "8+ years", "9+ years", "10+ years",
+        "3+ yrs", "4+ yrs", "5+ yrs", "6+ yrs", "7+ yrs", "8+ yrs", "9+ yrs", "10+ yrs",
+        "3+ exp", "4+ exp", "5+ exp", "6+ exp", "7+ exp", "8+ exp", "9+ exp", "10+ exp",
+        "3 years of exp", "4 years of exp", "5 years of exp", "6 years of exp", "7 years of exp", "8 years of exp", "9 years of exp", "10 years of exp",
+        "3 years exp", "4 years exp", "5 years exp", "6 years exp", "7 years exp", "8 years exp", "9 years exp", "10 years exp",
+        "3 year exp", "4 year exp", "5 year exp", "6 year exp", "7 year exp", "8 year exp", "9 year exp", "10 year exp",
+        "10 - 13 years", "10-13 years", "10-13 yrs", "10 to 13 years", "10 to 13 yrs"
+    ];
+    for (const phrase of seniorPhrases) {
+        if (lowerText.includes(phrase)) return true;
+    }
+
+    return false;
+}
+
+// Check if the text contains any fresher keywords
+function hasFresherKeyword(text: string): boolean {
+    const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
+    for (const phrase of FRESHER_PHRASES) {
+        if (lowerText.includes(phrase)) return true;
+    }
+    return false;
+}
+
 
 // Check if a page is actually a job post (vs a course, syllabus, prep guide, roadmap, exam result)
 function isActualJob(title: string, bodyText: string): boolean {
@@ -393,59 +474,121 @@ function isActualJob(title: string, bodyText: string): boolean {
     return true;
 }
 
+interface JobCheckResult {
+    live: boolean;
+    status: 'live' | 'expired' | 'review' | 'failed';
+}
+
 // Check if job is live (using existing sweeper logic)
-async function isJobLive(page: Page, url: string): Promise<boolean> {
+async function isJobLive(page: Page, url: string): Promise<JobCheckResult> {
     try {
         let response = null;
+        let loadFailed = false;
         try {
             response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
         } catch (gotoErr) {
-            // If it timed out, the page DOM might still be loaded/accessible
             console.log(`  -> Navigation warning: ${(gotoErr as Error).message}. Checking DOM anyway.`);
+            const errMsg = (gotoErr as Error).message.toLowerCase();
+            if (errMsg.includes('net::err_name_not_resolved') || 
+                errMsg.includes('net::err_connection_refused') || 
+                errMsg.includes('net::err_address_unreachable') ||
+                errMsg.includes('net::err_connection_aborted') ||
+                errMsg.includes('net::err_connection_reset')
+            ) {
+                console.log(`  -> Hard network/DNS error: ${errMsg}. Marking as failed.`);
+                return { live: false, status: 'failed' };
+            }
+            loadFailed = true;
         }
 
         if (response && (response.status() === 404 || response.status() === 410 || response.status() === 403 || response.status() === 401)) {
             console.log(`  -> Page returned inactive status code: ${response.status()}`);
-            return false;
+            return { live: false, status: 'expired' };
+        }
+
+        let isReview = false;
+
+        const finalUrl = page.url().toLowerCase();
+        if (finalUrl.includes('not_found') || finalUrl.includes('jobnotfound') || finalUrl.includes('job-not-found') || finalUrl.includes('/jobnotfound') || finalUrl.includes('/job-not-found')) {
+            console.log(`  -> URL indicates job not found / redirect to portal: ${page.url()}. Marking for review.`);
+            isReview = true;
         }
 
         const pageTitle = await page.title().catch(() => "");
-        const lowerTitle = pageTitle.toLowerCase();
+        const lowerTitle = pageTitle.toLowerCase().trim();
         if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required')) {
             console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}").`);
-            return false;
+            return { live: false, status: 'expired' };
+        }
+        if (/^(careers|job search|jobsearch|opportunities|open positions|current openings|search jobs|search for jobs|login|sign in|welcome)$/i.test(lowerTitle)) {
+            console.log(`  -> Page title is generic ("${pageTitle}"). Marking for review.`);
+            isReview = true;
         }
         
         await page.waitForTimeout(3000).catch(() => {});
         const bodyText = await page.locator('body').innerText().catch(() => "");
-        if (!bodyText) {
-            return true; // Fallback to live if we can't read body at all
+        if (!bodyText || bodyText.trim().length < 100) {
+            if (loadFailed) {
+                console.log(`  -> Navigation failed and page body is empty/too short. Marking as failed.`);
+                return { live: false, status: 'failed' };
+            }
+            console.log(`  -> Page body is empty or too short (${bodyText?.trim().length || 0} chars). Marking for review.`);
+            return { live: true, status: 'review' };
         }
 
         const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
         for (const phrase of EXPIRED_PHRASES) {
             if (lowerText.includes(phrase)) {
-                return false;
+                return { live: false, status: 'expired' };
             }
         }
 
-        // Also check if the ACTUAL ATS page requires 2+ years of experience
+        // Check strictly senior first
+        if (isSeniorJob(bodyText)) {
+            console.log(`  -> ATS page is strictly a senior job. Marking as expired.`);
+            return { live: false, status: 'expired' };
+        }
+
+        // Soft check for isFresherJob
+        if (!isFresherJob(bodyText)) {
+            if (hasFresherKeyword(bodyText)) {
+                console.log(`  -> ATS page fails isFresherJob check but has fresher keywords. Marking for review.`);
+                isReview = true;
+            } else {
+                console.log(`  -> ATS page fails isFresherJob check and has no fresher keywords. Marking as expired.`);
+                return { live: false, status: 'expired' };
+            }
+        }
+
+        // Soft check for isActualJob
+        if (!isActualJob(pageTitle, bodyText)) {
+            if (hasFresherKeyword(bodyText)) {
+                console.log(`  -> ATS page fails isActualJob check but has fresher keywords. Marking for review.`);
+                isReview = true;
+            } else {
+                console.log(`  -> ATS page fails isActualJob check and has no fresher keywords. Marking as expired.`);
+                return { live: false, status: 'expired' };
+            }
+        }
+
+        // Check experienced phrases
         for (const phrase of EXPERIENCED_PHRASES) {
             if (lowerText.includes(phrase)) {
-                console.log(`  -> False positive caught! ATS page mentions: ${phrase}`);
-                return false;
+                if (hasFresherKeyword(bodyText)) {
+                    console.log(`  -> ATS page contains experienced phrase (${phrase}) but has fresher keywords. Marking for review.`);
+                    isReview = true;
+                } else {
+                    console.log(`  -> False positive caught! ATS page mentions experienced phrase: ${phrase}`);
+                    return { live: false, status: 'expired' };
+                }
             }
         }
 
-        if (!isActualJob(pageTitle, bodyText)) {
-            console.log(`  -> False positive caught! Target page does not appear to be an actual job.`);
-            return false;
-        }
-
-        return true;
+        return { live: true, status: isReview ? 'review' : 'live' };
     } catch (err) {
-        return true; // Better false positive than false negative
+        console.error("  -> Error checking if job is live:", (err as Error).message);
+        return { live: false, status: 'failed' };
     }
 }
 
@@ -613,7 +756,7 @@ async function run() {
         visited["__discovered_apply_links__"] = [];
     }
 
-    const newJobsFound: { title: string, applyLink: string, source: string, discoveredAt?: string }[] = [];
+    const newJobsFound: { title: string, applyLink: string, source: string, discoveredAt?: string, reviewRequired?: boolean }[] = [];
 
     const browser = await chromium.launch({ headless: true });
     const context = await browser.newContext({
@@ -698,14 +841,31 @@ async function run() {
                 const aggregatorTitle = await page.locator('h1').first().innerText().catch(() => "");
                 const bodyText = await page.locator('body').innerText().catch(() => "");
                 
-                if (!isFresherJob(bodyText)) {
-                    console.log(`  -> Skipping: Not a fresher job.`);
+                if (isSeniorJob(bodyText)) {
+                    console.log(`  -> Skipping: Strictly senior job.`);
                     continue;
                 }
 
+                let isAggregatorReview = false;
+
+                if (!isFresherJob(bodyText)) {
+                    if (hasFresherKeyword(bodyText)) {
+                        console.log(`  -> Borderline SDE/fresher job (failing isFresherJob check but has fresher keywords). Marking aggregator for review.`);
+                        isAggregatorReview = true;
+                    } else {
+                        console.log(`  -> Skipping: Not a fresher job.`);
+                        continue;
+                    }
+                }
+
                 if (!isActualJob(aggregatorTitle, bodyText)) {
-                    console.log(`  -> Skipping: Not an actual job post (likely a course, syllabus, prep guide, roadmap, exam result, etc.).`);
-                    continue;
+                    if (hasFresherKeyword(bodyText)) {
+                        console.log(`  -> Borderline job type (failing isActualJob check but has fresher keywords). Marking aggregator for review.`);
+                        isAggregatorReview = true;
+                    } else {
+                        console.log(`  -> Skipping: Not an actual job post (likely a course, syllabus, prep guide, roadmap, exam result, etc.).`);
+                        continue;
+                    }
                 }
 
                 // Try to find the apply link
@@ -725,10 +885,10 @@ async function run() {
                 knownLinks.add(normalizedApplyLink);
 
                 console.log(`  -> Checking if actual link is live: ${applyLink}`);
-                const isLive = await isJobLive(page, applyLink);
+                const checkResult = await isJobLive(page, applyLink);
 
-                if (isLive) {
-                    console.log(`  ✅ FOUND NEW LIVE JOB: ${applyLink}`);
+                if (checkResult.live) {
+                    console.log(`  ✅ FOUND NEW LIVE JOB: ${applyLink} (Status: ${checkResult.status})`);
                     let jobTitle = await page.title().catch(() => "");
                     jobTitle = jobTitle
                         .replace(/( - Workday| - Lever| - Greenhouse| Careers| - Jobs| \| .*)$/i, '')
@@ -742,7 +902,8 @@ async function run() {
                         title: jobTitle,
                         applyLink: applyLink,
                         source: site.name,
-                        discoveredAt: new Date().toISOString()
+                        discoveredAt: new Date().toISOString(),
+                        reviewRequired: checkResult.status === 'review' || isAggregatorReview
                     };
                     
                     newJobsFound.push(newJob);
@@ -752,10 +913,15 @@ async function run() {
                         visited["__discovered_apply_links__"] = visited["__discovered_apply_links__"].slice(-2000);
                     }
                 } else {
-                    console.log(`  -> Job appears expired.`);
-                    visited["__discovered_apply_links__"].push(normalizedApplyLink);
-                    if (visited["__discovered_apply_links__"].length > 2000) {
-                        visited["__discovered_apply_links__"] = visited["__discovered_apply_links__"].slice(-2000);
+                    if (checkResult.status === 'failed') {
+                        console.log(`  -> Job check failed due to network/timeout. Will retry next run.`);
+                        knownLinks.delete(normalizedApplyLink);
+                    } else {
+                        console.log(`  -> Job appears expired.`);
+                        visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                        if (visited["__discovered_apply_links__"].length > 2000) {
+                            visited["__discovered_apply_links__"] = visited["__discovered_apply_links__"].slice(-2000);
+                        }
                     }
                 }
             }
@@ -772,14 +938,32 @@ async function run() {
     await saveVisited(visited);
 
     if (newJobsFound.length > 0) {
-        let msg = `🔥 <b>Job Discovery Bot Found ${newJobsFound.length} New Fresher Jobs!</b> 🔥\n\n`;
-        const displayJobs = newJobsFound.slice(0, 15);
-        for (const job of displayJobs) {
-            msg += `- <b>${job.title}</b> (via ${job.source})\n  Link: ${job.applyLink}\n\n`;
+        const validJobs = newJobsFound.filter(j => !j.reviewRequired);
+        const reviewJobs = newJobsFound.filter(j => j.reviewRequired);
+
+        let msg = "";
+        if (validJobs.length > 0) {
+            msg += `🔥 <b>Job Discovery Bot Found ${validJobs.length} New Fresher Jobs!</b> 🔥\n\n`;
+            const displayJobs = validJobs.slice(0, 15);
+            for (const job of displayJobs) {
+                msg += `- <b>${job.title}</b> (via ${job.source})\n  Link: ${job.applyLink}\n\n`;
+            }
+            if (validJobs.length > 15) {
+                msg += `...and ${validJobs.length - 15} more!\n\n`;
+            }
         }
-        if (newJobsFound.length > 15) {
-            msg += `...and ${newJobsFound.length - 15} more!\n\n`;
+
+        if (reviewJobs.length > 0) {
+            msg += `⚠️ <b>Review Required Jobs (Possible Portal Redirects):</b> ⚠️\n\n`;
+            const displayReview = reviewJobs.slice(0, 10);
+            for (const job of displayReview) {
+                msg += `- <b>${job.title}</b> (via ${job.source})\n  Link: ${job.applyLink}\n\n`;
+            }
+            if (displayReview.length > 10) {
+                msg += `...and ${reviewJobs.length - 10} more!\n\n`;
+            }
         }
+
         msg += `Please add these to the Admin Dashboard.`;
         console.log("Sending Telegram message:", msg);
         await sendTelegramMessage(msg);
@@ -789,13 +973,25 @@ async function run() {
 
     // Write summary for GitHub Actions
     if (process.env.GITHUB_STEP_SUMMARY) {
+        const validJobs = newJobsFound.filter(j => !j.reviewRequired);
+        const reviewJobs = newJobsFound.filter(j => j.reviewRequired);
         let summary = `## Job Discovery Bot Results\n\nChecked target sites. Found ${newJobsFound.length} new jobs.\n\n`;
-        if (newJobsFound.length > 0) {
+        
+        if (validJobs.length > 0) {
             summary += `### New Jobs\n`;
-            newJobsFound.forEach(j => {
+            validJobs.forEach(j => {
                 summary += `- **${j.title}** (via ${j.source}): ${j.applyLink}\n`;
             });
-        } else {
+            summary += `\n`;
+        }
+        if (reviewJobs.length > 0) {
+            summary += `### Review Required Jobs (Possible Portal Redirects)\n`;
+            reviewJobs.forEach(j => {
+                summary += `- **${j.title}** (via ${j.source}): ${j.applyLink}\n`;
+            });
+            summary += `\n`;
+        }
+        if (newJobsFound.length === 0) {
             summary += `No new fresher jobs were found during this run.`;
         }
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
