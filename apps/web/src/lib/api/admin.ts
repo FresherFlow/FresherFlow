@@ -258,6 +258,11 @@ export const adminApi = {
             body: JSON.stringify({ target })
         }),
 
+    revalidateWebsiteCache: () =>
+        apiClient<{ success: boolean; message: string }>('/api/admin/system/revalidate-web', {
+            method: 'POST'
+        }),
+
     adminPushApi: {
         sendPush: (data: { title: string; message: string; url?: string }) =>
             apiClient<{ success: boolean; messageId: string }>('/api/admin/push', {

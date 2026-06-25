@@ -81,6 +81,27 @@ export default function AdminDashboardHome() {
         }
     };
 
+    const handleRevalidateWebsiteCache = async () => {
+        setRegenerating(true);
+        setRegenStatus(null);
+        try {
+            const res = await adminApi.revalidateWebsiteCache();
+            if (res && res.success) {
+                setRegenStatus({ type: 'success', message: 'Website cache successfully refreshed.' });
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            } else {
+                setRegenStatus({ type: 'error', message: res?.message || 'Failed to refresh website cache' });
+            }
+        } catch (err: unknown) {
+            console.error('[Website Cache Revalidate Error]', err);
+            setRegenStatus({ type: 'error', message: err instanceof Error ? err.message : 'An unexpected error occurred' });
+        } finally {
+            setRegenerating(false);
+        }
+    };
+
     // ─── CDN Metadata Fetching ───────────────────────────────────────────────────
     useEffect(() => {
         async function fetchCdnData() {
@@ -395,6 +416,15 @@ export default function AdminDashboardHome() {
                                     >
                                         <span>Regenerate All Feeds</span>
                                         <CloudIcon className="w-4 h-4" />
+                                    </button>
+
+                                    <button
+                                        onClick={handleRevalidateWebsiteCache}
+                                        disabled={regenerating}
+                                        className="col-span-2 flex items-center justify-between px-3.5 py-2 border border-border rounded-xl bg-secondary/35 text-foreground font-semibold hover:bg-secondary/60 disabled:opacity-50 transition-all text-xs cursor-pointer"
+                                    >
+                                        <span>Refresh Website Cache</span>
+                                        <SignalIcon className="w-4 h-4" />
                                     </button>
 
                                     <button

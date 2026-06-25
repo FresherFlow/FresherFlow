@@ -14,6 +14,18 @@ const router = Router();
 
 // --- Shared helpers ---
 const METRICS_WINDOWS: MetricsWindow[] = ['24h', '7d', '14d', '30d'];
+const PUBLIC_WEB_CACHE_TAGS = [
+    'feed-version',
+    'homepage-feed',
+    'government-feed',
+    'expired-feed',
+    'category-shards',
+    'company-shards',
+    'companies-metadata',
+    'education-metadata',
+    'skills-metadata',
+    'sitemap-data',
+];
 
 function parseMetricsWindow(raw: unknown, defaultWindow: MetricsWindow = '30d'): MetricsWindow {
     const val = String(raw || '').toLowerCase();
@@ -86,14 +98,13 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
 
         // Automatically hit the Next.js revalidate webhook to ensure the website fetches the newly regenerated feeds
         const secret = process.env.REVALIDATE_SECRET_TOKEN;
-        const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';
+        const webUrl = process.env.PUBLIC_WEB_URL;
         if (secret && webUrl) {
             try {
-                const tags = ['feed-version', 'homepage-feed', 'government-feed', 'expired-feed', 'companies-metadata'];
                 await fetch(`${webUrl}/api/revalidate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ secret, paths: ['/'], tags })
+                    body: JSON.stringify({ secret, paths: ['/'], tags: PUBLIC_WEB_CACHE_TAGS })
                 });
             } catch (e) {
                 // Non-fatal, just log it
@@ -112,19 +123,16 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
 router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const secret = process.env.REVALIDATE_SECRET_TOKEN;
-        const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';
+        const webUrl = process.env.PUBLIC_WEB_URL;
         
         if (!secret || !webUrl) {
             return res.status(500).json({ success: false, message: 'REVALIDATE_SECRET_TOKEN or PUBLIC_WEB_URL not configured' });
         }
 
-        // Send a generic payload to bust all main feeds
-        const tags = ['feed-version', 'homepage-feed', 'government-feed', 'expired-feed', 'companies-metadata'];
-        
         const response = await fetch(`${webUrl}/api/revalidate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ secret, paths: ['/'], tags })
+            body: JSON.stringify({ secret, paths: ['/'], tags: PUBLIC_WEB_CACHE_TAGS })
         });
 
         if (!response.ok) {
