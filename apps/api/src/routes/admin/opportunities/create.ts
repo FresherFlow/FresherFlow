@@ -427,7 +427,7 @@ router.patch(
                 where: { id: existing.id as string },
                 data: {
                     status: status as unknown as DbOpportunityStatus,
-                    ...(status === OpportunityStatus.PUBLISHED ? { expiredAt: null, deletedAt: null, deletionReason: null } : {}),
+                    ...(status === OpportunityStatus.PUBLISHED ? { expiredAt: null, expiresAt: null, deletedAt: null, deletionReason: null } : {}),
                 },
                 include: { walkInDetails: true, governmentJobDetails: true },
             });
