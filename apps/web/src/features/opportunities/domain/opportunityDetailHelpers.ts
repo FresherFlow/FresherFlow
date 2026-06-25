@@ -1,6 +1,6 @@
 import type { Opportunity } from '@fresherflow/types';
 import { ActionType } from '@fresherflow/types';
-import { buildShareUrl } from '@/lib/utils/share';
+
 
 export type TimelineEventView = NonNullable<Opportunity['events']>[number] & { _dt: Date };
 

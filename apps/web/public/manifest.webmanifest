@@ -4,7 +4,7 @@
     "version": "1.6.0",
     "description": "Verified job platform for freshers.",
     "id": "/",
-    "start_url": "/dashboard",
+    "start_url": "/opportunities",
     "scope": "/",
     "display": "standalone",
     "display_override": [

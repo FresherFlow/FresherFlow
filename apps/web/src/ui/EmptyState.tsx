@@ -1,4 +1,4 @@
-import Link from 'next/link';
+
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import InboxIcon from '@heroicons/react/24/outline/InboxIcon';
 

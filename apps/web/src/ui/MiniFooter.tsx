@@ -28,7 +28,7 @@ function InstagramBrandIcon({ className }: IconProps) {
 }
 
 function FacebookBrandIcon({ className }: IconProps) {
-    return <svg viewBox="0 0 24 24" fill="currentColor" className={className}><path d="M13.5 22v-8h2.7l.4-3h-3.1V9.1c0-.87.25-1.46 1.5-1.46h1.6V5a19 19 0 0 0-2.3-.12c-2.28 0-3.84 1.39-3.84 3.95V11H8v3h2.4v8h3.1z" /></svg>;
+    return <svg viewBox="0 0 24 24" fill="currentColor" className={cn(className, "scale-[1.15]")}><path d="M13.5 22v-8h2.7l.4-3h-3.1V9.1c0-.87.25-1.46 1.5-1.46h1.6V5a19 19 0 0 0-2.3-.12c-2.28 0-3.84 1.39-3.84 3.95V11H8v3h2.4v8h3.1z" /></svg>;
 }
 
 function DiscordBrandIcon({ className }: IconProps) {
@@ -40,7 +40,7 @@ function DiscordBrandIcon({ className }: IconProps) {
 }
 
 function GithubBrandIcon({ className }: IconProps) {
-    return <svg viewBox="0 0 24 24" fill="currentColor" className={className}><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" /></svg>;
+    return <svg viewBox="0 0 24 24" fill="currentColor" className={cn(className, "scale-[1.15]")}><path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" /></svg>;
 }
 
 export function MiniFooter({ className }: MiniFooterProps) {
@@ -61,14 +61,14 @@ export function MiniFooter({ className }: MiniFooterProps) {
     ];
 
     const socialLinks = [
-        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'text-[#229ED9] bg-[#229ED9]/10 border-[#229ED9]/20 hover:bg-[#229ED9] hover:text-white' },
-        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'text-[#25D366] bg-[#25D366]/10 border-[#25D366]/20 hover:bg-[#25D366] hover:text-white' },
-        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'text-[#0A66C2] bg-[#0A66C2]/10 border-[#0A66C2]/20 hover:bg-[#0A66C2] hover:text-white' },
-        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon, colorClass: 'text-foreground bg-foreground/10 border-foreground/20 hover:bg-foreground hover:text-background' },
-        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'text-[#5865F2] bg-[#5865F2]/10 border-[#5865F2]/20 hover:bg-[#5865F2] hover:text-white' },
-        { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon, colorClass: 'text-[#E1306C] bg-[#E1306C]/10 border-[#E1306C]/20 hover:bg-[#E1306C] hover:text-white' },
-        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'text-[#1877F2] bg-[#1877F2]/10 border-[#1877F2]/20 hover:bg-[#1877F2] hover:text-white' },
-        { href: 'https://github.com/FresherFlow/FresherFlow', label: 'GitHub', Icon: GithubBrandIcon, colorClass: 'text-foreground bg-foreground/10 border-foreground/20 hover:bg-foreground hover:text-background' },
+        { href: 'https://t.me/fresherflowin', label: 'Telegram', Icon: TelegramBrandIcon, colorClass: 'bg-[#229ED9] text-white lg:bg-[#229ED9]/10 lg:text-[#229ED9] border-[#229ED9]/20 hover:bg-[#229ED9] hover:text-white' },
+        { href: 'https://whatsapp.com/channel/0029VbCkZu6FHWq0qJOOU73D', label: 'WhatsApp', Icon: WhatsAppBrandIcon, colorClass: 'bg-[#25D366] text-white lg:bg-[#25D366]/10 lg:text-[#25D366] border-[#25D366]/20 hover:bg-[#25D366] hover:text-white' },
+        { href: 'https://www.linkedin.com/company/fresherflow-in', label: 'LinkedIn', Icon: LinkedInBrandIcon, colorClass: 'bg-[#0A66C2] text-white lg:bg-[#0A66C2]/10 lg:text-[#0A66C2] border-[#0A66C2]/20 hover:bg-[#0A66C2] hover:text-white' },
+        { href: 'https://x.com/Fresherflow', label: 'X', Icon: XBrandIcon, colorClass: 'bg-foreground text-background lg:bg-foreground/10 lg:text-foreground border-foreground/20 hover:bg-foreground hover:text-background' },
+        { href: 'https://discord.gg/CcPAnWSHD', label: 'Discord', Icon: DiscordBrandIcon, colorClass: 'bg-[#5865F2] text-white lg:bg-[#5865F2]/10 lg:text-[#5865F2] border-[#5865F2]/20 hover:bg-[#5865F2] hover:text-white' },
+        { href: 'https://instagram.com/fresherflow', label: 'Instagram', Icon: InstagramBrandIcon, colorClass: 'bg-[#E1306C] text-white lg:bg-[#E1306C]/10 lg:text-[#E1306C] border-[#E1306C]/20 hover:bg-[#E1306C] hover:text-white' },
+        { href: 'https://www.facebook.com/FresherFlow.in', label: 'Facebook', Icon: FacebookBrandIcon, colorClass: 'bg-[#1877F2] text-white lg:bg-[#1877F2]/10 lg:text-[#1877F2] border-[#1877F2]/20 hover:bg-[#1877F2] hover:text-white' },
+        { href: 'https://github.com/FresherFlow/FresherFlow', label: 'GitHub', Icon: GithubBrandIcon, colorClass: 'bg-foreground text-background lg:bg-foreground/10 lg:text-foreground border-foreground/20 hover:bg-foreground hover:text-background' },
     ];
 
     return (
@@ -78,21 +78,19 @@ export function MiniFooter({ className }: MiniFooterProps) {
                 <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-8 pb-6">
                     
                     {/* Brand Section */}
-                    <div className="space-y-3">
+                    <div className="flex flex-row items-center justify-between w-full lg:w-auto lg:flex-col lg:items-start lg:gap-3">
                         <Link href="/" className="inline-block">
                             <span className="text-xl font-extrabold tracking-tighter text-primary">FresherFlow<span className="text-foreground">.in</span></span>
                         </Link>
-                        <div>
-                            <Link
-                                href="/app"
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-foreground text-background hover:bg-foreground/90 transition-all shadow-sm w-fit text-[11px] font-semibold whitespace-nowrap"
-                            >
-                                <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M17.523 15.3414C17.078 15.3414 16.717 14.9804 16.717 14.5354C16.717 14.0904 17.078 13.7294 17.523 13.7294C17.968 13.7294 18.329 14.0904 18.329 14.5354C18.329 14.9804 17.968 15.3414 17.523 15.3414ZM6.477 15.3414C6.032 15.3414 5.671 14.9804 5.671 14.5354C5.671 14.0904 6.032 13.7294 6.477 13.7294C6.922 13.7294 7.283 14.0904 7.283 14.5354C7.283 14.9804 6.922 15.3414 6.477 15.3414ZM17.925 9.7894L19.92 6.3314C20.088 6.0394 19.988 5.6664 19.696 5.4984C19.404 5.3304 19.031 5.4304 18.863 5.7224L16.828 9.2484C15.397 8.5994 13.784 8.2414 12 8.2414C10.216 8.2414 8.603 8.5994 7.172 9.2484L5.137 5.7224C4.969 5.4304 4.596 5.3304 4.304 5.4984C4.012 5.6664 3.912 6.0394 4.08 6.3314L6.075 9.7894C2.569 11.7584 0.17 15.3764 0 19.6454H24C23.83 15.3764 21.431 11.7584 17.925 9.7894Z"/>
-                                </svg>
-                                <span>Get Android App</span>
-                            </Link>
-                        </div>
+                        <Link
+                            href="/app"
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 lg:py-1 rounded-md bg-foreground text-background hover:bg-foreground/90 transition-all shadow-sm w-fit text-[11px] font-semibold whitespace-nowrap"
+                        >
+                            <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M17.523 15.3414C17.078 15.3414 16.717 14.9804 16.717 14.5354C16.717 14.0904 17.078 13.7294 17.523 13.7294C17.968 13.7294 18.329 14.0904 18.329 14.5354C18.329 14.9804 17.968 15.3414 17.523 15.3414ZM6.477 15.3414C6.032 15.3414 5.671 14.9804 5.671 14.5354C5.671 14.0904 6.032 13.7294 6.477 13.7294C6.922 13.7294 7.283 14.0904 7.283 14.5354C7.283 14.9804 6.922 15.3414 6.477 15.3414ZM17.925 9.7894L19.92 6.3314C20.088 6.0394 19.988 5.6664 19.696 5.4984C19.404 5.3304 19.031 5.4304 18.863 5.7224L16.828 9.2484C15.397 8.5994 13.784 8.2414 12 8.2414C10.216 8.2414 8.603 8.5994 7.172 9.2484L5.137 5.7224C4.969 5.4304 4.596 5.3304 4.304 5.4984C4.012 5.6664 3.912 6.0394 4.08 6.3314L6.075 9.7894C2.569 11.7584 0.17 15.3764 0 19.6454H24C23.83 15.3764 21.431 11.7584 17.925 9.7894Z"/>
+                            </svg>
+                            <span>Get Android App</span>
+                        </Link>
                     </div>
 
                     {/* Opportunities Section */}
@@ -130,7 +128,7 @@ export function MiniFooter({ className }: MiniFooterProps) {
                     {/* Social Connect */}
                     <div className="flex flex-col gap-3">
                         <span className="text-xs font-bold uppercase tracking-wider text-foreground">Connect With Us</span>
-                        <div className="grid grid-cols-4 gap-2 w-fit">
+                        <div className="flex flex-row flex-wrap gap-1.5 sm:gap-2 w-fit">
                             {socialLinks.map(({ href, label, Icon, colorClass }) => (
                                 <a
                                     key={label}
@@ -143,7 +141,7 @@ export function MiniFooter({ className }: MiniFooterProps) {
                                         colorClass
                                     )}
                                 >
-                                    <Icon className="h-3.5 w-3.5" />
+                                    <Icon className="h-[18px] w-[18px]" />
                                 </a>
                             ))}
                         </div>

@@ -36,7 +36,7 @@ import { GovernmentJobDetailView } from '@/app/[slug]/components/GovernmentJobDe
 // Hooks
 import { useOpportunityDetail } from '@/features/opportunities/hooks/useOpportunityDetail';
 import { useOpportunityDerivedState } from '@/features/opportunities/hooks/useOpportunityDerivedState';
-import { CITY_TO_STATE, parseOpportunityLocation, getGroupedLocations, formatAllowedPassoutYears } from '@/features/opportunities/domain/opportunityDisplay';
+import { parseOpportunityLocation, getGroupedLocations } from '@/features/opportunities/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 
 interface OpportunityDetailPaneProps {
@@ -93,12 +93,6 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
 
     const ds = useOpportunityDerivedState(opp as Opportunity, profile, searchParams);
 
-    const jumpToTimeline = () => {
-        if (typeof document === 'undefined') return;
-        const section = document.getElementById('drive-timeline');
-        if (!section) return;
-        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    };
 
     if (isLoading) {
         return (

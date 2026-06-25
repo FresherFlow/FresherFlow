@@ -2,7 +2,7 @@
 
 import { cn } from '@repo/ui/utils/cn';
 import { useState, Suspense, useEffect, useMemo } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
@@ -211,7 +211,7 @@ interface CategoryPageProps {
 function CategoryPageContent({ type, initialData }: CategoryPageProps) {
     const { user } = useAuth();
     const config = CATEGORY_CONFIG[type];
-    const IconComponent = config.icon;
+
 
     const searchParams = useSearchParams();
 

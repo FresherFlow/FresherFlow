@@ -69,7 +69,7 @@ export function DesktopNav() {
         /^\/(jobs|internships|walk-ins|government-jobs|opportunities)\/[^/]+/.test(normalizedPathname) ||
         (segments.length === 1 && !reservedSegments.has(firstSegment) && !firstSegment.includes('.'));
 
-    const isInternalHeader = isJobRelatedPage && !isDetailPage;
+
     const isJobPage = isJobRelatedPage || isDetailPage;
 
     return (
@@ -80,8 +80,7 @@ export function DesktopNav() {
                     scrolled ? "pt-4 px-4" : "pt-2 px-4"
                   )
                 : cn(
-                    "relative w-full h-[64px] bg-background z-[100] hidden md:flex items-center justify-center",
-                    !isJobPage && "border-b border-border"
+                    "relative w-full h-[64px] bg-background z-[100] hidden md:flex items-center justify-center"
                   )
         )}>
             <nav className={cn(

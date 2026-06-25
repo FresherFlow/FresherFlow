@@ -87,7 +87,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function RolePage({ params }: Props) {
     const { slug } = await params;
-    let roleInfo = VALID_ROLES[slug as keyof typeof VALID_ROLES];
+    const roleInfo = VALID_ROLES[slug as keyof typeof VALID_ROLES];
 
     if (!roleInfo) {
         // Unknown role slug — don't ISR-cache pages for arbitrary bot-crawled slugs.

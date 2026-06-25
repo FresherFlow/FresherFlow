@@ -21,8 +21,6 @@ interface OpportunityGridProps {
     onSelectOpportunity?: (opp: Opportunity) => void;
 }
 
-import { useEffect } from 'react';
-
 export function OpportunityGrid({
     opportunities,
     isLoading,

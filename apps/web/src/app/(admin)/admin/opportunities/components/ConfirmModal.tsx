@@ -4,12 +4,14 @@ interface ConfirmModalProps {
     show: boolean;
     title: string;
     message: string;
-    onConfirm: (reason?: string) => void;
+    onConfirm: (reason?: string, status?: string) => void;
     onCancel: () => void;
     type: 'danger' | 'warning';
     confirmText: string;
     requireReason?: boolean;
     reasonPlaceholder?: string;
+    statusOptions?: { value: string; label: string }[];
+    defaultStatus?: string;
 }
 
 export const ConfirmModal = ({
@@ -22,13 +24,20 @@ export const ConfirmModal = ({
     confirmText,
     requireReason = false,
     reasonPlaceholder = 'Enter reason...',
+    statusOptions,
+    defaultStatus,
 }: ConfirmModalProps) => {
     const [reason, setReason] = useState('');
+    const [selectedStatus, setSelectedStatus] = useState(defaultStatus || '');
 
     useEffect(() => {
-         
-        if (!show) setReason('');
-    }, [show]);
+        if (!show) {
+            setReason('');
+            setSelectedStatus(defaultStatus || '');
+        } else {
+            setSelectedStatus(defaultStatus || '');
+        }
+    }, [show, defaultStatus]);
 
     if (!show) return null;
 
@@ -51,6 +60,23 @@ export const ConfirmModal = ({
                         className="w-full mb-4 px-3 py-2 text-sm rounded-md border border-input bg-secondary/20 resize-none focus:outline-none focus:ring-2 focus:ring-ring"
                     />
                 )}
+                {statusOptions && (
+                    <div className="mb-6 space-y-3">
+                        {statusOptions.map(opt => (
+                            <label key={opt.value} className="flex items-center gap-2 text-sm text-foreground cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="statusOption"
+                                    value={opt.value}
+                                    checked={selectedStatus === opt.value}
+                                    onChange={(e) => setSelectedStatus(e.target.value)}
+                                    className="w-4 h-4 text-primary focus:ring-primary border-input"
+                                />
+                                {opt.label}
+                            </label>
+                        ))}
+                    </div>
+                )}
                 <div className="flex items-center gap-3">
                     <button
                         onClick={onCancel}
@@ -59,7 +85,7 @@ export const ConfirmModal = ({
                         Cancel
                     </button>
                     <button
-                        onClick={() => onConfirm(requireReason ? reason.trim() : undefined)}
+                        onClick={() => onConfirm(requireReason ? reason.trim() : undefined, statusOptions ? selectedStatus : undefined)}
                         disabled={!canConfirm}
                         className={`flex-1 h-10 px-4 rounded-md text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed ${type === 'danger' ? 'bg-rose-600 text-white' : 'bg-primary text-primary-foreground'}`}
                     >

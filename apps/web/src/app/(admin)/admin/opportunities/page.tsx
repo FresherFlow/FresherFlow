@@ -154,6 +154,8 @@ function OpportunitiesListPage() {
                 confirmText={confirmModal.confirmText}
                 requireReason={confirmModal.requireReason}
                 reasonPlaceholder={confirmModal.reasonPlaceholder}
+                statusOptions={confirmModal.statusOptions}
+                defaultStatus={confirmModal.defaultStatus}
             />
         </div>
     );

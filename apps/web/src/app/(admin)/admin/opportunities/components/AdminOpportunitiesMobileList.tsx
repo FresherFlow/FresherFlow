@@ -28,7 +28,7 @@ interface AdminOpportunitiesMobileListProps {
     opportunities: (Opportunity & { deletedAt?: string | Date | null; expiredAt?: string | Date | null })[];
     selectedIds: string[];
     toggleSelect: (id: string) => void;
-    handleExpire: (id: string, title: string) => void;
+    handleExpire: (id: string, title: string, status?: string) => void;
     handleStatusUpdate: (id: string, status: string) => void;
     handleDelete: (id: string, title: string) => void;
     handleRejectDraft: (id: string, title: string) => void;
@@ -167,14 +167,14 @@ export const AdminOpportunitiesMobileList = ({
                                     </button>
                                 </>
                             )}
-                            {opp.status === 'PUBLISHED' && (
+                            {(opp.status === 'PUBLISHED' || opp.status === 'EXPIRED') && (
                                 <button
-                                    onClick={() => handleExpire(opp.id, opp.title)}
+                                    onClick={() => handleExpire(opp.id, opp.title, opp.status)}
                                     className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-input bg-secondary/20 text-xs font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
-                                    title="Expire"
+                                    title="Change Status"
                                 >
                                     <ClockIcon className="w-4 h-4 mr-1.5" />
-                                    Expire
+                                    Set Status
                                 </button>
                             )}
                             <button

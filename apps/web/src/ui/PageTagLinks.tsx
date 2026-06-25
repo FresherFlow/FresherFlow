@@ -46,6 +46,7 @@ export function PageTagLinks({ skills = [], locations = [], companies = [], maxI
                             className="flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-md bg-muted hover:bg-primary/10 hover:text-primary border border-border transition-colors"
                         >
                             {company.logoUrl && (
+                                /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
                                     src={company.logoUrl}
                                     alt={company.name}

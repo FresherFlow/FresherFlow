@@ -83,7 +83,55 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
         const { target } = req.body;
         const targetStr = typeof target === 'string' ? target : 'all';
         await StaticFeedService.refresh(targetStr);
-        res.json({ success: true, message: `Static feeds (${targetStr}) successfully regenerated.` });
+
+        // Automatically hit the Next.js revalidate webhook to ensure the website fetches the newly regenerated feeds
+        const secret = process.env.REVALIDATE_SECRET_TOKEN;
+        const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';
+        if (secret && webUrl) {
+            try {
+                const tags = ['feed-version', 'homepage-feed', 'government-feed', 'expired-feed', 'companies-metadata'];
+                await fetch(`${webUrl}/api/revalidate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret, paths: ['/'], tags })
+                });
+            } catch (e) {
+                // Non-fatal, just log it
+            }
+        }
+
+        res.json({ success: true, message: `Static feeds (${targetStr}) successfully regenerated and web cache revalidated.` });
+    } catch (error) {
+        next(error);
+    }
+});
+
+/**
+ * Manually trigger Next.js cache revalidation
+ */
+router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const secret = process.env.REVALIDATE_SECRET_TOKEN;
+        const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';
+        
+        if (!secret || !webUrl) {
+            return res.status(500).json({ success: false, message: 'REVALIDATE_SECRET_TOKEN or PUBLIC_WEB_URL not configured' });
+        }
+
+        // Send a generic payload to bust all main feeds
+        const tags = ['feed-version', 'homepage-feed', 'government-feed', 'expired-feed', 'companies-metadata'];
+        
+        const response = await fetch(`${webUrl}/api/revalidate`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ secret, paths: ['/'], tags })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Web server responded with ${response.status}`);
+        }
+
+        res.json({ success: true, message: 'Next.js web cache successfully revalidated.' });
     } catch (error) {
         next(error);
     }

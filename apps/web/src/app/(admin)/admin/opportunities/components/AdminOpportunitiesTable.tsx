@@ -30,7 +30,7 @@ interface AdminOpportunitiesTableProps {
     bulkActionPending: boolean;
     toggleSelect: (id: string) => void;
     toggleSelectAll: () => void;
-    handleExpire: (id: string, title: string) => void;
+    handleExpire: (id: string, title: string, status?: string) => void;
     handleStatusUpdate: (id: string, status: string) => void;
     handleDelete: (id: string, title: string) => void;
     handleRejectDraft: (id: string, title: string) => void;
@@ -208,11 +208,11 @@ export const AdminOpportunitiesTable = ({
                                             </button>
                                         </>
                                     )}
-                                    {opp.status === 'PUBLISHED' && (
+                                    {(opp.status === 'PUBLISHED' || opp.status === 'EXPIRED') && (
                                         <button
-                                            onClick={() => handleExpire(opp.id, opp.title)}
+                                            onClick={() => handleExpire(opp.id, opp.title, opp.status)}
                                             className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
-                                            title="Expire"
+                                            title="Change Status"
                                         >
                                             <ClockIcon className="w-4 h-4" />
                                         </button>

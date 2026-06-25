@@ -12,10 +12,7 @@ import CalendarIcon from '@heroicons/react/24/outline/CalendarIcon';
 import ShieldCheckIcon from '@heroicons/react/24/outline/ShieldCheckIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
-import FlagIcon from '@heroicons/react/24/outline/FlagIcon';
-import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
-import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
-import { OpportunityDeadlineBadge } from './OpportunityDeadlineBadge';
+
 import { DriveMetadata } from '@/lib/utils/driveTimeline';
 
 function getPostedLabel(postedAtVal?: string | Date | null) {
@@ -55,10 +52,6 @@ interface DetailHeroSectionProps {
     handleApply?: () => void;
     handleShare?: () => void;
     handleCopyLink?: () => void;
-    showReports?: boolean;
-    setShowReports?: (show: boolean) => void;
-    reportMenuRef?: React.RefObject<HTMLDivElement | null>;
-    handleReport?: (reason: string) => void;
 }
 
 export function DetailHeroSection({
@@ -72,15 +65,10 @@ export function DetailHeroSection({
     formatDeadline,
     isExpired,
     isClosingSoon,
-    isMobile = false,
     hasApplyLink,
     handleApply,
     handleShare,
     handleCopyLink,
-    showReports,
-    setShowReports,
-    reportMenuRef,
-    handleReport
 }: DetailHeroSectionProps) {
     const isGovernmentJob = Boolean(opp.governmentJobDetails);
     const govDetails = opp.governmentJobDetails;

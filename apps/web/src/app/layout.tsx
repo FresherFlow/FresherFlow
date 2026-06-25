@@ -90,6 +90,7 @@ export default async function RootLayout({
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
         <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" />
         <link rel="preload" as="image" href="/logo-optimized.png?v=3" fetchPriority="high" />
         <link rel="preload" as="image" href="/logo-white-optimized.png?v=3" fetchPriority="high" />

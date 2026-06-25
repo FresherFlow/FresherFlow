@@ -121,13 +121,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
         }
     };
 
-    const isClosingSoon = () => {
-        if (!job.expiresAt) return false;
-        const expiryDate = new Date(job.expiresAt);
-        const now = new Date();
-        const threeDaysFromNow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000);
-        return expiryDate >= now && expiryDate <= threeDaysFromNow;
-    };
+
 
     const isExpired = () => {
         if (!job.expiresAt) return false;

@@ -5,12 +5,10 @@ import { Opportunity } from '@fresherflow/types';
 import { OpportunityGrid } from './OpportunityGrid';
 import Link from 'next/link';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
-import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import { PageTagLinks } from '@/ui/PageTagLinks';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { EmptyState } from '@/ui/EmptyState';
 import { Breadcrumb } from '@/ui/Breadcrumb';
-import { cn } from '@repo/ui/utils/cn';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
 
 export interface HubLink {
@@ -101,7 +99,7 @@ export default function ProgrammaticHub({
         }, 250);
     };
 
-    const hasSidebar = relatedSkills.length > 0 || relatedLocations.length > 0 || topCompanies.length > 0;
+
     const visibleOpportunities = opportunities.slice(0, visibleCount);
 
     return (

@@ -143,14 +143,11 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
 
     const {
         filteredOpps,
-        totalCount,
         isLoading,
         error,
         profileIncomplete,
         toggleSave,
-        reload,
-        hasMore,
-        loadMore
+        reload
     } = useOpportunitiesFeed({
         type: selectedType,
         selectedLoc: filters.location,

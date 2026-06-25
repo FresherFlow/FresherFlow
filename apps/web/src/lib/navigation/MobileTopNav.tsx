@@ -11,7 +11,7 @@ import BellIcon from '@heroicons/react/24/outline/BellIcon';
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 import { useUnreadNotifications } from '@/features/notifications/hooks/useUnreadNotifications';
 import { useOfflineActionQueue } from '@/lib/api/offline/useOfflineActionQueue';
-import { useInstallPrompt } from '@/lib/providers/InstallPromptContext';
+
 import { getNavRoutes } from './routeConfig';
 
 
@@ -39,7 +39,7 @@ export function MobileTopNav() {
     const pendingSyncCount = useOfflineActionQueue(user?.id);
     const [menuOpen, setMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
-    const { canInstall, promptInstall } = useInstallPrompt();
+
     const mobileTitle = getMobileTitle(pathname);
 
     useEffect(() => {
@@ -57,13 +57,13 @@ export function MobileTopNav() {
 
     return (
         <>
-            <header
-                className={cn(
-                    "md:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-[env(safe-area-inset-top)] transition-all duration-300 border-b",
-                    scrolled
-                        ? "bg-background/95 backdrop-blur-md border-border shadow-sm"
-                        : "bg-background border-transparent"
-                )}
+                <header
+                    className={cn(
+                        "md:hidden fixed top-0 left-0 right-0 z-70 flex items-center pt-[env(safe-area-inset-top)] transition-all duration-300",
+                        scrolled
+                            ? "bg-background/95 backdrop-blur-md shadow-sm"
+                            : "bg-background"
+                    )}
                 style={{ height: `calc(3.5rem + env(safe-area-inset-top))` }}
             >
                 <div className="w-full flex items-center justify-between px-4 h-full">

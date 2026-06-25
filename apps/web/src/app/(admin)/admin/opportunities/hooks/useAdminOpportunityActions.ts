@@ -21,11 +21,13 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
         show: boolean;
         title: string;
         message: string;
-        action: (reason?: string) => void;
+        action: (reason?: string, status?: string) => void;
         type: 'danger' | 'warning';
         confirmText: string;
         requireReason?: boolean;
         reasonPlaceholder?: string;
+        statusOptions?: { value: string; label: string }[];
+        defaultStatus?: string;
     }>({
         show: false,
         title: '',
@@ -36,18 +38,27 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
         requireReason: false,
     });
 
-    const handleExpire = (id: string, title: string) => {
+    const handleExpire = (id: string, title: string, currentStatus?: string) => {
         setConfirmModal({
             show: true,
-            title: 'Expire Opportunity',
-            message: `Are you sure you want to mark "${title}" as EXPIRED?`,
+            title: 'Change Opportunity Status',
+            message: `Select the new status for "${title}":`,
             type: 'warning',
-            confirmText: 'Expire listing',
-            action: async () => {
+            confirmText: 'Confirm change',
+            statusOptions: [
+                { value: 'EXPIRED', label: 'Expire listing' },
+                { value: 'PUBLISHED', label: 'Make Live (Publish)' }
+            ],
+            defaultStatus: currentStatus === 'PUBLISHED' ? 'EXPIRED' : 'PUBLISHED',
+            action: async (reason?: string, newStatus?: string) => {
                 const tid = toast.loading('Updating status...');
                 try {
-                    await adminApi.expireOpportunity(id);
-                    toast.success('Opportunity expired', { id: tid });
+                    if (newStatus === 'EXPIRED') {
+                        await adminApi.expireOpportunity(id);
+                    } else if (newStatus === 'PUBLISHED') {
+                        await adminApi.updateOpportunityStatus(id, 'PUBLISHED');
+                    }
+                    toast.success('Opportunity updated', { id: tid });
                     loadOpportunities();
                     setConfirmModal(prev => ({ ...prev, show: false }));
                 } catch (err: unknown) {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useRef, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { type Opportunity } from '@fresherflow/types';
@@ -14,9 +14,7 @@ import UserIcon from '@heroicons/react/24/outline/UserIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import LinkIcon from '@heroicons/react/24/outline/LinkIcon';
-import FlagIcon from '@heroicons/react/24/outline/FlagIcon';
-import ArrowLeftIcon from '@heroicons/react/24/outline/ArrowLeftIcon';
-import ArrowTopRightOnSquareIcon from '@heroicons/react/24/outline/ArrowTopRightOnSquareIcon';
+
 import Bars3Icon from '@heroicons/react/24/outline/Bars3Icon';
 
 const MobileNavMenu = dynamic(() => import('@/lib/navigation/MobileNavMenu'), { ssr: false });
@@ -47,7 +45,6 @@ import { AppPromoBanner } from '@/ui/AppPromoBanner';
 // Hooks & Utils
 import { useOpportunityDetail } from '@/features/opportunities/hooks/useOpportunityDetail';
 import { useOpportunityDerivedState } from '@/features/opportunities/hooks/useOpportunityDerivedState';
-import { CITY_TO_STATE, getGroupedLocations } from '@/features/opportunities/domain/opportunityDisplay';
 
 
 export default function OpportunityDetailClient({ 

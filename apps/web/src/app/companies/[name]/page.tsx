@@ -3,7 +3,7 @@ import { permanentRedirect, notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import JobCard from '@/features/opportunities/components/JobCard';
 import { GlobeAltIcon, BriefcaseIcon } from '@heroicons/react/24/outline';
-import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
+
 import Link from 'next/link';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { PageTagLinks } from '@/ui/PageTagLinks';
