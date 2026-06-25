@@ -510,7 +510,7 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
         
         let rootLocator = page.locator('body');
         for (const selector of contentSelectors) {
-            const locator = page.locator(selector).first();
+            const locator = page.locator(selector);
             if (await locator.count() > 0) {
                 rootLocator = locator;
                 break;
@@ -518,7 +518,7 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
         }
 
         // 1. Try to find links containing explicit apply/register/click here/submit text
-        const applyButtons = await rootLocator.locator('a >> text=/(apply|register|click here|submit)/i').elementHandles();
+        const applyButtons = await rootLocator.locator('a', { hasText: /(apply|register|click here|submit)/i }).elementHandles();
         for (const btn of applyButtons) {
             const href = await btn.getAttribute('href');
             if (href) {
@@ -547,10 +547,19 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
         }
 
         // 3. If no explicit apply link with an external href was found, try clicking the first apply button (js actions)
-        if (applyButtons.length > 0) {
+        // Skip buttons that are just hash links (anchor scroll links)
+        const clickTargets = [];
+        for (const btn of applyButtons) {
+            const href = await btn.getAttribute('href');
+            if (!href || !href.startsWith('#')) {
+                clickTargets.push(btn);
+            }
+        }
+
+        if (clickTargets.length > 0) {
             const [newPage] = await Promise.all([
                 context.waitForEvent('page').catch(() => null),
-                applyButtons[0].click({ timeout: 5000 }).catch(() => null)
+                clickTargets[0].click({ timeout: 5000 }).catch(() => null)
             ]);
 
             if (newPage) {
@@ -644,6 +653,10 @@ async function run() {
                                     u.pathname === '/freshers/' ||
                                     u.pathname.includes('/category/') || 
                                     u.pathname.includes('/tag/') ||
+                                    u.pathname.includes('/page/') ||
+                                    u.pathname.includes('/author/') ||
+                                    u.pathname.includes('/search/') ||
+                                    u.pathname.includes('/whatsapp-group/') ||
                                     u.pathname.includes('/recruitment/') ||
                                     u.pathname.includes('/jobs-by-location/') ||
                                     u.pathname.includes('/jobs-by-batch-year/') ||
