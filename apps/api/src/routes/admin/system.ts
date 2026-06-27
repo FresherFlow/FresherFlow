@@ -13,6 +13,18 @@ const router = Router();
 
 // --- Shared helpers ---
 const METRICS_WINDOWS: MetricsWindow[] = ['24h', '7d', '14d', '30d'];
+const PUBLIC_WEB_CACHE_TAGS = [
+    'feed-version',
+    'homepage-feed',
+    'government-feed',
+    'expired-feed',
+    'category-shards',
+    'company-shards',
+    'companies-metadata',
+    'education-metadata',
+    'skills-metadata',
+    'sitemap-data',
+];
 
 // ⚠️  ISR WRITE SAFETY — READ BEFORE EDITING THIS FILE
 // Hub/list pages (/jobs, /internships, /walk-ins, /remote, etc.) are powered by the CDN
