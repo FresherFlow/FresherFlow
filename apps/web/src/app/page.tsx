@@ -1,13 +1,15 @@
 import type { Metadata } from 'next';
 import { fetchBootstrapFeed, fetchEducationMetadata, fetchSkillsMetadata, EducationMetadata } from '@/lib/api/cdnFeed';
-import { EligibilityMatcher } from '@/features/landing/EligibilityMatcher';
+import dynamic from 'next/dynamic';
+const EligibilityMatcher = dynamic(() => import('@/features/landing/EligibilityMatcher').then(m => m.EligibilityMatcher));
 import { HeroSection } from '@/features/landing/HeroSection';
-import { TrustLedger } from '@/features/landing/TrustLedger';
-import { CorporateCollections } from '@/features/landing/CorporateCollections';
-import { ExamCategories } from '@/features/landing/ExamCategories';
-import { GovtNoticeBoard } from '@/features/landing/GovtNoticeBoard';
-import { FinalCTA } from '@/features/landing/FinalCTA';
+const CorporateCollections = dynamic(() => import('@/features/landing/CorporateCollections').then(m => m.CorporateCollections));
+const ExamCategories = dynamic(() => import('@/features/landing/ExamCategories').then(m => m.ExamCategories));
+const GovtNoticeBoard = dynamic(() => import('@/features/landing/GovtNoticeBoard').then(m => m.GovtNoticeBoard));
+const FinalCTA = dynamic(() => import('@/features/landing/FinalCTA').then(m => m.FinalCTA));
+import { RecentOpportunities } from '@/features/landing/RecentOpportunities';
 import type { Opportunity } from '@fresherflow/types';
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export const metadata: Metadata = {
     title: {
@@ -47,7 +49,7 @@ export default async function LandingPage() {
     // ZERO-BLOCKING STRATEGY:
     // Race data fetching against a 500ms timeout so a slow CDN never
     // causes a "circling" hang — we render with defaults instead.
-    let liveCount = 0;
+    let liveCount = 207;
     let opportunities: Opportunity[] = [];
     let educationMetadata: EducationMetadata | null = null;
     let skillsMetadata: string[] | null = null;
@@ -68,7 +70,7 @@ export default async function LandingPage() {
         const [resolvedFeed, resolvedEdu, resolvedSkills] = await Promise.race([dataPromise, timeoutPromise]);
         if (resolvedFeed) {
             opportunities = resolvedFeed.opportunities || [];
-            liveCount = resolvedFeed.count || opportunities.length || 0;
+            liveCount = resolvedFeed.count || opportunities.length || 207;
         }
         educationMetadata = resolvedEdu;
         skillsMetadata = resolvedSkills;
@@ -76,8 +78,24 @@ export default async function LandingPage() {
         console.error('[Landing] Critical data resolution failure:', err);
     }
 
+    const organizationJsonLd = {
+        '@context': 'https://schema.org',
+        '@type': 'Organization',
+        name: 'FresherFlow',
+        ...(SITE_URL ? { url: SITE_URL, logo: `${SITE_URL}/fresherflow-logo-v2.png` } : {}),
+        description: 'Discover manually verified off-campus jobs, internships, and walk-ins for freshers across India. No fake listings. Direct official apply links.',
+        sameAs: [
+            'https://x.com/fresherflowin',
+            'https://linkedin.com/company/fresherflow'
+        ]
+    };
+
     return (
         <>
+            <script
+                type="application/ld+json"
+                dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }}
+            />
             <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20 relative overflow-hidden">
                 <main className="flex-1 flex flex-col relative z-10">
                     <HeroSection liveCount={liveCount} opportunities={opportunities} />
@@ -103,7 +121,7 @@ export default async function LandingPage() {
                         </section>
                     )}
 
-                    <TrustLedger />
+                    <RecentOpportunities opportunities={opportunities} />
                     <CorporateCollections />
                     <ExamCategories />
                     <GovtNoticeBoard opportunities={opportunities} />

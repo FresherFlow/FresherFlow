@@ -160,9 +160,9 @@ export function EligibilityMatcher({
         <div className="grid grid-cols-1 lg:grid-cols-[0.4fr_0.6fr] gap-8 items-start">
           {/* Controls Profile Cockpit */}
           <div className="rounded-2xl border border-border bg-muted/30 p-5 space-y-6">
-            <h4 className="text-sm font-bold tracking-tight uppercase tracking-wider text-muted-foreground">
+            <h3 className="text-sm font-bold tracking-tight uppercase tracking-wider text-muted-foreground">
               Your Academic Profile
-            </h4>
+            </h3>
 
             {/* Degree selector */}
             <div className="space-y-2">

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
+import { CDN_URL } from '@/lib/utils/runtimeConfig';
 
 interface LandingStatsProps {
     initialLiveCount: number;
@@ -9,30 +9,89 @@ interface LandingStatsProps {
 }
 
 export function LandingStats({ initialLiveCount, initialCompaniesCount }: LandingStatsProps) {
-    const [liveCount, setLiveCount] = useState(initialLiveCount);
-    const [companiesCount, setCompaniesCount] = useState(initialCompaniesCount);
+    const [liveCount, setLiveCount] = useState(initialLiveCount || 207);
+    const [companiesCount, setCompaniesCount] = useState(initialCompaniesCount || 166);
+    
+    const [animatedLive, setAnimatedLive] = useState(0);
+    const [animatedCompanies, setAnimatedCompanies] = useState(0);
 
     useEffect(() => {
-        // If SSR timed out, fetch on client
-        if (initialLiveCount === 0 || initialCompaniesCount === 0) {
-            fetchBootstrapFeed().then((feed) => {
-                if (feed) {
-                    setLiveCount(feed.count || feed.opportunities?.length || 0);
-                    if (feed.opportunities) {
-                        const set = new Set<string>();
-                        feed.opportunities.forEach(o => {
-                            if (o.company) set.add(o.company);
-                        });
-                        setCompaniesCount(set.size);
-                    }
+        // Fetch fresh stats from R2/CDN stats.json (lightweight, ~100 bytes)
+        fetch(`${CDN_URL}/stats.json`)
+            .then(res => res.json())
+            .then((data) => {
+                if (data && typeof data.opportunities === 'number') {
+                    setLiveCount(data.opportunities);
                 }
-            }).catch(console.error);
-        }
-    }, [initialLiveCount, initialCompaniesCount]);
+                if (data && typeof data.companies === 'number') {
+                    setCompaniesCount(data.companies);
+                }
+            })
+            .catch((err) => {
+                console.error('[LandingStats] Failed to fetch stats.json:', err);
+                // Fallback to static numbers if CDN is unreachable
+                if (!liveCount || liveCount === 0) setLiveCount(207);
+                if (!companiesCount || companiesCount === 0) setCompaniesCount(166);
+            });
+    }, []);
+
+    useEffect(() => {
+        if (liveCount === 0) return;
+        
+        let startTimestamp: number | null = null;
+        const duration = 1500; // 1.5 seconds
+        let animationFrameId: number;
+
+        const step = (timestamp: number) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            
+            // easeOutQuad interpolation
+            const easeProgress = progress * (2 - progress);
+            
+            setAnimatedLive(Math.floor(easeProgress * liveCount));
+
+            if (progress < 1) {
+                animationFrameId = window.requestAnimationFrame(step);
+            } else {
+                setAnimatedLive(liveCount);
+            }
+        };
+
+        animationFrameId = window.requestAnimationFrame(step);
+        return () => window.cancelAnimationFrame(animationFrameId);
+    }, [liveCount]);
+
+    useEffect(() => {
+        if (companiesCount === 0) return;
+        
+        let startTimestamp: number | null = null;
+        const duration = 1500; // 1.5 seconds
+        let animationFrameId: number;
+
+        const step = (timestamp: number) => {
+            if (!startTimestamp) startTimestamp = timestamp;
+            const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+            
+            // easeOutQuad interpolation
+            const easeProgress = progress * (2 - progress);
+            
+            setAnimatedCompanies(Math.floor(easeProgress * companiesCount));
+
+            if (progress < 1) {
+                animationFrameId = window.requestAnimationFrame(step);
+            } else {
+                setAnimatedCompanies(companiesCount);
+            }
+        };
+
+        animationFrameId = window.requestAnimationFrame(step);
+        return () => window.cancelAnimationFrame(animationFrameId);
+    }, [companiesCount]);
 
     const stats = [
-        { label: 'Active Jobs', value: liveCount > 0 ? liveCount.toLocaleString() : '- -' },
-        { label: 'Companies', value: companiesCount > 0 ? companiesCount.toLocaleString() : '- -' },
+        { label: 'Active Jobs', value: liveCount > 0 ? animatedLive.toLocaleString() : '- -' },
+        { label: 'Companies', value: companiesCount > 0 ? animatedCompanies.toLocaleString() : '- -' },
         { label: 'Fake Listings', value: '0' },
     ];
 
