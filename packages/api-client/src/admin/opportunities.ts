@@ -53,6 +53,12 @@ export const adminOpportunitiesApi = {
             body: JSON.stringify({ reason }),
         }),
 
+    hardDelete: (id: string, reason?: string) =>
+        apiClient<{ message: string }>(`/api/admin/opportunities/${id}/hard`, {
+            method: 'DELETE',
+            body: JSON.stringify({ reason }),
+        }),
+
     parse: (url: string) =>
         apiClient<{ draft: unknown }>('/api/admin/opportunities/parse', {
             method: 'POST',

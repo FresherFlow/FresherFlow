@@ -1,3 +1,7 @@
+const isDomainOrSubdomain = (hostname: string, targetDomain: string): boolean => {
+    return hostname === targetDomain || hostname.endsWith('.' + targetDomain);
+};
+
 /**
  * Normalizes a job opportunity URL by removing tracking parameters, UTM tags, and fragments.
  * This helps in deduplication and cleaner sharing.
@@ -77,7 +81,7 @@ export const normalizeOpportunityUrl = (url: string): string => {
 
         // 1. LinkedIn Canonicalization
         const hostname = urlObj.hostname.toLowerCase();
-        if (hostname.includes('linkedin.com')) {
+        if (isDomainOrSubdomain(hostname, 'linkedin.com')) {
             // Extract job ID from /jobs/view/123 or /jobs/view/slug-123
             const jobMatch = urlObj.pathname.match(/\/jobs\/(?:view|collections\/v2)\/.*?(\d+)/) ||
                              urlObj.pathname.match(/\/jobs\/view\/(\d+)/);
@@ -91,7 +95,7 @@ export const normalizeOpportunityUrl = (url: string): string => {
         }
 
         // 2. Naukri Canonicalization
-        if (hostname.includes('naukri.com')) {
+        if (isDomainOrSubdomain(hostname, 'naukri.com')) {
             // Extract job ID from /job-listings-...-123
             const jobMatch = urlObj.pathname.match(/-(\d{10,15})(?:[^\d]|$)/);
             if (jobMatch && jobMatch[1]) {
@@ -122,7 +126,7 @@ export const normalizeOpportunityUrl = (url: string): string => {
             'workable.com'
         ];
 
-        if (aggressiveDomains.some(domain => hostname.includes(domain))) {
+        if (aggressiveDomains.some(domain => isDomainOrSubdomain(hostname, domain))) {
             // For these major platforms, we know the job ID is in the path.
             // We strip ALL query params to ensure absolute uniqueness.
             const keys = Array.from(urlObj.searchParams.keys());
@@ -208,3 +212,40 @@ export const areOpportunityUrlsEquivalent = (left: string, right: string): boole
         && /[a-z]/i.test(suffix)
         && /\d/.test(suffix);
 };
+
+/**
+ * Validates whether a URL is safe to be fetched by the server (prevents SSRF).
+ * It rejects invalid URLs, non-HTTP/HTTPS protocols, and private/local IPs.
+ */
+export const isSafeUrlForFetch = (urlStr: string): boolean => {
+    if (!urlStr) return false;
+    try {
+        const parsed = new URL(urlStr.trim());
+        if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+            return false;
+        }
+        const hostname = parsed.hostname.toLowerCase();
+        
+        // Block obvious local/private addresses
+        if (
+            hostname === 'localhost' ||
+            hostname === '127.0.0.1' ||
+            hostname === '::1' ||
+            hostname.startsWith('10.') ||
+            hostname.startsWith('192.168.') ||
+            hostname.startsWith('172.16.') || // base of private 172.16.0.0/12
+            hostname.startsWith('169.254.') // Link-local
+        ) {
+            return false;
+        }
+
+        // More precise check for 172.16.0.0 - 172.31.255.255
+        const match = hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./);
+        if (match) return false;
+
+        return true;
+    } catch {
+        return false;
+    }
+};
+

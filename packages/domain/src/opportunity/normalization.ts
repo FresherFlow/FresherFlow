@@ -77,7 +77,8 @@ export function normalizeSalary(text: string): NormalizedSalary {
             : 'YEARLY';
 
     // "6-8 LPA"
-    const lpaMatch = text.match(/([\d.]+)\s*(?:-|to)\s*([\d.]+)\s*(?:Lac|Lacs|LPA|L\.?P\.?A\.?|P\.A\.)/i);
+    const lpaMatch = text.match(/([\d.]+)\s*-\s*([\d.]+)\s*(?:Lac|Lacs|LPA|L\.P\.A\.?|P\.A\.)/i) ||
+                     text.match(/([\d.]+)\s+to\s+([\d.]+)\s*(?:Lac|Lacs|LPA|L\.P\.A\.?|P\.A\.)/i);
     if (lpaMatch) {
         const min = parseFloat(lpaMatch[1]);
         const max = parseFloat(lpaMatch[2]);
@@ -85,14 +86,15 @@ export function normalizeSalary(text: string): NormalizedSalary {
     }
 
     // "5 LPA"
-    const singleLpaMatch = text.match(/([\d.]+)\s*(?:Lac|Lacs|LPA|L\.?P\.?A\.?)/i);
+    const singleLpaMatch = text.match(/([\d.]+)\s*(?:Lac|Lacs|LPA|L\.P\.A\.?)/i);
     if (singleLpaMatch) {
         const val = parseFloat(singleLpaMatch[1]);
         return { min: val, period: 'YEARLY', range: `${val} LPA` };
     }
 
     // "₹30,000/month"
-    const monthlyMatch = text.match(/(?:₹|Rs\.?\s*)?(\d[\d,]+)(?:k)?\s*(?:\/\s*month|per\s*month|pm\b)/i);
+    const monthlyMatch = text.match(/(?:₹|Rs\.?\s+)?(\d[\d,]+)(?:k)?\s*(?:\/\s*month|per\s+month|pm\b)/i) ||
+                         text.match(/(\d[\d,]+)(?:k)?\s*(?:\/\s*month|per\s+month|pm\b)/i);
     if (monthlyMatch) {
         const raw = monthlyMatch[1].replace(/,/g, '');
         const isK = monthlyMatch[0].toLowerCase().includes('k');
@@ -181,9 +183,9 @@ function toLocalInputString(date: Date): string {
 
 export const normalizeExpiry = (text: string): string | undefined => {
     const patterns = [
-        /(?:apply\s*by|last\s*date(?:\s*to\s*apply)?|deadline)\s*[:-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
-        /(?:apply\s*before)\s*[:-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
-        /(?:apply\s*by|last\s*date|deadline)\s*[:-]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
+        /(?:apply\s+by|last\s+date\s+to\s+apply|last\s+date|deadline)\s*[:-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
+        /(?:apply\s+before)\s*[:-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
+        /(?:apply\s+by|last\s+date|deadline)\s*[:-]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
     ];
     for (const p of patterns) {
         const m = text.match(p);

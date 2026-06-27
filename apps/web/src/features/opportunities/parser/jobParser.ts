@@ -99,7 +99,7 @@ export function parseJobText(rawText: string): ParsedJob {
 
     // Skills
     const foundSkills = SKILLS_LIST.filter(skill => {
-        const escaped = skill.replace(/[+#.]/g, '\\$&');
+        const escaped = skill.replace(/[\-\[\]\{\}\(\)\*\+\?\.\,\\\^\$\|\#\s]/g, '\\$&');
         return new RegExp(`\\b${escaped}\\b`, 'i').test(text);
     });
     result.skills = foundSkills.join(', ');

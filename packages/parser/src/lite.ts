@@ -58,8 +58,8 @@ export function parseJobTextLite(rawText: string): ParsedJob {
 
     // Company
     const companyPatterns = [
-        /(?:About|Join|At)\s+([A-Z][^\n,]{2,40})(?:\n|,|\s+is\s+|\s+makes\s+|\s+offers\s+)/i,
-        /([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})\s+(?:is a|is an|makes|offers|provides|specializes)/i,
+        /(?:About|Join|At)\s+([A-Z][^\n,]{2,40})(?:\n|,|\s+(?:is|makes|offers)\b)/i,
+        /([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})\s+(?:is\s+(?:a|an)|makes|offers|provides|specializes)/i,
         /Working (?:at|with|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})/i,
     ];
     for (const pattern of companyPatterns) {

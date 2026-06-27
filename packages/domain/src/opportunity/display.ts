@@ -72,10 +72,15 @@ export function formatTimeText12Hour(input?: string | null): string {
         return `${hour12}:${rawMinute} ${suffix}`;
     };
 
-    const rangeMatch = trimmed.match(/^(.*?)(?:\s*(?:-|–|to)\s*)(.*?)$/i);
-    if (!rangeMatch) return to12HourPart(trimmed);
+    const separatorMatch = trimmed.match(/\s*(?:-|–|\bto\b)\s*/i);
+    if (!separatorMatch) return to12HourPart(trimmed);
 
-    return `${to12HourPart(rangeMatch[1])} - ${to12HourPart(rangeMatch[2])}`;
+    const index = separatorMatch.index!;
+    const length = separatorMatch[0].length;
+    const part1 = trimmed.slice(0, index);
+    const part2 = trimmed.slice(index + length);
+
+    return `${to12HourPart(part1)} - ${to12HourPart(part2)}`;
 }
 
 /**

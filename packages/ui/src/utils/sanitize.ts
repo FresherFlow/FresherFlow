@@ -88,8 +88,8 @@ export function sanitizeHtml(html: string | null | undefined): string {
     const formattedHtml = /<[a-z][\s\S]*>/i.test(html) ? html : formatPlainTextDescription(html);
 
     if (typeof window === 'undefined') {
-        // Simple fallback for server-side if needed, but this app is mostly client-side
-        return formattedHtml.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gim, '');
+        // Server-side fallback: strip script tags in a single pass
+        return formattedHtml.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, '');
     }
     return DOMPurify.sanitize(formattedHtml, {
         ALLOWED_TAGS: [

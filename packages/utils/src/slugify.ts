@@ -15,7 +15,8 @@ export function sanitizeCustomSlug(raw: string): string {
         .replace(/[^\w\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
-        .replace(/^-+|-+$/g, '')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '')
         .substring(0, 120);
 }
 
@@ -32,7 +33,8 @@ export function generateSlug(title: string, company: string, id?: string, option
         .replace(/[^\w\s-]/g, '')
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
 
     // ── Government / Exam SEO slug ────────────────────────────────────────────
     // Target: "ssc-cgl-2026", "telangana-police-recruitment-2026"

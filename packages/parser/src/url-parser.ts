@@ -57,10 +57,39 @@ export class UrlParser {
     static async parseUrl(url: string): Promise<UrlParseResult> {
         let hostname = '';
         try {
-            hostname = new URL(url).hostname;
-        } catch {
-            // sourceType will fallback to GENERIC if URL is invalid
+            const parsed = new URL(url.trim());
+            if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+                throw new Error('Invalid protocol');
+            }
+            hostname = parsed.hostname.toLowerCase();
+            if (
+                hostname === 'localhost' ||
+                hostname === '127.0.0.1' ||
+                hostname === '::1' ||
+                hostname.startsWith('10.') ||
+                hostname.startsWith('192.168.') ||
+                hostname.startsWith('172.16.') ||
+                hostname.startsWith('169.254.')
+            ) {
+                throw new Error('Local/private host not allowed');
+            }
+            const match = hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./);
+            if (match) {
+                throw new Error('Local/private host not allowed');
+            }
+        } catch (err: any) {
+            return {
+                parsed: {},
+                meta: {
+                    sourceType: 'GENERIC',
+                    confidence: 0,
+                    missing: ['content'],
+                    warnings: [`fetch_failed: ${err?.message || 'Invalid URL'}`],
+                    finalUrl: url
+                }
+            };
         }
+
         const sourceType = this.detectSourceType(hostname);
         let html = '';
         try {
@@ -136,10 +165,14 @@ export class UrlParser {
         const htmlStr = typeof html === 'string' ? html : (html ? String(html) : '');
 
         const scripts: string[] = [];
-        const regex = /<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi;
+        const scriptRegex = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
         let match;
-        while ((match = regex.exec(htmlStr)) !== null) {
-            scripts.push(match[1]);
+        while ((match = scriptRegex.exec(htmlStr)) !== null) {
+            const attrs = match[1] || '';
+            const content = match[2] || '';
+            if (/type=["']application\/ld\+json["']/i.test(attrs)) {
+                scripts.push(content);
+            }
         }
 
         for (const raw of scripts) {
@@ -184,10 +217,25 @@ export class UrlParser {
         description?: string;
         company?: string;
     } {
-        const titleTag = html.match(/<title[^>]*>([^<]{1,300})<\/title>/i)?.[1]?.trim();
-        const ogTitle = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)/i)?.[1]?.trim();
-        const ogDesc = html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']+)/i)?.[1]?.trim();
-        const h1 = html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '';
+        const titleTag = html.match(/<title\b[^>]*>([^<]{1,300})<\/title>/i)?.[1]?.trim();
+        const h1 = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1] || '';
+
+        let ogTitle: string | undefined;
+        let ogDesc: string | undefined;
+
+        const metaRegex = /<meta\b([^>]*)\/?>/gi;
+        let m;
+        while ((m = metaRegex.exec(html)) !== null) {
+            const attrs = m[1] || '';
+            if (/property=["']og:title["']/i.test(attrs)) {
+                const contentMatch = attrs.match(/content=["']([^"']+)["']/i);
+                if (contentMatch) ogTitle = contentMatch[1].trim();
+            }
+            if (/property=["']og:description["']/i.test(attrs)) {
+                const contentMatch = attrs.match(/content=["']([^"']+)["']/i);
+                if (contentMatch) ogDesc = contentMatch[1].trim();
+            }
+        }
 
         const title = ogTitle || this.cleanHtml(h1) || titleTag || undefined;
         const description = ogDesc || undefined;
@@ -202,9 +250,9 @@ export class UrlParser {
 
     static detectSourceType(hostname: string): JobSourceType {
         const domain = hostname.toLowerCase();
-        if (domain.includes('breezy.hr')) return 'BREEZY';
-        if (domain.includes('hr.cloud.sap')) return 'SAP';
-        if (domain.includes('myworkdayjobs.com')) return 'WORKDAY';
+        if (domain === 'breezy.hr' || domain.endsWith('.breezy.hr')) return 'BREEZY';
+        if (domain === 'hr.cloud.sap' || domain.endsWith('.hr.cloud.sap')) return 'SAP';
+        if (domain === 'myworkdayjobs.com' || domain.endsWith('.myworkdayjobs.com')) return 'WORKDAY';
         return 'GENERIC';
     }
 

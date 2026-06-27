@@ -187,9 +187,11 @@ export function extractWorkMode(text: string): WorkMode {
 // ── Experience ────────────────────────────────────────────────────────────────
 
 export function extractExperience(text: string): { min?: number; max?: number } {
-    const rangMatch = text.match(/(\d+)\s*(?:-|to)\s*(\d+)\s*(?:year|yr)s?/i);
+    const rangMatch = text.match(/(\d+)\s*-\s*(\d+)\s*(?:year|yr)s?/i) ||
+                      text.match(/(\d+)\s+to\s+(\d+)\s*(?:year|yr)s?/i);
     if (rangMatch) return { min: parseInt(rangMatch[1]), max: parseInt(rangMatch[2]) };
-    const minOnly = text.match(/(\d+)\+?\s*(?:year|yr)s?\s*(?:exp|experience)/i);
+    const minOnly = text.match(/(\d+)\+?\s*(?:year|yr)s?\s+(?:exp|experience)/i) ||
+                    text.match(/(\d+)\+?\s*(?:year|yr)s*(?:exp|experience)/i);
     if (minOnly) return { min: parseInt(minOnly[1]) };
     return {};
 }
@@ -197,7 +199,8 @@ export function extractExperience(text: string): { min?: number; max?: number } 
 // ── Incentives ────────────────────────────────────────────────────────────────
 
 export function extractIncentives(text: string): string | undefined {
-    const m = text.match(/incentives?\s*(?:up to|of)?\s*(?:rs\.?)?\s*([\d,]+(?:\s*to\s*[\d,]+)?)/i);
+    const m = text.match(/incentives?\s+(?:up to|of)\s*(?:rs\.?)?\s*([\d,]+(?:\s*to\s*[\d,]+)?)/i) ||
+              text.match(/incentives?\s*(?:rs\.?)?\s*([\d,]+(?:\s*to\s*[\d,]+)?)/i);
     return m ? `Rs. ${m[1]}` : undefined;
 }
 
@@ -222,7 +225,10 @@ export interface WalkInExtraction {
 export function extractWalkInDetails(text: string, textLines: string[]): WalkInExtraction {
     const result: WalkInExtraction = {};
 
-    const drMatch = text.match(/(\d+(?:st|nd|rd|th)?(?:\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)?\s*(?:to|-)\s*\d+(?:st|nd|rd|th)?\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*)/i);
+    const months = '(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*';
+    const day = '\\d+(?:st|nd|rd|th)?';
+    const drMatch = text.match(new RegExp(`(${day}\\s+${months}\\s*(?:to|-)\\s*${day}\\s+${months})`, 'i')) ||
+                    text.match(new RegExp(`(${day}\\s*(?:to|-)\\s*${day}\\s+${months})`, 'i'));
     if (drMatch) result.dateRange = drMatch[1].trim();
 
     const trMatch = text.match(/(\d{1,2}(?:[:.]\d{2})?\s*(?:AM|PM)\s*(?:to|-)\s*\d{1,2}(?:[:.]\d{2})?\s*(?:AM|PM))/i);
