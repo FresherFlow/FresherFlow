@@ -3,6 +3,36 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+// --- LOAD ENV ---
+async function fileExists(filePath: string): Promise<boolean> {
+    try { await fs.access(filePath); return true; } catch { return false; }
+}
+
+async function loadEnv() {
+    let envPath = path.join(process.cwd(), '.env');
+    if (!(await fileExists(envPath))) {
+        envPath = path.join(process.cwd(), '../../.env');
+    }
+    if (await fileExists(envPath)) {
+        try {
+            const envContent = await fs.readFile(envPath, 'utf8');
+            for (const line of envContent.split('\n')) {
+                const match = line.match(/^\s*([\w.-]+)\s*=\s*(.*)?\s*$/);
+                if (match) {
+                    const key = match[1];
+                    let value = (match[2] || '').trim();
+                    if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
+                    if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
+                    process.env[key] = value;
+                }
+            }
+        } catch {
+            // Ignore env load errors on systems where file is missing
+        }
+    }
+}
+await loadEnv();
+
 // --- CONFIGURATION ---
 const CDN_SECRET = (process.env.CDN_SIGNATURE_SECRET || '').trim().replace(/^["']|["']$/g, '');
 const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
@@ -325,10 +355,10 @@ function normalizeUrl(urlStr: string): string {
 }
 
 // Load cached visited URLs
-async function loadVisited(): Promise<Record<string, any>> {
+async function loadVisited(): Promise<Record<string, string[]>> {
     try {
         const data = await fs.readFile(VISITED_FILE, 'utf-8');
-        return JSON.parse(data);
+        return JSON.parse(data) as Record<string, string[]>;
     } catch {
         return {};
     }
@@ -453,7 +483,7 @@ function hasFresherKeyword(text: string): boolean {
 
 
 // Check if a page is actually a job post (vs a course, syllabus, prep guide, roadmap, exam result)
-function isActualJob(title: string, bodyText: string): boolean {
+function isActualJob(title: string): boolean {
     const titleLower = title.toLowerCase();
 
     // Only block if the title explicitly indicates it is a course, syllabus, mock test, study material, roadmap, or exam info.
@@ -520,7 +550,7 @@ async function isJobLive(page: Page, url: string): Promise<JobCheckResult> {
             console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}").`);
             return { live: false, status: 'expired' };
         }
-        if (/^(careers|job search|jobsearch|opportunities|open positions|current openings|search jobs|search for jobs|login|sign in|welcome)$/i.test(lowerTitle)) {
+        if (/^(careers|career search|careersearch|search careers|careers search|job search|jobsearch|opportunities|job opportunities|career opportunities|open positions|current openings|search jobs|search for jobs|login|sign in|welcome|jobs|job|search)$/i.test(lowerTitle)) {
             console.log(`  -> Page title is generic ("${pageTitle}"). Marking for review.`);
             isReview = true;
         }
@@ -562,7 +592,7 @@ async function isJobLive(page: Page, url: string): Promise<JobCheckResult> {
         }
 
         // Soft check for isActualJob
-        if (!isActualJob(pageTitle, bodyText)) {
+        if (!isActualJob(pageTitle)) {
             if (hasFresherKeyword(bodyText)) {
                 console.log(`  -> ATS page fails isActualJob check but has fresher keywords. Marking for review.`);
                 isReview = true;
@@ -732,15 +762,19 @@ async function findActualApplyLink(page: Page, context: BrowserContext, currentD
 
 async function run() {
     console.log("Fetching CDN feed...");
-    let feed;
-    try {
-        const url = signUrl('/bootstrap-feed.min.json');
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Feed fetch failed: ${res.statusText}`);
-        feed = await res.json();
-    } catch (err) {
-        console.error("Failed to fetch CDN JSON", err);
-        process.exit(1);
+    let feed: any = { opportunities: [] };
+    if (!CDN_SECRET) {
+        console.warn("CDN_SIGNATURE_SECRET is missing. Running without known links bootstrap cache.");
+    } else {
+        try {
+            const url = signUrl('/bootstrap-feed.min.json');
+            const res = await fetch(url);
+            if (!res.ok) throw new Error(`Feed fetch failed: ${res.statusText}`);
+            feed = await res.json();
+        } catch (err) {
+            console.error("Failed to fetch CDN JSON", err);
+            process.exit(1);
+        }
     }
 
     const knownLinks = new Set<string>();
@@ -858,7 +892,7 @@ async function run() {
                     }
                 }
 
-                if (!isActualJob(aggregatorTitle, bodyText)) {
+                if (!isActualJob(aggregatorTitle)) {
                     if (hasFresherKeyword(bodyText)) {
                         console.log(`  -> Borderline job type (failing isActualJob check but has fresher keywords). Marking aggregator for review.`);
                         isAggregatorReview = true;
@@ -903,7 +937,10 @@ async function run() {
                         applyLink: applyLink,
                         source: site.name,
                         discoveredAt: new Date().toISOString(),
-                        reviewRequired: checkResult.status === 'review' || isAggregatorReview
+                        reviewRequired: checkResult.status === 'review' || isAggregatorReview,
+                        aggregatorUrl: jobLink,
+                        aggregatorTitle: aggregatorTitle.trim(),
+                        aggregatorText: bodyText
                     };
                     
                     newJobsFound.push(newJob);
@@ -937,6 +974,7 @@ async function run() {
     delete visited["pending_admin_approval"];
     await saveVisited(visited);
 
+    // Send Telegram message alert
     if (newJobsFound.length > 0) {
         const validJobs = newJobsFound.filter(j => !j.reviewRequired);
         const reviewJobs = newJobsFound.filter(j => j.reviewRequired);
@@ -971,27 +1009,26 @@ async function run() {
         console.log("No new jobs found this run.");
     }
 
+    const outputPath = path.join(process.cwd(), 'discovered_jobs.json');
+    const outputPayload = {
+        version: 1,
+        source: 'job-discovery-bot',
+        jobs: newJobsFound
+    };
+    await fs.writeFile(outputPath, JSON.stringify(outputPayload, null, 2), 'utf8');
+    console.log(`Saved ${newJobsFound.length} discovered jobs to ${outputPath}`);
+
     // Write summary for GitHub Actions
     if (process.env.GITHUB_STEP_SUMMARY) {
-        const validJobs = newJobsFound.filter(j => !j.reviewRequired);
-        const reviewJobs = newJobsFound.filter(j => j.reviewRequired);
-        let summary = `## Job Discovery Bot Results\n\nChecked target sites. Found ${newJobsFound.length} new jobs.\n\n`;
-        
-        if (validJobs.length > 0) {
-            summary += `### New Jobs\n`;
-            validJobs.forEach(j => {
-                summary += `- **${j.title}** (via ${j.source}): ${j.applyLink}\n`;
+        let summary = `## Job Discovery Bot Results\n\n`;
+        summary += `Discovered **${newJobsFound.length}** new jobs and saved them to \`discovered_jobs.json\`.\n\n`;
+        if (newJobsFound.length > 0) {
+            summary += `### Discovered Jobs\n`;
+            newJobsFound.forEach(j => {
+                const reviewMark = j.reviewRequired ? ' (⚠️ Review)' : '';
+                summary += `- **${j.title}** (via ${j.source})${reviewMark}: ${j.applyLink}\n`;
             });
-            summary += `\n`;
-        }
-        if (reviewJobs.length > 0) {
-            summary += `### Review Required Jobs (Possible Portal Redirects)\n`;
-            reviewJobs.forEach(j => {
-                summary += `- **${j.title}** (via ${j.source}): ${j.applyLink}\n`;
-            });
-            summary += `\n`;
-        }
-        if (newJobsFound.length === 0) {
+        } else {
             summary += `No new fresher jobs were found during this run.`;
         }
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);

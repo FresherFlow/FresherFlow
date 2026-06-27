@@ -5,6 +5,8 @@ const CDN_SECRET = (process.env.CDN_SIGNATURE_SECRET || '').trim().replace(/^["'
 const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
 const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^["']|["']$/g, '');
 const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
+const API_URL = (process.env.API_URL || '').trim().replace(/\/$/, '');
+const INTERNAL_API_SECRET = (process.env.INTERNAL_API_SECRET || '').trim();
 
 // Helper to sign the CDN URL
 function signUrl(pathname: string): string {
@@ -39,52 +41,45 @@ async function sendTelegramMessage(text: string) {
     }
 }
 
-// Key phrases that ATS systems use when a job is closed
+// Key phrases that ATS systems use when a job is closed.
+// IMPORTANT: Keep these specific. Broad phrases like "no longer available" or "has expired"
+// cause false positives by matching footer text, FAQs, cookie banners, or session messages.
 const EXPIRED_PHRASES = [
-    "no longer available",
+    // Specific ATS expiry messages
     "the job you are trying to apply for is no longer available",
+    "this job is no longer accepting applications",
+    "this requisition is no longer accepting applications",
+    "this job is no longer available",
+    "this job is not available",
+    "this job is closed",
+    "job posting is no longer active",
+    "job is no longer active",
+    "job has expired",
+    "requisition is closed",
     "position has been filled",
     "position closed",
-    "no longer accepting applications",
-    "this job is no longer accepting applications",
-    "job has expired",
-    "job is no longer active",
-    "job posting is no longer active",
-    "no longer active",
-    "this job is closed",
-    "requisition is closed",
-    "the page you are looking for doesn't exist",
-    "the job you requested was not found",
-    "job not found",
-    "page not found",
-    "an error has occurred",
-    "you can't view this job because it's not available at this time",
-    "you cant view this job because it's not available at this time",
-    "you cant view this job because its not available at this time",
-    "you can't view this job because its not available at this time",
-    "not available at this time",
-    "job is not available at this time",
-    "job is not available at this time.",
-    "has expired",
-    "no longer open",
-    "this requisition is no longer accepting applications",
+    "role is no longer available",
     "no longer accepting applications via careers",
-    "please explore other open opportunities",
-    "currently not accepting applications",
     "not accepting applications for this job",
     "not accepting applications for this position",
-    "this job is not available",
+    "currently not accepting applications",
+    "please explore other open opportunities",
     "job does not exist or is not currently active",
     "job does not exist",
-    "is not currently active",
-    "job closed",
-    "role is no longer available",
-    "position you're looking for may have been filled",
+    "the job you requested was not found",
     "we couldn't find the job posting you're looking for",
     "we couldnt find the job posting you're looking for",
     "may have been filled or deactivated",
     "doesn't seem to exist or may have been removed",
-    "doesnt seem to exist or may have been removed"
+    "doesnt seem to exist or may have been removed",
+    "position you're looking for may have been filled",
+    // ATS-specific UX phrases
+    "you can't view this job because it's not available at this time",
+    "you cant view this job because it's not available at this time",
+    "you cant view this job because its not available at this time",
+    "you can't view this job because its not available at this time",
+    "job is not available at this time",
+    "not available at this time",
 ];
 
 interface SweeperCheckResult {
@@ -112,9 +107,14 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
             loadFailed = true;
         }
 
-        if (response && (response.status() === 404 || response.status() === 410 || response.status() === 403 || response.status() === 401)) {
+        if (response && (response.status() === 404 || response.status() === 410)) {
             console.log(`  -> Page returned inactive status code: ${response.status()}`);
             return { status: 'expired' };
+        }
+
+        if (response && (response.status() === 403 || response.status() === 401)) {
+            console.log(`  -> Page returned auth/blocked status code: ${response.status()}. Marking for review.`);
+            return { status: 'review' };
         }
 
         const finalUrl = page.url().toLowerCase();
@@ -131,12 +131,33 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
             console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}"). Marking for review.`);
             return { status: 'review' };
         }
-        if (/^(careers|job search|jobsearch|opportunities|open positions|current openings|search jobs|search for jobs|login|sign in|welcome)$/i.test(lowerTitle)) {
+        if (/^(careers|career search|careersearch|search careers|careers search|job search|jobsearch|opportunities|job opportunities|career opportunities|open positions|current openings|search jobs|search for jobs|login|sign in|welcome|jobs|job|search)$/i.test(lowerTitle)) {
             console.log(`  -> Page title is generic ("${pageTitle}"). Marking for review.`);
             return { status: 'review' };
         }
 
-        const bodyText = await page.locator('body').innerText().catch(() => "");
+        // Target main content containers first to avoid false positives from sidebars/footers
+        let mainText = "";
+        const contentSelectors = [
+            '[data-automation-id="jobPostingSection"]',
+            '#careers-portal',
+            '.job-description',
+            'article',
+            'main',
+            '[role="main"]',
+            '#content',
+            '#main'
+        ];
+        for (const selector of contentSelectors) {
+            const text = await page.locator(selector).first().innerText().catch(() => "");
+            if (text && text.trim().length > 200) {
+                mainText = text;
+                break;
+            }
+        }
+
+        const bodyText = mainText || (await page.locator('body').innerText().catch(() => ""));
+
         if (!bodyText || bodyText.trim().length < 100) {
             if (loadFailed) {
                 console.log(`  -> Navigation failed and page body is empty/too short. Marking for review.`);
@@ -234,12 +255,38 @@ async function run() {
             .replace(/'/g, "&#039;");
     }
 
+    // Auto-expire confirmed dead jobs via API
+    if (expiredJobs.length > 0 && API_URL && INTERNAL_API_SECRET) {
+        const ids = expiredJobs.map((j: any) => j.slug || j.id).filter(Boolean);
+        console.log(`\nCalling expire API for ${ids.length} dead jobs...`);
+        try {
+            const res = await fetch(`${API_URL}/api/pipeline/expire-jobs`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-api-key': INTERNAL_API_SECRET,
+                },
+                body: JSON.stringify({ ids }),
+            });
+            const json = await res.json() as { expired?: number; skipped?: number; notFound?: number };
+            if (res.ok) {
+                console.log(`Expire API result — expired: ${json.expired}, skipped: ${json.skipped}, notFound: ${json.notFound}`);
+            } else {
+                console.error('Expire API error:', json);
+            }
+        } catch (err) {
+            console.error('Failed to call expire API:', (err as Error).message);
+        }
+    } else if (expiredJobs.length > 0) {
+        console.warn('API_URL or INTERNAL_API_SECRET not set — skipping auto-expire API call.');
+    }
+
     // Message 2: Results
     if (expiredJobs.length > 0 || reviewJobs.length > 0) {
         let msg = "";
         
         if (expiredJobs.length > 0) {
-            msg += `🚨 <b>Found ${expiredJobs.length} Expired Jobs</b> 🚨\n\n`;
+            msg += `🚨 <b>Found ${expiredJobs.length} Expired Jobs — Automatically Removed from Platform</b> 🚨\n\n`;
             const displayJobs = expiredJobs.slice(0, 15);
             for (const job of displayJobs) {
                 msg += `- <b>${escapeHtml(job.company)}</b>: ${escapeHtml(job.title)}\n  Apply Link: ${job.applyLink || job.sourceLink || 'None'}\n`;
@@ -247,7 +294,6 @@ async function run() {
             if (expiredJobs.length > 15) {
                 msg += `...and ${expiredJobs.length - 15} more!\n\n`;
             }
-            msg += `Please delete these from the Admin Dashboard.\n\n`;
         }
         
         if (reviewJobs.length > 0) {
@@ -259,7 +305,7 @@ async function run() {
             if (reviewJobs.length > 10) {
                 msg += `...and ${reviewJobs.length - 10} more!\n\n`;
             }
-            msg += `Please review these before deleting.`;
+            msg += `Please review these manually from the Admin Dashboard.`;
         }
         
         console.log("Sending Telegram message:", msg);

@@ -1,0 +1,57 @@
+name: Job Processing Bot
+
+on:
+  workflow_run:
+    workflows: ["Job Discovery Bot"]
+    types:
+      - completed
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  process:
+    # Only run if triggered manually OR if the discovery bot run succeeded
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        env:
+          FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          cache-dependency-path: 'pnpm-lock.yaml'
+
+      - name: Install Processor Dependencies
+        working-directory: scripts/job-processor
+        run: pnpm install
+
+      - name: Install Playwright Browsers
+        working-directory: scripts/job-processor
+        run: npx playwright install --with-deps chromium
+
+      - name: Download Discovered Jobs Artifact
+        if: github.event_name == 'workflow_run'
+        uses: actions/download-artifact@v4
+        with:
+          name: discovered-jobs
+          path: scripts/job-processor
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Job Processor
+        working-directory: scripts/job-processor
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          API_BASE_URL: ${{ secrets.API_BASE_URL }}
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+          ENABLE_API_UPLOAD: "true"
+        run: pnpm start discovered_jobs.json

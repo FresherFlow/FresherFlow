@@ -51,3 +51,11 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           NEXT_PUBLIC_CDN_URL: "https://cdn.fresherflow.in"
         run: pnpm start
+
+      - name: Upload Discovered Jobs Artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: discovered-jobs
+          path: scripts/job-discovery/discovered_jobs.json
+          retention-days: 7
