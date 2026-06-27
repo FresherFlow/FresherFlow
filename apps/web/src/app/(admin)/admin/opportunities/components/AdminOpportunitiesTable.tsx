@@ -33,6 +33,7 @@ interface AdminOpportunitiesTableProps {
     handleExpire: (id: string, title: string, status?: string) => void;
     handleStatusUpdate: (id: string, status: string) => void;
     handleDelete: (id: string, title: string) => void;
+    handleHardDelete: (id: string, title: string) => void;
     handleRejectDraft: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
     copySocialCaption: (opp: SocialOpportunity) => void;
@@ -53,6 +54,7 @@ export const AdminOpportunitiesTable = ({
     handleExpire,
     handleStatusUpdate,
     handleDelete,
+    handleHardDelete,
     handleRejectDraft,
     handleRestore,
     copySocialCaption,
@@ -220,9 +222,16 @@ export const AdminOpportunitiesTable = ({
                                     <button
                                         onClick={() => handleDelete(opp.id, opp.title)}
                                         className="p-2 text-rose-700 hover:bg-rose-50 rounded-md transition-all"
-                                        title="Remove"
+                                        title="Archive (Soft Delete)"
                                     >
                                         <TrashIcon className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                        onClick={() => handleHardDelete(opp.id, opp.title)}
+                                        className="p-2 text-red-900 bg-red-50 hover:bg-red-100 border border-red-200 rounded-md transition-all ml-1"
+                                        title="Hard Delete (Permanent)"
+                                    >
+                                        <XCircleIcon className="w-4 h-4" />
                                     </button>
                                     {getStatusLabel(opp) === 'DELETED' && (
                                         <button

@@ -77,14 +77,14 @@ export class UrlParser {
             if (match) {
                 throw new Error('Local/private host not allowed');
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             return {
                 parsed: {},
                 meta: {
                     sourceType: 'GENERIC',
                     confidence: 0,
                     missing: ['content'],
-                    warnings: [`fetch_failed: ${err?.message || 'Invalid URL'}`],
+                    warnings: [`fetch_failed: ${err instanceof Error ? err.message : 'Invalid URL'}`],
                     finalUrl: url
                 }
             };

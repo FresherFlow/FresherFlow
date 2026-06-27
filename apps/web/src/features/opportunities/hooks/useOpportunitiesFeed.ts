@@ -55,34 +55,23 @@ export function useOpportunitiesFeed({
 
     const [opportunities, setOpportunities] = useState<Opportunity[]>(() => {
         if (initialData?.opportunities) return initialData.opportunities;
-        if (typeof window === 'undefined') return [];
-        if (showOnlySaved) return [];
-        const cached = readFeedCache(initialCacheScope);
-        return cached?.opportunities || [];
+        return [];
     });
     const [totalCount, setTotalCount] = useState<number>(() => {
         if (initialData?.total !== undefined) return initialData.total;
-        if (typeof window === 'undefined') return 0;
-        if (showOnlySaved) return 0;
-        const cached = readFeedCache(initialCacheScope);
-        return cached?.count || cached?.opportunities?.length || 0;
+        return 0;
     });
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(true);
     const [isLoading, setIsLoading] = useState<boolean>(() => {
         if (initialData?.opportunities) return false;
-        if (typeof window === 'undefined') return true;
-        if (showOnlySaved) return true;
-        const cached = readFeedCache(initialCacheScope);
-        return !cached?.opportunities?.length;
+        return true;
     });
     const [error, setError] = useState<string | null>(null);
     const [usingCachedFeed, setUsingCachedFeed] = useState<boolean>(() => !!initialData);
     const [cachedAt, setCachedAt] = useState<number | null>(() => {
         if (initialData?.cachedAt) return initialData.cachedAt;
-        if (typeof window === 'undefined') return null;
-        if (showOnlySaved) return null;
-        return readFeedCache(initialCacheScope)?.cachedAt || null;
+        return null;
     });
     const [profileIncomplete, setProfileIncomplete] = useState<{ percentage: number; message: string } | null>(null);
     const lastRequestTimestamp = useRef(0);

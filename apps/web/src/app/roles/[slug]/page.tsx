@@ -87,13 +87,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function RolePage({ params }: Props) {
     const { slug } = await params;
-    const roleInfo = VALID_ROLES[slug as keyof typeof VALID_ROLES];
+    let roleInfo = VALID_ROLES[slug as keyof typeof VALID_ROLES];
 
     if (!roleInfo) {
-        // Unknown role slug — don't ISR-cache pages for arbitrary bot-crawled slugs.
-        const { unstable_noStore } = await import('next/cache');
-        unstable_noStore();
-        notFound();
+        // Dynamically fallback for parsed roles not in the hardcoded list
+        const label = slug.split('-').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+        roleInfo = { label, keywords: [label.toLowerCase()] };
     }
 
     const { slugify } = await import('@fresherflow/utils');
@@ -122,6 +121,12 @@ export default async function RolePage({ params }: Props) {
 
         return false;
     });
+
+    if (filtered.length === 0) {
+        const { unstable_noStore } = await import('next/cache');
+        unstable_noStore();
+        notFound();
+    }
 
     const { extractHubRelations } = await import('@/features/opportunities/utils/hubLinking');
     const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered, { role: slug });

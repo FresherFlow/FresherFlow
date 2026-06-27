@@ -69,8 +69,10 @@ function getVisibleSkills(skills: string[] = [], budget: number = 30) {
 export default function JobCard({ job, onClick, isApplied = false, isAdmin, priority = false, variant = 'default', isSelected = false, className }: JobCardProps) {
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
-    
-    const skillsBudget = variant === 'compact' ? 22 : 32;
+    // Adaptable code: Use up to 60-70% of the card's width for required skills.
+    // If skills are small (short names), we fit more to fill the space (e.g. SQL, Python, Statistics, Hypothesis Testing).
+    // If skills are big (long names), fewer fit but they naturally utilize the required space up to 60-70%.
+    const skillsBudget = variant === 'compact' ? 52 : 80;
     const { visible: visibleSkills, remainingCount } = getVisibleSkills(job.requiredSkills || [], skillsBudget);
 
     // Feature: Heat & Trust Badges from Plan

@@ -80,12 +80,9 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
             !knownDomain && cleanName.length > 2 && cleanName.length < 15 && !cleanName.includes(' ') ? `${cleanName}.com` : null
         ].filter((d): d is string => !!d)));
 
-        // 3. Provider Rotation (Google -> Clearbit -> DuckDuckGo)
         domainsToTry.forEach(d => {
             // Google Favicon (Best overall coverage)
             urls.push(`https://www.google.com/s2/favicons?domain=${d}&sz=128`);
-            // Clearbit (High fidelity)
-            urls.push(`https://logo.clearbit.com/${d}`);
             // DuckDuckGo (Reliable backup)
             urls.push(`https://icons.duckduckgo.com/ip3/${d}.ico`);
         });
@@ -182,6 +179,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
                 onLoad={handleLoad}
                 priority={priority}
                 loading={priority ? undefined : 'lazy'}
+                unoptimized
                 referrerPolicy="no-referrer"
             />
         </div>

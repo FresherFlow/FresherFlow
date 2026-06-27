@@ -199,7 +199,7 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
                                 const host = parsed.hostname.toLowerCase();
                                 isGoogle = host === 'google.com' || host.endsWith('.google.com');
                             }
-                        } catch {}
+                        } catch { /* URL parse failed — treat as non-Google host */ }
 
                         if (e.source.width <= 16 && isGoogle) {
                             handleLoadError();

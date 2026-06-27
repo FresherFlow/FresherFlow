@@ -56,6 +56,7 @@ function OpportunitiesListPage() {
         handleStatusUpdate,
         handleDelete,
         handleRejectDraft,
+        handleHardDelete,
         handleBulkAction,
         handleRestore,
         handleCopySocialCaption
@@ -116,6 +117,7 @@ function OpportunitiesListPage() {
                         handleExpire={handleExpire}
                         handleStatusUpdate={handleStatusUpdate}
                         handleDelete={handleDelete}
+                        handleHardDelete={handleHardDelete}
                         handleRejectDraft={handleRejectDraft}
                         handleRestore={handleRestore}
                         copySocialCaption={handleCopySocialCaption}
@@ -131,6 +133,7 @@ function OpportunitiesListPage() {
                         handleExpire={handleExpire}
                         handleStatusUpdate={handleStatusUpdate}
                         handleDelete={handleDelete}
+                        handleHardDelete={handleHardDelete}
                         handleRejectDraft={handleRejectDraft}
                         handleRestore={handleRestore}
                         copySocialCaption={handleCopySocialCaption}

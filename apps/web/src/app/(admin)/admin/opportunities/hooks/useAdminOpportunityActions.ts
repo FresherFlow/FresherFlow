@@ -102,6 +102,28 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
         });
     };
 
+    const handleHardDelete = (id: string, title: string) => {
+        setConfirmModal({
+            show: true,
+            title: 'Hard Delete Opportunity',
+            message: `PERMANENTLY delete "${title}"? This will completely remove it from the database and cannot be undone.`,
+            type: 'danger',
+            confirmText: 'Permanently Delete',
+            requireReason: false,
+            action: async () => {
+                const tid = toast.loading('Permanently deleting...');
+                try {
+                    await adminApi.hardDeleteOpportunity(id);
+                    toast.success('Opportunity permanently deleted', { id: tid });
+                    loadOpportunities();
+                    setConfirmModal(prev => ({ ...prev, show: false }));
+                } catch (err: unknown) {
+                    toast.error(err instanceof Error ? err.message : 'An error occurred', { id: tid });
+                }
+            }
+        });
+    };
+
     const handleRejectDraft = (id: string, title: string) => {
         setConfirmModal({
             show: true,
@@ -189,6 +211,7 @@ export function useAdminOpportunityActions(loadOpportunities: () => Promise<void
         handleExpire,
         handleStatusUpdate,
         handleDelete,
+        handleHardDelete,
         handleRejectDraft,
         handleBulkAction,
         handleRestore,

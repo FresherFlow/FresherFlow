@@ -31,6 +31,7 @@ interface AdminOpportunitiesMobileListProps {
     handleExpire: (id: string, title: string, status?: string) => void;
     handleStatusUpdate: (id: string, status: string) => void;
     handleDelete: (id: string, title: string) => void;
+    handleHardDelete: (id: string, title: string) => void;
     handleRejectDraft: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
     copySocialCaption: (opp: SocialOpportunity) => void;
@@ -44,6 +45,7 @@ export const AdminOpportunitiesMobileList = ({
     handleExpire,
     handleStatusUpdate,
     handleDelete,
+    handleHardDelete,
     handleRejectDraft,
     handleRestore,
     copySocialCaption,
@@ -183,7 +185,15 @@ export const AdminOpportunitiesMobileList = ({
                                 title="Remove"
                             >
                                 <TrashIcon className="w-4 h-4 mr-1.5" />
-                                Remove
+                                Archive
+                            </button>
+                            <button
+                                onClick={() => handleHardDelete(opp.id, opp.title)}
+                                className="h-8 px-2 inline-flex items-center justify-center rounded-md border border-red-200 bg-red-50 text-xs font-medium text-red-900 hover:bg-red-100"
+                                title="Hard Delete (Permanent)"
+                            >
+                                <XCircleIcon className="w-4 h-4 mr-1.5" />
+                                Hard Delete
                             </button>
                             {getStatusLabel(opp) === 'DELETED' && (
                                 <button
