@@ -9,11 +9,28 @@ import { getAdminMetricsV2, MetricsWindow } from '../../infrastructure/services/
 import { getAdminDeliveryControls, updateAdminDeliveryControls } from '../../infrastructure/services/adminDeliveryControl.service';
 import { StaticFeedService } from '../../infrastructure/services/staticFeed.service';
 
-
 const router = Router();
 
 // --- Shared helpers ---
 const METRICS_WINDOWS: MetricsWindow[] = ['24h', '7d', '14d', '30d'];
+
+// ⚠️  ISR WRITE SAFETY — READ BEFORE EDITING THIS FILE
+// Hub/list pages (/jobs, /internships, /walk-ins, /remote, etc.) are powered by the CDN
+// JSON feed (R2). They do NOT need revalidatePath(). They update lazily via tag invalidation
+// (stale-while-revalidate = zero ISR writes on the call itself).
+//
+// NEVER pass hub/list page paths to /api/revalidate. Doing so caused a 20k+ ISR write
+// spike (commit 8b1cc2d). Only job detail slugs (e.g. /some-job-title-abc123) may use
+// revalidatePath() — and only from publicOpportunityCache.service.ts.
+//
+// Rule: feed revalidation = tags only. Slug revalidation = revalidatePath (one-off per job).
+const FEED_REVALIDATE_TAGS = [
+    'feed-version',
+    'homepage-feed',
+    'government-feed',
+    'expired-feed',
+    'companies-metadata',
+] as const;
 
 function parseMetricsWindow(raw: unknown, defaultWindow: MetricsWindow = '30d'): MetricsWindow {
     const val = String(raw || '').toLowerCase();
@@ -76,7 +93,8 @@ router.post('/alerts/run', requireAdmin, async (_req: Request, res: Response, ne
 });
 
 /**
- * Manually trigger static CDN feeds regeneration
+ * Manually trigger static CDN feeds regeneration.
+ * After regenerating R2 files, busts the Next.js feed tag cache (tags only, no paths).
  */
 router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -84,19 +102,19 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
         const targetStr = typeof target === 'string' ? target : 'all';
         await StaticFeedService.refresh(targetStr);
 
-        // Automatically hit the Next.js revalidate webhook to ensure the website fetches the newly regenerated feeds
+        // Bust Next.js feed caches via tags only (stale-while-revalidate, zero ISR writes).
+        // DO NOT add paths here — see ⚠️ ISR WRITE SAFETY note at the top of this file.
         const secret = process.env.REVALIDATE_SECRET_TOKEN;
-        const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';
+        const webUrl = process.env.PUBLIC_WEB_URL;
         if (secret && webUrl) {
             try {
-                const tags = ['feed-version', 'homepage-feed', 'government-feed', 'expired-feed', 'companies-metadata'];
                 await fetch(`${webUrl}/api/revalidate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ secret, paths: ['/'], tags })
+                    body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
                 });
-            } catch (e) {
-                // Non-fatal, just log it
+            } catch {
+                // Non-fatal — feed is already updated in R2, tag bust is best-effort
             }
         }
 
@@ -107,24 +125,23 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
 });
 
 /**
- * Manually trigger Next.js cache revalidation
+ * Manually trigger Next.js tag cache revalidation (without regenerating R2 feeds).
+ * Useful when R2 is already up to date but Next.js is still serving stale data.
  */
 router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const secret = process.env.REVALIDATE_SECRET_TOKEN;
-        const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';
-        
+        const webUrl = process.env.PUBLIC_WEB_URL;
+
         if (!secret || !webUrl) {
             return res.status(500).json({ success: false, message: 'REVALIDATE_SECRET_TOKEN or PUBLIC_WEB_URL not configured' });
         }
 
-        // Send a generic payload to bust all main feeds
-        const tags = ['feed-version', 'homepage-feed', 'government-feed', 'expired-feed', 'companies-metadata'];
-        
+        // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
         const response = await fetch(`${webUrl}/api/revalidate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ secret, paths: ['/'], tags })
+            body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
         });
 
         if (!response.ok) {
@@ -248,4 +265,5 @@ router.get('/telegram-broadcasts', requireAdmin, async (req: Request, res: Respo
         next(error);
     }
 });
+
 export default router;

@@ -6,7 +6,7 @@
     "prune:web": "turbo prune fresherflow-web --docker",
     "dev": "next dev",
     "build:deps": "turbo run build --filter=\"fresherflow-web^...\"",
-    "build": "pnpm run build:deps && next build",
+    "build": "pnpm run build:deps && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

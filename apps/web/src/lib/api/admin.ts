@@ -95,6 +95,12 @@ export const adminApi = {
             body: JSON.stringify({ reason: reason || 'Deleted by admin' })
         }),
 
+    // Hard delete opportunity (permanent)
+    hardDeleteOpportunity: (id: string) =>
+        apiClient(`/api/admin/opportunities/${id}/hard`, {
+            method: 'DELETE'
+        }),
+
     restoreOpportunity: (id: string) =>
         apiClient(`/api/admin/opportunities/${id}/restore`, {
             method: 'POST'
@@ -256,6 +262,11 @@ export const adminApi = {
         apiClient<{ success: boolean; message: string }>('/api/admin/system/regenerate-feeds', {
             method: 'POST',
             body: JSON.stringify({ target })
+        }),
+
+    revalidateWebsiteCache: () =>
+        apiClient<{ success: boolean; message: string }>('/api/admin/system/revalidate-web', {
+            method: 'POST'
         }),
 
     adminPushApi: {
