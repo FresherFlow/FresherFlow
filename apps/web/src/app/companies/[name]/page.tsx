@@ -93,7 +93,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
     const { fetchCompanyShard, fetchCompaniesMetadata } = await import('@/lib/api/cdnFeed');
 
-    const companyDirectory = await fetchCompaniesMetadata();
+    const companyDirectory = await fetchCompaniesMetadata(true);
     if (companyDirectory && companyDirectory.length > 0) {
         const knownSlugs = new Set(
             (companyDirectory as unknown as { name: string }[])
@@ -106,7 +106,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         }
     }
 
-    const feed = await fetchCompanyShard(slug);
+    const feed = await fetchCompanyShard(slug, undefined, true);
     const companyJobs = feed?.opportunities || [];
 
     const companyName = companyJobs[0]?.company ||

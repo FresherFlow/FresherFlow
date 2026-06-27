@@ -125,7 +125,17 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
         const target = e.target as HTMLImageElement;
         // Google's S2 favicon service returns a 16px globe for unknown domains
         // even when sz=128 is requested. Treat it as a failure to trigger next provider.
-        if (target.naturalWidth <= 16 && target.naturalWidth > 0 && candidates[attemptIndex]?.includes('google.com')) {
+        let isGoogle = false;
+        try {
+            const urlStr = candidates[attemptIndex];
+            if (urlStr) {
+                const parsed = new URL(urlStr);
+                const host = parsed.hostname.toLowerCase();
+                isGoogle = host === 'google.com' || host.endsWith('.google.com');
+            }
+        } catch {}
+
+        if (target.naturalWidth <= 16 && target.naturalWidth > 0 && isGoogle) {
             handleError();
         } else {
             // Success! Cache the working URL
@@ -172,7 +182,6 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
                 onLoad={handleLoad}
                 priority={priority}
                 loading={priority ? undefined : 'lazy'}
-                unoptimized
                 referrerPolicy="no-referrer"
             />
         </div>

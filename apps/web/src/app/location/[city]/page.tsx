@@ -7,7 +7,7 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 export const revalidate = false;
 export const dynamicParams = true;
 
-export const VALID_LOCATIONS = {
+const VALID_LOCATIONS = {
     'bangalore': {
         label: 'Bangalore',
         aliases: ['bangalore', 'bengaluru']
@@ -97,7 +97,7 @@ export default async function LocationPage({ params }: Props) {
         aliases: [city.replace(/-/g, ' ').toLowerCase(), city.toLowerCase()]
     };
 
-    const feed = await fetchBootstrapFeed();
+    const feed = await fetchBootstrapFeed(false, undefined, true);
     const opportunities = feed?.opportunities || [];
 
     // Unknown city — don't ISR-cache pages for arbitrary bot-crawled slugs.

@@ -10,7 +10,18 @@ import { NavigationWrapper } from '@/lib/components/NavigationWrapper';
 // import PushNotificationProvider from "@/lib/providers/PushNotificationProvider";
 // import { ThemeScript } from '@/lib/components/ThemeScript';
 // import OfflineNotification from "@/ui/OfflineNotification";
-import InstallAppBanner from "@/ui/InstallAppBanner";
+import dynamic from "next/dynamic";
+import { Inter } from "next/font/google";
+
+const InstallAppBanner = dynamic(() => import("@/ui/InstallAppBanner"));
+
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+  weight: ['300', '400', '500', '600', '700', '800', '900']
+});
+
 import { PageTransitionWrapper } from '@/lib/components/PageTransitionWrapper';
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
@@ -88,12 +99,8 @@ export default async function RootLayout({
         <meta name="theme-color" content="#e2eaf2" id="theme-color-meta" />
         <HeadInjections />
         <link rel="manifest" href="/manifest.webmanifest" id="ff-manifest-link" />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font */}
-        <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" />
-        <link rel="preload" as="image" href="/logo-optimized.png?v=3" fetchPriority="high" />
-        <link rel="preload" as="image" href="/logo-white-optimized.png?v=3" fetchPriority="high" />
+        <link rel="preload" as="image" href="/logo-optimized.png?v=3" />
+        <link rel="preload" as="image" href="/logo-white-optimized.png?v=3" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
@@ -121,7 +128,7 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen flex flex-col antialiased bg-background text-foreground selection:bg-primary/20" suppressHydrationWarning>
+      <body className={`${inter.variable} min-h-screen flex flex-col antialiased bg-background text-foreground selection:bg-primary/20`} suppressHydrationWarning>
         <ThemeProvider>
             <PageTransitionWrapper>
               <AuthFormDataProvider>

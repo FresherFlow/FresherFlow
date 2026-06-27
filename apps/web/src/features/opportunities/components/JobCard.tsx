@@ -266,9 +266,9 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                                 </span>
                             )}
                         </div>
-                        <h3 className="mt-0.5 text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-tight line-clamp-2">
+                        <h2 className="mt-0.5 text-sm font-semibold text-foreground group-hover:text-primary transition-colors leading-tight line-clamp-2">
                             {job.normalizedRole || job.title}
-                        </h3>
+                        </h2>
                     </div>
                 </div>
 
@@ -342,7 +342,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                         {isDrive ? 'Hiring Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt Job') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
                     </span>
                     {heatBadge && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase tracking-wider border border-amber-500/20">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[10px] font-bold uppercase tracking-wider border border-amber-500/20">
                             <FireIcon className="w-3 h-3" />
                             {heatBadge}
                         </span>
@@ -371,9 +371,9 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                         <span className="text-xs font-medium text-muted-foreground line-clamp-1 block">
                             {job.company}
                         </span>
-                        <h3 className="mt-0.5 text-base font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
+                        <h2 className="mt-0.5 text-base font-semibold text-foreground group-hover:text-primary transition-colors leading-snug line-clamp-2">
                             {job.normalizedRole || job.title}
-                        </h3>
+                        </h2>
                         {isGovernment && totalVacancies && (
                             <p className="mt-1.5 text-sm font-bold text-foreground bg-muted/50 inline-block px-2 py-0.5 rounded border border-border/50">
                                 Total Vacancies: <span className="text-primary">{Number(totalVacancies).toLocaleString('en-IN')}</span>
@@ -386,7 +386,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                     <div className="flex items-center gap-1">
                         <button
                             onClick={handleShareClick}
-                            className="relative z-20 h-9 w-9 rounded-lg transition-all border border-transparent dark:border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
+                            className="relative z-20 h-11 w-11 rounded-lg transition-all border border-transparent dark:border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
                             title="Share listing"
                             aria-label={`Share ${job.title}`}
                         >

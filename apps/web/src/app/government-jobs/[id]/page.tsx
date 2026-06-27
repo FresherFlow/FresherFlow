@@ -25,7 +25,7 @@ export const metadata: Metadata = {
 
 const fetchGovernmentOpportunity = cache(async (id: string) => {
     try {
-        const feed = await fetchGovernmentFeed();
+        const feed = await fetchGovernmentFeed(false, undefined, true);
         return feed?.opportunities?.find((opp) => opp.id === id) || null;
     } catch {
         return null;

@@ -120,9 +120,9 @@ export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<E
         // Each uses force-cache so on a warm CDN, all three complete near-simultaneously.
         // On a cold CDN (post-publish bust), parallel saves up to 2× the wait vs sequential.
         const [feed, govtFeed, expiredFeed] = await Promise.all([
-            fetchBootstrapFeed(false),
-            fetchGovernmentFeed(false),
-            fetchExpiredFeed(),
+            fetchBootstrapFeed(false, undefined, true),
+            fetchGovernmentFeed(false, undefined, true),
+            fetchExpiredFeed(undefined, true),
         ]);
 
         // Check in priority order: active jobs → govt jobs → expired
@@ -274,7 +274,15 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
         '@context': 'https://schema.org',
         '@type': 'JobPosting',
         title: opportunity.title,
-        description: opportunity.description?.replace(/<[^>]+>/g, ''),
+        description: opportunity.description ? (() => {
+            let desc = opportunity.description;
+            let lastDesc;
+            do {
+                lastDesc = desc;
+                desc = desc.replace(/<[^>]+>/g, '');
+            } while (desc !== lastDesc);
+            return desc;
+        })() : undefined,
         identifier: {
             '@type': 'PropertyValue',
             name: opportunity.company,

@@ -24,9 +24,9 @@ import { OpportunityDetailSkeleton } from '@/ui/Skeleton';import { cn } from '@r
 import { slugify } from '@fresherflow/utils';
 
 // Subcomponents
-import { WalkInDetailsCard } from './components/WalkInDetailsCard';
-import { ComplexityCard } from './components/ComplexityCard';
-import { RelatedOpportunities } from './components/RelatedOpportunities';
+const WalkInDetailsCard = dynamic(() => import('./components/WalkInDetailsCard').then(m => m.WalkInDetailsCard));
+const ComplexityCard = dynamic(() => import('./components/ComplexityCard').then(m => m.ComplexityCard));
+const RelatedOpportunities = dynamic(() => import('./components/RelatedOpportunities').then(m => m.RelatedOpportunities));
 import {
     DetailRequirements,
     RequirementsBox,

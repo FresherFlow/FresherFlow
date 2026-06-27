@@ -43,7 +43,7 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
 
         if (isGovDetected && !explicitLogoUrl) {
             // Check for acronym in parentheses: e.g. "Railway Recruitment Board (RRB)" -> "rrb"
-            const match = name.match(/\(([^)]+)\)/);
+            const match = name.match(/\(([a-zA-Z\s]+)\)/);
             if (match && match[1]) {
                 const acronym = match[1].toLowerCase().trim();
                 if (/^[a-z]+$/.test(acronym)) {
@@ -192,7 +192,16 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
                     onError={handleLoadError}
                     onLoad={(e: { source: { width: number; height: number } }) => {
                         // Google 16px globe check (fallback sentinel)
-                        if (e.source.width <= 16 && currentSrc?.includes('google.com')) {
+                        let isGoogle = false;
+                        try {
+                            if (currentSrc) {
+                                const parsed = new URL(currentSrc);
+                                const host = parsed.hostname.toLowerCase();
+                                isGoogle = host === 'google.com' || host.endsWith('.google.com');
+                            }
+                        } catch {}
+
+                        if (e.source.width <= 16 && isGoogle) {
                             handleLoadError();
                         } else {
                             memCache.set(cacheKey, currentSrc!);

@@ -7,7 +7,7 @@ import { SITE_URL } from '@/lib/utils/runtimeConfig';
 export const revalidate = false;
 export const dynamicParams = true;
 
-export const VALID_ROLES = {
+const VALID_ROLES = {
     'software-engineer': {
         label: 'Software Engineer',
         keywords: ['software engineer', 'software developer', 'sde', 'full stack developer', 'backend developer', 'frontend developer', 'engineer', 'developer', 'programmer'],
@@ -97,7 +97,7 @@ export default async function RolePage({ params }: Props) {
     }
 
     const { slugify } = await import('@fresherflow/utils');
-    const feed = await fetchBootstrapFeed();
+    const feed = await fetchBootstrapFeed(false, undefined, true);
     const opportunities = feed?.opportunities || [];
 
     const filtered = opportunities.filter(opp => {

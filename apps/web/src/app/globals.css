@@ -51,7 +51,7 @@
     --border: 214 20% 76%; /* Stronger borders for visibility in light mode */
     --input: 214 20% 76%;  /* Match border so input borders are always visible */
     --muted: 210 22% 86%;
-    --muted-foreground: 215 16% 32%;
+    --muted-foreground: 215 25% 25%;
 
     --ring: 222 47% 11%; /* Navy focus ring to match primary */
     --icon: 222 47% 11%;
@@ -113,7 +113,7 @@
     --muted: 195 10% 4%;
     
     /* Muted text opacity equivalent */
-    --muted-foreground: 200 15% 65%;
+    --muted-foreground: 200 15% 75%;
 
     --ring: 200 23% 97%;
     --icon: 200 23% 97%;

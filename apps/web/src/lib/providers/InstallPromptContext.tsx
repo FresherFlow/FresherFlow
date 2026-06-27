@@ -167,7 +167,7 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
     }, [isInstallEligibleHost]);
 
     const canInstall = isInstallEligibleHost && hasPromptEvent && !isInstalled;
-    const showBanner = canInstall && !bannerDismissed;
+    const showBanner = canInstall && !bannerDismissed && visitCount > 0 && visitCount <= 5;
 
     const contextValue = useMemo(() => ({
         canInstall,

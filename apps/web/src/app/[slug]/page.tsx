@@ -130,7 +130,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // Re-use it via a second call — Next.js deduplicates identical fetch() calls
         // within the same render pass (same URL + options = cache hit, no extra network I/O).
         const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-        const feed = await fetchBootstrapFeed();
+        const feed = await fetchBootstrapFeed(false, undefined, true);
         if (feed?.opportunities) {
             const { getRelatedOpportunities } = await import('@/features/opportunities/utils/detailUtils');
             relatedOpportunitiesData = getRelatedOpportunities(opportunityData, feed.opportunities);

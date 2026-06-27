@@ -4,8 +4,10 @@ import { cn } from '@repo/ui/utils/cn';
 import { useState, Suspense, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { OpportunityDetailPane } from './OpportunityDetailPane';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
+import dynamic from 'next/dynamic';
+
+const OpportunityDetailPane = dynamic(() => import('./OpportunityDetailPane').then(m => m.OpportunityDetailPane));
 import JobCard from '@/features/opportunities/components/JobCard';
 import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
@@ -37,8 +39,6 @@ import {
     type GovtPhaseFilter,
     type GovtCategoryFilter,
 } from '@/features/opportunities/components/GovtPhaseTabs';
-import dynamic from 'next/dynamic';
-
 const MobileFilterDrawer = dynamic(() =>
     import('@/features/opportunities/components/MobileFilterDrawer').then(m => m.MobileFilterDrawer)
 );
@@ -84,7 +84,7 @@ function LiveTicker({ items }: { items: { label: string; href: string; tag: stri
             </div>
             <div className="overflow-hidden flex-1 min-w-0">
                 <div
-                    className="flex items-center whitespace-nowrap"
+                    className="flex items-center whitespace-nowrap will-change-transform"
                     style={{ animation: `ticker ${Math.max(items.length * 7, 24)}s linear infinite` }}
                 >
                     {doubled.map((item, i) => (
@@ -168,7 +168,7 @@ function GroupedGovtView({
 
                     {/* Cards — max 4 visible */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                        {group.items.slice(0, 4).map(opp => (
+                        {group.items.slice(0, 4).map((opp, index) => (
                             <JobCard
                                 key={opp.id}
                                 job={{
@@ -183,6 +183,7 @@ function GroupedGovtView({
                                 isApplied={isJobApplied(opp)}
                                 onToggleSave={() => toggleSave(opp.id)}
                                 isAdmin={user?.role === 'ADMIN'}
+                                priority={index < 2}
                             />
                         ))}
                     </div>
@@ -442,14 +443,14 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                                     className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
                                 />
                                 {search && (
-                                    <button onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                                        <XMarkIcon className="w-4 h-4" />
+                                    <button onClick={() => setSearch('')} className="absolute right-1 top-1/2 -translate-y-1/2 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground">
+                                        <XMarkIcon className="w-5 h-5" />
                                     </button>
                                 )}
                             </div>
                             <button
                                 onClick={openMobileFilters}
-                                className="lg:hidden h-10 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0"
+                                className="lg:hidden h-11 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[11px] font-bold capitalize tracking-widest shrink-0"
                             >
                                 <FunnelIcon className="w-4 h-4" />
                                 {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
@@ -487,7 +488,7 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                     <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-6">
                         <ShieldCheckIcon className="w-8 h-8 text-primary" />
                     </div>
-                    <h3 className="text-2xl font-bold text-foreground tracking-tight mb-2">Profile Readiness Required</h3>
+                    <h2 className="text-2xl font-bold text-foreground tracking-tight mb-2">Profile Readiness Required</h2>
                     <div className="max-w-md mx-auto space-y-6">
                         <p className="text-sm font-medium text-muted-foreground leading-relaxed">{profileIncomplete.message}</p>
                         <div className="bg-muted/50 p-6 rounded-xl border border-border">
@@ -509,9 +510,28 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                     </div>
                 </div>
             ) : isLoading ? (
-                <div className={cn('grid gap-4 md:gap-6', type === OpportunityType.GOVERNMENT ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3')}>
-                    {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} />)}
-                </div>
+                type === OpportunityType.GOVERNMENT ? (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+                        {[1,2,3,4,5,6].map(i => <SkeletonJobCard key={i} variant="default" />)}
+                    </div>
+                ) : (
+                    <div className="w-full grid gap-6 items-start grid-cols-1 lg:grid-cols-[1.3fr_1.7fr]">
+                        <div className="min-w-0 lg:sticky lg:top-24 lg:h-[calc(100vh-8rem)] lg:overflow-y-auto lg:pr-2 custom-scrollbar">
+                            <div className="grid grid-cols-1 gap-4 md:gap-6">
+                                {[1,2,3,4,5].map(i => <SkeletonJobCard key={i} variant="compact" />)}
+                            </div>
+                        </div>
+                        <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl p-6">
+                            <div className="animate-pulse rounded bg-muted h-8 w-1/2 mb-4" />
+                            <div className="animate-pulse rounded bg-muted h-4 w-3/4 mb-8" />
+                            <div className="space-y-4">
+                                <div className="animate-pulse rounded bg-muted h-4 w-full" />
+                                <div className="animate-pulse rounded bg-muted h-4 w-full" />
+                                <div className="animate-pulse rounded bg-muted h-4 w-5/6" />
+                            </div>
+                        </div>
+                    </div>
+                )
             ) : error ? (
                 <EmptyState
                     title="Feed unavailable"
@@ -556,7 +576,7 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                                 ? 'grid-cols-1 lg:grid-cols-2' 
                                 : 'grid-cols-1'
                         )}>
-                            {visibleOpps.slice(0, visibleCount).map(opp => (
+                            {visibleOpps.slice(0, visibleCount).map((opp, index) => (
                                 <JobCard
                                     key={opp.id}
                                     job={{ ...opp, normalizedRole: opp.title, salary: (opp.salaryMin !== undefined && opp.salaryMax !== undefined) ? { min: opp.salaryMin, max: opp.salaryMax } : undefined }}
@@ -573,6 +593,7 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                                             handleSelectOpportunity(opp);
                                         }
                                     }}
+                                    priority={index < 4}
                                 />
                             ))}
                         </div>
@@ -696,7 +717,7 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
 
 export default function CategoryPage({ type, initialData }: CategoryPageProps) {
     return (
-        <Suspense fallback={<FeedPageSkeleton />}>
+        <Suspense fallback={<FeedPageSkeleton isGovt={type === OpportunityType.GOVERNMENT} />}>
             <CategoryPageContent type={type} initialData={initialData} />
         </Suspense>
     );
