@@ -781,7 +781,14 @@ export class StaticFeedService {
 
             // 9. Generate & Upload Stats
             if (target === 'all' || target === 'bootstrap') {
-                const stats = { opportunities: activeMapped.length, timestamp: Date.now() };
+                const uniqueCompanies = new Set(
+                    activeMapped.map(o => (o as { company?: string }).company).filter(Boolean)
+                );
+                const stats = {
+                    opportunities: activeMapped.length,
+                    companies: uniqueCompanies.size,
+                    timestamp: Date.now()
+                };
                 const statsBody = JSON.stringify(stats);
                 fs.writeFileSync(this.STATS_PATH, statsBody);
                 await this.uploadToR2('stats.json', statsBody, 'application/json');

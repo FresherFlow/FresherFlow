@@ -4,11 +4,16 @@ import prisma from '../infrastructure/database/prisma';
 import { ResourceItemType } from '@fresherflow/types';
 import { optionalAuth } from '../middleware/auth';
 import { logger } from '@fresherflow/logger';
+import { isSafeUrlForFetch } from '@fresherflow/utils';
 
 const router = Router();
 
 // Simple webpage title fetcher
 async function fetchPageTitle(url: string): Promise<string | null> {
+    if (!isSafeUrlForFetch(url)) {
+        logger.warn(`Skipping fetch for unsafe URL: ${url}`);
+        return null;
+    }
     try {
         const response = await fetch(url, {
             headers: {
@@ -22,17 +27,17 @@ async function fetchPageTitle(url: string): Promise<string | null> {
         
         const html = await response.text();
         const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-        
         if (titleMatch && titleMatch[1]) {
-            // Unescape common HTML entities
             return titleMatch[1]
-                .replace(/&amp;/g, '&')
                 .replace(/&lt;/g, '<')
                 .replace(/&gt;/g, '>')
                 .replace(/&quot;/g, '"')
                 .replace(/&#39;/g, "'")
+                .replace(/&apos;/g, "'")
+                .replace(/&amp;/g, '&')
                 .trim();
         }
+
     } catch (error) {
         logger.warn(`Failed to fetch title for URL: ${url}`, { error: String(error) });
     }

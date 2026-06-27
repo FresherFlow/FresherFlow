@@ -72,6 +72,7 @@ import { initializeQueueListeners } from './infrastructure/services/push-notific
 import adminGovernmentJobsRoutes from './routes/admin/governmentJobs';
 import adminResourcesRoutes from './routes/admin/resources';
 import publicGovernmentJobsRoutes from './routes/public/governmentJobs';
+import expireJobsRoute from './routes/pipeline/expireJobs';
 
 const app: Application = express();
 const PORT = env.PORT || 5000;
@@ -213,6 +214,7 @@ if (isUserMode) {
     app.use('/api/public', opportunityClickRoutes);
     app.use('/api/public/stats', publicStatsRoutes);
     app.use('/api/cron', cronRoutes);
+    app.use('/api/pipeline', expireJobsRoute);
 }
 
 // ============================================================================
@@ -358,6 +360,11 @@ app.get('/companies-directory.min.json', async (req, res) => {
 app.get('/categories/:id.json', async (req, res) => {
     try {
         const { id } = req.params;
+        // Prevent path traversal using a strict alphanumeric check
+        if (!/^[a-zA-Z0-9-_]+$/.test(id)) {
+            return res.status(400).json({ error: 'Invalid category ID' });
+        }
+
         const filePath = path.join(process.cwd(), 'public', 'categories', `${id}.json`);
         if (fs.existsSync(filePath)) {
             return res.sendFile(filePath);
@@ -372,6 +379,12 @@ app.get('/categories/:id.json', async (req, res) => {
 app.get('/sitemap*.xml', async (req, res) => {
     try {
         const sitemapName = req.path.substring(1) || 'sitemap.xml';
+        // Prevent path traversal with a strict filename check
+        if (!/^sitemap[a-zA-Z0-9-_]*\.xml$/.test(sitemapName)) {
+            res.status(400).send('Invalid sitemap name');
+            return;
+        }
+
         const filePath = path.join(process.cwd(), 'public', sitemapName);
         if (fs.existsSync(filePath)) {
             res.type('application/xml').send(fs.readFileSync(filePath, 'utf-8'));

@@ -262,6 +262,41 @@ export const opportunitySchema = z.object({
     }).optional()
 });
 
+export const opportunitySubmitSchema = z.object({
+    title: z.string({ required_error: 'Title is required' }).min(1, 'Title is required'),
+    company: z.string({ required_error: 'Company is required' }).min(1, 'Company is required'),
+    companyWebsite: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
+    companyLogoUrl: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
+    description: z.string().optional().nullable(),
+    type: z.nativeEnum(OpportunityType).optional().default(OpportunityType.JOB),
+    status: z.nativeEnum(OpportunityStatus).optional().default(OpportunityStatus.DRAFT),
+    locations: z.array(z.string()).optional().default([]),
+    requiredSkills: z.array(z.string()).optional().default([]),
+    skills: z.array(z.string()).optional(), // fallback alias
+    allowedDegrees: z.array(z.nativeEnum(EducationLevel)).optional().default([]),
+    allowedCourses: z.array(z.string()).optional().default([]),
+    allowedSpecializations: z.array(z.string()).optional().default([]),
+    allowedPassoutYears: z.array(z.number().int()).optional().default([]),
+    workMode: z.nativeEnum(WorkMode).nullable().optional(),
+    salaryRange: z.string().nullable().optional(),
+    salaryMin: z.number().nullable().optional(),
+    salaryMax: z.number().nullable().optional(),
+    salaryPeriod: z.nativeEnum(SalaryPeriod).optional().default(SalaryPeriod.YEARLY),
+    stipend: z.string().nullable().optional(),
+    employmentType: z.string().nullable().optional(),
+    applyLink: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
+    sourceLink: z.string().url().nullable().optional().or(z.string().length(0).nullable().optional()),
+    applicationDetails: applicationDetailsSchema.nullable().optional(),
+    
+    // Walk-in specific
+    dates: z.array(z.string()).optional().default([]),
+    dateRange: z.string().optional().nullable(),
+    timeRange: z.string().optional().nullable(),
+    venueAddress: z.string().optional().nullable(),
+    venueLink: z.string().url().or(z.string().length(0)).nullable().optional(),
+    reportingTime: z.string().optional().nullable(),
+});
+
 // User Action Schemas
 export const userActionSchema = z.object({
     actionType: z.nativeEnum(ActionType)

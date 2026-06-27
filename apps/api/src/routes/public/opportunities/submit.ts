@@ -1,8 +1,9 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { prisma, OpportunityStatus as DbOpportunityStatus, OpportunityType as DbOpportunityType, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode, SalaryPeriod as DbSalaryPeriod } from '@fresherflow/database';
-import { OpportunityStatus, OpportunityType, EducationLevel, WorkMode, SalaryPeriod } from '@fresherflow/types';
+import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { slugify } from '@fresherflow/utils';
 import { tryResolveUserIdFromCookie } from './_helpers';
+import { opportunitySubmitSchema } from '../../../utils/validation';
 
 const router = Router();
 
@@ -12,40 +13,92 @@ const router = Router();
  */
 router.post('/submit', async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const data = req.body;
-        const userId = tryResolveUserIdFromCookie(req);
+        // 1. API Key Auth check
+        const apiKey = req.headers['x-api-key'];
+        const secret = process.env.INTERNAL_API_SECRET;
+        let attributionUserId: string | null = null;
+        const isApiKeyRequest = !!apiKey;
 
-        if (!data.title || !data.company) {
-            return res.status(400).json({ message: 'Title and Company are required' });
+        if (isApiKeyRequest) {
+            if (!secret || apiKey !== secret) {
+                return res.status(401).json({
+                    success: false,
+                    message: 'Unauthorized: Invalid API Key'
+                });
+            }
+
+            // Find system ADMIN user
+            const systemAdmin = await prisma.user.findFirst({
+                where: { role: 'ADMIN' }
+            });
+            if (!systemAdmin) {
+                return res.status(500).json({
+                    success: false,
+                    message: 'System error: No ADMIN user found to attribute post'
+                });
+            }
+            attributionUserId = systemAdmin.id;
+        } else {
+            // Cookie-based fallback
+            const userId = tryResolveUserIdFromCookie(req);
+            if (userId) {
+                attributionUserId = userId;
+            } else {
+                // Fallback to first ADMIN user if guest/public user without cookies
+                const systemAdmin = await prisma.user.findFirst({
+                    where: { role: 'ADMIN' }
+                });
+                if (!systemAdmin) {
+                    return res.status(500).json({
+                        success: false,
+                        message: 'System error: No ADMIN user found to attribute post'
+                    });
+                }
+                attributionUserId = systemAdmin.id;
+            }
         }
 
-        // 1. Generate slug
-        let slug = slugify(`${data.company} ${data.title}`);
+        // 2. Data Validation
+        const validationResult = opportunitySubmitSchema.safeParse(req.body);
+        if (!validationResult.success) {
+            const errorMessages = validationResult.error.errors.map(
+                err => `${err.path.join('.')}: ${err.message}`
+            ).join(', ');
+            return res.status(400).json({
+                success: false,
+                message: `Validation failed: ${errorMessages}`
+            });
+        }
 
-        // 2. Check for existing opportunities with this URL (Deduplication)
-        const normalizedUrl = data.sourceLink || data.applyLink;
-        if (normalizedUrl) {
+        const data = validationResult.data;
+
+        // 3. Deduplication Check (on sourceLink and applyLink)
+        const urlsToCheck = [data.sourceLink, data.applyLink].filter(
+            (url): url is string => typeof url === 'string' && url.length > 0
+        );
+
+        if (urlsToCheck.length > 0) {
             const existingOpp = await prisma.opportunity.findFirst({
                 where: {
                     OR: [
-                        { sourceLink: normalizedUrl },
-                        { applyLink: normalizedUrl }
+                        { sourceLink: { in: urlsToCheck } },
+                        { applyLink: { in: urlsToCheck } }
                     ],
                     deletedAt: null
                 }
             });
 
             if (existingOpp) {
-                return res.json({
+                return res.status(200).json({
                     success: true,
-                    message: 'Opportunity already exists!',
-                    id: existingOpp.id,
-                    existing: true
+                    message: 'Opportunity already exists',
+                    id: existingOpp.id
                 });
             }
         }
 
-        // 3. Handle slug duplicates (fallback)
+        // 4. Generate Slug
+        let slug = slugify(`${data.company} ${data.title}`);
         const existingBySlug = await prisma.opportunity.findFirst({
             where: { slug }
         });
@@ -53,51 +106,45 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
             slug = `${slug}-${Math.floor(Math.random() * 1000)}`;
         }
 
-        // 3. Find an attribution user (logged in user or first admin)
-        const systemUser = await prisma.user.findFirst({
-            where: { role: 'ADMIN' }
-        });
+        // 5. Create Opportunity (DRAFT status by default, but adaptable to PUBLISHED if explicitly requested)
+        const targetStatus = data.status || OpportunityStatus.DRAFT;
 
-        if (!systemUser && !userId) {
-            return res.status(500).json({ message: 'System error: No user found to attribute post' });
-        }
-
-        const attributionUserId = userId || systemUser?.id;
-        if (!attributionUserId) {
-            return res.status(500).json({ message: 'Could not resolve attribution user' });
-        }
-
-        // 4. Create Draft Opportunity
         const opportunity = await prisma.opportunity.create({
             data: {
                 slug,
                 title: data.title,
                 company: data.company,
+                companyWebsite: data.companyWebsite,
+                companyLogoUrl: data.companyLogoUrl,
                 description: data.description || '',
-                type: ((data.type as OpportunityType) || OpportunityType.JOB) as unknown as DbOpportunityType,
-                status: OpportunityStatus.DRAFT as unknown as DbOpportunityStatus,
-                locations: data.locations || [],
-                requiredSkills: data.requiredSkills || data.skills || [],
-                allowedDegrees: ((data.allowedDegrees as EducationLevel[]) || []) as unknown as DbEducationLevel[],
-                allowedCourses: data.allowedCourses || [],
-                allowedPassoutYears: data.allowedPassoutYears || [],
-                workMode: ((data.workMode as WorkMode) || undefined) as unknown as DbWorkMode,
+                type: (data.type || OpportunityType.JOB) as unknown as DbOpportunityType,
+                status: targetStatus as unknown as DbOpportunityStatus,
+                locations: data.locations,
+                requiredSkills: data.requiredSkills.length > 0 ? data.requiredSkills : (data.skills || []),
+                allowedDegrees: data.allowedDegrees as unknown as DbEducationLevel[],
+                allowedCourses: data.allowedCourses,
+                allowedSpecializations: data.allowedSpecializations,
+                allowedPassoutYears: data.allowedPassoutYears,
+                workMode: data.workMode as unknown as DbWorkMode,
                 salaryRange: data.salaryRange,
                 salaryMin: data.salaryMin,
                 salaryMax: data.salaryMax,
-                salaryPeriod: ((data.salaryPeriod as SalaryPeriod) || SalaryPeriod.YEARLY) as unknown as DbSalaryPeriod,
+                salaryPeriod: data.salaryPeriod as unknown as DbSalaryPeriod,
+                stipend: data.stipend,
+                employmentType: data.employmentType,
                 applyLink: data.applyLink || data.sourceLink,
                 sourceLink: data.sourceLink,
+                applicationDetails: data.applicationDetails || undefined,
                 postedByUserId: attributionUserId as string,
                 ...(data.type === 'WALKIN' ? {
                     walkInDetails: {
                         create: {
                             dates: data.dates ? data.dates.map((d: string) => new Date(d)) : [],
-                            dateRange: data.dateRange,
-                            timeRange: data.timeRange,
+                            dateRange: data.dateRange || '',
+                            timeRange: data.timeRange || '',
                             venueAddress: data.venueAddress || '',
-                            venueLink: data.venueLink,
-                            reportingTime: data.timeRange || '',
+                            venueLink: data.venueLink || '',
+                            reportingTime: data.reportingTime || data.timeRange || '',
                             requiredDocuments: [],
                         }
                     }
@@ -105,9 +152,9 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
             }
         });
 
-        res.json({
+        return res.status(200).json({
             success: true,
-            message: 'Opportunity submitted for moderation!',
+            message: 'Opportunity submitted successfully',
             id: opportunity.id
         });
     } catch (error) {

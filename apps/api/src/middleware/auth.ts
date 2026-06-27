@@ -172,3 +172,25 @@ export async function requireAdmin(req: express.Request, res: Response, next: Ne
     req.adminId = adminId;
     next();
 }
+
+/**
+ * Internal API Key Middleware
+ * Validates requests from automated pipeline scripts (e.g. job sweeper, ingestion bots).
+ * Checks the `x-api-key` header against INTERNAL_API_SECRET env variable.
+ * Does NOT create a session — used purely for machine-to-machine calls.
+ */
+export function requireInternalApiKey(req: express.Request, res: Response, next: NextFunction) {
+    const apiKey = req.headers['x-api-key'];
+    const secret = process.env.INTERNAL_API_SECRET;
+
+    if (!secret) {
+        logger.error('[requireInternalApiKey] INTERNAL_API_SECRET is not configured on this server.');
+        return next(new AppError('Internal API not configured', 503));
+    }
+
+    if (!apiKey || apiKey !== secret) {
+        return next(new AppError('Unauthorized: Invalid or missing API Key', 401));
+    }
+
+    next();
+}

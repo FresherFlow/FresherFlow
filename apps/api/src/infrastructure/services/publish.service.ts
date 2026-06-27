@@ -79,7 +79,8 @@ export async function handleOpportunityPublished(
 
   invalidatePublicOpportunityCache({
     idsOrSlugs: invalidationIds,
-    purgeFeed: true
+    purgeFeed: true,
+    type: opportunity.type as string,
   }).catch((err) => {
     logger.error('[publish] Cache invalidation failed', { 
       opportunityId: opportunity.id, 
@@ -87,9 +88,9 @@ export async function handleOpportunityPublished(
     });
   });
 
-  // 6. Static Feed Regeneration (CDN Sharding)
-  // Decoupled via Emitter with debounce to prevent compute thrashing
-  // discoveryEmitter.trigger(); // Commented out to prevent automatic builds on publish
+  // Feed regeneration is intentionally NOT triggered here.
+  // Publishing a job only updates the DB. The admin triggers "Generate JSON"
+  // (POST /api/admin/system/regenerate-feeds) to update the CDN feeds and the website.
 
 
   // 7. Append new opportunity metadata to R2 CDN files

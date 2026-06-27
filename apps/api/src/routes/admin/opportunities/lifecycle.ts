@@ -134,6 +134,43 @@ router.delete(
 );
 
 /**
+ * DELETE /api/admin/opportunities/:id/hard
+ * Hard delete — completely removes the opportunity from the database.
+ * Use with caution.
+ */
+router.delete(
+    '/:id/hard',
+    adminRateLimit,
+    validateReason,
+    withAdminAudit('DELETE'),
+    async (req: Request, res: Response, next: NextFunction) => {
+        try {
+            const idParam = req.params.id as string;
+            if (!idParam) throw new AppError('Opportunity ID is required', 400);
+
+            const existing = await prisma.opportunity.findFirst({
+                where: { OR: [{ id: idParam }, { slug: idParam }] },
+            });
+            if (!existing) throw new AppError('Opportunity not found', 404);
+
+            await prisma.opportunity.delete({
+                where: { id: existing.id as string },
+            });
+
+            res.json({ message: 'Opportunity permanently deleted' });
+
+            adminCache.invalidate(existing.id as string);
+            if (existing.slug) adminCache.invalidate(existing.slug as string);
+            adminCache.invalidateLists();
+
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
+        } catch (error) {
+            next(error);
+        }
+    },
+);
+
+/**
  * POST /api/admin/opportunities/:id/publish
  */
 router.post(

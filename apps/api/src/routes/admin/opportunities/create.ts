@@ -14,6 +14,8 @@ import {
     buildGovernmentTags, extractGovtLocations,
 } from './_helpers';
 import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
+import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
+import { StaticFeedService } from '../../../infrastructure/services/staticFeed.service';
 import { Opportunity } from '@fresherflow/types';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 
@@ -379,14 +381,18 @@ router.put(
 
             let responseMessage = 'Opportunity updated successfully';
             if (existing.status !== OpportunityStatus.PUBLISHED && opportunity.status === OpportunityStatus.PUBLISHED) {
+                // Transitioning from draft → published: fire full side-effects (Telegram, alerts, OG image)
                 await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
                 responseMessage = 'Opportunity published successfully.';
             } else if (opportunity.status === OpportunityStatus.PUBLISHED) {
-                // Already published, just update cache and notify update
-                await handleOpportunityPublished(opportunity as unknown as Opportunity, {
-                    isNew: false,
-                    oldSlug: existing.slug !== opportunity.slug ? (existing.slug as string) : undefined
+                // Already published — just bust the slug cache + regenerate feed.
+                // Do NOT re-fire Telegram/alerts/OG image on every admin edit.
+                void invalidatePublicOpportunityCache({
+                    idsOrSlugs: [opportunity.id as string, opportunity.slug as string, ...(existing.slug !== opportunity.slug ? [existing.slug as string] : [])],
+                    purgeFeed: true,
+                    type: opportunity.type as string,
                 });
+                StaticFeedService.scheduleRefresh();
             }
 
             // Invalidate specific detail and all lists
