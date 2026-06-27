@@ -1,6 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from 'next/og';
-export const runtime = 'edge';
 const size = { width: 1200, height: 630 };
 const truncate = (v: string, max: number) => v.length > max ? `${v.slice(0, max - 1)}\u2026` : v;
 const getBadgeColors = (t: string) => t === 'INTERNSHIP'
