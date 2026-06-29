@@ -1,4 +1,3 @@
-// @ts-expect-error
 import TurndownService from 'turndown';
 
 const turndownService = new TurndownService({
