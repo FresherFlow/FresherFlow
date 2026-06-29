@@ -181,73 +181,110 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
     }
 }
 
+interface FeedOpportunity {
+    id: string;
+    slug: string;
+    title: string;
+    company: string;
+    applyLink?: string;
+    sourceLink?: string;
+}
+
+interface FeedJson {
+    opportunities?: FeedOpportunity[];
+}
+
 async function run() {
     console.log("Fetching CDN feed...");
-    let feed;
+    let feed: FeedJson | undefined;
     try {
         const url = signUrl('/bootstrap-feed.min.json');
         const res = await fetch(url);
         if (!res.ok) throw new Error(`Feed fetch failed: ${res.statusText}`);
-        feed = await res.json();
+        feed = await res.json() as FeedJson;
     } catch (err) {
-        console.error("Failed to fetch CDN JSON", err);
+        console.error("Failed to fetch CDN JSON", err instanceof Error ? err.message : String(err));
         process.exit(1);
     }
 
-    const opportunities = feed.opportunities || [];
+    const opportunities = feed?.opportunities || [];
     console.log(`Found ${opportunities.length} active opportunities to check.`);
     
     // Message 1: Summary
     await sendTelegramMessage(`🤖 <b>Job Sweeper Started</b>\n\nChecking ${opportunities.length} active jobs...`);
 
-    const expiredJobs: any[] = [];
-    const reviewJobs: any[] = [];
+    const expiredJobs: FeedOpportunity[] = [];
+    const reviewJobs: FeedOpportunity[] = [];
     const browser = await chromium.launch({ headless: true });
     
-    // Limit to 1 tab for safety to avoid getting IP blocked too fast
-    const context = await browser.newContext({
-        userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-    });
-    
-    // Block heavy resources (images, stylesheets, fonts, media) to speed up checking and prevent hangs
-    await context.route('**/*', (route) => {
-        const type = route.request().resourceType();
-        if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
-            route.abort();
-        } else {
-            route.continue();
-        }
-    });
-    
-    const page = await context.newPage();
+    try {
+        // Limit to 8 concurrent pages/contexts to run in parallel safely
+        const CONCURRENCY = 8;
+        let checked = 0;
+        
+        const activeOpps = opportunities.filter((opp) => opp.applyLink || opp.sourceLink);
 
-    let checked = 0;
-    for (const opp of opportunities) {
-        checked++;
-        const targetUrl = opp.applyLink || opp.sourceLink;
-        if (!targetUrl) continue;
-        
-        console.log(`[${checked}/${opportunities.length}] Checking: ${opp.title} @ ${opp.company}`);
-        const checkResult = await checkJob(page, targetUrl);
-        
-        if (checkResult.status === 'expired') {
-            console.log(`❌ EXPIRED: ${opp.title}`);
-            expiredJobs.push(opp);
-        } else if (checkResult.status === 'review') {
-            console.log(`⚠️ REVIEW REQUIRED: ${opp.title}`);
-            reviewJobs.push(opp);
-        } else {
-            console.log(`✅ LIVE: ${opp.title}`);
-        }
-        
-        // Anti-bot delay
-        await page.waitForTimeout(1500);
+        const worker = async () => {
+            const context = await browser.newContext({
+                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            });
+            
+            try {
+                // Block heavy resources (images, stylesheets, fonts, media) to speed up checking and prevent hangs
+                await context.route('**/*', (route) => {
+                    const type = route.request().resourceType();
+                    if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+                        route.abort();
+                    } else {
+                        route.continue();
+                    }
+                });
+                
+                const page = await context.newPage();
+                try {
+                    let opp: FeedOpportunity | undefined;
+                    while (activeOpps.length > 0) {
+                        opp = activeOpps.shift();
+                        if (!opp) continue;
+                        
+                        const currentChecked = ++checked;
+                        const targetUrl = opp.applyLink || opp.sourceLink;
+                        if (!targetUrl) continue;
+                        
+                        console.log(`[${currentChecked}/${opportunities.length}] Checking: ${opp.title} @ ${opp.company}`);
+                        const checkResult = await checkJob(page, targetUrl);
+                        
+                        if (checkResult.status === 'expired') {
+                            console.log(`❌ EXPIRED: ${opp.title}`);
+                            expiredJobs.push(opp);
+                        } else if (checkResult.status === 'review') {
+                            console.log(`⚠️ REVIEW REQUIRED: ${opp.title}`);
+                            reviewJobs.push(opp);
+                        } else {
+                            console.log(`✅ LIVE: ${opp.title}`);
+                        }
+                        
+                        // Anti-bot delay
+                        await page.waitForTimeout(1500);
+                    }
+                } finally {
+                    await page.close();
+                }
+            } finally {
+                await context.close();
+            }
+        };
+
+        // Run all workers concurrently
+        const workers = Array.from({ length: CONCURRENCY }, () => worker());
+        await Promise.all(workers);
+    } finally {
+        await browser.close();
     }
 
-    await browser.close();
-
-    function escapeHtml(unsafe: string) {
-        return unsafe
+    function escapeHtml(unsafe: string | null | undefined): string {
+        if (!unsafe) return '';
+        return String(unsafe)
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;")
@@ -257,7 +294,7 @@ async function run() {
 
     // Auto-expire confirmed dead jobs via API
     if (expiredJobs.length > 0 && API_URL && INTERNAL_API_SECRET) {
-        const ids = expiredJobs.map((j: any) => j.slug || j.id).filter(Boolean);
+        const ids = expiredJobs.map((j) => j.slug || j.id).filter(Boolean);
         console.log(`\nCalling expire API for ${ids.length} dead jobs...`);
         try {
             const res = await fetch(`${API_URL}/api/pipeline/expire-jobs`, {
@@ -268,14 +305,19 @@ async function run() {
                 },
                 body: JSON.stringify({ ids }),
             });
-            const json = await res.json() as { expired?: number; skipped?: number; notFound?: number };
+            const responseText = await res.text();
             if (res.ok) {
-                console.log(`Expire API result — expired: ${json.expired}, skipped: ${json.skipped}, notFound: ${json.notFound}`);
+                try {
+                    const json = JSON.parse(responseText) as { expired?: number; skipped?: number; notFound?: number };
+                    console.log(`Expire API result — expired: ${json.expired}, skipped: ${json.skipped}, notFound: ${json.notFound}`);
+                } catch {
+                    console.log(`Expire API result (raw text): ${responseText}`);
+                }
             } else {
-                console.error('Expire API error:', json);
+                console.error(`Expire API error: Status ${res.status} — ${responseText}`);
             }
         } catch (err) {
-            console.error('Failed to call expire API:', (err as Error).message);
+            console.error('Failed to call expire API:', err instanceof Error ? err.message : String(err));
         }
     } else if (expiredJobs.length > 0) {
         console.warn('API_URL or INTERNAL_API_SECRET not set — skipping auto-expire API call.');

@@ -1005,6 +1005,15 @@ async function run() {
         msg += `Please add these to the Admin Dashboard.`;
         console.log("Sending Telegram message:", msg);
         await sendTelegramMessage(msg);
+
+        // Wake up Render API server concurrently in the background if it is in cold start
+        const apiBaseUrl = (process.env.API_BASE_URL || '').trim().replace(/\/$/, '');
+        if (apiBaseUrl) {
+            console.log(`Waking up Render API server: ${apiBaseUrl}/api/health`);
+            fetch(`${apiBaseUrl}/api/health`).catch(() => {
+                // Fire-and-forget, ignore errors
+            });
+        }
     } else {
         console.log("No new jobs found this run.");
     }
