@@ -757,6 +757,8 @@ export interface ParsedJob {
     allowedPassoutYears: number[];
     isFresherOnly: boolean;
     allowedDegrees: string[];
+    allowedCourses?: string[];
+    allowedSpecializations?: string[];
     isRemote: boolean;
     workMode: WorkMode;
     jobFunction?: string;

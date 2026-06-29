@@ -76,10 +76,10 @@ export function parseJobTextLite(rawText: string): ParsedJob {
     }
     result.locations = Array.from(new Set(locations));
 
-    // Skills
     const foundSkills = COMMON_SKILLS.filter(skill => {
-        const escaped = skill.replace(/[+#.]/g, '\\$&');
-        return new RegExp(`\\b${escaped}\\b`, 'i').test(text);
+        const escaped = skill.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const pattern = new RegExp(`(?:^|[^a-zA-Z0-9+#.])(${escaped})(?:$|[^a-zA-Z0-9+#.])`, 'i');
+        return pattern.test(text);
     });
     result.skills = foundSkills.slice(0, 15);
 

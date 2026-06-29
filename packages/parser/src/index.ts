@@ -33,6 +33,11 @@ export { normalizeSalary, normalizeExpiry } from './normalize.js';
 export { UrlParser } from './url-parser.js';
 export type { JobSourceType, UrlParseResult } from './url-parser.js';
 
+export { parseFromTemplate, isTemplateSource, cleanAggregatorTitle, setCdnMetadata } from './template-parser.js';
+export type { TemplateParseResult } from './template-parser.js';
+
+export { parseHtmlToMarkdown, cleanClickbait } from './html-to-markdown.js';
+
 // ── parseJobText: the main entry point ───────────────────────────────────────
 
 import { ParsedJob } from './types.js';

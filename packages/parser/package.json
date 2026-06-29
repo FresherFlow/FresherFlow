@@ -31,9 +31,11 @@
         "axios": "^1.13.6",
         "compromise": "^14.14.5",
         "country-state-city": "^3.2.1",
-        "natural": "^8.1.0"
+        "natural": "^8.1.0",
+        "turndown": "^7.2.4"
     },
     "devDependencies": {
+        "@types/turndown": "^5.0.4",
         "eslint": "^9.10.0",
         "eslint-config-prettier": "^9.1.0",
         "globals": "^14.0.0",
