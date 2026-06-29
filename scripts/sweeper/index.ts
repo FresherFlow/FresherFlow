@@ -123,8 +123,12 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
             return { status: 'review' };
         }
         
-        // Wait a tiny bit for JS rendered ATS like Workday to paint text
-        await page.waitForTimeout(2000);
+        // Smart Wait: Wait dynamically for Javascript/SPAs (like Workday/Upstox) to paint the job description text.
+        // It finishes instantly if the text is already there, but waits up to 8 seconds for slow API calls to finish rendering.
+        await page.waitForFunction(() => {
+            return document.body && document.body.innerText.trim().length > 100;
+        }, { timeout: 8000 }).catch(() => {});
+        
         const pageTitle = await page.title().catch(() => "");
         const lowerTitle = pageTitle.toLowerCase().trim();
         if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required')) {
@@ -149,7 +153,7 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
             '#main'
         ];
         for (const selector of contentSelectors) {
-            const text = await page.locator(selector).first().innerText({ timeout: 200 }).catch(() => "");
+            const text = await page.locator(selector).first().innerText({ timeout: 100 }).catch(() => "");
             if (text && text.trim().length > 200) {
                 mainText = text;
                 break;
@@ -196,6 +200,13 @@ interface FeedJson {
 
 async function run() {
     console.log("Fetching CDN feed...");
+    
+    // Wake up the backend API (if serverless) so it's warm by the time we finish
+    if (API_URL) {
+        console.log("Waking up API server...");
+        fetch(`${API_URL}/api/health`).catch(() => {});
+    }
+    
     let feed: FeedJson | undefined;
     try {
         const url = signUrl('/bootstrap-feed.min.json');

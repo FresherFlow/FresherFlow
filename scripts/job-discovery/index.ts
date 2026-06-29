@@ -555,7 +555,10 @@ async function isJobLive(page: Page, url: string): Promise<JobCheckResult> {
             isReview = true;
         }
         
-        await page.waitForTimeout(2000).catch(() => {});
+        // Smart Wait: Wait dynamically for Javascript/SPAs
+        await page.waitForFunction(() => {
+            return document.body && document.body.innerText.trim().length > 100;
+        }, { timeout: 8000 }).catch(() => {});
         const bodyText = await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
         if (!bodyText || bodyText.trim().length < 100) {
             if (loadFailed) {
