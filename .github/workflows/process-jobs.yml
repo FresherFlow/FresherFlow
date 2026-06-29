@@ -22,10 +22,11 @@ jobs:
         uses: ./.github/actions/setup-node
 
 
-      - name: Install Processor Dependencies
-        working-directory: scripts/job-processor
+      - name: Install Dependencies
         run: pnpm install
 
+      - name: Build Workspace Packages
+        run: pnpm build --filter "@fresherflow/constants" --filter "@fresherflow/parser"
       - name: Cache Playwright Browsers
         uses: actions/cache@v4
         id: playwright-cache

@@ -1000,7 +1000,7 @@ async function run() {
             for (const job of displayReview) {
                 msg += `- <b>${job.title}</b> (via ${job.source})\n  Link: ${job.applyLink}\n\n`;
             }
-            if (displayReview.length > 10) {
+            if (reviewJobs.length > 10) {
                 msg += `...and ${reviewJobs.length - 10} more!\n\n`;
             }
         }
