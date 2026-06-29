@@ -91,7 +91,7 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
         let response = null;
         let loadFailed = false;
         try {
-            response = await page.goto(url, { waitUntil: 'load', timeout: 20000 });
+            response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
         } catch (gotoErr) {
             console.error(`Error loading ${url}:`, (gotoErr as Error).message);
             const errMsg = (gotoErr as Error).message.toLowerCase();
@@ -124,7 +124,7 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
         }
         
         // Wait a tiny bit for JS rendered ATS like Workday to paint text
-        await page.waitForTimeout(4000);
+        await page.waitForTimeout(2000);
         const pageTitle = await page.title().catch(() => "");
         const lowerTitle = pageTitle.toLowerCase().trim();
         if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required')) {
@@ -149,14 +149,14 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
             '#main'
         ];
         for (const selector of contentSelectors) {
-            const text = await page.locator(selector).first().innerText().catch(() => "");
+            const text = await page.locator(selector).first().innerText({ timeout: 200 }).catch(() => "");
             if (text && text.trim().length > 200) {
                 mainText = text;
                 break;
             }
         }
 
-        const bodyText = mainText || (await page.locator('body').innerText().catch(() => ""));
+        const bodyText = mainText || (await page.locator('body').innerText({ timeout: 500 }).catch(() => ""));
 
         if (!bodyText || bodyText.trim().length < 100) {
             if (loadFailed) {

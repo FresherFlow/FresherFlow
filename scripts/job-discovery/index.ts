@@ -555,8 +555,8 @@ async function isJobLive(page: Page, url: string): Promise<JobCheckResult> {
             isReview = true;
         }
         
-        await page.waitForTimeout(3000).catch(() => {});
-        const bodyText = await page.locator('body').innerText().catch(() => "");
+        await page.waitForTimeout(2000).catch(() => {});
+        const bodyText = await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
         if (!bodyText || bodyText.trim().length < 100) {
             if (loadFailed) {
                 console.log(`  -> Navigation failed and page body is empty/too short. Marking as failed.`);
@@ -872,8 +872,8 @@ async function run() {
                 await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
                 await page.waitForTimeout(2000);
                 
-                const aggregatorTitle = await page.locator('h1').first().innerText().catch(() => "");
-                const bodyText = await page.locator('body').innerText().catch(() => "");
+                const aggregatorTitle = await page.locator('h1').first().innerText({ timeout: 500 }).catch(() => "");
+                const bodyText = await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
                 
                 if (isSeniorJob(bodyText)) {
                     console.log(`  -> Skipping: Strictly senior job.`);
