@@ -57,10 +57,16 @@ jobs:
           NEXT_PUBLIC_CDN_URL: "https://cdn.fresherflow.in"
         run: pnpm start
 
+      - name: Verify Review Jobs
+        working-directory: scripts/job-discovery
+        run: npx tsx verify-reviews.ts
+
       - name: Upload Discovered Jobs Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: discovered-jobs
-          path: scripts/job-discovery/discovered_jobs.json
+          path: |
+            scripts/job-discovery/discovered_jobs.json
+            scripts/job-discovery/review_jobs.json
           retention-days: 7
