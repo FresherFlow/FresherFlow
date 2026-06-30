@@ -1,0 +1,50 @@
+name: Social Auto-Post Bot
+
+on:
+  schedule:
+    # Run every 4 hours (e.g. 12:00, 4:00, 8:00 etc. UTC)
+    - cron: '0 */4 * * *'
+  workflow_dispatch: # Allow manual trigger from GitHub UI
+
+jobs:
+  autopost:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js + pnpm
+        uses: ./.github/actions/setup-node
+
+      - name: Install Auto-Post Dependencies
+        working-directory: scripts/social-autopost
+        run: pnpm install
+
+      - name: Run Social Auto-Poster
+        working-directory: scripts/social-autopost
+        env:
+          # CDN/R2 configuration for state management
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET_NAME: "fresherflow-cdn"
+          NEXT_PUBLIC_CDN_URL: "https://cdn.fresherflow.in"
+          CDN_SIGNATURE_SECRET: ${{ secrets.CDN_SIGNATURE_SECRET }}
+          
+          # Social Media Credentials
+          X_API_KEY: ${{ secrets.X_API_KEY }}
+          X_API_SECRET: ${{ secrets.X_API_SECRET }}
+          X_ACCESS_TOKEN: ${{ secrets.X_ACCESS_TOKEN }}
+          X_ACCESS_TOKEN_SECRET: ${{ secrets.X_ACCESS_TOKEN_SECRET }}
+          
+          LINKEDIN_ORGANIZATION_URN: ${{ secrets.LINKEDIN_ORGANIZATION_URN }}
+          LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
+          
+          FACEBOOK_PAGE_ID: ${{ secrets.FACEBOOK_PAGE_ID }}
+          FACEBOOK_PAGE_ACCESS_TOKEN: ${{ secrets.FACEBOOK_PAGE_ACCESS_TOKEN }}
+          
+          # Run parameters
+          DRY_RUN: "false"
+        run: pnpm start

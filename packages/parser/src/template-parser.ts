@@ -480,10 +480,31 @@ export function parseFromTemplate(
     // ── Build typed result ─────────────────────────────────────────────
     const title = cleanAggregatorTitle(aggregatorTitle);
 
-    // Company: prefer CDN match for canonical name + website
-    const companyMatch = matchCompany(rawCompany);
-    const company = companyMatch?.name;
-    const companyWebsite = companyMatch?.website;
+    // Company: prefer explicit field, fallback to searching the title for known companies
+    let company = matchCompany(rawCompany)?.name;
+    let companyWebsite = matchCompany(rawCompany)?.website;
+
+    if (!company && aggregatorTitle) {
+        const titleLower = aggregatorTitle.toLowerCase();
+        for (const [key, cdnComp] of CDN_COMPANIES_MAP.entries()) {
+            if (titleLower.includes(key)) {
+                company = cdnComp.name;
+                companyWebsite = cdnComp.url;
+                break;
+            }
+        }
+    }
+    
+    // If still no company, provide a safe fallback so Zod doesn't reject the entire template
+    if (!company) {
+        // Try to guess from the first word of the title if it's not a common word
+        const firstWord = title.split(' ')[0];
+        if (firstWord && firstWord.length > 2 && !/^(hiring|recruitment|off|campus|walk|job|mega)$/i.test(firstWord)) {
+            company = firstWord;
+        } else {
+            company = "Unknown Company";
+        }
+    }
 
     const locations = rawLocation ? parseLocationsFromString(rawLocation) : [];
     const workMode = rawWorkType ? parseWorkMode(rawWorkType) : WorkMode.ONSITE;
