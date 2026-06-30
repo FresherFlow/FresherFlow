@@ -2,7 +2,6 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import prisma, { OpportunityStatus as DbOpportunityStatus } from '../../infrastructure/database/prisma';
 import { requireInternalApiKey } from '../../middleware/auth';
-import { OpportunityStatus } from '@fresherflow/types';
 import { invalidatePublicOpportunityCache } from '../../infrastructure/services/publicOpportunityCache.service';
 import { adminCache } from '../../infrastructure/cache/adminCache';
 import { logger } from '@fresherflow/logger';
@@ -121,7 +120,7 @@ router.post(
                     await prisma.opportunity.update({
                         where: { id: opp.id },
                         data: {
-                            status: OpportunityStatus.EXPIRED as unknown as DbOpportunityStatus,
+                            status: DbOpportunityStatus.EXPIRED,
                             expiresAt: new Date(now.getTime() - 60 * 60 * 1000), // backdated 1h
                             expiredAt: now,
                         },
@@ -159,7 +158,7 @@ router.post(
                     await prisma.opportunity.update({
                         where: { id: opp.id },
                         data: {
-                            status: OpportunityStatus.EXPIRED as unknown as DbOpportunityStatus,
+                            status: DbOpportunityStatus.EXPIRED,
                             expiresAt: new Date(now.getTime() - 60 * 60 * 1000), // backdated 1h
                             expiredAt: now,
                         },
