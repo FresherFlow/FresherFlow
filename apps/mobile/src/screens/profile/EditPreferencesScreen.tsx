@@ -16,7 +16,7 @@ import { Plus, X, Target, MapPin, Briefcase, Globe, Pencil, CheckSquare, Square,
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
-import { OPPORTUNITY_TYPES, WORK_MODES } from '@/utils/constants';
+import { OPPORTUNITY_TYPES, WORK_MODES, INDIAN_CITIES } from '@/utils/constants';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { usePreferences, PreferencesFormData } from '@/hooks/usePreferences';
@@ -308,7 +308,7 @@ const EditPreferencesScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                                 {/* Quick selection popular cities grid */}
                                 {(() => {
                                     if (cityInput.length > 0) return null;
-                                    const popularCities = ['Bangalore', 'Mumbai', 'Pune', 'Hyderabad', 'Chennai'].filter(c => !preferredCities.includes(c));
+                                    const popularCities = INDIAN_CITIES.slice(0, 5).filter(c => !preferredCities.includes(c));
                                     if (popularCities.length === 0) return null;
                                     return (
                                         <View style={{ marginTop: 16 }}>

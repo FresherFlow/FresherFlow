@@ -13,6 +13,7 @@ import { haptic } from '@/utils/haptics';
 import { formatSalary } from '@/utils/formatters';
 import { toTitleCase, formatListToTitleCase } from '@/utils/text';
 import { getDisplayHandle } from '@fresherflow/utils';
+import { useCitiesMetadata } from '@/hooks/useCitiesMetadata';
 
 interface Props {
   opportunity: Opportunity & { matchReason?: string; matchScore?: number; isEligible?: boolean };
@@ -54,6 +55,7 @@ export const OpportunityCard = memo(({
 }: Props) => {
   const { currentTheme } = useTheme();
   const openActionSheet = useUIStore(s => s.actionSheet.open);
+  const { getStateForCity } = useCitiesMetadata();
 
   const config = getTypeConfig(opportunity.type, currentTheme);
 
@@ -213,41 +215,20 @@ export const OpportunityCard = memo(({
           const locs = opportunity.locations || [];
           
           const getCityStateLabel = (city: string): string => {
-            const normalized = city.trim().toLowerCase();
-            const stateMap: Record<string, string> = {
-              bangalore: 'Karnataka',
-              bengaluru: 'Karnataka',
-              hyderabad: 'Telangana',
-              pune: 'Maharashtra',
-              mumbai: 'Maharashtra',
-              'navi mumbai': 'Maharashtra',
-              noida: 'Uttar Pradesh',
-              gurgaon: 'Haryana',
-              gurugram: 'Haryana',
-              chennai: 'Tamil Nadu',
-              delhi: 'Delhi',
-              'new delhi': 'Delhi',
-              kolkata: 'West Bengal',
-              ahmedabad: 'Gujarat',
-              kochi: 'Kerala',
-              cochin: 'Kerala',
-              trivandrum: 'Kerala',
-              thiruvananthapuram: 'Kerala',
-              coimbatore: 'Tamil Nadu',
-              jaipur: 'Rajasthan',
-              indore: 'Madhya Pradesh',
-              bhubaneswar: 'Odisha',
-              chandigarh: 'Chandigarh',
-              lucknow: 'Uttar Pradesh',
-              patna: 'Bihar',
-              nagpur: 'Maharashtra',
-              visakhapatnam: 'Andhra Pradesh',
-              vizag: 'Andhra Pradesh',
-              vijayawada: 'Andhra Pradesh',
-              bhopal: 'Madhya Pradesh',
-            };
-            const state = stateMap[normalized];
-            return state ? `${toTitleCase(city)}, ${state}` : toTitleCase(city);
+            const formatted = toTitleCase(city);
+            
+            // Map common aliases/variations to match the cities in citiesData
+            let queryCity = formatted;
+            if (formatted === 'Bengaluru') queryCity = 'Bangalore';
+            else if (formatted === 'Gurgaon') queryCity = 'Gurugram';
+            else if (formatted === 'Cochin' || formatted === 'Cochi') queryCity = 'Kochi';
+            else if (formatted === 'Trivandrum') queryCity = 'Thiruvananthapuram';
+            else if (formatted === 'Vizag') queryCity = 'Visakhapatnam';
+            else if (formatted === 'New Delhi') queryCity = 'Delhi';
+            else if (formatted === 'Navi Mumbai') queryCity = 'Mumbai';
+
+            const state = getStateForCity(queryCity) || getStateForCity(formatted);
+            return state ? `${formatted}, ${state}` : formatted;
           };
 
           const locationLabel = locs.length === 0 
