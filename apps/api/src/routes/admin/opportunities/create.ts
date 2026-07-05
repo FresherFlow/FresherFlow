@@ -15,7 +15,7 @@ import {
 } from './_helpers';
 import { handleOpportunityPublished } from '../../../infrastructure/services/publish.service';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
-import { StaticFeedService } from '../../../infrastructure/services/staticFeed.service';
+
 import { Opportunity } from '@fresherflow/types';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 

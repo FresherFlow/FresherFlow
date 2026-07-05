@@ -14,6 +14,7 @@ const router = Router();
 
 // --- Shared helpers ---
 const METRICS_WINDOWS: MetricsWindow[] = ['24h', '7d', '14d', '30d'];
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const PUBLIC_WEB_CACHE_TAGS = [
     'feed-version',
     'homepage-feed',
@@ -37,6 +38,7 @@ const PUBLIC_WEB_CACHE_TAGS = [
 // revalidatePath() — and only from publicOpportunityCache.service.ts.
 //
 // Rule: feed revalidation = tags only. Slug revalidation = revalidatePath (one-off per job).
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const FEED_REVALIDATE_TAGS = [
     'feed-version',
     'homepage-feed',
