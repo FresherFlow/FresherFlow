@@ -66,11 +66,13 @@
     "typecheck": "turbo run typecheck",
     "typecheck:mobile": "turbo run typecheck --filter=mobile",
     "test": "turbo run test",
+    "test:parser": "tsx scripts/test-parser.ts",
     "tree": "node docs/update_tree.js",
     "android": "pnpm android:dev",
     "ios": "expo run:ios"
   },
   "dependencies": {
+    "country-state-city": "^3.2.1",
     "expo": "~54.0.35",
     "react": "19.1.0",
     "react-native": "0.81.5",

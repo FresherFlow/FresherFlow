@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      country-state-city:
+        specifier: ^3.2.1
+        version: 3.2.1
       expo:
         specifier: ~54.0.35
         version: 54.0.35(@babel/core@7.29.0)(react-native@0.81.5(@babel/core@7.29.0)(@types/react@19.1.17)(react@19.1.0))(react@19.1.0)(typescript@5.9.3)
@@ -455,70 +458,6 @@ importers:
       vitest:
         specifier: ^4.0.18
         version: 4.1.7(@opentelemetry/api@1.9.1)(@types/node@22.19.19)(@vitest/ui@4.1.7)(jsdom@20.0.3)(vite@8.0.14(@types/node@22.19.19)(esbuild@0.28.0)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-
-  apps/ingestion:
-    dependencies:
-      '@fresherflow/config':
-        specifier: '*'
-        version: link:../../packages/config
-      '@fresherflow/constants':
-        specifier: '*'
-        version: link:../../packages/constants
-      '@fresherflow/database':
-        specifier: '*'
-        version: link:../../packages/database
-      '@fresherflow/domain':
-        specifier: '*'
-        version: link:../../packages/domain
-      '@fresherflow/logger':
-        specifier: '*'
-        version: link:../../packages/logger
-      '@fresherflow/parser':
-        specifier: '*'
-        version: link:../../packages/parser
-      '@fresherflow/queue':
-        specifier: '*'
-        version: link:../../packages/queue
-      '@fresherflow/redis':
-        specifier: '*'
-        version: link:../../packages/redis
-      '@fresherflow/schemas':
-        specifier: '*'
-        version: link:../../packages/schemas
-      '@fresherflow/types':
-        specifier: '*'
-        version: link:../../packages/types
-      '@fresherflow/utils':
-        specifier: '*'
-        version: link:../../packages/utils
-      axios:
-        specifier: ^1.7.9
-        version: 1.16.1
-      dotenv:
-        specifier: ^17.3.1
-        version: 17.4.2
-      express:
-        specifier: ^4.21.2
-        version: 4.22.2
-      node-cron:
-        specifier: ^4.2.1
-        version: 4.2.1
-    devDependencies:
-      '@types/express':
-        specifier: ^5.0.0
-        version: 5.0.6
-      '@types/node':
-        specifier: ^22.10.5
-        version: 22.19.19
-      '@types/node-cron':
-        specifier: ^3.0.11
-        version: 3.0.11
-      nodemon:
-        specifier: ^3.1.9
-        version: 3.1.14
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
 
   apps/mobile:
     dependencies:
@@ -1113,6 +1052,9 @@ importers:
       '@fresherflow/utils':
         specifier: '*'
         version: link:../utils
+      country-state-city:
+        specifier: ^3.2.1
+        version: 3.2.1
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -1188,6 +1130,9 @@ importers:
 
   packages/parser:
     dependencies:
+      '@fresherflow/constants':
+        specifier: '*'
+        version: link:../constants
       '@fresherflow/domain':
         specifier: '*'
         version: link:../domain
@@ -8861,10 +8806,6 @@ packages:
 
   node-cron@3.0.3:
     resolution: {integrity: sha512-dOal67//nohNgYWb+nWmg5dkFdIwDm8EpeGYMekPMrngV3637lqnX0lbUcCtgibHTz6SEz7DAIjKvKDFYCnO1A==}
-    engines: {node: '>=6.0.0'}
-
-  node-cron@4.2.1:
-    resolution: {integrity: sha512-lgimEHPE/QDgFlywTd8yTR61ptugX3Qer29efeyWw2rv259HtGBNn1vZVmp8lB9uo9wC0t/AT4iGqXxia+CJFg==}
     engines: {node: '>=6.0.0'}
 
   node-domexception@1.0.0:
@@ -20548,8 +20489,6 @@ snapshots:
   node-cron@3.0.3:
     dependencies:
       uuid: 8.3.2
-
-  node-cron@4.2.1: {}
 
   node-domexception@1.0.0: {}
 
