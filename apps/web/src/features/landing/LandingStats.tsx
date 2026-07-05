@@ -16,6 +16,9 @@ export function LandingStats({ initialLiveCount, initialCompaniesCount }: Landin
     const [animatedCompanies, setAnimatedCompanies] = useState(0);
 
     useEffect(() => {
+        // Capture initial values so the catch fallback doesn't close over state
+        const initialLive = liveCount;
+        const initialCompanies = companiesCount;
         // Fetch fresh stats from R2/CDN stats.json (lightweight, ~100 bytes)
         fetch(`${CDN_URL}/stats.json`)
             .then(res => res.json())
@@ -30,10 +33,12 @@ export function LandingStats({ initialLiveCount, initialCompaniesCount }: Landin
             .catch((err) => {
                 console.error('[LandingStats] Failed to fetch stats.json:', err);
                 // Fallback to static numbers if CDN is unreachable
-                if (!liveCount || liveCount === 0) setLiveCount(207);
-                if (!companiesCount || companiesCount === 0) setCompaniesCount(166);
+                if (!initialLive || initialLive === 0) setLiveCount(207);
+                if (!initialCompanies || initialCompanies === 0) setCompaniesCount(166);
             });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
 
     useEffect(() => {
         if (liveCount === 0) return;

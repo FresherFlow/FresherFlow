@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { ConditionalAuthProvider } from "@/lib/providers/ConditionalAuthProvider";
 import { SmartToaster } from '@/lib/components/SmartToaster';
+import { ScrollToTop } from '@/ui/ScrollToTop';
 import { ThemeProvider } from "@/lib/providers/ThemeContext";
 import { InstallPromptProvider } from "@/lib/providers/InstallPromptContext";
 import { NavigationWrapper } from '@/lib/components/NavigationWrapper';
@@ -150,6 +151,7 @@ export default async function RootLayout({
         {/* WEB PIVOT: disabled service worker/offline runtime. */}
         {/* <ServiceWorkerRegister /> */}
         <SmartToaster />
+        <ScrollToTop />
         {/* <OfflineNotification /> */}
         {gaId ? <GoogleAnalytics gaId={gaId} /> : null}
         {enableVercelAnalytics ? <Analytics /> : null}

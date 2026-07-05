@@ -18,12 +18,17 @@ export function extractHubRelations(opportunities: Opportunity[], exclude?: {
     city?: string;
     role?: string;
 }) {
-    const isExpired = (opp: Opportunity) => opp.expiresAt && new Date(opp.expiresAt) < new Date();
+    // Only count truly active jobs: PUBLISHED status, not expired, not deleted
+    const isActive = (opp: Opportunity) => {
+        if (opp.status && opp.status !== 'PUBLISHED') return false;
+        if (opp.expiresAt && new Date(opp.expiresAt) < new Date()) return false;
+        return true;
+    };
 
     // 1. Extract Top Companies
     const companyCounts: Record<string, { count: number; logoUrl: string | null | undefined; website: string | null | undefined; name: string }> = {};
     opportunities.forEach(opp => {
-        if (isExpired(opp)) return;
+        if (!isActive(opp)) return;
         if (!opp.company) return;
         const slug = slugify(opp.company);
         if (!companyCounts[slug]) {
@@ -45,7 +50,7 @@ export function extractHubRelations(opportunities: Opportunity[], exclude?: {
     // 2. Extract Related Skills
     const skillCounts: Record<string, { count: number, label: string }> = {};
     opportunities.forEach(opp => {
-        if (isExpired(opp)) return;
+        if (!isActive(opp)) return;
         (opp.requiredSkills || []).forEach(skill => {
             const slug = slugify(skill);
             if (exclude?.skill && slug === slugify(exclude.skill)) return;
@@ -66,15 +71,27 @@ export function extractHubRelations(opportunities: Opportunity[], exclude?: {
         }));
 
     // 3. Extract Locations
+    const BLOCKED_LOCS = new Set([
+        'pan india', 'india', 'remote', 'work from home', 'wfh',
+        'multiple locations', 'various locations', 'anywhere', 'worldwide',
+        'across india', 'all india', 'multiple cities',
+    ]);
+    const isCleanLoc = (loc: string) => {
+        const l = loc.toLowerCase().trim();
+        if (BLOCKED_LOCS.has(l)) return false;
+        if (l.includes(',') || l.includes('(')) return false;
+        if (loc.length > 40 || loc.length < 2) return false;
+        return true;
+    };
+
     const locCounts: Record<string, { count: number, label: string }> = {};
     opportunities.forEach(opp => {
-        if (isExpired(opp)) return;
+        if (!isActive(opp)) return;
         (opp.locations || []).forEach(loc => {
+            if (!isCleanLoc(loc)) return;
             const slug = slugify(loc);
             if (exclude?.city && slug === slugify(exclude.city)) return;
-            // Clean location string (e.g. filter out 'India' or general terms if possible)
-            if (loc.toLowerCase() === 'india' || loc.toLowerCase() === 'pan india') return;
-            
+
             if (!locCounts[slug]) {
                 locCounts[slug] = { count: 0, label: loc };
             }

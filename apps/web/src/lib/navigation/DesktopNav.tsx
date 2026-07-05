@@ -40,38 +40,6 @@ export function DesktopNav() {
 
     const isLandingPage = pathname === '/';
 
-    const normalizedPathname = pathname?.toLowerCase() || '';
-    const isJobRelatedPage =
-        normalizedPathname.startsWith('/jobs') ||
-        normalizedPathname.startsWith('/internships') ||
-        normalizedPathname.startsWith('/walk-ins') ||
-        normalizedPathname.startsWith('/government-jobs') ||
-        normalizedPathname.startsWith('/opportunities') ||
-        normalizedPathname.startsWith('/remote') ||
-        normalizedPathname.startsWith('/companies') ||
-        normalizedPathname.startsWith('/skills') ||
-        normalizedPathname.startsWith('/location') ||
-        normalizedPathname.startsWith('/batch') ||
-        normalizedPathname.startsWith('/roles');
-
-    const segments = normalizedPathname.split('/').filter(Boolean);
-    const firstSegment = segments[0] || '';
-    const reservedSegments = new Set([
-        'about', 'alerts', 'api', 'app', 'batch', 'blog', 'captions', 'careers',
-        'companies', 'contact', 'dashboard', 'deadlines', 'dev', 'feedback',
-        'government-jobs', 'internships', 'jobs', 'join', 'location', 'login',
-        'logout', 'opportunities', 'pending', 'privacy', 'profile', 'r',
-        'referral', 'remote', 'roles', 'sentry-example-page', 'skills', 'terms',
-        'walk-ins', 'account', 'submit-link', 'admin', 'register'
-    ]);
-
-    const isDetailPage =
-        /^\/(jobs|internships|walk-ins|government-jobs|opportunities)\/[^/]+/.test(normalizedPathname) ||
-        (segments.length === 1 && !reservedSegments.has(firstSegment) && !firstSegment.includes('.'));
-
-
-    const isJobPage = isJobRelatedPage || isDetailPage;
-
     return (
         <header className={cn(
             isLandingPage

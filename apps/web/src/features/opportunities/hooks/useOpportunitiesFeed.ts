@@ -49,9 +49,7 @@ export function useOpportunitiesFeed({
 }: UseOpportunitiesFeedOptions) {
     const { user, profile, isLoading: authLoading } = useAuth();
 
-    // Compute the initial cache scope synchronously
-    const normalizedType = (type || 'all').toLowerCase();
-    const initialCacheScope = `type:${normalizedType}`;
+
 
     const [opportunities, setOpportunities] = useState<Opportunity[]>(() => {
         if (initialData?.opportunities) return initialData.opportunities;

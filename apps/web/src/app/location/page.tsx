@@ -17,12 +17,30 @@ export default async function LocationIndexPage() {
     const feed = await fetchBootstrapFeed();
     const opportunities = feed?.opportunities || [];
 
+    // Only emit links for clean, single city names — block compound strings,
+    // generic terms, and anything that would create a useless page.
+    const BLOCKED_LOCATIONS = new Set([
+        'pan india', 'india', 'remote', 'work from home', 'wfh',
+        'multiple locations', 'various locations', 'anywhere', 'worldwide',
+        'across india', 'all india', 'multiple cities',
+    ]);
+    const isCleanLocation = (loc: string) => {
+        const l = loc.toLowerCase().trim();
+        if (BLOCKED_LOCATIONS.has(l)) return false;
+        if (l.includes(',')) return false;          // "Govindapuram, Guntur"
+        if (l.includes('(')) return false;          // "Nigeria (Multiple Locations)"
+        if (loc.length > 40) return false;          // suspiciously long
+        if (loc.length < 2) return false;
+        return true;
+    };
+
     // Extract all locations with job counts
     const locationCounts: Record<string, number> = {};
     for (const opp of opportunities) {
         for (const location of opp.locations || []) {
             if (!location) continue;
             const key = location.trim();
+            if (!isCleanLocation(key)) continue;
             locationCounts[key] = (locationCounts[key] || 0) + 1;
         }
     }
@@ -31,6 +49,7 @@ export default async function LocationIndexPage() {
     const sorted = Object.entries(locationCounts)
         .filter(([, count]) => count >= 1)
         .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
 
     // Group alphabetically
     const groups: Record<string, { location: string; count: number; slug: string }[]> = {};
