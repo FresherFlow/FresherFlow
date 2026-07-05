@@ -21,43 +21,9 @@ const MONTH_INDEX: Record<string, number> = {
     dec: 11, december: 11,
 };
 
-const CITY_TO_STATE: Record<string, string> = {
-    ahmedabad: 'Gujarat',
-    bengaluru: 'Karnataka',
-    bangalore: 'Karnataka',
-    bhopal: 'Madhya Pradesh',
-    bhubaneswar: 'Odisha',
-    chandigarh: 'Chandigarh',
-    chennai: 'Tamil Nadu',
-    coimbatore: 'Tamil Nadu',
-    delhi: 'Delhi',
-    faridabad: 'Haryana',
-    gandhinagar: 'Gujarat',
-    ghaziabad: 'Uttar Pradesh',
-    gurgaon: 'Haryana',
-    gurugram: 'Haryana',
-    guwahati: 'Assam',
-    hyderabad: 'Telangana',
-    indore: 'Madhya Pradesh',
-    jaipur: 'Rajasthan',
-    kanpur: 'Uttar Pradesh',
-    kochi: 'Kerala',
-    kolkata: 'West Bengal',
-    lucknow: 'Uttar Pradesh',
-    mumbai: 'Maharashtra',
-    mysuru: 'Karnataka',
-    nagpur: 'Maharashtra',
-    noida: 'Uttar Pradesh',
-    patna: 'Bihar',
-    pune: 'Maharashtra',
-    ranchi: 'Jharkhand',
-    surat: 'Gujarat',
-    thane: 'Maharashtra',
-    trivandrum: 'Kerala',
-    thiruvananthapuram: 'Kerala',
-    vadodara: 'Gujarat',
-    visakhapatnam: 'Andhra Pradesh',
-};
+import { getStateForCity, isStateName } from '@fresherflow/constants';
+
+export { getStateForCity, isStateName };
 
 // ── Salary Normalization ──────────────────────────────────────────────────────
 
@@ -152,7 +118,7 @@ export const normalizeLocations = (locations?: string[] | null): NormalizedLocat
     let state: string | undefined;
 
     rawTokens.forEach(t => {
-        const mappedState = CITY_TO_STATE[t];
+        const mappedState = getStateForCity(t);
         const formatted = t.charAt(0).toUpperCase() + t.slice(1);
         if (mappedState) {
             cities.push(formatted);

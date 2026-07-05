@@ -50,12 +50,9 @@ export const COMMON_SKILLS = [
     'vpn', 'networking', 'customer support', 'voice process', 'technical support',
     'service-now', 'o365', 'outlook', 'windows os', 'remedy',
 ];
+import { INDIAN_CITIES } from '@fresherflow/domain';
 
-export const COMMON_CITIES = [
-    'Hyderabad', 'Bangalore', 'Bengaluru', 'Mumbai', 'Delhi', 'Pune',
-    'Chennai', 'Gurgaon', 'Gurugram', 'Noida', 'Kolkata', 'Ahmedabad',
-    'Jaipur', 'Kochi', 'Indore', 'Chandigarh',
-];
+export const COMMON_CITIES = INDIAN_CITIES;
 
 export const KNOWN_COMPANIES = [
     'Tech Mahindra', 'TCS', 'Infosys', 'Wipro', 'Accenture',

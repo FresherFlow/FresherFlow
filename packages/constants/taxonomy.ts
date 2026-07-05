@@ -14,9 +14,11 @@ export const CORE_CATEGORIES = [
  * Controlled Tag System (The Meta-data layer)
  * These are suggested to users/admins to avoid duplicate or garbage tags.
  */
+import { INDIAN_CITIES } from './locationTaxonomy';
+
 export const CONTROLLED_TAGS = {
     BATCHES: ['2026 Batch', '2025 Batch', '2024 Batch', '2023 Batch'],
-    LOCATIONS: ['Hyderabad', 'Bengaluru', 'Pune', 'Noida', 'Chennai', 'Mumbai', 'Remote'],
+    LOCATIONS: ['Remote', ...INDIAN_CITIES.slice(0, 10)],
     ROLES: ['Frontend', 'Backend', 'Full Stack', 'AI/ML', 'Data Science', 'Mobile', 'UI/UX', 'DevOps'],
     SKILLS: ['React', 'Node.js', 'Python', 'Java', 'C++', 'JavaScript', 'SQL', 'Flutter'],
 };

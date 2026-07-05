@@ -21,6 +21,8 @@ type MinimalRedisLike = {
     pexpire: (key: string, milliseconds: number) => Promise<0 | 1>;
     pttl: (key: string) => Promise<number>;
     ping: () => Promise<string>;
+    sadd: (key: string, ...members: string[]) => Promise<number>;
+    smembers: (key: string) => Promise<string[]>;
     quit: () => Promise<'OK'>;
     disconnect: () => void;
 };
@@ -38,6 +40,27 @@ const createTestRedisClient = (): MinimalRedisLike => {
         },
         async ping() {
             return 'PONG';
+        },
+        async sadd(key: string, ...members: string[]) {
+            const current = store.has(key) ? JSON.parse(store.get(key)!) as string[] : [];
+            const currentSet = new Set(current);
+            let added = 0;
+            for (const member of members) {
+                if (!currentSet.has(member)) {
+                    currentSet.add(member);
+                    added += 1;
+                }
+            }
+            store.set(key, JSON.stringify(Array.from(currentSet)));
+            return added;
+        },
+        async smembers(key: string) {
+            if (!store.has(key)) return [];
+            try {
+                return JSON.parse(store.get(key)!) as string[];
+            } catch {
+                return [];
+            }
         },
         async get(key: string) {
             return store.has(key) ? store.get(key)! : null;

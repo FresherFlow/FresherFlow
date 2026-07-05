@@ -26,6 +26,7 @@
         "test:watch": "vitest"
     },
     "dependencies": {
+        "@fresherflow/constants": "*",
         "@fresherflow/domain": "*",
         "@fresherflow/types": "*",
         "@types/turndown": "^5.0.4",

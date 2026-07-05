@@ -22,6 +22,7 @@
 import { OpportunityType, WorkMode, SalaryPeriod } from '@fresherflow/types';
 import type { ParsedJob } from './types.js';
 import { MONTH_INDEX } from './heuristics.js';
+import { cleanAndResolveLocations } from './location-matcher.js';
 
 // ── Supported template sources ─────────────────────────────────────────────
 // All 22 aggregator sites discovered by the job-discovery bot.
@@ -506,7 +507,8 @@ export function parseFromTemplate(
         }
     }
 
-    const locations = rawLocation ? parseLocationsFromString(rawLocation) : [];
+    const rawLocs = rawLocation ? parseLocationsFromString(rawLocation) : [];
+    const { locations, structuredLocations } = cleanAndResolveLocations(rawLocs);
     const workMode = rawWorkType ? parseWorkMode(rawWorkType) : WorkMode.ONSITE;
     const skills = extractSkills(rawSkills, cleanedText);
     const allowedPassoutYears = extractYearsFromTags(postedIn);
@@ -522,6 +524,7 @@ export function parseFromTemplate(
         title,
         ...(company ? { company } : {}),
         locations,
+        structuredLocations,
         workMode,
         allowedDegrees,
         allowedCourses,

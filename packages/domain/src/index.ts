@@ -85,6 +85,7 @@ export {
 export {
     normalizeSalaryInput,
     generateOpportunitySlug,
+    getStateForCity,
 } from './opportunity/normalization.js';
 
 export {

@@ -6,6 +6,7 @@ import {
     ALL_SPECIALIZATION_OPTIONS,
     CANONICAL_SKILLS,
     normalizeSkillName,
+    INDIAN_CITIES,
 } from '@fresherflow/constants';
 
 export {
@@ -13,20 +14,12 @@ export {
     ALL_SPECIALIZATION_OPTIONS,
     CANONICAL_SKILLS,
     normalizeSkillName,
+    INDIAN_CITIES,
 };
 
 export const EDUCATION_LEVELS = ['TENTH', 'INTER', 'DIPLOMA', 'DEGREE', 'PG'];
 export const OPPORTUNITY_TYPES = ['JOB', 'INTERNSHIP', 'WALKIN'];
 export const WORK_MODES = ['ONSITE', 'HYBRID', 'REMOTE'];
-
-export const INDIAN_CITIES = [
-    'Bangalore', 'Mumbai', 'Delhi', 'Pune', 'Hyderabad', 'Chennai',
-    'Kolkata', 'Ahmedabad', 'Gurugram', 'Noida', 'Chandigarh',
-    'Jaipur', 'Kochi', 'Coimbatore', 'Indore', 'Bhopal', 'Lucknow',
-    'Visakhapatnam', 'Nagpur', 'Surat', 'Vadodara', 'Mysore',
-    'Mangalore', 'Goa', 'Thiruvananthapuram', 'Bhubaneswar',
-    'Guwahati', 'Patna', 'Raipur', 'Dehradun'
-];
 
 const DATA_DRIVEN_PROFILE_SKILLS = [
     'python', 'java', 'sql', 'git', 'react', 'node.js', 'typescript',

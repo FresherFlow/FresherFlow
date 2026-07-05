@@ -747,11 +747,19 @@ export interface AdminOpportunityFilters {
     status?: OpportunityStatus;
 }
 
+export interface StructuredLocation {
+    name: string;
+    state?: string;
+    country?: string;
+    type: 'city' | 'state' | 'country' | 'remote';
+}
+
 /** Shared output types for raw job extraction. */
 export interface ParsedJob {
     company?: string;
     title?: string;
     locations: string[];
+    structuredLocations?: StructuredLocation[];
     skills: string[];
     type: OpportunityType;
     allowedPassoutYears: number[];

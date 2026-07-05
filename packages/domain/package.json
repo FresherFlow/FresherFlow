@@ -26,7 +26,8 @@
         "@fresherflow/constants": "*",
         "@fresherflow/logger": "*",
         "@fresherflow/database": "*",
-        "@fresherflow/utils": "*"
+        "@fresherflow/utils": "*",
+        "country-state-city": "^3.2.1"
     },
     "devDependencies": {
         "typescript": "^5.7.3",

@@ -32,6 +32,13 @@ export const applicationDetailsSchema = z.object({
     requiredItems: z.array(z.string()).optional().default([])
 }).optional().nullable().default({ method: 'DIRECT' });
 
+export const structuredLocationSchema = z.object({
+    name: z.string(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    type: z.enum(['city', 'state', 'country', 'remote'])
+});
+
 export const jobSchema = z.object({
     type: z.enum(['JOB', 'INTERNSHIP', 'WALKIN', 'REMOTE', 'GOVERNMENT', 'HACKATHONS']).catch('JOB'),
     title: z.string().min(1),
@@ -45,6 +52,7 @@ export const jobSchema = z.object({
     allowedPassoutYears: z.array(z.number().int()).default([]),
     requiredSkills: z.array(z.string()).default([]),
     locations: z.array(z.string()).default([]),
+    structuredLocations: z.array(structuredLocationSchema).optional().default([]),
     workMode: z.enum(['ONSITE', 'HYBRID', 'REMOTE']).optional().nullable(),
     experienceMin: z.number().optional().nullable().default(0),
     experienceMax: z.number().optional().nullable().default(0),
@@ -83,6 +91,9 @@ export interface DiscoveredJob {
     applyLink: string;
     source: string;
     discoveredAt: string;
+    company?: string;
+    location?: string;
+    sourceType?: string;
     reviewRequired?: boolean;
     aggregatorUrl?: string;
     aggregatorTitle?: string;

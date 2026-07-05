@@ -33,6 +33,8 @@ export { normalizeSalary, normalizeExpiry } from './normalize.js';
 export { UrlParser } from './url-parser.js';
 export type { JobSourceType, UrlParseResult } from './url-parser.js';
 
+export { cleanAndResolveLocations } from './location-matcher.js';
+
 export { parseFromTemplate, isTemplateSource, cleanAggregatorTitle, setCdnMetadata } from './template-parser.js';
 export type { TemplateParseResult } from './template-parser.js';
 
@@ -47,6 +49,7 @@ import {
     extractIncentives, extractJobFunction, extractWalkInDetails,
 } from './extract.js';
 import { normalizeSalary, normalizeExpiry } from './normalize.js';
+import { cleanAndResolveLocations } from './location-matcher.js';
 
 /**
  * Parse raw job text and return all structured fields.
@@ -57,7 +60,8 @@ export function parseJobText(text: string): ParsedJob {
     const textLower = text.toLowerCase();
 
     const type = extractType(textLower);
-    const locations = extractLocations(text);
+    const rawLocations = extractLocations(text);
+    const { locations, structuredLocations } = cleanAndResolveLocations(rawLocations);
     const skills = extractSkills(text, locations);
     const salary = normalizeSalary(text);
     const experience = extractExperience(text);
@@ -69,6 +73,7 @@ export function parseJobText(text: string): ParsedJob {
         company: extractCompany(text),
         type,
         locations,
+        structuredLocations,
         skills,
         allowedPassoutYears: extractPassoutYears(text),
         allowedDegrees: extractDegrees(text),

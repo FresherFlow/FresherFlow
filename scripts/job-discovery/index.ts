@@ -12,6 +12,8 @@ import { loadVisited, saveVisited } from './src/utils/storage.js';
 import { isFresherJob, isSeniorJob, hasFresherKeyword, isActualJob } from './src/filters/text-filters.js';
 import { findActualApplyLink } from './src/core/extractor.js';
 import { isJobLive } from './src/core/verifier.js';
+import { runAtsDiscovery, AtsRegistry } from './src/ats/index.js';
+import { ATS_BOARDS_URL } from './src/config.js';
 
 await loadEnv();
 
@@ -20,6 +22,7 @@ await loadEnv();
 interface Candidate {
     applyLink: string;
     source: string;
+    sourceType: 'ATS' | 'AGGREGATOR';
     aggregatorUrl: string;
     aggregatorTitle: string;
     aggregatorText: string;
@@ -30,6 +33,7 @@ interface DiscoveredJobEntry {
     title: string;
     applyLink: string;
     source: string;
+    sourceType: 'ATS' | 'AGGREGATOR';
     discoveredAt: string;
     reviewRequired?: boolean;
     aggregatorUrl?: string;
@@ -77,7 +81,50 @@ async function run() {
 
     const browser = await chromium.launch({ headless: true });
 
+    let atsJobsFoundCount = 0;
     try {
+        // ── Phase 0: ATS Direct API Scraping ─────────────────────────────────────────
+        console.log(`\n=== Phase 0: Scraping ATS APIs ===\n`);
+        let atsRegistry: AtsRegistry = {};
+        try {
+            console.log(`Fetching ATS Boards from ${ATS_BOARDS_URL}...`);
+            const atsRes = await fetch(ATS_BOARDS_URL);
+            if (atsRes.ok) {
+                atsRegistry = await atsRes.json() as AtsRegistry;
+            } else {
+                throw new Error(atsRes.statusText);
+            }
+        } catch (err) {
+            console.warn(`Could not fetch ATS registry: ${(err as Error).message}. Falling back to local docs/ats_boards.json...`);
+            try {
+                const localJson = await fs.readFile(path.join(process.cwd(), '../../docs/ats_boards.json'), 'utf8');
+                atsRegistry = JSON.parse(localJson) as AtsRegistry;
+            } catch (localErr) {
+                console.error("Also failed to load local ats_boards.json");
+            }
+        }
+
+        const atsJobs = await runAtsDiscovery(atsRegistry);
+        const now = new Date().toISOString();
+        
+        for (const job of atsJobs) {
+            const normalizedLink = normalizeUrl(job.applyLink);
+            if (!knownLinks.has(normalizedLink) && !visited["__discovered_apply_links__"].includes(normalizedLink)) {
+                newJobsFound.push({
+                    title: job.title,
+                    applyLink: job.applyLink,
+                    source: job.source,
+                    sourceType: 'ATS',
+                    discoveredAt: now,
+                    reviewRequired: false
+                });
+                visited["__discovered_apply_links__"].push(normalizedLink);
+                knownLinks.add(normalizedLink);
+                atsJobsFoundCount++;
+            }
+        }
+        console.log(`\n-> Added ${atsJobsFoundCount} NEW unknown ATS jobs to processing queue.\n`);
+
         // ── Phase 1: Scraper Workers ──────────────────────────────────────────
         // Visits aggregator sites, extracts candidate links + aggregator text,
         // runs quick aggregator-level filters, and pushes to candidateQueue.
@@ -218,6 +265,7 @@ async function run() {
                         candidateQueue.push({
                             applyLink: cleanApplyLink,
                             source: site.name,
+                            sourceType: 'AGGREGATOR',
                             aggregatorUrl: jobLink,
                             aggregatorTitle: aggregatorTitle.trim(),
                             aggregatorText: bodyText,
@@ -284,6 +332,7 @@ async function run() {
                             title: jobTitle,
                             applyLink: actualApplyLink,
                             source: candidate.source,
+                            sourceType: candidate.sourceType,
                             discoveredAt: new Date().toISOString(),
                             reviewRequired: checkResult.status === 'review' || candidate.isAggregatorReview,
                             aggregatorUrl: candidate.aggregatorUrl,
@@ -328,9 +377,13 @@ async function run() {
 
         let msg = "";
         if (validJobs.length > 0) {
-            msg += `🔥 <b>Job Discovery Bot Found ${validJobs.length} New Fresher Jobs!</b> 🔥\n\n`;
+            const atsCount = validJobs.filter(j => j.sourceType === 'ATS').length;
+            const aggCount = validJobs.filter(j => j.sourceType === 'AGGREGATOR').length;
+            msg += `🔥 <b>Job Discovery Bot Found ${validJobs.length} New Fresher Jobs!</b> 🔥\n`;
+            msg += `<i>(${atsCount} ATS Direct, ${aggCount} Aggregator)</i>\n\n`;
             for (const job of validJobs.slice(0, 15)) {
-                msg += `- <b>${job.title}</b> (via ${job.source})\n  Link: ${job.applyLink}\n\n`;
+                const badge = job.sourceType === 'ATS' ? '🏢' : '🌐';
+                msg += `- ${badge} <b>${job.title}</b> (via ${job.source})\n  Link: ${job.applyLink}\n\n`;
             }
             if (validJobs.length > 15) msg += `...and ${validJobs.length - 15} more!\n\n`;
         }
@@ -361,9 +414,12 @@ async function run() {
     const validJobs = newJobsFound.filter(j => !j.reviewRequired);
     const reviewJobs = newJobsFound.filter(j => j.reviewRequired);
 
+    // Only save ATS jobs to draft (discovered_jobs.json) as per user request
+    const draftJobs = validJobs.filter(j => j.sourceType === 'ATS');
+
     const outputPath = path.join(process.cwd(), 'discovered_jobs.json');
-    await fs.writeFile(outputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: validJobs }, null, 2), 'utf8');
-    console.log(`Saved ${validJobs.length} high-confidence jobs to ${outputPath}`);
+    await fs.writeFile(outputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: draftJobs }, null, 2), 'utf8');
+    console.log(`Saved ${draftJobs.length} ATS jobs to ${outputPath} for drafting`);
 
     const reviewOutputPath = path.join(process.cwd(), 'review_jobs.json');
     await fs.writeFile(reviewOutputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: reviewJobs }, null, 2), 'utf8');
@@ -374,11 +430,17 @@ async function run() {
     if (process.env.GITHUB_STEP_SUMMARY) {
         let summary = `## Job Discovery Bot Results\n\n`;
         summary += `Discovered **${newJobsFound.length}** new jobs and saved them to \`discovered_jobs.json\`.\n\n`;
+        
+        const atsCount = newJobsFound.filter(j => j.sourceType === 'ATS').length;
+        const aggCount = newJobsFound.filter(j => j.sourceType === 'AGGREGATOR').length;
+        summary += `- **ATS Jobs**: ${atsCount}\n- **Aggregator Jobs**: ${aggCount}\n\n`;
+        
         if (newJobsFound.length > 0) {
             summary += `### Discovered Jobs\n`;
             newJobsFound.forEach(j => {
                 const reviewMark = j.reviewRequired ? ' (⚠️ Review)' : '';
-                summary += `- **${j.title}** (via ${j.source})${reviewMark}: ${j.applyLink}\n`;
+                const typeMark = j.sourceType === 'ATS' ? '🏢' : '🌐';
+                summary += `- ${typeMark} **${j.title}** (via ${j.source})${reviewMark}: ${j.applyLink}\n`;
             });
         } else {
             summary += `No new fresher jobs were found during this run.`;

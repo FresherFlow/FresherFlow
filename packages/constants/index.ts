@@ -4,3 +4,4 @@ export * from './skillTaxonomy';
 export * from './reputation';
 export * from './taxonomy';
 export * from './govtTaxonomy';
+export * from './locationTaxonomy';
