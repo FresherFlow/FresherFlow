@@ -1,5 +1,6 @@
 import { MapPinIcon } from '@heroicons/react/24/outline';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
+import { INDIAN_CITIES } from '@fresherflow/constants';
 
 interface LogisticsSectionProps {
     type: 'JOB' | 'INTERNSHIP' | 'WALKIN' | 'GOVERNMENT';
@@ -30,7 +31,7 @@ export function LogisticsSection({
                 placeholder="Mumbai, Bangalore, Remote"
                 helpText={
                     <div className="flex flex-wrap gap-1.5 pt-1.5">
-                        {['Pan India', 'Bangalore', 'Mumbai', 'Delhi', 'Hyderabad', 'Remote'].map(loc => (
+                        {['Pan India', ...INDIAN_CITIES.slice(0, 5), 'Remote'].map(loc => (
                             <button
                                 key={loc}
                                 type="button"

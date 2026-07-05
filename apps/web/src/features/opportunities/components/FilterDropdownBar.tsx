@@ -8,8 +8,10 @@ import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 
-const CORP_LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Remote'];
-const GOVT_LOCATIONS = ['All India', 'Delhi', 'Telangana', 'Maharashtra', 'Uttar Pradesh', 'Karnataka'];
+import { INDIAN_CITIES, INDIAN_STATES } from '@fresherflow/constants';
+
+const CORP_LOCATIONS = [...INDIAN_CITIES.slice(0, 5), 'Remote'];
+const GOVT_LOCATIONS = ['All India', ...INDIAN_STATES.slice(0, 5)];
 
 export interface FilterBarFilters {
     location: string | null;

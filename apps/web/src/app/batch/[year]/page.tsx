@@ -71,7 +71,7 @@ export default async function BatchPage({ params }: Props) {
         notFound();
     }
 
-    const feed = await fetchBootstrapFeed(false, undefined, true);
+    const feed = await fetchBootstrapFeed(false, [`batch-${year}`]);
     const opportunities = feed?.opportunities || [];
     const filtered = opportunities.filter(opp => 
         opp.allowedPassoutYears && 

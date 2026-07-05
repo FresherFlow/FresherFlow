@@ -1,4 +1,5 @@
 import type { Opportunity } from '@fresherflow/types';
+import { getStateForCity, isStateName } from '@fresherflow/domain';
 
 const HIDDEN_SALARY_PATTERNS = [
     /not\s*disclosed/i,
@@ -18,82 +19,6 @@ const REMOTE_ALIASES = new Set([
     'anywhere',
 ]);
 
-export const STATE_ALIASES = new Set([
-    'andhra pradesh',
-    'arunachal pradesh',
-    'assam',
-    'bihar',
-    'chhattisgarh',
-    'goa',
-    'gujarat',
-    'haryana',
-    'himachal pradesh',
-    'jharkhand',
-    'karnataka',
-    'kerala',
-    'madhya pradesh',
-    'maharashtra',
-    'manipur',
-    'meghalaya',
-    'mizoram',
-    'nagaland',
-    'odisha',
-    'punjab',
-    'rajasthan',
-    'sikkim',
-    'tamil nadu',
-    'telangana',
-    'tripura',
-    'uttar pradesh',
-    'uttarakhand',
-    'west bengal',
-    'andaman and nicobar islands',
-    'chandigarh',
-    'dadra and nagar haveli and daman and diu',
-    'delhi',
-    'jammu and kashmir',
-    'ladakh',
-    'lakshadweep',
-    'puducherry',
-]);
-
-export const CITY_TO_STATE: Record<string, string> = {
-    ahmedabad: 'Gujarat',
-    bengaluru: 'Karnataka',
-    bangalore: 'Karnataka',
-    bhopal: 'Madhya Pradesh',
-    bhubaneswar: 'Odisha',
-    chandigarh: 'Chandigarh',
-    chennai: 'Tamil Nadu',
-    coimbatore: 'Tamil Nadu',
-    delhi: 'Delhi',
-    faridabad: 'Haryana',
-    gandhinagar: 'Gujarat',
-    ghaziabad: 'Uttar Pradesh',
-    gurgaon: 'Haryana',
-    gurugram: 'Haryana',
-    guwahati: 'Assam',
-    hyderabad: 'Telangana',
-    indore: 'Madhya Pradesh',
-    jaipur: 'Rajasthan',
-    kanpur: 'Uttar Pradesh',
-    kochi: 'Kerala',
-    kolkata: 'West Bengal',
-    lucknow: 'Uttar Pradesh',
-    mumbai: 'Maharashtra',
-    mysuru: 'Karnataka',
-    nagpur: 'Maharashtra',
-    noida: 'Uttar Pradesh',
-    patna: 'Bihar',
-    pune: 'Maharashtra',
-    ranchi: 'Jharkhand',
-    surat: 'Gujarat',
-    thane: 'Maharashtra',
-    trivandrum: 'Kerala',
-    thiruvananthapuram: 'Kerala',
-    vadodara: 'Gujarat',
-    visakhapatnam: 'Andhra Pradesh',
-};
 
 type SalaryPrimitive = string | number | null | undefined;
 
@@ -315,12 +240,12 @@ export const parseOpportunityLocation = (locations?: string[] | null): ParsedOpp
             return;
         }
 
-        if (STATE_ALIASES.has(normalized)) {
+        if (isStateName(normalized)) {
             state = toTitleCase(token);
             return;
         }
 
-        const mappedState = CITY_TO_STATE[normalized];
+        const mappedState = getStateForCity(normalized);
         if (mappedState) {
             cities.push(toTitleCase(token));
             if (!state) state = mappedState;
@@ -387,7 +312,7 @@ export function getGroupedLocations(locations?: string[] | null): string[] {
 
     rawTokens.forEach(token => {
         const lower = token.toLowerCase();
-        if (STATE_ALIASES.has(lower)) {
+        if (isStateName(lower)) {
             states.add(toTitleCaseLocal(token));
         } else {
             cities.add(toTitleCaseLocal(token));
@@ -399,7 +324,7 @@ export function getGroupedLocations(locations?: string[] | null): string[] {
     if (uniqueCities.length === 1) {
         const city = uniqueCities[0];
         const lowerCity = city.toLowerCase();
-        const state = Array.from(states)[0] || CITY_TO_STATE[lowerCity];
+        const state = Array.from(states)[0] || getStateForCity(lowerCity);
         if (state) {
             return [`${city}, ${toTitleCaseLocal(state)}`];
         }

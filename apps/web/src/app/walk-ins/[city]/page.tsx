@@ -88,7 +88,7 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
     
     // Validate city against feed to prevent cache poisoning by bots
     const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-    const feed = await fetchBootstrapFeed(false, undefined, true);
+    const feed = await fetchBootstrapFeed(false, ['hub-walkins', `location-${city}`]);
     const hasCity = feed?.opportunities?.some(opp => 
         opp.type === 'WALKIN' && 
         opp.locations?.some(loc => loc.trim().toLowerCase().replace(/\s+/g, '-') === city)

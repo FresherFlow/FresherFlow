@@ -5,8 +5,10 @@ import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
 import { cn } from '@repo/ui/utils/cn';
 
-const CORP_LOCATIONS = ['Bangalore', 'Mumbai', 'Delhi NCR', 'Hyderabad', 'Pune', 'Remote'];
-const GOVT_LOCATIONS = ['All India', 'Delhi', 'Telangana', 'Maharashtra', 'Uttar Pradesh', 'Karnataka'];
+import { INDIAN_CITIES, INDIAN_STATES } from '@fresherflow/constants';
+
+const CORP_LOCATIONS = [...INDIAN_CITIES.slice(0, 5), 'Remote'];
+const GOVT_LOCATIONS = ['All India', ...INDIAN_STATES.slice(0, 5)];
 
 const TYPE_OPTIONS = [
     { label: 'All', value: '' },
