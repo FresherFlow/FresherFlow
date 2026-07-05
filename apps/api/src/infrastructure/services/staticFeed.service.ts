@@ -3,6 +3,7 @@ import path from 'path';
 import prisma from '../database/prisma';
 import { Prisma } from '@prisma/client';
 import { OpportunityStatus } from '@fresherflow/types';
+import { INDIAN_CITIES } from '@fresherflow/constants';
 import { logger } from '@fresherflow/logger';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 
@@ -851,7 +852,7 @@ export class StaticFeedService {
 
                 // Guarantee pre-defined items are covered
                 ['software-engineer', 'data-analyst', 'business-analyst', 'frontend-developer', 'test-engineer'].forEach(r => rolesSet.add(r));
-                ['bangalore', 'hyderabad', 'pune', 'chennai', 'mumbai', 'delhi-ncr', 'remote'].forEach(l => locationsSet.add(l));
+                ['remote', 'delhi-ncr', ...INDIAN_CITIES.map(c => this.slugify(c))].forEach(l => locationsSet.add(l));
                 ['java', 'python', 'react', 'javascript', 'sql', 'aws', 'testing', 'node-js', 'c-plus-plus', 'data-structures', 'html-css'].forEach(s => skillsSet.add(s));
 
                 // 1. sitemap-jobs.xml

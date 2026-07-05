@@ -5,6 +5,29 @@ import { invalidatePublicOpportunityCache } from './publicOpportunityCache.servi
 import { logger } from '@fresherflow/logger';
 import { MetadataService } from './metadata.service';
 import { generateAndUploadOgImage } from './ogImage.service';
+import { slugify } from '@fresherflow/utils';
+
+export function getGranularTagsForOpportunity(opportunity: Partial<Opportunity>): string[] {
+  const tags: string[] = ['homepage-feed'];
+  if (opportunity.company) tags.push(`company-${slugify(opportunity.company)}`);
+  if (opportunity.type === 'JOB') tags.push('hub-jobs');
+  if (opportunity.type === 'INTERNSHIP') tags.push('hub-internships');
+  if (opportunity.type === 'WALKIN') tags.push('hub-walkins');
+  if (opportunity.type === 'GOVERNMENT') tags.push('hub-government');
+
+  if (Array.isArray(opportunity.locations)) {
+    opportunity.locations.forEach(loc => tags.push(`location-${slugify(loc)}`));
+  }
+  if (Array.isArray(opportunity.requiredSkills)) {
+    opportunity.requiredSkills.forEach(skill => tags.push(`skill-${slugify(skill)}`));
+  }
+  if (Array.isArray(opportunity.allowedPassoutYears)) {
+    opportunity.allowedPassoutYears.forEach(year => tags.push(`batch-${year}`));
+  }
+  const role = opportunity.normalizedRole || opportunity.title;
+  if (role) tags.push(`role-${slugify(role)}`);
+  return tags;
+}
 
 /**
  * Service to handle all business side-effects when an opportunity is published.
@@ -77,10 +100,13 @@ export async function handleOpportunityPublished(
     invalidationIds.push(oldSlug);
   }
 
+  const tags = getGranularTagsForOpportunity(opportunity);
+
   invalidatePublicOpportunityCache({
     idsOrSlugs: invalidationIds,
     purgeFeed: true,
     type: opportunity.type as string,
+    tags,
   }).catch((err) => {
     logger.error('[publish] Cache invalidation failed', { 
       opportunityId: opportunity.id, 

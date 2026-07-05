@@ -70,7 +70,29 @@ router.post(
                 skippedCount: Math.max(0, ids.length - result.count),
             });
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: ids, purgeFeed: true });
+            const oppsForTags = await prisma.opportunity.findMany({
+                where: { id: { in: ids } },
+                select: { id: true, slug: true, company: true, type: true, locations: true, requiredSkills: true, title: true, allowedPassoutYears: true }
+            });
+            const { slugify } = await import('@fresherflow/utils');
+            const tags = new Set<string>(['homepage-feed']);
+            const slugs: string[] = [];
+            for (const opp of oppsForTags) {
+                slugs.push(opp.slug);
+                slugs.push(opp.id);
+                if (opp.company) tags.add(`company-${slugify(opp.company)}`);
+                if (opp.type === 'JOB') tags.add('hub-jobs');
+                if (opp.type === 'INTERNSHIP') tags.add('hub-internships');
+                if (opp.type === 'WALKIN') tags.add('hub-walkins');
+                if (opp.type === 'GOVERNMENT') tags.add('hub-government');
+                if (Array.isArray(opp.locations)) opp.locations.forEach(loc => tags.add(`location-${slugify(loc)}`));
+                if (Array.isArray(opp.requiredSkills)) opp.requiredSkills.forEach(skill => tags.add(`skill-${slugify(skill)}`));
+                if (Array.isArray(opp.allowedPassoutYears)) opp.allowedPassoutYears.forEach(year => tags.add(`batch-${year}`));
+                const role = opp.title;
+                if (role) tags.add(`role-${slugify(role)}`);
+            }
+
+            void invalidatePublicOpportunityCache({ idsOrSlugs: slugs, purgeFeed: true, tags: Array.from(tags) });
             if (action === 'PUBLISH' && idsNeedingAlerts.length > 0) {
                 idsNeedingAlerts.forEach(id => queueNewJobAlerts(id));
             }

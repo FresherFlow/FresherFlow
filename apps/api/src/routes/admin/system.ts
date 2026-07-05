@@ -8,6 +8,7 @@ import { runAlertsCycle } from '../../infrastructure/services/alerts.service';
 import { getAdminMetricsV2, MetricsWindow } from '../../infrastructure/services/adminMetrics.service';
 import { getAdminDeliveryControls, updateAdminDeliveryControls } from '../../infrastructure/services/adminDeliveryControl.service';
 import { StaticFeedService } from '../../infrastructure/services/staticFeed.service';
+import { redis } from '@fresherflow/redis';
 
 const router = Router();
 
@@ -114,17 +115,27 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
         const targetStr = typeof target === 'string' ? target : 'all';
         await StaticFeedService.refresh(targetStr);
 
-        // Bust Next.js feed caches via tags only (stale-while-revalidate, zero ISR writes).
-        // DO NOT add paths here — see ⚠️ ISR WRITE SAFETY note at the top of this file.
+        // Bust Next.js feed caches via granular tags
         const secret = process.env.REVALIDATE_SECRET_TOKEN;
         const webUrl = process.env.PUBLIC_WEB_URL;
         if (secret && webUrl) {
             try {
-                await fetch(`${webUrl}/api/revalidate`, {
+                const pendingTags = await redis.smembers('pending_cache_tags');
+                const pendingPaths = await redis.smembers('pending_cache_paths');
+                
+                // ALWAYS bust feed-version so the frontend fetches the new R2 version URLs
+                const tagsToBust = Array.from(new Set([...pendingTags, 'feed-version', 'homepage-feed', 'government-feed', 'expired-feed', 'companies-metadata']));
+                
+                const response = await fetch(`${webUrl}/api/revalidate`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
+                    body: JSON.stringify({ secret, tags: tagsToBust, paths: pendingPaths }),
                 });
+
+                if (response.ok) {
+                    if (pendingTags.length > 0) await redis.del('pending_cache_tags');
+                    if (pendingPaths.length > 0) await redis.del('pending_cache_paths');
+                }
             } catch {
                 // Non-fatal — feed is already updated in R2, tag bust is best-effort
             }
@@ -149,12 +160,20 @@ router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response,
             return res.status(500).json({ success: false, message: 'REVALIDATE_SECRET_TOKEN or PUBLIC_WEB_URL not configured' });
         }
 
-        // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
+        const pendingTags = await redis.smembers('pending_cache_tags');
+        const pendingPaths = await redis.smembers('pending_cache_paths');
+        const tagsToBust = Array.from(new Set([...pendingTags, 'feed-version', 'homepage-feed', 'government-feed', 'expired-feed', 'companies-metadata']));
+
         const response = await fetch(`${webUrl}/api/revalidate`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
+            body: JSON.stringify({ secret, tags: tagsToBust, paths: pendingPaths }),
         });
+
+        if (response.ok) {
+            if (pendingTags.length > 0) await redis.del('pending_cache_tags');
+            if (pendingPaths.length > 0) await redis.del('pending_cache_paths');
+        }
 
         if (!response.ok) {
             throw new Error(`Web server responded with ${response.status}`);

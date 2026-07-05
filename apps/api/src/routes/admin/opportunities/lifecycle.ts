@@ -1,10 +1,11 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import prisma from '../../../infrastructure/database/prisma';
-import { OpportunityStatus } from '@fresherflow/types';
+import { OpportunityStatus, Opportunity } from '@fresherflow/types';
 import { adminRateLimit } from '../../../middleware/adminRateLimit';
 import { withAdminAudit, validateReason } from '../../../middleware/adminAudit';
 import { AppError } from '../../../middleware/errorHandler';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
+import { getGranularTagsForOpportunity } from '../../../infrastructure/services/publish.service';
 import { publishOpportunity } from '../../../application/opportunity/publish';
 import { rejectOpportunity } from '../../../application/opportunity/moderation';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
@@ -42,7 +43,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
             // void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
@@ -81,7 +82,8 @@ router.post(
             void invalidatePublicOpportunityCache({
                 idsOrSlugs: [existing.id as string, existing.slug as string, opportunity.id as string, opportunity.slug as string],
                 purgeFeed: true,
-                type: existing.type as string,
+                type: opportunity.type as string,
+                tags: getGranularTagsForOpportunity(opportunity as unknown as Partial<Opportunity>)
             });
             // void StaticFeedService.scheduleRefresh();
         } catch (error) {
@@ -125,7 +127,7 @@ router.delete(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
             // void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
@@ -163,7 +165,7 @@ router.delete(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
         } catch (error) {
             next(error);
         }
@@ -235,7 +237,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
             // void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);
@@ -273,7 +275,7 @@ router.post(
             if (existing.slug) adminCache.invalidate(existing.slug as string);
             adminCache.invalidateLists();
 
-            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string });
+            void invalidatePublicOpportunityCache({ idsOrSlugs: [existing.id as string, existing.slug as string], purgeFeed: true, type: existing.type as string, tags: getGranularTagsForOpportunity(existing as unknown as Partial<Opportunity>) });
             // void StaticFeedService.scheduleRefresh();
         } catch (error) {
             next(error);

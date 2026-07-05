@@ -110,9 +110,7 @@ export async function POST(request: NextRequest) {
         }
 
         // --- Tag invalidation ---
-        // feed-version is ALWAYS busted so fetchFeedVersion() returns fresh data,
-        // which causes all signed CDN URLs to change (cache-busts the actual feed content).
-        const tagsToBust = new Set<string>(['feed-version']);
+        const tagsToBust = new Set<string>();
 
         if (Array.isArray(body.tags) && body.tags.length > 0) {
             // Caller provided explicit tags (e.g. from regenerate-feeds → system.ts).

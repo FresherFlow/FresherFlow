@@ -25,8 +25,10 @@ export async function invalidatePublicOpportunityCache(options?: {
     idsOrSlugs?: string[];
     purgeFeed?: boolean;
     type?: string; // 'JOB' | 'INTERNSHIP' | 'WALKIN' — narrows ISR path to revalidate
+    tags?: string[];
 }) {
     const idsOrSlugs = Array.from(new Set((options?.idsOrSlugs || []).filter(Boolean)));
+    const tags = Array.from(new Set((options?.tags || []).filter(Boolean)));
     const purgeFeed = options?.purgeFeed !== false;
 
     try {
@@ -34,41 +36,34 @@ export async function invalidatePublicOpportunityCache(options?: {
             await deleteByPattern('opportunities|v4|*');
         }
 
+        const pathsToRevalidate: string[] = [];
+
         if (idsOrSlugs.length > 0) {
             for (const value of idsOrSlugs) {
                 await deleteByPattern(`opportunity_detail|v3|*|id:${value}`);
             }
 
-            // Revalidate only the canonical path for this opportunity type.
-            // Previously 5 paths were fired per slug regardless of type — that caused
-            // ~5x unnecessary ISR writes on every publish/expire/delete action.
-            // Use slug (canonical) if available; the UUID fallback is still included
-            // since redirect logic in the page handles UUID → slug.
             const uuid = idsOrSlugs.find(v => !!v.match(/^[0-9a-f-]{36}$/i));
             const slug = idsOrSlugs.find(v => !v.match(/^[0-9a-f-]{36}$/i)) ?? idsOrSlugs[0];
-            const pathsToRevalidate = [getCanonicalPath(slug)];
+            pathsToRevalidate.push(getCanonicalPath(slug));
             
             if (uuid) {
                 pathsToRevalidate.push(`/government-jobs/${uuid}`);
             }
-
-            const secret = process.env.REVALIDATE_SECRET_TOKEN;
-            const webUrl = process.env.PUBLIC_WEB_URL || 'https://fresherflow.in';
-            if (secret && webUrl) {
-                try {
-                    await fetch(`${webUrl}/api/revalidate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ secret, paths: pathsToRevalidate })
-                    });
-                } catch (e) {
-                    logger.warn('[Revalidate] Failed to ping Vercel for on-demand revalidation', { error: e instanceof Error ? e.message : String(e) });
-                }
-            }
         }
-        logger.debug('Invalidated public opportunity cache', { idsOrSlugs, purgeFeed });
+
+        // Queue paths and tags in Redis to be processed during "Generate JSON"
+        // This ensures the CDN is actually updated before we tell Next.js to fetch from it
+        if (pathsToRevalidate.length > 0) {
+            await redis.sadd('pending_cache_paths', ...pathsToRevalidate);
+        }
+        if (tags.length > 0) {
+            await redis.sadd('pending_cache_tags', ...tags);
+        }
+
+        logger.debug('Queued public opportunity cache invalidations', { paths: pathsToRevalidate, tags, purgeFeed });
     } catch (error: unknown) {
-        logger.error('[Redis] Failed to invalidate public opportunity cache', { error: error instanceof Error ? error.message : String(error) });
+        logger.error('[Redis] Failed to queue public opportunity cache invalidations', { error: error instanceof Error ? error.message : String(error) });
     }
 }
 

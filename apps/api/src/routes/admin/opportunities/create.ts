@@ -385,14 +385,14 @@ router.put(
                 await handleOpportunityPublished(opportunity as unknown as Opportunity, { isNew: true });
                 responseMessage = 'Opportunity published successfully.';
             } else if (opportunity.status === OpportunityStatus.PUBLISHED) {
-                // Already published — just bust the slug cache + regenerate feed.
-                // Do NOT re-fire Telegram/alerts/OG image on every admin edit.
+                const { getGranularTagsForOpportunity } = await import('../../../infrastructure/services/publish.service');
                 void invalidatePublicOpportunityCache({
                     idsOrSlugs: [opportunity.id as string, opportunity.slug as string, ...(existing.slug !== opportunity.slug ? [existing.slug as string] : [])],
                     purgeFeed: true,
                     type: opportunity.type as string,
+                    tags: getGranularTagsForOpportunity(opportunity as unknown as Partial<Opportunity>),
                 });
-                StaticFeedService.scheduleRefresh();
+                // StaticFeedService.scheduleRefresh(); // Commented out — use Generate JSON button instead
             }
 
             // Invalidate specific detail and all lists

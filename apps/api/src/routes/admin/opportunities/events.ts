@@ -4,8 +4,10 @@ import { adminRateLimit } from '../../../middleware/adminRateLimit';
 import { withAdminAudit } from '../../../middleware/adminAudit';
 import { AppError } from '../../../middleware/errorHandler';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
+import { getGranularTagsForOpportunity } from '../../../infrastructure/services/publish.service';
 import { parseEventType } from './_helpers';
 import { Prisma } from '@fresherflow/database';
+import { Opportunity } from '@fresherflow/types';
 
 const router = Router({ mergeParams: true });
 
@@ -14,7 +16,7 @@ async function resolveOpportunity(idParam: string) {
     if (!idParam) throw new AppError('Opportunity ID is required', 400);
     const opp = await prisma.opportunity.findFirst({
         where: { OR: [{ id: idParam }, { slug: idParam }] },
-        select: { id: true, slug: true, type: true },
+        select: { id: true, slug: true, type: true, company: true, locations: true, requiredSkills: true, title: true, allowedPassoutYears: true },
     });
     if (!opp) throw new AppError('Opportunity not found', 404);
     return opp;
@@ -58,7 +60,7 @@ router.post('/', adminRateLimit, withAdminAudit('UPDATE'), async (req: Request, 
         });
 
         res.status(201).json({ event });
-        void invalidatePublicOpportunityCache({ idsOrSlugs: [opp.id, opp.slug], purgeFeed: false, type: opp.type as string });
+        void invalidatePublicOpportunityCache({ idsOrSlugs: [opp.id, opp.slug], purgeFeed: false, type: opp.type as string, tags: getGranularTagsForOpportunity(opp as unknown as Partial<Opportunity>) });
     } catch (error) {
         next(error);
     }
@@ -96,7 +98,7 @@ router.patch('/:eventId', adminRateLimit, withAdminAudit('UPDATE'), async (req: 
 
         const event = await prisma.opportunityEvent.update({ where: { id: eventId }, data });
         res.json({ event });
-        void invalidatePublicOpportunityCache({ idsOrSlugs: [opp.id, opp.slug], purgeFeed: false, type: opp.type as string });
+        void invalidatePublicOpportunityCache({ idsOrSlugs: [opp.id, opp.slug], purgeFeed: false, type: opp.type as string, tags: getGranularTagsForOpportunity(opp as unknown as Partial<Opportunity>) });
     } catch (error) {
         next(error);
     }
@@ -113,7 +115,7 @@ router.delete('/:eventId', adminRateLimit, withAdminAudit('UPDATE'), async (req:
 
         await prisma.opportunityEvent.deleteMany({ where: { id: eventId, opportunityId: opp.id } });
         res.json({ success: true });
-        void invalidatePublicOpportunityCache({ idsOrSlugs: [opp.id, opp.slug], purgeFeed: false, type: opp.type as string });
+        void invalidatePublicOpportunityCache({ idsOrSlugs: [opp.id, opp.slug], purgeFeed: false, type: opp.type as string, tags: getGranularTagsForOpportunity(opp as unknown as Partial<Opportunity>) });
     } catch (error) {
         next(error);
     }
