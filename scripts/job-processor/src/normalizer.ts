@@ -90,14 +90,16 @@ export interface DiscoveredJob {
     title: string;
     applyLink: string;
     source: string;
+    sourceType: 'ATS' | 'AGGREGATOR';
     discoveredAt: string;
     company?: string;
     location?: string;
-    sourceType?: string;
     reviewRequired?: boolean;
     aggregatorUrl?: string;
     aggregatorTitle?: string;
     aggregatorText?: string;
+    atsText?: string;
+    isAggregatorReview?: boolean;
 }
 
 export interface JobsJsonFormat {

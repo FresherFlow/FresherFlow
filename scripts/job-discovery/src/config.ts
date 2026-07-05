@@ -35,8 +35,8 @@ await loadEnv();
 export const CDN_SECRET = (process.env.CDN_SIGNATURE_SECRET || '').trim().replace(/^["']|["']$/g, '');
 export const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
 export const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^["']|["']$/g, '');
-export const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
-export const ATS_BOARDS_URL = process.env.ATS_BOARDS_URL || `${CDN_URL}/ats_boards.json`;
+export const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || '').trim().replace(/\/$/, '');
+export const ATS_BOARDS_URL = process.env.ATS_BOARDS_URL || (CDN_URL ? `${CDN_URL}/ats_boards.json` : '');
 
 export const TARGET_SITES = [
     {
@@ -248,11 +248,45 @@ export const EXPIRED_PHRASES = [
     "we couldnt find the job posting you're looking for",
     "may have been filled or deactivated",
     "doesn't seem to exist or may have been removed",
-    "doesnt seem to exist or may have been removed"
+    "doesnt seem to exist or may have been removed",
+    "this job posting is no longer available to apply",
+    "explore other job openings on our job portal",
+    "this position is no longer available",
+    "this vacancy is no longer available",
+    "this opening is no longer available",
+    "the job opening you requested is not available",
+    "sorry, this job is no longer available",
+    "this job ad has been removed",
+    "this job listing has expired",
+    "this job listing is no longer active",
+    "this job listing has been removed",
+    "this job listing is no longer available",
+    "this posting is no longer active",
+    "this posting is no longer available",
+    "posting is expired",
+    "the position has been closed",
+    "position is no longer available",
+    "this position has been closed",
+    "this position has been filled",
+    "position has been closed",
+    // Workday style
+    "no longer taking applications",
+    "the job requisition is no longer available",
+    // Greenhouse style
+    "this role is no longer available",
+    "this position is closed",
+    // Generic
+    "application period has ended",
+    "applications are no longer being accepted",
+    "this opportunity is no longer available",
+    "this opportunity has closed",
+    "unfortunately, this job is no longer available",
+    "unfortunately this job is no longer available"
 ];
 
 // Phrases indicating it's a fresher job
 export const FRESHER_PHRASES = [
+    "0-1 years",
     "0 years",
     "0 year",
     "fresher",
@@ -266,16 +300,13 @@ export const FRESHER_PHRASES = [
     "graduate engineer",
     "graduate trainee",
     "trainee",
-    "associate",
     "junior",
     "campus hiring",
     "off campus",
     "software engineer i",
     "sde 1",
-    "analyst",
-    "business analyst",
-    "data analyst",
-    "apprentice"
+    "apprentice",
+    "early career"
 ];
 
 // Phrases indicating it's NOT a fresher job (we skip if we see these AND we don't see fresher phrases)

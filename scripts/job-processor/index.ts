@@ -20,6 +20,8 @@ import {
     CANONICAL_SKILLS_MAP 
 } from './src/metadata.js';
 
+import { isFresherJob } from '../job-discovery/src/filters/text-filters.js';
+
 import {
     applyStealth,
     extractAtsContent,
@@ -209,36 +211,44 @@ async function run(): Promise<void> {
                 // FALLBACK: Use aggregator text if company page blocks us
                 const aggregatorText = job.aggregatorText && job.aggregatorText.length >= 150 ? job.aggregatorText : "";
 
+
+
                 let atsText = "";
                 let atsTitle = "";
                 let atsContent = { title: "", text: "", html: "" };
                 let isBotOrErrorValue = false;
 
-                // Always scrape the real company career page. No aggregator fallback.
-                let page = null;
-                try {
-                    page = await context.newPage();
-                    await applyStealth(page);
+                if (job.atsText && job.atsText.length > 50) {
+                    atsText = job.atsText;
+                    atsTitle = job.title;
+                    console.log(`Using ATS API text directly (${atsText.length} chars). Skipping Playwright scrape.`);
+                } else {
+                    // Always scrape the real company career page. No aggregator fallback.
+                    let page = null;
+                    try {
+                        page = await context.newPage();
+                        await applyStealth(page);
 
-                    atsContent = await extractAtsContent(page, job.applyLink);
-                    isBotOrErrorValue = isBotOrError(atsContent.text, atsContent.title);
+                        atsContent = await extractAtsContent(page, job.applyLink);
+                        isBotOrErrorValue = isBotOrError(atsContent.text, atsContent.title);
 
-                    if (atsContent.text.length >= 600 && !isBotOrErrorValue) {
-                        atsText = atsContent.text;
-                        atsTitle = atsContent.title;
-                        console.log(`Company page extracted successfully (${atsText.length} chars).`);
-                    } else {
-                        // Company page blocked — use aggregator text for structured field extraction
-                        console.log(`Company page blocked or thin (${atsContent.text.length} chars). Using aggregator text.`);
+                        if (atsContent.text.length >= 600 && !isBotOrErrorValue) {
+                            atsText = atsContent.text;
+                            atsTitle = atsContent.title;
+                            console.log(`Company page extracted successfully (${atsText.length} chars).`);
+                        } else {
+                            // Company page blocked — use aggregator text for structured field extraction
+                            console.log(`Company page blocked or thin (${atsContent.text.length} chars). Using aggregator text.`);
+                            atsText = aggregatorText;
+                            atsTitle = job.aggregatorTitle || job.title;
+                        }
+                    } catch (pageErr) {
+                        console.error(`[WARNING] Failed to reach ${job.applyLink}:`, (pageErr as Error).message);
                         atsText = aggregatorText;
                         atsTitle = job.aggregatorTitle || job.title;
+                    } finally {
+                        if (page) await page.close();
                     }
-                } catch (pageErr) {
-                    console.error(`[WARNING] Failed to reach ${job.applyLink}:`, (pageErr as Error).message);
-                    atsText = aggregatorText;
-                    atsTitle = job.aggregatorTitle || job.title;
-                } finally {
-                    if (page) await page.close();
                 }
 
                 // We MUST have *some* text to proceed
@@ -248,6 +258,13 @@ async function run(): Promise<void> {
                 if (!textForLlm || textForLlm.length < 50) {
                     console.error("Could not obtain sufficient job description text.");
                     failureList.push({ url: job.applyLink, reason: "Insufficient page text extracted" });
+                    continue;
+                }
+
+                // Strictly filter out non-fresher jobs before burning LLM tokens
+                if (!isFresherJob(rawText)) {
+                    console.log(`Job rejected by regex text filter (not a fresher job). Skipping LLM.`);
+                    failureList.push({ url: job.applyLink, reason: "Regex filter determined non-fresher from text" });
                     continue;
                 }
 
@@ -327,6 +344,7 @@ async function run(): Promise<void> {
                             allowedPassoutYears: templateResult.allowedPassoutYears ?? [],
                             requiredSkills: templateResult.skills ?? [],
                             locations: templateResult.locations ?? [],
+                            structuredLocations: templateResult.structuredLocations ?? [],
                             workMode: templateResult.workMode ?? null,
                             experienceMin: templateResult.experienceMin ?? 0,
                             experienceMax: templateResult.experienceMax ?? 0,
@@ -402,6 +420,19 @@ async function run(): Promise<void> {
 
                 // Apply normalization brain
                 extracted = postProcessNormalize(extracted, textForLlm);
+
+                // Ensure we only process Indian or Remote jobs
+                if (extracted.structuredLocations && extracted.structuredLocations.length > 0) {
+                    const hasIndianOrRemoteLocation = extracted.structuredLocations.some(
+                        (loc: any) => loc.country === 'IN' || loc.type === 'remote' || loc.name.toLowerCase() === 'pan india'
+                    );
+
+                    if (!hasIndianOrRemoteLocation) {
+                        console.log(`[FILTER] Skipping international/unsupported job ${job.applyLink}: ${JSON.stringify(extracted.structuredLocations)}`);
+                        failureList.push({ url: job.applyLink, reason: "International/unsupported location" });
+                        continue;
+                    }
+                }
 
                 console.log("Parsed structured details:", {
                     title: extracted.title,

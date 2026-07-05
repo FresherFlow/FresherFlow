@@ -7,7 +7,7 @@ export function isPotentialFresherJob(title: string): boolean {
     const SENIOR_KEYWORDS = [
         'senior', 'sr', 'sr.', 'manager', 'lead', 'principal', 'director', 
         'vp', 'head', 'architect', 'staff', 'president', 'experienced', 'expert',
-        'supervisor', 'consultant', 'advisory'
+        'supervisor', 'consultant', 'advisory', 'chief', 'executive', 'officer', 'managerial'
     ];
     
     // Check for exact word boundaries for roman numerals
@@ -35,5 +35,43 @@ export function isPotentialFresherJob(title: string): boolean {
     // The downstream `job-processor` will read the full description and strictly check the 'Years of Experience' field.
     // Our goal here is just to prevent wasting API calls/tokens on obvious senior roles.
     
+    return true;
+}
+
+export function isLocationIndiaOrRemote(location: string): boolean {
+    if (!location) return true;
+    const loc = location.toLowerCase();
+    
+    // Explicitly reject common non-India locations to be safe
+    const FOREIGN_COUNTRIES = [
+        'usa', 'us ', 'united states', 'uk', 'united kingdom', 'london', 
+        'canada', 'australia', 'germany', 'france', 'japan', 'china', 
+        'singapore', 'ireland', 'poland', 'netherlands', 'sweden', 'brazil',
+        'mexico', 'spain', 'italy', 'dubai', 'uae', 'malaysia', 'emea', 'americas'
+    ];
+
+    for (const c of FOREIGN_COUNTRIES) {
+        if (loc.includes(c) && !loc.includes('india') && !loc.includes('remote')) {
+            return false;
+        }
+    }
+
+    // Keep if it has India, IN, or specific Indian cities, or Remote
+    const INDIA_KEYWORDS = [
+        'india', 'remote', 'bengaluru', 'bangalore', 'hyderabad', 
+        'pune', 'mumbai', 'chennai', 'delhi', 'noida', 'gurugram', 'gurgaon',
+        'ahmedabad', 'kolkata', 'anywhere'
+    ];
+
+    for (const kw of INDIA_KEYWORDS) {
+        if (loc.includes(kw)) {
+            return true;
+        }
+    }
+
+    // If it's a completely unknown location string (e.g. "HQ"), it's safer to pass it to the parser
+    // than to drop it, unless we want to strictly require India/Remote.
+    // Given the user's concern ("y it was out of india"), let's be somewhat strict but allow generic strings.
+    // Actually, if it didn't match FOREIGN_COUNTRIES, we'll let it pass for the LLM to decide.
     return true;
 }

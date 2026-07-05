@@ -63,12 +63,12 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
             isReview = true;
         }
         
-        // Smart Wait: Wait for actual job content — 600 chars minimum so nav menus
-        // (which load first and are typically 100-400 chars) don't fire the snapshot early
-        // before the real job status/body content renders via JavaScript.
+        // Smart Wait: Wait for actual job content — 800 chars minimum so nav menus
+        // (which load first and are typically 100-600 chars on modern portals like Volvo/SAP)
+        // don't fire the snapshot early before the real job status/body content renders via JavaScript.
         await page.waitForFunction(() => {
-            return document.body && document.body.innerText.trim().length > 600;
-        }, { timeout: 8000 }).catch(() => {});
+            return document.body && document.body.innerText.trim().length > 800;
+        }, { timeout: 10000 }).catch(() => {});
         const bodyText = await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
         if (!bodyText || bodyText.trim().length < 100) {
             if (loadFailed) {

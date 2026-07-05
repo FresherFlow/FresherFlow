@@ -64,9 +64,6 @@ const ALIASES: Record<string, string> = {
   gurgaon: 'Haryana',
   cochin: 'Kerala',
   secunderabad: 'Telangana',
-  sricity: 'Andhra Pradesh',
-  'sri city': 'Andhra Pradesh',
-  'sricity mill': 'Andhra Pradesh',
 };
 
 for (const [alias, state] of Object.entries(ALIASES)) {

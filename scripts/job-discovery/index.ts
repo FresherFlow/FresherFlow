@@ -14,6 +14,8 @@ import { findActualApplyLink } from './src/core/extractor.js';
 import { isJobLive } from './src/core/verifier.js';
 import { runAtsDiscovery, AtsRegistry } from './src/ats/index.js';
 import { ATS_BOARDS_URL } from './src/config.js';
+import { extractAtsBoard } from './src/core/ats-detector.js';
+import { uploadToR2 } from './src/utils/r2.js';
 
 await loadEnv();
 
@@ -82,11 +84,17 @@ async function run() {
     const browser = await chromium.launch({ headless: true });
 
     let atsJobsFoundCount = 0;
+    let atsRegistry: AtsRegistry = {};
+    let registryModified = false;
+
     try {
         // ── Phase 0: ATS Direct API Scraping ─────────────────────────────────────────
         console.log(`\n=== Phase 0: Scraping ATS APIs ===\n`);
-        let atsRegistry: AtsRegistry = {};
+        
         try {
+            if (!ATS_BOARDS_URL) {
+                throw new Error("ATS_BOARDS_URL is not set");
+            }
             console.log(`Fetching ATS Boards from ${ATS_BOARDS_URL}...`);
             const atsRes = await fetch(ATS_BOARDS_URL);
             if (atsRes.ok) {
@@ -116,7 +124,8 @@ async function run() {
                     source: job.source,
                     sourceType: 'ATS',
                     discoveredAt: now,
-                    reviewRequired: false
+                    reviewRequired: false,
+                    atsText: job.description
                 });
                 visited["__discovered_apply_links__"].push(normalizedLink);
                 knownLinks.add(normalizedLink);
@@ -247,6 +256,30 @@ async function run() {
                         if (!applyLink) {
                             console.log(`  -> Failed to extract apply link.`);
                             continue;
+                        }
+
+                        // ---> ATS AUTO-DISCOVERY <---
+                        const boardMatch = extractAtsBoard(applyLink);
+                        if (boardMatch) {
+                            const { provider, boardId } = boardMatch;
+                            if (!atsRegistry[provider]) atsRegistry[provider] = {};
+                            if (!atsRegistry[provider]![boardId]) {
+                                let guessedName = boardId;
+                                const atMatch = aggregatorTitle.match(/ at (.+)$/i) || aggregatorTitle.match(/ by (.+)$/i);
+                                if (atMatch) {
+                                    guessedName = atMatch[1].trim();
+                                } else if (boardId.startsWith('http')) {
+                                    try {
+                                        guessedName = new URL(boardId).hostname.split('.')[0];
+                                        // Title-case it
+                                        guessedName = guessedName.charAt(0).toUpperCase() + guessedName.slice(1);
+                                    } catch {}
+                                }
+                                
+                                atsRegistry[provider]![boardId] = guessedName;
+                                registryModified = true;
+                                console.log(`  🌟 Discovered NEW ATS board automatically! ${provider}: ${boardId} (${guessedName})`);
+                            }
                         }
 
                         // Sanitize the URL before dedup check (strip ?q= etc.)
@@ -446,6 +479,22 @@ async function run() {
             summary += `No new fresher jobs were found during this run.`;
         }
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
+    }
+
+    if (registryModified) {
+        console.log(`\n--- Saving Updated ATS Boards ---`);
+        try {
+            const atsJsonPath = path.join(process.cwd(), '../../docs/ats_boards.json');
+            await fs.writeFile(atsJsonPath, JSON.stringify(atsRegistry, null, 2), 'utf8');
+            console.log(`Saved local ats_boards.json.`);
+            
+            if (process.env.R2_BUCKET_NAME) {
+                console.log(`Uploading ats_boards.json to R2...`);
+                await uploadToR2(atsJsonPath, process.env.R2_BUCKET_NAME, 'ats_boards.json');
+            }
+        } catch (err) {
+            console.error("Failed to save or upload updated ATS registry:", err);
+        }
     }
 }
 

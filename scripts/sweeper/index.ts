@@ -1,86 +1,14 @@
 import { chromium, Page } from 'playwright';
-import crypto from 'node:crypto';
 
-const CDN_SECRET = (process.env.CDN_SIGNATURE_SECRET || '').trim().replace(/^["']|["']$/g, '');
-const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim().replace(/^["']|["']$/g, '').replace(/^bot/i, '');
-const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^["']|["']$/g, '');
-const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
+// Shared utilities — canonical source lives in job-discovery/src
+import { signUrl } from '../job-discovery/src/utils/url.js';
+import { sendTelegramMessage } from '../job-discovery/src/utils/telegram.js';
+import { EXPIRED_PHRASES, loadEnv } from '../job-discovery/src/config.js';
+
+await loadEnv();
+
 const API_URL = (process.env.API_URL || '').trim().replace(/\/$/, '');
 const INTERNAL_API_SECRET = (process.env.INTERNAL_API_SECRET || '').trim();
-
-// Helper to sign the CDN URL
-function signUrl(pathname: string): string {
-    if (!CDN_SECRET) throw new Error("CDN_SIGNATURE_SECRET is missing");
-    const t = Math.floor(Date.now() / 1000);
-    const message = `${pathname}:${t}`;
-    const sig = crypto.createHmac('sha256', CDN_SECRET).update(message).digest('hex');
-    return `${CDN_URL}${pathname}?t=${t}&sig=${sig}`;
-}
-
-async function sendTelegramMessage(text: string) {
-    if (!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) {
-        console.warn("Telegram credentials missing, skipping message:", text);
-        return;
-    }
-    try {
-        const res = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                chat_id: TELEGRAM_CHAT_ID,
-                text,
-                parse_mode: 'HTML',
-                disable_web_page_preview: true
-            })
-        });
-        if (!res.ok) {
-            console.error("Failed to send telegram message:", await res.text());
-        }
-    } catch (err) {
-        console.error("Error sending to telegram:", err);
-    }
-}
-
-// Key phrases that ATS systems use when a job is closed.
-// IMPORTANT: Keep these specific. Broad phrases like "no longer available" or "has expired"
-// cause false positives by matching footer text, FAQs, cookie banners, or session messages.
-const EXPIRED_PHRASES = [
-    // Specific ATS expiry messages
-    "the job you are trying to apply for is no longer available",
-    "this job is no longer accepting applications",
-    "this requisition is no longer accepting applications",
-    "this job is no longer available",
-    "this job is not available",
-    "this job is closed",
-    "job posting is no longer active",
-    "job is no longer active",
-    "job has expired",
-    "requisition is closed",
-    "position has been filled",
-    "position closed",
-    "role is no longer available",
-    "no longer accepting applications via careers",
-    "not accepting applications for this job",
-    "not accepting applications for this position",
-    "currently not accepting applications",
-    "please explore other open opportunities",
-    "job does not exist or is not currently active",
-    "job does not exist",
-    "the job you requested was not found",
-    "we couldn't find the job posting you're looking for",
-    "we couldnt find the job posting you're looking for",
-    "may have been filled or deactivated",
-    "doesn't seem to exist or may have been removed",
-    "doesnt seem to exist or may have been removed",
-    "position you're looking for may have been filled",
-    // ATS-specific UX phrases
-    "you can't view this job because it's not available at this time",
-    "you cant view this job because it's not available at this time",
-    "you cant view this job because its not available at this time",
-    "you can't view this job because its not available at this time",
-    "job is not available at this time",
-    "not available at this time",
-];
 
 interface SweeperCheckResult {
     status: 'live' | 'expired' | 'review';

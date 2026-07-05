@@ -46,7 +46,7 @@ jobs:
           CDN_SIGNATURE_SECRET: ${{ secrets.CDN_SIGNATURE_SECRET }}
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          NEXT_PUBLIC_CDN_URL: "https://cdn.fresherflow.in"
+          NEXT_PUBLIC_CDN_URL: ${{ secrets.NEXT_PUBLIC_CDN_URL }}
           INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
           API_URL: ${{ secrets.API_BASE_URL }}
         run: pnpm start

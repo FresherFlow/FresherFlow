@@ -7,7 +7,7 @@ import { SmartRecruitersAdapter } from './SmartRecruitersAdapter.js';
 import { OracleAdapter } from './OracleAdapter.js';
 import { ICimsAdapter } from './ICimsAdapter.js';
 import { SuccessFactorsAdapter } from './SuccessFactorsAdapter.js';
-import { isPotentialFresherJob } from '../filters/ats-filters.js';
+import { isPotentialFresherJob, isLocationIndiaOrRemote } from '../filters/ats-filters.js';
 
 export interface AtsRegistry {
     greenhouse?: Record<string, string>;
@@ -40,8 +40,11 @@ export async function runAtsDiscovery(registry: AtsRegistry): Promise<AtsJob[]> 
             console.log(`\nStarting ${name} adapter (${Object.keys(data).length} companies)...`);
             for (const [companyId, companyName] of Object.entries(data)) {
                 const jobs = await adapter.fetchJobs(companyId, companyName);
-                const fresherJobs = jobs.filter(j => isPotentialFresherJob(j.title));
-                console.log(`  -> ${companyName}: Found ${jobs.length} total, ${fresherJobs.length} potential fresher roles.`);
+                const fresherJobs = jobs.filter(j => 
+                    isPotentialFresherJob(j.title) && 
+                    (!j.location || isLocationIndiaOrRemote(j.location))
+                );
+                console.log(`  -> ${companyName}: Found ${jobs.length} total, ${fresherJobs.length} potential fresher roles in India/Remote.`);
                 discoveredJobs.push(...fresherJobs);
                 await new Promise(r => setTimeout(r, delay));
             }
