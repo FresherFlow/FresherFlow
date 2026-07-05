@@ -113,7 +113,7 @@ export default async function SkillPage({ params }: Props) {
     }
 
     const label = formatSkillLabel(slug);
-    const feed = await fetchBootstrapFeed(false, [`skill-${name}`]);
+    const feed = await fetchBootstrapFeed(false, [`skill-${slug}`]);
     const opportunities = feed?.opportunities || [];
     
     const filtered = opportunities.filter(opp => 
