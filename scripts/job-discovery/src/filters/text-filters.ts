@@ -4,32 +4,32 @@ import { EXPERIENCED_PHRASES, FRESHER_PHRASES } from '../config.js';
 export function isFresherJob(text: string): boolean {
     const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
     
-    // Check for ranges like "2-5 years", "2 to 4 years" (excluding ranges starting with 0 or 1)
-    const expRangeRegex = /(?:[2-9]|10)\s*(?:-|–|\bto\b)\s*(?:[3-9]|1[0-5])\s*(?:years|years'|yrs|yr|y\b)/gi;
-    if (expRangeRegex.test(lowerText)) {
+    // Check for ranges like "1-3 years", "2-5 years", "1 to 4 years", or just "1-3 experience"
+    const expRangeRegex = /(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years|years'|yrs|yr|y\b)?\s*(?:of\s+)?(?:experience\b)?/gi;
+    if (expRangeRegex.test(lowerText) && lowerText.match(expRangeRegex)![0].match(/years|yrs|yr|y|experience/i)) {
         return false;
     }
 
-    // Check for experience requirements of 2+ years (e.g. "2 years' experience")
-    const expReqRegex = /(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b10\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
+    // Check for experience requirements of 1+ years (e.g. "1 year experience", "2 years' experience", "Experience: 2+")
+    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years'|year's|years|year|yrs|yr|y\b)?\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
     if (expReqRegex.test(lowerText)) {
         return false;
     }
 
-    // Check for "2+ years", "2+ yr", etc.
-    const plusExpRegex = /(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b10\b)\s*\+\s*(?:years|year|yrs|yr|y\b)/gi;
+    // Check for "1+ years", "2+ yr", "2+ experience"
+    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*\+\s*(?:years|year|yrs|yr|y\b|experience\b)/gi;
     if (plusExpRegex.test(lowerText)) {
         return false;
     }
 
-    // Check for "minimum of 2 years", "min 2 year", "at least 2 yrs", etc.
-    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[2-9]\b|\b10\b)\s*(?:years|year|yrs|yr|y\b)/gi;
+    // Check for "minimum of 1 year", "min 2 year", "at least 1 yrs", "minimum 2 experience"
+    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b10\b)\s*(?:years|year|yrs|yr|y\b|experience\b)/gi;
     if (minExpRegex.test(lowerText)) {
         return false;
     }
     
-    // Check for standalone experience requirements of 2-10 years (e.g. "3 years", "5 yrs", "2yr") that are not part of a 0-X or 1-X range
-    const standaloneExpRegex = /(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b10\b)\s*(?:years|yrs|yr|y\b)/gi;
+    // Check for standalone experience requirements of 1-10 years (e.g. "1 year", "3 years") that are not part of a 0-X range
+    const standaloneExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years|yrs|yr|y\b)/gi;
     if (standaloneExpRegex.test(lowerText)) {
         return false;
     }
