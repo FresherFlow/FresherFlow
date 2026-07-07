@@ -218,6 +218,11 @@ async function run() {
                     for (const jobLink of unvisitedLinks.slice(0, 20)) {
                         console.log(`Checking aggregator post: ${jobLink}`);
                         visited[site.name].push(jobLink);
+                        
+                        // Prevent infinite growth of visited aggregator links
+                        if (visited[site.name].length > 2000) {
+                            visited[site.name] = visited[site.name].slice(-2000);
+                        }
 
                         await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
                         await page.waitForTimeout(2000);

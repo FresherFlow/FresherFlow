@@ -84,3 +84,5 @@ packages/types/index.d.ts
 packages/types/*.map
 assets/*
 
+scripts/dump/*
+scripts/output

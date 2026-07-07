@@ -38,40 +38,56 @@ export function isPotentialFresherJob(title: string): boolean {
     return true;
 }
 
+import { State, City } from 'country-state-city';
+
+// Pre-compute sets of valid Indian cities and states (lowercase for case-insensitive matching)
+const INDIAN_STATES = new Set((State.getStatesOfCountry('IN') || []).map(s => s.name.toLowerCase()));
+const INDIAN_CITIES = new Set((City.getCitiesOfCountry('IN') || []).map(c => c.name.toLowerCase()));
+
 export function isLocationIndiaOrRemote(location: string): boolean {
     if (!location) return true;
     const loc = location.toLowerCase();
     
-    // Explicitly reject common non-India locations to be safe
-    const FOREIGN_COUNTRIES = [
+    // Explicitly reject common non-India locations and terms
+    const FOREIGN_TERMS = [
         'usa', 'us ', 'united states', 'uk', 'united kingdom', 'london', 
         'canada', 'australia', 'germany', 'france', 'japan', 'china', 
         'singapore', 'ireland', 'poland', 'netherlands', 'sweden', 'brazil',
-        'mexico', 'spain', 'italy', 'dubai', 'uae', 'malaysia', 'emea', 'americas'
+        'mexico', 'spain', 'italy', 'dubai', 'uae', 'malaysia', 'emea', 'americas', 'apac', 'latam',
+        'new york', 'california', 'texas', 'florida', 'berlin', 'paris', 'amsterdam', 'san francisco',
+        'seattle', 'boston', 'chicago', 'toronto', 'sydney', 'melbourne', 'dublin', 'kuala lumpur', 'taiwan', 'taipei'
     ];
 
-    for (const c of FOREIGN_COUNTRIES) {
-        if (loc.includes(c) && !loc.includes('india') && !loc.includes('remote')) {
-            return false;
+    for (const c of FOREIGN_TERMS) {
+        if (loc.includes(c)) {
+            // Exception: if it explicitly also mentions India, we might keep it.
+            // Example: "San Francisco, CA or Bangalore, India"
+            if (!loc.includes('india') && !loc.includes('in ')) {
+                return false;
+            }
         }
     }
 
-    // Keep if it has India, IN, or specific Indian cities, or Remote
-    const INDIA_KEYWORDS = [
-        'india', 'remote', 'bengaluru', 'bangalore', 'hyderabad', 
-        'pune', 'mumbai', 'chennai', 'delhi', 'noida', 'gurugram', 'gurgaon',
-        'ahmedabad', 'kolkata', 'anywhere'
-    ];
+    // Check against official Indian Cities from country-state-city
+    for (const city of INDIAN_CITIES) {
+        if (loc.includes(city)) return true;
+    }
 
-    for (const kw of INDIA_KEYWORDS) {
+    // Check against official Indian States
+    for (const state of INDIAN_STATES) {
+        if (loc.includes(state)) return true;
+    }
+
+    // Fallback basic keywords
+    const BASIC_KEYWORDS = [
+        'india', 'remote', 'work from home', 'wfh', 'anywhere', 'worldwide', 'home based', 'home-based', 'global'
+    ];
+    for (const kw of BASIC_KEYWORDS) {
         if (loc.includes(kw)) {
             return true;
         }
     }
 
-    // If it's a completely unknown location string (e.g. "HQ"), it's safer to pass it to the parser
-    // than to drop it, unless we want to strictly require India/Remote.
-    // Given the user's concern ("y it was out of india"), let's be somewhat strict but allow generic strings.
-    // Actually, if it didn't match FOREIGN_COUNTRIES, we'll let it pass for the LLM to decide.
-    return true;
+    // If it mentions no Indian city/state and no basic keyword, it's likely a foreign or undefined location
+    return false;
 }
