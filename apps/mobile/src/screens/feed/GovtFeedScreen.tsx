@@ -42,6 +42,7 @@ import { RootStackParamList } from '@/navigation/types';
 import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, PremiumRefreshControl, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
 import { GovtJobCard } from '@/system/components/GovtJobCard';
+import { SectorSwitchCard } from '@/system/components/SectorSwitchCard';
 import { mScale, SPACING, RADIUS, SCREEN_WIDTH } from '@/system/constants/dimensions';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useToast } from '@/contexts/ToastContext';
@@ -238,6 +239,11 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
             keyboardDismissMode="on-drag"
             refreshControl={
                 <PremiumRefreshControl refreshing={isRefreshing} onRefresh={handleRefresh} />
+            }
+            ListHeaderComponent={
+                <View style={{ paddingHorizontal: SPACING.lg, marginTop: SPACING.sm }}>
+                    <SectorSwitchCard navigation={navigation} />
+                </View>
             }
         />
 

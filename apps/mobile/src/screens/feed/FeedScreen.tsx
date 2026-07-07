@@ -50,6 +50,7 @@ import { Screen } from '@/system/layout/Layout';
 import { PremiumHeader, PremiumRefreshControl, ScrollToTopButton } from '@/system/components/PremiumPrimitives';
 import { JobCard } from '@/system/components/OpportunityCard';
 import { UsernameNudgeCard } from '@/system/components/UsernameNudgeCard';
+import { SectorSwitchCard } from '@/system/components/SectorSwitchCard';
 import { mScale, SPACING, RADIUS, SCREEN_WIDTH } from '@/system/constants/dimensions';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'FeedList'>;
@@ -335,7 +336,12 @@ const FeedTabContent = memo(({ feedType: tabFeedType, navigation, currentTheme, 
                 <PremiumRefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
             }
             ListHeaderComponent={
-                <UsernameNudgeCard />
+                <View>
+                    <View style={{ paddingHorizontal: SPACING.lg, marginTop: SPACING.sm }}>
+                        <SectorSwitchCard navigation={navigation} />
+                    </View>
+                    <UsernameNudgeCard />
+                </View>
             }
             ListFooterComponent={
                 loadingMore ? <ActivityIndicator style={{ margin: SPACING.md }} color={currentTheme.colors.primary} /> : null

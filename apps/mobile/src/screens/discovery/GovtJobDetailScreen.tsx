@@ -22,7 +22,6 @@ import {
   IndianRupee,
   ExternalLink,
   Bookmark,
-  MapPin,
   Share2,
   Clock,
   Users,
@@ -85,7 +84,7 @@ import {
     BottomSheetBackdropProps 
 } from '@gorhom/bottom-sheet';
 import * as Clipboard from 'expo-clipboard';
-import { Share, Linking } from 'react-native';
+import { Share } from 'react-native';
 import { WhatsAppIcon, DiscordIcon } from '@/system/components/SocialIcons';
 
 
@@ -2467,11 +2466,6 @@ const styles = StyleSheet.create({
         fontSize: 12,
         fontWeight: '600',
         marginTop: 2,
-    },
-    venueText: {
-        fontSize: 14,
-        lineHeight: 20,
-        fontWeight: '500',
     },
     venueDates: {
         flexDirection: 'row',

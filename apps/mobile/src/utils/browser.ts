@@ -36,12 +36,14 @@ export const openExternalURL = async (url: string, colors?: ThemeColors): Promis
   const trimmed = url.trim();
   if (!trimmed) return;
 
-  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(trimmed);
-  const isNonWeb = /^(mailto|tel|sms):/i.test(trimmed);
+  const hasScheme = /^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(trimmed) || /^(mailto|tel|sms|maps|geo):/i.test(trimmed);
+  const isNonWeb = /^(mailto|tel|sms|maps|geo):/i.test(trimmed);
+  const isMapWeb = /^(https?:\/\/)?(www\.)?(google\.com\/maps|maps\.google\.com|maps\.apple\.com)/i.test(trimmed);
 
-  // Non-web schemes (mailto:, tel:, sms:) — always open via Linking
-  if (isNonWeb) {
-    await Linking.openURL(trimmed);
+  // Non-web schemes (mailto:, tel:, sms:, maps:, geo:) and map websites — always open via Linking
+  if (isNonWeb || isMapWeb) {
+    const target = hasScheme ? trimmed : `https://${trimmed}`;
+    await Linking.openURL(target);
     return;
   }
 

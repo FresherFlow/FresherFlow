@@ -276,6 +276,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
   const fabAnim = React.useRef(new Animated.Value(1)).current;
   
   const [isSelectionExpanded, setIsSelectionExpanded] = React.useState(false);
+  const [checkedDocuments, setCheckedDocuments] = React.useState<Record<string, boolean>>({});
 
   const shrinkFab = () => {
     Animated.timing(fabAnim, {
@@ -1148,7 +1149,26 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                     <Text style={[styles.walkInSub, { color: currentTheme.colors.textMuted }]}>{opportunity.walkInDetails.reportingTime}</Text>
                                 </View>
                             </View>
-                            <Text style={[styles.venueText, { color: currentTheme.colors.text }]}>{opportunity.walkInDetails.venueAddress}</Text>
+
+                            <TouchableOpacity
+                                style={[styles.venueButton, { backgroundColor: alpha(currentTheme.colors.primary, 0.03), borderColor: alpha(currentTheme.colors.primary, 0.1) }]}
+                                onPress={() => {
+                                    const address = opportunity.walkInDetails!.venueAddress;
+                                    const link = opportunity.walkInDetails!.venueLink || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                    void openExternalURL(link, currentTheme.colors);
+                                }}
+                                activeOpacity={0.7}
+                            >
+                                <Text style={[styles.venueText, { color: currentTheme.colors.text }]}>
+                                    {opportunity.walkInDetails.venueAddress}
+                                </Text>
+                                <View style={styles.directionsRow}>
+                                    <Compass size={14} color={currentTheme.colors.primary} />
+                                    <Text style={[styles.directionsText, { color: currentTheme.colors.primary }]}>Get Directions</Text>
+                                </View>
+                            </TouchableOpacity>
+
                             {opportunity.walkInDetails.dates && (
                                 <View style={styles.venueDates}>
                                     {opportunity.walkInDetails.dates.map((date, i) => (
@@ -1156,6 +1176,56 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                                             <Text style={[styles.dateText, { color: currentTheme.colors.text }]}>{date}</Text>
                                         </View>
                                     ))}
+                                </View>
+                            )}
+
+                            {/* Documents Checklist */}
+                            {opportunity.walkInDetails.requiredDocuments && opportunity.walkInDetails.requiredDocuments.length > 0 && (
+                                <View style={{ marginTop: 16 }}>
+                                    <Text style={{ fontSize: 12, fontWeight: '800', color: currentTheme.colors.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        Required Documents Checklist
+                                    </Text>
+                                    <SurfaceCard style={styles.checklistCard}>
+                                        <Text style={{ fontSize: 11, color: currentTheme.colors.textMuted, marginBottom: 12 }}>
+                                            Check off required items as you pack:
+                                        </Text>
+                                        <View style={{ gap: 12 }}>
+                                            {opportunity.walkInDetails.requiredDocuments.map((doc: string, idx: number) => {
+                                                const isChecked = !!checkedDocuments[doc];
+                                                return (
+                                                    <TouchableOpacity
+                                                        key={idx}
+                                                        style={styles.checklistItem}
+                                                        onPress={() => {
+                                                            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                                            setCheckedDocuments(prev => ({
+                                                                ...prev,
+                                                                [doc]: !prev[doc]
+                                                            }));
+                                                        }}
+                                                        activeOpacity={0.7}
+                                                    >
+                                                        <View style={[
+                                                            styles.checkboxCircle,
+                                                            { borderColor: isChecked ? currentTheme.colors.success : currentTheme.colors.border },
+                                                            isChecked && { backgroundColor: currentTheme.colors.success }
+                                                        ]}>
+                                                            {isChecked ? (
+                                                                <Check size={12} color={currentTheme.colors.background} />
+                                                            ) : null}
+                                                        </View>
+                                                        <Text style={[
+                                                            styles.checklistText,
+                                                            { color: isChecked ? currentTheme.colors.textMuted : currentTheme.colors.text },
+                                                            isChecked && { textDecorationLine: 'line-through' }
+                                                        ]}>
+                                                            {doc}
+                                                        </Text>
+                                                    </TouchableOpacity>
+                                                );
+                                            })}
+                                        </View>
+                                    </SurfaceCard>
                                 </View>
                             )}
                         </SurfaceCard>
@@ -2137,6 +2207,45 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.1,
         shadowRadius: 12,
         elevation: 3,
+    },
+    venueButton: {
+        marginTop: 12,
+        padding: 12,
+        borderRadius: 12,
+        borderWidth: 1,
+    },
+    directionsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+        marginTop: 8,
+    },
+    directionsText: {
+        fontSize: 12,
+        fontWeight: '800',
+    },
+    checklistCard: {
+        padding: 16,
+        borderRadius: 16,
+        marginTop: 4,
+    },
+    checklistItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 10,
+    },
+    checkboxCircle: {
+        width: 18,
+        height: 18,
+        borderRadius: 9,
+        borderWidth: 1.5,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    checklistText: {
+        fontSize: 12,
+        fontWeight: '700',
+        flex: 1,
     },
 });
 
