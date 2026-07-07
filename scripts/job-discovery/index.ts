@@ -9,7 +9,9 @@ import {
 import { signUrl, normalizeUrl, sanitizeAtsUrl } from './src/utils/url.js';
 import { sendTelegramMessage } from './src/utils/telegram.js';
 import { loadVisited, saveVisited } from './src/utils/storage.js';
-import { isFresherJob, isSeniorJob, hasFresherKeyword, isActualJob } from './src/filters/text-filters.js';
+import { hasFresherKeyword, isActualJob } from './src/filters/text-filters.js';
+import { scoreJobDescription } from './src/filters/scorer.js';
+import { logDecision } from './src/utils/logger.js';
 import { findActualApplyLink } from './src/core/extractor.js';
 import { isJobLive } from './src/core/verifier.js';
 import { runAtsDiscovery, AtsRegistry } from './src/ats/index.js';
@@ -114,25 +116,48 @@ async function run() {
 
         const atsJobs = await runAtsDiscovery(atsRegistry);
         const now = new Date().toISOString();
-        
+
+        let atsScored = 0, atsRejected = 0, atsUnknown = 0;
         for (const job of atsJobs) {
             const normalizedLink = normalizeUrl(job.applyLink);
-            if (!knownLinks.has(normalizedLink) && !visited["__discovered_apply_links__"].includes(normalizedLink)) {
-                newJobsFound.push({
-                    title: job.title,
-                    applyLink: job.applyLink,
-                    source: job.source,
-                    sourceType: 'ATS',
-                    discoveredAt: now,
-                    reviewRequired: false,
-                    atsText: job.description
-                });
-                visited["__discovered_apply_links__"].push(normalizedLink);
-                knownLinks.add(normalizedLink);
-                atsJobsFoundCount++;
+            if (knownLinks.has(normalizedLink) || visited["__discovered_apply_links__"].includes(normalizedLink)) continue;
+
+            // Score the ATS job description if we have text
+            let reviewRequired = false;
+            if (job.description) {
+                const scoreResult = scoreJobDescription(job.title, job.description);
+                logDecision(scoreResult, job.applyLink, job.source);
+
+                if (scoreResult.verdict === 'REJECT') {
+                    console.log(`  [ATS Scorer] REJECT: ${job.title} (score: ${scoreResult.score})`);
+                    visited["__discovered_apply_links__"].push(normalizedLink);
+                    knownLinks.add(normalizedLink);
+                    atsRejected++;
+                    continue;
+                } else if (scoreResult.verdict === 'UNKNOWN') {
+                    console.log(`  [ATS Scorer] UNKNOWN: ${job.title} → flagged for review`);
+                    reviewRequired = true;
+                    atsUnknown++;
+                } else {
+                    console.log(`  [ATS Scorer] ${scoreResult.verdict}: ${job.title} (score: ${scoreResult.score}, confidence: ${scoreResult.confidence}%)`);
+                }
+                atsScored++;
             }
+
+            newJobsFound.push({
+                title: job.title,
+                applyLink: job.applyLink,
+                source: job.source,
+                sourceType: 'ATS',
+                discoveredAt: now,
+                reviewRequired,
+                atsText: job.description
+            });
+            visited["__discovered_apply_links__"].push(normalizedLink);
+            knownLinks.add(normalizedLink);
+            atsJobsFoundCount++;
         }
-        console.log(`\n-> Added ${atsJobsFoundCount} NEW unknown ATS jobs to processing queue.\n`);
+        console.log(`\n-> ATS Phase 0 Summary: ${atsJobsFoundCount} kept, ${atsRejected} rejected by scorer, ${atsUnknown} flagged UNKNOWN.\n`);
 
         // ── Phase 1: Scraper Workers ──────────────────────────────────────────
         // Visits aggregator sites, extracts candidate links + aggregator text,
@@ -226,25 +251,22 @@ async function run() {
 
                         await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
                         await page.waitForTimeout(2000);
-
                         const aggregatorTitle = await page.locator('h1').first().innerText({ timeout: 500 }).catch(() => "");
                         const bodyText = await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
 
-                        if (isSeniorJob(bodyText)) {
-                            console.log(`  -> Skipping: Strictly senior job.`);
-                            continue;
-                        }
+                        const scoreResult = scoreJobDescription(aggregatorTitle, bodyText);
+                        
+                        // Log decision
+                        logDecision(scoreResult, jobLink, 'Aggregator');
 
                         let isAggregatorReview = false;
 
-                        if (!isFresherJob(bodyText)) {
-                            if (hasFresherKeyword(bodyText)) {
-                                console.log(`  -> Borderline job. Marking for review.`);
-                                isAggregatorReview = true;
-                            } else {
-                                console.log(`  -> Skipping: Not a fresher job.`);
-                                continue;
-                            }
+                        if (scoreResult.verdict === 'REJECT') {
+                            console.log(`  -> Skipping: Rejected by scorer (Score: ${scoreResult.score})`);
+                            continue;
+                        } else if (scoreResult.verdict === 'UNKNOWN' || scoreResult.verdict === 'MEDIUM') {
+                            console.log(`  -> ${scoreResult.verdict} job. Marking for review.`);
+                            isAggregatorReview = true;
                         }
 
                         if (!isActualJob(aggregatorTitle)) {
@@ -462,6 +484,23 @@ async function run() {
     const reviewOutputPath = path.join(process.cwd(), 'review_jobs.json');
     await fs.writeFile(reviewOutputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: reviewJobs }, null, 2), 'utf8');
     console.log(`Saved ${reviewJobs.length} review jobs to ${reviewOutputPath}`);
+
+    // ── Run Summary ───────────────────────────────────────────────────────────
+    const atsTotal = newJobsFound.filter(j => j.sourceType === 'ATS').length;
+    const aggTotal = newJobsFound.filter(j => j.sourceType === 'AGGREGATOR').length;
+    const reviewTotal = newJobsFound.filter(j => j.reviewRequired).length;
+    const confirmedTotal = newJobsFound.filter(j => !j.reviewRequired).length;
+    console.log(`
+╔══════════════════════════════════════════════════╗
+║               RUN SUMMARY                        ║
+╠══════════════════════════════════════════════════╣
+║  Total new jobs found    : ${String(newJobsFound.length).padEnd(20)}║
+║  ├─ ATS Direct           : ${String(atsTotal).padEnd(20)}║
+║  └─ Aggregator           : ${String(aggTotal).padEnd(20)}║
+║                                                  ║
+║  Confirmed (no review)   : ${String(confirmedTotal).padEnd(20)}║
+║  Flagged for review      : ${String(reviewTotal).padEnd(20)}║
+╚══════════════════════════════════════════════════╝`);
 
     // ── GitHub Actions step summary ───────────────────────────────────────────
 

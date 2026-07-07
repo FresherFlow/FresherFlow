@@ -1,72 +1,107 @@
-import { AtsAdapter, AtsJob } from './BaseAdapter.js';
+import { AtsAdapter, AtsJob, fetchJson, sleep } from './BaseAdapter.js';
 
 interface WorkdayJobResponse {
     jobPostings?: Array<{
         title: string;
-        externalPath: string; // e.g. "/job/Pune/Software-Engineer_R123"
+        externalPath: string;
         locationsText?: string;
-        timeType?: string; // e.g. "Full time"
+        timeType?: string;
+        postedOn?: string;       // e.g. "Posted 2 Days Ago"
+        bulletFields?: string[];
     }>;
+    total?: number;
+}
+
+// Detect locale prefixes like "en-US", "fr-FR" in Workday URL paths
+const LOCALE_RE = /^[a-z]{2}(-[A-Z]{2})?$/i;
+
+function extractWorkdayBoard(pathname: string): string {
+    const parts = pathname.split('/').filter(Boolean);
+    // Skip locale segment if present e.g. [en-US, Careers] → Careers
+    const board = parts.length >= 2 && LOCALE_RE.test(parts[0]) ? parts[1] : parts[0];
+    return board ?? '';
 }
 
 export class WorkdayAdapter implements AtsAdapter {
     providerName = 'Workday';
 
     async fetchJobs(companyUrl: string, companyName: string): Promise<AtsJob[]> {
-        // companyUrl expected format: https://genpact.wd108.myworkdayjobs.com/External_Careers
         try {
             const urlObj = new URL(companyUrl);
             const tenant = urlObj.hostname.split('.')[0];
-            const board = urlObj.pathname.replace(/^\//, '').split('/')[0];
-            
+            const board = extractWorkdayBoard(urlObj.pathname);
+
             if (!tenant || !board) {
-                console.warn(`[Workday] Invalid Workday base URL for ${companyName}: ${companyUrl}`);
+                console.warn(`[Workday] Invalid URL for ${companyName}: ${companyUrl}`);
                 return [];
             }
 
-            // Workday JSON search API endpoint
             const apiUrl = `${urlObj.origin}/wday/cxs/${tenant}/${board}/jobs`;
-
-            const response = await fetch(apiUrl, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                },
-                body: JSON.stringify({
-                    appliedFacets: {},
-                    limit: 20,
-                    offset: 0,
-                    searchText: ""
-                })
-            });
-
-            if (!response.ok) {
-                console.warn(`[Workday] Failed to fetch jobs for ${companyName}: ${response.status} ${response.statusText}`);
-                return [];
-            }
-
-            const data = await response.json() as WorkdayJobResponse;
-            if (!data.jobPostings || !Array.isArray(data.jobPostings)) {
-                return [];
-            }
-
-            // Workday apply links are base URL + external path
-            // e.g. https://genpact.wd108.myworkdayjobs.com/External_Careers + /job/Pune/...
             const baseUrl = `${urlObj.origin}/${board}`;
 
-            return data.jobPostings.map(j => ({
-                title: j.title || 'Unknown Title',
-                applyLink: `${baseUrl}${j.externalPath}`,
-                company: companyName,
-                location: j.locationsText,
-                type: j.timeType,
-                source: 'ATS_WORKDAY',
-                sourceType: 'ATS'
-            }));
+            const allJobs: AtsJob[] = [];
+            const seen = new Set<string>();
+            let offset = 0;
+            const limit = 20; // Workday max per page
+            let total = Infinity;
+
+            while (offset < total && offset < 1000) {
+                let data: WorkdayJobResponse | null = null;
+
+                const payloads = [
+                    { appliedFacets: {}, limit: limit, offset: offset, searchText: "" },
+                    { limit: limit, offset: offset }
+                ];
+
+                for (const body of payloads) {
+                    data = await fetchJson<WorkdayJobResponse>(
+                        apiUrl,
+                        {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(body)
+                        },
+                        'Workday'
+                    );
+                    if (data) break; // Success
+                }
+
+                if (!data) break;
+
+                const page = data.jobPostings ?? [];
+                if (offset === 0) total = data.total ?? 0;
+                if (page.length === 0) break;
+
+                for (const j of page) {
+                    // Safely build apply URL even when externalPath has a leading /en-US/...
+                    const applyLink = new URL(j.externalPath, `${urlObj.origin}/${board}/`).toString();
+
+                    if (seen.has(applyLink)) continue;
+                    seen.add(applyLink);
+
+                    allJobs.push({
+                        title: j.title || 'Unknown Title',
+                        applyLink,
+                        company: companyName,
+                        location: j.locationsText,
+                        descriptionSource: 'NONE',
+                        source: 'ATS_WORKDAY',
+                        sourceType: 'ATS',
+                    });
+                }
+
+                if (page.length < limit) break;
+                offset += limit;
+                await sleep(300);
+            }
+
+            if (offset >= 1000 && total > 1000) {
+                console.warn(`[Workday] Reached safety cap of 1000 jobs for ${companyName} (Total: ${total})`);
+            }
+
+            return allJobs;
         } catch (error) {
-            console.error(`[Workday] Error fetching jobs for ${companyName}:`, (error as Error).message);
+            console.error(`[Workday] Error for ${companyName}:`, (error as Error).message);
             return [];
         }
     }

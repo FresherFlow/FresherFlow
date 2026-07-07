@@ -45,7 +45,11 @@ const INDIAN_STATES = new Set((State.getStatesOfCountry('IN') || []).map(s => s.
 const INDIAN_CITIES = new Set((City.getCitiesOfCountry('IN') || []).map(c => c.name.toLowerCase()));
 
 export function isLocationIndiaOrRemote(location: string): boolean {
-    if (!location) return true;
+    // Empty/missing location = NOT assumed India/Remote.
+    // Companies like Binance, Capco etc. have hundreds of jobs with no location field,
+    // which previously all passed through and caused noise. If a job doesn't specify
+    // a location, the description scorer will have to catch it via context.
+    if (!location || location.trim() === '') return false;
     const loc = location.toLowerCase();
     
     // Explicitly reject common non-India locations and terms
@@ -55,32 +59,41 @@ export function isLocationIndiaOrRemote(location: string): boolean {
         'singapore', 'ireland', 'poland', 'netherlands', 'sweden', 'brazil',
         'mexico', 'spain', 'italy', 'dubai', 'uae', 'malaysia', 'emea', 'americas', 'apac', 'latam',
         'new york', 'california', 'texas', 'florida', 'berlin', 'paris', 'amsterdam', 'san francisco',
-        'seattle', 'boston', 'chicago', 'toronto', 'sydney', 'melbourne', 'dublin', 'kuala lumpur', 'taiwan', 'taipei'
+        'seattle', 'boston', 'chicago', 'toronto', 'sydney', 'melbourne', 'dublin', 'kuala lumpur', 'taiwan', 'taipei',
+        'philippines', 'manila', 'vietnam', 'indonesia', 'thailand', 'bangkok', 'seoul', 'south korea'
     ];
 
     for (const c of FOREIGN_TERMS) {
         if (loc.includes(c)) {
-            // Exception: if it explicitly also mentions India, we might keep it.
-            // Example: "San Francisco, CA or Bangalore, India"
             if (!loc.includes('india') && !loc.includes('in ')) {
                 return false;
             }
         }
     }
 
-    // Check against official Indian Cities from country-state-city
-    for (const city of INDIAN_CITIES) {
-        if (loc.includes(city)) return true;
-    }
-
-    // Check against official Indian States
-    for (const state of INDIAN_STATES) {
-        if (loc.includes(state)) return true;
+    const words = loc.split(/[\s,()[\]\/\-._|]+/);
+    for (let i = 0; i < words.length; i++) {
+        if (!words[i]) continue;
+        
+        if (INDIAN_CITIES.has(words[i])) return true;
+        if (INDIAN_STATES.has(words[i])) return true;
+        
+        if (i < words.length - 1) {
+            const twoWords = words[i] + ' ' + words[i+1];
+            if (INDIAN_CITIES.has(twoWords)) return true;
+            if (INDIAN_STATES.has(twoWords)) return true;
+        }
+        
+        if (i < words.length - 2) {
+            const threeWords = words[i] + ' ' + words[i+1] + ' ' + words[i+2];
+            if (INDIAN_CITIES.has(threeWords)) return true;
+            if (INDIAN_STATES.has(threeWords)) return true;
+        }
     }
 
     // Fallback basic keywords
     const BASIC_KEYWORDS = [
-        'india', 'remote', 'work from home', 'wfh', 'anywhere', 'worldwide', 'home based', 'home-based', 'global'
+        'india', 'remote', 'work from home', 'wfh', 'anywhere', 'home based', 'home-based',
     ];
     for (const kw of BASIC_KEYWORDS) {
         if (loc.includes(kw)) {
@@ -88,6 +101,11 @@ export function isLocationIndiaOrRemote(location: string): boolean {
         }
     }
 
-    // If it mentions no Indian city/state and no basic keyword, it's likely a foreign or undefined location
+    // "worldwide" / "global" — reject unless India is explicitly mentioned
+    if (loc.includes('worldwide') || loc.includes('global')) {
+        return false;
+    }
+
+    // If no Indian city/state or basic keyword matched, it's a foreign location
     return false;
 }

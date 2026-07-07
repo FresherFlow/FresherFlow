@@ -1,57 +1,76 @@
-import { AtsAdapter, AtsJob } from './BaseAdapter.js';
+import { AtsAdapter, AtsJob, COUNTRY_CODE_MAP, fetchJson, sleep } from './BaseAdapter.js';
 
 interface LeverJobResponse {
-    text: string; // Title
+    text: string;
     hostedUrl: string;
     categories?: {
         location?: string;
         department?: string;
         team?: string;
+        commitment?: string;
     };
     workplaceType?: string;
+    country?: string; // ISO 3166-1 alpha-2
+    lists?: Array<{ text: string; content: string }>;
+    openingPlain?: string;
+    additionalPlain?: string;
 }
+
+const VAGUE_LOCATIONS = ['global', 'remote', 'worldwide', 'asia', 'apac', 'south east asia', 'emea'];
 
 export class LeverAdapter implements AtsAdapter {
     providerName = 'Lever';
 
     async fetchJobs(companyId: string, companyName: string): Promise<AtsJob[]> {
         const url = `https://api.lever.co/v0/postings/${companyId}?mode=json`;
-        try {
-            const response = await fetch(url, {
-                headers: {
-                    'Accept': 'application/json',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
-            });
+        const jobs = await fetchJson<LeverJobResponse[]>(url, {}, 'Lever');
+        if (!Array.isArray(jobs)) return [];
 
-            if (!response.ok) {
-                console.warn(`[Lever] Failed to fetch jobs for ${companyId}: ${response.status} ${response.statusText}`);
-                return [];
+        return jobs.map(j => {
+            const countryCode = j.country || '';
+            const countryName = COUNTRY_CODE_MAP[countryCode] || countryCode;
+            let location = j.categories?.location || '';
+
+            // Only rewrite vague/empty locations using country code.
+            // If Lever already says "Mumbai" don't add "India (Mumbai)" redundancy.
+            const isVague = !location || VAGUE_LOCATIONS.some(t => location.toLowerCase().includes(t));
+            if (isVague && countryCode) {
+                // Preserve "India (Remote)" style or just the country name
+                location = countryCode === 'IN'
+                    ? `India${location ? ' (' + location + ')' : ''}`
+                    : `${location || countryName} [${countryCode}]`;
             }
 
-            const jobs = await response.json() as LeverJobResponse[];
-            if (!Array.isArray(jobs)) {
-                return [];
-            }
-
-            return jobs.map(j => {
-                let location = j.categories?.location || '';
-                if (j.workplaceType && j.workplaceType.toLowerCase() !== 'unspecified') {
-                    location = location ? `${location} (${j.workplaceType})` : j.workplaceType;
+            // Build description from all text sections
+            const descParts: string[] = [];
+            if (j.openingPlain) descParts.push(j.openingPlain);
+            if (j.lists) {
+                for (const list of j.lists) {
+                    if (list.text) descParts.push(list.text);
+                    if (list.content) descParts.push(list.content.replace(/<[^>]+>/g, ' ').trim());
                 }
-                
-                return {
-                    title: j.text || 'Unknown Title',
-                    applyLink: j.hostedUrl,
-                    company: companyName,
-                    location,
-                    source: 'ATS_LEVER',
-                    sourceType: 'ATS'
-                };
-            });
-        } catch (error) {
-            console.error(`[Lever] Error fetching jobs for ${companyId}:`, (error as Error).message);
-            return [];
-        }
+            }
+            if (j.additionalPlain) descParts.push(j.additionalPlain);
+            const description = descParts.join('\n').trim();
+
+            return {
+                title: j.text || 'Unknown Title',
+                applyLink: j.hostedUrl,
+                company: companyName,
+                location,
+                parsedLocation: {
+                    raw: j.categories?.location || '',
+                    country: countryName || undefined,
+                    countryCode: countryCode || undefined,
+                    remote: j.workplaceType?.toLowerCase() === 'remote',
+                },
+                description: description || undefined,
+                descriptionSource: description ? 'API' : 'NONE',
+                department: j.categories?.department || j.categories?.team,
+                employmentType: j.categories?.commitment,
+                source: 'ATS_LEVER',
+                sourceType: 'ATS',
+            };
+        });
     }
 }

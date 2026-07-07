@@ -40,10 +40,16 @@ export class SuccessFactorsAdapter implements AtsAdapter {
                     applyLink = `${urlObj.origin}${applyLink}`;
                 }
 
+                // Try to extract ID from URL param `career_job_req_id=123`
+                const idMatch = applyLink.match(/career_job_req_id=(\d+)/);
+                const id = idMatch ? idMatch[1] : undefined;
+
                 jobs.push({
+                    id,
                     title: title || 'Unknown Title',
                     applyLink: applyLink.replace(/&amp;/g, '&'),
                     company: companyName,
+                    descriptionSource: 'NONE',
                     source: 'ATS_SUCCESSFACTORS',
                     sourceType: 'ATS'
                 });

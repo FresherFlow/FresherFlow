@@ -40,10 +40,16 @@ export class ICimsAdapter implements AtsAdapter {
                     applyLink = `${companyUrl.replace(/\/$/, '')}${applyLink}`;
                 }
 
+                // Try to extract ID from URL /jobs/<ID>/...
+                const idMatch = applyLink.match(/\/jobs\/(\d+)\//);
+                const id = idMatch ? idMatch[1] : undefined;
+
                 jobs.push({
+                    id,
                     title: title || 'Unknown Title',
                     applyLink: applyLink,
                     company: companyName,
+                    descriptionSource: 'NONE',
                     source: 'ATS_ICIMS',
                     sourceType: 'ATS'
                 });

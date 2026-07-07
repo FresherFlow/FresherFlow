@@ -1,6 +1,8 @@
 import { Page } from 'playwright';
 import { EXPIRED_PHRASES, EXPERIENCED_PHRASES } from '../config.js';
-import { isSeniorJob, isFresherJob, hasFresherKeyword, isActualJob } from '../filters/text-filters.js';
+import { isActualJob } from '../filters/text-filters.js';
+import { scoreJobDescription } from '../filters/scorer.js';
+import { logDecision } from '../utils/logger.js';
 
 export interface JobCheckResult {
     live: boolean;
@@ -87,45 +89,19 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
             }
         }
 
-        // Check strictly senior first
-        if (isSeniorJob(bodyText)) {
-            console.log(`  -> ATS page is strictly a senior job. Marking as expired.`);
+        const scoreResult = scoreJobDescription(pageTitle || '', bodyText);
+        
+        logDecision(scoreResult, finalUrl, 'ATS Verifier');
+
+        if (scoreResult.verdict === 'REJECT') {
+            console.log(`  -> ATS page rejected by scorer (Score: ${scoreResult.score}). Marking as expired.`);
             return { live: false, status: 'expired', atsText: '' };
-        }
-
-        // Soft check for isFresherJob
-        if (!isFresherJob(bodyText)) {
-            if (hasFresherKeyword(bodyText)) {
-                console.log(`  -> ATS page fails isFresherJob check but has fresher keywords. Marking for review.`);
-                isReview = true;
-            } else {
-                console.log(`  -> ATS page fails isFresherJob check and has no fresher keywords. Marking as expired.`);
-                return { live: false, status: 'expired', atsText: '' };
-            }
-        }
-
-        // Soft check for isActualJob
-        if (!isActualJob(pageTitle)) {
-            if (hasFresherKeyword(bodyText)) {
-                console.log(`  -> ATS page fails isActualJob check but has fresher keywords. Marking for review.`);
-                isReview = true;
-            } else {
-                console.log(`  -> ATS page fails isActualJob check and has no fresher keywords. Marking as expired.`);
-                return { live: false, status: 'expired', atsText: '' };
-            }
-        }
-
-        // Check experienced phrases
-        for (const phrase of EXPERIENCED_PHRASES) {
-            if (lowerText.includes(phrase)) {
-                if (hasFresherKeyword(bodyText)) {
-                    console.log(`  -> ATS page contains experienced phrase (${phrase}) but has fresher keywords. Marking for review.`);
-                    isReview = true;
-                } else {
-                    console.log(`  -> False positive caught! ATS page mentions experienced phrase: ${phrase}`);
-                    return { live: false, status: 'expired', atsText: '' };
-                }
-            }
+        } else if (scoreResult.verdict === 'UNKNOWN') {
+            console.log(`  -> ATS page returned UNKNOWN confidence by scorer. Marking for review.`);
+            isReview = true;
+        } else if (scoreResult.verdict === 'MEDIUM') {
+            console.log(`  -> ATS page returned MEDIUM confidence (${scoreResult.score}). Marking for review.`);
+            isReview = true;
         }
 
         // Capture ATS text (first 8000 chars) for use by job processor — no re-fetch needed

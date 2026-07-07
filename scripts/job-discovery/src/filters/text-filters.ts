@@ -4,32 +4,41 @@ import { EXPERIENCED_PHRASES, FRESHER_PHRASES } from '../config.js';
 export function isFresherJob(text: string): boolean {
     const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
     
-    // Check for ranges like "1-3 years", "2-5 years", "1 to 4 years", or just "1-3 experience"
-    const expRangeRegex = /(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years|years'|yrs|yr|y\b)?\s*(?:of\s+)?(?:experience\b)?/gi;
-    if (expRangeRegex.test(lowerText) && lowerText.match(expRangeRegex)![0].match(/years|yrs|yr|y|experience/i)) {
+    // Check for ranges like "1-3 years of experience", "2-5 years of relevant experience"
+    // Does NOT match "0-1" or "0-2" because the first digit is 1-10.
+    const expRangeRegex = /(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z]+\s+){0,3}experience/gi;
+    if (expRangeRegex.test(lowerText)) {
         return false;
     }
 
-    // Check for experience requirements of 1+ years (e.g. "1 year experience", "2 years' experience", "Experience: 2+")
-    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years'|year's|years|year|yrs|yr|y\b)?\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
+    // Check for "Experience: 1-3 years"
+    const prefixExpRangeRegex = /(?:experience|exp|requires?|requiring)[^a-z0-9]{1,4}(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years?|yrs?|y\b)/gi;
+    if (prefixExpRangeRegex.test(lowerText)) {
+        return false;
+    }
+
+    // Check for experience requirements like "1 year of experience", "2 years' experience"
+    // Does NOT match if preceded by "0-" or "0 to"
+    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
     if (expReqRegex.test(lowerText)) {
         return false;
     }
 
-    // Check for "1+ years", "2+ yr", "2+ experience"
-    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*\+\s*(?:years|year|yrs|yr|y\b|experience\b)/gi;
+    // Check for "1+ years of experience", "2+ yrs experience"
+    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
     if (plusExpRegex.test(lowerText)) {
         return false;
     }
 
-    // Check for "minimum of 1 year", "min 2 year", "at least 1 yrs", "minimum 2 experience"
-    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b10\b)\s*(?:years|year|yrs|yr|y\b|experience\b)/gi;
+    // Check for "minimum of 1 year of experience", "min 2 years experience"
+    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b10\b)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
     if (minExpRegex.test(lowerText)) {
         return false;
     }
     
-    // Check for standalone experience requirements of 1-10 years (e.g. "1 year", "3 years") that are not part of a 0-X range
-    const standaloneExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years|yrs|yr|y\b)/gi;
+    // Standalone experience that doesn't say "of experience" but implies it:
+    // "Experience: 1 year", "Exp - 2 yrs", "Requires 1 year"
+    const standaloneExpRegex = /(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years?|yrs?|y\b)/gi;
     if (standaloneExpRegex.test(lowerText)) {
         return false;
     }
@@ -51,9 +60,15 @@ export function isFresherJob(text: string): boolean {
 export function isSeniorJob(text: string): boolean {
     const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
     
-    // Check for ranges like "3-5 years", "10-13 years", "5 to 8 years" (excluding ranges starting with 0, 1, or 2)
-    const expRangeRegex = /(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years|years'|yrs|yr|y\b)/gi;
+    // Check for ranges like "3-5 years of experience", "10-13 years" (excluding ranges starting with 0, 1, or 2)
+    const expRangeRegex = /(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
     if (expRangeRegex.test(lowerText)) {
+        return true;
+    }
+
+    // Check for "Experience: 3-5 years"
+    const prefixExpRangeRegex = /(?:experience|exp|requires?|requiring)[^a-z0-9]{1,4}(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)/gi;
+    if (prefixExpRangeRegex.test(lowerText)) {
         return true;
     }
 
@@ -63,20 +78,20 @@ export function isSeniorJob(text: string): boolean {
         return true;
     }
 
-    // Check for "3+ years", "4+ yr", "10+ years", etc. (excluding 0+, 1+, 2+)
-    const plusExpRegex = /(?<!\b[0-2]\s*(?:-|–|\bto\b)\s*)(?:\b[3-9]\b|\b\d{2,}\b)\s*\+\s*(?:years|year|yrs|yr|y\b)/gi;
+    // Check for "3+ years of experience", "4+ yr", "10+ years" (excluding 0+, 1+, 2+)
+    const plusExpRegex = /(?<!\b[0-2]\s*(?:-|–|\bto\b)\s*)(?:\b[3-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
     if (plusExpRegex.test(lowerText)) {
         return true;
     }
 
     // Check for "minimum of 3 years", "min 5 years", "at least 4 yrs", etc. (excluding 0, 1, 2)
-    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[3-9]\b|\b\d{2,}\b)\s*(?:years|year|yrs|yr|y\b)/gi;
+    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[3-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
     if (minExpRegex.test(lowerText)) {
         return true;
     }
     
-    // Check for standalone experience requirements of 3+ years (excluding 0, 1, 2)
-    const standaloneExpRegex = /(?<!\b[0-2]\s*(?:-|–|\bto\b)\s*)(?:\b[3-9]\b|\b\d{2,}\b)\s*(?:years|yrs|yr|y\b)/gi;
+    // Check for standalone experience requirements (e.g. "Requires 3 years", "Experience: 5+ yrs")
+    const standaloneExpRegex = /(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?<!\b[0-2]\s*(?:-|–|\bto\b)\s*)(?:\b[3-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)/gi;
     if (standaloneExpRegex.test(lowerText)) {
         return true;
     }
