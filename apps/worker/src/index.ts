@@ -11,6 +11,7 @@ import http from 'http';
 import { env } from '@fresherflow/config';
 import { logger, setupCleanLogging } from '@fresherflow/logger';
 import { redis } from '@fresherflow/redis';
+import { handleSeed, handleDrain, isAuthorized } from './social.handler';
 
 setupCleanLogging();
 
@@ -79,6 +80,28 @@ http.createServer(async (req, res) => {
             }));
             return;
         }
+
+        // ─── Social auto-post endpoints ──────────────────────────────────────
+        if (req.method === 'POST' && requestUrl.pathname === '/social/seed') {
+            if (!isAuthorized(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+            await handleSeed(res);
+            return;
+        }
+
+        if (req.method === 'POST' && requestUrl.pathname === '/social/drain') {
+            if (!isAuthorized(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+            await handleDrain(res);
+            return;
+        }
+        // ─────────────────────────────────────────────────────────────────────
 
         const queueStats = ENABLE_QUEUE_HEALTH
             ? await Promise.allSettled(
