@@ -369,7 +369,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                     <div className="flex justify-center pt-8 pb-4">
                                         <button
                                             onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
-                                            className="px-6 py-2.5 rounded-full bg-muted hover:bg-muted/80 text-sm font-bold text-foreground transition-colors"
+                                            className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-sm font-bold text-primary-foreground transition-colors shadow-sm"
                                         >
                                             Load more opportunities
                                         </button>

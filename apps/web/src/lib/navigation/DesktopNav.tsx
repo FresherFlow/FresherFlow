@@ -78,9 +78,8 @@ export function DesktopNav() {
                 </Link>
 
                 {/* Center Nav Links */}
-                {!isLoading && (
-                    <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
-                        {desktopRoutes.map((route) => {
+                <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5">
+                    {desktopRoutes.map((route) => {
                             const isActive = pathname === route.href || pathname.startsWith(`${route.href}/`);
                             return (
                                 <Link
@@ -102,47 +101,42 @@ export function DesktopNav() {
                             );
                         })}
                     </div>
-                )}
 
                 {/* Right Actions */}
                 <div className="flex items-center gap-1 shrink-0">
-                    {!isLoading && user && pendingSyncCount > 0 && (
+                    {user && pendingSyncCount > 0 && (
                         <span className="hidden lg:inline-flex items-center rounded-full border border-amber-400/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-amber-600 dark:text-amber-300 mr-1">
                             {pendingSyncCount} pending
                         </span>
                     )}
 
-                    {!isLoading && user && <CaptionsTool />}
+                    {user && <CaptionsTool />}
                     <ThemeToggle theme={theme} toggleTheme={toggleTheme} />
 
-                    {!isLoading && (
-                        <>
-                            {user ? (
-                                <div className="flex items-center gap-1 ml-1">
-                                    <Link href="/alerts" className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all" aria-label="Notifications">
-                                        <BellIcon className="w-[18px] h-[18px]" />
-                                        {unreadCount > 0 && (
-                                            <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-primary rounded-full ring-2 ring-background" />
-                                        )}
-                                    </Link>
-                                    <Link href="/account" className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all" aria-label="Account">
-                                        <UserCircleIcon className="w-[18px] h-[18px]" />
-                                    </Link>
-                                </div>
-                            ) : pathname !== '/app' ? (
-                                <Link
-                                    href="/app"
-                                    target="_self"
-                                    onClick={(event) => {
-                                        if (pathname === '/app') event.preventDefault();
-                                    }}
-                                    className="ml-1 inline-flex items-center h-8 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all shadow-sm"
-                                >
-                                    Get App
-                                </Link>
-                            ) : null}
-                        </>
-                    )}
+                    {user ? (
+                        <div className="flex items-center gap-1 ml-1">
+                            <Link href="/alerts" className="relative p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all" aria-label="Notifications">
+                                <BellIcon className="w-[18px] h-[18px]" />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-2 right-2 w-1.5 h-1.5 bg-primary rounded-full ring-2 ring-background" />
+                                )}
+                            </Link>
+                            <Link href="/account" className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-foreground/5 transition-all" aria-label="Account">
+                                <UserCircleIcon className="w-[18px] h-[18px]" />
+                            </Link>
+                        </div>
+                    ) : pathname !== '/app' ? (
+                        <Link
+                            href="/app"
+                            target="_self"
+                            onClick={(event) => {
+                                if (pathname === '/app') event.preventDefault();
+                            }}
+                            className="ml-1 inline-flex items-center h-8 px-4 rounded-lg bg-primary text-primary-foreground text-xs font-semibold hover:opacity-85 transition-all shadow-sm"
+                        >
+                            Get App
+                        </Link>
+                    ) : null}
                 </div>
             </nav>
         </header>

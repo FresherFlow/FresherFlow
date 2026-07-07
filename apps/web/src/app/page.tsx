@@ -100,9 +100,9 @@ export default async function LandingPage() {
                 <main className="flex-1 flex flex-col relative z-10">
                     <HeroSection liveCount={liveCount} opportunities={opportunities} />
 
-                    {/* Eligibility Matcher — temporarily hidden until feature is ready */}
-                    {false && (
-                        <section className="hidden md:block py-10 md:py-14 px-6 border-t border-border/40">
+                    {/* Eligibility Matcher Sandbox */}
+                    {opportunities.length > 0 && (
+                        <section className="hidden md:block py-10 md:py-14 px-6 border-t border-border/40 bg-card/20">
                             <div className="max-w-6xl mx-auto space-y-10">
                                 <div className="max-w-2xl mx-auto text-center space-y-3">
                                     <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">

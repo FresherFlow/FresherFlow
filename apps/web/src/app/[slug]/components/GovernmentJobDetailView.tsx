@@ -20,6 +20,7 @@ import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import ExclamationTriangleIcon from '@heroicons/react/24/outline/ExclamationTriangleIcon';
 import UserGroupIcon from '@heroicons/react/24/outline/UserGroupIcon';
 import InformationCircleIcon from '@heroicons/react/24/outline/InformationCircleIcon';
+import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 import CompanyLogo from '@/ui/CompanyLogo';
 
 import React from 'react';
@@ -189,7 +190,9 @@ const VacancyTable = ({ data }: { data: { columns: string[]; rows: (string | num
                         className="w-full h-9 pl-3 pr-8 text-sm bg-muted border border-border/80 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary/40 text-foreground"
                     />
                     {search && (
-                        <button onClick={() => setSearch('')} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-sm font-bold">×</button>
+                        <button onClick={() => setSearch('')} aria-label="Clear Search" className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-sm font-bold">
+                            <XMarkIcon className="w-5 h-5" />
+                        </button>
                     )}
                 </div>
             )}
@@ -296,9 +299,10 @@ const ExamCentersWidget = ({ centers }: { centers: string[] }) => {
                         {search && (
                             <button 
                                 onClick={() => setSearch('')}
+                                aria-label="Clear Search"
                                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-bold"
                             >
-                                ×
+                                <XMarkIcon className="w-4 h-4" />
                             </button>
                         )}
                     </div>
@@ -707,7 +711,7 @@ export function GovernmentJobDetailView({
 
         if (applicationStatus === 'ADMIT_CARD_RELEASED' && details.admitCardUrl) {
             return (
-                <a href={details.admitCardUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-violet-600 hover:bg-violet-700 text-white border-violet-700`}>
+                <a href={details.admitCardUrl} target="_blank" rel="noopener noreferrer" className={`${base} bg-primary hover:bg-primary/90 text-primary-foreground border-transparent`}>
                     🎫 Download Admit Card
                     <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                 </a>
@@ -731,7 +735,7 @@ export function GovernmentJobDetailView({
         }
         if (['COUNSELLING', 'DOCUMENT_VERIFICATION'].includes(applicationStatus || '')) {
             return (
-                <a href={details.officialWebsiteUrl || opp.applyLink || '#'} target="_blank" rel="noopener noreferrer" className={`${base} bg-teal-600 hover:bg-teal-700 text-white border-teal-700`}>
+                <a href={details.officialWebsiteUrl || opp.applyLink || '#'} target="_blank" rel="noopener noreferrer" className={`${base} bg-secondary hover:bg-secondary/80 text-secondary-foreground border-transparent`}>
                     🗂 Visit Official Portal
                     <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                 </a>

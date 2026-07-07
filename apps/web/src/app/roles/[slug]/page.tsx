@@ -96,7 +96,7 @@ export default async function RolePage({ params }: Props) {
     }
 
     const { slugify } = await import('@fresherflow/utils');
-    const feed = await fetchBootstrapFeed(false, [`role-${slug}`]);
+    const feed = await fetchBootstrapFeed();
     const opportunities = feed?.opportunities || [];
 
     const filtered = opportunities.filter(opp => {

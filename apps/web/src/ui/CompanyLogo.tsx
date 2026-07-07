@@ -143,7 +143,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
     if (!currentSrc || imgError) {
         if (isGovDetected) {
             return (
-                <div className={cn("w-16 h-16 flex items-center justify-center shrink-0 text-blue-600 dark:text-blue-500", className)}>
+                <div className={cn("w-16 h-16 flex items-center justify-center shrink-0 text-primary", className)}>
                     <ShieldCheckIcon className="w-16 h-16" />
                 </div>
             );
@@ -156,7 +156,7 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
             );
         }
         return (
-            <div className={cn("w-12 h-12 bg-slate-800 text-slate-200 font-bold text-xl rounded flex items-center justify-center shrink-0", className)}>
+            <div className={cn("w-12 h-12 bg-muted text-foreground font-bold text-xl rounded flex items-center justify-center shrink-0", className)}>
                 {companyName ? companyName.slice(0, 1).toUpperCase() : 'C'}
             </div>
         );

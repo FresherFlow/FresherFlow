@@ -11,6 +11,8 @@ import ShareIcon from '@heroicons/react/24/outline/ShareIcon';
 import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import FireIcon from '@heroicons/react/24/outline/FireIcon';
 import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
+import ArrowPathIcon from '@heroicons/react/24/outline/ArrowPathIcon';
+import { useState } from 'react';
 import CompanyLogo from '@/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@repo/ui/utils/error-web';
@@ -67,6 +69,7 @@ function getVisibleSkills(skills: string[] = [], budget: number = 30) {
 }
 
 export default function JobCard({ job, onClick, isApplied = false, isAdmin, priority = false, variant = 'default', isSelected = false, className }: JobCardProps) {
+    const [isNavigating, setIsNavigating] = useState(false);
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
     // Adaptable code: Use up to 60-70% of the card's width for required skills.
@@ -290,7 +293,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                     </div>
                     
                     <div className="flex items-center gap-1.5 shrink-0">
-                        <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-muted/80 text-foreground border border-border/60">
+                        <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-primary/10 text-primary border border-primary/20">
                             {isDrive ? 'Drive' : job.type === 'INTERNSHIP' ? 'Intern' : job.type === 'WALKIN' ? 'Walk-in' : 'Job'}
                         </span>
                     </div>
@@ -332,15 +335,27 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
         >
             <Link
                 href={getOpportunityPathFromItem(job)}
-                onClick={onClick}
+                onClick={(e) => {
+                    if (onClick) {
+                        onClick(e as any);
+                    }
+                    if (!e.defaultPrevented && !isNavigating) {
+                        setIsNavigating(true);
+                    }
+                }}
                 aria-label={`View ${job.title}`}
                 className="absolute inset-0 z-10"
             />
+            {isNavigating && (
+                <div className="absolute inset-0 z-50 bg-background/50 flex items-center justify-center backdrop-blur-[1px] rounded-2xl">
+                    <ArrowPathIcon className="w-6 h-6 text-primary animate-spin" />
+                </div>
+            )}
 
             {/* Top Bar: Type Badge + Heat Badge + Meta */}
             <div className="flex items-center justify-between gap-2 z-20 pointer-events-none">
                 <div className="flex items-center gap-2">
-                    <span className="inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-md bg-muted/80 text-foreground border border-border/70">
+                    <span className="inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-md bg-primary/10 text-primary border border-primary/20">
                         {isDrive ? 'Hiring Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt Job') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
                     </span>
                     {heatBadge && (
@@ -506,18 +521,19 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
 
             {/* Admin Edit Shortcut */}
             {isAdmin && (
-                <div
+                <button
                     onClick={(e) => {
                         e.stopPropagation();
                         window.location.href = `/opportunities/edit/${job.slug || job.id}`;
                     }}
                     className="absolute -top-2 -right-2 p-2 rounded-full bg-card border border-border shadow-lg text-primary hover:bg-primary/10 transition-colors z-30"
                     title="Edit Listing (Admin)"
+                    aria-label="Edit Listing (Admin)"
                 >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
                     </svg>
-                </div>
+                </button>
             )}
         </div>
     );

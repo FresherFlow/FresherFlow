@@ -443,7 +443,7 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                                     className="pl-9 h-10 text-xs rounded-xl bg-card border-border shadow-sm w-full"
                                 />
                                 {search && (
-                                    <button onClick={() => setSearch('')} className="absolute right-1 top-1/2 -translate-y-1/2 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground">
+                                    <button onClick={() => setSearch('')} aria-label="Clear search" className="absolute right-1 top-1/2 -translate-y-1/2 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-muted-foreground hover:text-foreground">
                                         <XMarkIcon className="w-5 h-5" />
                                     </button>
                                 )}
@@ -601,7 +601,7 @@ function CategoryPageContent({ type, initialData }: CategoryPageProps) {
                             <div className="flex justify-center pt-8 pb-4">
                                 <button
                                     onClick={() => setVisibleCount(prev => prev + 20)}
-                                    className="px-6 py-2.5 rounded-full bg-muted hover:bg-muted/80 text-sm font-bold text-foreground transition-colors"
+                                    className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-sm font-bold text-primary-foreground transition-colors shadow-sm"
                                 >
                                     Load more opportunities
                                 </button>

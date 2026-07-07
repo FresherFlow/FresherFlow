@@ -125,7 +125,7 @@ export const PreferencesSection = ({
                                     }
                                 } else if (e.key === 'Escape') setCityOpen(false);
                             }} className="premium-input text-sm h-11 md:h-10 flex-1" placeholder="Add locality..." />
-                            <button onClick={addCity} className="w-11 h-11 md:w-10 md:h-10 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-muted shadow-sm">
+                            <button onClick={addCity} aria-label="Add city" className="w-11 h-11 md:w-10 md:h-10 flex items-center justify-center rounded-lg border border-border bg-card hover:bg-muted shadow-sm">
                                 <PlusIcon className="w-4 h-4 text-foreground/80" />
                             </button>
                         </div>
@@ -150,7 +150,7 @@ export const PreferencesSection = ({
                             {preferredCities.map(city => (
                                 <span key={city} className="flex items-center gap-1 bg-foreground/5 px-2 py-1 rounded-md text-[13px] font-semibold border border-foreground/10 capitalize tracking-wide">
                                     {city}
-                                    <button onClick={() => setPreferredCities(prev => (Array.isArray(prev) ? prev.filter(c => c !== city) : []))} className="text-foreground/50 hover:text-destructive"><XMarkIcon className="w-3 h-3" /></button>
+                                    <button onClick={() => setPreferredCities(prev => (Array.isArray(prev) ? prev.filter(c => c !== city) : []))} aria-label={`Remove ${city}`} className="text-foreground/50 hover:text-destructive"><XMarkIcon className="w-3 h-3" /></button>
                                 </span>
                             ))}
                         </div>

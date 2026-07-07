@@ -46,7 +46,7 @@ export const ConfirmModal = ({
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="w-full max-w-sm bg-card rounded-xl border border-border shadow-2xl p-6 animate-in zoom-in-95 duration-200">
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${type === 'danger' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-4 ${type === 'danger' ? 'bg-destructive/10 text-destructive' : 'bg-amber-500/10 text-amber-500'}`}>
                     <ExclamationTriangleIcon className="w-6 h-6" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground mb-2">{title}</h3>
@@ -87,7 +87,7 @@ export const ConfirmModal = ({
                     <button
                         onClick={() => onConfirm(requireReason ? reason.trim() : undefined, statusOptions ? selectedStatus : undefined)}
                         disabled={!canConfirm}
-                        className={`flex-1 h-10 px-4 rounded-md text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed ${type === 'danger' ? 'bg-rose-600 text-white' : 'bg-primary text-primary-foreground'}`}
+                        className={`flex-1 h-10 px-4 rounded-md text-sm font-medium transition-opacity hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed ${type === 'danger' ? 'bg-destructive text-destructive-foreground' : 'bg-primary text-primary-foreground'}`}
                     >
                         {confirmText}
                     </button>

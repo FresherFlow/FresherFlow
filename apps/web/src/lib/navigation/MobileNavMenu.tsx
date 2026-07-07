@@ -22,6 +22,7 @@ import MagnifyingGlassIcon from '@heroicons/react/24/outline/MagnifyingGlassIcon
 import BriefcaseIcon from '@heroicons/react/24/outline/BriefcaseIcon';
 import AcademicCapIcon from '@heroicons/react/24/outline/AcademicCapIcon';
 import BuildingLibraryIcon from '@heroicons/react/24/outline/BuildingLibraryIcon';
+import XMarkIcon from '@heroicons/react/24/outline/XMarkIcon';
 
 function TelegramIcon({ className }: { className?: string }) {
     return <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true"><path d="M12 0C5.371 0 0 5.372 0 12s5.371 12 12 12 12-5.372 12-12S18.629 0 12 0Zm5.861 8.233-1.97 9.294c-.149.657-.538.818-1.088.51l-3.009-2.219-1.451 1.396c-.16.16-.295.295-.603.295l.213-3.049 5.549-5.012c.24-.213-.053-.333-.373-.12L8.27 13.65l-2.957-.922c-.642-.203-.656-.642.135-.949l11.557-4.456c.536-.198 1.006.12.856.91Z" /></svg>;
@@ -144,10 +145,8 @@ export default function MobileNavMenu({ user, unreadCount, pendingSyncCount, onC
                 <div className="flex items-center gap-3 px-5 py-5 border-b border-border/40">
                     <LogoImage width={32} height={32} className="w-8 h-8 object-contain shrink-0" />
                     <span className="text-base font-bold tracking-tight leading-none text-foreground">FresherFlow</span>
-                    <button onClick={onClose} className="ml-auto p-2 -mr-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted/50 transition-colors">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                    <button onClick={onClose} aria-label="Close menu" className="ml-auto p-2 -mr-2 text-muted-foreground hover:text-foreground rounded-full hover:bg-muted/50 transition-colors">
+                        <XMarkIcon className="w-5 h-5" />
                     </button>
                 </div>
 
