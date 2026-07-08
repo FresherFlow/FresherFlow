@@ -42,6 +42,7 @@ export default function AdminBottomNav() {
 
     // Hide on form pages that have their own bottom action bar
     const isFormPage =
+        pathname === '/admin/opportunities' ||
         pathname === '/admin/opportunities/create' ||
         pathname === '/admin/opportunities/new' ||
         pathname === '/admin/government-jobs/create' ||

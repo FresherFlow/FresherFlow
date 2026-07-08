@@ -1,8 +1,10 @@
 'use client';
 
-import { useEffect, Suspense } from 'react';
+import { useEffect, Suspense, useState } from 'react';
 import { useAdmin } from '@/lib/auth/AdminContext';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { PlusIcon } from '@heroicons/react/24/outline';
 import { AdminOpportunitiesSkeleton } from '@/ui/Skeleton';
 import { getPublicOpportunityUrl } from '@/features/admin/opportunities/listUtils';
 
@@ -17,6 +19,7 @@ import { AdminOpportunitiesFilters } from './components/AdminOpportunitiesFilter
 import { AdminOpportunitiesTable } from './components/AdminOpportunitiesTable';
 import { AdminOpportunitiesMobileList } from './components/AdminOpportunitiesMobileList';
 import { ConfirmModal } from './components/ConfirmModal';
+import { AdminOpportunityPreviewModal } from './components/AdminOpportunityPreviewModal';
 
 export default function AdminOpportunitiesPage() {
     return (
@@ -30,6 +33,7 @@ function OpportunitiesListPage() {
     const { isAuthenticated } = useAdmin();
     const router = useRouter();
     const pageSize = 20;
+    const [previewOppId, setPreviewOppId] = useState<string | null>(null);
 
     const {
         opportunities,
@@ -73,7 +77,7 @@ function OpportunitiesListPage() {
     const effectiveTotalPages = totalPages || Math.ceil(totalCount / pageSize) || 1;
 
     return (
-        <div className="space-y-6 md:space-y-8">
+        <div className="flex flex-col gap-4 h-full min-h-0 overflow-hidden">
             <AdminOpportunitiesHeader 
                 isLoading={isLoading} 
                 onRefresh={loadOpportunities} 
@@ -102,50 +106,60 @@ function OpportunitiesListPage() {
                 onClear={() => { setSearch(''); setTypeFilter(''); setStatusFilter(''); setSort('postedAt_desc'); setPage(1); }}
             />
 
-            {!hasLoadedOnce && isLoading ? (
-                <AdminOpportunitiesSkeleton />
-            ) : opportunities.length === 0 ? (
-                <div className="bg-card border border-dashed border-border rounded-lg p-12 text-center text-muted-foreground">
-                    No results found.
-                </div>
-            ) : (
-                <>
-                    <AdminOpportunitiesMobileList 
-                        opportunities={opportunities}
-                        selectedIds={selectedIds}
-                        toggleSelect={(id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
-                        handleExpire={handleExpire}
-                        handleStatusUpdate={handleStatusUpdate}
-                        handleDelete={handleDelete}
-                        handleHardDelete={handleHardDelete}
-                        handleRejectDraft={handleRejectDraft}
-                        handleRestore={handleRestore}
-                        copySocialCaption={handleCopySocialCaption}
-                        getPublicOpportunityUrl={getPublicOpportunityUrl}
-                    />
+            {/* Table area — grows to fill remaining height */}
+            <div className="flex-1 min-h-0 flex flex-col">
+                {!hasLoadedOnce && isLoading ? (
+                    <AdminOpportunitiesSkeleton />
+                ) : opportunities.length === 0 ? (
+                    <div className="bg-card border border-dashed border-border rounded-lg p-12 text-center text-muted-foreground">
+                        No results found.
+                    </div>
+                ) : (
+                    <>
+                        <AdminOpportunitiesMobileList 
+                            opportunities={opportunities}
+                            selectedIds={selectedIds}
+                            toggleSelect={(id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
+                            handleExpire={handleExpire}
+                            handleStatusUpdate={handleStatusUpdate}
+                            handleDelete={handleDelete}
+                            handleHardDelete={handleHardDelete}
+                            handleRejectDraft={handleRejectDraft}
+                            handleRestore={handleRestore}
+                            copySocialCaption={handleCopySocialCaption}
+                            getPublicOpportunityUrl={getPublicOpportunityUrl}
+                            onPreview={setPreviewOppId}
+                            page={page}
+                            pageSize={pageSize}
+                            totalCount={totalCount}
+                            effectiveTotalPages={effectiveTotalPages}
+                            setPage={setPage}
+                        />
 
-                    <AdminOpportunitiesTable 
-                        opportunities={opportunities}
-                        selectedIds={selectedIds}
-                        bulkActionPending={bulkActionPending}
-                        toggleSelect={(id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
-                        toggleSelectAll={() => setSelectedIds(selectedIds.length === opportunities.length ? [] : opportunities.map(o => o.id))}
-                        handleExpire={handleExpire}
-                        handleStatusUpdate={handleStatusUpdate}
-                        handleDelete={handleDelete}
-                        handleHardDelete={handleHardDelete}
-                        handleRejectDraft={handleRejectDraft}
-                        handleRestore={handleRestore}
-                        copySocialCaption={handleCopySocialCaption}
-                        getPublicOpportunityUrl={getPublicOpportunityUrl}
-                        page={page}
-                        pageSize={pageSize}
-                        totalCount={totalCount}
-                        effectiveTotalPages={effectiveTotalPages}
-                        setPage={setPage}
-                    />
-                </>
-            )}
+                        <AdminOpportunitiesTable 
+                            opportunities={opportunities}
+                            selectedIds={selectedIds}
+                            bulkActionPending={bulkActionPending}
+                            toggleSelect={(id) => setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])}
+                            toggleSelectAll={() => setSelectedIds(selectedIds.length === opportunities.length ? [] : opportunities.map(o => o.id))}
+                            handleExpire={handleExpire}
+                            handleStatusUpdate={handleStatusUpdate}
+                            handleDelete={handleDelete}
+                            handleHardDelete={handleHardDelete}
+                            handleRejectDraft={handleRejectDraft}
+                            handleRestore={handleRestore}
+                            copySocialCaption={handleCopySocialCaption}
+                            getPublicOpportunityUrl={getPublicOpportunityUrl}
+                            onPreview={setPreviewOppId}
+                            page={page}
+                            pageSize={pageSize}
+                            totalCount={totalCount}
+                            effectiveTotalPages={effectiveTotalPages}
+                            setPage={setPage}
+                        />
+                    </>
+                )}
+            </div>
 
             <ConfirmModal 
                 show={confirmModal.show}
@@ -160,12 +174,21 @@ function OpportunitiesListPage() {
                 statusOptions={confirmModal.statusOptions}
                 defaultStatus={confirmModal.defaultStatus}
             />
+
+            <AdminOpportunityPreviewModal
+                show={!!previewOppId}
+                opportunityId={previewOppId}
+                onClose={() => setPreviewOppId(null)}
+            />
+
+            {/* Floating Post FAB */}
+            <Link
+                href="/admin/opportunities/create"
+                className="fixed bottom-20 right-5 z-40 md:hidden w-14 h-14 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
+                aria-label="New listing"
+            >
+                <PlusIcon className="w-7 h-7" strokeWidth={2.5} />
+            </Link>
         </div>
     );
 }
-
-
-
-
-
-

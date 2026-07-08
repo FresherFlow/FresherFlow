@@ -141,6 +141,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
     const effectiveFeedbackAlertCount = (pathname.startsWith('/feedback') || pathname.startsWith('/admin/feedback')) ? 0 : feedbackAlertCount;
 
+    const hideBottomNav =
+        pathname === '/admin/opportunities' ||
+        pathname === '/admin/opportunities/create' ||
+        pathname === '/admin/opportunities/new' ||
+        pathname === '/admin/government-jobs/create' ||
+        pathname === '/admin/jobs/new' ||
+        pathname === '/admin/walkins/new' ||
+        pathname.includes('/edit') ||
+        pathname.includes('/resources');
+
     return (
         <div className="flex h-dvh overflow-hidden bg-background text-foreground">
             {/* Sidebar (Desktop) */}
@@ -303,9 +313,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 )}
 
                 <main
-                    className="flex-1 overflow-y-auto p-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:p-8 md:pt-8 w-full pb-20 md:pb-8"
+                    className={`flex-1 overflow-hidden flex flex-col p-4 pt-[calc(3.75rem+env(safe-area-inset-top))] md:p-8 md:pt-8 w-full md:pb-8 ${
+                        hideBottomNav ? 'pb-4' : 'pb-20'
+                    }`}
                 >
-                    <div className="max-w-[1600px] mx-auto w-full">
+                    <div className="max-w-[1600px] mx-auto w-full flex-1 min-h-0 overflow-y-auto">
                         {children}
                     </div>
                 </main>

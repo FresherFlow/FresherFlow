@@ -57,6 +57,7 @@ export default function LoadingScreen({
                         fill
                         sizes="48px"
                         className="object-contain"
+                        suppressHydrationWarning
                     />
                 </div>
 
@@ -68,6 +69,7 @@ export default function LoadingScreen({
                         fill
                         sizes="48px"
                         className="object-contain"
+                        suppressHydrationWarning
                     />
                 </div>
             </div>

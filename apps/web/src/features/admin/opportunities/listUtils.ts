@@ -119,8 +119,3 @@ export const buildSocialCaption = (opp: SocialOpportunity) => {
         hashtags,
     ].join('\n');
 };
-
-
-
-
-

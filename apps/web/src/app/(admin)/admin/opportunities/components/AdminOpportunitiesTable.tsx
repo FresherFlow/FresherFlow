@@ -38,6 +38,7 @@ interface AdminOpportunitiesTableProps {
     handleRestore: (id: string) => void;
     copySocialCaption: (opp: SocialOpportunity) => void;
     getPublicOpportunityUrl: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
+    onPreview: (id: string) => void;
     page: number;
     pageSize: number;
     totalCount: number;
@@ -59,6 +60,7 @@ export const AdminOpportunitiesTable = ({
     handleRestore,
     copySocialCaption,
     getPublicOpportunityUrl,
+    onPreview,
     page,
     pageSize,
     totalCount,
@@ -68,8 +70,9 @@ export const AdminOpportunitiesTable = ({
     const hasNextPage = page < effectiveTotalPages;
 
     return (
-        <div className="hidden md:block bg-card rounded-lg border border-border overflow-y-auto max-h-[calc(100vh-180px)] custom-scrollbar">
-            <table className="w-full text-left text-sm">
+        <div className="hidden md:flex flex-col flex-1 bg-card rounded-lg border border-border overflow-hidden min-h-0">
+            <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0">
+                <table className="w-full text-left text-sm">
                 <thead className="sticky top-0 z-10 bg-card">
                     <tr className="border-b border-border bg-muted/90 backdrop-blur-xs">
                         <th className="group px-5 py-3 w-10">
@@ -118,7 +121,12 @@ export const AdminOpportunitiesTable = ({
                                         className="w-8 h-8 rounded-md flex-shrink-0"
                                     />
                                     <div>
-                                        <div className="font-medium text-foreground">{opp.title}</div>
+                                        <div 
+                                            onClick={() => onPreview(opp.id)}
+                                            className="font-medium text-foreground hover:text-primary cursor-pointer hover:underline"
+                                        >
+                                            {opp.title}
+                                        </div>
                                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 flex-wrap">
                                             <span>{opp.company}</span>
                                             <span className="text-[9px] capitalize tracking-wide px-1.5 py-0.5 rounded bg-muted/50 border border-border">
@@ -136,18 +144,7 @@ export const AdminOpportunitiesTable = ({
                                     </div>
                                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                                         <CalendarIcon className="w-3 h-3" />
-                                        {new Date(opp.postedAt).toLocaleDateString()}
-                                    </div>
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                        <span className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ring-1 ring-inset ${linkHealthClass(opp.linkHealth)}`}>
-                                            {formatLinkHealth(opp.linkHealth)}
-                                        </span>
-                                        <span className="text-[10px] text-muted-foreground">
-                                            Fails: {opp.verificationFailures ?? 0}
-                                        </span>
-                                    </div>
-                                    <div className="text-[10px] text-muted-foreground">
-                                        Verified: {formatLastVerified(opp.lastVerifiedAt)}
+                                        {new Date(opp.postedAt).toLocaleString()}
                                     </div>
                                 </div>
                             </td>
@@ -170,21 +167,19 @@ export const AdminOpportunitiesTable = ({
                                             href={(opp.applyLink || opp.sourceLink) as string}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all"
+                                            className="p-2 text-blue-600 dark:text-blue-400 hover:bg-blue-500/10 rounded-md transition-all"
                                             title="Open apply link"
                                         >
                                             <ArrowTopRightOnSquareIcon className="w-4 h-4" />
                                         </a>
                                     )}
-                                    <a
-                                        href={getPublicOpportunityUrl(opp)}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
+                                    <button
+                                        onClick={() => onPreview(opp.id)}
                                         className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
-                                        title="View as user"
+                                        title="Preview Opportunity"
                                     >
                                         <EyeIcon className="w-4 h-4" />
-                                    </a>
+                                    </button>
                                     <Link
                                         href={`/admin/opportunities/edit/${opp.slug || opp.id}`}
                                         className="p-2 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-all"
@@ -248,9 +243,10 @@ export const AdminOpportunitiesTable = ({
                     ))}
                 </tbody>
             </table>
+            </div>{/* end scroll wrapper */}
 
-            {/* Pagination */}
-            <div className="px-5 py-4 border-t border-border bg-muted/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Pagination — sticky at bottom, outside scroll area */}
+            <div className="shrink-0 px-5 py-4 border-t border-border bg-muted/30 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="text-xs text-muted-foreground order-2 md:order-1">
                     Showing <span className="font-medium text-foreground">{(page - 1) * pageSize + 1}</span> to <span className="font-medium text-foreground">{Math.min(page * pageSize, totalCount)}</span> of <span className="font-medium text-foreground">{totalCount}</span> results
                 </div>
@@ -258,7 +254,7 @@ export const AdminOpportunitiesTable = ({
                     <button
                         onClick={() => setPage(prev => Math.max(1, (typeof prev === 'number' ? prev : 1) - 1))}
                         disabled={page === 1}
-                        className="h-8 px-3 rounded border border-input bg-secondary/20 text-xs font-medium disabled:opacity-50 hover:bg-accent transition-colors"
+                        className="h-8 px-3 rounded border border-input bg-secondary/20 text-xs font-medium disabled:opacity-50 hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                         Previous
                     </button>
@@ -276,7 +272,7 @@ export const AdminOpportunitiesTable = ({
                                     onClick={() => setPage(pageNum)}
                                     className={`w-8 h-8 rounded text-xs font-medium transition-colors ${page === pageNum
                                         ? 'bg-primary text-primary-foreground'
-                                        : 'border border-input bg-secondary/20 hover:bg-accent'
+                                        : 'border border-input bg-secondary/20 hover:bg-accent hover:text-accent-foreground'
                                         }`}
                                 >
                                     {pageNum}
@@ -287,7 +283,7 @@ export const AdminOpportunitiesTable = ({
                     <button
                         onClick={() => setPage(prev => Math.min(effectiveTotalPages, (typeof prev === 'number' ? prev : 1) + 1))}
                         disabled={!hasNextPage}
-                        className="h-8 px-3 rounded border border-input bg-secondary/20 text-xs font-medium disabled:opacity-50 hover:bg-accent transition-colors"
+                        className="h-8 px-3 rounded border border-input bg-secondary/20 text-xs font-medium disabled:opacity-50 hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                         Next
                     </button>
