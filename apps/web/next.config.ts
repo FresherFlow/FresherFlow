@@ -151,15 +151,14 @@ const nextConfig: NextConfig = {
     ];
   },
   async rewrites() {
-    const cdnUrl = (process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in').replace(/\/+$/, '');
     const rewritesList = [
       {
         source: "/sitemap.xml",
-        destination: `${cdnUrl}/sitemap.xml`,
+        destination: "/api/public/sitemap?file=sitemap.xml",
       },
       {
         source: "/sitemap-:name.xml",
-        destination: `${cdnUrl}/sitemap-:name.xml`,
+        destination: "/api/public/sitemap?file=sitemap-:name.xml",
       },
     ];
 

@@ -143,7 +143,7 @@ export async function fetchFeedVersion(untracked = false): Promise<FeedVersion> 
             FEED_VERSION_URL,
             untracked
                 ? { cache: 'force-cache' }
-                : { next: { revalidate: 300 } },
+                : { next: { revalidate: false, tags: ['feed-version'] } },
         );
         if (res.ok) {
             const data = await res.json() as { version?: string };
