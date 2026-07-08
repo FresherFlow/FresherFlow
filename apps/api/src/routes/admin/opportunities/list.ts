@@ -4,7 +4,7 @@ import { Prisma } from '@fresherflow/database';
 import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { searchOpportunities } from '../../../application/opportunity';
 import {
-    normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere,
+    normalizeTypeParam, parseAdminStatusFilter, buildExpiredWhere, buildIdOrSlugWhere,
 } from './_helpers';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
 
@@ -205,7 +205,7 @@ router.get('/:id', async (req: Request, res: Response, next: NextFunction) => {
         if (cached) return res.json(cached);
 
         const opportunity = await prisma.opportunity.findFirst({
-            where: { OR: [{ id }, { slug: id }] },
+            where: buildIdOrSlugWhere(id),
             include: {
                 walkInDetails: true,
                 governmentJobDetails: true,

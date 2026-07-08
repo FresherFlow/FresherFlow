@@ -98,3 +98,96 @@ export function slugify(text: string): string {
         .replace(/\s+/g, '-')
         .replace(/-+/g, '-');
 }
+
+/**
+ * Extract a clean, brand-focused company slug from a URL or fallback name,
+ * supporting subdomain extraction for ATS platforms (e.g. zohorecruit, lever, greenhouse).
+ */
+export function getCompanySlug(name: string, url: string | null): string {
+    if (url) {
+        try {
+            let host = url.trim().toLowerCase();
+            if (!host.includes('://')) {
+                host = 'https://' + host;
+            }
+            const urlObj = new URL(host);
+            let hostname = urlObj.hostname;
+
+            // Split hostname by dots
+            const parts = hostname.split('.').filter(Boolean);
+
+            if (parts.length >= 3) {
+                // Check if the domain is a known ATS platform
+                const secondToLast = parts[parts.length - 2];
+                const thirdToLast = parts[parts.length - 3];
+                const lastTwo = parts.slice(-2).join('.');
+                
+                // If it's a double TLD like co.in, the ATS domain would be at parts.length - 3
+                let atsDomain = secondToLast;
+                let companySubdomain = thirdToLast;
+                
+                if (['co.in', 'com.in', 'co.uk', 'org.in', 'net.in', 'co.nz'].includes(lastTwo)) {
+                    if (parts.length >= 4) {
+                        atsDomain = parts[parts.length - 3];
+                        companySubdomain = parts[parts.length - 4];
+                    } else {
+                        atsDomain = '';
+                    }
+                }
+
+                const ATS_PLATFORMS = new Set([
+                    'zohorecruit', 'myworkdayjobs', 'lever', 'greenhouse', 
+                    'smartrecruiters', 'breezy', 'recruitee', 'freshteam', 
+                    'jobvite', 'catsone', 'workday', 'talentlyft', 'recruiteecdn'
+                ]);
+
+                const GENERIC_SUBDOMAINS = new Set([
+                    'www', 'careers', 'jobs', 'global', 'about', 'recruitment', 'apply', 'candidate', 'portal', 'dashboard', 'app'
+                ]);
+
+                if (ATS_PLATFORMS.has(atsDomain) && companySubdomain && !GENERIC_SUBDOMAINS.has(companySubdomain)) {
+                    return companySubdomain;
+                }
+            }
+
+            // Standard domain extraction
+            hostname = hostname.replace(/^(www\d*|careers|jobs|global|about|recruitment|apply|candidate)\./, '');
+            const cleanParts = hostname.split('.').filter(Boolean);
+
+            if (cleanParts.length > 0) {
+                const lastTwo = cleanParts.slice(-2).join('.');
+                if (['co.in', 'com.in', 'co.uk', 'org.in', 'net.in', 'co.nz'].includes(lastTwo) && cleanParts.length >= 3) {
+                    return cleanParts[cleanParts.length - 3];
+                }
+                
+                if (cleanParts.length >= 2) {
+                    const tld = cleanParts[cleanParts.length - 1];
+                    if (['com', 'in', 'org', 'net', 'info', 'biz', 'io', 'ai', 'co', 'us', 'me', 'tech', 'app', 'dev', 'jobs', 'careers'].includes(tld)) {
+                        return cleanParts[cleanParts.length - 2];
+                    }
+                }
+                
+                return cleanParts[0];
+            }
+        } catch (e) {
+            // Fallback
+        }
+    }
+
+    // Fallback name cleaning
+    const cleanedName = name
+        .replace(/\b(pvt|ltd|private|limited|solutions|services|technologies|technology|india|labs|systems|consulting|group|dev|center)\b/gi, '')
+        .trim();
+    
+    const nameToSlugify = cleanedName.length > 0 ? cleanedName : name;
+
+    return nameToSlugify
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
+}
+

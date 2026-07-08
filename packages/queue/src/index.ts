@@ -9,6 +9,7 @@ import { processPushJob } from './processors/push.processor';
 import { processTelegramJob } from './processors/telegram.processor';
 import { processSocialJob } from './processors/social.processor';
 import { processIngestionJob } from './processors/ingestion.processor';
+import { processCacheRevalidateJob } from './processors/revalidate.processor';
 
 // Reduced queue surfaces to save Redis connections (Redis Connection Fix Plan #5)
 export const QUEUE_NAMES = {
@@ -91,6 +92,8 @@ export const socialQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE
 export const cronQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.internal).add(n || 'cron-task', d, o) };
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const ingestionQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.internal).add(n || 'ingestion-payload', d, o) };
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const cacheRevalidateQueue = { add: (n: string, d: any, o?: any) => getQueue(QUEUE_NAMES.internal).add(n || 'cache-revalidate', d, o) };
 
 export async function enqueueIngestionPayload(payload: Record<string, unknown>) {
     await ingestionQueue.add('ingestion-payload', payload);
@@ -103,6 +106,7 @@ export * from './processors/push.processor';
 export * from './processors/telegram.processor';
 export * from './processors/ingestion.processor';
 export * from './processors/social.processor';
+export * from './processors/revalidate.processor';
 
 /**
  * CONSOLIDATED WORKER DISPATCHERS
@@ -160,6 +164,9 @@ export const WORKER_DEFINITIONS = [
                 }
                 return processIngestionJob(job);
             }
+            if (job.name === 'cache-revalidate') {
+                return processCacheRevalidateJob(job);
+            }
             throw new Error(`[internal] Unknown job name: ${job.name}`);
         },
     },
@@ -172,6 +179,7 @@ export * from './producers/push.producer';
 export * from './producers/telegram.producer';
 export * from './producers/ingestion.producer';
 export * from './producers/social.producer';
+export * from './producers/revalidate.producer';
 
 // Job Data Types
 export interface EmailJobData {
@@ -183,6 +191,10 @@ export interface EmailJobData {
 
 export interface CronJobData {
     task: 'EXPIRY_CHECK' | 'LINK_VERIFICATION' | 'ALERTS_CYCLE';
+}
+
+export interface CacheRevalidateJobData {
+    paths: string[];
 }
 
 export interface PushJobData {

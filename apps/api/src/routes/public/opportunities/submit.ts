@@ -4,6 +4,7 @@ import { OpportunityStatus, OpportunityType } from '@fresherflow/types';
 import { slugify } from '@fresherflow/utils';
 import { tryResolveUserIdFromCookie } from './_helpers';
 import { opportunitySubmitSchema } from '../../../utils/validation';
+import { adminCache } from '../../../infrastructure/cache/adminCache';
 
 const router = Router();
 
@@ -151,6 +152,9 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
                 } : {})
             }
         });
+
+        // Invalidate admin listing cache so new jobs show up immediately
+        adminCache.invalidateLists();
 
         return res.status(200).json({
             success: true,

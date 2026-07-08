@@ -8,6 +8,9 @@ import { runAlertsCycle } from '../../infrastructure/services/alerts.service';
 import { getAdminMetricsV2, MetricsWindow } from '../../infrastructure/services/adminMetrics.service';
 import { getAdminDeliveryControls, updateAdminDeliveryControls } from '../../infrastructure/services/adminDeliveryControl.service';
 import { StaticFeedService } from '../../infrastructure/services/staticFeed.service';
+import { redis } from '@fresherflow/redis';
+import { enqueueCacheRevalidation } from '@fresherflow/queue';
+import { logger } from '@fresherflow/logger';
 
 const router = Router();
 
@@ -130,6 +133,20 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
             } catch {
                 // Non-fatal — feed is already updated in R2, tag bust is best-effort
             }
+        }
+
+        // Drain Redis cache queues into BullMQ worker for trickle revalidation
+        try {
+            const pendingPaths = await redis.smembers('pending_cache_paths');
+            // We ignore pending_cache_tags because tag busts cause Next.js data cache fragmentation
+            
+            if (pendingPaths && pendingPaths.length > 0) {
+                await redis.del('pending_cache_paths', 'pending_cache_tags');
+                await enqueueCacheRevalidation(pendingPaths);
+                logger.info(`Enqueued ${pendingPaths.length} paths for background trickle revalidation`);
+            }
+        } catch (err: unknown) {
+            logger.error('Failed to drain pending cache paths', { error: err instanceof Error ? err.message : String(err) });
         }
 
         res.json({ success: true, message: `Static feeds (${targetStr}) successfully regenerated and web cache revalidated.` });

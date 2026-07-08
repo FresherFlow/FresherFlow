@@ -52,16 +52,29 @@ export async function invalidatePublicOpportunityCache(options?: {
             }
         }
 
-        // Queue paths and tags in Redis to be processed during "Generate JSON"
+        // Convert tags to paths for background revalidation
+        const tagPaths = tags.map(tag => {
+            if (tag === 'hub-jobs') return '/jobs';
+            if (tag === 'hub-internships') return '/internships';
+            if (tag === 'hub-walkins') return '/walk-ins';
+            if (tag === 'hub-government') return '/government-jobs';
+            if (tag.startsWith('company-')) return `/companies/${tag.replace('company-', '')}`;
+            if (tag.startsWith('location-')) return `/location/${tag.replace('location-', '')}`;
+            if (tag.startsWith('skill-')) return `/skills/${tag.replace('skill-', '')}`;
+            if (tag.startsWith('batch-')) return `/batch/${tag.replace('batch-', '')}`;
+            if (tag.startsWith('role-')) return `/roles/${tag.replace('role-', '')}`;
+            return null;
+        }).filter(Boolean) as string[];
+
+        pathsToRevalidate.push(...tagPaths);
+
+        // Queue paths in Redis to be processed during "Generate JSON"
         // This ensures the CDN is actually updated before we tell Next.js to fetch from it
         if (pathsToRevalidate.length > 0) {
-            await redis.sadd('pending_cache_paths', ...pathsToRevalidate);
-        }
-        if (tags.length > 0) {
-            await redis.sadd('pending_cache_tags', ...tags);
+            await redis.sadd('pending_cache_paths', ...Array.from(new Set(pathsToRevalidate)));
         }
 
-        logger.debug('Queued public opportunity cache invalidations', { paths: pathsToRevalidate, tags, purgeFeed });
+        logger.debug('Queued public opportunity cache invalidations', { paths: pathsToRevalidate, purgeFeed });
     } catch (error: unknown) {
         logger.error('[Redis] Failed to queue public opportunity cache invalidations', { error: error instanceof Error ? error.message : String(error) });
     }

@@ -1,5 +1,6 @@
 import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { logger } from '@fresherflow/logger';
+import { getCompanySlug } from '@fresherflow/utils';
 
 const endpoint = process.env.R2_ENDPOINT;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
@@ -155,7 +156,7 @@ export class MetadataService {
 
                 if (isValidCompany) {
                     const companiesContent = await fetchFromR2('companies.json');
-                    let companies: Array<{ name: string; url: string | null; logo_url: string | null }> = [];
+                    let companies: Array<{ name: string; url: string | null; logo_url: string | null; slug?: string }> = [];
                     if (companiesContent) {
                         try {
                             companies = JSON.parse(companiesContent);
@@ -164,13 +165,26 @@ export class MetadataService {
                         }
                     }
 
+                    let updated = false;
+
+                    // Backfill any missing slugs for existing companies
+                    for (const c of companies) {
+                        if (c && c.name && !c.slug) {
+                            c.slug = getCompanySlug(c.name, c.url);
+                            updated = true;
+                        }
+                    }
+
                     const existingIndex = companies.findIndex(c => c && c.name && c.name.toLowerCase().trim() === targetLower);
                     const newUrl = opportunity.companyWebsite ? opportunity.companyWebsite.trim() : null;
                     const newLogo = opportunity.companyLogoUrl ? opportunity.companyLogoUrl.trim() : null;
 
-                    let updated = false;
                     if (existingIndex !== -1) {
                         const existing = companies[existingIndex];
+                        if (!existing.slug) {
+                            existing.slug = getCompanySlug(existing.name, existing.url || newUrl);
+                            updated = true;
+                        }
                         if (!existing.url && newUrl) {
                             existing.url = newUrl;
                             updated = true;
@@ -183,7 +197,8 @@ export class MetadataService {
                         companies.push({
                             name: targetCompany,
                             url: newUrl,
-                            logo_url: newLogo
+                            logo_url: newLogo,
+                            slug: getCompanySlug(targetCompany, newUrl)
                         });
                         updated = true;
                     }
@@ -423,4 +438,48 @@ export class MetadataService {
             logger.error('[MetadataService] Failed to append metadata to R2', error);
         }
     }
+
+    /**
+     * One-off backfill to generate and save slugs for all companies currently in companies.json
+     */
+    static async backfillCompanySlugs(): Promise<void> {
+        try {
+            logger.info('[MetadataService] Starting company slugs backfill on CDN...');
+            const companiesContent = await fetchFromR2('companies.json');
+            if (!companiesContent) {
+                logger.warn('[MetadataService] No companies.json found on R2.');
+                return;
+            }
+
+            let companies: Array<{ name: string; url: string | null; logo_url: string | null; slug?: string }> = [];
+            try {
+                companies = JSON.parse(companiesContent);
+            } catch (e) {
+                logger.error('[MetadataService] Failed to parse companies.json during backfill', e);
+                return;
+            }
+
+            let updatedCount = 0;
+            for (const c of companies) {
+                if (c && c.name) {
+                    const newSlug = getCompanySlug(c.name, c.url);
+                    if (c.slug !== newSlug) {
+                        c.slug = newSlug;
+                        updatedCount++;
+                    }
+                }
+            }
+
+            if (updatedCount > 0) {
+                companies.sort((a, b) => a.name.localeCompare(b.name));
+                await uploadToR2('companies.json', JSON.stringify(companies, null, 2));
+                logger.info(`[MetadataService] Backfill complete. Updated ${updatedCount} companies in companies.json on R2.`);
+            } else {
+                logger.info('[MetadataService] Backfill complete. All companies already have correct slugs.');
+            }
+        } catch (error) {
+            logger.error('[MetadataService] Failed backfill of company slugs', error);
+        }
+    }
 }
+

@@ -315,3 +315,8 @@ export function queueNewJobAlerts(opportunityId: string) {
         });
     });
 }
+
+export function buildIdOrSlugWhere(idOrSlug: string): Prisma.OpportunityWhereInput {
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(idOrSlug);
+    return isUuid ? { OR: [{ id: idOrSlug }, { slug: idOrSlug }] } : { slug: idOrSlug };
+}
