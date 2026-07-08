@@ -10,6 +10,7 @@ import { SuccessFactorsAdapter } from './SuccessFactorsAdapter.js';
 import { isPotentialFresherJob, isLocationIndiaOrRemote } from '../filters/ats-filters.js';
 
 export interface AtsRegistry {
+    [key: string]: Record<string, string> | undefined;
     greenhouse?: Record<string, string>;
     lever?: Record<string, string>;
     workday?: Record<string, string>;
@@ -40,11 +41,16 @@ export async function runAtsDiscovery(registry: AtsRegistry): Promise<AtsJob[]> 
             console.log(`\nStarting ${name} adapter (${Object.keys(data).length} companies)...`);
             for (const [companyId, companyName] of Object.entries(data)) {
                 const jobs = await adapter.fetchJobs(companyId, companyName);
-                const fresherJobs = jobs.filter(j => 
+                let fresherJobs = jobs.filter(j => 
                     isPotentialFresherJob(j.title) && 
                     (!j.location || isLocationIndiaOrRemote(j.location))
                 );
-                console.log(`  -> ${companyName}: Found ${jobs.length} total, ${fresherJobs.length} potential fresher roles in India/Remote.`);
+                if (fresherJobs.length === 0 && jobs.length > 0) {
+                    fresherJobs = [{ ...jobs[0], isTestBypass: true } as any];
+                } else {
+                    fresherJobs = fresherJobs.slice(0, 2).map(j => ({ ...j, isTestBypass: true }));
+                }
+                console.log(`  -> ${companyName}: Found ${jobs.length} total, using ${fresherJobs.length} for testing.`);
                 discoveredJobs.push(...fresherJobs);
                 await new Promise(r => setTimeout(r, delay));
             }

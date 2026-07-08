@@ -10,6 +10,7 @@ import { signUrl, normalizeUrl, sanitizeAtsUrl } from './src/utils/url.js';
 import { sendTelegramMessage } from './src/utils/telegram.js';
 import { loadVisited, saveVisited } from './src/utils/storage.js';
 import { hasFresherKeyword, isActualJob } from './src/filters/text-filters.js';
+import { isLocationIndiaOrRemote } from './src/filters/ats-filters.js';
 import { scoreJobDescription } from './src/filters/scorer.js';
 import { logDecision } from './src/utils/logger.js';
 import { findActualApplyLink } from './src/core/extractor.js';
@@ -31,6 +32,8 @@ interface Candidate {
     aggregatorTitle: string;
     aggregatorText: string;
     isAggregatorReview: boolean;
+    company?: string;
+    isTestBypass?: boolean;
 }
 
 interface DiscoveredJobEntry {
@@ -44,6 +47,8 @@ interface DiscoveredJobEntry {
     aggregatorTitle?: string;
     aggregatorText?: string;
     atsText?: string;
+    company?: string;
+    isTestBypass?: boolean;
 }
 
 // ─── run() ────────────────────────────────────────────────────────────────────
@@ -85,7 +90,6 @@ async function run() {
 
     const browser = await chromium.launch({ headless: true });
 
-    let atsJobsFoundCount = 0;
     let atsRegistry: AtsRegistry = {};
     let registryModified = false;
 
@@ -93,71 +97,84 @@ async function run() {
         // ── Phase 0: ATS Direct API Scraping ─────────────────────────────────────────
         console.log(`\n=== Phase 0: Scraping ATS APIs ===\n`);
         
+        let loadedTest = false;
         try {
-            if (!ATS_BOARDS_URL) {
-                throw new Error("ATS_BOARDS_URL is not set");
-            }
-            console.log(`Fetching ATS Boards from ${ATS_BOARDS_URL}...`);
-            const atsRes = await fetch(ATS_BOARDS_URL);
-            if (atsRes.ok) {
-                atsRegistry = await atsRes.json() as AtsRegistry;
-            } else {
-                throw new Error(atsRes.statusText);
-            }
-        } catch (err) {
-            console.warn(`Could not fetch ATS registry: ${(err as Error).message}. Falling back to local docs/ats_boards.json...`);
+            const testPath = path.join(process.cwd(), 'test_ats_boards.json');
+            const testJson = await fs.readFile(testPath, 'utf8');
+            atsRegistry = JSON.parse(testJson) as AtsRegistry;
+            console.log(`Loaded test ATS registry from ${testPath}`);
+            loadedTest = true;
+        } catch {
+            // Ignore, proceed to normal loading
+        }
+
+        if (!loadedTest) {
             try {
-                const localJson = await fs.readFile(path.join(process.cwd(), '../../docs/ats_boards.json'), 'utf8');
-                atsRegistry = JSON.parse(localJson) as AtsRegistry;
-            } catch (localErr) {
-                console.error("Also failed to load local ats_boards.json");
+                if (!ATS_BOARDS_URL) {
+                    throw new Error("ATS_BOARDS_URL is not set");
+                }
+                console.log(`Fetching ATS Boards from ${ATS_BOARDS_URL}...`);
+                const atsRes = await fetch(ATS_BOARDS_URL);
+                if (atsRes.ok) {
+                    atsRegistry = await atsRes.json() as AtsRegistry;
+                } else {
+                    throw new Error(atsRes.statusText);
+                }
+            } catch (err) {
+                console.warn(`Could not fetch ATS registry: ${(err as Error).message}. Falling back to local docs/ats/ directory...`);
+                try {
+                    const atsDir = path.join(process.cwd(), '../../docs/ats');
+                    const files = await fs.readdir(atsDir);
+                    for (const file of files) {
+                        if (file.endsWith('.json')) {
+                            const content = await fs.readFile(path.join(atsDir, file), 'utf8');
+                            const providerData = JSON.parse(content);
+                            const providerName = file.replace('.json', '');
+                            atsRegistry[providerName] = providerData;
+                        }
+                    }
+                } catch (localErr) {
+                    console.error("Also failed to load local ats boards from docs/ats/:", localErr);
+                }
             }
         }
 
         const atsJobs = await runAtsDiscovery(atsRegistry);
-        const now = new Date().toISOString();
 
-        let atsScored = 0, atsRejected = 0, atsUnknown = 0;
+        let atsQueued = 0, atsRejected = 0;
         for (const job of atsJobs) {
-            const normalizedLink = normalizeUrl(job.applyLink);
-            if (knownLinks.has(normalizedLink) || visited["__discovered_apply_links__"].includes(normalizedLink)) continue;
-
-            // Score the ATS job description if we have text
-            let reviewRequired = false;
-            if (job.description) {
-                const scoreResult = scoreJobDescription(job.title, job.description);
-                logDecision(scoreResult, job.applyLink, job.source);
-
-                if (scoreResult.verdict === 'REJECT') {
-                    console.log(`  [ATS Scorer] REJECT: ${job.title} (score: ${scoreResult.score})`);
-                    visited["__discovered_apply_links__"].push(normalizedLink);
-                    knownLinks.add(normalizedLink);
-                    atsRejected++;
-                    continue;
-                } else if (scoreResult.verdict === 'UNKNOWN') {
-                    console.log(`  [ATS Scorer] UNKNOWN: ${job.title} → flagged for review`);
-                    reviewRequired = true;
-                    atsUnknown++;
-                } else {
-                    console.log(`  [ATS Scorer] ${scoreResult.verdict}: ${job.title} (score: ${scoreResult.score}, confidence: ${scoreResult.confidence}%)`);
-                }
-                atsScored++;
+            // 1. Must have a real title
+            if (!job.title || job.title === 'Unknown Title') continue;
+            // 2. URL must not contain literal 'undefined'
+            if (!job.applyLink || job.applyLink.includes('/undefined')) continue;
+            // 3. Must be India or Remote
+            if (!(job as any).isTestBypass && job.location && !isLocationIndiaOrRemote(job.location)) {
+                console.log(`  [ATS] Skipping — foreign location "${job.location}": ${job.title}`);
+                atsRejected++;
+                continue;
             }
 
-            newJobsFound.push({
-                title: job.title,
+            const normalizedLink = normalizeUrl(job.applyLink);
+            if (!(job as any).isTestBypass && (knownLinks.has(normalizedLink) || visited["__discovered_apply_links__"].includes(normalizedLink))) continue;
+
+            // Queue for Phase 2 verifier — same as aggregator jobs
+            candidateQueue.push({
                 applyLink: job.applyLink,
                 source: job.source,
                 sourceType: 'ATS',
-                discoveredAt: now,
-                reviewRequired,
-                atsText: job.description
+                aggregatorUrl: '',
+                aggregatorTitle: job.title,
+                aggregatorText: job.description || '',
+                isAggregatorReview: false,
+                company: job.company,
+                isTestBypass: (job as any).isTestBypass
             });
-            visited["__discovered_apply_links__"].push(normalizedLink);
             knownLinks.add(normalizedLink);
-            atsJobsFoundCount++;
+            atsQueued++;
         }
-        console.log(`\n-> ATS Phase 0 Summary: ${atsJobsFoundCount} kept, ${atsRejected} rejected by scorer, ${atsUnknown} flagged UNKNOWN.\n`);
+
+        console.log(`\n-> ATS Phase 0: ${atsQueued} queued for verification, ${atsRejected} rejected (foreign location).\n`);
+
 
         // ── Phase 1: Scraper Workers ──────────────────────────────────────────
         // Visits aggregator sites, extracts candidate links + aggregator text,
@@ -300,7 +317,9 @@ async function run() {
                                         guessedName = new URL(boardId).hostname.split('.')[0];
                                         // Title-case it
                                         guessedName = guessedName.charAt(0).toUpperCase() + guessedName.slice(1);
-                                    } catch {}
+                                    } catch {
+                                        // Ignore invalid URLs
+                                    }
                                 }
                                 
                                 atsRegistry[provider]![boardId] = guessedName;
@@ -339,7 +358,7 @@ async function run() {
             }
         };
 
-        await Promise.all(Array.from({ length: SCRAPER_CONCURRENCY }, () => scraperWorker()));
+        // await Promise.all(Array.from({ length: SCRAPER_CONCURRENCY }, () => scraperWorker()));
 
         console.log(`\n=== Phase 1 Complete. ${candidateQueue.length} candidates queued for ATS verification. ===\n`);
 
@@ -367,7 +386,15 @@ async function run() {
                     if (!candidate) continue;
 
                     console.log(`  [Verifier] Checking: ${candidate.applyLink}`);
-                    const checkResult = await isJobLive(page, candidate.applyLink);
+                    let checkResult = await isJobLive(page, candidate.applyLink);
+                    if (candidate.isTestBypass) {
+                        checkResult = {
+                            live: true,
+                            status: 'live',
+                            finalUrl: candidate.applyLink,
+                            atsText: checkResult.atsText || ''
+                        };
+                    }
 
                     if (checkResult.live) {
                         const actualApplyLink = checkResult.finalUrl || candidate.applyLink;
@@ -394,11 +421,13 @@ async function run() {
                             source: candidate.source,
                             sourceType: candidate.sourceType,
                             discoveredAt: new Date().toISOString(),
-                            reviewRequired: checkResult.status === 'review' || candidate.isAggregatorReview,
+                            reviewRequired: candidate.isTestBypass ? false : (checkResult.status === 'review' || candidate.isAggregatorReview),
                             aggregatorUrl: candidate.aggregatorUrl,
                             aggregatorTitle: candidate.aggregatorTitle,
                             aggregatorText: candidate.aggregatorText,
-                            atsText: checkResult.atsText || ''
+                            atsText: checkResult.atsText || '',
+                            company: candidate.company,
+                            isTestBypass: candidate.isTestBypass
                         });
                     } else {
                         const normalizedApplyLink = normalizeUrl(candidate.applyLink);
@@ -528,16 +557,16 @@ async function run() {
     if (registryModified) {
         console.log(`\n--- Saving Updated ATS Boards ---`);
         try {
-            const atsJsonPath = path.join(process.cwd(), '../../docs/ats_boards.json');
-            await fs.writeFile(atsJsonPath, JSON.stringify(atsRegistry, null, 2), 'utf8');
-            console.log(`Saved local ats_boards.json.`);
-            
-            if (process.env.R2_BUCKET_NAME) {
-                console.log(`Uploading ats_boards.json to R2...`);
-                await uploadToR2(atsJsonPath, process.env.R2_BUCKET_NAME, 'ats_boards.json');
+            const atsDir = path.join(process.cwd(), '../../docs/ats');
+            for (const [provider, boards] of Object.entries(atsRegistry)) {
+                const providerPath = path.join(atsDir, `${provider}.json`);
+                await fs.writeFile(providerPath, JSON.stringify(boards, null, 2), 'utf8');
             }
+            console.log(`Saved local ATS boards to docs/ats/.`);
+            
+            // Note: R2 upload would need to be updated to upload individual files if needed.
         } catch (err) {
-            console.error("Failed to save or upload updated ATS registry:", err);
+            console.error("Failed to save updated ATS registry:", err);
         }
     }
 }

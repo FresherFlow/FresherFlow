@@ -73,14 +73,20 @@ export class WorkdayAdapter implements AtsAdapter {
                 if (page.length === 0) break;
 
                 for (const j of page) {
+                    // Skip malformed entries with no title or externalPath
+                    if (!j.title || !j.externalPath || j.externalPath === 'undefined') continue;
+
                     // Safely build apply URL even when externalPath has a leading /en-US/...
                     const applyLink = new URL(j.externalPath, `${urlObj.origin}/${board}/`).toString();
+
+                    // Guard: skip if URL contains literal 'undefined' (malformed data)
+                    if (applyLink.includes('/undefined')) continue;
 
                     if (seen.has(applyLink)) continue;
                     seen.add(applyLink);
 
                     allJobs.push({
-                        title: j.title || 'Unknown Title',
+                        title: j.title,
                         applyLink,
                         company: companyName,
                         location: j.locationsText,

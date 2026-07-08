@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * ATS Native Extractor
  * 
@@ -8,6 +9,8 @@
  */
 
 import { Page } from 'playwright';
+
+import { parseGreenhouseHtml, filterRealLocations } from './parsers/greenhouse-parser.js';
 
 export interface NativeAtsData {
     title: string;
@@ -26,13 +29,21 @@ export interface NativeAtsData {
     // Extra enrichment
     logoUrl: string;
     companyWebsite: string;
+    allowedDegrees?: string[];
+    allowedCourses?: string[];
+    experienceMin?: number;
+    experienceMax?: number;
+    incentives?: string;
+    selectionProcess?: string;
 }
 
 const EMPTY: NativeAtsData = {
     title: '', company: '', text: '', html: '',
     nativeSkills: [], experienceLevel: '', workplaceType: null,
     locations: [], department: '', employmentType: '',
-    salaryRange: '', postedAt: '', logoUrl: '', companyWebsite: ''
+    salaryRange: '', postedAt: '', logoUrl: '', companyWebsite: '',
+    allowedDegrees: [], allowedCourses: [],
+    experienceMin: undefined, experienceMax: undefined, incentives: ''
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -122,11 +133,12 @@ async function extractGreenhouse(urlObj: URL): Promise<NativeAtsData | null> {
     );
     if (!data || !data.title) return null;
 
-    const locations: string[] = [];
-    if (data.location?.name) locations.push(data.location.name);
+    const rawLocations: string[] = [];
+    if (data.location?.name) rawLocations.push(data.location.name);
     for (const off of (data.offices || [])) {
-        if (off.name) locations.push(off.name);
+        if (off.name) rawLocations.push(off.name);
     }
+    const locations = filterRealLocations(rawLocations);
 
     let experienceLevel = '';
     for (const m of (data.metadata || [])) {
@@ -135,14 +147,24 @@ async function extractGreenhouse(urlObj: URL): Promise<NativeAtsData | null> {
         }
     }
 
+    const parsed = parseGreenhouseHtml(data.content || '');
+
     return {
         ...EMPTY,
         title: data.title,
         html: data.content || '',
-        text: stripHtml(data.content || ''),
+        text: parsed.description, // clean markdown description
         locations,
         experienceLevel: experienceLevel.trim(),
         department: data.departments?.[0]?.name || '',
+        nativeSkills: parsed.requiredSkills,
+        allowedDegrees: parsed.allowedDegrees,
+        allowedCourses: parsed.allowedCourses,
+        experienceMin: parsed.experienceMin,
+        experienceMax: parsed.experienceMax,
+        incentives: parsed.incentives,
+        selectionProcess: parsed.selectionProcess,
+        workplaceType: parsed.workplaceType || null
     };
 }
 
@@ -426,7 +448,8 @@ async function extractDarwinboxPlaywright(page: Page, url: string): Promise<Nati
 export async function extractNativeAtsData(
     url: string,
     source: string,
-    page?: Page
+    page?: Page,
+    companySlug?: string
 ): Promise<NativeAtsData | null> {
     try {
         const urlObj = new URL(url);
@@ -442,6 +465,38 @@ export async function extractNativeAtsData(
         if (host.includes('greenhouse.io') || source === 'ATS_GREENHOUSE') {
             const result = await extractGreenhouse(urlObj);
             if (result) { console.log('[Native] Greenhouse JSON API success'); return result; }
+        }
+
+        // Company-hosted Greenhouse pages (e.g. mthree.com/careers/job/?gh_jid=123456)
+        // Use gh_jid query param + slug from companies CDN to call Greenhouse API
+        const ghJid = urlObj.searchParams.get('gh_jid');
+        if (ghJid && companySlug) {
+            const result = await fetchJson<any>(
+                `https://boards-api.greenhouse.io/v1/boards/${companySlug}/jobs/${ghJid}?content=true`
+            );
+            if (result && result.title) {
+                console.log(`[Native] Greenhouse via gh_jid+slug (${companySlug}/${ghJid}) success`);
+                const rawLocations: string[] = [];
+                if (result.location?.name) rawLocations.push(result.location.name);
+                for (const off of (result.offices || [])) if (off.name) rawLocations.push(off.name);
+                const parsed = parseGreenhouseHtml(result.content || '');
+                return {
+                    ...EMPTY,
+                    title: result.title,
+                    html: result.content || '',
+                    text: parsed.description,
+                    locations: filterRealLocations(rawLocations),
+                    department: result.departments?.[0]?.name || '',
+                    nativeSkills: parsed.requiredSkills,
+                    allowedDegrees: parsed.allowedDegrees,
+                    allowedCourses: parsed.allowedCourses,
+                    experienceMin: parsed.experienceMin,
+                    experienceMax: parsed.experienceMax,
+                    incentives: parsed.incentives,
+                    selectionProcess: parsed.selectionProcess,
+                    workplaceType: parsed.workplaceType || null
+                };
+            }
         }
 
         if (host.includes('ashbyhq.com') || source === 'ATS_ASHBY') {

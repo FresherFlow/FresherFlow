@@ -38,7 +38,7 @@ export const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().repl
 export const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || '').trim().replace(/\/$/, '');
 export const ATS_BOARDS_URL = process.env.ATS_BOARDS_URL || (CDN_URL ? `${CDN_URL}/ats_boards.json` : '');
 
-export const TARGET_SITES = [
+    export const TARGET_SITES = [
     {
         name: 'job4freshers',
         urls: [
@@ -272,6 +272,9 @@ export const EXPIRED_PHRASES = [
     // Workday style
     "no longer taking applications",
     "the job requisition is no longer available",
+    // Workday 404 / invalid URL
+    "the url you have provided is invalid",
+    "url you have provided is invalid",
     // Greenhouse style
     "this role is no longer available",
     "this position is closed",

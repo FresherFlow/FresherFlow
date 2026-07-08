@@ -31,12 +31,6 @@ const INTERNSHIP_PATTERNS = [
     /graduate\s+programme/i
 ];
 
-const FRESHER_TITLE_PATTERNS = [
-    /\bgraduate\s+engineer\b/i, /\bjunior\b/i, /\bassociate\b/i,
-    /\bentry.?level\b/i, /\bfresh(er)?\b/i, /\bcampus\b/i,
-    /\bnew\s+grad\b/i, /\bget/i
-];
-
 // Title → experience range
 const EXPERIENCE_TITLE_PATTERNS: Array<{ pattern: RegExp; min: number; max: number }> = [
     { pattern: /\bgraduate\s+engineer\s+trainee\b/i, min: 0, max: 1 },
@@ -98,7 +92,6 @@ function extractExperienceFromText(text: string): { min: number; max: number } |
 
 export function applyRuleEngine(input: RuleEngineInput): RuleEngineOutput {
     const output: RuleEngineOutput = {};
-    const titleLower = input.title.toLowerCase();
     const descText = `${input.description || ''} ${input.location || ''} ${input.employmentType || ''}`;
 
     // 1. Job Type

@@ -1,9 +1,7 @@
 import { z } from 'zod';
 import {
     CANONICAL_COMPANIES,
-    CANONICAL_SKILLS,
     CANONICAL_SKILLS_MAP,
-    CANONICAL_CITIES,
     CANONICAL_CITIES_MAP,
     CANONICAL_EDUCATION
 } from './metadata.js';
@@ -41,6 +39,7 @@ export const structuredLocationSchema = z.object({
 
 export const jobSchema = z.object({
     type: z.enum(['JOB', 'INTERNSHIP', 'WALKIN', 'REMOTE', 'GOVERNMENT', 'HACKATHONS']).catch('JOB'),
+    status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED', 'EXPIRED']).optional().default('DRAFT'),
     title: z.string().min(1),
     company: z.string().min(1),
     companyWebsite: z.string().optional().default(''),
@@ -60,10 +59,10 @@ export const jobSchema = z.object({
     salaryAmount: z.string().optional().default(''),
     salaryPeriod: z.enum(['MONTHLY', 'YEARLY']).catch('YEARLY'),
     employmentType: z.string().optional().default(''),
-    jobFunction: z.string().optional().default(''),
-    incentives: z.string().optional().default(''),
-    selectionProcess: z.string().optional().default(''),
-    notesHighlights: z.string().optional().default(''),
+    jobFunction: z.string().optional().nullable(),
+    incentives: z.union([z.string(), z.array(z.string())]).transform(v => Array.isArray(v) ? v.join('\n') : v).optional().nullable(),
+    selectionProcess: z.union([z.string(), z.array(z.string())]).transform(v => Array.isArray(v) ? v.join('\n') : v).optional().nullable(),
+    notesHighlights: z.union([z.string(), z.array(z.string())]).transform(v => Array.isArray(v) ? v.join('\n') : v).optional().nullable(),
     applyLink: z.string().optional().default(''),
     customSlug: z.string().optional().default(''),
     expiresAt: z.string().optional().default(''),
@@ -170,9 +169,8 @@ export function normalizeRawJson(raw: Record<string, unknown>): Record<string, u
     return raw;
 }
 
-export function postProcessNormalize(job: ExtractedJob, fullText: string): ExtractedJob {
-    const textLower = (fullText || '').toLowerCase();
-    
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function postProcessNormalize(job: ExtractedJob, _fullText: string): ExtractedJob {
     // --- 1. Company Casing and Lookup ---
     const rawCompany = (job.company || '').trim();
     if (rawCompany) {
@@ -261,7 +259,7 @@ export function postProcessNormalize(job: ExtractedJob, fullText: string): Extra
         return '';
     }).filter(Boolean);
 
-    job.allowedDegrees = Array.from(new Set(degrees)) as any;
+    job.allowedDegrees = Array.from(new Set(degrees));
     job.allowedCourses = Array.from(new Set(courses));
     job.allowedSpecializations = Array.from(new Set(specializations));
 

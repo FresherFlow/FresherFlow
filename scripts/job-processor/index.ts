@@ -1,15 +1,15 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { chromium } from 'playwright';
 import { GoogleGenAI } from '@google/genai';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parseHtmlToMarkdown, cleanClickbait, setCdnMetadata } from '@fresherflow/parser';
+import { setCdnMetadata } from '@fresherflow/parser';
 
 import {
     jobSchema,
     normalizeRawJson,
     ExtractedJob,
-    JobsJsonFormat,
     postProcessNormalize
 } from './src/normalizer.js';
 
@@ -17,6 +17,7 @@ import {
     loadCdnMetadata, 
     CANONICAL_CITIES_MAP, 
     CANONICAL_COMPANIES, 
+    GREENHOUSE_COMPANY_TO_SLUG,
     CANONICAL_SKILLS_MAP 
 } from './src/metadata.js';
 
@@ -30,6 +31,7 @@ import {
 } from './src/browser';
 
 import { extractNativeAtsData } from './src/ats-native';
+import { stripBoilerplate } from './src/parsers/greenhouse-parser.js';
 import { applyRuleEngine } from './src/rules';
 
 import {
@@ -38,8 +40,11 @@ import {
 } from './src/providers';
 
 import {
-    postJobToApi
+    postJobToApi,
+    resolveCompanyWebsiteAndLogo
 } from './src/api';
+
+import { matchFromCdn } from './src/cdn-matcher';
 
 async function fileExists(filePath: string): Promise<boolean> {
     try {
@@ -88,7 +93,7 @@ async function run(): Promise<void> {
 
     const GEMINI_API_KEY = (process.env.GEMINI_API_KEY || '').trim();
     const API_BASE_URL = (process.env.API_BASE_URL || '').trim().replace(/\/$/, '');
-    const ENABLE_API_UPLOAD = process.env.ENABLE_API_UPLOAD !== 'false' && !!API_BASE_URL;
+    const ENABLE_API_UPLOAD = process.env.ENABLE_API_UPLOAD === 'true';
 
     const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
 
@@ -149,11 +154,11 @@ async function run(): Promise<void> {
 
     // Batch config
     const batchSizeIndex = process.argv.indexOf('--batch-size');
-    let batchSize = batchSizeIndex !== -1 ? parseInt(process.argv[batchSizeIndex + 1], 10) : 5;
+    let batchSize = batchSizeIndex !== -1 ? parseInt(process.argv[batchSizeIndex + 1], 10) : 15;
     if (process.env.BATCH_SIZE) batchSize = parseInt(process.env.BATCH_SIZE, 10);
 
     const batchDelayIndex = process.argv.indexOf('--batch-delay');
-    let batchDelay = batchDelayIndex !== -1 ? parseInt(process.argv[batchDelayIndex + 1], 10) : 120;
+    let batchDelay = batchDelayIndex !== -1 ? parseInt(process.argv[batchDelayIndex + 1], 10) : 5;
     if (process.env.BATCH_DELAY) batchDelay = parseInt(process.env.BATCH_DELAY, 10);
 
     console.log(`Batch config: size=${batchSize}, cooldown=${batchDelay}s`);
@@ -206,6 +211,11 @@ async function run(): Promise<void> {
                     atsContent.text = job.atsText;
                     atsContent.title = job.title;
                     console.log(`Pre-supplied ATS text (${job.atsText.length} chars).`);
+                    
+                    // Try to get structured API data (Greenhouse/Lever etc) without browser
+                    const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
+                        ?? CANONICAL_COMPANIES.get((job.company || '').toLowerCase().trim())?.slug;
+                    nativeData = await extractNativeAtsData(job.applyLink, source, undefined, companySlug);
                 } else {
                     let page = null;
                     try {
@@ -215,7 +225,9 @@ async function run(): Promise<void> {
                         // Pass page handle so Playwright adapters can use it when JSON API fails.
                         // Since all companies on the same ATS share the same HTML structure,
                         // one adapter covers ALL companies on that platform.
-                        nativeData = await extractNativeAtsData(job.applyLink, source, page);
+                        const companySlug = GREENHOUSE_COMPANY_TO_SLUG.get((job.company || '').toLowerCase().trim())
+                            ?? CANONICAL_COMPANIES.get((job.company || '').toLowerCase().trim())?.slug;
+                        nativeData = await extractNativeAtsData(job.applyLink, source, page, companySlug);
 
                         if (nativeData && (nativeData.html.length > 200 || nativeData.text.length > 200)) {
                             atsContent = { title: nativeData.title, text: nativeData.text, html: nativeData.html };
@@ -251,9 +263,20 @@ async function run(): Promise<void> {
                 }
 
                 // Pre-filter: reject non-fresher jobs before burning LLM tokens
-                const scoreResult = scoreJobDescription(
+                let scoreResult = scoreJobDescription(
                     atsContent.title || job.aggregatorTitle || job.title || '', rawText
                 );
+                // If primary text fails, retry with aggregatorText (may have richer signals)
+                if (scoreResult.verdict === 'REJECT' && aggregatorText && aggregatorText !== rawText) {
+                    const aggScore = scoreJobDescription(
+                        job.aggregatorTitle || job.title || '', aggregatorText
+                    );
+                    if (aggScore.verdict !== 'REJECT') {
+                        console.log(`Scorer: primary rejected (${scoreResult.score}), aggregator passed (${aggScore.score}). Using aggregator text.`);
+                        atsContent.text = aggregatorText;
+                        scoreResult = aggScore;
+                    }
+                }
                 if (scoreResult.verdict === 'REJECT') {
                     console.log(`Scorer rejected (Score: ${scoreResult.score}). Skipping.`);
                     failureList.push({ url: job.applyLink, reason: `Scorer rejected (Score: ${scoreResult.score})` });
@@ -283,56 +306,60 @@ async function run(): Promise<void> {
                     applyLink: job.applyLink,
                     locations: nativeData?.locations ?? [],
                     requiredSkills: nativeData?.nativeSkills ?? [],
-                    workMode: rules.workMode ?? nativeData?.workplaceType ?? null,
-                    experienceMin: rules.experienceMin ?? 0,
-                    experienceMax: rules.experienceMax ?? 0,
+                    workMode: nativeData?.workplaceType ?? rules.workMode ?? null,
+                    experienceMin: nativeData?.experienceMin ?? rules.experienceMin ?? 0,
+                    experienceMax: nativeData?.experienceMax ?? rules.experienceMax ?? 0,
                     employmentType: rules.employmentType ?? nativeData?.employmentType ?? '',
                     salaryRange: nativeData?.salaryRange ?? '',
                     allowedPassoutYears: rules.inferredBatches ?? [],
-                    // Description: HTML→Markdown with zero LLM tokens
-                    description: atsContent.html && atsContent.html.length > 200
-                        ? parseHtmlToMarkdown(atsContent.html)
-                        : cleanClickbait(textForLlm),
+                    allowedDegrees: nativeData?.allowedDegrees ?? [],
+                    allowedCourses: nativeData?.allowedCourses ?? [],
+                    incentives: nativeData?.incentives ?? '',
+                    selectionProcess: nativeData?.selectionProcess ?? '',
+                    description: stripBoilerplate(nativeData?.text || atsContent.text || textForLlm) || stripBoilerplate(aggregatorText) || stripBoilerplate(textForLlm),
                 };
 
-                // 2c. Identify what's still missing after deterministic mapping
-                const missingFields: EnrichableField[] = [];
+                // 2c. CDN matcher: fill remaining fields using CDN JSON data
+                //     Runs BEFORE LLM to reduce tokens spent.
+                const cdnMatch = matchFromCdn(textForLlm, nativeJob.locations as string[]);
+
+                if (!(nativeJob.requiredSkills as string[]).length && cdnMatch.requiredSkills.length)
+                    nativeJob.requiredSkills = cdnMatch.requiredSkills;
+                if (!(nativeJob.allowedDegrees as string[]).length && cdnMatch.allowedDegrees.length)
+                    nativeJob.allowedDegrees = cdnMatch.allowedDegrees;
+                if (!(nativeJob.allowedCourses as string[]).length && cdnMatch.allowedCourses.length)
+                    nativeJob.allowedCourses = cdnMatch.allowedCourses;
+                if (!(nativeJob.allowedPassoutYears as number[]).length && cdnMatch.allowedPassoutYears.length)
+                    nativeJob.allowedPassoutYears = cdnMatch.allowedPassoutYears;
+                if (!nativeJob.salaryRange && cdnMatch.salaryRange)
+                    nativeJob.salaryRange = cdnMatch.salaryRange;
+                if (!nativeJob.workMode && cdnMatch.workMode)
+                    nativeJob.workMode = cdnMatch.workMode;
+                if ((nativeJob.experienceMin === undefined || nativeJob.experienceMin === 0) && cdnMatch.experienceMin !== undefined)
+                    nativeJob.experienceMin = cdnMatch.experienceMin;
+                if ((nativeJob.experienceMax === undefined || nativeJob.experienceMax === 0) && cdnMatch.experienceMax !== undefined)
+                    nativeJob.experienceMax = cdnMatch.experienceMax;
+                // Overwrite native locations with the fully cleaned CDN locations
+                if (cdnMatch.locations.length > 0) {
+                    nativeJob.locations = cdnMatch.locations;
+                }
+
+                // Identify what's still missing after CDN matching (for logging)
+                const missingFields: string[] = [];
                 if (!(nativeJob.requiredSkills as string[]).length) missingFields.push('requiredSkills');
-                if (!nativeJob.allowedDegrees) missingFields.push('allowedDegrees', 'allowedCourses');
+                if (!(nativeJob.allowedDegrees as string[]).length) missingFields.push('allowedDegrees');
                 if (!(nativeJob.allowedPassoutYears as number[]).length) missingFields.push('allowedPassoutYears');
                 if (!nativeJob.salaryRange) missingFields.push('salaryRange');
-                // Qualitative fields always need LLM
-                missingFields.push('incentives', 'notesHighlights', 'selectionProcess');
+                if (!nativeJob.incentives) missingFields.push('incentives');
+                if (!nativeJob.selectionProcess) missingFields.push('selectionProcess');
 
-                console.log(`Deterministic done. Missing ${missingFields.length} fields: [${missingFields.join(', ')}]`);
+
+                console.log(`CDN match done. Missing ${missingFields.length} fields: [${missingFields.join(', ')}]`);
 
                 // ─────────────────────────────────────────────────────────
-                // STEP 3: TARGETED LLM ENRICHMENT (only missing fields)
-                // Gemini is only asked to infer the gaps deterministic code can't.
+                // STEP 3: LLM ENRICHMENT REMOVED BY USER REQUEST
                 // ─────────────────────────────────────────────────────────
-                if (!NO_LLM && ai && missingFields.length > 0) {
-                    try {
-                        const enriched = await enrichMissingFields(ai, textForLlm, missingFields);
-                        if (enriched) {
-                            console.log(`LLM enriched ${Object.keys(enriched).length} fields.`);
-                            if (enriched.requiredSkills?.length && !(nativeJob.requiredSkills as string[]).length)
-                                nativeJob.requiredSkills = enriched.requiredSkills;
-                            if (enriched.allowedDegrees?.length) nativeJob.allowedDegrees = enriched.allowedDegrees;
-                            if (enriched.allowedCourses?.length) nativeJob.allowedCourses = enriched.allowedCourses;
-                            if (enriched.allowedPassoutYears?.length) nativeJob.allowedPassoutYears = enriched.allowedPassoutYears;
-                            if (enriched.salaryRange && !nativeJob.salaryRange) nativeJob.salaryRange = enriched.salaryRange;
-                            if (enriched.incentives) nativeJob.incentives = enriched.incentives;
-                            if (enriched.notesHighlights) nativeJob.notesHighlights = enriched.notesHighlights;
-                            if (enriched.selectionProcess) nativeJob.selectionProcess = enriched.selectionProcess;
-                        }
-                    } catch (err) {
-                        if ((err as Error).message === 'GEMINI_DAILY_QUOTA_EXHAUSTED') {
-                            console.log('[WARNING] Gemini daily quota reached. Stopping enrichment for this run.');
-                            break;
-                        }
-                        console.warn('Targeted enrichment failed:', (err as Error).message);
-                    }
-                }
+
 
                 // ─────────────────────────────────────────────────────────
                 // STEP 4: VALIDATE + NORMALIZE
@@ -347,6 +374,8 @@ async function run(): Promise<void> {
                 }
 
                 extracted = postProcessNormalize(extracted, textForLlm);
+
+
 
                 // India/Remote filter
                 if (extracted.structuredLocations && extracted.structuredLocations.length > 0) {
@@ -370,9 +399,10 @@ async function run(): Promise<void> {
                     exp: `${extracted.experienceMin}-${extracted.experienceMax}yr`,
                 });
 
-                // ─────────────────────────────────────────────────────────
-                // STEP 5: API UPLOAD
-                // ─────────────────────────────────────────────────────────
+                const { website, logoUrl } = resolveCompanyWebsiteAndLogo(extracted.company, job.applyLink, extracted.companyWebsite);
+                extracted.companyWebsite = website || extracted.companyWebsite;
+                extracted.companyLogoUrl = logoUrl || extracted.companyLogoUrl;
+
                 allExtracted.push(extracted);
                 if (ENABLE_API_UPLOAD) {
                     const apiSuccess = await postJobToApi(extracted, job.aggregatorUrl || job.applyLink, job.applyLink, API_BASE_URL);

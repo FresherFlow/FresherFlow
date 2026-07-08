@@ -15,9 +15,18 @@ async function run() {
     const dataRaw = await fs.readFile(dataPath, 'utf8');
     const companies = JSON.parse(dataRaw) as Array<{ company: string, sample_apply_link: string }>;
 
-    console.log(`Loading current ATS registry from ${atsPath}...`);
-    const atsRaw = await fs.readFile(atsPath, 'utf8');
-    const atsRegistry = JSON.parse(atsRaw) as AtsRegistry;
+    console.log(`Loading current ATS registry from docs/ats/...`);
+    const atsDir = path.join(process.cwd(), '../../docs/ats');
+    const files = await fs.readdir(atsDir);
+    const atsRegistry: AtsRegistry = {};
+    for (const file of files) {
+        if (file.endsWith('.json')) {
+            const content = await fs.readFile(path.join(atsDir, file), 'utf8');
+            const providerData = JSON.parse(content);
+            const providerName = file.replace('.json', '');
+            atsRegistry[providerName] = providerData;
+        }
+    }
 
     let modified = false;
     let newFound = 0;
@@ -40,17 +49,13 @@ async function run() {
     }
 
     if (modified) {
-        console.log(`\nFound ${newFound} new ATS boards! Saving to ats_boards.json...`);
-        await fs.writeFile(atsPath, JSON.stringify(atsRegistry, null, 2), 'utf8');
-        
-        const bucketName = process.env.R2_BUCKET_NAME;
-        if (bucketName) {
-            console.log(`Uploading to R2 bucket: ${bucketName}...`);
-            await uploadToR2(atsPath, bucketName, 'ats_boards.json');
-            console.log('Upload complete.');
-        } else {
-            console.warn('R2_BUCKET_NAME is not set. Skipping R2 upload.');
+        console.log(`\nFound ${newFound} new ATS boards! Saving to docs/ats/...`);
+        for (const [provider, boards] of Object.entries(atsRegistry)) {
+            const providerPath = path.join(atsDir, `${provider}.json`);
+            await fs.writeFile(providerPath, JSON.stringify(boards, null, 2), 'utf8');
         }
+        
+        // Note: R2 upload would need to be updated to upload individual files if needed.
     } else {
         console.log('No new ATS boards discovered.');
     }

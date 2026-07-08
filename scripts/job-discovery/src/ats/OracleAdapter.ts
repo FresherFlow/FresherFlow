@@ -55,18 +55,24 @@ export class OracleAdapter implements AtsAdapter {
                 if (reqs.length === 0) break;
 
                 for (const r of reqs) {
+                    // Skip malformed entries with no title or ID
+                    if (!r.RequisitionTitle || (!r.RequisitionNumber && !r.Id)) continue;
+
                     // Prefer explicit URL fields over constructing
                     const applyLink =
                         r.ExternalURL ||
                         (r.ExternalPath ? `${origin}${r.ExternalPath}` : null) ||
                         `${companyUrl}/job/${r.RequisitionNumber ?? r.Id}`;
 
+                    // Guard: skip if URL contains literal 'undefined' (malformed data)
+                    if (applyLink.includes('/undefined')) continue;
+
                     if (seen.has(applyLink)) continue;
                     seen.add(applyLink);
 
                     allJobs.push({
                         id: r.RequisitionNumber ?? String(r.Id ?? ''),
-                        title: r.RequisitionTitle || 'Unknown Title',
+                        title: r.RequisitionTitle,
                         applyLink,
                         company: companyName,
                         location: r.PrimaryLocation || r.PrimaryLocationCountry || '',

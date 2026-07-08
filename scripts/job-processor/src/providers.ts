@@ -51,8 +51,8 @@ function buildTargetedPrompt(missingFields: EnrichableField[]): string {
         salaryRange: 'Salary string if mentioned, e.g. "3-5 LPA" or "₹25,000/month". Empty string if not found.',
         employmentType: 'E.g. "Full Time", "Part Time", "Contract", "Internship".',
         incentives: 'Employee benefits mentioned: health insurance, cab, food, bonus, PPO, etc. Empty string if none.',
-        notesHighlights: 'Special callouts only: bond, own laptop, immediate joiner, PPO, walk-in details. Max 3 bullets. Empty if none.',
-        selectionProcess: 'Hiring stages if explicitly stated: aptitude test, technical interview, HR round etc. Empty if not stated.',
+        notesHighlights: 'Special callouts only: bond, own laptop, immediate joiner, PPO, walk-in details. Must be a single STRING (not an array) containing bullet points. Empty string if none.',
+        selectionProcess: 'Hiring stages if explicitly stated. Must be a single STRING (not an array) containing bullet points. Empty string if not stated.',
         customSlug: 'SEO slug e.g. "software-engineer-tcs". Lowercase hyphen-separated.',
     };
 

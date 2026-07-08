@@ -21,7 +21,13 @@ export function resolveCompanyWebsiteAndLogo(
                 host.includes('darwinbox.in')
             ) {
                 const parts = host.split('.');
-                const subdomain = parts[0];
+                let subdomain = parts[0];
+                if ((subdomain === 'job-boards' || subdomain === 'boards') && host.includes('greenhouse.io')) {
+                    const pathParts = url.pathname.split('/').filter(Boolean);
+                    if (pathParts.length > 0) {
+                        subdomain = pathParts[0];
+                    }
+                }
                 website = `https://${subdomain}.com`;
             } else {
                 // E.g. careers.cisco.com -> cisco.com
@@ -74,6 +80,7 @@ export async function postJobToApi(
 
     const payload = {
         ...job,
+        status: job.status,
         companyWebsite: website || job.companyWebsite || null,
         companyLogoUrl: logoUrl || null,
         sourceLink: null,
