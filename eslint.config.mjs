@@ -16,6 +16,7 @@ export default [
           "./tsconfig.json",
           "./apps/*/tsconfig.json",
           "./packages/*/tsconfig.json",
+          "./scripts/*/tsconfig.json",
         ],
         tsconfigRootDir: __dirname,
       },
@@ -27,6 +28,7 @@ export default [
             "./tsconfig.json",
             "./apps/*/tsconfig.json",
             "./packages/*/tsconfig.json",
+            "./scripts/*/tsconfig.json",
           ],
         },
       },
@@ -116,6 +118,21 @@ export default [
         "error",
         { patterns: ["apps/web", "apps/mobile"] }
       ]
+    }
+  },
+  // 5. Scripts (scraping / utility scripts)
+  {
+    files: ["scripts/**/*"],
+    rules: {
+      "@typescript-eslint/no-unused-vars": "off",
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-require-imports": "off",
+      "no-extra-semi": "off",
+      "no-undef": "off",
+      "no-empty": "off",
+      "prefer-const": "off",
+      "no-useless-escape": "off",
+      "no-constant-condition": "off"
     }
   }
 ];

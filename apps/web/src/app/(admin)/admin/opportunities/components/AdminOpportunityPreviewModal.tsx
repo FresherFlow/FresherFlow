@@ -133,13 +133,13 @@ export const AdminOpportunityPreviewModal = ({ show, opportunityId, onClose }: A
                                 <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-xs font-semibold rounded-md border ${
                                     opp.status === 'PUBLISHED' ? 'bg-emerald-50 border-emerald-200 text-emerald-700' :
                                     opp.status === 'DRAFT' ? 'bg-amber-50 border-amber-200 text-amber-700' :
-                                    opp.status === 'DELETED' ? 'bg-red-50 border-red-200 text-red-700' :
+                                    opp.status === 'ARCHIVED' ? 'bg-red-50 border-red-200 text-red-700' :
                                     'bg-stone-50 border-stone-200 text-stone-600'
                                 }`}>
                                     <span className={`w-1.5 h-1.5 rounded-full ${
                                         opp.status === 'PUBLISHED' ? 'bg-emerald-500' : 
                                         opp.status === 'DRAFT' ? 'bg-amber-500' : 
-                                        opp.status === 'DELETED' ? 'bg-red-500' :
+                                        opp.status === 'ARCHIVED' ? 'bg-red-500' :
                                         'bg-stone-400'
                                     }`} />
                                     {opp.status}

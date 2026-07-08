@@ -86,3 +86,10 @@ assets/*
 
 scripts/dump/*
 scripts/output
+scripts/*/*.json
+scripts/*.json
+
+scripts/output/*.json
+
+# Test scripts and results
+scripts/job-discovery/adapter-tests/
