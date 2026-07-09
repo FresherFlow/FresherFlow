@@ -83,7 +83,16 @@ async function checkJob(page: Page, url: string, isSecondPass = false): Promise<
             }
         }
 
-        const bodyText = mainText || (await page.locator('body').innerText({ timeout: 500 }).catch(() => ""));
+        let iframeText = "";
+        try {
+            for (const frame of page.frames()) {
+                const fText = await frame.locator('body').innerText({ timeout: 100 }).catch(() => "");
+                if (fText) iframeText += " " + fText;
+            }
+        } catch (e) {}
+
+        const rawBody = await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
+        const bodyText = mainText || (rawBody + " " + iframeText);
         const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
         let hasExpiredPhrase = false;

@@ -23,6 +23,7 @@ export interface AtsJob {
     employmentType?: string;
     source: string;                // e.g. 'ATS_GREENHOUSE', 'ATS_LEVER'
     sourceType: 'ATS';
+    boardToken?: string;
 }
 
 export interface AtsAdapter {

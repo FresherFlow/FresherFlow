@@ -81,7 +81,7 @@ export async function runAtsDiscovery(registry: AtsRegistry): Promise<AtsJob[]> 
                     finalJobs.push(job);
                 }
 
-                console.log(`  -> ${companyName}: Found ${jobs.length} total, ${fresherJobs.length} match fresher title, ${finalJobs.length} passed Scorer (${rejectedCount} rejected).`);
+                console.log(`  -> ${companyName}: Found ${jobs.length} total, ${fresherJobs.length} passed initial, ${finalJobs.length} passed Scorer (${rejectedCount} rejected).`);
                 discoveredJobs.push(...finalJobs);
                 await new Promise(r => setTimeout(r, delay));
             }

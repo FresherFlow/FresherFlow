@@ -10,7 +10,7 @@ import {
 } from './src/config.js';
 import { signUrl, normalizeUrl, sanitizeAtsUrl } from './src/utils/url.js';
 import { sendTelegramMessage } from './src/utils/telegram.js';
-import { loadVisited, saveVisited } from './src/utils/storage.js';
+import { loadVisited, saveVisited, loadRejectedReasons, saveRejectedReasons } from './src/utils/storage.js';
 import { hasFresherKeyword, isActualJob } from './src/filters/text-filters.js';
 import { isLocationIndiaOrRemote } from './src/filters/ats-filters.js';
 import { scoreJobDescription } from './src/filters/scorer.js';
@@ -79,6 +79,7 @@ async function run() {
     console.log(`Loaded ${knownLinks.size} known links from CDN.`);
 
     const visited = await loadVisited();
+    const rejectedReasons = await loadRejectedReasons();
     if (!visited["__discovered_apply_links__"]) {
         visited["__discovered_apply_links__"] = [];
     }
@@ -126,9 +127,15 @@ async function run() {
         let atsQueued = 0, atsRejected = 0;
         for (const job of atsJobs) {
             // 1. Must have a real title
-            if (!job.title || job.title === 'Unknown Title') continue;
+            if (!job.title || job.title === 'Unknown Title') {
+                console.log(`  [ATS] Skipping — invalid title: ${job.title}`);
+                continue;
+            }
             // 2. URL must not contain literal 'undefined'
-            if (!job.applyLink || job.applyLink.includes('/undefined')) continue;
+            if (!job.applyLink || job.applyLink.includes('/undefined')) {
+                console.log(`  [ATS] Skipping — invalid link: ${job.applyLink}`);
+                continue;
+            }
             // 3. Must be India or Remote
             if (!(job as any).isTestBypass && job.location && !isLocationIndiaOrRemote(job.location)) {
                 console.log(`  [ATS] Skipping — foreign location "${job.location}": ${job.title}`);
@@ -137,9 +144,31 @@ async function run() {
             }
 
             const normalizedLink = normalizeUrl(job.applyLink);
-            if (!(job as any).isTestBypass && (knownLinks.has(normalizedLink) || visited["__discovered_apply_links__"].includes(normalizedLink))) continue;
+            if (!(job as any).isTestBypass && (knownLinks.has(normalizedLink) || visited["__discovered_apply_links__"].includes(normalizedLink))) {
+                console.log(`  [ATS] Skipping — already known: ${normalizedLink}`);
+                continue;
+            }
 
-            // Queue for Phase 2 verifier to ensure the job is still live
+            knownLinks.add(normalizedLink);
+
+            // Bypass Playwright verification if we already have the full description from the ATS API
+            if (job.description && job.descriptionSource === 'API') {
+                newJobsFound.push({
+                    title: job.title,
+                    applyLink: job.applyLink,
+                    source: job.source,
+                    sourceType: 'ATS',
+                    discoveredAt: new Date().toISOString(),
+                    reviewRequired: false,
+                    atsText: job.description,
+                    company: job.company
+                });
+                visited["__discovered_apply_links__"].push(normalizedLink);
+                atsQueued++;
+                continue;
+            }
+
+            // Queue for Phase 2 verifier to ensure the job is still live (for ATS that only give list, no details)
             candidateQueue.push({
                 applyLink: job.applyLink,
                 source: job.source,
@@ -151,21 +180,97 @@ async function run() {
                 company: job.company,
                 isTestBypass: (job as any).isTestBypass
             });
-            knownLinks.add(normalizedLink);
             atsQueued++;
         }
 
         console.log(`\n-> ATS Phase 0: ${atsQueued} queued for verification, ${atsRejected} rejected (foreign location).\n`);
 
 
-        // ── Phase 1: Scraper Workers ──────────────────────────────────────────
-        // Visits aggregator sites, extracts candidate links + aggregator text,
-        // runs quick aggregator-level filters, and pushes to candidateQueue.
-        // Does NOT open ATS URLs — that is Phase 2's job.
+        // ── Phase 1.5: Verify ATS ──────────────────────────────────────────
+        // Process ATS queue immediately so they are available without waiting for aggregators
+        const runVerifiers = async (phaseName: string) => {
+            if (candidateQueue.length === 0) return;
+            console.log(`\n=== Verifying ${phaseName} pages (${VERIFIER_CONCURRENCY} workers) ===\n`);
+            
+            const pendingCandidates = [...candidateQueue];
+            candidateQueue.length = 0; // Clear queue for next phase
 
-        console.log(`\n=== Phase 1: Scraping aggregators (${SCRAPER_CONCURRENCY} workers) ===\n`);
+            const verifierWorker = async () => {
+                const context = await browser.newContext({
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    viewport: { width: 1280, height: 720 }
+                });
+                const page = await context.newPage();
 
-        const activeSites = TARGET_SITES;
+                try {
+                    while (pendingCandidates.length > 0) {
+                        const candidate = pendingCandidates.shift();
+                        if (!candidate) continue;
+
+                        console.log(`  [Verifier] Checking: ${candidate.applyLink}`);
+                        let checkResult = await isJobLive(page, candidate.applyLink);
+                        if (candidate.isTestBypass) {
+                            checkResult = { live: true, status: 'live', finalUrl: candidate.applyLink, atsText: checkResult.atsText || '' };
+                        }
+
+                        if (checkResult.live) {
+                            const actualApplyLink = checkResult.finalUrl || candidate.applyLink;
+                            console.log(`  ✅ LIVE: ${actualApplyLink} (${checkResult.status})`);
+
+                            let jobTitle = await page.title().catch(() => "");
+                            jobTitle = jobTitle.replace(/( - Workday| - Lever| - Greenhouse| Careers| - Jobs| \| .*)$/i, '').trim();
+
+                            if (!jobTitle || jobTitle.length < 4 || /^(login|sign in|welcome|job details|careers|opportunities|skip to content|careers at .+|jobs at .+)$/i.test(jobTitle)) {
+                                jobTitle = candidate.aggregatorTitle || "Job Title Unknown";
+                            }
+
+                            const normalizedApplyLink = normalizeUrl(actualApplyLink);
+                            visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                            if (visited["__discovered_apply_links__"].length > 2000) visited["__discovered_apply_links__"] = visited["__discovered_apply_links__"].slice(-2000);
+
+                            newJobsFound.push({
+                                title: jobTitle,
+                                applyLink: actualApplyLink,
+                                source: candidate.source,
+                                sourceType: candidate.sourceType,
+                                discoveredAt: new Date().toISOString(),
+                                reviewRequired: false,
+                                aggregatorUrl: candidate.aggregatorUrl,
+                                aggregatorTitle: candidate.aggregatorTitle,
+                                aggregatorText: candidate.aggregatorText,
+                                atsText: checkResult.atsText || '',
+                                company: candidate.company,
+                                isTestBypass: candidate.isTestBypass
+                            });
+                        } else {
+                            const normalizedApplyLink = normalizeUrl(candidate.applyLink);
+                            if (checkResult.status === 'failed') {
+                                console.log(`  -> ATS check failed (network/timeout). Will retry next run.`);
+                                knownLinks.delete(normalizedApplyLink);
+                            } else {
+                                console.log(`  -> ATS page is expired/senior. Discarding. Reason: ${checkResult.rejectReason}`);
+                                visited["__discovered_apply_links__"].push(normalizedApplyLink);
+                                if (visited["__discovered_apply_links__"].length > 2000) visited["__discovered_apply_links__"] = visited["__discovered_apply_links__"].slice(-2000);
+                                rejectedReasons[normalizedApplyLink] = checkResult.rejectReason || 'Unknown reason';
+                            }
+                        }
+                    }
+                } finally {
+                    await page.close();
+                    await context.close();
+                }
+            };
+            await Promise.all(Array.from({ length: VERIFIER_CONCURRENCY }, () => verifierWorker()));
+        };
+
+        await runVerifiers("ATS");
+
+        // ── Phase 2: Scraper Workers ──────────────────────────────────────────
+
+        if (process.env.SKIP_AGGREGATORS !== 'true') {
+            console.log(`\n=== Phase 2: Scraping aggregators (${SCRAPER_CONCURRENCY} workers) ===\n`);
+
+            const activeSites = TARGET_SITES;
         if (activeSites.length === 0) {
             console.warn(`Failed to fetch aggregators.json from CDN. Skipping Phase 1.`);
         } else {
@@ -269,14 +374,14 @@ async function run() {
                             console.log(`  -> Skipping: Rejected by scorer (Score: ${scoreResult.score})`);
                             continue;
                         } else if (scoreResult.verdict === 'UNKNOWN' || scoreResult.verdict === 'MEDIUM') {
-                            console.log(`  -> ${scoreResult.verdict} job. Marking for review.`);
-                            isAggregatorReview = true;
+                            console.log(`  -> ${scoreResult.verdict} job. Skipping review flag.`);
+                            isAggregatorReview = false;
                         }
 
                         if (!isActualJob(aggregatorTitle)) {
                             if (hasFresherKeyword(bodyText)) {
-                                console.log(`  -> Borderline job type. Marking for review.`);
-                                isAggregatorReview = true;
+                                console.log(`  -> Borderline job type. Skipping review flag.`);
+                                isAggregatorReview = false;
                             } else {
                                 console.log(`  -> Skipping: Not an actual job post.`);
                                 continue;
@@ -345,98 +450,14 @@ async function run() {
             }
         };
 
-        // await Promise.all(Array.from({ length: SCRAPER_CONCURRENCY }, () => scraperWorker()));
+            await Promise.all(Array.from({ length: SCRAPER_CONCURRENCY }, () => scraperWorker()));
 
-        console.log(`\n=== Phase 1 Complete. ${candidateQueue.length} candidates queued for ATS verification. ===\n`);
+            console.log(`\n=== Phase 2 Complete. ${candidateQueue.length} candidates queued for ATS verification. ===\n`);
 
-        // ── Phase 2: Verifier Workers ─────────────────────────────────────────
-        // Each worker opens a DEDICATED browser context (allows stylesheets for SPAs),
-        // navigates to the clean ATS URL, waits for real content to stabilise,
-        // and makes the final live / review / discard decision.
-
-        console.log(`=== Phase 2: Verifying ATS pages (${VERIFIER_CONCURRENCY} workers) ===\n`);
-
-        const pendingCandidates = [...candidateQueue];
-
-        const verifierWorker = async () => {
-            // Verifier contexts allow stylesheets — Workday/Oracle HCM SPAs need CSS
-            // to trigger their JS rendering pipelines correctly.
-            const context = await browser.newContext({
-                userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-                viewport: { width: 1280, height: 720 }
-            });
-            const page = await context.newPage();
-
-            try {
-                while (pendingCandidates.length > 0) {
-                    const candidate = pendingCandidates.shift();
-                    if (!candidate) continue;
-
-                    console.log(`  [Verifier] Checking: ${candidate.applyLink}`);
-                    let checkResult = await isJobLive(page, candidate.applyLink);
-                    if (candidate.isTestBypass) {
-                        checkResult = {
-                            live: true,
-                            status: 'live',
-                            finalUrl: candidate.applyLink,
-                            atsText: checkResult.atsText || ''
-                        };
-                    }
-
-                    if (checkResult.live) {
-                        const actualApplyLink = checkResult.finalUrl || candidate.applyLink;
-                        console.log(`  ✅ LIVE: ${actualApplyLink} (${checkResult.status})`);
-
-                        let jobTitle = await page.title().catch(() => "");
-                        jobTitle = jobTitle
-                            .replace(/( - Workday| - Lever| - Greenhouse| Careers| - Jobs| \| .*)$/i, '')
-                            .trim();
-
-                        if (!jobTitle || jobTitle.length < 4 || /^(login|sign in|welcome|job details|careers|opportunities|skip to content|careers at .+|jobs at .+)$/i.test(jobTitle)) {
-                            jobTitle = candidate.aggregatorTitle || "Job Title Unknown";
-                        }
-
-                        const normalizedApplyLink = normalizeUrl(actualApplyLink);
-                        visited["__discovered_apply_links__"].push(normalizedApplyLink);
-                        if (visited["__discovered_apply_links__"].length > 2000) {
-                            visited["__discovered_apply_links__"] = visited["__discovered_apply_links__"].slice(-2000);
-                        }
-
-                        newJobsFound.push({
-                            title: jobTitle,
-                            applyLink: actualApplyLink,
-                            source: candidate.source,
-                            sourceType: candidate.sourceType,
-                            discoveredAt: new Date().toISOString(),
-                            reviewRequired: candidate.isTestBypass ? false : (checkResult.status === 'review' || candidate.isAggregatorReview),
-                            aggregatorUrl: candidate.aggregatorUrl,
-                            aggregatorTitle: candidate.aggregatorTitle,
-                            aggregatorText: candidate.aggregatorText,
-                            atsText: checkResult.atsText || '',
-                            company: candidate.company,
-                            isTestBypass: candidate.isTestBypass
-                        });
-                    } else {
-                        const normalizedApplyLink = normalizeUrl(candidate.applyLink);
-                        if (checkResult.status === 'failed') {
-                            console.log(`  -> ATS check failed (network/timeout). Will retry next run.`);
-                            knownLinks.delete(normalizedApplyLink);
-                        } else {
-                            console.log(`  -> ATS page is expired/senior. Discarding.`);
-                            visited["__discovered_apply_links__"].push(normalizedApplyLink);
-                            if (visited["__discovered_apply_links__"].length > 2000) {
-                                visited["__discovered_apply_links__"] = visited["__discovered_apply_links__"].slice(-2000);
-                            }
-                        }
-                    }
-                }
-            } finally {
-                await page.close();
-                await context.close();
-            }
-        };
-
-        await Promise.all(Array.from({ length: VERIFIER_CONCURRENCY }, () => verifierWorker()));
+            await runVerifiers("Aggregator");
+        } else {
+            console.log(`\n=== Phase 2: Scraping aggregators (SKIPPED via ENV) ===\n`);
+        }
 
     } finally {
         await browser.close();
@@ -444,6 +465,7 @@ async function run() {
 
     delete visited["pending_admin_approval"];
     await saveVisited(visited);
+    await saveRejectedReasons(rejectedReasons);
 
     // ── Send Telegram alert ───────────────────────────────────────────────────
 
@@ -505,6 +527,11 @@ async function run() {
     const reviewOutputPath = path.join(process.cwd(), 'review_jobs.json');
     await fs.writeFile(reviewOutputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: reviewJobs }, null, 2), 'utf8');
     console.log(`Saved ${reviewJobs.length} review jobs to ${reviewOutputPath}`);
+
+    // Save ALL jobs to a single file as requested
+    const allPassedOutputPath = path.join(process.cwd(), 'all_passed_jobs.json');
+    await fs.writeFile(allPassedOutputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: validJobs }, null, 2), 'utf8');
+    console.log(`Saved all ${validJobs.length} passed jobs to ${allPassedOutputPath} for manual verification`);
 
     // ── Run Summary ───────────────────────────────────────────────────────────
     const atsTotal = newJobsFound.filter(j => j.sourceType === 'ATS').length;

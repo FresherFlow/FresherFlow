@@ -21,7 +21,9 @@ export async function loadEnv() {
                     let value = (match[2] || '').trim();
                     if (value.startsWith('"') && value.endsWith('"')) value = value.slice(1, -1);
                     if (value.startsWith("'") && value.endsWith("'")) value = value.slice(1, -1);
-                    process.env[key] = value;
+                    if (process.env[key] === undefined) {
+                        process.env[key] = value;
+                    }
                 }
             }
         } catch {
@@ -53,6 +55,7 @@ try {
 }
 
 export const VISITED_FILE = path.join(process.cwd(), 'visited_urls.json');
+export const REJECTED_REASONS_FILE = path.join(process.cwd(), 'rejected_reasons.json');
 
 export const EXPIRED_PHRASES = [
     "no longer available",
@@ -72,6 +75,11 @@ export const EXPIRED_PHRASES = [
     "job not found",
     "page not found",
     "an error has occurred",
+    "the job posting is not available anymore",
+    "the job that you're trying to view may be deleted or hidden",
+    "the job that you're trying to view may be deleted",
+    "hiring for this job is closed",
+    "closed job",
     "you can't view this job because it's not available at this time",
     "you cant view this job because it's not available at this time",
     "you cant view this job because its not available at this time",

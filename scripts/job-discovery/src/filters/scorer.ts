@@ -106,51 +106,33 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
     }
 
     // Negative (Not blocker, just negative points): 3-5 years (excluding 0, 1, 2)
-    const exp3to5 = /(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
+    const exp3to5 = /(?:(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b))/gi;
     while ((match = exp3to5.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         
-        const weight = (sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO') ? WEIGHTS.EXP_3_5_YEARS : -10;
+        const weight = (sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO') ? -100 : -10;
+        const rule = (sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO') ? 'BLOCKER_EXP_3_5' : 'EXP_3_5';
         
         signals.push({
             type: 'experience',
             section: sectionType,
-            rule: 'EXP_3_5',
+            rule,
             weight,
             matched: match[0],
             context: getContext(lowerText, match.index, match[0].length)
         });
-        contributions.push({ rule: 'EXP_3_5', delta: weight, section: sectionType });
-        trace.push({ step: 'evaluateExperience', result: '3-5 years', rule: 'EXP_3_5', delta: weight });
+        contributions.push({ rule, delta: weight, section: sectionType });
+        trace.push({ step: 'evaluateExperience', result: '3-5 years', rule, delta: weight });
     }
 
-    // Negative (Not blocker): 3+ years, 4+ years
-    const exp3plus = /(?<!\b[0-2]\s*(?:-|–|\bto\b)\s*)(?:\b[3-4]\b)\s*\+\s*(?:years?|yrs?|y\b)/gi;
-    while ((match = exp3plus.exec(lowerText)) !== null) {
-        if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
-        
-        const weight = (sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO') ? WEIGHTS.EXP_3_PLUS_YEARS : -10;
-
-        signals.push({
-            type: 'experience',
-            section: sectionType,
-            rule: 'EXP_3_PLUS',
-            weight,
-            matched: match[0],
-            context: getContext(lowerText, match.index, match[0].length)
-        });
-        contributions.push({ rule: 'EXP_3_PLUS', delta: weight, section: sectionType });
-        trace.push({ step: 'evaluateExperience', result: '3+ years', rule: 'EXP_3_PLUS', delta: weight });
-    }
-
-    // Blocker / Strong Negative: 5+ years of experience
-    const plusExpRegex = /(?<!\b[0-4]\s*(?:-|–|\bto\b)\s*)(?:\b[5-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
+    // Blocker / Strong Negative: 1+ years, 2+ years, 3+ years...
+    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:(?:(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)))/gi;
     while ((match = plusExpRegex.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         
         const isBlocker = sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO';
         const weight = isBlocker ? -100 : -15; // weaker penalty in PREFERRED/RESPONSIBILITIES
-        const rule = isBlocker ? 'BLOCKER_EXP_5_PLUS' : 'EXP_3_PLUS';
+        const rule = isBlocker ? 'BLOCKER_EXP_PLUS' : 'EXP_PLUS';
 
         signals.push({
             type: 'experience',
@@ -161,17 +143,17 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
             context: getContext(lowerText, match.index, match[0].length)
         });
         contributions.push({ rule, delta: weight, section: sectionType });
-        trace.push({ step: 'evaluateExperience', result: '5+ years', rule, delta: weight });
+        trace.push({ step: 'evaluateExperience', result: '1+ years', rule, delta: weight });
     }
 
-    // Blocker / Strong Negative: Required Seniority (e.g., minimum 5 years)
-    const minExpRegex = /\b(?:minimum|min|at least|requires?|requiring)\s*(?:of\s+)?(?:\b[5-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)/gi;
+    // Blocker / Strong Negative: Required Seniority (e.g., minimum 1 year)
+    const minExpRegex = /\b(?:minimum|min|at least|requires?|requiring)\s*(?:of\s+)?(?:\b[1-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)/gi;
     while ((match = minExpRegex.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         
         const isBlocker = sectionType === 'REQUIREMENTS' || sectionType === 'BODY' || sectionType === 'INTRO';
         const weight = isBlocker ? -100 : -15;
-        const rule = isBlocker ? 'BLOCKER_REQUIRED_SENIORITY' : 'EXP_3_PLUS';
+        const rule = isBlocker ? 'BLOCKER_REQUIRED_SENIORITY' : 'REQUIRED_SENIORITY';
 
         signals.push({
             type: 'experience',

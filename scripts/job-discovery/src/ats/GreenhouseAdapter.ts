@@ -25,17 +25,20 @@ export class GreenhouseAdapter implements AtsAdapter {
             location: j.location?.name,
             descriptionSource: 'NONE',
             source: 'ATS_GREENHOUSE',
-            sourceType: 'ATS'
+            sourceType: 'ATS',
+            boardToken: companyId
         }));
     }
 
     async fetchJobDetails(job: AtsJob): Promise<string | undefined> {
         if (!job.id) return undefined;
-        // Need the board token (companyId) which we don't have stored on the job directly, but we can extract it from the URL
-        const urlObj = new URL(job.applyLink);
-        const parts = urlObj.pathname.split('/').filter(Boolean);
-        const boardsIdx = parts.indexOf('boards');
-        const boardToken = boardsIdx !== -1 ? parts[boardsIdx + 1] : parts[0];
+        
+        const boardToken = job.boardToken || (() => {
+            const urlObj = new URL(job.applyLink);
+            const parts = urlObj.pathname.split('/').filter(Boolean);
+            const boardsIdx = parts.indexOf('boards');
+            return boardsIdx !== -1 ? parts[boardsIdx + 1] : parts[0];
+        })();
 
         const url = `https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs/${job.id}?content=true`;
         const data = await fetchJson<any>(url, {}, 'Greenhouse Details');
