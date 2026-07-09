@@ -93,3 +93,5 @@ scripts/output/*.json
 
 # Test scripts and results
 scripts/job-discovery/adapter-tests/
+
+.agents

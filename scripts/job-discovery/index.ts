@@ -3,7 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { 
     CDN_SECRET, 
-    ATS_BOARDS_URL,
+    ATS_CDN_BASE,
+    ATS_PROVIDERS,
     TARGET_SITES,
     loadEnv 
 } from './src/config.js';
@@ -98,17 +99,23 @@ async function run() {
         console.log(`\n=== Phase 0: Scraping ATS APIs ===\n`);
         
         try {
-            if (ATS_BOARDS_URL) {
-                console.log(`Fetching ATS Boards from CDN (${ATS_BOARDS_URL})...`);
-                const res = await fetch(ATS_BOARDS_URL);
-                if (res.ok) {
-                    atsRegistry = await res.json();
-                    console.log(`  -> Loaded ATS boards.`);
-                } else {
-                    console.warn(`  -> Failed to fetch ATS boards: ${res.statusText}`);
+            if (ATS_CDN_BASE) {
+                console.log(`Fetching ATS Boards from CDN (${ATS_CDN_BASE})...`);
+                for (const provider of ATS_PROVIDERS) {
+                    try {
+                        const res = await fetch(`${ATS_CDN_BASE}/${provider}.json`);
+                        if (res.ok) {
+                            atsRegistry[provider] = await res.json();
+                            console.log(`  -> Loaded ${provider}.json`);
+                        } else if (res.status !== 404) {
+                            console.warn(`  -> Failed to fetch ${provider}.json: ${res.statusText}`);
+                        }
+                    } catch (err) {
+                        console.warn(`  -> Error fetching ${provider}.json: ${(err as Error).message}`);
+                    }
                 }
             } else {
-                console.log(`ATS_BOARDS_URL not set, skipping CDN fetch.`);
+                console.log(`ATS_CDN_BASE not set, skipping CDN fetch.`);
             }
         } catch (err) {
             console.error("Critical error fetching ATS registry from CDN:", err);
