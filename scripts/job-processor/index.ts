@@ -21,8 +21,6 @@ import {
     CANONICAL_SKILLS_MAP 
 } from './src/metadata.js';
 
-import { scoreJobDescription } from '../job-discovery/src/filters/scorer.js';
-
 import {
     applyStealth,
     extractAtsContent,
@@ -31,7 +29,7 @@ import {
 } from './src/browser';
 
 import { extractNativeAtsData } from './src/ats-native';
-import { stripBoilerplate } from './src/parsers/greenhouse-parser.js';
+import { stripBoilerplate, setBoilerplateRegistry } from './src/parsers/greenhouse-parser.js';
 import { applyRuleEngine } from './src/rules';
 
 import {
@@ -84,6 +82,21 @@ async function run(): Promise<void> {
 
     await loadEnv();
     await loadCdnMetadata();
+
+    /*
+    try {
+        const bpRes = await fetch('http://cdn.fresherflow.in/boilerplate.json');
+        if (bpRes.ok) {
+            const bpData = await bpRes.json();
+            setBoilerplateRegistry(bpData);
+            console.log('Loaded company boilerplate registry from CDN.');
+        } else {
+            console.log('Failed to fetch boilerplate.json from CDN, continuing without it.');
+        }
+    } catch (err) {
+        console.log('Error fetching boilerplate.json from CDN:', (err as Error).message);
+    }
+    */
 
     setCdnMetadata({
         cities: CANONICAL_CITIES_MAP,
@@ -262,27 +275,6 @@ async function run(): Promise<void> {
                     continue;
                 }
 
-                // Pre-filter: reject non-fresher jobs before burning LLM tokens
-                let scoreResult = scoreJobDescription(
-                    atsContent.title || job.aggregatorTitle || job.title || '', rawText
-                );
-                // If primary text fails, retry with aggregatorText (may have richer signals)
-                if (scoreResult.verdict === 'REJECT' && aggregatorText && aggregatorText !== rawText) {
-                    const aggScore = scoreJobDescription(
-                        job.aggregatorTitle || job.title || '', aggregatorText
-                    );
-                    if (aggScore.verdict !== 'REJECT') {
-                        console.log(`Scorer: primary rejected (${scoreResult.score}), aggregator passed (${aggScore.score}). Using aggregator text.`);
-                        atsContent.text = aggregatorText;
-                        scoreResult = aggScore;
-                    }
-                }
-                if (scoreResult.verdict === 'REJECT') {
-                    console.log(`Scorer rejected (Score: ${scoreResult.score}). Skipping.`);
-                    failureList.push({ url: job.applyLink, reason: `Scorer rejected (Score: ${scoreResult.score})` });
-                    continue;
-                }
-
                 // ─────────────────────────────────────────────────────────
                 // STEP 2: DETERMINISTIC FIELD MAPPING
                 // Native ATS data + Rule Engine → build job object
@@ -316,7 +308,7 @@ async function run(): Promise<void> {
                     allowedCourses: nativeData?.allowedCourses ?? [],
                     incentives: nativeData?.incentives ?? '',
                     selectionProcess: nativeData?.selectionProcess ?? '',
-                    description: stripBoilerplate(nativeData?.text || atsContent.text || textForLlm) || stripBoilerplate(aggregatorText) || stripBoilerplate(textForLlm),
+                    description: stripBoilerplate(nativeData?.text || atsContent.text || textForLlm, job.company) || stripBoilerplate(aggregatorText, job.company) || stripBoilerplate(textForLlm, job.company),
                 };
 
                 // 2c. CDN matcher: fill remaining fields using CDN JSON data
@@ -347,8 +339,7 @@ async function run(): Promise<void> {
                 // Identify what's still missing after CDN matching (for logging)
                 const missingFields: string[] = [];
                 if (!(nativeJob.requiredSkills as string[]).length) missingFields.push('requiredSkills');
-                if (!(nativeJob.allowedDegrees as string[]).length) missingFields.push('allowedDegrees');
-                if (!(nativeJob.allowedPassoutYears as number[]).length) missingFields.push('allowedPassoutYears');
+                // allowedDegrees and allowedPassoutYears removed as they are deterministic now
                 if (!nativeJob.salaryRange) missingFields.push('salaryRange');
                 if (!nativeJob.incentives) missingFields.push('incentives');
                 if (!nativeJob.selectionProcess) missingFields.push('selectionProcess');
@@ -357,8 +348,22 @@ async function run(): Promise<void> {
                 console.log(`CDN match done. Missing ${missingFields.length} fields: [${missingFields.join(', ')}]`);
 
                 // ─────────────────────────────────────────────────────────
-                // STEP 3: LLM ENRICHMENT REMOVED BY USER REQUEST
+                // STEP 3: LLM ENRICHMENT (Fallback for missing fields)
                 // ─────────────────────────────────────────────────────────
+                if (missingFields.length > 0 && ai) {
+                    console.log(`Calling LLM enrichment for fields: ${missingFields.join(', ')}`);
+                    try {
+                        const enrichment = await enrichMissingFields(ai, textForLlm, missingFields as EnrichableField[]);
+                        if (enrichment) {
+                            if (enrichment.requiredSkills?.length) nativeJob.requiredSkills = [...new Set([...(nativeJob.requiredSkills as string[]), ...enrichment.requiredSkills])];
+                            if (enrichment.salaryRange) nativeJob.salaryRange = enrichment.salaryRange;
+                            if (enrichment.incentives) nativeJob.incentives = enrichment.incentives;
+                            if (enrichment.selectionProcess) nativeJob.selectionProcess = enrichment.selectionProcess;
+                        }
+                    } catch (err) {
+                        console.warn('LLM enrichment failed, falling back to native data:', (err as Error).message);
+                    }
+                }
 
 
                 // ─────────────────────────────────────────────────────────

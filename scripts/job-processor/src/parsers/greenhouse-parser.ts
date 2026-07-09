@@ -132,10 +132,6 @@ const BOILERPLATE_TRIGGERS: string[] = [
     // Salary range disclaimer (YipitData)
     'by a number of factors, including, but not limited to, the applicant\'s experience',
     'internal team benchmarks',
-    // Company "about" sections
-    'about canonical',
-    'about razorpay',
-    'about yipitdata',
     // Generic marketing closers (Smartsheet)
     'let\'s build what\'s next, together',
     'that\'s magic at work',
@@ -177,10 +173,6 @@ const ALWAYS_STRIP_TRIGGERS: string[] = [
     // Full nav-page detection (mthree atsText is pure site nav)
     'solutions\ncareers',
     'solutions\r\ncareers',
-    // Company "about" sections
-    'about canonical',
-    'about razorpay',
-    'about yipitdata',
 ];
 
 // These are only stripped when found in bottom 40% or past 1000 chars
@@ -207,13 +199,19 @@ const BOTTOM_ONLY_TRIGGERS: string[] = [
     'internal team benchmarks',
 ];
 
-export function stripBoilerplate(text: string): string {
+let CDN_BOILERPLATE_REGISTRY: Record<string, string[]> = {};
+
+export function setBoilerplateRegistry(registry: Record<string, string[]>) {
+    CDN_BOILERPLATE_REGISTRY = registry;
+}
+
+export function stripBoilerplate(text: string, companyName?: string): string {
     if (!text) return '';
     let lowerText = text.toLowerCase();
     let earliestCutoff = text.length;
 
     const applyTrigger = (trigger: string, bottomOnly: boolean) => {
-        const idx = lowerText.indexOf(trigger);
+        const idx = lowerText.indexOf(trigger.toLowerCase());
         if (idx === -1) return;
         // bottomOnly: only cut if in the bottom 40% or past 1000 chars
         if (bottomOnly && !(idx > text.length * 0.6 || idx > 1000)) return;
@@ -225,6 +223,16 @@ export function stripBoilerplate(text: string): string {
 
     for (const trigger of ALWAYS_STRIP_TRIGGERS) applyTrigger(trigger, false);
     for (const trigger of BOTTOM_ONLY_TRIGGERS) applyTrigger(trigger, true);
+
+    if (companyName) {
+        const companyKey = companyName.toLowerCase().trim();
+        const customTriggers = CDN_BOILERPLATE_REGISTRY[companyKey];
+        if (customTriggers && Array.isArray(customTriggers)) {
+            for (const trigger of customTriggers) {
+                applyTrigger(trigger, false); // Treat company boilerplate as ALWAYS_STRIP
+            }
+        }
+    }
 
     let result = text.substring(0, earliestCutoff).trim();
     result = result.replace(/\*+\s*$/g, '').trim();
@@ -262,7 +270,7 @@ export function filterRealLocations(locations: string[]): string[] {
  * - Office/department names are filtered from locations.
  * - Soft skills are excluded from requiredSkills.
  */
-export function parseGreenhouseHtml(rawHtml: string): ParsedGreenhouseData {
+export function parseGreenhouseHtml(rawHtml: string, companyName?: string): ParsedGreenhouseData {
     const requiredSkills: string[] = [];
     const allowedDegreesSet = new Set<string>();
     const allowedCoursesSet = new Set<string>();
@@ -309,10 +317,12 @@ export function parseGreenhouseHtml(rawHtml: string): ParsedGreenhouseData {
 
         if (!headerText || !contentHtml) continue;
 
-        // Skip "About the Company" / "About Us" sections — company boilerplate
+        // (Disabled: Now we extract company sections instead of stripping them via Boilerplate registry)
+        /*
         if (/about (the )?company|about us|who (we|are)|about [a-z0-9\-\s]+/i.test(cleanHeader) && !/about the role/i.test(cleanHeader)) {
             continue;
         }
+        */
 
         const cleanedContent = cleanHtmlToMarkdown(contentHtml);
         if (!cleanedContent || cleanedContent.length < 20) continue;
@@ -399,7 +409,7 @@ export function parseGreenhouseHtml(rawHtml: string): ParsedGreenhouseData {
 
     // If no sections matched (job uses no headers at all), fall back to full cleaned text
     if (!hasFoundContent) {
-        const fullText = stripBoilerplate(cleanHtmlToMarkdown(workingHtml));
+        const fullText = stripBoilerplate(cleanHtmlToMarkdown(workingHtml), companyName);
         return {
             description: fullText,
             requiredSkills: [],
@@ -412,7 +422,7 @@ export function parseGreenhouseHtml(rawHtml: string): ParsedGreenhouseData {
     }
 
     return {
-        description: stripBoilerplate(parsedSections.join('\n\n')) || parsedSections.join('\n\n'),
+        description: stripBoilerplate(parsedSections.join('\n\n'), companyName) || parsedSections.join('\n\n'),
         requiredSkills: Array.from(new Set(requiredSkills)),
         allowedDegrees: Array.from(allowedDegreesSet),
         allowedCourses: Array.from(allowedCoursesSet),

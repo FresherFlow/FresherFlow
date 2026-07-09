@@ -14,12 +14,12 @@ interface SweeperCheckResult {
     status: 'live' | 'expired' | 'review';
 }
 
-async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
+async function checkJob(page: Page, url: string, isSecondPass = false): Promise<SweeperCheckResult> {
     try {
         let response = null;
         let loadFailed = false;
         try {
-            response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 15000 });
+            response = await page.goto(url, { waitUntil: 'domcontentloaded', timeout: isSecondPass ? 30000 : 15000 });
         } catch (gotoErr) {
             console.error(`Error loading ${url}:`, (gotoErr as Error).message);
             const errMsg = (gotoErr as Error).message.toLowerCase();
@@ -47,24 +47,19 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
 
         const finalUrl = page.url().toLowerCase();
         if (finalUrl.includes('not_found') || finalUrl.includes('jobnotfound') || finalUrl.includes('job-not-found') || finalUrl.includes('/jobnotfound') || finalUrl.includes('/job-not-found')) {
-            console.log(`  -> URL indicates job not found / redirect to portal: ${page.url()}. Marking for review.`);
-            return { status: 'review' };
+            console.log(`  -> URL indicates job not found / redirect to portal: ${page.url()}. Marking as expired.`);
+            return { status: 'expired' };
         }
         
         // Smart Wait: Wait dynamically for Javascript/SPAs (like Workday/Upstox) to paint the job description text.
-        // It finishes instantly if the text is already there, but waits up to 8 seconds for slow API calls to finish rendering.
         await page.waitForFunction(() => {
-            return document.body && document.body.innerText.trim().length > 100;
-        }, { timeout: 8000 }).catch(() => {});
+            return document.body && document.body.innerText.trim().length > 150;
+        }, { timeout: isSecondPass ? 25000 : 8000 }).catch(() => {});
         
         const pageTitle = await page.title().catch(() => "");
         const lowerTitle = pageTitle.toLowerCase().trim();
         if (lowerTitle.includes('403') || lowerTitle.includes('forbidden') || lowerTitle.includes('access denied') || lowerTitle.includes('checking your browser') || lowerTitle.includes('attention required')) {
             console.log(`  -> Access blocked (Forbidden/Cloudflare/403 page title: "${pageTitle}"). Marking for review.`);
-            return { status: 'review' };
-        }
-        if (/^(careers|career search|careersearch|search careers|careers search|job search|jobsearch|opportunities|job opportunities|career opportunities|open positions|current openings|search jobs|search for jobs|login|sign in|welcome|jobs|job|search)$/i.test(lowerTitle)) {
-            console.log(`  -> Page title is generic ("${pageTitle}"). Marking for review.`);
             return { status: 'review' };
         }
 
@@ -89,21 +84,27 @@ async function checkJob(page: Page, url: string): Promise<SweeperCheckResult> {
         }
 
         const bodyText = mainText || (await page.locator('body').innerText({ timeout: 500 }).catch(() => ""));
+        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
-        if (!bodyText || bodyText.trim().length < 100) {
+        let hasExpiredPhrase = false;
+        for (const phrase of EXPIRED_PHRASES) {
+            if (lowerText.includes(phrase)) {
+                hasExpiredPhrase = true;
+                break;
+            }
+        }
+
+        if (hasExpiredPhrase) {
+            return { status: 'expired' };
+        }
+
+        if (!bodyText || bodyText.trim().length < 150) {
             if (loadFailed) {
                 console.log(`  -> Navigation failed and page body is empty/too short. Marking for review.`);
                 return { status: 'review' };
             }
             console.log(`  -> Page body is empty or too short. Marking for review.`);
             return { status: 'review' };
-        }
-        const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
-
-        for (const phrase of EXPIRED_PHRASES) {
-            if (lowerText.includes(phrase)) {
-                return { status: 'expired' };
-            }
         }
 
         return { status: 'live' };
@@ -120,6 +121,7 @@ interface FeedOpportunity {
     company: string;
     applyLink?: string;
     sourceLink?: string;
+    publishedAt?: string;
 }
 
 interface FeedJson {
@@ -189,6 +191,16 @@ async function run() {
                         const currentChecked = ++checked;
                         const targetUrl = opp.applyLink || opp.sourceLink;
                         if (!targetUrl) continue;
+
+                        // Minimum age guard: Do not sweep jobs published in the last 24 hours
+                        if (opp.publishedAt) {
+                            const publishedDate = new Date(opp.publishedAt);
+                            const ageHours = (Date.now() - publishedDate.getTime()) / (1000 * 60 * 60);
+                            if (ageHours < 24) {
+                                console.log(`[${currentChecked}/${opportunities.length}] Skipping: ${opp.title} (Age: ${Math.round(ageHours)}h, < 24h)`);
+                                continue;
+                            }
+                        }
                         
                         console.log(`[${currentChecked}/${opportunities.length}] Checking: ${opp.title} @ ${opp.company}`);
                         const checkResult = await checkJob(page, targetUrl);
@@ -217,6 +229,66 @@ async function run() {
         // Run all workers concurrently
         const workers = Array.from({ length: CONCURRENCY }, () => worker());
         await Promise.all(workers);
+
+        // SECOND PASS
+        if (reviewJobs.length > 0) {
+            console.log(`\n\n--- Starting Second Pass for ${reviewJobs.length} Review Jobs ---\n`);
+            const jobsToReview = [...reviewJobs];
+            reviewJobs.length = 0; // clear, we will re-push if still failed
+            
+            let secondPassChecked = 0;
+            const secondPassWorker = async () => {
+                const context = await browser.newContext({
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                });
+                
+                try {
+                    await context.route('**/*', (route) => {
+                        const type = route.request().resourceType();
+                        if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+                            route.abort();
+                        } else {
+                            route.continue();
+                        }
+                    });
+                    
+                    const page = await context.newPage();
+                    try {
+                        let opp: FeedOpportunity | undefined;
+                        while (jobsToReview.length > 0) {
+                            opp = jobsToReview.shift();
+                            if (!opp) continue;
+                            
+                            const currentChecked = ++secondPassChecked;
+                            const targetUrl = opp.applyLink || opp.sourceLink;
+                            if (!targetUrl) continue;
+
+                            console.log(`[Second Pass ${currentChecked}] Checking: ${opp.title} @ ${opp.company}`);
+                            const checkResult = await checkJob(page, targetUrl, true);
+                            
+                            if (checkResult.status === 'expired') {
+                                console.log(`❌ EXPIRED: ${opp.title}`);
+                                expiredJobs.push(opp);
+                            } else if (checkResult.status === 'review') {
+                                console.log(`⚠️ STILL NEEDS REVIEW: ${opp.title}`);
+                                reviewJobs.push(opp);
+                            } else {
+                                console.log(`✅ LIVE: ${opp.title}`);
+                            }
+                            
+                            await page.waitForTimeout(1500);
+                        }
+                    } finally {
+                        await page.close();
+                    }
+                } finally {
+                    await context.close();
+                }
+            };
+
+            const secondPassWorkers = Array.from({ length: Math.min(CONCURRENCY, jobsToReview.length) }, () => secondPassWorker());
+            await Promise.all(secondPassWorkers);
+        }
     } finally {
         await browser.close();
     }

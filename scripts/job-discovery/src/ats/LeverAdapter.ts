@@ -11,6 +11,7 @@ interface LeverJobResponse {
     };
     workplaceType?: string;
     country?: string; // ISO 3166-1 alpha-2
+    tags?: string[];
     lists?: Array<{ text: string; content: string }>;
     openingPlain?: string;
     additionalPlain?: string;
@@ -43,6 +44,12 @@ export class LeverAdapter implements AtsAdapter {
 
             // Build description from all text sections
             const descParts: string[] = [];
+            
+            // Inject tags at the very beginning to ensure they get matched
+            if (Array.isArray(j.tags) && j.tags.length > 0) {
+                descParts.push(`Tags: ${j.tags.join(', ')}`);
+            }
+
             if (j.openingPlain) descParts.push(j.openingPlain);
             if (j.lists) {
                 for (const list of j.lists) {

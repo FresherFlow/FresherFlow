@@ -11,5 +11,6 @@
       "@fresherflow/parser": ["../../packages/parser/src/index.ts"],
       "@fresherflow/types": ["../../packages/types/index.ts"]
     }
-  }
+  },
+  "exclude": ["scratch"]
 }

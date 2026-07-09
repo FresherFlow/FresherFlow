@@ -28,6 +28,7 @@ export interface AtsJob {
 export interface AtsAdapter {
     providerName: string;
     fetchJobs(companyId: string, companyName: string): Promise<AtsJob[]>;
+    fetchJobDetails?(job: AtsJob): Promise<string | undefined>;
 }
 
 // ─── Shared helpers ────────────────────────────────────────────────────────────

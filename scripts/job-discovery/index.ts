@@ -3,7 +3,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { 
     CDN_SECRET, 
-    TARGET_SITES, 
+    ATS_BOARDS_URL,
+    TARGET_SITES,
     loadEnv 
 } from './src/config.js';
 import { signUrl, normalizeUrl, sanitizeAtsUrl } from './src/utils/url.js';
@@ -16,7 +17,6 @@ import { logDecision } from './src/utils/logger.js';
 import { findActualApplyLink } from './src/core/extractor.js';
 import { isJobLive } from './src/core/verifier.js';
 import { runAtsDiscovery, AtsRegistry } from './src/ats/index.js';
-import { ATS_BOARDS_URL } from './src/config.js';
 import { extractAtsBoard } from './src/core/ats-detector.js';
 import { uploadToR2 } from './src/utils/r2.js';
 
@@ -97,46 +97,21 @@ async function run() {
         // ── Phase 0: ATS Direct API Scraping ─────────────────────────────────────────
         console.log(`\n=== Phase 0: Scraping ATS APIs ===\n`);
         
-        let loadedTest = false;
         try {
-            const testPath = path.join(process.cwd(), 'test_ats_boards.json');
-            const testJson = await fs.readFile(testPath, 'utf8');
-            atsRegistry = JSON.parse(testJson) as AtsRegistry;
-            console.log(`Loaded test ATS registry from ${testPath}`);
-            loadedTest = true;
-        } catch {
-            // Ignore, proceed to normal loading
-        }
-
-        if (!loadedTest) {
-            try {
-                if (!ATS_BOARDS_URL) {
-                    throw new Error("ATS_BOARDS_URL is not set");
-                }
-                console.log(`Fetching ATS Boards from ${ATS_BOARDS_URL}...`);
-                const atsRes = await fetch(ATS_BOARDS_URL);
-                if (atsRes.ok) {
-                    atsRegistry = await atsRes.json() as AtsRegistry;
+            if (ATS_BOARDS_URL) {
+                console.log(`Fetching ATS Boards from CDN (${ATS_BOARDS_URL})...`);
+                const res = await fetch(ATS_BOARDS_URL);
+                if (res.ok) {
+                    atsRegistry = await res.json();
+                    console.log(`  -> Loaded ATS boards.`);
                 } else {
-                    throw new Error(atsRes.statusText);
+                    console.warn(`  -> Failed to fetch ATS boards: ${res.statusText}`);
                 }
-            } catch (err) {
-                console.warn(`Could not fetch ATS registry: ${(err as Error).message}. Falling back to local docs/ats/ directory...`);
-                try {
-                    const atsDir = path.join(process.cwd(), '../../docs/ats');
-                    const files = await fs.readdir(atsDir);
-                    for (const file of files) {
-                        if (file.endsWith('.json')) {
-                            const content = await fs.readFile(path.join(atsDir, file), 'utf8');
-                            const providerData = JSON.parse(content);
-                            const providerName = file.replace('.json', '');
-                            atsRegistry[providerName] = providerData;
-                        }
-                    }
-                } catch (localErr) {
-                    console.error("Also failed to load local ats boards from docs/ats/:", localErr);
-                }
+            } else {
+                console.log(`ATS_BOARDS_URL not set, skipping CDN fetch.`);
             }
+        } catch (err) {
+            console.error("Critical error fetching ATS registry from CDN:", err);
         }
 
         const atsJobs = await runAtsDiscovery(atsRegistry);
@@ -157,7 +132,7 @@ async function run() {
             const normalizedLink = normalizeUrl(job.applyLink);
             if (!(job as any).isTestBypass && (knownLinks.has(normalizedLink) || visited["__discovered_apply_links__"].includes(normalizedLink))) continue;
 
-            // Queue for Phase 2 verifier — same as aggregator jobs
+            // Queue for Phase 2 verifier to ensure the job is still live
             candidateQueue.push({
                 applyLink: job.applyLink,
                 source: job.source,
@@ -183,7 +158,12 @@ async function run() {
 
         console.log(`\n=== Phase 1: Scraping aggregators (${SCRAPER_CONCURRENCY} workers) ===\n`);
 
-        const activeSites = [...TARGET_SITES];
+        const activeSites = TARGET_SITES;
+        if (activeSites.length === 0) {
+            console.warn(`Failed to fetch aggregators.json from CDN. Skipping Phase 1.`);
+        } else {
+            console.log(`Loaded ${activeSites.length} aggregator sites from CDN.`);
+        }
 
         const scraperWorker = async () => {
             const context = await browser.newContext({
@@ -503,12 +483,17 @@ async function run() {
     const validJobs = newJobsFound.filter(j => !j.reviewRequired);
     const reviewJobs = newJobsFound.filter(j => j.reviewRequired);
 
-    // Only save ATS jobs to draft (discovered_jobs.json) as per user request
+    // Save ATS jobs to discovered_jobs.json
     const draftJobs = validJobs.filter(j => j.sourceType === 'ATS');
-
     const outputPath = path.join(process.cwd(), 'discovered_jobs.json');
     await fs.writeFile(outputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: draftJobs }, null, 2), 'utf8');
     console.log(`Saved ${draftJobs.length} ATS jobs to ${outputPath} for drafting`);
+
+    // Save Aggregator jobs to discovered_aggregators.json
+    const aggJobs = validJobs.filter(j => j.sourceType === 'AGGREGATOR');
+    const aggOutputPath = path.join(process.cwd(), 'discovered_aggregators.json');
+    await fs.writeFile(aggOutputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: aggJobs }, null, 2), 'utf8');
+    console.log(`Saved ${aggJobs.length} Aggregator jobs to ${aggOutputPath}`);
 
     const reviewOutputPath = path.join(process.cwd(), 'review_jobs.json');
     await fs.writeFile(reviewOutputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: reviewJobs }, null, 2), 'utf8');
@@ -555,19 +540,8 @@ async function run() {
     }
 
     if (registryModified) {
-        console.log(`\n--- Saving Updated ATS Boards ---`);
-        try {
-            const atsDir = path.join(process.cwd(), '../../docs/ats');
-            for (const [provider, boards] of Object.entries(atsRegistry)) {
-                const providerPath = path.join(atsDir, `${provider}.json`);
-                await fs.writeFile(providerPath, JSON.stringify(boards, null, 2), 'utf8');
-            }
-            console.log(`Saved local ATS boards to docs/ats/.`);
-            
-            // Note: R2 upload would need to be updated to upload individual files if needed.
-        } catch (err) {
-            console.error("Failed to save updated ATS registry:", err);
-        }
+        console.log(`\n--- Note: New ATS boards were discovered during this run ---`);
+        console.log(`Please add them to your CDN manually. Automated saving is disabled.`);
     }
 }
 

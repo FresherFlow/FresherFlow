@@ -38,169 +38,18 @@ export const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().repl
 export const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || '').trim().replace(/\/$/, '');
 export const ATS_BOARDS_URL = process.env.ATS_BOARDS_URL || (CDN_URL ? `${CDN_URL}/ats_boards.json` : '');
 
-    export const TARGET_SITES = [
-    {
-        name: 'job4freshers',
-        urls: [
-            'https://job4freshers.co.in/',
-            'https://job4freshers.co.in/category/software-it-jobs/'
-        ]
-    },
-    {
-        name: 'frontlinesmedia',
-        urls: [
-            'https://frontlinesmedia.in/tag/fresher-jobs/'
-        ]
-    },
-    {
-        name: 'govtjobmart',
-        urls: [
-            'https://govtjobmart.in/'
-        ]
-    },
-    {
-        name: 'findmyjobss',
-        urls: [
-            'https://findmyjobss.com/',
-            'https://findmyjobss.com/category/latest-jobs/'
-        ]
-    },
-    {
-        name: 'dailypharmajobs',
-        urls: [
-            'https://jobs.dailypharmajobs.in/',
-            'https://jobs.dailypharmajobs.in/category/fresher-jobs/'
-        ]
-    },
-    {
-        name: 'jobsaddafreshers',
-        urls: [
-            'https://jobsaddafreshers.com/category/freshers/',
-            'https://jobsaddafreshers.com/category/internships/'
-        ]
-    },
-    {
-        name: 'internshipss',
-        urls: [
-            'https://internshipss.com/',
-            'https://internshipss.com/Fresher-Jobs.html',
-            'https://internshipss.com/Internships.html',
-            'https://internshipss.com/Remote-Jobs.html'
-        ]
-    },
-    {
-        name: 'freshersvoice',
-        urls: [
-            'https://www.freshersvoice.com/',
-            'https://www.freshersvoice.com/it-software-jobs',
-            'https://www.freshersvoice.com/off-campus-drives'
-        ]
-    },
-    {
-        name: 'placementdrive',
-        urls: [
-            'https://placementdrive.in/',
-            'https://placementdrive.in/category/fresher-jobs',
-            'https://placementdrive.in/category/internships',
-            'https://placementdrive.in/category/off-campus-jobs'
-        ]
-    },
-    {
-        name: 'freshershunt',
-        urls: [
-            'https://freshershunt.in/',
-            'https://freshershunt.in/off-campus-drive-jobs/off-campus-drive/',
-            'https://freshershunt.in/off-campus-drive-jobs/work-from-home/',
-            'https://freshershunt.in/off-campus-drive-jobs/internship/'
-        ]
-    },
-    {
-        name: 'fresheropenings',
-        urls: [
-            'https://fresheropenings.com/',
-            'https://fresheropenings.com/jobs/',
-            'https://fresheropenings.com/internship/'
-        ]
-    },
-    {
-        name: 'freshersjobsaadda',
-        urls: [
-            'https://freshersjobsaadda.blogspot.com/search'
-        ]
-    },
-    {
-        name: 'topvarsity',
-        urls: [
-            'https://jobs.topvarsity.in/'
-        ]
-    },
-    {
-        name: 'love2pickleball',
-        urls: [
-            'https://love2pickleball.com/category/hire_alert_jobs/'
-        ]
-    },
-    {
-        name: 'freshersnow',
-        urls: [
-            'https://www.freshersnow.com/off-campus-drives/',
-            'https://www.freshersnow.com/internship-jobs/',
-            'https://www.freshersnow.com/freshers-jobs/'
-        ]
-    },
-    {
-        name: 'softwaremuchatlu',
-        urls: [
-            'https://softwaremuchatlu.com/jobs/',
-            'https://softwaremuchatlu.com/internships/'
-        ]
-    },
-    {
-        name: 'onlinestudy4u',
-        urls: [
-            'https://onlinestudy4u.in/category/job-updates/'
-        ]
-    },
-    {
-        name: 'merademyjobs',
-        urls: [
-            'https://merademyjobs.com/index.php/category/freshers/',
-            'https://merademyjobs.com/index.php/category/internships/',
-            'https://merademyjobs.com/index.php/category/work-from-home/',
-            'https://merademyjobs.com/index.php/category/it-jobs/'
-        ]
-    },
-    {
-        name: 'fresheroffcampus',
-        urls: [
-            'https://www.fresheroffcampus.com/',
-            'https://www.fresheroffcampus.com/category/internship-jobs/'
-        ]
-    },
-    {
-        name: 'kickcharm',
-        urls: [
-            'https://kickcharm.com/',
-            'https://kickcharm.com/category/work-from-home/'
-        ]
-    },
-    {
-        name: 'offcampusjobdrives',
-        urls: [
-            'https://offcampusjobdrives.com/category/home/',
-            'https://offcampusjobdrives.com/category/fresher-jobs/',
-            'https://offcampusjobdrives.com/category/internships/'
-        ]
-    },
-    {
-        name: 'mohancareers',
-        urls: [
-            'https://mohancareers.com/',
-            'https://mohancareers.com/category/private-jobs/',
-            'https://mohancareers.com/category/work-from-home-jobs/'
-        ]
+export let TARGET_SITES: { name: string; urls: string[] }[] = [];
+
+try {
+    const res = await fetch('https://cdn.fresherflow.in/aggregators.json');
+    if (res.ok) {
+        TARGET_SITES = await res.json();
+    } else {
+        console.error('Failed to fetch TARGET_SITES from CDN:', res.statusText);
     }
-];
+} catch (error) {
+    console.error('Error fetching TARGET_SITES from CDN:', error instanceof Error ? error.message : String(error));
+}
 
 export const VISITED_FILE = path.join(process.cwd(), 'visited_urls.json');
 

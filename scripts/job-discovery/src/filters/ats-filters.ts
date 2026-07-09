@@ -45,11 +45,10 @@ const INDIAN_STATES = new Set((State.getStatesOfCountry('IN') || []).map(s => s.
 const INDIAN_CITIES = new Set((City.getCitiesOfCountry('IN') || []).map(c => c.name.toLowerCase()));
 
 export function isLocationIndiaOrRemote(location: string): boolean {
-    // Empty/missing location = NOT assumed India/Remote.
-    // Companies like Binance, Capco etc. have hundreds of jobs with no location field,
-    // which previously all passed through and caused noise. If a job doesn't specify
-    // a location, the description scorer will have to catch it via context.
-    if (!location || location.trim() === '') return false;
+    // Empty/missing location = Assumed India/Remote for ATS discovery.
+    // Companies like Binance, Capco etc. have hundreds of jobs with no location field in the list API.
+    // We pass them through to the detail API or Playwright verification phase.
+    if (!location || location.trim() === '') return true;
     const loc = location.toLowerCase();
     
     // Explicitly reject common non-India locations and terms

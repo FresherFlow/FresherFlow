@@ -42,7 +42,10 @@ export class SmartRecruitersAdapter implements AtsAdapter {
                 const countryCode = j.location?.country || '';
                 const countryName = COUNTRY_CODE_MAP[countryCode] || countryCode;
                 const locationParts = [j.location?.city, j.location?.region, countryName].filter(Boolean);
-                const locationStr = locationParts.join(', ');
+                let locationStr = locationParts.join(', ');
+                if (j.location?.remote) {
+                    locationStr = locationStr ? `${locationStr} (Remote)` : 'Remote';
+                }
 
                 allJobs.push({
                     id: j.id,

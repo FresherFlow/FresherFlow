@@ -8,12 +8,6 @@ import { ExtractedJob, jobSchema, normalizeRawJson } from './normalizer';
 export type EnrichableField = 
     | 'description'
     | 'requiredSkills'
-    | 'allowedDegrees'
-    | 'allowedCourses'
-    | 'allowedPassoutYears'
-    | 'experienceMin'
-    | 'experienceMax'
-    | 'workMode'
     | 'salaryRange'
     | 'employmentType'
     | 'incentives'
@@ -24,12 +18,6 @@ export type EnrichableField =
 export interface TargetedEnrichmentResult {
     description?: string;
     requiredSkills?: string[];
-    allowedDegrees?: string[];
-    allowedCourses?: string[];
-    allowedPassoutYears?: number[];
-    experienceMin?: number;
-    experienceMax?: number;
-    workMode?: string;
     salaryRange?: string;
     employmentType?: string;
     incentives?: string;
@@ -42,12 +30,6 @@ function buildTargetedPrompt(missingFields: EnrichableField[]): string {
     const fieldRules: Record<EnrichableField, string> = {
         description: 'Clean, structured markdown description. Use **bold headers** and hyphen bullet lists. Remove nav, cookies, login noise.',
         requiredSkills: 'Array of technical skill strings (e.g. ["Java", "React", "SQL"]).',
-        allowedDegrees: 'Array from ["DIPLOMA", "DEGREE", "PG"]. Infer from eligibility text.',
-        allowedCourses: 'Array like ["B.Tech", "BCA", "MCA"]. Match acronyms in text.',
-        allowedPassoutYears: 'Array of graduation years like [2024, 2025, 2026]. From "2024/25 batch" or similar.',
-        experienceMin: 'Integer. Minimum years of experience required. 0 for freshers.',
-        experienceMax: 'Integer. Maximum years of experience. Same as min if not a range.',
-        workMode: 'One of: "ONSITE", "HYBRID", "REMOTE". Infer from text.',
         salaryRange: 'Salary string if mentioned, e.g. "3-5 LPA" or "₹25,000/month". Empty string if not found.',
         employmentType: 'E.g. "Full Time", "Part Time", "Contract", "Internship".',
         incentives: 'Employee benefits mentioned: health insurance, cab, food, bonus, PPO, etc. Empty string if none.',

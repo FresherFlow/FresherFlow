@@ -17,28 +17,13 @@ jobs:
 
       - name: Setup Node.js + pnpm
         uses: ./.github/actions/setup-node
-
+        with:
+          install-playwright: 'true'
 
       - name: Install Discovery Dependencies
         working-directory: scripts/job-discovery
         run: pnpm install
 
-      - name: Cache Playwright Browsers
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
-
-      - name: Install Playwright Browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        working-directory: scripts/job-discovery
-        run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright System Deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        working-directory: scripts/job-discovery
-        run: npx playwright install-deps chromium
 
       - name: Cache Visited URLs
         uses: actions/cache@v4

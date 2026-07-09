@@ -118,7 +118,7 @@ async function extractLever(urlObj: URL): Promise<NativeAtsData | null> {
 // API: boards-api.greenhouse.io/v1/boards/{token}/jobs/{jobId}?content=true
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function extractGreenhouse(urlObj: URL): Promise<NativeAtsData | null> {
+async function extractGreenhouse(urlObj: URL, companySlug?: string): Promise<NativeAtsData | null> {
     const parts = urlObj.pathname.split('/').filter(Boolean);
     // Patterns: /token/jobs/id OR /boards/token/jobs/id
     const boardsIdx = parts.indexOf('boards');
@@ -147,7 +147,7 @@ async function extractGreenhouse(urlObj: URL): Promise<NativeAtsData | null> {
         }
     }
 
-    const parsed = parseGreenhouseHtml(data.content || '');
+    const parsed = parseGreenhouseHtml(data.content || '', companySlug);
 
     return {
         ...EMPTY,
@@ -463,7 +463,7 @@ export async function extractNativeAtsData(
         }
 
         if (host.includes('greenhouse.io') || source === 'ATS_GREENHOUSE') {
-            const result = await extractGreenhouse(urlObj);
+            const result = await extractGreenhouse(urlObj, companySlug);
             if (result) { console.log('[Native] Greenhouse JSON API success'); return result; }
         }
 
@@ -479,7 +479,7 @@ export async function extractNativeAtsData(
                 const rawLocations: string[] = [];
                 if (result.location?.name) rawLocations.push(result.location.name);
                 for (const off of (result.offices || [])) if (off.name) rawLocations.push(off.name);
-                const parsed = parseGreenhouseHtml(result.content || '');
+                const parsed = parseGreenhouseHtml(result.content || '', companySlug);
                 return {
                     ...EMPTY,
                     title: result.title,

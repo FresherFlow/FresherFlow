@@ -17,28 +17,14 @@ jobs:
 
       - name: Setup Node.js + pnpm
         uses: ./.github/actions/setup-node
-
+        with:
+          install-playwright: 'true'
 
       - name: Install Sweeper Dependencies
         working-directory: scripts/sweeper
         run: pnpm install
 
-      - name: Cache Playwright Browsers
-        uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
 
-      - name: Install Playwright Browsers
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        working-directory: scripts/sweeper
-        run: npx playwright install --with-deps chromium
-
-      - name: Install Playwright System Deps
-        if: steps.playwright-cache.outputs.cache-hit == 'true'
-        working-directory: scripts/sweeper
-        run: npx playwright install-deps chromium
 
       - name: Run Job Sweeper
         working-directory: scripts/sweeper
