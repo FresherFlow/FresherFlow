@@ -21,8 +21,7 @@ jobs:
           install-playwright: 'true'
 
       - name: Install Discovery Dependencies
-        working-directory: scripts/job-discovery
-        run: pnpm install
+        run: pnpm install --filter job-discovery...
 
 
       - name: Cache Visited URLs

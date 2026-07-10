@@ -24,7 +24,7 @@ jobs:
           install-playwright: 'true'
 
       - name: Install Dependencies
-        run: pnpm install
+        run: pnpm install --filter job-processor...
 
       - name: Build Workspace Packages
         run: pnpm build --filter "@fresherflow/constants" --filter "@fresherflow/parser"
