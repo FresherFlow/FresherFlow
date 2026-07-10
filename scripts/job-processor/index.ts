@@ -85,7 +85,7 @@ async function run(): Promise<void> {
 
     /*
     try {
-        const bpRes = await fetch('http://cdn.fresherflow.in/boilerplate.json');
+        const bpRes = await fetch(`${process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL}/boilerplate.json`);
         if (bpRes.ok) {
             const bpData = await bpRes.json();
             setBoilerplateRegistry(bpData);

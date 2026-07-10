@@ -44,7 +44,7 @@ export const ATS_PROVIDERS = ['greenhouse', 'lever', 'workday', 'smartrecruiters
 export let TARGET_SITES: { name: string; urls: string[] }[] = [];
 
 try {
-    const res = await fetch('https://cdn.fresherflow.in/aggregators.json');
+    const res = await fetch(`${CDN_URL}/aggregators.json`);
     if (res.ok) {
         TARGET_SITES = await res.json();
     } else {

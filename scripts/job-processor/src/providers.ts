@@ -405,7 +405,7 @@ export async function formatJobDescriptionWithOpenRouter(text: string, attempt =
             headers: {
                 'Authorization': `Bearer ${key}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://fresherflow.in',
+                'HTTP-Referer': process.env.APP_URL as string,
                 'X-Title': 'FresherFlow'
             },
             body: JSON.stringify({
@@ -534,7 +534,7 @@ export async function extractWithOpenRouter(text: string, applyLink: string, sys
             headers: {
                 'Authorization': `Bearer ${key}`,
                 'Content-Type': 'application/json',
-                'HTTP-Referer': 'https://fresherflow.in',
+                'HTTP-Referer': process.env.APP_URL as string,
                 'X-Title': 'FresherFlow Job Processor'
             },
             body: JSON.stringify({

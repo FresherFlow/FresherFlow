@@ -3,6 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { 
     CDN_SECRET, 
+    CDN_URL,
     ATS_CDN_BASE,
     ATS_PROVIDERS,
     TARGET_SITES,
@@ -14,6 +15,7 @@ import { loadVisited, saveVisited, loadRejectedReasons, saveRejectedReasons } fr
 import { hasFresherKeyword, isActualJob } from './src/filters/text-filters.js';
 import { isLocationIndiaOrRemote } from './src/filters/ats-filters.js';
 import { scoreJobDescription } from './src/filters/scorer.js';
+import { uploadJsonToR2 } from './src/utils/r2.js';
 import { logDecision } from './src/utils/logger.js';
 import { findActualApplyLink } from './src/core/extractor.js';
 import { isJobLive } from './src/core/verifier.js';
@@ -94,6 +96,8 @@ async function run() {
 
     let atsRegistry: AtsRegistry = {};
     let registryModified = false;
+    const discoveredCareers = new Set<string>();
+    const discoveredRemaining = new Set<string>();
 
     try {
         // ── Phase 0: ATS Direct API Scraping ─────────────────────────────────────────
@@ -222,6 +226,14 @@ async function run() {
 
                             if (!jobTitle || jobTitle.length < 4 || /^(login|sign in|welcome|job details|careers|opportunities|skip to content|careers at .+|jobs at .+)$/i.test(jobTitle)) {
                                 jobTitle = candidate.aggregatorTitle || "Job Title Unknown";
+                            }
+
+                            if (candidate.sourceType === 'ATS' && checkResult.atsText) {
+                                const atsScore = scoreJobDescription(jobTitle, checkResult.atsText);
+                                if (atsScore.verdict === 'REJECT') {
+                                    console.log(`  -> ❌ Skipping ATS job: Rejected by scorer (Score: ${atsScore.score})`);
+                                    continue;
+                                }
                             }
 
                             const normalizedApplyLink = normalizeUrl(actualApplyLink);
@@ -418,6 +430,19 @@ async function run() {
                                 registryModified = true;
                                 console.log(`  🌟 Discovered NEW ATS board automatically! ${provider}: ${boardId} (${guessedName})`);
                             }
+                        } else {
+                            try {
+                                const urlObj = new URL(applyLink);
+                                const baseDomain = urlObj.origin;
+                                const lowerUrl = applyLink.toLowerCase();
+                                if (/career|job|workday|opportunit/i.test(lowerUrl)) {
+                                    discoveredCareers.add(baseDomain);
+                                } else {
+                                    discoveredRemaining.add(baseDomain);
+                                }
+                            } catch (e) {
+                                // Ignore invalid URLs
+                            }
                         }
 
                         // Sanitize the URL before dedup check (strip ?q= etc.)
@@ -533,6 +558,29 @@ async function run() {
     await fs.writeFile(allPassedOutputPath, JSON.stringify({ version: 1, source: 'job-discovery-bot', jobs: validJobs }, null, 2), 'utf8');
     console.log(`Saved all ${validJobs.length} passed jobs to ${allPassedOutputPath} for manual verification`);
 
+    // ── R2 Micro-JSON Upload ──────────────────────────────────────────────────
+    
+    if (validJobs.length > 0) {
+        console.log(`\nUploading ${validJobs.length} passed jobs to R2 as Micro-JSONs...`);
+        const today = new Date().toISOString().split('T')[0];
+        const r2Bucket = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+        
+        let uploadedCount = 0;
+        for (const job of validJobs) {
+            try {
+                // Use a base64 encoded URL to ensure a safe, unique filename
+                const safeName = Buffer.from(job.applyLink).toString('base64').replace(/[/+=]/g, '_');
+                const key = `pending-jobs/${today}/${safeName}.json`;
+                
+                await uploadJsonToR2(job, r2Bucket, key);
+                uploadedCount++;
+            } catch (err) {
+                console.error(`Failed to upload job for ${job.company} to R2:`, err);
+            }
+        }
+        console.log(`Finished uploading ${uploadedCount} jobs to R2.`);
+    }
+
     // ── Run Summary ───────────────────────────────────────────────────────────
     const atsTotal = newJobsFound.filter(j => j.sourceType === 'ATS').length;
     const aggTotal = newJobsFound.filter(j => j.sourceType === 'AGGREGATOR').length;
@@ -573,9 +621,47 @@ async function run() {
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
     }
 
+    const r2Bucket = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+
+    // ── Update ATS Boards Registry in R2 ─────────────────────────────────────
     if (registryModified) {
-        console.log(`\n--- Note: New ATS boards were discovered during this run ---`);
-        console.log(`Please add them to your CDN manually. Automated saving is disabled.`);
+        console.log(`\n--- Uploading updated ATS Registry to R2 ---`);
+        for (const provider of Object.keys(atsRegistry)) {
+            const providerData = atsRegistry[provider];
+            await uploadJsonToR2(providerData, r2Bucket, `ats/${provider}.json`);
+        }
+        console.log(`Successfully updated ATS boards in R2.`);
+    }
+
+    // ── Update Non-ATS Company Lists in R2 ───────────────────────────────────
+    if (discoveredCareers.size > 0 || discoveredRemaining.size > 0) {
+        console.log(`\n--- Uploading Non-ATS Company Links to R2 ---`);
+        
+        let existingCareers: string[] = [];
+        let existingRemaining: string[] = [];
+        
+        try {
+            const careersRes = await fetch(`${CDN_URL}/discovery/careers.json`);
+            if (careersRes.ok) existingCareers = await careersRes.json();
+            
+            const remainingRes = await fetch(`${CDN_URL}/discovery/remaining.json`);
+            if (remainingRes.ok) existingRemaining = await remainingRes.json();
+        } catch (err) {
+            console.log(`Could not fetch existing non-ATS lists from CDN, starting fresh.`);
+        }
+
+        const mergedCareers = Array.from(new Set([...existingCareers, ...discoveredCareers]));
+        const mergedRemaining = Array.from(new Set([...existingRemaining, ...discoveredRemaining]));
+
+        if (discoveredCareers.size > 0) {
+            await uploadJsonToR2(mergedCareers, r2Bucket, `discovery/careers.json`);
+            console.log(`Added ${discoveredCareers.size} new career links. (Total: ${mergedCareers.length})`);
+        }
+        
+        if (discoveredRemaining.size > 0) {
+            await uploadJsonToR2(mergedRemaining, r2Bucket, `discovery/remaining.json`);
+            console.log(`Added ${discoveredRemaining.size} new remaining links. (Total: ${mergedRemaining.length})`);
+        }
     }
 }
 

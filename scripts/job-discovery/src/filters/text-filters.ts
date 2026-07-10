@@ -6,7 +6,7 @@ export function isFresherJob(text: string): boolean {
     
     // Check for ranges like "1-3 years of experience", "2-5 years of relevant experience"
     // Does NOT match "0-1" or "0-2" because the first digit is 1-10.
-    const expRangeRegex = /(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z]+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing)/gi;
+    const expRangeRegex = /(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z]+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
     if (expRangeRegex.test(lowerText)) {
         return false;
     }
@@ -19,19 +19,19 @@ export function isFresherJob(text: string): boolean {
 
     // Check for experience requirements like "1 year of experience", "2 years' experience"
     // Does NOT match if preceded by "0-" or "0 to"
-    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing)/gi;
+    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
     if (expReqRegex.test(lowerText)) {
         return false;
     }
 
-    // Check for "1+ years of experience", "2+ yrs experience"
-    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing)/gi;
+    // Check for "1+ years of experience", "2+ yrs experience", "4+ years expertise"
+    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
     if (plusExpRegex.test(lowerText)) {
         return false;
     }
 
     // Check for "minimum of 1 year of experience", "min 2 years experience"
-    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b10\b)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
+    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b10\b)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}(?:experience|expertise)/gi;
     if (minExpRegex.test(lowerText)) {
         return false;
     }
