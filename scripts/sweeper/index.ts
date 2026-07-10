@@ -4,6 +4,7 @@ import { chromium, Page } from 'playwright';
 import { signUrl } from '../job-discovery/src/utils/url.js';
 import { sendTelegramMessage } from '../job-discovery/src/utils/telegram.js';
 import { EXPIRED_PHRASES, loadEnv } from '../job-discovery/src/config.js';
+import { listR2Objects, deleteR2Object } from '../job-discovery/src/utils/r2.js';
 
 await loadEnv();
 
@@ -379,6 +380,94 @@ async function run() {
     // Write summary for GitHub Actions
     if (process.env.GITHUB_STEP_SUMMARY) {
         const fs = await import('fs/promises');
+        
+        // Message 3: Results
+        let finalMsg = `🏁 <b>Job Sweeper Finished</b>\n\n`;
+        finalMsg += `Checked: ${opportunities.length}\n`;
+        finalMsg += `Expired & Removed: ${expiredJobs.length}\n`;
+        finalMsg += `Failed Verification: ${reviewJobs.length}\n\n`;
+        
+        if (expiredJobs.length > 0) {
+            finalMsg += `<b>Removed Jobs (First 10):</b>\n`;
+            for (const opp of expiredJobs.slice(0, 10)) {
+                finalMsg += `- ${opp.title} (${opp.company})\n`;
+            }
+        }
+        
+        console.log("Sending final summary to Telegram...");
+        await sendTelegramMessage(finalMsg);
+
+        // ── R2 Micro-JSON Cleanup Pass ───────────────────────────────────────
+        console.log("\n--- Starting R2 Pending Jobs Cleanup ---");
+        const r2Bucket = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+        const pendingObjects = await listR2Objects(r2Bucket, 'pending-jobs/');
+        
+        if (pendingObjects.length > 0) {
+            console.log(`Found ${pendingObjects.length} pending jobs in R2 to verify...`);
+            let r2ExpiredCount = 0;
+            
+            // Limit concurrency for R2 check
+            const R2_CONCURRENCY = 5;
+            const r2Queue = [...pendingObjects];
+            
+            const r2Worker = async () => {
+                const context = await browser.newContext({
+                    userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                });
+                await context.route('**/*', (route) => {
+                    const type = route.request().resourceType();
+                    if (['image', 'stylesheet', 'font', 'media'].includes(type)) route.abort();
+                    else route.continue();
+                });
+                const page = await context.newPage();
+                
+                try {
+                    while (r2Queue.length > 0) {
+                        const obj = r2Queue.shift();
+                        if (!obj || !obj.Key) continue;
+                        
+                        // Extract base64 URL from key: pending-jobs/2026-07-10/BASE64.json
+                        const parts = obj.Key.split('/');
+                        const filename = parts[parts.length - 1];
+                        const base64Str = filename.replace('.json', '');
+                        
+                        let targetUrl = '';
+                        try {
+                            targetUrl = Buffer.from(base64Str.replace(/_/g, '/'), 'base64').toString('utf-8');
+                        } catch (e) {
+                            console.error(`Could not decode URL from R2 key: ${obj.Key}`);
+                            continue;
+                        }
+                        
+                        if (!targetUrl.startsWith('http')) {
+                            console.log(`Invalid URL extracted from R2: ${targetUrl}. Skipping.`);
+                            continue;
+                        }
+
+                        console.log(`Checking R2 Pending Job: ${targetUrl}`);
+                        const checkResult = await checkJob(page, targetUrl);
+                        
+                        if (checkResult.status === 'expired') {
+                            console.log(`❌ EXPIRED R2 JOB: ${targetUrl} - Deleting from bucket...`);
+                            await deleteR2Object(r2Bucket, obj.Key);
+                            r2ExpiredCount++;
+                        } else {
+                            console.log(`✅ LIVE R2 JOB: ${targetUrl}`);
+                        }
+                    }
+                } finally {
+                    await page.close();
+                    await context.close();
+                }
+            };
+            
+            const r2Workers = Array.from({ length: R2_CONCURRENCY }, () => r2Worker());
+            await Promise.all(r2Workers);
+            console.log(`\nR2 Cleanup Finished. Deleted ${r2ExpiredCount} expired pending jobs.`);
+        } else {
+            console.log("No pending jobs found in R2.");
+        }
+
         let summary = `## Job Sweeper Results\n\nChecked ${opportunities.length} jobs. Found ${expiredJobs.length} expired jobs and ${reviewJobs.length} review required jobs.\n\n`;
         if (expiredJobs.length > 0) {
             summary += `### Expired Jobs\n`;

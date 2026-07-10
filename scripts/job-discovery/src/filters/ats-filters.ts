@@ -38,11 +38,20 @@ export function isPotentialFresherJob(title: string): boolean {
     return true;
 }
 
-import { State, City } from 'country-state-city';
+import { State, City, Country } from 'country-state-city';
 
 // Pre-compute sets of valid Indian cities and states (lowercase for case-insensitive matching)
 const INDIAN_STATES = new Set((State.getStatesOfCountry('IN') || []).map(s => s.name.toLowerCase()));
 const INDIAN_CITIES = new Set((City.getCitiesOfCountry('IN') || []).map(c => c.name.toLowerCase()));
+const FOREIGN_COUNTRIES = (Country.getAllCountries() || [])
+    .map(c => c.name.toLowerCase())
+    .filter(c => c !== 'india');
+// Add some common abbreviations and regions to the foreign list
+FOREIGN_COUNTRIES.push('us', 'usa', 'uk', 'dubai', 'uae', 'emea', 'americas', 'apac', 'latam');
+
+// Create a mega-regex for strict word boundary matching of all foreign countries
+const foreignCountriesPattern = FOREIGN_COUNTRIES.map(c => c.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1")).join('|');
+const foreignMegaRegex = new RegExp(`\\b(${foreignCountriesPattern})\\b`, 'i');
 
 export function isLocationIndiaOrRemote(location: string): boolean {
     // Empty/missing location = Assumed India/Remote for ATS discovery.
@@ -51,22 +60,14 @@ export function isLocationIndiaOrRemote(location: string): boolean {
     if (!location || location.trim() === '') return true;
     const loc = location.toLowerCase();
     
-    // Explicitly reject common non-India locations and terms
-    const FOREIGN_TERMS = [
-        'usa', 'us ', 'united states', 'uk', 'united kingdom', 'london', 
-        'canada', 'australia', 'germany', 'france', 'japan', 'china', 
-        'singapore', 'ireland', 'poland', 'netherlands', 'sweden', 'brazil',
-        'mexico', 'spain', 'italy', 'dubai', 'uae', 'malaysia', 'emea', 'americas', 'apac', 'latam',
-        'new york', 'california', 'texas', 'florida', 'berlin', 'paris', 'amsterdam', 'san francisco',
-        'seattle', 'boston', 'chicago', 'toronto', 'sydney', 'melbourne', 'dublin', 'kuala lumpur', 'taiwan', 'taipei',
-        'philippines', 'manila', 'vietnam', 'indonesia', 'thailand', 'bangkok', 'seoul', 'south korea'
-    ];
+    // Explicitly reject common non-India locations and terms using word boundaries
+    // This prevents "us" from matching "campus" while catching "Remote - US"
+    // Also includes major foreign cities that might bypass country checks
+    const foreignCitiesRegex = /\b(london|berlin|paris|amsterdam|san francisco|seattle|boston|chicago|toronto|sydney|melbourne|dublin|kuala lumpur|taiwan|taipei|manila|bangkok|seoul)\b/i;
 
-    for (const c of FOREIGN_TERMS) {
-        if (loc.includes(c)) {
-            if (!loc.includes('india') && !loc.includes('in ')) {
-                return false;
-            }
+    if (foreignMegaRegex.test(loc) || foreignCitiesRegex.test(loc)) {
+        if (!loc.includes('india') && !/\bin\b/i.test(loc)) {
+            return false;
         }
     }
 

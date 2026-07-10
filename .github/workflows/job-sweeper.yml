@@ -21,8 +21,7 @@ jobs:
           install-playwright: 'true'
 
       - name: Install Sweeper Dependencies
-        working-directory: scripts/sweeper
-        run: pnpm install
+        run: pnpm install --filter job-sweeper...
 
 
 

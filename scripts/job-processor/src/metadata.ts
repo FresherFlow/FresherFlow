@@ -1,7 +1,7 @@
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 
-const CDN_BASE_URL = 'https://cdn.fresherflow.in';
+const CDN_BASE_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL as string).replace(/\/$/, '');
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export interface Company {
