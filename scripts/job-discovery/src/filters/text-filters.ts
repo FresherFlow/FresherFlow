@@ -11,9 +11,15 @@ export function isFresherJob(text: string): boolean {
         return false;
     }
 
-    // Check for "Experience: 1-3 years"
-    const prefixExpRangeRegex = /(?:experience|exp|requires?|requiring)[^a-z0-9]{1,4}(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years?|yrs?|y\b)/gi;
+    // Check for "Experience: 1-3 years" / "Years of Expn - 5 to 7" (expn, exp. etc. prefix)
+    const prefixExpRangeRegex = /(?:experience|exp(?:n|erience|\.)?|requires?|requiring)[^a-z0-9]{1,10}(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years?|yrs?|y\b)/gi;
     if (prefixExpRangeRegex.test(lowerText)) {
+        return false;
+    }
+
+    // Catch bare "X to Y Years" / "X-Y Years" with no keyword prefix (e.g. label rows like "5 to 7 Years")
+    const bareRangeRegex = /\b(?:[3-9]|[1-9]\d)\s*(?:-|–|\bto\b)\s*(?:[3-9]|[1-9]\d)\s*(?:years?|yrs?)\b/gi;
+    if (bareRangeRegex.test(lowerText)) {
         return false;
     }
 

@@ -105,8 +105,8 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
         trace.push({ step: 'evaluateExperience', result: '0-2 years', rule: 'EXP_0_2', delta: WEIGHTS.EXP_0_2_YEARS });
     }
 
-    // Negative (Not blocker, just negative points): 3-5 years (excluding 0, 1, 2)
-    const exp3to5 = /(?:(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b))/gi;
+    // Negative (Not blocker, just negative points): 3+ years range or standalone
+    const exp3to5 = /(?:(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp(?:n|erience|\.)?|requires?|requiring|minimum|min)[^a-z0-9]{1,10}(?:[3-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b))|(?:\b(?:[3-9]|[1-9]\d)\s*(?:-|–|\bto\b)\s*(?:[3-9]|[1-9]\d)\s*(?:years?|yrs?)\b)/gi;
     while ((match = exp3to5.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         

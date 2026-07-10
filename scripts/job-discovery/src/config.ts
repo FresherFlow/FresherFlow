@@ -39,7 +39,13 @@ export const TELEGRAM_BOT_TOKEN = (process.env.TELEGRAM_BOT_TOKEN || '').trim().
 export const TELEGRAM_CHAT_ID = (process.env.TELEGRAM_CHAT_ID || '').trim().replace(/^["']|["']$/g, '');
 export const CDN_URL = (process.env.NEXT_PUBLIC_CDN_URL || process.env.CDN_URL || '').trim().replace(/\/$/, '');
 export const ATS_CDN_BASE = CDN_URL ? `${CDN_URL}/ats` : '';
-export const ATS_PROVIDERS = ['greenhouse', 'lever', 'workday', 'smartrecruiters', 'myworkdayjobs', 'bamboohr', 'ashby', 'ashbyhq'];
+export const ATS_PROVIDERS = [
+    // Phase 1
+    'greenhouse', 'lever', 'workday', 'smartrecruiters', 'myworkdayjobs', 'ashby', 'ashbyhq',
+    'oracle', 'icims', 'successfactors',
+    // Phase 2
+    'bamboohr', 'recruitee', 'jobvite', 'teamtailor', 'eightfold', 'darwinbox',
+];
 
 export let TARGET_SITES: { name: string; urls: string[] }[] = [];
 

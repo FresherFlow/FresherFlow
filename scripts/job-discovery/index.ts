@@ -106,7 +106,7 @@ async function run() {
         try {
             if (ATS_CDN_BASE) {
                 console.log(`Fetching ATS Boards from CDN (${ATS_CDN_BASE})...`);
-                for (const provider of ATS_PROVIDERS) {
+                await Promise.all(ATS_PROVIDERS.map(async provider => {
                     try {
                         const res = await fetch(`${ATS_CDN_BASE}/${provider}.json`);
                         if (res.ok) {
@@ -118,7 +118,7 @@ async function run() {
                     } catch (err) {
                         console.warn(`  -> Error fetching ${provider}.json: ${(err as Error).message}`);
                     }
-                }
+                }));
             } else {
                 console.log(`ATS_CDN_BASE not set, skipping CDN fetch.`);
             }
