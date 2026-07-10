@@ -21,9 +21,12 @@ jobs:
           install-playwright: 'true'
 
       - name: Install Sweeper Dependencies
-        run: pnpm install --filter job-sweeper...
+        working-directory: scripts/sweeper
+        run: pnpm install
 
-
+      - name: Install Playwright Browsers
+        working-directory: scripts/sweeper
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Run Job Sweeper
         working-directory: scripts/sweeper

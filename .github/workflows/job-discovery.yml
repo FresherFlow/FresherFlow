@@ -21,7 +21,12 @@ jobs:
           install-playwright: 'true'
 
       - name: Install Discovery Dependencies
-        run: pnpm install --filter job-discovery...
+        working-directory: scripts/job-discovery
+        run: pnpm install
+
+      - name: Install Playwright Browsers
+        working-directory: scripts/job-discovery
+        run: pnpm exec playwright install --with-deps chromium
 
 
       - name: Cache Visited URLs

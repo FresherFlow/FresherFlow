@@ -20,11 +20,13 @@ jobs:
 
       - name: Setup Node.js + pnpm
         uses: ./.github/actions/setup-node
-        with:
-          install-playwright: 'true'
 
       - name: Install Dependencies
-        run: pnpm install --filter job-processor...
+        run: pnpm install
+
+      - name: Install Playwright Browsers
+        working-directory: scripts/job-processor
+        run: pnpm exec playwright install --with-deps chromium
 
       - name: Build Workspace Packages
         run: pnpm build --filter "@fresherflow/constants" --filter "@fresherflow/parser"
