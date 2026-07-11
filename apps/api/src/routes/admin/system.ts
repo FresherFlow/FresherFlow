@@ -40,7 +40,6 @@ const PUBLIC_WEB_CACHE_TAGS = [
 // revalidatePath() — and only from publicOpportunityCache.service.ts.
 //
 // Rule: feed revalidation = tags only. Slug revalidation = revalidatePath (one-off per job).
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const FEED_REVALIDATE_TAGS = [
     'feed-version',
     'homepage-feed',
@@ -124,14 +123,15 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
         const secret = process.env.REVALIDATE_SECRET_TOKEN;
         const webUrl = process.env.PUBLIC_WEB_URL;
         if (secret && webUrl) {
-            try {
-                await fetch(`${webUrl}/api/revalidate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
-                });
-            } catch {
-                // Non-fatal — feed is already updated in R2, tag bust is best-effort
+            const urls = webUrl.split(',').map(u => u.trim()).filter(Boolean);
+            for (const url of urls) {
+                try {
+                    await fetch(`${url}/api/revalidate`, {
+                        body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
+                    });
+                } catch {
+                    // Non-fatal — feed is already updated in R2, tag bust is best-effort
+                }
             }
         }
 
@@ -168,18 +168,31 @@ router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response,
             return res.status(500).json({ success: false, message: 'REVALIDATE_SECRET_TOKEN or PUBLIC_WEB_URL not configured' });
         }
 
-        // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
-        const response = await fetch(`${webUrl}/api/revalidate`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
-        });
+        const urls = webUrl.split(',').map(u => u.trim()).filter(Boolean);
+        let hasError = false;
 
-        if (!response.ok) {
-            throw new Error(`Web server responded with ${response.status}`);
+        for (const url of urls) {
+            try {
+                // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
+                const response = await fetch(`${url}/api/revalidate`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
+                });
+
+                if (!response.ok) {
+                    hasError = true;
+                }
+            } catch {
+                hasError = true;
+            }
         }
 
-        res.json({ success: true, message: 'Next.js web cache successfully revalidated.' });
+        if (hasError) {
+            throw new Error(`One or more web servers responded with an error or could not be reached.`);
+        }
+
+        res.json({ success: true, message: 'Next.js web cache successfully revalidated on all targets.' });
     } catch (error) {
         next(error);
     }

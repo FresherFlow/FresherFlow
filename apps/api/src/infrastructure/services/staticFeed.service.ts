@@ -6,6 +6,7 @@ import { OpportunityStatus } from '@fresherflow/types';
 import { INDIAN_CITIES } from '@fresherflow/constants';
 import { logger } from '@fresherflow/logger';
 import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getPublicSiteUrl } from '../../utils/runtimeConfig';
 
 /**
  * Service to generate "Distributed Static Data Shards" for discovery.
@@ -381,7 +382,7 @@ export class StaticFeedService {
      */
     static async generateSitemap() {
         return this.withDbRetry(async () => {
-            const baseUrl = (process.env.FRONTEND_URL || 'https://fresherflow.in').replace(/\/+$/, '');
+            const baseUrl = (process.env.FRONTEND_URL || '').replace(/\/+$/, '');
             const staticDate = new Date().toISOString().split('T')[0];
 
             const sitemaps = [
@@ -808,7 +809,7 @@ export class StaticFeedService {
                     if (opp.company && typeof opp.company === 'string') companiesSet.add(opp.company);
                 });
 
-                const baseUrl = (process.env.FRONTEND_URL || 'https://fresherflow.in').replace(/\/+$/, '');
+                const baseUrl = getPublicSiteUrl();
                 const staticDate = new Date().toISOString().split('T')[0];
                 const staticRoutes = [
                     '',

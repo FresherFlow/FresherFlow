@@ -3,7 +3,7 @@ import axios from 'axios';
 import { enqueueTelegramBroadcast } from '@fresherflow/queue';
 import { logger } from '@fresherflow/logger';
 
-import { getCanonicalShareOrigin, getPublicSiteUrl, getRootDomainHost } from '../../utils/runtimeConfig';
+import { getCanonicalShareOrigin, getPublicSiteUrl, getAppSiteUrl, getRootDomainHost } from '../../utils/runtimeConfig';
 
 class TelegramService {
     private botToken: string;
@@ -375,7 +375,7 @@ class TelegramService {
             `⭕️ Apply Now:`,
             `<a href="${jobUrl}">${jobUrl}</a>`,
             '',
-            `📱 More jobs: fresherflow.in/app`
+            `📱 More jobs: ${new URL(getAppSiteUrl()).hostname}`
         ].join('\n');
 
         // Enqueue — worker handles Axios I/O, retries, and DB record update

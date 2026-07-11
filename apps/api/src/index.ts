@@ -138,11 +138,6 @@ function normalizeOrigin(value: string): string | null {
 const configuredOrigins = [
     ...(env.FRONTEND_URLS || '').split(','),
     ...(env.FRONTEND_URL ? [env.FRONTEND_URL] : []),
-    'https://fresherflow.in',
-    'https://www.fresherflow.in',
-    'https://app.fresherflow.in',
-    'https://fresherflow.com',
-    'https://www.fresherflow.com',
     'http://localhost:3000',
     'http://localhost:3001'
 ]

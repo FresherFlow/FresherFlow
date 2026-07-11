@@ -2,12 +2,13 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { logger } from '@fresherflow/logger';
 import fs from 'fs';
 import path from 'path';
+import { getPublicSiteUrl } from '../../utils/runtimeConfig';
 
 const endpoint = process.env.R2_ENDPOINT;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
 const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
-const bucketName = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
-const cdnBase = process.env.R2_CDN_BASE_URL || 'https://cdn.fresherflow.in';
+const bucketName = process.env.R2_BUCKET_NAME || '';
+const cdnBase = process.env.R2_CDN_BASE_URL || process.env.CDN_URL;
 
 const s3 = new S3Client({
     region: 'auto',
@@ -134,7 +135,7 @@ export async function generateAndUploadOgImage(opportunity: OgOpportunity): Prom
         bottomBadges.push({
             type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }, children: [
                 { type: 'div', props: { style: { width: 12, height: 12, borderRadius: 999, background: '#4ade80', display: 'flex' } } },
-                { type: 'div', props: { style: { fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: 'Verified · fresherflow.in' } }
+                { type: 'div', props: { style: { fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: `Verified · ${new URL(getPublicSiteUrl()).hostname}` } }
             ]}
         });
 
@@ -276,7 +277,7 @@ export async function generateAndUploadHubOgImage(
         bottomBadges.push({
             type: 'div', props: { style: { display: 'flex', alignItems: 'center', gap: 10, marginLeft: 'auto' }, children: [
                 { type: 'div', props: { style: { width: 12, height: 12, borderRadius: 999, background: '#4ade80', display: 'flex' } } },
-                { type: 'div', props: { style: { fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: 'Verified · fresherflow.in' } }
+                { type: 'div', props: { style: { fontSize: 22, fontWeight: 600, color: 'rgba(245,247,248,0.32)' }, children: `Verified · ${new URL(getPublicSiteUrl()).hostname}` } }
             ]}
         });
 
