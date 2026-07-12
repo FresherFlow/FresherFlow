@@ -4,9 +4,8 @@
  * Second-pass verifier running INSIDE the job-discovery workflow,
  * right after the main scraper produces review_jobs.json.
  *
- * The main scraper already captured `aggregatorText` for every review job.
- * We DO NOT need to open any browser or URL again.
- * We re-analyze the already-captured aggregatorText with stricter logic.
+ * The main scraper no longer captures aggregatorText.
+ * We re-analyze the title.
  *
  * Outcomes:
  *   - Confirmed fresher  → promoted into discovered_jobs.json
@@ -27,7 +26,6 @@ interface DiscoveredJob {
     reviewRequired?: boolean;
     aggregatorUrl?: string;
     aggregatorTitle?: string;
-    aggregatorText?: string;
 }
 
 interface JobsFile {
@@ -134,7 +132,7 @@ async function run() {
 
     for (const job of reviewJobs) {
         // Use the already-captured aggregator text — no browser, no network call
-        const text = [job.aggregatorTitle, job.aggregatorText].filter(Boolean).join('\n');
+        const text = job.aggregatorTitle || '';
 
         console.log(`\nRe-checking: ${job.title}`);
         console.log(`  Source text length: ${text.length} chars`);

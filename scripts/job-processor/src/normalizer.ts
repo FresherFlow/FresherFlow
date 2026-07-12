@@ -96,7 +96,6 @@ export interface DiscoveredJob {
     reviewRequired?: boolean;
     aggregatorUrl?: string;
     aggregatorTitle?: string;
-    aggregatorText?: string;
     atsText?: string;
     isAggregatorReview?: boolean;
 }

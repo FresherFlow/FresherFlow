@@ -1,12 +1,39 @@
 import { AtsAdapter, AtsJob, fetchJson } from './BaseAdapter.js';
 
-interface GreenhouseJobResponse {
-    jobs: Array<{
-        absolute_url: string;
-        location: { name: string };
-        title: string;
-        id: number | string;
-    }>;
+// Greenhouse content field is double-HTML-escaped (e.g. &lt;p&gt; not <p>).
+// Unescape once, then strip all tags to get plain text for the scorer.
+function decodeGreenhouseContent(raw: string): string {
+    // First unescape HTML entities (&lt; → <, &gt; → >, &amp; → &, &#39; → ', &quot; → ")
+    const unescaped = raw
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&#x27;/g, "'");
+    // Strip HTML tags, collapse whitespace
+    return unescaped.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+interface GreenhouseJob {
+    id: number | string;
+    title: string;
+    absolute_url: string;
+    location: { name: string };
+    updated_at: string;
+    first_published: string;
+    company_name: string;
+    metadata: Array<{ name: string; value: unknown; value_type: string }>;
+}
+
+interface GreenhouseJobListResponse {
+    jobs: GreenhouseJob[];
+}
+
+interface GreenhouseJobDetailResponse extends GreenhouseJob {
+    content?: string;
+    departments?: Array<{ id: number; name: string }>;
+    offices?: Array<{ id: number; name: string }>;
 }
 
 export class GreenhouseAdapter implements AtsAdapter {
@@ -14,7 +41,7 @@ export class GreenhouseAdapter implements AtsAdapter {
 
     async fetchJobs(companyId: string, companyName: string): Promise<AtsJob[]> {
         const url = `https://boards-api.greenhouse.io/v1/boards/${companyId}/jobs`;
-        const data = await fetchJson<GreenhouseJobResponse>(url, {}, 'Greenhouse');
+        const data = await fetchJson<GreenhouseJobListResponse>(url, {}, 'Greenhouse');
         if (!data?.jobs?.length) return [];
 
         return data.jobs.map(j => ({
@@ -23,16 +50,17 @@ export class GreenhouseAdapter implements AtsAdapter {
             applyLink: j.absolute_url,
             company: companyName,
             location: j.location?.name,
+            postedAt: j.first_published || j.updated_at,
             descriptionSource: 'NONE',
             source: 'ATS_GREENHOUSE',
-            sourceType: 'ATS',
-            boardToken: companyId
+            sourceType: 'ATS' as const,
+            boardToken: companyId,
         }));
     }
 
     async fetchJobDetails(job: AtsJob): Promise<string | undefined> {
         if (!job.id) return undefined;
-        
+
         const boardToken = job.boardToken || (() => {
             const urlObj = new URL(job.applyLink);
             const parts = urlObj.pathname.split('/').filter(Boolean);
@@ -41,10 +69,14 @@ export class GreenhouseAdapter implements AtsAdapter {
         })();
 
         const url = `https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs/${job.id}?content=true`;
-        const data = await fetchJson<any>(url, {}, 'Greenhouse Details');
-        if (!data || !data.content) return undefined;
+        const data = await fetchJson<GreenhouseJobDetailResponse>(url, {}, 'Greenhouse Details');
+        if (!data?.content) return undefined;
 
-        // data.content is HTML. We will return the raw HTML, and downstream scorer can strip it or parse it.
-        return data.content;
+        // Capture department if available (enriches AtsJob in-place for downstream use)
+        if (data.departments?.length) {
+            (job as any).department = data.departments[0].name;
+        }
+
+        return decodeGreenhouseContent(data.content);
     }
 }

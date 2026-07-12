@@ -213,8 +213,7 @@ async function run(): Promise<void> {
                 //   4. Generic Playwright scrape
                 //   5. Aggregator text fallback
                 // ─────────────────────────────────────────────────────────
-                const aggregatorText = job.aggregatorText && job.aggregatorText.length >= 150
-                    ? job.aggregatorText : '';
+
 
                 let atsContent = { title: '', text: '', html: '' };
                 let nativeData = null;
@@ -250,8 +249,7 @@ async function run(): Promise<void> {
                             atsContent = await extractAtsContent(page, job.applyLink);
                             const blocked = isBotOrError(atsContent.text, atsContent.title);
                             if (blocked || atsContent.text.length < 600) {
-                                console.log(`Generic scrape thin/blocked (${atsContent.text.length} chars). Using aggregator text.`);
-                                atsContent.text = aggregatorText;
+                                console.log(`Generic scrape thin/blocked (${atsContent.text.length} chars). No fallback available.`);
                                 atsContent.title = job.aggregatorTitle || job.title;
                             } else {
                                 console.log(`Generic Playwright succeeded (${atsContent.text.length} chars).`);
@@ -259,14 +257,13 @@ async function run(): Promise<void> {
                         }
                     } catch (pageErr) {
                         console.error(`[WARNING] Playwright failed: ${(pageErr as Error).message}`);
-                        atsContent.text = aggregatorText;
                         atsContent.title = job.aggregatorTitle || job.title;
                     } finally {
                         if (page) await page.close();
                     }
                 }
 
-                const rawText = atsContent.text || aggregatorText;
+                const rawText = atsContent.text || '';
                 const textForLlm = trimForLlm(rawText);
 
                 if (!textForLlm || textForLlm.length < 50) {
@@ -308,7 +305,7 @@ async function run(): Promise<void> {
                     allowedCourses: nativeData?.allowedCourses ?? [],
                     incentives: nativeData?.incentives ?? '',
                     selectionProcess: nativeData?.selectionProcess ?? '',
-                    description: stripBoilerplate(nativeData?.text || atsContent.text || textForLlm, job.company) || stripBoilerplate(aggregatorText, job.company) || stripBoilerplate(textForLlm, job.company),
+                    description: stripBoilerplate(nativeData?.text || atsContent.text || textForLlm, job.company),
                 };
 
                 // 2c. CDN matcher: fill remaining fields using CDN JSON data

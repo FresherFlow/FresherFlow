@@ -39,8 +39,20 @@ export class SmartRecruitersAdapter implements AtsAdapter {
                 if (seen.has(applyLink)) continue;
                 seen.add(applyLink);
 
-                const countryCode = j.location?.country || '';
-                const countryName = COUNTRY_CODE_MAP[countryCode] || countryCode;
+                const countryCode = (j.location?.country || '').toUpperCase();
+                // Import Country dynamically or just rely on the fact that if we map it to the full name, the filter works.
+                // We'll use a local require or just rely on COUNTRY_CODE_MAP but expanded, or just pass the code if it fails.
+                // Actually, since we don't have country-state-city imported here, we can just use Intl.DisplayNames
+                let countryName = countryCode;
+                try {
+                    if (countryCode) {
+                        const displayNames = new Intl.DisplayNames(['en'], { type: 'region' });
+                        countryName = displayNames.of(countryCode) || countryCode;
+                    }
+                } catch (e) {
+                    countryName = COUNTRY_CODE_MAP[countryCode] || countryCode;
+                }
+                
                 const locationParts = [j.location?.city, j.location?.region, countryName].filter(Boolean);
                 let locationStr = locationParts.join(', ');
                 if (j.location?.remote) {
