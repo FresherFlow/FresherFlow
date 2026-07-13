@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { DiscoveryState } from './state.js';
 import { CDN_URL } from '../config.js';
 import { uploadJsonToR2, listR2Objects } from '../utils/r2.js';
@@ -56,16 +57,23 @@ export async function uploadToDataLake(state: DiscoveryState) {
                 // Embed discoveredAt into the JSON payload for Admin UI grouping
                 const payloadToUpload = { ...job, discoveredAt: today };
 
+                let urlSlug = 'job';
+                try {
+                    const segments = new URL(job.applyLink).pathname.split('/').filter(Boolean);
+                    if (segments.length > 0) urlSlug = segments[segments.length - 1].replace(/[^a-zA-Z0-9-]/g, '').substring(0, 30);
+                } catch {}
+                const hash = crypto.createHash('md5').update(job.applyLink).digest('hex').substring(0, 8);
+                const uniqueId = `${urlSlug || 'job'}-${hash}`;
+
                 if (parsed && parsed.adapter) {
                     key = `jobs/ats/${parsed.adapter}/${parsed.company}/${parsed.jobId}.json`;
                 } else if (job.sourceType === 'ATS') {
                     const tempParsed = parseJobUrl(job.applyLink);
                     const company = tempParsed?.company || job.company || 'unknown';
-                    const jobId = tempParsed?.jobId || Buffer.from(job.applyLink).toString('base64').replace(/[/+=]/g, '_').substring(0, 15);
+                    const jobId = tempParsed?.jobId || uniqueId;
                     key = `jobs/non-ats/${company}/${jobId}.json`;
                 } else {
-                    const safeName = Buffer.from(job.applyLink).toString('base64').replace(/[/+=]/g, '_').substring(0, 15);
-                    key = `jobs/aggregators/${today}/${nowHrMin}/${safeName}.json`;
+                    key = `jobs/aggregators/${today}/${nowHrMin}/${uniqueId}.json`;
                 }
                 
                 await uploadJsonToR2(payloadToUpload, r2Bucket, key);

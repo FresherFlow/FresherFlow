@@ -186,8 +186,8 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     console.log(`Checking aggregator post: ${jobLink}`);
                     state.visited[site.name].push(jobLink);
                     
-                    if (state.visited[site.name].length > 2000) {
-                        state.visited[site.name] = state.visited[site.name].slice(-2000);
+                    if (state.visited[site.name].length > 50000) {
+                        state.visited[site.name] = state.visited[site.name].slice(-50000);
                     }
 
                     await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});

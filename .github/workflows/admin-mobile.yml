@@ -9,6 +9,9 @@ on:
     paths:
       - 'apps/admin-mobile/**'
 
+permissions:
+  contents: read
+
 jobs:
   checks:
     name: Lint, Typecheck & Doctor

@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*' # Triggers on any tag starting with v (e.g., v1.0.0)
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     name: Build & Release Standalone APK

@@ -56,7 +56,7 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
                     console.log(`  ✅ API LIVE: ${candidate.applyLink}`);
                     const normalizedApplyLink = normalizeUrl(candidate.applyLink);
                     state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
-                    if (state.visited["__discovered_apply_links__"].length > 2000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-2000);
+                    if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
 
                     state.newJobsFound.push({
                         title: nativeData.rawPayload.title || candidate.aggregatorTitle || 'Unknown API Job',
@@ -64,7 +64,7 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
                         source: candidate.source,
                         sourceType: candidate.sourceType,
                         discoveredAt: new Date().toISOString(),
-                        reviewRequired: false,
+                        reviewRequired: candidate.isAggregatorReview || false,
                         aggregatorUrl: candidate.aggregatorUrl,
                         aggregatorTitle: candidate.aggregatorTitle,
                         company: nativeData.company,
@@ -100,7 +100,7 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
 
                     const normalizedApplyLink = normalizeUrl(actualApplyLink);
                     state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
-                    if (state.visited["__discovered_apply_links__"].length > 2000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-2000);
+                    if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
 
                     state.newJobsFound.push({
                         title: jobTitle,
@@ -108,7 +108,7 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
                         source: candidate.source,
                         sourceType: candidate.sourceType,
                         discoveredAt: new Date().toISOString(),
-                        reviewRequired: false,
+                        reviewRequired: candidate.isAggregatorReview || false,
                         aggregatorUrl: candidate.aggregatorUrl,
                         aggregatorTitle: candidate.aggregatorTitle,
                         atsText: checkResult.atsText || '',
@@ -124,7 +124,7 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
                     } else {
                         console.log(`  -> ATS page is expired/senior. Discarding. Reason: ${checkResult.rejectReason}`);
                         state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
-                        if (state.visited["__discovered_apply_links__"].length > 2000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-2000);
+                        if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
                         state.rejectedReasons[normalizedApplyLink] = checkResult.rejectReason || 'Unknown reason';
                     }
                 }

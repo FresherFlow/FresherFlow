@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/client-s3';
 import fs from 'node:fs/promises';
 
 const endpoint = process.env.R2_ENDPOINT;
@@ -64,6 +64,27 @@ export async function uploadJsonToR2(jsonObject: any, bucketName: string, destin
         console.log(`Successfully uploaded JSON to R2 bucket ${bucketName} at key ${destinationKey}`);
     } catch (error) {
         console.error('Failed to upload JSON to R2:', error);
+    }
+}
+
+export async function downloadJsonFromR2(bucketName: string, key: string): Promise<any | null> {
+    const s3Client = getS3Client();
+    if (!s3Client) return null;
+
+    try {
+        const command = new GetObjectCommand({
+            Bucket: bucketName,
+            Key: key,
+        });
+        const response = await s3Client.send(command);
+        const str = await response.Body?.transformToString();
+        if (str) return JSON.parse(str);
+        return null;
+    } catch (error: any) {
+        if (error.name !== 'NoSuchKey') {
+            console.error(`Failed to download ${key} from R2:`, error);
+        }
+        return null; // Return null if file doesn't exist
     }
 }
 
