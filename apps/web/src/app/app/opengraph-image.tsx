@@ -7,22 +7,10 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-function resolveSiteOrigin(): string {
-    const raw =
-        process.env.NEXT_PUBLIC_SITE_URL ||
-        process.env.SITE_URL ||
-        process.env.VERCEL_PROJECT_PRODUCTION_URL ||
-        process.env.VERCEL_URL ||
-        (process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000');
-
-    const value = raw.trim();
-    if (!value) return process.env.NODE_ENV === 'production' ? '' : 'http://localhost:3000';
-    if (/^https?:\/\//i.test(value)) return value.replace(/\/$/, '');
-    return `https://${value.replace(/\/$/, '')}`;
-}
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export default function DownloadOpenGraphImage() {
-    const siteOrigin = resolveSiteOrigin();
+    const siteOrigin = SITE_URL;
     const logoUrl = siteOrigin ? `${siteOrigin}/logo-white-optimized.png` : null;
     const screenshotUrl = siteOrigin ? `${siteOrigin}/screenshots/discover.png` : null;
 
@@ -146,7 +134,7 @@ export default function DownloadOpenGraphImage() {
                             Get Android App
                         </div>
                         <div style={{ display: 'flex', fontSize: 16, fontWeight: 700, color: 'rgba(245, 247, 248, 0.4)' }}>
-                            fresherflow.in/app
+                            {new URL(SITE_URL).hostname}/app
                         </div>
                     </div>
                 </div>

@@ -1,4 +1,4 @@
-import DOMPurify from 'dompurify';
+import DOMPurify from 'isomorphic-dompurify';
 
 function escapeHtml(value: string): string {
     return value
@@ -83,10 +83,6 @@ export function sanitizeHtml(html: string | null | undefined): string {
     if (!html) return '';
     const formattedHtml = /<[a-z][\s\S]*>/i.test(html) ? html : formatPlainTextDescription(html);
 
-    if (typeof window === 'undefined') {
-        // Server-side fallback: strip script tags in a single pass
-        return formattedHtml.replace(/<script\b[^>]*>([\s\S]*?)<\/script>/gi, '');
-    }
     return DOMPurify.sanitize(formattedHtml, {
         ALLOWED_TAGS: [
             'b', 'i', 'em', 'strong', 'a', 'p', 'br', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'span', 'div'

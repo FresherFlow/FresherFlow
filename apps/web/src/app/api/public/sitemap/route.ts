@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { CDN_URL } from '@/lib/utils/runtimeConfig';
+import { CDN_URL, SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
             return new NextResponse('Invalid sitemap file', { status: 400 });
         }
 
-        const cdnBase = (CDN_URL || 'https://cdn.fresherflow.in').replace(/\/+$/, '');
+        const cdnBase = CDN_URL.replace(/\/+$/, '');
         const sitemapUrl = `${cdnBase}/${file}`;
 
         const res = await fetch(sitemapUrl, {
@@ -26,12 +26,12 @@ export async function GET(request: NextRequest) {
         let xml = await res.text();
 
         // Resolve request protocol and host header dynamically
-        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || 'fresherflow.in';
+        const host = request.headers.get('x-forwarded-host') || request.headers.get('host') || new URL(SITE_URL).hostname;
         const proto = request.headers.get('x-forwarded-proto') || 'https';
         const currentDomain = `${proto}://${host}`;
 
         // Dynamically replace all production links with the current requesting domain
-        xml = xml.replaceAll('https://fresherflow.in', currentDomain);
+        xml = xml.replaceAll(SITE_URL, currentDomain);
 
         return new NextResponse(xml, {
             headers: {

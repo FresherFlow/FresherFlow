@@ -19,7 +19,7 @@ import CaptionsTool from '@/app/(admin)/admin/captions/components/CaptionsTool';
 export function DesktopNav() {
     const context = useContext(AuthContext);
     const user = context?.user;
-    const isLoading = context?.isLoading;
+
     const pathname = usePathname();
     const { unreadCount } = useUnreadNotifications();
     const pendingSyncCount = useOfflineActionQueue(user?.id);
@@ -33,10 +33,22 @@ export function DesktopNav() {
     });
 
     useEffect(() => {
+        // Reset scrolled state on navigation to avoid inheriting previous page scroll position
+        setScrolled(false);
+
+        // Defer scroll check to let Next.js scroll restoration run first
+        const timer = setTimeout(() => {
+            setScrolled(window.scrollY > 20);
+        }, 100);
+
         const onScroll = () => setScrolled(window.scrollY > 20);
         window.addEventListener('scroll', onScroll, { passive: true });
-        return () => window.removeEventListener('scroll', onScroll);
-    }, []);
+        
+        return () => {
+            window.removeEventListener('scroll', onScroll);
+            clearTimeout(timer);
+        };
+    }, [pathname]);
 
     const isLandingPage = pathname === '/';
 
@@ -44,7 +56,7 @@ export function DesktopNav() {
         <header className={cn(
             isLandingPage
                 ? cn(
-                    "fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pointer-events-none transition-all duration-500 ease-in-out",
+                    "fixed top-0 left-0 right-0 z-[100] hidden md:flex items-center justify-center pointer-events-none transition-all duration-300 ease-in-out",
                     scrolled ? "pt-4 px-4" : "pt-2 px-4"
                   )
                 : cn(
@@ -54,10 +66,10 @@ export function DesktopNav() {
             <nav className={cn(
                 isLandingPage
                     ? cn(
-                        'pointer-events-auto w-full flex items-center justify-between gap-4 transition-all duration-500 ease-in-out px-6 shadow-none',
+                        'pointer-events-auto w-full flex items-center justify-between gap-4 transition-[max-width,height,background-color,box-shadow,backdrop-filter,padding] duration-300 ease-in-out px-6 shadow-none',
                         scrolled
-                            ? 'max-w-3xl h-[52px] rounded-2xl border border-border/80 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
-                            : 'max-w-7xl h-[64px] rounded-2xl border border-transparent bg-background/80 dark:bg-background/80 backdrop-blur-md'
+                            ? 'max-w-3xl h-[52px] rounded-2xl border border-border/40 bg-background/80 dark:bg-card/75 backdrop-blur-md shadow-[0_12px_40px_rgba(0,0,0,0.08)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)]'
+                            : 'max-w-7xl h-[64px] bg-transparent'
                       )
                     : 'relative w-full max-w-7xl h-full flex items-center justify-between gap-4 px-6'
             )}>

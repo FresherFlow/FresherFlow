@@ -1,5 +1,6 @@
 
 
+import { ADMIN_WEB_HOST } from '@/lib/utils/runtimeConfig';
 const DEFAULT_API_URL = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || '';
 function normalizeApiBase(raw?: string): string {
     const value = (raw || '').trim();
@@ -43,7 +44,7 @@ export async function serverApiClient<T = any>(endpoint: string, options: Reques
     const cookieStore = await cookies();
     const cookieHeader = cookieStore.getAll().map(c => `${c.name}=${c.value}`).join('; ');
     const headersStore = await headers();
-    const host = headersStore.get('host') || 'admin.fresherflow.in';
+    const host = headersStore.get('host') || ADMIN_WEB_HOST;
     const proto = headersStore.get('x-forwarded-proto') || 'https';
 
     const headersObj: Record<string, string> = {

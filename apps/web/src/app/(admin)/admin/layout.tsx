@@ -15,7 +15,8 @@ import {
     Cog8ToothIcon,
     ShareIcon,
     BookOpenIcon,
-    BellAlertIcon
+    BellAlertIcon,
+    ShieldCheckIcon
 } from '@heroicons/react/24/outline';
 import AdminBottomNav from '@/lib/navigation/AdminBottomNav';
 import { ThemeToggle } from '@repo/ui/ThemeToggle';
@@ -131,6 +132,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         { href: '/admin/opportunities/create', label: 'Post New', icon: PlusCircleIcon },
         { href: '/admin/resources', label: 'Resources', icon: BookOpenIcon },
         { href: '/admin/captions', label: 'Captions', icon: ShareIcon },
+        { href: '/admin/pending', label: 'Pending Jobs', icon: ShieldCheckIcon },
         { href: '/admin/push', label: 'Push Notifications', icon: BellAlertIcon },
         // { href: '/admin/analytics', label: 'Analytics', icon: ChartBarIcon },
         { href: '/admin/feedback', label: 'Feedback', icon: ChatBubbleBottomCenterTextIcon },

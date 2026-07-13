@@ -20,6 +20,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         window.location.hostname.toLowerCase() === ADMIN_WEB_HOST;
     const isAdminRoute = normalizedPathname.startsWith('/admin') || isAdminHost;
     const isCaptionsPage = normalizedPathname.startsWith('/captions');
+    const isPendingPage = normalizedPathname.startsWith('/pending');
     const segments = normalizedPathname.split('/').filter(Boolean);
     const firstSegment = segments[0] || '';
     const reservedSegments = new Set([
@@ -48,7 +49,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
         normalizedPathname.startsWith('/batch') ||
         normalizedPathname.startsWith('/roles');
 
-    const hideNav = isAdminRoute || isCaptionsPage;
+    const hideNav = isAdminRoute || isCaptionsPage || isPendingPage;
     const isHomePage = pathname === '/';
 
     const authContext = useContext(AuthContext);
@@ -66,10 +67,10 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
 
             <main className={cn(
                 "relative w-full overflow-x-hidden flex-1 flex flex-col",
-                !isAdminRoute && !isCaptionsPage && "pt-[calc(3.75rem+env(safe-area-inset-top))]",
-                !isAdminRoute && !isCaptionsPage && (isHomePage ? "md:pt-[4.75rem]" : "md:pt-0"),
-                !isAdminRoute && !isCaptionsPage && !isHomePage && isAuthenticated && "pb-20 md:pb-8",
-                !isAdminRoute && !isCaptionsPage && !isHomePage && !isAuthenticated && "pb-4 md:pb-8",
+                !isAdminRoute && !isCaptionsPage && !isPendingPage && "pt-[calc(3.75rem+env(safe-area-inset-top))]",
+                !isAdminRoute && !isCaptionsPage && !isPendingPage && (isHomePage ? "md:pt-[4.75rem]" : "md:pt-0"),
+                !isAdminRoute && !isCaptionsPage && !isPendingPage && !isHomePage && isAuthenticated && "pb-20 md:pb-8",
+                !isAdminRoute && !isCaptionsPage && !isPendingPage && !isHomePage && !isAuthenticated && "pb-4 md:pb-8",
                 "min-h-screen"
             )}>
                 <div className={cn(
@@ -78,7 +79,7 @@ export function NavigationWrapper({ children }: { children: React.ReactNode }) {
                     {children}
                 </div>
             </main>
-            {!isAdminRoute && !isAuthRoute && !isCaptionsPage && (
+            {!isAdminRoute && !isAuthRoute && !isCaptionsPage && !isPendingPage && (
                 <>
                     {/* Desktop/Tablet View */}
                     <div className="hidden md:block">

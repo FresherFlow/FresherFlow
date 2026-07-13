@@ -88,8 +88,7 @@ export const ADMIN_WEB_HOST = normalizeHost(
     getFallbackHost()
 );
 
-const DEFAULT_CDN_HOST = 'https://cdn.fresherflow.in';
-export const CDN_URL = normalizeUrl(process.env.NEXT_PUBLIC_CDN_URL, DEFAULT_CDN_HOST);
+export const CDN_URL = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
 
 export const BOOTSTRAP_FEED_URL =
     process.env.NEXT_PUBLIC_BOOTSTRAP_FEED_URL ||

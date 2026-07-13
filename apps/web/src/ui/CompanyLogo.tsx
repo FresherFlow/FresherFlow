@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils/utils';
 import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
+import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import ShieldCheckIcon from '@heroicons/react/24/solid/ShieldCheckIcon';
 
 // Global in-memory cache for instant resolution
@@ -51,13 +52,13 @@ export default function CompanyLogo({ companyName, companyWebsite, companyLogoUr
                 const acronym = match[1].toLowerCase().trim();
                 // Ensure it's just letters
                 if (/^[a-z]+$/.test(acronym)) {
-                    urls.push(`https://cdn.fresherflow.in/logos/${acronym}.png`);
+                    urls.push(`${CDN_URL}/logos/${acronym}.png`);
                 }
             } else {
                 // If no parenthesis, check if the whole name is just an acronym
                 const cleanName = companyName.toLowerCase().trim();
                 if (/^[a-z]+$/.test(cleanName) && cleanName.length <= 6) {
-                    urls.push(`https://cdn.fresherflow.in/logos/${cleanName}.png`);
+                    urls.push(`${CDN_URL}/logos/${cleanName}.png`);
                 }
             }
             // Do not query third party favicons for government sites

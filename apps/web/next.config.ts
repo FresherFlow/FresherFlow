@@ -85,6 +85,15 @@ const nextConfig: NextConfig = {
   // Pages stay cached in router for 5 minutes
   // Back button = instant, no reload
   experimental: {
+    viewTransition: true,
+    optimizePackageImports: [
+      "@fresherflow/api-client",
+      "@repo/ui",
+      "@fresherflow/domain",
+      "@fresherflow/types",
+      "@fresherflow/utils",
+      "@fresherflow/constants"
+    ],
     staleTimes: {
       dynamic: 300, // 5 minutes for dynamic pages
       static: 300,  // 5 minutes for static pages

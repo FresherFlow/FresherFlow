@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AuthContext } from '@/lib/auth/AuthContext';
-import { ADMIN_WEB_HOST, APP_WEB_HOST } from '@/lib/utils/runtimeConfig';
+import { ADMIN_WEB_HOST, APP_WEB_HOST, CDN_URL } from '@/lib/utils/runtimeConfig';
 
 type BeforeInstallPromptEvent = Event & {
     prompt: () => Promise<void>;
@@ -64,7 +64,7 @@ export function InstallPromptProvider({ children }: { children: React.ReactNode 
     const isInstallEligibleHost = useMemo(() => {
         if (typeof window === 'undefined') return false;
         const host = window.location.hostname.toLowerCase();
-        return host === APP_WEB_HOST || host === ADMIN_WEB_HOST || host === 'cdn.fresherflow.in' || host === 'localhost' || host === '127.0.0.1';
+        return host === APP_WEB_HOST || host === ADMIN_WEB_HOST || host === new URL(CDN_URL).hostname || host === 'localhost' || host === '127.0.0.1';
     }, []);
 
     // 1. Initial detection and PWA mode tracking

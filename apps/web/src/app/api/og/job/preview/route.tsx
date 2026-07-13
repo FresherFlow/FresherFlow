@@ -1,3 +1,4 @@
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 /* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from 'next/og';
 const size = { width: 1200, height: 630 };
@@ -18,7 +19,7 @@ function renderCard(mode: 'job' | 'drive') {
   const logoUrl = isDrive ? 'https://www.google.com/s2/favicons?domain=tcs.com&sz=128' : 'https://www.google.com/s2/favicons?domain=sprinklr.com&sz=128';
   const badge = getBadgeColors(type);
   const titleSize = title.length > 52 ? 52 : title.length > 38 ? 62 : 74;
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://fresherflow.in";
+  const siteUrl = SITE_URL;
   const siteLogoUrl = `${siteUrl}/logo-white-optimized.png`;
 
   return new ImageResponse(
@@ -47,7 +48,7 @@ function renderCard(mode: 'job' | 'drive') {
         {urgency && <div style={{ display:'flex', borderRadius:12, padding:'16px 28px', background:'rgba(239,68,68,0.16)', border:'1px solid rgba(239,68,68,0.35)', fontSize:24, fontWeight:700, color:'#fca5a5' }}>{urgency}</div>}
         <div style={{ display:'flex', alignItems:'center', gap:10, marginLeft:'auto' }}>
           <div style={{ width:12, height:12, borderRadius:999, background:'#4ade80', display:'flex' }} />
-          <div style={{ fontSize:22, fontWeight:600, color:'rgba(245,247,248,0.32)' }}>Verified · fresherflow.in</div>
+          <div style={{ fontSize:22, fontWeight:600, color:'rgba(245,247,248,0.32)' }}>Verified · ${SITE_URL.replace(/^https?:\/\//, '')}</div>
         </div>
       </div>
     </div>,

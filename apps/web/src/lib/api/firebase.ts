@@ -1,9 +1,10 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getDatabase } from 'firebase/database';
 import { getAuth } from 'firebase/auth';
+import { PUBLIC_WEB_HOST } from '@/lib/utils/runtimeConfig';
 
 const isProd = typeof window !== 'undefined'
-    ? window.location.hostname.includes('fresherflow.in')
+    ? window.location.hostname.includes(PUBLIC_WEB_HOST.replace(/^www\./, ''))
     : process.env.NEXT_PUBLIC_APP_ENV === 'production';
 
 const firebaseConfig = {

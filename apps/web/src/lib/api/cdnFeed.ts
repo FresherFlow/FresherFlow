@@ -173,7 +173,7 @@ export async function fetchBootstrapFeed(forceLive = false, customTags?: string[
             } catch (err) {
                 console.warn('Failed to fetch live bootstrap feed from local API server, falling back to dummy-feed.json:', err);
             }
-            const res = await fetch(`${SITE_URL || 'http://localhost:3000'}/dummy-feed.json`, { cache: 'no-store' });
+            const res = await fetch(`${SITE_URL}/dummy-feed.json`, { cache: 'no-store' });
             return await res.json() as BootstrapFeedResponse;
         }
 
@@ -427,10 +427,17 @@ export async function fetchSkillsMetadata(): Promise<string[] | null> {
     }
 }
 
+export interface CompanyMetadata {
+    name: string;
+    slug?: string;
+    url?: string | null;
+    logo_url?: string | null;
+}
+
 /**
  * Fetches companies list from CDN.
  */
-export async function fetchCompaniesMetadata(untracked = false): Promise<string[] | null> {
+export async function fetchCompaniesMetadata(untracked = false): Promise<CompanyMetadata[] | null> {
     try {
 
         const url = await signUrlIfServer(COMPANIES_METADATA_URL);
@@ -443,7 +450,7 @@ export async function fetchCompaniesMetadata(untracked = false): Promise<string[
         }));
         clearTimeout(timeoutId);
         if (!res.ok) return null;
-        return await res.json() as string[];
+        return await res.json() as CompanyMetadata[];
     } catch (err) {
         console.warn('Failed to fetch companies metadata from CDN:', err);
         return null;
