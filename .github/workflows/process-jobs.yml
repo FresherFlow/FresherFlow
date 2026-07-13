@@ -37,9 +37,13 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: discovered-jobs
-          path: scripts/job-processor
+          path: ${{ runner.temp }}/artifacts
           run-id: ${{ github.event.workflow_run.id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Secure Artifact Transfer
+        if: github.event_name == 'workflow_run'
+        run: cp ${{ runner.temp }}/artifacts/discovered_jobs.json scripts/job-processor/discovered_jobs.json
 
       - name: Run Job Processor
         working-directory: scripts/job-processor

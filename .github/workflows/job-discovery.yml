@@ -53,7 +53,7 @@ jobs:
 
       - name: Verify Review Jobs
         working-directory: scripts/job-discovery
-        run: npx tsx verify-reviews.ts
+        run: npx tsx tools/verify-reviews.ts
 
       - name: Upload Discovered Jobs Artifact
         if: always()

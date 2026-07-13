@@ -39,6 +39,24 @@ export function extractAtsBoard(urlStr: string): { provider: keyof AtsRegistry, 
             if (parts.length > 0) return { provider: 'smartrecruiters', boardId: parts[0] };
         }
         
+        // Workable: apply.workable.com/company
+        if (host === 'apply.workable.com' || host.endsWith('.workable.com')) {
+            const parts = path.split('/').filter(Boolean);
+            if (parts.length > 0) return { provider: 'workable', boardId: parts[0] };
+        }
+
+        // Recruitee: company.recruitee.com
+        if (host === 'recruitee.com' || host.endsWith('.recruitee.com')) {
+            const subdomain = host.split('.')[0];
+            return { provider: 'recruitee', boardId: subdomain };
+        }
+
+        // Teamtailor: careers.company.com or company.teamtailor.com
+        if (host.endsWith('.teamtailor.com') || urlStr.includes('teamtailor.com')) {
+             const subdomain = host.split('.')[0];
+             return { provider: 'teamtailor', boardId: subdomain };
+        }
+        
         // iCIMS: company.icims.com
         if (host === 'icims.com' || host.endsWith('.icims.com')) {
             return { provider: 'icims', boardId: u.origin };

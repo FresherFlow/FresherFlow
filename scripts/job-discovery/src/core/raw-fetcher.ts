@@ -148,6 +148,84 @@ export async function tryFetchNativeApi(urlStr: string): Promise<RawJobData | nu
         }
     }
 
-    // No native API available for this adapter (Workday, etc.)
+    if (adapter === 'workable') {
+        // try public widget API: apply.workable.com/api/v1/widget/accounts/{company}?details=true
+        const data = await fetchJson<any>(`https://apply.workable.com/api/v1/widget/accounts/${company}?details=true`);
+        if (data?.jobs) {
+            const job = data.jobs.find((j: any) => j.shortcode === jobId || j.id === jobId);
+            if (job) {
+                const locations = [];
+                if (job.location) {
+                    if (job.location.city) locations.push(job.location.city);
+                    if (job.location.countryName) locations.push(job.location.countryName);
+                }
+                const textForFiltering = stripHtml(job.description || '') + ' ' + stripHtml(job.requirements || '');
+                return { adapter, company, jobId, rawPayload: job, textForFiltering, locationsForFiltering: locations };
+            }
+        }
+        return null;
+    }
+
+    if (adapter === 'recruitee') {
+        const data = await fetchJson<any>(`https://${company}.recruitee.com/api/offers/${jobId}`);
+        if (data?.offer) {
+            const job = data.offer;
+            const locations = [];
+            if (job.location) locations.push(job.location);
+            if (job.city) locations.push(job.city);
+            if (job.country) locations.push(job.country);
+            if (job.remote) locations.push('Remote');
+            
+            const textForFiltering = stripHtml(job.description || '') + ' ' + stripHtml(job.requirements || '');
+            return { adapter, company, jobId, rawPayload: job, textForFiltering, locationsForFiltering: locations };
+        }
+        return null;
+    }
+
+    if (adapter === 'teamtailor') {
+        const data = await fetchJson<any>(`https://careers.${company}.com/jobs/${jobId}.json`) || 
+                     await fetchJson<any>(`https://${company}.teamtailor.com/jobs/${jobId}.json`);
+        
+        if (data && data.title) {
+            const locations = [];
+            if (data.location?.city) locations.push(data.location.city);
+            if (data.location?.country) locations.push(data.location.country);
+            if (data.remote_status) locations.push(data.remote_status);
+            
+            const textForFiltering = stripHtml(data.body || '');
+            return { adapter, company, jobId, rawPayload: data, textForFiltering, locationsForFiltering: locations };
+        }
+        return null;
+    }
+
+    if (adapter === 'workday') {
+        try {
+            const u = new URL(urlStr);
+            // Example workday url: https://company.wd1.myworkdayjobs.com/Board/job/Location/Title_JR12345
+            // API url needs to be /wday/cxs/company/Board/job/JR12345
+            const parts = u.pathname.split('/job/');
+            if (parts.length === 2) {
+                const wdayApiUrl = `${u.origin}/wday/cxs${parts[0]}/job/${jobId}`;
+                const res = await fetch(wdayApiUrl, { headers: { 'Accept': 'application/json', 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(12000) });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data?.jobPostingInfo) {
+                        const job = data.jobPostingInfo;
+                        const locations = [];
+                        if (job.location) locations.push(job.location);
+                        if (Array.isArray(job.additionalLocations)) locations.push(...job.additionalLocations);
+                        
+                        const textForFiltering = stripHtml(job.jobDescription || '');
+                        return { adapter, company, jobId, rawPayload: data, textForFiltering, locationsForFiltering: locations };
+                    }
+                }
+            }
+        } catch {
+            return null;
+        }
+        return null;
+    }
+
+    // No native API available for this adapter (or fetching failed)
     return null;
 }

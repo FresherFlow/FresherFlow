@@ -61,6 +61,33 @@ export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
                 jobId = parts[parts.length - 1].split('-')[0];
             }
         }
+        else if (provider === 'workable') {
+            // apply.workable.com/company/j/jobId
+            const jIdx = parts.indexOf('j');
+            if (jIdx !== -1 && parts.length > jIdx + 1) {
+                jobId = parts[jIdx + 1];
+            } else {
+                jobId = parts[parts.length - 1];
+            }
+        }
+        else if (provider === 'recruitee') {
+            // company.recruitee.com/o/jobIdSlug
+            const oIdx = parts.indexOf('o');
+            if (oIdx !== -1 && parts.length > oIdx + 1) {
+                jobId = parts[oIdx + 1];
+            } else {
+                jobId = parts[parts.length - 1];
+            }
+        }
+        else if (provider === 'teamtailor') {
+            // careers.company.com/jobs/jobIdSlug
+            const jobsIdx = parts.indexOf('jobs');
+            if (jobsIdx !== -1 && parts.length > jobsIdx + 1) {
+                jobId = parts[jobsIdx + 1];
+            } else {
+                jobId = parts[parts.length - 1];
+            }
+        }
         else if (provider === 'icims') {
             // company.icims.com/jobs/jobId/title/job
             const jobsIdx = parts.indexOf('jobs');

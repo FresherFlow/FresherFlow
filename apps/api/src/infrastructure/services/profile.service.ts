@@ -8,7 +8,51 @@ import TelegramService from './telegram.service';
 import { StaticFeedService } from './staticFeed.service';
 import { FirebaseDbService } from './firebaseDb.service';
 
-async function hydrateProfileCompletion(userId: string, profile: any) {
+export interface ProfileUpdateData {
+    fullName?: string;
+    educationLevel?: string;
+    tenthYear?: number;
+    twelfthYear?: number;
+    gradCourse?: string;
+    gradSpecialization?: string;
+    gradYear?: number;
+    pgCourse?: string;
+    pgSpecialization?: string;
+    pgYear?: number;
+    interestedIn?: string[];
+    preferredCities?: string[];
+    workModes?: string[];
+    availability?: string;
+    skills?: string[];
+    dob?: string | Date | null;
+    gender?: Gender | null;
+    category?: ReservationCategory | null;
+    isPwBD?: boolean | null;
+    isExServicemen?: boolean | null;
+    homeState?: string | null;
+}
+
+export interface ProfilePreferencesData {
+    interestedIn?: string[];
+    preferredCities?: string[];
+    workModes?: string[];
+}
+
+export interface ProfileReadinessData {
+    availability?: string;
+    skills?: string[];
+}
+
+export interface ReferralData {
+    title?: string;
+    company?: string;
+    description?: string;
+    contact?: string;
+    companyUrl?: string;
+    eligibleBatches?: string;
+    [key: string]: unknown;
+}
+async function hydrateProfileCompletion(userId: string, profile: Partial<Profile> | null) {
     if (!profile) return null;
 
     const calculatedCompletion = calculateCompletion(profile as unknown as Profile);
@@ -38,7 +82,7 @@ export class ProfileService {
         return profile as unknown as Profile;
     }
 
-    static async updateProfile(userId: string, data: any): Promise<{ profile: Profile, newCompletion: number }> {
+    static async updateProfile(userId: string, data: ProfileUpdateData): Promise<{ profile: Profile, newCompletion: number }> {
         const { fullName, ...profileData } = data;
         const normalizedGrad = normalizeProfileEducation(profileData.gradCourse, profileData.gradSpecialization);
         const normalizedPg = normalizeProfileEducation(profileData.pgCourse, profileData.pgSpecialization);
@@ -133,7 +177,7 @@ export class ProfileService {
         };
     }
 
-    static async updateEducation(userId: string, data: any): Promise<{ profile: Profile, newCompletion: number }> {
+    static async updateEducation(userId: string, data: ProfileUpdateData): Promise<{ profile: Profile, newCompletion: number }> {
         const {
             fullName,
             educationLevel,
@@ -201,7 +245,7 @@ export class ProfileService {
         };
     }
 
-    static async updatePreferences(userId: string, data: any): Promise<{ profile: Profile, newCompletion: number }> {
+    static async updatePreferences(userId: string, data: ProfilePreferencesData): Promise<{ profile: Profile, newCompletion: number }> {
         const { interestedIn, preferredCities, workModes } = data;
 
         // Validate max 5 cities
@@ -231,7 +275,7 @@ export class ProfileService {
         };
     }
 
-    static async updateReadiness(userId: string, data: any): Promise<{ profile: Profile, newCompletion: number }> {
+    static async updateReadiness(userId: string, data: ProfileReadinessData): Promise<{ profile: Profile, newCompletion: number }> {
         const { availability, skills } = data;
         const normSkills = normalizeSkills(skills);
 
@@ -290,8 +334,8 @@ export class ProfileService {
     }
 
     static async getShares(userId: string, page: number, limit: number): Promise<{
-        shares: any[],
-        resources: any[],
+        shares: unknown[],
+        resources: unknown[],
         stats: { totalShared: number, totalPublished: number, approvalRate: number },
         total: number,
         totalResources: number,
@@ -358,7 +402,7 @@ export class ProfileService {
         };
     }
 
-    static async createShare(userId: string, data: { url?: string | null, referral?: any, rawUrl?: string | null }): Promise<any> {
+    static async createShare(userId: string, data: { url?: string | null, referral?: ReferralData, rawUrl?: string | null }): Promise<unknown> {
         const { url: rawUrl, referral } = data;
         const url = rawUrl ? normalizeOpportunityUrl(rawUrl) : null;
 
