@@ -63,7 +63,7 @@ function detectAts(link: string): { provider: string; companyId: string } | null
         if (oracleMatch) return { provider: 'oracle', companyId: oracleMatch[1] };
 
         // iCIMS: careers.icims.com or *.icims.com
-        if (host.includes('icims.com')) {
+        if (host === 'icims.com' || host.endsWith('.icims.com')) {
             const subMatch = host.match(/^([a-z0-9-]+)\.icims\.com$/);
             if (subMatch && subMatch[1] !== 'careers') {
                 return { provider: 'icims', companyId: subMatch[1] };
@@ -71,7 +71,7 @@ function detectAts(link: string): { provider: string; companyId: string } | null
         }
 
         // SAP SuccessFactors: *.successfactors.com or *.sapsf.com
-        if (host.includes('successfactors') || host.includes('sapsf.com')) {
+        if (host.match(/successfactors\.[a-z]+$/) || host === 'sapsf.com' || host.endsWith('.sapsf.com')) {
             const subMatch = host.match(/^([a-z0-9-]+)\./);
             if (subMatch) return { provider: 'successfactors', companyId: subMatch[1] };
         }

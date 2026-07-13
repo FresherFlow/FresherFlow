@@ -30,22 +30,7 @@ async function resolveAnonymousUser(req: express.Request): Promise<string | null
         });
 
         if (user) return user.id;
-
-        // Create new anonymous user with a default profile to ensure compatibility
-        const newUser = await prisma.user.create({
-            data: {
-                isAnonymous: true,
-                anon_id: anonId,
-                profile: {
-                    create: {
-                        completionPercentage: 0
-                    }
-                }
-            },
-            select: { id: true }
-        });
-
-        return newUser.id;
+        return null;
     } catch (error) {
         // Log error but don't block auth flow
         logger.error('[auth] Anonymous user resolution failed:', error);

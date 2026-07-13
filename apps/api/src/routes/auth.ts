@@ -1,6 +1,7 @@
 import prisma from '../infrastructure/database/prisma';
 import { User } from '@fresherflow/types';
 import express, { Router, Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
 
 import {
     generateAccessToken,
@@ -35,6 +36,13 @@ const authVerifyLimiter = createRateLimiter({
     max: 15,
     message: 'Too many login attempts. Please try again after an hour.',
     keyPrefix: 'rate:auth:verify'
+});
+
+const anonymousAuthLimiter = createRateLimiter({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // Max 10 creations per window per IP
+    message: 'Too many requests to register anonymous accounts. Please try again later.',
+    keyPrefix: 'rate:auth:anonymous'
 });
 
 const router: Router = express.Router();
@@ -144,6 +152,48 @@ async function hydrateProfileCompletion(userId: string, profile: Profile | null)
 async function tryMergeAnonymousIdentity(_req: Request, _userId: string) {
     // Legacy support or internal tracking if needed
 }
+
+// POST /api/auth/anonymous
+router.post('/anonymous', anonymousAuthLimiter, validate(z.object({
+    anonId: z.string().uuid('Invalid anonymous ID format')
+})), async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const { anonId } = req.body;
+
+        // 1. Check if user already exists
+        let user = await prisma.user.findUnique({
+            where: { anon_id: anonId },
+            include: { profile: true }
+        });
+
+        if (!user) {
+            // 2. Create new anonymous user with a default profile
+            user = await prisma.user.create({
+                data: {
+                    isAnonymous: true,
+                    anon_id: anonId,
+                    profile: {
+                        create: {
+                            completionPercentage: 0
+                        }
+                    }
+                },
+                include: { profile: true }
+            });
+        }
+
+        // 3. Set standard session cookies
+        const tokens = await setAuthCookies(user as unknown as User, res);
+
+        res.json({
+            user: { id: user.id, email: user.email || null, fullName: user.fullName || null, username: (user as User).username || null },
+            profile: (user as User).profile || null,
+            ...tokens
+        });
+    } catch (error) {
+        next(toAuthRouteError(error, 'Failed to register anonymous user', 500));
+    }
+});
 
 // ─── HANDSHAKE ────────────────────────────────────────────────────────────────
 

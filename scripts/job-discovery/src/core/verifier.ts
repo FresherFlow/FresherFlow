@@ -72,7 +72,19 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         await page.waitForFunction(() => {
             return document.body && document.body.innerText.trim().length > 800;
         }, { timeout: 10000 }).catch(() => {});
-        const bodyText = await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
+        const bodyText = await page.evaluate(() => {
+            let text = document.body?.innerText || '';
+            document.querySelectorAll('iframe').forEach(f => {
+                try { 
+                    if (f.contentDocument?.body?.innerText) {
+                        text += '\n' + f.contentDocument.body.innerText;
+                    }
+                } catch(e){}
+            });
+            return text;
+        }).catch(async () => {
+            return await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
+        });
         if (!bodyText || bodyText.trim().length < 100) {
             if (loadFailed) {
                 console.log(`  -> Navigation failed and page body is empty/too short. Marking as failed.`);

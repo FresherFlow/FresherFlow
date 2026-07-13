@@ -49,7 +49,7 @@ export function isValidApplyLink(urlStr: string, currentDomain: string): boolean
         ];
         
         for (const domain of blacklistedDomains) {
-            if (targetHost.includes(domain)) return false;
+            if (targetHost === domain || targetHost.endsWith('.' + domain)) return false;
         }
         
         return true;
@@ -99,10 +99,26 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
         const externalLinks = links.filter(l => isValidApplyLink(l, currentDomain));
 
         for (const link of externalLinks) {
-            const lowerLink = link.toLowerCase();
-            if (lowerLink.includes('workday') || lowerLink.includes('greenhouse') || lowerLink.includes('lever') || lowerLink.includes('myworkdayjobs') || lowerLink.includes('taleo') || lowerLink.includes('icims') || lowerLink.includes('smartrecruiters') || lowerLink.includes('forms.gle') || lowerLink.includes('eightfold') || lowerLink.includes('careers') || lowerLink.includes('jobs') || lowerLink.includes('oraclecloud.com') || lowerLink.includes('infosysapps.com') || lowerLink.includes('phenompro.com') || lowerLink.includes('ashbyhq.com') || lowerLink.includes('jobvite.com') || lowerLink.includes('workable') || lowerLink.includes('rippling')) {
-                return link;
-            }
+            try {
+                const u = new URL(link);
+                const h = u.hostname.toLowerCase();
+                const pathLower = u.pathname.toLowerCase();
+                const atsHosts = [
+                    'myworkdayjobs.com', 'myworkdaysite.com', 'greenhouse.io', 'lever.co', 
+                    'taleo.net', 'icims.com', 'smartrecruiters.com', 'eightfold.ai', 
+                    'oraclecloud.com', 'infosysapps.com', 'phenompro.com', 'ashbyhq.com', 
+                    'jobvite.com', 'workable.com', 'rippling.com', 'forms.gle'
+                ];
+                let isAts = false;
+                for (const ats of atsHosts) {
+                    if (h === ats || h.endsWith('.' + ats)) {
+                        isAts = true; break;
+                    }
+                }
+                if (isAts || h.includes('workday') || h.includes('taleo') || pathLower.includes('careers') || pathLower.includes('jobs')) {
+                    return link;
+                }
+            } catch {}
         }
 
         // 3. If no explicit apply link with an external href was found, try clicking the first apply button (js actions)

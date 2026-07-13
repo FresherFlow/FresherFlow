@@ -53,7 +53,17 @@ async function runDorker() {
                     }
                 } catch {}
 
-                if (actualUrl.includes('myworkdayjobs.com') || actualUrl.includes('greenhouse.io') || actualUrl.includes('lever.co')) {
+                let isAts = false;
+                try {
+                    const h = new URL(actualUrl).hostname;
+                    if (h === 'myworkdayjobs.com' || h.endsWith('.myworkdayjobs.com') ||
+                        h === 'greenhouse.io' || h.endsWith('.greenhouse.io') ||
+                        h === 'lever.co' || h.endsWith('.lever.co')) {
+                        isAts = true;
+                    }
+                } catch {}
+
+                if (isAts) {
                     foundLinks.add(actualUrl);
                     count++;
                 }

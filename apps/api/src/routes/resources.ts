@@ -9,13 +9,26 @@ import { isSafeUrlForFetch } from '@fresherflow/utils';
 const router = Router();
 
 // Simple webpage title fetcher
-async function fetchPageTitle(url: string): Promise<string | null> {
-    if (!isSafeUrlForFetch(url)) {
-        logger.warn(`Skipping fetch for unsafe URL: ${url}`);
+async function fetchPageTitle(urlStr: string): Promise<string | null> {
+    if (!isSafeUrlForFetch(urlStr)) {
+        logger.warn(`Skipping fetch for unsafe URL: ${urlStr}`);
         return null;
     }
     try {
-        const response = await fetch(url, {
+        const parsedUrl = new URL(urlStr);
+        if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+            return null;
+        }
+
+        const hostname = parsedUrl.hostname.toLowerCase();
+        
+        // Strict validation: must be a valid domain name, rejecting all IP addresses and localhosts
+        if (!/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/i.test(hostname)) {
+            logger.warn(`Skipping fetch for invalid or IP-based hostname: ${hostname}`);
+            return null;
+        }
+
+        const response = await fetch(parsedUrl.href, {
             headers: {
                 'User-Agent': 'FresherFlow Bot 1.0',
                 'Accept': 'text/html,application/xhtml+xml'
@@ -39,7 +52,7 @@ async function fetchPageTitle(url: string): Promise<string | null> {
         }
 
     } catch (error) {
-        logger.warn(`Failed to fetch title for URL: ${url}`, { error: String(error) });
+        logger.warn(`Failed to fetch title for URL: ${urlStr}`, { error: String(error) });
     }
     return null;
 }

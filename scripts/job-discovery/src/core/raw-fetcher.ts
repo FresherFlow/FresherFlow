@@ -111,6 +111,43 @@ export async function tryFetchNativeApi(urlStr: string): Promise<RawJobData | nu
         return { adapter, company, jobId, rawPayload: data, textForFiltering, locationsForFiltering: locations };
     }
 
+    if (adapter === 'icims') {
+        const url = `https://${company}/jobs/${jobId}/job?in_iframe=1`;
+        try {
+            const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(12000) });
+            if (!res.ok) return null;
+            const html = await res.text();
+            
+            const textForFiltering = stripHtml(html);
+            
+            const locations: string[] = [];
+            const locSpanMatch = html.match(/<span[^>]*class="[^"]*iCIMS_JobHeaderData[^"]*"[^>]*>(.*?)<\/span>/gi);
+            if (locSpanMatch) {
+                locSpanMatch.forEach(m => {
+                    const txt = stripHtml(m).trim();
+                    if (txt && !locations.includes(txt)) locations.push(txt);
+                });
+            }
+            
+            const locDtMatch = html.match(/<dt[^>]*>\s*(?:Job\s*)?Locations?\s*<\/dt>\s*<dd[^>]*>(.*?)<\/dd>/is);
+            if (locDtMatch && locDtMatch[1]) {
+                const txt = stripHtml(locDtMatch[1]).trim();
+                if (txt && !locations.includes(txt)) locations.push(txt);
+            }
+
+            const titleMatch = html.match(/<h1[^>]*class="[^"]*iCIMS_Header_Primary[^"]*"[^>]*>(.*?)<\/h1>/i) || html.match(/<title>(.*?)<\/title>/i);
+            const title = titleMatch && titleMatch[1] ? stripHtml(titleMatch[1]).trim() : "Unknown API Job";
+            
+            if (title.includes(' in ')) {
+                locations.push(title.split(' in ').pop()!);
+            }
+
+            return { adapter, company, jobId, rawPayload: { title, html }, textForFiltering, locationsForFiltering: locations };
+        } catch {
+            return null;
+        }
+    }
+
     // No native API available for this adapter (Workday, etc.)
     return null;
 }

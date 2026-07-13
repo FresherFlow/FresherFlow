@@ -17,7 +17,7 @@ export function normalizeUrl(urlStr: string): string {
         const path = url.pathname.replace(/\/$/, '');
         
         // Aggressive normalization for Workday URLs
-        if (url.hostname.includes('myworkdayjobs.com')) {
+        if (url.hostname === 'myworkdayjobs.com' || url.hostname.endsWith('.myworkdayjobs.com')) {
             const parts = path.split('/');
             const lastPart = parts[parts.length - 1];
             return `${url.hostname}/${lastPart}`.toLowerCase();
@@ -36,7 +36,7 @@ export function sanitizeAtsUrl(rawUrl: string): string {
         const host = u.hostname.toLowerCase();
 
         // Workday — strip search query + all tracking params, keep only path
-        if (host.includes('myworkdayjobs.com') || host.includes('myworkdaysite.com')) {
+        if (host === 'myworkdayjobs.com' || host === 'myworkdaysite.com' || host.endsWith('.myworkdayjobs.com') || host.endsWith('.myworkdaysite.com')) {
             const clean = new URL(rawUrl);
             const keepParams = ['locationCountry', 'Country']; // Workday filters that are part of job identity
             const toDelete: string[] = [];

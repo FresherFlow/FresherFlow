@@ -118,7 +118,7 @@ app.use(helmet());
 app.use(cookieParser());
 
 function normalizeOrigin(value: string): string | null {
-    const trimmed = value.trim();
+    const trimmed = value.split(',')[0].trim();
     if (!trimmed) return null;
     try {
         return new URL(trimmed).origin;
@@ -137,10 +137,11 @@ function normalizeOrigin(value: string): string | null {
 // - optional wildcard for fresherflow subdomains in production
 const configuredOrigins = [
     ...(env.FRONTEND_URLS || '').split(','),
-    ...(env.FRONTEND_URL ? [env.FRONTEND_URL] : []),
+    ...(env.FRONTEND_URL || '').split(','),
     'http://localhost:3000',
     'http://localhost:3001'
 ]
+    .flatMap((value) => (value || '').split(','))
     .map(normalizeOrigin)
     .filter((origin): origin is string => Boolean(origin));
 
@@ -151,12 +152,18 @@ function isAllowedOrigin(origin: string): boolean {
     const normalized = normalizeOrigin(origin);
     if (!normalized) return false;
     if (allowedOrigins.has(normalized)) return true;
-    if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) return true;
 
-    if (!allowManagedSubdomains || !rootDomainHost) return false;
     try {
         const parsed = new URL(normalized);
         const host = parsed.hostname.toLowerCase();
+
+        // Strictly allow localhost / 127.0.0.1 on ports 3000, 3001, or default ports for local development
+        if (host === 'localhost' || host === '127.0.0.1') {
+            const port = parsed.port;
+            return port === '3000' || port === '3001' || port === '';
+        }
+
+        if (!allowManagedSubdomains || !rootDomainHost) return false;
         return parsed.protocol === 'https:' && (host === rootDomainHost || host.endsWith(`.${rootDomainHost}`));
     } catch {
         return false;

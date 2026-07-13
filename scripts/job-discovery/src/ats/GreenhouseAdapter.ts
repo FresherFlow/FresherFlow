@@ -5,12 +5,12 @@ import { AtsAdapter, AtsJob, fetchJson } from './BaseAdapter.js';
 function decodeGreenhouseContent(raw: string): string {
     // First unescape HTML entities (&lt; → <, &gt; → >, &amp; → &, &#39; → ', &quot; → ")
     const unescaped = raw
-        .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
-        .replace(/&#x27;/g, "'");
+        .replace(/&#x27;/g, "'")
+        .replace(/&amp;/g, '&');
     // Strip HTML tags, collapse whitespace
     return unescaped.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }

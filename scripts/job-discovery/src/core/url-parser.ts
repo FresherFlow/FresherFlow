@@ -61,6 +61,15 @@ export function parseJobUrl(urlStr: string): ParsedJobUrl | null {
                 jobId = parts[parts.length - 1].split('-')[0];
             }
         }
+        else if (provider === 'icims') {
+            // company.icims.com/jobs/jobId/title/job
+            const jobsIdx = parts.indexOf('jobs');
+            if (jobsIdx !== -1 && parts.length > jobsIdx + 1) {
+                jobId = parts[jobsIdx + 1];
+            } else {
+                jobId = parts[parts.length - 1];
+            }
+        }
         else if (provider === 'workday') {
             // company.wd1.myworkdayjobs.com/Board/job/Location/Title_JR12345
             const lastPart = parts[parts.length - 1];

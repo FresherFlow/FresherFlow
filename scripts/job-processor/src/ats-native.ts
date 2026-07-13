@@ -176,7 +176,7 @@ async function extractGreenhouse(urlObj: URL, companySlug?: string): Promise<Nat
 // ─────────────────────────────────────────────────────────────────────────────
 
 async function extractAshby(urlObj: URL): Promise<NativeAtsData | null> {
-    const parts = urlObj.hostname.includes('ashbyhq.com')
+    const parts = (urlObj.hostname === 'ashbyhq.com' || urlObj.hostname.endsWith('.ashbyhq.com'))
         ? urlObj.pathname.split('/').filter(Boolean)
         : [];
     if (parts.length < 2) return null;
@@ -457,12 +457,12 @@ export async function extractNativeAtsData(
 
         // ── JSON API Adapters (no Playwright needed) ──────────────────────────
 
-        if (host.includes('lever.co')) {
+        if (host === 'lever.co' || host.endsWith('.lever.co')) {
             const result = await extractLever(urlObj);
             if (result) { console.log('[Native] Lever JSON API success'); return result; }
         }
 
-        if (host.includes('greenhouse.io') || source === 'ATS_GREENHOUSE') {
+        if (host === 'greenhouse.io' || host.endsWith('.greenhouse.io') || source === 'ATS_GREENHOUSE') {
             const result = await extractGreenhouse(urlObj, companySlug);
             if (result) { console.log('[Native] Greenhouse JSON API success'); return result; }
         }
@@ -499,12 +499,12 @@ export async function extractNativeAtsData(
             }
         }
 
-        if (host.includes('ashbyhq.com') || source === 'ATS_ASHBY') {
+        if (host === 'ashbyhq.com' || host.endsWith('.ashbyhq.com') || source === 'ATS_ASHBY') {
             const result = await extractAshby(urlObj);
             if (result) { console.log('[Native] Ashby JSON API success'); return result; }
         }
 
-        if (host.includes('smartrecruiters.com') || source === 'ATS_SMARTRECRUITERS') {
+        if (host === 'smartrecruiters.com' || host.endsWith('.smartrecruiters.com') || source === 'ATS_SMARTRECRUITERS') {
             const result = await extractSmartRecruiters(urlObj);
             if (result) { console.log('[Native] SmartRecruiters JSON API success'); return result; }
         }
@@ -512,22 +512,22 @@ export async function extractNativeAtsData(
         // ── Playwright Adapters (same HTML per ATS platform) ─────────────────
         if (!page) return null; // Can't do Playwright without a page handle
 
-        if (host.includes('myworkdayjobs.com') || source === 'ATS_WORKDAY') {
+        if (host === 'myworkdayjobs.com' || host.endsWith('.myworkdayjobs.com') || source === 'ATS_WORKDAY') {
             const result = await extractWorkdayPlaywright(page, url);
             if (result) { console.log('[Native] Workday Playwright adapter success'); return result; }
         }
 
-        if (host.includes('oraclecloud.com') || source === 'ATS_ORACLE') {
+        if (host === 'oraclecloud.com' || host.endsWith('.oraclecloud.com') || source === 'ATS_ORACLE') {
             const result = await extractOraclePlaywright(page, url);
             if (result) { console.log('[Native] Oracle Playwright adapter success'); return result; }
         }
 
-        if (host.includes('icims.com') || source === 'ATS_ICIMS') {
+        if (host === 'icims.com' || host.endsWith('.icims.com') || source === 'ATS_ICIMS') {
             const result = await extractICIMSPlaywright(page, url);
             if (result) { console.log('[Native] iCIMS Playwright adapter success'); return result; }
         }
 
-        if (host.includes('successfactors.') || host.includes('sapsf.') || source === 'ATS_SUCCESSFACTORS') {
+        if (host.match(/successfactors\.[a-z]+$/) || host === 'sapsf.com' || host.endsWith('.sapsf.com') || source === 'ATS_SUCCESSFACTORS') {
             const result = await extractSuccessFactorsPlaywright(page, url);
             if (result) { console.log('[Native] SuccessFactors Playwright adapter success'); return result; }
         }
@@ -537,7 +537,7 @@ export async function extractNativeAtsData(
             if (result) { console.log('[Native] Phenom Playwright adapter success'); return result; }
         }
 
-        if (host.includes('darwinbox.in') || source === 'ATS_DARWINBOX') {
+        if (host === 'darwinbox.in' || host.endsWith('.darwinbox.in') || source === 'ATS_DARWINBOX') {
             const result = await extractDarwinboxPlaywright(page, url);
             if (result) { console.log('[Native] Darwinbox Playwright adapter success'); return result; }
         }

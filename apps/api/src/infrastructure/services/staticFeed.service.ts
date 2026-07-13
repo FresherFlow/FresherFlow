@@ -18,6 +18,7 @@ import { getPublicSiteUrl } from '../../utils/runtimeConfig';
  */
 export class StaticFeedService {
     private static refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    private static readonly companySlugMap = new Map<string, string>();
 
     /**
      * Schedules a debounced feed refresh.
@@ -58,6 +59,12 @@ export class StaticFeedService {
             .replace(/\s+/g, '-')
             .replace(/[^\w-]+/g, '')
             .replace(/--+/g, '-');
+    }
+
+    private static getCompanySlug(companyName: string): string {
+        if (!companyName) return '';
+        const key = companyName.toLowerCase().trim();
+        return this.companySlugMap.get(key) || this.slugify(companyName);
     }
 
     /**
@@ -315,13 +322,30 @@ export class StaticFeedService {
                 grouped.set(key, list);
             }
 
+            if (this.companySlugMap.size === 0) {
+                const companiesContent = await this.fetchFromR2('companies.json');
+                if (companiesContent) {
+                    try {
+                        const companiesList = JSON.parse(companiesContent);
+                        for (const c of companiesList) {
+                            if (c && c.name && c.slug) {
+                                this.companySlugMap.set(c.name.toLowerCase().trim(), c.slug);
+                            }
+                        }
+                    } catch (e) {
+                        logger.error('[StaticFeedService] Failed to parse companies.json during company shards generation', e);
+                    }
+                }
+            }
+
             const shards: Array<{ slug: string; data: Record<string, unknown> }> = [];
             for (const [company, jobs] of grouped.entries()) {
-                const slug = this.slugify(company);
+                const slug = this.getCompanySlug(company);
                 shards.push({
                     slug,
                     data: {
                         company,
+                        slug,
                         opportunities: jobs,
                         count: jobs.length,
                         timestamp: Date.now()
@@ -427,10 +451,26 @@ export class StaticFeedService {
                 }
             });
 
+            if (this.companySlugMap.size === 0) {
+                const companiesContent = await this.fetchFromR2('companies.json');
+                if (companiesContent) {
+                    try {
+                        const companiesList = JSON.parse(companiesContent);
+                        for (const c of companiesList) {
+                            if (c && c.name && c.slug) {
+                                this.companySlugMap.set(c.name.toLowerCase().trim(), c.slug);
+                            }
+                        }
+                    } catch (e) {
+                        logger.error('[StaticFeedService] Failed to parse companies.json during sitemap data generation', e);
+                    }
+                }
+            }
+
             return {
                 companies: companies.map(c => ({
                     name: c.company,
-                    slug: this.slugify(c.company)
+                    slug: this.getCompanySlug(c.company)
                 })),
                 opportunities: opportunities.map(opp => ({
                     id: opp.id,
@@ -687,6 +727,22 @@ export class StaticFeedService {
         try {
             logger.info(`Starting static asset regeneration (Target: ${target})...`);
 
+            // Load companies.json to map company names to their custom slugs
+            const companiesContent = await this.fetchFromR2('companies.json');
+            this.companySlugMap.clear();
+            if (companiesContent) {
+                try {
+                    const companiesList = JSON.parse(companiesContent);
+                    for (const c of companiesList) {
+                        if (c && c.name && c.slug) {
+                            this.companySlugMap.set(c.name.toLowerCase().trim(), c.slug);
+                        }
+                    }
+                } catch (e) {
+                    logger.error('[StaticFeedService] Failed to parse companies.json during refresh', e);
+                }
+            }
+
             // 1. Ensure dirs
             [this.PUBLIC_ROOT, this.COMPANIES_DIR].forEach(d => {
                 if (!fs.existsSync(d)) fs.mkdirSync(d, { recursive: true });
@@ -871,7 +927,7 @@ export class StaticFeedService {
                 // 2. sitemap-companies.xml
                 let companiesXml = '<?xml version="1.0" encoding="UTF-8"?>\n';
                 companiesXml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n';
-                companiesSet.forEach(c => companiesXml += `  <url><loc>${baseUrl}/companies/${this.slugify(c)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
+                companiesSet.forEach(c => companiesXml += `  <url><loc>${baseUrl}/companies/${this.getCompanySlug(c)}</loc><lastmod>${staticDate}</lastmod><changefreq>daily</changefreq></url>\n`);
                 companiesXml += '</urlset>';
 
                 // 3. sitemap-skills.xml
@@ -983,7 +1039,7 @@ export class StaticFeedService {
 
                     // 1. Companies OG
                     for (const company of Array.from(companiesSet)) {
-                        const slug = this.slugify(company);
+                        const slug = this.getCompanySlug(company);
                         if (!slug) continue;
                         if (!cache.companies.includes(slug)) {
                             logger.info(`[StaticFeedService] Generating OG card for company: ${company}`);
@@ -1099,9 +1155,10 @@ export class StaticFeedService {
 
                 companyShardsCount = groupedCompanies.size;
                 for (const [company, jobs] of groupedCompanies.entries()) {
-                    const slug = this.slugify(company);
+                    const slug = this.getCompanySlug(company);
                     const shardData = {
                         company,
+                        slug,
                         opportunities: jobs,
                         count: jobs.length,
                         timestamp: Date.now()

@@ -1,7 +1,7 @@
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 function normalizeUrl(value: string | undefined, fallback: string): string {
-    const raw = (value || '').trim();
+    const raw = (value || '').split(',')[0].trim();
     if (!raw) return fallback;
     try {
         return new URL(raw).origin.replace(/\/+$/, '');
@@ -15,7 +15,7 @@ function normalizeUrl(value: string | undefined, fallback: string): string {
 }
 
 function normalizeHost(value: string | undefined, fallback = ''): string {
-    const raw = (value || '').trim();
+    const raw = (value || '').split(',')[0].trim();
     if (!raw) return fallback;
     try {
         return new URL(raw).hostname.toLowerCase();
@@ -35,7 +35,8 @@ function getConfiguredOrigins(): string[] {
         process.env.FRONTEND_URL,
         ...(process.env.FRONTEND_URLS || '').split(','),
     ]
-        .map((value) => (value || '').trim())
+        .flatMap((value) => (value || '').split(','))
+        .map((value) => value.trim())
         .filter(Boolean)
         .map((value) => normalizeUrl(value, ''))
         .filter(Boolean);

@@ -1,51 +1,17 @@
-import prisma from '../infrastructure/database/prisma';
-import { Prisma } from '@prisma/client';
 import express, { Router, Request, Response, NextFunction } from 'express';
-
 import { z } from 'zod';
 import { requireAuth, optionalAuth } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { educationSchema, preferencesSchema, readinessSchema, contributionSchema } from '../utils/validation';
-import TelegramService from '../infrastructure/services/telegram.service';
+import { ProfileService } from '../infrastructure/services/profile.service';
 import { AppError } from '../middleware/errorHandler';
-import { Profile, Gender, ReservationCategory } from '@fresherflow/types';
-import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/domain';
-import { areOpportunityUrlsEquivalent, getOpportunityUrlAliases, normalizeOpportunityUrl } from '@fresherflow/utils';
-import { StaticFeedService } from '../infrastructure/services/staticFeed.service';
-import { FirebaseDbService } from '../infrastructure/services/firebaseDb.service';
 
 const router: Router = express.Router();
-
-async function hydrateProfileCompletion(userId: string, profile: Profile | null) {
-    if (!profile) return null;
-
-    const calculatedCompletion = calculateCompletion(profile);
-    if (profile.completionPercentage === calculatedCompletion) {
-        return profile;
-    }
-
-    const updatedProfile = await prisma.profile.update({
-        where: { userId },
-        data: { completionPercentage: calculatedCompletion }
-    });
-
-    return updatedProfile as unknown as Profile;
-}
-
 
 // GET /api/profile
 router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const storedProfile = await prisma.profile.findUnique({
-            where: { userId: req.userId }
-        });
-
-        if (!storedProfile) {
-            return next(new AppError('Profile not found', 404));
-        }
-
-        const profile = await hydrateProfileCompletion(req.userId as string, storedProfile as unknown as Profile);
-
+        const profile = await ProfileService.getProfile(req.userId as string);
         res.json({ profile });
     } catch (error) {
         next(error);
@@ -55,94 +21,7 @@ router.get('/', requireAuth, async (req: Request, res: Response, next: NextFunct
 // PUT /api/profile - Comprehensive update
 router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { fullName, ...data } = req.body;
-        const normalizedGrad = normalizeProfileEducation(data.gradCourse, data.gradSpecialization);
-        const normalizedPg = normalizeProfileEducation(data.pgCourse, data.pgSpecialization);
-        const normalizedSkills = normalizeSkills(data.skills);
-
-        let dob: Date | null | undefined = undefined;
-        if (data.dob !== undefined) {
-            if (data.dob === null || data.dob === '') {
-                dob = null;
-            } else {
-                const parsedDob = new Date(data.dob);
-                if (isNaN(parsedDob.getTime())) {
-                    return next(new AppError('Invalid date of birth format', 400));
-                }
-                dob = parsedDob;
-            }
-        }
-
-        if (data.gender !== undefined && data.gender !== null && !Object.values(Gender).includes(data.gender)) {
-            return next(new AppError('Invalid gender value', 400));
-        }
-        if (data.category !== undefined && data.category !== null && !Object.values(ReservationCategory).includes(data.category)) {
-            return next(new AppError('Invalid category value', 400));
-        }
-        if (data.isPwBD !== undefined && data.isPwBD !== null && typeof data.isPwBD !== 'boolean') {
-            return next(new AppError('isPwBD must be a boolean', 400));
-        }
-        if (data.isExServicemen !== undefined && data.isExServicemen !== null && typeof data.isExServicemen !== 'boolean') {
-            return next(new AppError('isExServicemen must be a boolean', 400));
-        }
-        if (data.homeState !== undefined && data.homeState !== null && typeof data.homeState !== 'string') {
-            return next(new AppError('homeState must be a string', 400));
-        }
-
-        // Update user if fullName is provided
-        if (fullName) {
-            await prisma.user.update({
-                where: { id: req.userId },
-                data: { fullName }
-            });
-        }
-
-        // Update profile
-        let profile = await prisma.profile.update({
-            where: { userId: req.userId },
-            data: {
-                educationLevel: data.educationLevel,
-                tenthYear: data.tenthYear,
-                twelfthYear: data.twelfthYear,
-                gradCourse: normalizedGrad.course,
-                gradSpecialization: normalizedGrad.specialization,
-                gradYear: data.gradYear,
-                pgCourse: normalizedPg.course || null,
-                pgSpecialization: normalizedPg.specialization || null,
-                pgYear: data.pgYear,
-                interestedIn: data.interestedIn,
-                preferredCities: data.preferredCities,
-                workModes: data.workModes,
-                availability: data.availability,
-                skills: normalizedSkills,
-                dob: dob,
-                gender: data.gender,
-                category: data.category,
-                isPwBD: data.isPwBD,
-                isExServicemen: data.isExServicemen,
-                homeState: data.homeState
-            }
-        });
-
-        // Recalculate completion percentage
-        const newCompletion = calculateCompletion((profile as unknown) as Profile);
-        profile = await prisma.profile.update({
-            where: { userId: req.userId },
-            data: { completionPercentage: newCompletion }
-        });
-
-        const user = await prisma.user.findUnique({
-            where: { id: req.userId },
-            select: { firebase_uid: true, fullName: true }
-        });
-        
-        if (user?.firebase_uid) {
-            void FirebaseDbService.updateOnboardingRecord(user.firebase_uid, {
-                fullName: user.fullName,
-                profileCompleted: newCompletion === 100
-            });
-        }
-
+        const { profile, newCompletion } = await ProfileService.updateProfile(req.userId as string, req.body);
         res.json({
             profile,
             message: `Profile synchronized. Completion: ${newCompletion}%`
@@ -152,70 +31,10 @@ router.put('/', requireAuth, async (req: Request, res: Response, next: NextFunct
     }
 });
 
-// PUT /api/profile/education (40% weight)
+// PUT /api/profile/education
 router.put('/education', requireAuth, validate(educationSchema.extend({ fullName: z.string().min(1, 'Full name is required').optional() })), async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {
-            fullName,
-            educationLevel,
-            tenthYear,
-            twelfthYear,
-            gradCourse, gradSpecialization, gradYear,
-            pgCourse, pgSpecialization, pgYear,
-            dob, gender, category, isPwBD, isExServicemen, homeState
-        } = req.body;
-        const normalizedGrad = normalizeProfileEducation(gradCourse, gradSpecialization);
-        const normalizedPg = normalizeProfileEducation(pgCourse, pgSpecialization);
-
-        // Update user if fullName is provided
-        if (fullName) {
-            await prisma.user.update({
-                where: { id: req.userId },
-                data: { fullName }
-            });
-        }
-
-        // Update profile
-        let profile = await prisma.profile.update({
-            where: { userId: req.userId },
-            data: {
-                educationLevel,
-                tenthYear,
-                twelfthYear,
-                gradCourse: normalizedGrad.course,
-                gradSpecialization: normalizedGrad.specialization,
-                gradYear,
-                pgCourse: normalizedPg.course || null,
-                pgSpecialization: normalizedPg.specialization || null,
-                pgYear,
-                dob,
-                gender,
-                category,
-                isPwBD,
-                isExServicemen,
-                homeState
-            }
-        });
-
-        // Recalculate completion percentage (DERIVED FIELD)
-        const newCompletion = calculateCompletion((profile as unknown) as Profile);
-        profile = await prisma.profile.update({
-            where: { userId: req.userId },
-            data: { completionPercentage: newCompletion }
-        });
-
-        const user = await prisma.user.findUnique({
-            where: { id: req.userId },
-            select: { firebase_uid: true, fullName: true }
-        });
-
-        if (user?.firebase_uid) {
-            void FirebaseDbService.updateOnboardingRecord(user.firebase_uid, {
-                fullName: user.fullName,
-                profileCompleted: newCompletion === 100
-            });
-        }
-
+        const { profile, newCompletion } = await ProfileService.updateEducation(req.userId as string, req.body);
         res.json({
             profile,
             message: `Profile updated. Completion: ${newCompletion}%`
@@ -225,32 +44,10 @@ router.put('/education', requireAuth, validate(educationSchema.extend({ fullName
     }
 });
 
-// PUT /api/profile/preferences (40% weight)
+// PUT /api/profile/preferences
 router.put('/preferences', requireAuth, validate(preferencesSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { interestedIn, preferredCities, workModes } = req.body;
-
-        // Validate max 5 cities
-        if (preferredCities.length > 5) {
-            return next(new AppError('Maximum 5 cities allowed', 400));
-        }
-
-        let profile = await prisma.profile.update({
-            where: { userId: req.userId },
-            data: {
-                interestedIn,
-                preferredCities,
-                workModes
-            }
-        });
-
-        // Recalculate completion
-        const newCompletion = calculateCompletion((profile as unknown) as Profile);
-        profile = await prisma.profile.update({
-            where: { userId: req.userId },
-            data: { completionPercentage: newCompletion }
-        });
-
+        const { profile, newCompletion } = await ProfileService.updatePreferences(req.userId as string, req.body);
         res.json({
             profile,
             message: `Profile updated. Completion: ${newCompletion}%`
@@ -260,27 +57,10 @@ router.put('/preferences', requireAuth, validate(preferencesSchema), async (req:
     }
 });
 
-// PUT /api/profile/readiness (20% weight)
+// PUT /api/profile/readiness
 router.put('/readiness', requireAuth, validate(readinessSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { availability, skills } = req.body;
-        const normalizedSkills = normalizeSkills(skills);
-
-        let profile = await prisma.profile.update({
-            where: { userId: req.userId },
-            data: {
-                availability,
-                skills: normalizedSkills
-            }
-        });
-
-        // Recalculate completion
-        const newCompletion = calculateCompletion((profile as unknown) as Profile);
-        profile = await prisma.profile.update({
-            where: { userId: req.userId },
-            data: { completionPercentage: newCompletion }
-        });
-
+        const { profile, newCompletion } = await ProfileService.updateReadiness(req.userId as string, req.body);
         res.json({
             profile,
             message: `Profile updated. Completion: ${newCompletion}%`
@@ -290,20 +70,11 @@ router.put('/readiness', requireAuth, validate(readinessSchema), async (req: Req
     }
 });
 
+// GET /api/profile/completion
 router.get('/completion', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const profile = await prisma.profile.findUnique({
-            where: { userId: req.userId }
-        });
-
-        if (!profile) {
-            return next(new AppError('Profile not found', 404));
-        }
-
-        res.json({
-            completionPercentage: profile.completionPercentage,
-            isComplete: profile.completionPercentage === 100
-        });
+        const completion = await ProfileService.getCompletion(req.userId as string);
+        res.json(completion);
     } catch (error) {
         next(error);
     }
@@ -317,24 +88,7 @@ router.post('/push-token', requireAuth, async (req: Request, res: Response, next
             return next(new AppError('Push token is required', 400));
         }
 
-        // We use PushSubscription model. For Expo, we store token in endpoint
-        // and set a flag in p256dh to distinguish from Web Push
-        await prisma.pushSubscription.upsert({
-            where: { userId: req.userId as string },
-            create: {
-                userId: req.userId as string,
-                endpoint: token,
-                p256dh: platform === 'expo' ? 'EXPO' : 'NATIVE',
-                auth: 'NONE',
-                userAgent: req.headers['user-agent']
-            },
-            update: {
-                endpoint: token,
-                p256dh: platform === 'expo' ? 'EXPO' : 'NATIVE',
-                userAgent: req.headers['user-agent']
-            }
-        });
-
+        await ProfileService.registerPushToken(req.userId as string, token, platform, req.headers['user-agent']);
         res.json({ success: true, message: 'Push token registered' });
     } catch (error) {
         next(error);
@@ -344,69 +98,10 @@ router.post('/push-token', requireAuth, async (req: Request, res: Response, next
 // GET /api/profile/shares
 router.get('/shares', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const userId = req.userId as string;
         const page = parseInt(req.query.page as string) || 1;
         const limit = 20;
-        const skip = (page - 1) * limit;
-
-        const shares = await prisma.rawOpportunity.findMany({
-            where: { createdByUserId: userId },
-            include: {
-                mappedOpportunity: {
-                    select: {
-                        id: true,
-                        title: true,
-                        company: true,
-                        status: true,
-                        publishedAt: true,
-                        expiredAt: true,
-                        deletedAt: true,
-                        deletionReason: true,
-                        clicksCount: true,
-                        savesCount: true,
-                    }
-                }
-            },
-            orderBy: { createdAt: 'desc' },
-            skip,
-            take: limit,
-        });
-
-        const total = await prisma.rawOpportunity.count({ where: { createdByUserId: userId } });
-        
-        // Also fetch user's shared resources
-        const resources = await prisma.resourceCollection.findMany({
-            where: { addedByUserId: userId },
-            include: {
-                items: true
-            },
-            orderBy: { createdAt: 'desc' },
-            skip,
-            take: limit,
-        });
-        const totalResources = await prisma.resourceCollection.count({ where: { addedByUserId: userId } });
-
-        const totalShared = total;
-        const totalPublished = await prisma.opportunity.count({
-            where: {
-                rawIngestions: { some: { createdByUserId: userId } },
-                status: 'PUBLISHED'
-            }
-        });
-
-        res.json({
-            shares,
-            resources,
-            stats: {
-                totalShared,
-                totalPublished,
-                approvalRate: totalShared > 0 ? Math.round((totalPublished / totalShared) * 100) : 0
-            },
-            page,
-            total,
-            totalResources,
-            hasMore: skip + shares.length < total || skip + resources.length < totalResources
-        });
+        const result = await ProfileService.getShares(req.userId as string, page, limit);
+        res.json(result);
     } catch (error) {
         next(error);
     }
@@ -415,151 +110,7 @@ router.get('/shares', requireAuth, async (req: Request, res: Response, next: Nex
 // POST /api/profile/shares
 router.post('/shares', requireAuth, validate(contributionSchema), async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { url: rawUrl, referral } = req.body;
-        const userId = req.userId;
-
-        const url = rawUrl ? normalizeOpportunityUrl(rawUrl) : null;
-
-        if (url) {
-            const aliases = getOpportunityUrlAliases(url);
-            // Robust duplicate check: search for the normalized URL OR
-            // if it's a major platform, search for the unique ID part
-            const searchConditions: Prisma.OpportunityWhereInput[] = [
-                { sourceLink: { in: aliases } },
-                { applyLink: { in: aliases } }
-            ];
-
-            // For LinkedIn, also try to match the ID pattern to catch unnormalized old data
-            const linkedinMatch = url.match(/linkedin\.com\/jobs\/view\/(\d+)/);
-            if (linkedinMatch) {
-                searchConditions.push({ sourceLink: { contains: linkedinMatch[1] } });
-                searchConditions.push({ applyLink: { contains: linkedinMatch[1] } });
-            }
-
-            // For Naukri
-            const naukriMatch = url.match(/naukri\.com\/job-listings-(\d+)/);
-            if (naukriMatch) {
-                searchConditions.push({ sourceLink: { contains: naukriMatch[1] } });
-                searchConditions.push({ applyLink: { contains: naukriMatch[1] } });
-            }
-
-            // Check for existing opportunity
-            const existingOpCandidates = await prisma.opportunity.findMany({
-                where: {
-                    OR: searchConditions,
-                    deletedAt: null
-                },
-                take: 25,
-            });
-            const existingOp = existingOpCandidates.find(candidate =>
-                (candidate.sourceLink && areOpportunityUrlsEquivalent(candidate.sourceLink, url)) ||
-                (candidate.applyLink && areOpportunityUrlsEquivalent(candidate.applyLink, url))
-            );
-
-            if (existingOp) {
-                return res.status(409).json({ error: 'This opportunity is already live on FresherFlow' });
-            }
-
-            // Check for existing raw contribution
-            const existingRawCandidates = await prisma.rawOpportunity.findMany({
-                where: {
-                    OR: searchConditions as Prisma.RawOpportunityWhereInput[]
-                },
-                take: 25,
-            });
-            const existingRaw = existingRawCandidates.find(candidate =>
-                (candidate.sourceLink && areOpportunityUrlsEquivalent(candidate.sourceLink, url)) ||
-                (candidate.applyLink && areOpportunityUrlsEquivalent(candidate.applyLink, url))
-            );
-
-            if (existingRaw) {
-                return res.status(409).json({ error: 'This link has already been submitted and is under review' });
-            }
-        }
-
-        // Get or create crowdsourced ingestion source
-        let ingestionSource = await prisma.ingestionSource.findFirst({
-            where: { name: 'Crowdsourced Links' }
-        });
-
-        if (!ingestionSource) {
-            try {
-                ingestionSource = await prisma.ingestionSource.create({
-                    data: {
-                        name: 'Crowdsourced Links',
-                        sourceType: 'CUSTOM',
-                        endpoint: 'Internal Submissions',
-                        defaultType: 'JOB',
-                    }
-                });
-            } catch {
-                // Handle race condition if two users submit simultaneously
-                ingestionSource = await prisma.ingestionSource.findFirst({
-                    where: { name: 'Crowdsourced Links' }
-                });
-            }
-        }
-
-        if (!ingestionSource) {
-            throw new AppError('Could not resolve ingestion source', 500);
-        }
-
-        const share = await prisma.rawOpportunity.create({
-            data: {
-                sourceId: ingestionSource.id as string,
-                sourceLink: url,
-                status: 'FETCHED',
-                reasonFlags: referral ? ['USER_REFERRAL'] : ['USER_CONTRIBUTED'],
-                createdByUserId: userId as string,
-                rawPayload: {
-                    url: url,
-                    originalUrl: rawUrl,
-                    referral: referral, // New field
-                    submittedAt: new Date().toISOString()
-                }
-            }
-        });
-
-        // If it's a referral, create a DRAFT Opportunity synchronously so it shows up in Admin Review Queue
-        if (referral) {
-            const title = referral.title || 'New Referral';
-            const companyName = referral.company || 'Unknown Company';
-            const baseSlug = `${title.toLowerCase().replace(/\s+/g, '-')}-at-${companyName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-            const uniqueSlug = `${baseSlug}-${share.id.slice(-6)}`;
-
-            const opportunity = await prisma.opportunity.create({
-                data: {
-                    slug: uniqueSlug,
-                    title,
-                    company: companyName,
-                    type: 'JOB',
-                    status: 'DRAFT',
-                    description: referral.description || null,
-                    applyLink: referral.contact || null,
-                    sourceLink: referral.companyUrl || null,
-                    postedByUserId: userId as string,
-                    sharesCount: 1,
-                    notesHighlights: referral.eligibleBatches ? `Eligible Batches: ${referral.eligibleBatches}` : null,
-                }
-            });
-
-            await prisma.rawOpportunity.update({
-                where: { id: share.id },
-                data: {
-                    status: 'DRAFT_CREATED',
-                    mappedOpportunityId: opportunity.id
-                }
-            });
-        }
-
-        // Notify via Telegram (async)
-        if (url) {
-            void TelegramService.notifyJobSubmission(url, userId ? `user:${userId}` : 'anonymous');
-        } else if (referral) {
-            // Custom notification for referrals
-            void TelegramService.notifyJobSubmission(`REFERRAL: ${referral.company}`, userId ? `user:${userId}` : 'anonymous');
-        }
-
+        const share = await ProfileService.createShare(req.userId as string, req.body);
         res.status(201).json({
             success: true,
             message: 'Share received! Our team will review and publish it soon.',
@@ -574,15 +125,11 @@ router.post('/shares', requireAuth, validate(contributionSchema), async (req: Re
 router.get('/username/check', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const username = (req.query.username as string)?.toLowerCase();
-        if (!username || username.length < 3) {
-            return res.json({ available: false, reason: 'Too short' });
-        }
-
-        const existing = await prisma.user.findUnique({
-            where: { username }
+        const available = await ProfileService.checkUsername(username);
+        res.json({
+            available,
+            reason: (!username || username.length < 3) ? 'Too short' : undefined
         });
-
-        res.json({ available: !existing });
     } catch (error) {
         next(error);
     }
@@ -591,72 +138,15 @@ router.get('/username/check', optionalAuth, async (req: Request, res: Response, 
 // POST /api/profile/username/claim
 router.post('/username/claim', requireAuth, async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { username: rawUsername } = req.body;
-        const username = rawUsername?.toLowerCase();
-
-        // 1. Basic Validation
-        if (!username || username.length < 3 || username.length > 20) {
-            return next(new AppError('Username must be 3-20 characters', 400));
-        }
-        if (!/^[a-z0-9_]+$/.test(username)) {
-            return next(new AppError('Username can only contain lowercase letters, numbers, and underscores', 400));
-        }
-
-        // 2. Cooldown Check
+        const { username } = req.body;
         const cooldownDays = Number(process.env.USERNAME_COOLDOWN_DAYS || 30);
-        const user = await prisma.user.findUnique({
-            where: { id: req.userId },
-            select: { username: true, usernameUpdatedAt: true, firebase_uid: true }
-        });
-
-        if (user?.usernameUpdatedAt) {
-            const lastUpdate = new Date(user.usernameUpdatedAt);
-            const now = new Date();
-            const daysSinceUpdate = (now.getTime() - lastUpdate.getTime()) / (1000 * 60 * 60 * 24);
-            
-            if (daysSinceUpdate < cooldownDays) {
-                return next(new AppError(`Username can only be changed once every ${cooldownDays} days. Please wait ${Math.ceil(cooldownDays - daysSinceUpdate)} more days.`, 403));
-            }
-        }
-
-        // 3. Availability Check
-        const existing = await prisma.user.findUnique({
-            where: { username }
-        });
-
-        if (existing && existing.id !== req.userId) {
-            return next(new AppError('Username is already taken', 409));
-        }
-
-        // 4. Update
-        const updatedUser = await prisma.user.update({
-            where: { id: req.userId },
-            data: { 
-                username,
-                usernameUpdatedAt: new Date()
-            }
-        });
-
-        // Sync to Firebase RTDB for cold-start caching
-        if (user?.firebase_uid) {
-            void FirebaseDbService.updateOnboardingRecord(user.firebase_uid, {
-                username: updatedUser.username,
-                skipUsernameSetup: true
-            });
-        }
-
-        // Regenerate static usernames index instantly
-        void StaticFeedService.refreshUsernames();
-
-        res.json({ 
-            success: true, 
-            username: updatedUser.username,
-            message: 'Username claimed successfully' 
+        const claimed = await ProfileService.claimUsername(req.userId as string, username, cooldownDays);
+        res.json({
+            success: true,
+            username: claimed,
+            message: 'Username claimed successfully'
         });
     } catch (error) {
-        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-            return next(new AppError('Username is already taken', 409));
-        }
         next(error);
     }
 });

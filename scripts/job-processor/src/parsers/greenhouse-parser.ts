@@ -61,7 +61,7 @@ function cleanHtmlToMarkdown(html: string): string {
     if (!html) return '';
     return html
         // Replace paragraph tags with newlines
-        .replace(/<p[^>]*>/gi, '')
+        .replace(/<p[^>]*>/gi, ' ')
         .replace(/<\/p>/gi, '\n\n')
         // Replace bold/strong tags with double asterisks
         .replace(/<strong[^>]*>/gi, '**')
@@ -72,22 +72,22 @@ function cleanHtmlToMarkdown(html: string): string {
         .replace(/<li[^>]*>/gi, '- ')
         .replace(/<\/li>/gi, '\n')
         // Replace list containers
-        .replace(/<ul[^>]*>/gi, '')
+        .replace(/<ul[^>]*>/gi, ' ')
         .replace(/<\/ul>/gi, '\n')
-        .replace(/<ol[^>]*>/gi, '')
+        .replace(/<ol[^>]*>/gi, ' ')
         .replace(/<\/ol>/gi, '\n')
         // Replace headings with bold markdown headers
         .replace(/<h[1-6][^>]*>/gi, '\n**')
         .replace(/<\/h[1-6]>/gi, '**\n')
         // Decode HTML entities
-        .replace(/&amp;/g, '&')
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
         .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
         // Remove other HTML tags
-        .replace(/<[^>]+>/g, '')
+        .replace(/<[^>]+>/g, ' ')
         // Clean up redundant spaces and newlines
         .replace(/[ \t]+/g, ' ')
         .replace(/\n{3,}/g, '\n\n')
@@ -248,8 +248,8 @@ function decodeHtmlEntities(str: string): string {
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
-        .replace(/&amp;/g, '&')
-        .replace(/&nbsp;/g, ' ');
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&');
 }
 
 /**

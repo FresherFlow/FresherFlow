@@ -33,7 +33,7 @@ export class SuccessFactorsAdapter implements AtsAdapter {
                 let title = match[2].trim();
                 
                 // HTML entities cleanup
-                title = title.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+                title = title.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
                 if (applyLink.startsWith('/')) {
                     const urlObj = new URL(companyUrl);

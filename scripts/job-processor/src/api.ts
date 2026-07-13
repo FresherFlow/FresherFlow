@@ -14,11 +14,11 @@ export function resolveCompanyWebsiteAndLogo(
             
             // Handle enterprise ATS subdomains (e.g. philips.wd3.myworkdayjobs.com -> philips.com)
             if (
-                host.includes('myworkdayjobs.com') ||
-                host.includes('eightfold.ai') ||
-                host.includes('greenhouse.io') ||
-                host.includes('lever.co') ||
-                host.includes('darwinbox.in')
+                host === 'myworkdayjobs.com' || host.endsWith('.myworkdayjobs.com') ||
+                host === 'eightfold.ai' || host.endsWith('.eightfold.ai') ||
+                host === 'greenhouse.io' || host.endsWith('.greenhouse.io') ||
+                host === 'lever.co' || host.endsWith('.lever.co') ||
+                host === 'darwinbox.in' || host.endsWith('.darwinbox.in')
             ) {
                 const parts = host.split('.');
                 let subdomain = parts[0];
