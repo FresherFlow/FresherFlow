@@ -189,11 +189,11 @@ export function sortOpportunitiesForUser<T extends Opportunity>(opportunities: T
     return rankOpportunitiesForUser(opportunities, profile).map((item) => item.opportunity);
 }
 
-export function calculateOpportunityMatch(profile: Profile | null, opportunity: Opportunity): { score: number; reason: string } {
-    if (!profile) return { score: 0, reason: 'Complete profile to see fit' };
+export function calculateOpportunityMatch(profile: Profile | null, opportunity: Opportunity): { score: number; reason: string; isEligible: boolean } {
+    if (!profile) return { score: 0, reason: 'Complete profile to see fit', isEligible: true };
     const eligibility = checkEligibility(opportunity, profile);
     if (!eligibility.eligible) {
-        return { score: 0, reason: eligibility.reason || 'Ineligible' };
+        return { score: 0, reason: eligibility.reason || 'Ineligible', isEligible: false };
     }
 
     const breakdown = computeRelevanceBreakdown(opportunity, profile);
@@ -208,7 +208,7 @@ export function calculateOpportunityMatch(profile: Profile | null, opportunity: 
     else if (matchCount > 0) reason = `${matchCount} skills matched`;
     else if (breakdown.location > 0) reason = 'Location match';
 
-    return { score, reason };
+    return { score, reason, isEligible: true };
 }
 
 export function isNotEligible(opportunity: Opportunity & { eligibility?: EligibilityResult }): boolean {

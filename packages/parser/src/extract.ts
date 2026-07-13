@@ -125,7 +125,7 @@ export function extractSkills(text: string, locations: string[] = []): string[] 
 
     let skills = skillCandidates
         .sort((a, b) => b.score - a.score)
-        .map(c => c.text.replace(/()[[\]{}"''']/g, '').trim())
+        .map(c => c.text.replace(/[()[\]{}"']/g, '').trim())
         .filter((s, i, self) => isValidSkill(s) && self.indexOf(s) === i)
         .slice(0, 15);
 
@@ -153,7 +153,7 @@ export function extractSkills(text: string, locations: string[] = []): string[] 
     }
 
     return Array.from(new Set(skills))
-        .map(s => s.replace(/()[[\]{}"''']/g, '').trim())
+        .map(s => s.replace(/[()[\]{}"']/g, '').trim())
         .filter((s, i, self) => isValidSkill(s) && self.indexOf(s) === i)
         .slice(0, 15);
 }
@@ -199,8 +199,8 @@ export function extractExperience(text: string): { min?: number; max?: number } 
 // ── Incentives ────────────────────────────────────────────────────────────────
 
 export function extractIncentives(text: string): string | undefined {
-    const m = text.match(/incentives?\s+(?:up to|of)\s*(?:rs\.?)?\s*([\d,]+(?:\s*to\s*[\d,]+)?)/i) ||
-              text.match(/incentives?\s*(?:rs\.?)?\s*([\d,]+(?:\s*to\s*[\d,]+)?)/i);
+    const m = text.match(/incentives?\s+(?:up to|of)\s*(?:rs\.?\s*)?([\d,]+(?:\s*to\s*[\d,]+)?)/i) ||
+              text.match(/incentives?\s*(?:rs\.?\s*)?([\d,]+(?:\s*to\s*[\d,]+)?)/i);
     return m ? `Rs. ${m[1]}` : undefined;
 }
 

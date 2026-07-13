@@ -59,7 +59,7 @@ export function normalizeSalary(text: string): NormalizedSalary {
     }
 
     // "₹30,000/month"
-    const monthlyMatch = text.match(/(?:₹|Rs\.?\s+)?(\d[\d,]+)(?:k)?\s*(?:\/\s*month|per\s+month|pm\b)/i) ||
+    const monthlyMatch = text.match(/(?:₹|Rs\.?\s*)?(\d[\d,]+)(?:k)?\s*(?:\/\s*month|per\s+month|pm\b)/i) ||
                          text.match(/(\d[\d,]+)(?:k)?\s*(?:\/\s*month|per\s+month|pm\b)/i);
     if (monthlyMatch) {
         const raw = monthlyMatch[1].replace(/,/g, '');
@@ -149,9 +149,9 @@ function toLocalInputString(date: Date): string {
 
 export const normalizeExpiry = (text: string): string | undefined => {
     const patterns = [
-        /(?:apply\s+by|last\s+date\s+to\s+apply|last\s+date|deadline)\s*[:-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
-        /(?:apply\s+before)\s*[:-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
-        /(?:apply\s+by|last\s+date|deadline)\s*[:-]?\s*(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
+        /(?:apply\s+by|last\s+date\s+to\s+apply|last\s+date|deadline)\s*(?:[:-]\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
+        /(?:apply\s+before)\s*(?:[:-]\s*)?(\d{1,2}(?:st|nd|rd|th)?\s+[a-zA-Z]{3,9}(?:\s+\d{4})?)/i,
+        /(?:apply\s+by|last\s+date|deadline)\s*(?:[:-]\s*)?(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})/i,
     ];
     for (const p of patterns) {
         const m = text.match(p);
@@ -216,7 +216,7 @@ export function generateContentFingerprint(data: {
     locations?: string[];
     workMode?: string;
 }): string {
-    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
 
     const title = normalize(data.title);
     const company = normalize(data.company);

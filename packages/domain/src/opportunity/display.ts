@@ -54,7 +54,7 @@ export function formatTimeText12Hour(input?: string | null): string {
     if (!trimmed) return '';
 
     const to12HourPart = (value: string): string => {
-        const normalized = value.trim().replace(/\./g, ':').replace(/\s+/g, ' ');
+        const normalized = value.trim().replace(/\./g, ':').replace(/[ \t]+/g, ' ');
         const match = normalized.match(/^(\d{1,2})(?::([0-5]\d))?\s*([AaPp][Mm])?$/);
         if (!match) return value.trim();
 
@@ -72,7 +72,7 @@ export function formatTimeText12Hour(input?: string | null): string {
         return `${hour12}:${rawMinute} ${suffix}`;
     };
 
-    const separatorMatch = trimmed.match(/\s*(?:-|–|\bto\b)\s*/i);
+    const separatorMatch = trimmed.match(/[ \t]*(?:-|–|\bto\b)[ \t]*/i);
     if (!separatorMatch) return to12HourPart(trimmed);
 
     const index = separatorMatch.index!;
@@ -302,7 +302,7 @@ function formatEducationLevel(degree: string): string {
 }
 
 function normalizeAcademic(value: string) {
-    return value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    return value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '');
 }
 
 import { ActionType } from '@fresherflow/types';

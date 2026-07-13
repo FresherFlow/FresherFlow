@@ -56,8 +56,9 @@ export class UrlParser {
      */
     static async parseUrl(url: string): Promise<UrlParseResult> {
         let hostname = '';
+        let parsed: URL;
         try {
-            const parsed = new URL(url.trim());
+            parsed = new URL(url.trim());
             if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
                 throw new Error('Invalid protocol');
             }
@@ -65,13 +66,26 @@ export class UrlParser {
             if (
                 hostname === 'localhost' ||
                 hostname === '127.0.0.1' ||
+                hostname === '0.0.0.0' ||
                 hostname === '::1' ||
-                hostname.startsWith('10.') ||
-                hostname.startsWith('192.168.') ||
-                hostname.startsWith('172.16.') ||
-                hostname.startsWith('169.254.')
+                hostname === '::' ||
+                hostname.endsWith('.local') ||
+                hostname.endsWith('.internal')
             ) {
                 throw new Error('Local/private host not allowed');
+            }
+            const ipMatch = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+            if (ipMatch) {
+                const p1 = parseInt(ipMatch[1], 10);
+                const p2 = parseInt(ipMatch[2], 10);
+                if (
+                    p1 === 0 || p1 === 10 || p1 === 127 ||
+                    (p1 === 172 && p2 >= 16 && p2 <= 31) ||
+                    (p1 === 192 && p2 === 168) ||
+                    (p1 === 169 && p2 === 254)
+                ) {
+                    throw new Error('Local/private host not allowed');
+                }
             }
             const match = hostname.match(/^172\.(1[6-9]|2[0-9]|3[0-1])\./);
             if (match) {
@@ -93,7 +107,7 @@ export class UrlParser {
         const sourceType = this.detectSourceType(hostname);
         let html = '';
         try {
-            const resp = await axios.get(url, {
+            const resp = await axios.get(parsed.href, {
                 timeout: 10000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -144,9 +158,9 @@ export class UrlParser {
 
     static cleanHtml(html: string): string {
         return html
-            .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-            .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-            .replace(/<[^>]+>/g, ' ')
+            .replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)>/gi, ' ')
+            .replace(/<!--[\s\S]*?-->/g, ' ')
+            .replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, ' ')
             .replace(/&nbsp;/g, ' ')
             .replace(/&amp;/g, '&')
             .replace(/\s+/g, ' ')

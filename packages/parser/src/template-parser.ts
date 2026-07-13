@@ -133,7 +133,7 @@ const SPECIALIZATION_MAP: Array<[RegExp, string]> = [
 /** Extract "Key\tValue" or "Key: Value" pattern */
 function extractField(text: string, key: string): string | undefined {
     const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const m = text.match(new RegExp(`${escaped}\\s*[\\t:]+\\s*([^\\n\\r]+)`, 'i'));
+    const m = text.match(new RegExp(`${escaped}[ \\t]*[:\\t]+[ \\t]*([^\\n\\r]+)`, 'i'));
     return m?.[1]?.trim() || undefined;
 }
 
@@ -143,14 +143,14 @@ const TITLE_NOISE_PATTERNS = [
     /\s*[|–-]\s*apply\s+now\s*!?$/i,
     /\s*[|–-]\s*apply\s+online\s*!?$/i,
     /\s*[|–-]\s*apply\s+soon\s*!?$/i,
-    /\s*\|\s*freshers?\s*\|?\s*/i,
-    /\s*\|\s*(?:multiple locations?|pan india)\s*\|?\s*/i,
+    /\s*\|\s*freshers?(?:\s*\|)?\s*/i,
+    /\s*\|\s*(?:multiple locations?|pan india)(?:\s*\|)?\s*/i,
     /\s*off\s+campus\s+drive\s+\d{4}\s*/i,
-    /\s*–?\s*apply\s+now\s*!?$/i,
+    /(?:\s*–)?\s*apply\s+now\s*!?$/i,
     /\s*\|\s*\d{4}\s*$/i,
     /\s*\[\s*\d{4}\s*\]\s*$/i,
-    /\s+recruitment\s+(?:drive\s+)?\d{4}\s+/i,
-    /\s+recruitment\s+(?:drive)?\s+/i,
+    /\s+recruitment(?:\s+drive)?\s+\d{4}\s+/i,
+    /\s+recruitment(?:\s+drive)?\s+/i,
 ];
 
 export function cleanAggregatorTitle(aggregatorTitle: string): string {
@@ -163,7 +163,7 @@ export function cleanAggregatorTitle(aggregatorTitle: string): string {
     if (hiringMatch && hiringMatch[1].length < 80) {
         title = hiringMatch[1];
         // Strip trailing suffixes like " | Location" or " - Apply Now" safely
-        const suffixMatch = title.match(/(.+?)\s*[|–]\s*(?:apply\s+(?:now|soon|online)|[A-Za-z\s]+)$/i);
+        const suffixMatch = title.match(/(.+?)\s*[|–]\s*(?:apply\s+(?:now|soon|online)|[A-Za-z][A-Za-z\s]*)$/i);
         if (suffixMatch) title = suffixMatch[1];
     } else {
         // Pattern 2: "Company Recruitment Drive; Role – Apply Now"
@@ -431,10 +431,9 @@ const CONFIDENCE_FIELDS: (keyof ParsedJob)[] = [
 ];
 
 export function parseFromTemplate(
-    aggregatorText: string,
     aggregatorTitle: string,
 ): TemplateParseResult {
-    const text = aggregatorText || '';
+    const text = '';
 
     // ── Extract key-value fields ───────────────────────────────────────
     const rawCompany = extractField(text, 'Name of the Company')

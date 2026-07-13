@@ -47,13 +47,15 @@ export const CompanyLogo = ({ website, name, logoUrl: explicitLogoUrl, applyLink
             if (match && match[1]) {
                 const acronym = match[1].toLowerCase().trim();
                 if (/^[a-z]+$/.test(acronym)) {
-                    urls.push(`https://cdn.fresherflow.in/logos/${acronym}.png`);
+                    const cdnBase = process.env.NEXT_PUBLIC_CDN_URL || process.env.EXPO_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
+                    urls.push(`${cdnBase}/logos/${acronym}.png`);
                 }
             } else {
                 // Check if name itself is a short acronym
                 const cleanName = name.toLowerCase().trim();
                 if (/^[a-z]+$/.test(cleanName) && cleanName.length <= 6) {
-                    urls.push(`https://cdn.fresherflow.in/logos/${cleanName}.png`);
+                    const cdnBase = process.env.NEXT_PUBLIC_CDN_URL || process.env.EXPO_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
+                    urls.push(`${cdnBase}/logos/${cleanName}.png`);
                 }
             }
             return urls;

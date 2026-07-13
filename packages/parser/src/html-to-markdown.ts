@@ -49,17 +49,17 @@ export function cleanClickbait(markdown: string): string {
     let clean = markdown;
 
     // Strip "Join our WhatsApp/Telegram" lines
-    clean = clean.replace(/^.*Join our (WhatsApp|Telegram).*$/gmi, '');
+    clean = clean.replace(/^[^\n]*Join our (?:WhatsApp|Telegram)[^\n]*$/gmi, '');
 
     // Strip "How to Apply" lines and nearby links
     clean = clean.replace(/#*\s*How to Apply[\s\S]{0,150}?(?:\[[^\]]+\]\([^)]+\)|https?:\/\/\S+)/gi, '');
 
     // Strip disclaimer boilerplate
-    clean = clean.replace(/^.*(?:Important Disclaimer|The information provided is for informational purposes|Latest MNC Jobs|Govt Job Mart|WPFriendship|Powered by WordPress).*$/gmi, '');
-    clean = clean.replace(/^.*All recruitment details are sourced directly from the official website.*$/gmi, '');
+    clean = clean.replace(/^[^\n]*(?:Important Disclaimer|The information provided is for informational purposes|Latest MNC Jobs|Govt Job Mart|WPFriendship|Powered by WordPress)[^\n]*$/gmi, '');
+    clean = clean.replace(/^[^\n]*All recruitment details are sourced directly from the official website[^\n]*$/gmi, '');
 
     // Strip "© Copyright" footer lines
-    clean = clean.replace(/^.*©.*Copyright.*$/gmi, '');
+    clean = clean.replace(/^[^\n]*©[^\n]*Copyright[^\n]*$/gmi, '');
 
     // Strip "Posted in" / "Published by admin" lines (aggregator category tags)
     clean = clean.replace(/^Posted in .*$/gmi, '');
@@ -69,13 +69,13 @@ export function cleanClickbait(markdown: string): string {
     clean = clean.replace(/Leave a Reply[\s\S]{0,500}?required fields are marked/gi, '');
 
     // Strip lines that look like phone country code lists ("+93", "+44 Åland Islands", etc.)
-    clean = clean.replace(/^[\s*-]*[A-Za-zÀ-ÿ\s&]+ \+\d+\s*$/gm, '');
+    clean = clean.replace(/^[ \t*-]*[A-Za-zÀ-ÿ&][A-Za-zÀ-ÿ \t&]* \+\d+\s*$/gm, '');
 
     // Strip "Post navigation", "Prev/Next" breadcrumbs
     clean = clean.replace(/^(Post navigation|Prev |Next ).*$/gmi, '');
 
     // Strip "Save my name, email..." cookie notice
-    clean = clean.replace(/^.*Save my name, email.*browser.*$/gmi, '');
+    clean = clean.replace(/^[^\n]*Save my name, email[^\n]*browser[^\n]*$/gmi, '');
 
     // Strip lines that are just nav/form labels
     clean = clean.replace(/^(First Name|Last Name|Email|Phone|Website|Comment|Search|Name)\s*\*?\s*$/gmi, '');

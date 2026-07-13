@@ -1,7 +1,6 @@
 import { Job } from 'bullmq';
 import { logger } from '@fresherflow/logger';
 import type { CacheRevalidateJobData } from '../index';
-import { env } from '@fresherflow/config';
 
 async function fetchRevalidate(paths: string[]): Promise<void> {
     const internalUrl = process.env.INTERNAL_API_URL || process.env.API_URL || process.env.PUBLIC_WEB_URL;
@@ -9,29 +8,32 @@ async function fetchRevalidate(paths: string[]): Promise<void> {
     
     // We send requests to the Next.js app to trigger revalidatePath.
     // Ensure we send it to the NEXT.js app (PUBLIC_WEB_URL), not the express API URL.
-    const baseUrl = process.env.PUBLIC_WEB_URL || internalUrl;
+    const baseUrlRaw = process.env.PUBLIC_WEB_URL || internalUrl;
 
-    if (!baseUrl) {
+    if (!baseUrlRaw) {
         throw new Error('No base URL defined for revalidation ping (missing PUBLIC_WEB_URL)');
     }
     if (!revalidateToken) {
         throw new Error('REVALIDATE_SECRET_TOKEN is missing');
     }
 
-    const url = `${baseUrl.replace(/\/$/, '')}/api/revalidate`;
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${revalidateToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ paths }),
-    });
+    const baseUrls = baseUrlRaw.split(',').map(u => u.trim()).filter(Boolean);
 
-    if (!response.ok) {
-        const body = await response.text().catch(() => '');
-        throw new Error(`Revalidate endpoint returned ${response.status}: ${body}`);
-    }
+    await Promise.all(baseUrls.map(async (baseUrl) => {
+        const url = `${baseUrl.replace(/\/$/, '')}/api/revalidate`;
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ secret: revalidateToken, paths }),
+        });
+
+        if (!response.ok) {
+            const body = await response.text().catch(() => '');
+            throw new Error(`Revalidate endpoint ${url} returned ${response.status}: ${body}`);
+        }
+    }));
 }
 
 export async function processCacheRevalidateJob(job: Job<CacheRevalidateJobData>): Promise<void> {

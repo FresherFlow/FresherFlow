@@ -28,6 +28,7 @@ export function Tabs({ items, className = '' }: TabsProps) {
                         <button
                             key={item.id}
                             onClick={() => setActiveTab(item.id)}
+                            aria-label={`Tab: ${item.label}`}
                             className={cn(
                                 "py-2.5 px-4 text-sm font-semibold border-b-2 transition-all leading-none focus:outline-none",
                                 isActive
