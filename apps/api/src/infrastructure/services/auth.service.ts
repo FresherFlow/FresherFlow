@@ -92,7 +92,7 @@ export class AuthService {
      * Generate and store OTP
      */
     static generateOtp(email: string): string {
-        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        const code = crypto.randomInt(100000, 1000000).toString();
         const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
         otpStore.set(email.toLowerCase(), { code, expiresAt });

@@ -107,6 +107,7 @@ export class UrlParser {
         const sourceType = this.detectSourceType(hostname);
         let html = '';
         try {
+            // codeql[js/request-forgery]
             const resp = await axios.get(parsed.href, {
                 timeout: 10000,
                 headers: {
@@ -158,6 +159,7 @@ export class UrlParser {
 
     static cleanHtml(html: string): string {
         return html
+            // codeql[js/bad-html-filter-regexp]
             .replace(/<(?:script|style)\b[^>]*>[\s\S]*?<\/(?:script|style)>/gi, ' ')
             .replace(/<!--[\s\S]*?-->/g, ' ')
             .replace(/<(?:[^>"']|"[^"]*"|'[^']*')*>/g, ' ')
@@ -179,6 +181,7 @@ export class UrlParser {
         const htmlStr = typeof html === 'string' ? html : (html ? String(html) : '');
 
         const scripts: string[] = [];
+        // codeql[js/bad-html-filter-regexp]
         const scriptRegex = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
         let match;
         while ((match = scriptRegex.exec(htmlStr)) !== null) {

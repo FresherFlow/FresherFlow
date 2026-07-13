@@ -22,7 +22,7 @@ export function resolveCompanyWebsiteAndLogo(
             ) {
                 const parts = host.split('.');
                 let subdomain = parts[0];
-                if ((subdomain === 'job-boards' || subdomain === 'boards') && host.includes('greenhouse.io')) {
+                if ((subdomain === 'job-boards' || subdomain === 'boards') && (host === 'greenhouse.io' || host.endsWith('.greenhouse.io'))) {
                     const pathParts = url.pathname.split('/').filter(Boolean);
                     if (pathParts.length > 0) {
                         subdomain = pathParts[0];

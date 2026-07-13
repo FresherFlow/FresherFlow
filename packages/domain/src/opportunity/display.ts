@@ -72,7 +72,7 @@ export function formatTimeText12Hour(input?: string | null): string {
         return `${hour12}:${rawMinute} ${suffix}`;
     };
 
-    const separatorMatch = trimmed.match(/[ \t]*(?:-|–|\bto\b)[ \t]*/i);
+    const separatorMatch = trimmed.match(/\s*(?:-|–|\bto\b)\s*/i);
     if (!separatorMatch) return to12HourPart(trimmed);
 
     const index = separatorMatch.index!;

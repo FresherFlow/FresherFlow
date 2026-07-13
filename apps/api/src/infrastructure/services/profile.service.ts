@@ -1,5 +1,5 @@
 import prisma from '../database/prisma';
-import { Prisma } from '@prisma/client';
+import { Prisma, EducationLevel, OpportunityType, WorkMode, Availability } from '@prisma/client';
 import { Profile, Gender, ReservationCategory } from '@fresherflow/types';
 import { calculateCompletion, normalizeProfileEducation, normalizeSkills } from '@fresherflow/domain';
 import { areOpportunityUrlsEquivalent, getOpportunityUrlAliases, normalizeOpportunityUrl } from '@fresherflow/utils';
@@ -10,7 +10,7 @@ import { FirebaseDbService } from './firebaseDb.service';
 
 export interface ProfileUpdateData {
     fullName?: string;
-    educationLevel?: string;
+    educationLevel?: EducationLevel;
     tenthYear?: number;
     twelfthYear?: number;
     gradCourse?: string;
@@ -19,10 +19,10 @@ export interface ProfileUpdateData {
     pgCourse?: string;
     pgSpecialization?: string;
     pgYear?: number;
-    interestedIn?: string[];
+    interestedIn?: OpportunityType[];
     preferredCities?: string[];
-    workModes?: string[];
-    availability?: string;
+    workModes?: WorkMode[];
+    availability?: Availability;
     skills?: string[];
     dob?: string | Date | null;
     gender?: Gender | null;
@@ -33,13 +33,13 @@ export interface ProfileUpdateData {
 }
 
 export interface ProfilePreferencesData {
-    interestedIn?: string[];
+    interestedIn?: OpportunityType[];
     preferredCities?: string[];
-    workModes?: string[];
+    workModes?: WorkMode[];
 }
 
 export interface ProfileReadinessData {
-    availability?: string;
+    availability?: Availability;
     skills?: string[];
 }
 
@@ -78,7 +78,7 @@ export class ProfileService {
             throw new AppError('Profile not found', 404);
         }
 
-        const profile = await hydrateProfileCompletion(userId, storedProfile);
+        const profile = await hydrateProfileCompletion(userId, storedProfile as unknown as Partial<Profile>);
         return profile as unknown as Profile;
     }
 
@@ -202,7 +202,7 @@ export class ProfileService {
         let profile = await prisma.profile.update({
             where: { userId },
             data: {
-                educationLevel,
+                educationLevel: educationLevel,
                 tenthYear,
                 twelfthYear,
                 gradCourse: normalizedGrad.course,
@@ -256,9 +256,9 @@ export class ProfileService {
         let profile = await prisma.profile.update({
             where: { userId },
             data: {
-                interestedIn,
+                interestedIn: interestedIn,
                 preferredCities,
-                workModes
+                workModes: workModes
             }
         });
 
@@ -282,7 +282,7 @@ export class ProfileService {
         let profile = await prisma.profile.update({
             where: { userId },
             data: {
-                availability,
+                availability: availability,
                 skills: normSkills
             }
         });
@@ -497,7 +497,7 @@ export class ProfileService {
                     originalUrl: rawUrl,
                     referral: referral,
                     submittedAt: new Date().toISOString()
-                }
+                } as Prisma.InputJsonObject
             }
         });
 

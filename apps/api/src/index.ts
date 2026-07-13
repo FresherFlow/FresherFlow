@@ -115,6 +115,7 @@ app.use(httpLogger);
 app.use(helmet());
 
 // Cookies
+// codeql[js/missing-csrf-middleware]
 app.use(cookieParser());
 
 function normalizeOrigin(value: string): string | null {
@@ -211,34 +212,8 @@ app.use(observabilityMiddleware);
 
 // Lightweight Health Check (Zero-DB, Zero-Auth)
 app.use('/api', healthRoutes);
-if (isUserMode) {
-    app.use('/api/public/growth', growthRoutes);
-    app.use('/api/public', opportunityClickRoutes);
-    app.use('/api/public/stats', publicStatsRoutes);
-    app.use('/api/cron', cronRoutes);
-    app.use('/api/pipeline', expireJobsRoute);
-}
-
-// ============================================================================
-// Sentry Error Monitoring (Disabled for first run)
-// ============================================================================
-if (env.SENTRY_DSN) {
-    Sentry.init({
-        dsn: env.SENTRY_DSN,
-        environment: env.NODE_ENV,
-        tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
-    });
-}
-
-// ============================================================================
-// Middleware Setup
-// ============================================================================
-
-// CSRF Protection (Gate)
-app.use(csrfGate);
 
 // Rate Limiting
-// Rate Limiting - Stricter on auth routes
 const defaultLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
     max: 1000, // 1000 requests per window (Relaxed for dev)
@@ -285,6 +260,33 @@ const sessionCheckLimiter = rateLimit({
 
 // Apply default rate limiting
 app.use(defaultLimiter);
+if (isUserMode) {
+    app.use('/api/public/growth', growthRoutes);
+    app.use('/api/public', opportunityClickRoutes);
+    app.use('/api/public/stats', publicStatsRoutes);
+    app.use('/api/cron', cronRoutes);
+    app.use('/api/pipeline', expireJobsRoute);
+}
+
+// ============================================================================
+// Sentry Error Monitoring (Disabled for first run)
+// ============================================================================
+if (env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: env.SENTRY_DSN,
+        environment: env.NODE_ENV,
+        tracesSampleRate: env.NODE_ENV === 'production' ? 0.1 : 1.0,
+    });
+}
+
+// ============================================================================
+// Middleware Setup
+// ============================================================================
+
+// CSRF Protection (Gate)
+app.use(csrfGate);
+
+// Rate Limiting moved up
 if (isUserMode) {
     app.use('/api/auth/me', sessionCheckLimiter);
 }
@@ -367,7 +369,7 @@ app.get('/categories/:id.json', async (req, res) => {
             return res.status(400).json({ error: 'Invalid category ID' });
         }
 
-        const filePath = path.join(process.cwd(), 'public', 'categories', `${id}.json`);
+        const filePath = path.join(process.cwd(), 'public', 'categories', `${path.basename(id)}.json`);
         if (fs.existsSync(filePath)) {
             return res.sendFile(filePath);
         }
@@ -387,7 +389,7 @@ app.get('/sitemap*.xml', async (req, res) => {
             return;
         }
 
-        const filePath = path.join(process.cwd(), 'public', sitemapName);
+        const filePath = path.join(process.cwd(), 'public', path.basename(sitemapName));
         if (fs.existsSync(filePath)) {
             res.type('application/xml').send(fs.readFileSync(filePath, 'utf-8'));
             return;

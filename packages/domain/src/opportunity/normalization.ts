@@ -59,8 +59,7 @@ export function normalizeSalary(text: string): NormalizedSalary {
     }
 
     // "₹30,000/month"
-    const monthlyMatch = text.match(/(?:₹|Rs\.?\s*)?(\d[\d,]+)(?:k)?\s*(?:\/\s*month|per\s+month|pm\b)/i) ||
-                         text.match(/(\d[\d,]+)(?:k)?\s*(?:\/\s*month|per\s+month|pm\b)/i);
+    const monthlyMatch = text.match(/(?:₹|Rs\.?\s*)?([\d,]+)k?\s*(?:\/\s*month|per\s+month|pm\b)/i);
     if (monthlyMatch) {
         const raw = monthlyMatch[1].replace(/,/g, '');
         const isK = monthlyMatch[0].toLowerCase().includes('k');

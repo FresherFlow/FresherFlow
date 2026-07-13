@@ -48,18 +48,34 @@ turndownService.addRule('strip-noise-elements', {
 export function cleanClickbait(markdown: string): string {
     let clean = markdown;
 
-    // Strip "Join our WhatsApp/Telegram" lines
-    clean = clean.replace(/^[^\n]*Join our (?:WhatsApp|Telegram)[^\n]*$/gmi, '');
+    // Split text by newlines and filter out lines containing specific clickbait/disclaimer/noise substrings
+    const lines = clean.split('\n');
+    const filteredLines = lines.filter(line => {
+        // Strip "Join our WhatsApp/Telegram" lines
+        if (/Join our (?:WhatsApp|Telegram)/i.test(line)) {
+            return false;
+        }
+        // Strip disclaimer boilerplate
+        if (/(?:Important Disclaimer|The information provided is for informational purposes|Latest MNC Jobs|Govt Job Mart|WPFriendship|Powered by WordPress)/i.test(line)) {
+            return false;
+        }
+        if (/All recruitment details are sourced directly from the official website/i.test(line)) {
+            return false;
+        }
+        // Strip "© Copyright" footer lines
+        if (/©/i.test(line) && /Copyright/i.test(line)) {
+            return false;
+        }
+        // Strip "Save my name, email..." cookie notice
+        if (/Save my name, email/i.test(line) && /browser/i.test(line)) {
+            return false;
+        }
+        return true;
+    });
+    clean = filteredLines.join('\n');
 
     // Strip "How to Apply" lines and nearby links
     clean = clean.replace(/#*\s*How to Apply[\s\S]{0,150}?(?:\[[^\]]+\]\([^)]+\)|https?:\/\/\S+)/gi, '');
-
-    // Strip disclaimer boilerplate
-    clean = clean.replace(/^[^\n]*(?:Important Disclaimer|The information provided is for informational purposes|Latest MNC Jobs|Govt Job Mart|WPFriendship|Powered by WordPress)[^\n]*$/gmi, '');
-    clean = clean.replace(/^[^\n]*All recruitment details are sourced directly from the official website[^\n]*$/gmi, '');
-
-    // Strip "© Copyright" footer lines
-    clean = clean.replace(/^[^\n]*©[^\n]*Copyright[^\n]*$/gmi, '');
 
     // Strip "Posted in" / "Published by admin" lines (aggregator category tags)
     clean = clean.replace(/^Posted in .*$/gmi, '');
@@ -73,9 +89,6 @@ export function cleanClickbait(markdown: string): string {
 
     // Strip "Post navigation", "Prev/Next" breadcrumbs
     clean = clean.replace(/^(Post navigation|Prev |Next ).*$/gmi, '');
-
-    // Strip "Save my name, email..." cookie notice
-    clean = clean.replace(/^[^\n]*Save my name, email[^\n]*browser[^\n]*$/gmi, '');
 
     // Strip lines that are just nav/form labels
     clean = clean.replace(/^(First Name|Last Name|Email|Phone|Website|Comment|Search|Name)\s*\*?\s*$/gmi, '');

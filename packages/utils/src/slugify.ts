@@ -14,7 +14,8 @@ export function sanitizeCustomSlug(raw: string): string {
         .trim()
         .replace(/[^\w\s-]+/g, '')
         .replace(/[\s-]+/g, '-')
-        .replace(/^-+|-+$/g, '')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '')
         .substring(0, 120);
 }
 
@@ -30,7 +31,8 @@ export function generateSlug(title: string, company: string, id?: string, option
         .trim()
         .replace(/[^\w\s-]+/g, '')
         .replace(/[\s-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
 
     // ── Government / Exam SEO slug ────────────────────────────────────────────
     // Target: "ssc-cgl-2026", "telangana-police-recruitment-2026"
@@ -92,7 +94,8 @@ export function slugify(text: string): string {
         .trim()
         .replace(/[^\w\s-]+/g, '')
         .replace(/[\s-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
 }
 
 /**
@@ -165,7 +168,7 @@ export function getCompanySlug(name: string, url: string | null): string {
                 
                 return cleanParts[0];
             }
-        } catch (e) {
+        } catch {
             // Fallback
         }
     }
@@ -182,6 +185,7 @@ export function getCompanySlug(name: string, url: string | null): string {
         .trim()
         .replace(/[^\w\s-]+/g, '')
         .replace(/[\s-]+/g, '-')
-        .replace(/^-+|-+$/g, '');
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
 }
 

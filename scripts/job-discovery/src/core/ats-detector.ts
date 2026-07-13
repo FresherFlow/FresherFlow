@@ -52,7 +52,7 @@ export function extractAtsBoard(urlStr: string): { provider: keyof AtsRegistry, 
         }
 
         // Teamtailor: careers.company.com or company.teamtailor.com
-        if (host.endsWith('.teamtailor.com') || urlStr.includes('teamtailor.com')) {
+        if (host === 'teamtailor.com' || host.endsWith('.teamtailor.com')) {
              const subdomain = host.split('.')[0];
              return { provider: 'teamtailor', boardId: subdomain };
         }

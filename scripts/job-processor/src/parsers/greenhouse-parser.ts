@@ -312,7 +312,7 @@ export function parseGreenhouseHtml(rawHtml: string, companyName?: string): Pars
         const rawHeaderHtml = match[1];
         const contentHtml = match[2].trim();
 
-        const headerText = rawHeaderHtml.replace(/<[^>]+>/g, '').trim();
+        const headerText = rawHeaderHtml.replace(/<[^>]+>/g, ' ').trim();
         const cleanHeader = headerText.toLowerCase();
 
         if (!headerText || !contentHtml) continue;
@@ -341,7 +341,7 @@ export function parseGreenhouseHtml(rawHtml: string, companyName?: string): Pars
             // Extract skills, degrees, experience from Requirements list items
             const listItems = contentHtml.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
             for (const item of listItems) {
-                const itemText = item.replace(/<[^>]+>/g, '').toLowerCase().trim();
+                const itemText = item.replace(/<[^>]+>/g, ' ').toLowerCase().trim();
 
                 // Experience
                 const rangeMatch = itemText.match(/\b([0-9]+)\s*(?:-|to)\s*([0-9]+)\s*years?\b/i);
@@ -386,7 +386,7 @@ export function parseGreenhouseHtml(rawHtml: string, companyName?: string): Pars
             canonicalHeader = 'Benefits';
             const benefitItems = contentHtml.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
             incentives = benefitItems
-                .map(li => li.replace(/<[^>]+>/g, '').trim())
+                .map(li => li.replace(/<[^>]+>/g, ' ').trim())
                 .filter(t => t.length > 2)
                 .slice(0, 5)
                 .join(' · ');
@@ -396,7 +396,7 @@ export function parseGreenhouseHtml(rawHtml: string, companyName?: string): Pars
             const processItems = contentHtml.match(/<li[^>]*>([\s\S]*?)<\/li>/gi) || [];
             if (processItems.length > 0) {
                 selectionProcess = processItems
-                    .map(li => li.replace(/<[^>]+>/g, '').trim())
+                    .map(li => li.replace(/<[^>]+>/g, ' ').trim())
                     .filter(t => t.length > 2)
                     .join('\n');
             } else {

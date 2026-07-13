@@ -226,6 +226,71 @@ export async function tryFetchNativeApi(urlStr: string): Promise<RawJobData | nu
         return null;
     }
 
+    if (adapter === 'oracle') {
+        try {
+            const u = new URL(urlStr);
+            const host = u.hostname;
+            const pathParts = u.pathname.split('/');
+            const sitesIdx = pathParts.indexOf('sites');
+            const siteCode = sitesIdx !== -1 ? pathParts[sitesIdx + 1] : 'CX_1';
+            
+            let siteNumber = 'CX_1';
+            
+            // Try resolving siteNumber from siteSettings if siteCode is available
+            if (siteCode && siteCode !== 'CX_1') {
+                const settingsUrl = `https://${host}/hcmRestApi/CandidateExperience/en/siteSettings/${siteCode}`;
+                const settingsRes = await fetch(settingsUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, signal: AbortSignal.timeout(6000) });
+                if (settingsRes.ok) {
+                    const settingsData = await settingsRes.json();
+                    if (settingsData?.app?.siteNumber) {
+                        siteNumber = settingsData.app.siteNumber;
+                    }
+                }
+            }
+
+            const apiUrl = `https://${host}/hcmRestApi/resources/latest/recruitingCEJobRequisitionDetails?finder=ById;Id=${jobId},siteNumber=${siteNumber}`;
+            const res = await fetch(apiUrl, {
+                headers: {
+                    'Accept': 'application/json',
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    'REST-Framework-Version': '2'
+                },
+                signal: AbortSignal.timeout(12000)
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data?.items && data.items.length > 0) {
+                    const job = data.items[0];
+                    const locations: string[] = [];
+                    if (job.PrimaryLocation) locations.push(job.PrimaryLocation);
+                    if (job.WorkplaceType) locations.push(job.WorkplaceType);
+                    if (Array.isArray(job.OtherLocations)) {
+                        job.OtherLocations.forEach((l: any) => {
+                            if (l.LocationName) locations.push(l.LocationName);
+                        });
+                    }
+                    
+                    const textForFiltering = stripHtml(job.Title || '') + ' ' + 
+                                             stripHtml(job.ExternalDescriptionStr || '') + ' ' + 
+                                             stripHtml(job.ExternalQualificationsStr || '');
+                    
+                    return {
+                        adapter,
+                        company: siteCode.toLowerCase(),
+                        jobId,
+                        rawPayload: job,
+                        textForFiltering,
+                        locationsForFiltering: locations
+                    };
+                }
+            }
+        } catch {
+            return null;
+        }
+        return null;
+    }
+
     // No native API available for this adapter (or fetching failed)
     return null;
 }

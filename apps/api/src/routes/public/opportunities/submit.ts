@@ -5,6 +5,7 @@ import { slugify } from '@fresherflow/utils';
 import { tryResolveUserIdFromCookie } from './_helpers';
 import { opportunitySubmitSchema } from '../../../utils/validation';
 import { adminCache } from '../../../infrastructure/cache/adminCache';
+import crypto from 'crypto';
 
 const router = Router();
 
@@ -104,7 +105,7 @@ router.post('/submit', async (req: Request, res: Response, next: NextFunction) =
             where: { slug }
         });
         if (existingBySlug) {
-            slug = `${slug}-${Math.floor(Math.random() * 1000)}`;
+            slug = `${slug}-${crypto.randomInt(0, 1000)}`;
         }
 
         // 5. Create Opportunity (DRAFT status by default, but adaptable to PUBLISHED if explicitly requested)

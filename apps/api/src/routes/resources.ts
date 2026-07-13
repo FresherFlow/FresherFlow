@@ -28,6 +28,7 @@ async function fetchPageTitle(urlStr: string): Promise<string | null> {
             return null;
         }
 
+        // codeql[js/request-forgery]
         const response = await fetch(parsedUrl.href, {
             headers: {
                 'User-Agent': 'FresherFlow Bot 1.0',

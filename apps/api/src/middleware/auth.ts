@@ -3,6 +3,7 @@ import { verifyAccessToken, verifyAdminToken } from '@fresherflow/auth';
 import { AppError } from './errorHandler';
 import prisma from '../infrastructure/database/prisma';
 import { logger } from '@fresherflow/logger';
+import crypto from 'crypto';
 
 declare global {
     // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -136,7 +137,7 @@ export async function requireAdmin(req: express.Request, res: Response, next: Ne
     try {
         const user = await prisma.user.findUnique({ where: { id: adminId } });
         if (!user) {
-            const referralCode = `ADMIN_${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+            const referralCode = `ADMIN_${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
             await prisma.user.create({
                 data: {
                     id: adminId,
