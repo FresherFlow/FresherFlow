@@ -2,13 +2,14 @@
 
 import { cookies, headers } from 'next/headers';
 import { ApiClient, getInferredAdminBaseUrl } from '@fresherflow/api-client';
+import { ADMIN_WEB_HOST } from '@/lib/utils/runtimeConfig';
 import { revalidatePath } from 'next/cache';
 import { Opportunity } from '@fresherflow/types';
 
 async function getClient() {
     const cookieStore = await cookies();
     const headersStore = await headers();
-    const host = headersStore.get('host') || 'admin.fresherflow.in';
+    const host = headersStore.get('host') || ADMIN_WEB_HOST;
     const proto = headersStore.get('x-forwarded-proto') || 'https';
 
     return new ApiClient(getInferredAdminBaseUrl(), undefined, {

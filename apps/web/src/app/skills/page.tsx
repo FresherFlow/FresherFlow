@@ -10,7 +10,7 @@ export const revalidate = false;
 export const metadata: Metadata = {
     title: 'Browse Jobs by Skill',
     description: 'Explore all in-demand skills for freshers in India. Find verified jobs, internships and off-campus drives filtered by technology, domain, or role skill.',
-    alternates: { canonical: `${SITE_URL || 'https://fresherflow.in'}/skills` },
+    alternates: { canonical: `${SITE_URL}/skills` },
 };
 
 export default async function SkillsIndexPage() {

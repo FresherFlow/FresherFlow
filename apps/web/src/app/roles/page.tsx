@@ -10,7 +10,7 @@ export const revalidate = false;
 export const metadata: Metadata = {
     title: 'Jobs by Role | FresherFlow',
     description: 'Find verified fresher jobs, internships, and walk-in drives by job role. Explore opportunities for Software Engineer, Data Analyst, Product Manager, and more.',
-    alternates: { canonical: `${SITE_URL || 'https://fresherflow.in'}/roles` },
+    alternates: { canonical: `${SITE_URL}/roles` },
 };
 
 export default async function RolesIndexPage() {

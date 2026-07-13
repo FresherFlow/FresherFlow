@@ -9,7 +9,7 @@ export const revalidate = false;
 export const metadata: Metadata = {
     title: 'Jobs by Graduation Batch | FresherFlow',
     description: 'Find verified fresher jobs, internships, and off-campus placements grouped by your graduation year. Explore opportunities for 2024, 2025, 2026, and 2027 batches.',
-    alternates: { canonical: `${SITE_URL || 'https://fresherflow.in'}/batch` },
+    alternates: { canonical: `${SITE_URL}/batch` },
 };
 
 export default async function BatchIndexPage() {

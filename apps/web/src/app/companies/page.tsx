@@ -11,7 +11,7 @@ export const revalidate = false;
 export const metadata: Metadata = {
     title: 'Browse Companies Hiring Freshers',
     description: 'Explore all companies actively hiring freshers in India. Find verified jobs and internships at top MNCs, startups, and government organisations.',
-    alternates: { canonical: `${SITE_URL || 'https://fresherflow.in'}/companies` },
+    alternates: { canonical: `${SITE_URL}/companies` },
 };
 
 export default async function CompaniesIndexPage() {
@@ -47,13 +47,19 @@ export default async function CompaniesIndexPage() {
     }
 
     // Merge with directory (companies with no active jobs still listed)
-    const directory = (companyList || []) as unknown as (string | { name: string })[];
+    const directory = companyList || [];
     for (const item of directory) {
-        const name = typeof item === 'string' ? item : item?.name;
+        const name = item.name;
         if (!name) continue;
-        const slug = slugify(name);
+        const slug = item.slug || slugify(name);
         if (!companyData[slug]) {
-            companyData[slug] = { name, slug, count: 0 };
+            companyData[slug] = {
+                name,
+                slug,
+                count: 0,
+                logoUrl: item.logo_url,
+                website: item.url
+            };
         }
     }
 

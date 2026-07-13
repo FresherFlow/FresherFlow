@@ -8,7 +8,7 @@ import Link from 'next/link';
 import CompanyLogo from '@/ui/CompanyLogo';
 import { PageTagLinks } from '@/ui/PageTagLinks';
 import { Breadcrumb } from '@/ui/Breadcrumb';
-import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 import { slugify } from '@fresherflow/utils';
 import { getCompanyDescription, TIER_A_SLUGS } from '@/features/companies/utils/companyContent';
 
@@ -22,20 +22,14 @@ export async function generateStaticParams() {
         if (!companyDirectory) return [];
 
         const seen = new Set<string>();
-        const params: { name: string }[] = [];
+        const params: { slug: string }[] = [];
 
         for (const item of companyDirectory) {
-            let companyName = '';
-            if (typeof item === 'string') {
-                companyName = item;
-            } else if (item && typeof item === 'object' && 'name' in item) {
-                companyName = (item as { name: string }).name;
-            }
-
-            const slug = slugify(companyName);
+            if (!item || !item.name) continue;
+            const slug = item.slug || slugify(item.name);
             if (slug && !seen.has(slug)) {
                 seen.add(slug);
-                params.push({ name: slug });
+                params.push({ slug });
             }
         }
 
@@ -46,11 +40,11 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata(
-    { params }: { params: Promise<{ name: string }> }
+    { params }: { params: Promise<{ slug: string }> }
 ): Promise<Metadata> {
-    const { name: encodedName } = await params;
-    const slug = slugify(decodeURIComponent(encodedName));
-    const base = (SITE_URL || 'https://fresherflow.in').replace(/\/+$/, '');
+    const { slug: rawSlug } = await params;
+    const slug = slugify(decodeURIComponent(rawSlug));
+    const base = SITE_URL.replace(/\/+$/, '');
     const canonicalUrl = `${base}/companies/${slug}`;
 
     const companyName = slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -58,7 +52,7 @@ export async function generateMetadata(
 
     const title = `${companyName} Jobs & Internships 2026 | ${isTierA ? 'Careers Guide' : 'Fresher Jobs'}`;
     const description = `Explore verified entry-level jobs, off-campus placements, and tech internships at ${companyName} on FresherFlow. Direct official apply links, no fake listings.`;
-    const ogImageUrl = `https://cdn.fresherflow.in/og/companies/${slug}.png`;
+    const ogImageUrl = `${CDN_URL}/og/companies/${slug}.png`;
 
     return {
         title,
@@ -81,14 +75,14 @@ export async function generateMetadata(
     };
 }
 
-export default async function CompanyProfilePage({ params }: { params: Promise<{ name: string }> }) {
-    const { name: encodedName } = await params;
-    const rawName = decodeURIComponent(encodedName);
-    const slug = slugify(rawName);
+export default async function CompanyProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+    const { slug: rawSlugParam } = await params;
+    const rawSlug = decodeURIComponent(rawSlugParam);
+    const properSlug = slugify(rawSlug);
 
-    if (encodedName !== slug) {
-        logRouteResult('/companies/[name]', '308');
-        permanentRedirect(`/companies/${slug}`);
+    if (rawSlug !== properSlug) {
+        logRouteResult('/companies/[slug]', '308');
+        permanentRedirect(`/companies/${properSlug}`);
     }
 
     const { fetchCompanyShard, fetchCompaniesMetadata } = await import('@/lib/api/cdnFeed');
@@ -96,21 +90,21 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     const companyDirectory = await fetchCompaniesMetadata(true);
     if (companyDirectory && companyDirectory.length > 0) {
         const knownSlugs = new Set(
-            (companyDirectory as unknown as { name: string }[])
-                .map(c => slugify(c?.name || ''))
+            companyDirectory
+                .map(c => c.slug || slugify(c.name || ''))
                 .filter(Boolean)
         );
-        if (!knownSlugs.has(slug)) {
-            logRouteResult('/companies/[name]', '404');
+        if (!knownSlugs.has(properSlug)) {
+            logRouteResult('/companies/[slug]', '404');
             notFound();
         }
     }
 
-    const feed = await fetchCompanyShard(slug, undefined, true);
+    const feed = await fetchCompanyShard(properSlug, undefined, true);
     const companyJobs = feed?.opportunities || [];
 
-    const companyName = companyJobs[0]?.company ||
-        slug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const companyName = (feed as any)?.company || companyJobs[0]?.company ||
+        properSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     const allSkills = Array.from(new Set(companyJobs.flatMap(j => j.requiredSkills || []))).filter(Boolean);
     const allLocations = Array.from(new Set(companyJobs.flatMap(j => j.locations || []))).filter(Boolean);
@@ -122,11 +116,11 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         roles: Array.from(new Set(companyJobs.map(j => j.jobFunction || j.title))).filter(Boolean),
     };
 
-    const companyDescriptionHtml = getCompanyDescription(slug, companyName, stats);
+    const companyDescriptionHtml = getCompanyDescription(properSlug, companyName, stats);
 
     // ── Empty state ───────────────────────────────────────────────────────────
     if (companyJobs.length === 0) {
-        logRouteResult('/companies/[name]', '200');
+        logRouteResult('/companies/[slug]', '200');
         return (
             <div className="min-h-screen bg-background pb-20">
                 <main className="max-w-7xl mx-auto px-4 md:px-6 py-16 space-y-8">
@@ -150,7 +144,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
 
     const firstJob = companyJobs[0];
 
-    logRouteResult('/companies/[name]', '200');
+    logRouteResult('/companies/[slug]', '200');
 
     return (
         <div className="min-h-screen bg-background pb-20">

@@ -19,6 +19,17 @@ export function LandingStats({ initialLiveCount, initialCompaniesCount }: Landin
         // Capture initial values so the catch fallback doesn't close over state
         const initialLive = liveCount;
         const initialCompanies = companiesCount;
+
+        const isLocal = typeof window !== 'undefined' && 
+            (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+        if (isLocal) {
+            // Skip live fetch on localhost to prevent CORS/offline console errors in dev
+            if (!initialLive || initialLive === 0) setLiveCount(207);
+            if (!initialCompanies || initialCompanies === 0) setCompaniesCount(166);
+            return;
+        }
+
         // Fetch fresh stats from R2/CDN stats.json (lightweight, ~100 bytes)
         fetch(`${CDN_URL}/stats.json`)
             .then(res => res.json())

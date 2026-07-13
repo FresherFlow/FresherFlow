@@ -4,7 +4,7 @@ import { cache } from 'react';
 import { getOpportunityPath } from '@/features/opportunities/domain/opportunityPath';
 import { parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
 import { getDriveDates, isCampusDriveOpportunity } from '@/lib/utils/driveTimeline';
-import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 
 
 export interface ExtendedOpportunity extends Opportunity {
@@ -203,8 +203,7 @@ export async function generateOpportunityMetadata(opportunity: ExtendedOpportuni
     // Use the pre-generated static OG image from R2 (generated at publish time).
     // This avoids Vercel running opengraph-image.tsx on every bot crawl.
     // Falls back to the dynamic edge route for jobs not yet processed.
-    const r2CdnBase = process.env.NEXT_PUBLIC_CDN_URL || 'https://cdn.fresherflow.in';
-    const staticOgUrl = `${r2CdnBase}/og/${opportunity.id}.png`;
+    const staticOgUrl = `${CDN_URL}/og/${opportunity.id}.png`;
 
     return {
         title: seoTitle,
@@ -356,7 +355,7 @@ export const generateOpportunityJsonLd = (opportunity: Opportunity) => {
 };
 
 export const generateOpportunityBreadcrumbsJsonLd = (opportunity: Opportunity) => {
-    const base = (SITE_URL || 'https://fresherflow.in').replace(/\/+$/, '');
+    const base = SITE_URL.replace(/\/+$/, '');
     const typeLabel = opportunity.type === 'INTERNSHIP' ? 'Internships' : opportunity.type === 'WALKIN' ? 'Walk-ins' : 'Jobs';
     const typePath = opportunity.type === 'INTERNSHIP' ? '/internships' : opportunity.type === 'WALKIN' ? '/walk-ins' : '/jobs';
     

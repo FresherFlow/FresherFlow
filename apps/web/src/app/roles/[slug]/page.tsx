@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
-import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -52,10 +52,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const title = `${roleInfo.label} Jobs for Freshers 2026`;
     const description = `Explore verified off-campus job openings, entry-level vacancies, and internships for ${roleInfo.label}s. Direct apply links and zero spam.`;
-    const base = (SITE_URL || 'https://fresherflow.in').replace(/\/+$/, '');
+    const base = SITE_URL.replace(/\/+$/, '');
     const { slugify } = await import('@fresherflow/utils');
     const slugNormalized = slugify(decodeURIComponent(slug));
-    const ogImageUrl = `https://cdn.fresherflow.in/og/roles/${slugNormalized}.png`;
+    const ogImageUrl = `${CDN_URL}/og/roles/${slugNormalized}.png`;
 
     return {
         title,

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
-import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -32,8 +32,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
     const title = `${year} Batch Jobs & Internships for Freshers`;
     const description = `Explore manually verified off-campus jobs and internships open to the ${year} graduation batch. Direct official apply links with no fake listings.`;
-    const base = (SITE_URL || 'https://fresherflow.in').replace(/\/+$/, '');
-    const ogImageUrl = `https://cdn.fresherflow.in/og/batch/${year}.png`;
+    const base = SITE_URL.replace(/\/+$/, '');
+    const ogImageUrl = `${CDN_URL}/og/batch/${year}.png`;
 
     return {
         title,

@@ -10,7 +10,7 @@ export const revalidate = false;
 export const metadata: Metadata = {
     title: 'Jobs by Location | FresherFlow',
     description: 'Find verified fresher jobs, internships, and walk-in drives by city. Explore opportunities in Bangalore, Pune, Hyderabad, Chennai, Delhi NCR, and more.',
-    alternates: { canonical: `${SITE_URL || 'https://fresherflow.in'}/location` },
+    alternates: { canonical: `${SITE_URL}/location` },
 };
 
 export default async function LocationIndexPage() {

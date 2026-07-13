@@ -1,3 +1,5 @@
+import DOMPurify from 'isomorphic-dompurify';
+
 interface CompanyStats {
     activeJobsCount: number;
     locations: string[];
@@ -173,16 +175,18 @@ export function getCompanyDescription(slug: string, name: string, stats: Company
     }
 
     // Programmatically generate a rich description (300-500 words) for other companies (Tier B)
+    const cleanName = DOMPurify.sanitize(name, { ALLOWED_TAGS: [] });
+
     const locList = stats.locations.length > 0 
-        ? stats.locations.slice(0, 4).join(', ') 
+        ? DOMPurify.sanitize(stats.locations.slice(0, 4).join(', '), { ALLOWED_TAGS: [] }) 
         : 'various technology hubs across India';
     
     const skillList = stats.skills.length > 0 
-        ? stats.skills.slice(0, 5).join(', ') 
+        ? DOMPurify.sanitize(stats.skills.slice(0, 5).join(', '), { ALLOWED_TAGS: [] }) 
         : 'software engineering and logical reasoning skills';
 
     const roleList = stats.roles.length > 0 
-        ? stats.roles.slice(0, 3).join(', ') 
+        ? DOMPurify.sanitize(stats.roles.slice(0, 3).join(', '), { ALLOWED_TAGS: [] }) 
         : 'Associate, Developer, and Intern';
 
     const countText = stats.activeJobsCount === 1 
@@ -190,16 +194,16 @@ export function getCompanyDescription(slug: string, name: string, stats: Company
         : `${stats.activeJobsCount} active opportunities`;
 
     return `
-        <h3>About ${name}</h3>
-        <p><strong>${name}</strong> is a prominent enterprise actively hiring freshers and entry-level professionals. Currently, ${name} has <strong>${countText}</strong> listed on FresherFlow, catering to candidates looking to kickstart their career in software development, engineering, or technology operations. Key vacancies regularly include roles like <em>${roleList}</em>.</p>
+        <h3>About ${cleanName}</h3>
+        <p><strong>${cleanName}</strong> is a prominent enterprise actively hiring freshers and entry-level professionals. Currently, ${cleanName} has <strong>${countText}</strong> listed on FresherFlow, catering to candidates looking to kickstart their career in software development, engineering, or technology operations. Key vacancies regularly include roles like <em>${roleList}</em>.</p>
         
         <h3>Hiring Locations & Workplace Model</h3>
-        <p>Opportunities at ${name} are distributed across major tech hubs, primarily recruiting candidates for roles in <strong>${locList}</strong>. Depending on the team and business unit requirements, they offer remote, hybrid, or office-based employment models. Freshers are encouraged to refer to individual job listings for specific details regarding training schedules and branch assignments.</p>
+        <p>Opportunities at ${cleanName} are distributed across major tech hubs, primarily recruiting candidates for roles in <strong>${locList}</strong>. Depending on the team and business unit requirements, they offer remote, hybrid, or office-based employment models. Freshers are encouraged to refer to individual job listings for specific details regarding training schedules and branch assignments.</p>
 
         <h3>Expected Skills & Qualifications</h3>
-        <p>Recruiters at ${name} typically look for foundational expertise in <strong>${skillList}</strong>. Candidates are expected to possess strong communication skills, basic programming logic, and problem-solving capabilities. Common eligible degrees include BE, BTech, BCA, MCA, BSc CS, or related disciplines.</p>
+        <p>Recruiters at ${cleanName} typically look for foundational expertise in <strong>${skillList}</strong>. Candidates are expected to possess strong communication skills, basic programming logic, and problem-solving capabilities. Common eligible degrees include BE, BTech, BCA, MCA, BSc CS, or related disciplines.</p>
 
         <h3>Recent Opportunities & Applying</h3>
-        <p>Active postings are verified and open to recent graduation batches, including 2025 and 2026 graduates. Every apply link directs candidates to the official careers site of ${name}. Be sure to verify all requirements, aggregate percentage cutoffs, and bond commitments before submitting your application to ensure maximum success.</p>
+        <p>Active postings are verified and open to recent graduation batches, including 2025 and 2026 graduates. Every apply link directs candidates to the official careers site of ${cleanName}. Be sure to verify all requirements, aggregate percentage cutoffs, and bond commitments before submitting your application to ensure maximum success.</p>
     `;
 }

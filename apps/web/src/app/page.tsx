@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
-import { fetchBootstrapFeed, fetchEducationMetadata, fetchSkillsMetadata, EducationMetadata } from '@/lib/api/cdnFeed';
+import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import dynamic from 'next/dynamic';
-const EligibilityMatcher = dynamic(() => import('@/features/landing/EligibilityMatcher').then(m => m.EligibilityMatcher));
 import { HeroSection } from '@/features/landing/HeroSection';
 const CorporateCollections = dynamic(() => import('@/features/landing/CorporateCollections').then(m => m.CorporateCollections));
 const ExamCategories = dynamic(() => import('@/features/landing/ExamCategories').then(m => m.ExamCategories));
@@ -51,29 +50,21 @@ export default async function LandingPage() {
     // causes a "circling" hang — we render with defaults instead.
     let liveCount = 207;
     let opportunities: Opportunity[] = [];
-    let educationMetadata: EducationMetadata | null = null;
-    let skillsMetadata: string[] | null = null;
 
     try {
-        const dataPromise = Promise.all([
-            fetchBootstrapFeed(),
-            fetchEducationMetadata(),
-            fetchSkillsMetadata(),
-        ]);
+        const dataPromise = fetchBootstrapFeed();
 
         const isBuild = process.env.NEXT_PHASE === 'phase-production-build';
         const timeoutMs = isBuild ? 15000 : 500;
-        const timeoutPromise = new Promise<[null, null, null]>((resolve) =>
-            setTimeout(() => resolve([null, null, null]), timeoutMs)
+        const timeoutPromise = new Promise<any>((resolve) =>
+            setTimeout(() => resolve(null), timeoutMs)
         );
 
-        const [resolvedFeed, resolvedEdu, resolvedSkills] = await Promise.race([dataPromise, timeoutPromise]);
+        const resolvedFeed = await Promise.race([dataPromise, timeoutPromise]);
         if (resolvedFeed) {
             opportunities = resolvedFeed.opportunities || [];
             liveCount = resolvedFeed.count || opportunities.length || 207;
         }
-        educationMetadata = resolvedEdu;
-        skillsMetadata = resolvedSkills;
     } catch (err) {
         console.error('[Landing] Critical data resolution failure:', err);
     }
@@ -100,26 +91,7 @@ export default async function LandingPage() {
                 <main className="flex-1 flex flex-col relative z-10">
                     <HeroSection liveCount={liveCount} opportunities={opportunities} />
 
-                    {/* Eligibility Matcher Sandbox */}
-                    {opportunities.length > 0 && (
-                        <section className="hidden md:block py-10 md:py-14 px-6 border-t border-border/40 bg-card/20">
-                            <div className="max-w-6xl mx-auto space-y-10">
-                                <div className="max-w-2xl mx-auto text-center space-y-3">
-                                    <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight">
-                                        Check eligibility instantly.
-                                    </h2>
-                                    <p className="text-sm md:text-base text-muted-foreground">
-                                        Stop reading endless text blocks to check if your graduation year or degree qualifies. Instantly check if you are eligible based on your batch, degree, and skills.
-                                    </p>
-                                </div>
-                                <EligibilityMatcher
-                                    opportunities={opportunities}
-                                    educationMetadata={educationMetadata || undefined}
-                                    skillsMetadata={skillsMetadata || undefined}
-                                />
-                            </div>
-                        </section>
-                    )}
+
 
                     <RecentOpportunities opportunities={opportunities} />
                     <CorporateCollections />
