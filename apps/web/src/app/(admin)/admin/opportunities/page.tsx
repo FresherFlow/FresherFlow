@@ -6,7 +6,6 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { AdminOpportunitiesSkeleton } from '@/ui/Skeleton';
-import { getPublicOpportunityUrl } from '@/features/admin/opportunities/listUtils';
 
 // Hooks
 import { useAdminOpportunities } from './hooks/useAdminOpportunities';
@@ -127,7 +126,6 @@ function OpportunitiesListPage() {
                             handleRejectDraft={handleRejectDraft}
                             handleRestore={handleRestore}
                             copySocialCaption={handleCopySocialCaption}
-                            getPublicOpportunityUrl={getPublicOpportunityUrl}
                             onPreview={setPreviewOppId}
                             page={page}
                             pageSize={pageSize}
@@ -149,7 +147,6 @@ function OpportunitiesListPage() {
                             handleRejectDraft={handleRejectDraft}
                             handleRestore={handleRestore}
                             copySocialCaption={handleCopySocialCaption}
-                            getPublicOpportunityUrl={getPublicOpportunityUrl}
                             onPreview={setPreviewOppId}
                             page={page}
                             pageSize={pageSize}

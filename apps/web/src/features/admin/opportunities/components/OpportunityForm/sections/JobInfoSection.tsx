@@ -1,4 +1,5 @@
 import { BriefcaseIcon } from '@heroicons/react/24/outline';
+import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import { SmartInput } from '@/features/admin/ui/SmartInput';
 import { SmartTextarea } from '@/features/admin/ui/SmartTextarea';
 
@@ -82,7 +83,7 @@ export function JobInfoSection({
                     value={companyLogoUrl}
                     type="url"
                     onChange={(e) => setCompanyLogoUrl(e.target.value)}
-                    placeholder="e.g. https://cdn.fresherflow.in/logos/rrb.png"
+                    placeholder={`e.g. ${CDN_URL}/logos/rrb.png`}
                 />
                 <SmartInput
                     label="Custom SEO Slug"

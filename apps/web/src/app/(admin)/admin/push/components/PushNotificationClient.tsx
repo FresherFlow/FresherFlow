@@ -6,6 +6,7 @@ import { adminApi } from '@/lib/api/admin';
 import { toast } from 'react-hot-toast';
 import { PaperAirplaneIcon, DevicePhoneMobileIcon } from '@heroicons/react/24/solid';
 import { apiClient } from '@/lib/api/_core';
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export default function PushNotificationClient() {
     const searchParams = useSearchParams();
@@ -124,7 +125,7 @@ export default function PushNotificationClient() {
                         value={url} 
                         onChange={(e) => setUrl(e.target.value)}
                         className="w-full px-4 py-2.5 bg-background border border-input rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary transition-colors text-foreground"
-                        placeholder="e.g. fresherflow://job/123 or https://fresherflow.in/app"
+                        placeholder={`e.g. fresherflow://job/123 or ${new URL(SITE_URL).hostname}/app`}
                     />
                     <p className="text-xs text-muted-foreground mt-1.5">
                         If provided, tapping the notification will open this URL.

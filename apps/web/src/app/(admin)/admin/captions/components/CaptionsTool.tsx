@@ -35,6 +35,7 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import { useTheme } from '@/lib/providers/ThemeContext';
 import { ThemeToggle } from '@repo/ui/ThemeToggle';
 import { capitalizeSkill } from '@/features/opportunities/domain/opportunityDisplay';
+import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
 export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean }) {
     const { theme, toggleTheme } = useTheme();
@@ -180,9 +181,9 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
 📍 Location: ${locations}${tgSkills}${tgSalary}
 
 ⭕️ Apply Now:
-https://fresherflow.in/${opp.slug}
+${SITE_URL}/${opp.slug}
 
-📱 More jobs: fresherflow.in/app`;
+📱 More jobs: ${SITE_URL.replace(/^https?:\/\//, '')}/app`;
         }
 
         if (platform === 'twitter') {
@@ -195,7 +196,7 @@ ${twBatch}
 📍 ${locations}
 
 Apply 👇
-https://fresherflow.in/${opp.slug}
+${SITE_URL}/${opp.slug}
 
 ${twHashtags}`;
         }
@@ -213,9 +214,9 @@ ${twHashtags}`;
 📍 Location: ${locations}${liSkills}${liSalary}
 
 Apply:
-https://fresherflow.in/${opp.slug}
+${SITE_URL}/${opp.slug}
 
-📱 More jobs: fresherflow.in/app
+📱 More jobs: ${SITE_URL.replace(/^https?:\/\//, '')}/app
 
 ${liHashtags}`;
         }
@@ -232,9 +233,9 @@ ${liHashtags}`;
 > 📍 *Location:* ${locations}${waSkills}${waSalary}
 
 ⭕️ *Apply Now:*
-https://fresherflow.in/${opp.slug}
+${SITE_URL}/${opp.slug}
 
-📱 *More jobs on FresherFlow:* fresherflow.in/app`;
+📱 *More jobs on FresherFlow:* ${SITE_URL.replace(/^https?:\/\//, '')}/app`;
     };
 
     const formatBulkCaption = () => {
@@ -245,9 +246,9 @@ https://fresherflow.in/${opp.slug}
             let body = `🚨 *Today's Job Updates*\n\n`;
             selectedOpps.forEach((opp, index) => {
                 const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 https://fresherflow.in/${opp.slug}\n\n`;
+                body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 ${SITE_URL}/${opp.slug}\n\n`;
             });
-            body += `📱 *More jobs:* fresherflow.in/app`;
+            body += `📱 *More jobs:* ${SITE_URL.replace(/^https?:\/\//, '')}/app`;
             return body;
         }
 
@@ -255,9 +256,9 @@ https://fresherflow.in/${opp.slug}
             let body = `🚨 Today's Job Updates\n\n`;
             selectedOpps.forEach((opp, index) => {
                 const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 https://fresherflow.in/${opp.slug}\n\n`;
+                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 ${SITE_URL}/${opp.slug}\n\n`;
             });
-            body += `📱 More jobs: fresherflow.in/app`;
+            body += `📱 More jobs: ${SITE_URL.replace(/^https?:\/\//, '')}/app`;
             return body;
         }
 
@@ -440,7 +441,7 @@ https://fresherflow.in/${opp.slug}
                                                     const pushLocations = opp.locations && opp.locations.length > 0 ? opp.locations.join(', ') : 'India';
                                                     const pushDegrees = getDegreesText(opp);
                                                     const pushMessage = `Location: ${pushLocations} | Eligibility: ${pushDegrees}. Tap to apply.`;
-                                                    const pushUrl = `https://fresherflow.in/${opp.slug || opp.id}`;
+                                                    const pushUrl = `${SITE_URL}/${opp.slug || opp.id}`;
                                                     const pushQuery = `?title=${encodeURIComponent(pushTitle)}&message=${encodeURIComponent(pushMessage)}&url=${encodeURIComponent(pushUrl)}`;
 
                                                     return (
@@ -501,7 +502,7 @@ https://fresherflow.in/${opp.slug}
                                                                         <button onClick={(e) => { e.stopPropagation(); copyToClipboard(formatSingleCaption(opp, 'linkedin'), `li_${opp.id}`); }} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Copy LinkedIn Caption">
                                                                             {copiedStates[`li_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkedInBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                         </button>
-                                                                        <button onClick={(e) => { e.stopPropagation(); copyToClipboard(`https://fresherflow.in/${opp.slug}`, `link_${opp.id}`); }} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Copy Apply Link">
+                                                                        <button onClick={(e) => { e.stopPropagation(); copyToClipboard(`${SITE_URL}/${opp.slug}`, `link_${opp.id}`); }} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Copy Apply Link">
                                                                             {copiedStates[`link_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                         </button>
                                                                         {isAdmin && (

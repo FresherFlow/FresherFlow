@@ -27,7 +27,7 @@ export const getPublicOpportunityUrl = (opp: { id: string; slug?: string | null;
         || SITE_URL;
     
     const origin = /localhost|127\.0\.0\.1/i.test(configuredOrigin)
-        ? SITE_URL || dynamicOrigin || 'http://localhost:3000'
+        ? SITE_URL || dynamicOrigin
         : configuredOrigin;
     
     // Ensure origin does not end with /

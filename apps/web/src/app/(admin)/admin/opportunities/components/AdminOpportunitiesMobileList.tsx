@@ -34,7 +34,7 @@ interface AdminOpportunitiesMobileListProps {
     handleRejectDraft: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
     copySocialCaption: (opp: SocialOpportunity) => void;
-    getPublicOpportunityUrl: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
+
     onPreview: (id: string) => void;
     page: number;
     pageSize: number;
@@ -54,7 +54,7 @@ export const AdminOpportunitiesMobileList = ({
     handleRejectDraft,
     handleRestore,
     copySocialCaption,
-    getPublicOpportunityUrl,
+
     onPreview,
     page,
     pageSize,

@@ -15,6 +15,7 @@ import { database } from '@/lib/api/firebase';
 import { ref, onValue } from 'firebase/database';
 import { useFirebaseAdmin } from '@/lib/hooks/useFirebaseAdmin';
 import { adminApi } from '@/lib/api/admin';
+import { CDN_URL } from '@/lib/utils/runtimeConfig';
 
 
 interface DashboardState {
@@ -371,7 +372,7 @@ export default function AdminDashboardHome() {
 
                     <div className="border-t border-border pt-4 mt-6 text-[11px] text-muted-foreground space-y-1">
                         <p className="font-bold uppercase tracking-wider text-[9px] mb-2 text-foreground">CDN Distribution Info</p>
-                        <div className="flex justify-between"><span>Worker Host</span><span className="font-semibold text-foreground">cdn.fresherflow.in</span></div>
+                        <div className="flex justify-between"><span>Worker Host</span><span className="font-semibold text-foreground">{new URL(CDN_URL || 'https://cdn.fresherflow.in').hostname}</span></div>
                         <div className="flex justify-between"><span>Cache Control</span><span className="font-semibold text-foreground">immutable (v-hash)</span></div>
                         <div className="flex justify-between"><span>CDN Gateway</span><span className="font-semibold text-foreground">Cloudflare Edge</span></div>
                     </div>

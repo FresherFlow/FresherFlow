@@ -17,10 +17,7 @@ import {
     ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
 import {
-    formatLastVerified,
-    formatLinkHealth,
     getStatusLabel,
-    linkHealthClass,
     getStatusBadgeClass
 } from '@/features/admin/opportunities/listUtils';
 
@@ -37,7 +34,7 @@ interface AdminOpportunitiesTableProps {
     handleRejectDraft: (id: string, title: string) => void;
     handleRestore: (id: string) => void;
     copySocialCaption: (opp: SocialOpportunity) => void;
-    getPublicOpportunityUrl: (opp: { id: string; slug?: string | null; type: Opportunity['type'] }) => string;
+
     onPreview: (id: string) => void;
     page: number;
     pageSize: number;
@@ -59,7 +56,7 @@ export const AdminOpportunitiesTable = ({
     handleRejectDraft,
     handleRestore,
     copySocialCaption,
-    getPublicOpportunityUrl,
+
     onPreview,
     page,
     pageSize,
