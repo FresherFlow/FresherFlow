@@ -72,19 +72,16 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         await page.waitForFunction(() => {
             return document.body && document.body.innerText.trim().length > 800;
         }, { timeout: 10000 }).catch(() => {});
-        const bodyText = await page.evaluate(() => {
-            let text = document.body?.innerText || '';
-            document.querySelectorAll('iframe').forEach(f => {
-                try { 
-                    if (f.contentDocument?.body?.innerText) {
-                        text += '\n' + f.contentDocument.body.innerText;
-                    }
-                } catch(e){}
-            });
-            return text;
-        }).catch(async () => {
-            return await page.locator('body').innerText({ timeout: 500 }).catch(() => "");
-        });
+        // Extract text using Playwright's native locator, which automatically pierces open Shadow DOMs!
+        let bodyText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => "");
+        
+        // Also extract text from any iframes (Playwright handles cross-origin iframes natively)
+        for (const frame of page.frames()) {
+            if (frame !== page.mainFrame()) {
+                const frameText = await frame.locator('body').innerText({ timeout: 1000 }).catch(() => "");
+                if (frameText) bodyText += '\n' + frameText;
+            }
+        }
         if (!bodyText || bodyText.trim().length < 100) {
             if (loadFailed) {
                 console.log(`  -> Navigation failed and page body is empty/too short. Marking as failed.`);

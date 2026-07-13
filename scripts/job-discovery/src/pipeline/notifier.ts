@@ -64,7 +64,7 @@ export async function writeGitHubSummary(state: DiscoveryState) {
     // ── GitHub Actions step summary ───────────────────────────────────────────
     if (process.env.GITHUB_STEP_SUMMARY) {
         let summary = `## Job Discovery Bot Results\n\n`;
-        summary += `Discovered **${state.newJobsFound.length}** new jobs and saved them to \`discovered_jobs.json\`.\n\n`;
+        summary += `Discovered **${state.newJobsFound.length}** new jobs and uploaded them to the \`R2 Bronze Data Lake\`.\n\n`;
         
         summary += `- **ATS Jobs**: ${atsTotal}\n- **Aggregator Jobs**: ${aggTotal}\n\n`;
         

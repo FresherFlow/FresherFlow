@@ -127,6 +127,8 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
             for (const url of urls) {
                 try {
                     await fetch(`${url}/api/revalidate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
                     });
                 } catch {

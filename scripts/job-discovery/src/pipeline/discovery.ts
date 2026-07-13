@@ -3,7 +3,7 @@ import { ATS_CDN_BASE, ATS_PROVIDERS, TARGET_SITES } from '../config.js';
 import { normalizeUrl, sanitizeAtsUrl } from '../utils/url.js';
 import { isLocationIndiaOrRemote } from '../filters/ats-filters.js';
 import { scoreJobDescription } from '../filters/scorer.js';
-import { hasFresherKeyword, isActualJob } from '../filters/text-filters.js';
+import { hasFresherKeyword, isActualJob, isFresherJob, isSeniorJob } from '../filters/text-filters.js';
 import { logDecision } from '../utils/logger.js';
 import { findActualApplyLink } from '../core/extractor.js';
 import { extractAtsBoard } from '../core/ats-detector.js';
@@ -124,11 +124,12 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
             }
         });
 
-        const page = await context.newPage();
-        try {
-            while (activeSites.length > 0) {
-                const site = activeSites.shift();
-                if (!site) continue;
+        while (activeSites.length > 0) {
+            const site = activeSites.shift();
+            if (!site) continue;
+            
+            const page = await context.newPage();
+            try {
                 console.log(`\n--- Scraping ${site.name} ---`);
                 if (!state.visited[site.name]) state.visited[site.name] = [];
 
@@ -179,7 +180,8 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                 }
 
                 const uniqueJobLinks = [...new Set(jobLinks)];
-                const unvisitedLinks = uniqueJobLinks.filter(link => !state.visited[site.name].includes(link));
+                const visitedSet = new Set(state.visited[site.name]);
+                const unvisitedLinks = uniqueJobLinks.filter(link => !visitedSet.has(link));
                 console.log(`Found ${unvisitedLinks.length} new unvisited links for ${site.name}.`);
 
                 for (const jobLink of unvisitedLinks.slice(0, 20)) {
@@ -197,20 +199,31 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     const scoreResult = scoreJobDescription(aggregatorTitle, "");
                     logDecision(scoreResult, jobLink, 'Aggregator');
 
-                    let isAggregatorReview = false;
+                    let isAggregatorReview = true;
 
                     if (scoreResult.verdict === 'REJECT') {
-                        console.log(`  -> Skipping: Rejected by scorer (Score: ${scoreResult.score})`);
+                        console.log(`  -> Skipping: Rejected by NLP scorer`);
                         continue;
-                    } else if (scoreResult.verdict === 'UNKNOWN' || scoreResult.verdict === 'MEDIUM') {
-                        console.log(`  -> ${scoreResult.verdict} job. Skipping review flag.`);
+                    }
+
+                    // Apply the strict regex logic that was previously in verify-reviews.ts
+                    if (isSeniorJob(aggregatorTitle)) {
+                        console.log(`  -> Skipping: Confirmed senior job (Regex pattern found in title)`);
+                        continue;
+                    }
+
+                    if (isFresherJob(aggregatorTitle)) {
+                        console.log(`  -> Title contains strong fresher regex patterns. Skipping review flag.`);
                         isAggregatorReview = false;
+                    } else if (scoreResult.verdict === 'UNKNOWN' || scoreResult.verdict === 'MEDIUM') {
+                        // Keep review required if we aren't 100% sure
+                        isAggregatorReview = true;
                     }
 
                     if (!isActualJob(aggregatorTitle)) {
                         if (hasFresherKeyword(aggregatorTitle)) {
-                            console.log(`  -> Borderline job type. Skipping review flag.`);
-                            isAggregatorReview = false;
+                            console.log(`  -> Borderline non-job type (Syllabus/PDF). Keeping review flag TRUE.`);
+                            isAggregatorReview = true;
                         } else {
                             console.log(`  -> Skipping: Not an actual job post.`);
                             continue;
@@ -280,11 +293,11 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         isAggregatorReview
                     });
                 }
+            } finally {
+                await page.close();
             }
-        } finally {
-            await page.close();
-            await context.close();
         }
+        await context.close();
     };
 
     await Promise.all(Array.from({ length: SCRAPER_CONCURRENCY }, () => scraperWorker()));

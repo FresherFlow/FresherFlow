@@ -6,6 +6,7 @@ import { CDN_URL } from '../config.js';
 import { uploadJsonToR2, listR2Objects } from '../utils/r2.js';
 import { saveVisited, saveRejectedReasons } from '../utils/storage.js';
 import { parseJobUrl } from '../core/url-parser.js';
+import { withConcurrency } from '../ats/index.js';
 
 export async function persistLocalData(state: DiscoveryState) {
     // Save local state files
@@ -39,17 +40,17 @@ export async function persistLocalData(state: DiscoveryState) {
 }
 
 export async function uploadToDataLake(state: DiscoveryState) {
-    const validJobs = state.newJobsFound.filter(j => !j.reviewRequired);
+    const allJobs = state.newJobsFound;
     const r2Bucket = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
 
     // ── R2 Bronze Data Lake Upload ──────────────────────────────────────────────────
-    if (validJobs.length > 0) {
-        console.log(`\nUploading ${validJobs.length} passed jobs to R2 Bronze Data Lake...`);
+    if (allJobs.length > 0) {
+        console.log(`\nUploading ${allJobs.length} jobs to R2 Bronze Data Lake...`);
         const today = new Date().toISOString().split('T')[0];
         const nowHrMin = new Date().toISOString().split('T')[1].substring(0,5).replace(':','-');
         
         let uploadedCount = 0;
-        for (const job of validJobs) {
+        const uploadTasks = allJobs.map(job => async () => {
             try {
                 let key = '';
                 const parsed = parseJobUrl(job.applyLink);
@@ -81,7 +82,9 @@ export async function uploadToDataLake(state: DiscoveryState) {
             } catch (err) {
                 console.error(`Failed to upload job to R2 Data Lake:`, err);
             }
-        }
+        });
+
+        await withConcurrency(uploadTasks, 10);
         console.log(`Successfully uploaded ${uploadedCount} Micro-JSONs to Bronze Data Lake!`);
     }
 

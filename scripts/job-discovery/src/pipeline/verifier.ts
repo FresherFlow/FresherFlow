@@ -90,10 +90,10 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
                         jobTitle = candidate.aggregatorTitle || "Job Title Unknown";
                     }
 
-                    if (candidate.sourceType === 'ATS' && checkResult.atsText) {
+                    if (checkResult.atsText) {
                         const atsScore = scoreJobDescription(jobTitle, checkResult.atsText);
                         if (atsScore.verdict === 'REJECT') {
-                            console.log(`  -> ❌ Skipping ATS job: Rejected by scorer (Score: ${atsScore.score})`);
+                            console.log(`  -> ❌ Skipping job: Rejected by scorer (Score: ${atsScore.score})`);
                             continue;
                         }
                     }
@@ -135,4 +135,13 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
         }
     };
     await Promise.all(Array.from({ length: VERIFIER_CONCURRENCY }, () => verifierWorker()));
+    
+    const MAX_REJECTED = 50000;
+    const keys = Object.keys(state.rejectedReasons);
+    if (keys.length > MAX_REJECTED) {
+        const keysToDelete = keys.slice(0, keys.length - MAX_REJECTED);
+        for (const k of keysToDelete) {
+            delete state.rejectedReasons[k];
+        }
+    }
 }

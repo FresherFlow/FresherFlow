@@ -38,7 +38,7 @@ export interface AtsRegistry {
 }
 
 // ─── Simple concurrency limiter ───────────────────────────────────────────────
-async function withConcurrency<T>(
+export async function withConcurrency<T>(
     tasks: (() => Promise<T>)[],
     limit: number
 ): Promise<T[]> {

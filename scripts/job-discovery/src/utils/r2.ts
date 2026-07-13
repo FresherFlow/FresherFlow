@@ -96,12 +96,27 @@ export async function listR2Objects(bucketName: string, prefix: string) {
     }
 
     try {
-        const command = new ListObjectsV2Command({
-            Bucket: bucketName,
-            Prefix: prefix,
-        });
-        const response = await s3Client.send(command);
-        return response.Contents || [];
+        let isTruncated = true;
+        let continuationToken: string | undefined = undefined;
+        const allContents: any[] = [];
+
+        while (isTruncated) {
+            const command: any = new ListObjectsV2Command({
+                Bucket: bucketName,
+                Prefix: prefix,
+                ContinuationToken: continuationToken,
+            });
+            const response: any = await s3Client.send(command);
+            
+            if (response.Contents) {
+                allContents.push(...response.Contents);
+            }
+            
+            isTruncated = response.IsTruncated || false;
+            continuationToken = response.NextContinuationToken;
+        }
+
+        return allContents;
     } catch (error) {
         console.error('Failed to list R2 objects:', error);
         return [];

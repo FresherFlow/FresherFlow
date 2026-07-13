@@ -133,16 +133,21 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
 
         if (clickTargets.length > 0) {
             const [newPage] = await Promise.all([
-                context.waitForEvent('page').catch(() => null),
+                context.waitForEvent('page', { timeout: 5000 }).catch(() => null),
                 clickTargets[0].click({ timeout: 5000 }).catch(() => null)
             ]);
 
             if (newPage) {
-                await newPage.waitForLoadState();
-                const url = newPage.url();
-                await newPage.close();
-                if (isValidApplyLink(url, currentDomain)) {
-                    return url;
+                try {
+                    await newPage.waitForLoadState('load', { timeout: 10000 });
+                    const url = newPage.url();
+                    if (isValidApplyLink(url, currentDomain)) {
+                        return url;
+                    }
+                } catch (e) {
+                    // Timeout or page crash
+                } finally {
+                    await newPage.close();
                 }
             } else {
                 await page.waitForTimeout(3000);
