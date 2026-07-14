@@ -5,18 +5,23 @@ const endpoint = process.env.R2_ENDPOINT;
 const accessKeyId = process.env.R2_ACCESS_KEY_ID;
 const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
 
+let _s3Client: S3Client | null = null;
+
 function getS3Client() {
     if (!endpoint || !accessKeyId || !secretAccessKey) {
         return null;
     }
-    return new S3Client({
-        region: 'auto',
-        endpoint,
-        credentials: {
-            accessKeyId,
-            secretAccessKey,
-        },
-    });
+    if (!_s3Client) {
+        _s3Client = new S3Client({
+            region: 'auto',
+            endpoint,
+            credentials: {
+                accessKeyId,
+                secretAccessKey,
+            },
+        });
+    }
+    return _s3Client;
 }
 
 export async function uploadToR2(filePath: string, bucketName: string, destinationKey: string) {
@@ -44,27 +49,36 @@ export async function uploadToR2(filePath: string, bucketName: string, destinati
     }
 }
 
-export async function uploadJsonToR2(jsonObject: any, bucketName: string, destinationKey: string) {
+export async function uploadJsonToR2(jsonObject: any, bucketName: string, destinationKey: string): Promise<boolean> {
     const s3Client = getS3Client();
     if (!s3Client) {
         console.warn('R2 credentials not fully configured. Skipping JSON upload.');
-        return;
+        return false;
     }
 
-    try {
-        const body = typeof jsonObject === 'string' ? jsonObject : JSON.stringify(jsonObject, null, 2);
-        const command = new PutObjectCommand({
-            Bucket: bucketName,
-            Key: destinationKey,
-            Body: body,
-            ContentType: 'application/json',
-            CacheControl: 'public, max-age=3600',
-        });
-        await s3Client.send(command);
-        console.log(`Successfully uploaded JSON to R2 bucket ${bucketName} at key ${destinationKey}`);
-    } catch (error) {
-        console.error('Failed to upload JSON to R2:', error);
+    const body = typeof jsonObject === 'string' ? jsonObject : JSON.stringify(jsonObject, null, 2);
+    const command = new PutObjectCommand({
+        Bucket: bucketName,
+        Key: destinationKey,
+        Body: body,
+        ContentType: 'application/json',
+        CacheControl: 'public, max-age=3600',
+    });
+
+    let attempts = 0;
+    while (attempts < 3) {
+        try {
+            await s3Client.send(command);
+            console.log(`Successfully uploaded JSON to R2 bucket ${bucketName} at key ${destinationKey}`);
+            return true;
+        } catch (error) {
+            attempts++;
+            console.error(`Failed to upload JSON to R2 (Attempt ${attempts}/3):`, error);
+            if (attempts === 3) return false;
+            await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
+        }
     }
+    return false;
 }
 
 export async function downloadJsonFromR2(bucketName: string, key: string): Promise<any | null> {

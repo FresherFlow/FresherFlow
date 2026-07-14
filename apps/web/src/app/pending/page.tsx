@@ -4,6 +4,10 @@ import { Metadata } from 'next';
 export const metadata: Metadata = {
     title: 'Pending Jobs - FresherFlow',
     description: 'Verify and view pending jobs',
+    robots: {
+        index: false,
+        follow: false,
+    },
 };
 
 export const dynamic = 'force-dynamic';

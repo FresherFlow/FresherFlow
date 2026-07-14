@@ -5,6 +5,10 @@ import { S3Client, ListObjectsV2Command, GetObjectCommand } from '@aws-sdk/clien
 export const metadata: Metadata = {
     title: 'Pending Jobs - FresherFlow Admin',
     description: 'Verify and view pending jobs',
+    robots: {
+        index: false,
+        follow: false,
+    },
 };
 
 export const dynamic = 'force-dynamic';
@@ -103,7 +107,7 @@ export default async function PendingJobsPage() {
     }
 
     return (
-        <div className="flex-1 w-full p-2 sm:p-4 lg:p-6 max-w-[1600px] mx-auto flex flex-col h-[calc(100vh)] lg:h-screen min-h-0 overflow-hidden">
+        <div className="flex-1 w-full p-0 sm:p-4 lg:p-6 max-w-[1600px] mx-auto flex flex-col h-[calc(100vh)] lg:h-screen min-h-0 overflow-hidden">
             <PendingTool initialJobs={jobs} />
         </div>
     );

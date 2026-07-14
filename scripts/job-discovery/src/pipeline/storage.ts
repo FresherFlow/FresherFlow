@@ -77,15 +77,39 @@ export async function uploadToDataLake(state: DiscoveryState) {
                     key = `jobs/aggregators/${today}/${nowHrMin}/${uniqueId}.json`;
                 }
                 
-                await uploadJsonToR2(payloadToUpload, r2Bucket, key);
-                uploadedCount++;
+                const success = await uploadJsonToR2(payloadToUpload, r2Bucket, key);
+                if (success) uploadedCount++;
             } catch (err) {
                 console.error(`Failed to upload job to R2 Data Lake:`, err);
             }
         });
 
-        await withConcurrency(uploadTasks, 10);
+        await withConcurrency(uploadTasks, 5);
         console.log(`Successfully uploaded ${uploadedCount} Micro-JSONs to Bronze Data Lake!`);
+
+        // ── Backup Master File ──────────────────────────────────────────────────
+        try {
+            const atsJobs = allJobs.filter(j => j.sourceType === 'ATS');
+            const aggJobs = allJobs.filter(j => j.sourceType === 'AGGREGATOR');
+            const masterFile = {
+                version: 1,
+                date: today,
+                time: nowHrMin,
+                totalJobs: allJobs.length,
+                stats: { ats: atsJobs.length, aggregators: aggJobs.length },
+                jobs: {
+                    ats: atsJobs,
+                    aggregators: aggJobs
+                }
+            };
+            const masterKey = `jobs/backups/${today}/${nowHrMin}_master_discovered_jobs.json`;
+            const masterSuccess = await uploadJsonToR2(masterFile, r2Bucket, masterKey);
+            if (masterSuccess) {
+                console.log(`Successfully uploaded master backup file containing all ${allJobs.length} jobs to ${masterKey}`);
+            }
+        } catch (err) {
+            console.error('Failed to upload master backup file', err);
+        }
     }
 
     // ── Update ATS Boards Registry in R2 ─────────────────────────────────────

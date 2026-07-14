@@ -183,9 +183,13 @@ router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response,
                 });
 
                 if (!response.ok) {
+                    const errorText = await response.text().catch(() => 'No response body');
+                    logger.error(`[Revalidate] Failed for ${url}/api/revalidate - Status: ${response.status} - Body: ${errorText}`);
                     hasError = true;
                 }
-            } catch {
+            } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : String(err);
+                logger.error(`[Revalidate] Network/Fetch error for ${url}/api/revalidate: ${message}`);
                 hasError = true;
             }
         }
