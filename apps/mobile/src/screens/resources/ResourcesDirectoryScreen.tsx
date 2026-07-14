@@ -8,10 +8,10 @@ import {
   TextInput,
   Image,
   StatusBar,
-  FlatList,
   Linking,
   ActivityIndicator,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, Plus, BookOpen, ChevronRight, Building, Award, PlayCircle, FolderOpen, Compass, Globe, Landmark, FileText, Bookmark, ChevronDown, ChevronUp } from 'lucide-react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -372,41 +372,45 @@ export const ResourcesDirectoryScreen: React.FC<Props> = ({ route, navigation })
                       </Text>
                     </View>
 
-                    <FlatList
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      data={companies}
-                      keyExtractor={(item) => item.id}
-                      renderItem={({ item }) => (
-                        <TouchableOpacity
-                          activeOpacity={0.8}
-                          onPress={() => handleGroupPress('COMPANY', item.name, item.logoUrl)}
-                        >
-                          <SurfaceCard style={[styles.companyCard, { borderColor: alpha(currentTheme.colors.border, 0.05), borderWidth: 1 }]}>
-                            <View style={[styles.logoContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
-                              {item.logoUrl ? (
-                                <Image source={{ uri: item.logoUrl }} style={styles.logoImage} />
-                              ) : (
-                                sector === 'GOVERNMENT' ? (
-                                  <Landmark size={24} color={currentTheme.colors.textMuted} strokeWidth={1.5} />
+                    <View style={{ width: '100%', height: 160 }}>
+                      <FlashList
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        data={companies}
+                        keyExtractor={(item) => item.id}
+                        // @ts-expect-error - FlashList typing bug with estimatedItemSize
+                        estimatedItemSize={120}
+                        renderItem={({ item }) => (
+                          <TouchableOpacity
+                            activeOpacity={0.8}
+                            onPress={() => handleGroupPress('COMPANY', item.name, item.logoUrl)}
+                          >
+                            <SurfaceCard style={[styles.companyCard, { borderColor: alpha(currentTheme.colors.border, 0.05), borderWidth: 1 }]}>
+                              <View style={[styles.logoContainer, { backgroundColor: alpha(currentTheme.colors.text, 0.02) }]}>
+                                {item.logoUrl ? (
+                                  <Image source={{ uri: item.logoUrl }} style={styles.logoImage} />
                                 ) : (
-                                  <Building size={24} color={currentTheme.colors.textMuted} strokeWidth={1.5} />
-                                )
-                              )}
-                            </View>
-                            <Text style={[styles.companyName, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                              {item.name}
-                            </Text>
-                            <View style={[styles.guideCountBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
-                              <Text style={[styles.guideCountBadgeText, { color: currentTheme.colors.primary }]}>
-                                {item.count} Guide{item.count !== 1 ? 's' : ''}
+                                  sector === 'GOVERNMENT' ? (
+                                    <Landmark size={24} color={currentTheme.colors.textMuted} strokeWidth={1.5} />
+                                  ) : (
+                                    <Building size={24} color={currentTheme.colors.textMuted} strokeWidth={1.5} />
+                                  )
+                                )}
+                              </View>
+                              <Text style={[styles.companyName, { color: currentTheme.colors.text }]} numberOfLines={1}>
+                                {item.name}
                               </Text>
-                            </View>
-                          </SurfaceCard>
-                        </TouchableOpacity>
-                      )}
-                      contentContainerStyle={{ gap: 12, paddingRight: 24 }}
-                    />
+                              <View style={[styles.guideCountBadge, { backgroundColor: alpha(currentTheme.colors.primary, 0.08) }]}>
+                                <Text style={[styles.guideCountBadgeText, { color: currentTheme.colors.primary }]}>
+                                  {item.count} Guide{item.count !== 1 ? 's' : ''}
+                                </Text>
+                              </View>
+                            </SurfaceCard>
+                          </TouchableOpacity>
+                        )}
+                        contentContainerStyle={{ gap: 12, paddingRight: 24 }}
+                      />
+                    </View>
                   </View>
 
                   {/* Skills directory */}

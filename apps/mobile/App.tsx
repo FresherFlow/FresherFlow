@@ -241,7 +241,7 @@ const AppContent = () => {
         const { isAuthenticated } = useAuthStore.getState();
         if (!isAuthenticated && navigationRef.isReady()) {
           if (__DEV__) { console.log('[FirstRunGate] Onboarding complete. Triggering authentication modal.') }
-          navigationRef.navigate('Auth');
+          navigationRef.navigate('Auth', { isOnboarding: true });
         }
       }}>
         <NavigationContainer 

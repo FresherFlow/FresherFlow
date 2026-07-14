@@ -236,7 +236,6 @@ const TrackerTabContent = memo(({ status, items, renderItem, loading, actionsLen
                     refreshControl={
                         <PremiumRefreshControl refreshing={refreshing} onRefresh={refresh} />
                     }
-                    removeClippedSubviews={Platform.OS === 'android'}
                 />
             )}
         </View>

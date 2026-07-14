@@ -59,11 +59,26 @@ export const ResourceGroupDetailScreen: React.FC<Props> = ({ route, navigation }
     }
   };
 
+  const getDomainInfo = (urlStr: string) => {
+    try {
+      const normalized = urlStr.indexOf('://') !== -1 ? urlStr : `https://${urlStr}`;
+      const parsed = new URL(normalized);
+      return {
+        host: parsed.hostname.toLowerCase(),
+        pathname: parsed.pathname.toLowerCase(),
+        search: parsed.search.toLowerCase()
+      };
+    } catch {
+      return { host: '', pathname: '', search: '' };
+    }
+  };
+
   // Handle URL opening
   const handleOpenLink = async (url: string) => {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      if (url.toLowerCase().includes('youtube.com') || url.toLowerCase().includes('youtu.be')) {
+      const { host } = getDomainInfo(url);
+      if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'youtu.be') {
         // For YouTube, try opening in native app if available
         const supported = await Linking.canOpenURL(url);
         if (supported) {
@@ -80,40 +95,56 @@ export const ResourceGroupDetailScreen: React.FC<Props> = ({ route, navigation }
 
   // Derive colour from URL or Type
   const getColorByUrl = (url: string, type?: string, opacity: number = 1) => {
-    const u = url.toLowerCase();
+    const { host, pathname } = getDomainInfo(url);
+    const hostParts = host.split('.');
     let hex = currentTheme.colors.primary;
-    if (type === 'YOUTUBE' || u.includes('youtube.com') || u.includes('youtu.be')) hex = '#EF4444';
-    else if (type === 'PDF' || u.endsWith('.pdf')) hex = '#EA580C';
-    else if (type === 'ROADMAP' || u.includes('roadmap.sh')) hex = '#3B82F6';
-    else if (
+    if (type === 'YOUTUBE' || host === 'youtube.com' || host === 'www.youtube.com' || host === 'youtu.be') {
+      hex = '#EF4444';
+    } else if (type === 'PDF' || pathname.endsWith('.pdf')) {
+      hex = '#EA580C';
+    } else if (type === 'ROADMAP' || host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) {
+      hex = '#3B82F6';
+    } else if (
       type === 'FOLDER' ||
       type === 'FILE' ||
-      u.includes('drive.google.com') ||
-      u.includes('dropbox.com') ||
-      u.includes('onedrive') ||
-      u.includes('box.com') ||
-      u.includes('sharepoint')
-    ) hex = '#10B981';
-    else hex = '#8B5CF6';
+      host === 'drive.google.com' || host.endsWith('.drive.google.com') ||
+      host === 'dropbox.com' || host.endsWith('.dropbox.com') ||
+      hostParts.includes('onedrive') ||
+      host === 'box.com' || host.endsWith('.box.com') ||
+      hostParts.includes('sharepoint')
+    ) {
+      hex = '#10B981';
+    } else {
+      hex = '#8B5CF6';
+    }
     return alpha(hex, opacity);
   };
 
   const getIconByUrl = (url: string, type?: string, size = 20) => {
-    const u = url.toLowerCase();
+    const { host, pathname, search } = getDomainInfo(url);
+    const hostParts = host.split('.');
     const color = getColorByUrl(url, type, 1);
-    if (type === 'YOUTUBE' || u.includes('youtube.com') || u.includes('youtu.be')) return <PlayCircle size={size} color={color} />;
-    if (type === 'PDF' || u.endsWith('.pdf')) return <FileText size={size} color={color} />;
-    if (type === 'ROADMAP' || u.includes('roadmap.sh')) return <Compass size={size} color={color} />;
+    if (type === 'YOUTUBE' || host === 'youtube.com' || host === 'www.youtube.com' || host === 'youtu.be') {
+      return <PlayCircle size={size} color={color} />;
+    }
+    if (type === 'PDF' || pathname.endsWith('.pdf')) return <FileText size={size} color={color} />;
+    if (type === 'ROADMAP' || host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) {
+      return <Compass size={size} color={color} />;
+    }
     if (type === 'FOLDER') return <FolderOpen size={size} color={color} />;
     if (type === 'FILE') return <FileText size={size} color={color} />;
     if (
-      u.includes('drive.google.com') ||
-      u.includes('dropbox.com') ||
-      u.includes('onedrive') ||
-      u.includes('box.com') ||
-      u.includes('sharepoint')
+      host === 'drive.google.com' || host.endsWith('.drive.google.com') ||
+      host === 'dropbox.com' || host.endsWith('.dropbox.com') ||
+      hostParts.includes('onedrive') ||
+      host === 'box.com' || host.endsWith('.box.com') ||
+      hostParts.includes('sharepoint')
     ) {
-      return (u.includes('folder') || u.includes('folders') || u.includes('id='))
+      const isFolder =
+        pathname.indexOf('folder') !== -1 ||
+        pathname.indexOf('folders') !== -1 ||
+        search.indexOf('id=') !== -1;
+      return isFolder
         ? <FolderOpen size={size} color={color} />
         : <FileText size={size} color={color} />;
     }

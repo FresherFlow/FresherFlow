@@ -274,7 +274,7 @@ const AuthScreen: React.FC<Props & { isOnboarding?: boolean }> = memo(({ route, 
         try {
             await auth().signInAnonymously();
             if (isOnboarding) {
-                navigation.replace('ProfileChooseUsername', { isOnboarding: true });
+                navigation.replace('TaskSetupList');
             } else {
                 if (navigation.canGoBack()) {
                     navigation.goBack();
@@ -294,12 +294,15 @@ const AuthScreen: React.FC<Props & { isOnboarding?: boolean }> = memo(({ route, 
         if (isSyncing) return;
 
         if (isAuthenticated && user && !user.isAnonymous) {
+            if (isOnboarding) {
+                navigation.replace('TaskSetupList');
+                return;
+            }
+
             const hasUsername = Boolean(user.username?.trim());
             if (hasUsername) {
                 // Fully onboarded, close the auth modal and return to previous screen
-                if (isOnboarding) {
-                    navigation.replace('Main'); // Or wherever Onboarding leads to if fully setup
-                } else if (navigation.canGoBack()) {
+                if (navigation.canGoBack()) {
                     navigation.goBack();
                 } else {
                     navigation.replace('Main');
@@ -309,8 +312,8 @@ const AuthScreen: React.FC<Props & { isOnboarding?: boolean }> = memo(({ route, 
                 // to see if we can resolve the user's username before prompting for a new one.
                 if (isHandshaking || user.isOptimistic) return;
 
-                // New user without a handle — redirect to setup
-                navigation.replace('ProfileChooseUsername', isOnboarding ? { isOnboarding: true } : undefined);
+                // New user without a handle
+                navigation.replace('ProfileChooseUsername');
             }
         }
     }, [isAuthenticated, user, skipUsernameSetup, isSyncing, isHandshaking, navigation, isOnboarding]);

@@ -478,7 +478,6 @@ const NotificationsScreen: React.FC<Props> = ({ navigation }) => {
                     <PremiumRefreshControl refreshing={refreshing} onRefresh={refresh} />
                 }
                 showsVerticalScrollIndicator={false}
-                removeClippedSubviews={Platform.OS === 'android'}
             />
         </Screen>
     );

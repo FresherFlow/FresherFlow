@@ -21,7 +21,8 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
 import { useAlertSettings } from '@/hooks/useAlertSettings';
-import { useFeedStore, getLogoCacheKey } from '@/store/useFeedStore';
+import { useFeedStore } from '@/store/useFeedStore';
+import { getLogoCacheKey } from '@/utils/cache/syncModule';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Premium System

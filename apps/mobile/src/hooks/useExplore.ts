@@ -13,7 +13,7 @@ import { useSectorStore } from '@/store/useSectorStore';
 import { useSaved } from '@repo/frontend-core';
 import { getRecentSearchKeywords, saveRecentSearchKeyword } from '@/utils/userBehavior';
 import { getLocalProfile } from '@/utils/cache/localProfile';
-import { calculateMatchScore } from '@/utils/matchScoring';
+import { calculateOpportunityMatch } from '@fresherflow/domain';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
 
@@ -300,7 +300,7 @@ export function useExplore() {
         const scored = items.map(job => {
             let baseScore = 0;
             if (localProfile) {
-                const match = calculateMatchScore(localProfile, job);
+                const match = calculateOpportunityMatch(localProfile, job);
                 baseScore = match.score > 0 ? match.score : 0;
             }
 

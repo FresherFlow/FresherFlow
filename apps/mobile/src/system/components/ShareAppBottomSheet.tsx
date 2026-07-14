@@ -17,8 +17,9 @@ import { alpha } from '@/theme';
 import { RADIUS } from '@/system/constants/dimensions';
 import { useToast } from '@/contexts/ToastContext';
 import { shareToInstalledApp } from '@/utils/shareTargets';
+import { MOBILE_SITE_URL } from '@/utils/runtime';
 
-export const SHARE_APP_MESSAGE = `Join the FresherFlow community! 🚀\n\nFresherFlow is a community-first platform where students and freshers help each other discover verified job opportunities, internships, and referrals. No spam, no fluff — just pure opportunities.\n\nJoin us here:\nhttps://fresherflow.in/app`;
+export const SHARE_APP_MESSAGE = `Join the FresherFlow community! 🚀\n\nFresherFlow is a community-first platform where students and freshers help each other discover verified job opportunities, internships, and referrals. No spam, no fluff — just pure opportunities.\n\nJoin us here:\n${MOBILE_SITE_URL}/app`;
 
 export const ShareAppBottomSheet = forwardRef<BottomSheetModal>((props, ref) => {
     const insets = useSafeAreaInsets();
@@ -44,43 +45,43 @@ export const ShareAppBottomSheet = forwardRef<BottomSheetModal>((props, ref) => 
     };
 
     const handleWhatsApp = useCallback(async () => {
-        await shareToInstalledApp({ target: 'whatsapp', message: SHARE_APP_MESSAGE, url: 'https://fresherflow.in/app' });
+        await shareToInstalledApp({ target: 'whatsapp', message: SHARE_APP_MESSAGE, url: `${MOBILE_SITE_URL}/app` });
         dismissSheet();
     }, []);
 
     const handleLinkedIn = useCallback(async () => {
-        await shareToInstalledApp({ target: 'linkedin', message: SHARE_APP_MESSAGE, url: 'https://fresherflow.in/app' });
+        await shareToInstalledApp({ target: 'linkedin', message: SHARE_APP_MESSAGE, url: `${MOBILE_SITE_URL}/app` });
         dismissSheet();
     }, []);
 
     const handleTwitter = useCallback(async () => {
-        await shareToInstalledApp({ target: 'twitter', message: SHARE_APP_MESSAGE, url: 'https://fresherflow.in/app' });
+        await shareToInstalledApp({ target: 'twitter', message: SHARE_APP_MESSAGE, url: `${MOBILE_SITE_URL}/app` });
         dismissSheet();
     }, []);
 
     const handleTelegram = useCallback(async () => {
-        await shareToInstalledApp({ target: 'telegram', message: SHARE_APP_MESSAGE, url: 'https://fresherflow.in/app' });
+        await shareToInstalledApp({ target: 'telegram', message: SHARE_APP_MESSAGE, url: `${MOBILE_SITE_URL}/app` });
         dismissSheet();
     }, []);
 
     const handleDiscord = useCallback(async () => {
-        await shareToInstalledApp({ target: 'discord', message: SHARE_APP_MESSAGE, url: 'https://fresherflow.in/app' });
+        await shareToInstalledApp({ target: 'discord', message: SHARE_APP_MESSAGE, url: `${MOBILE_SITE_URL}/app` });
         dismissSheet();
     }, []);
 
     const handleInstagram = useCallback(async () => {
-        await shareToInstalledApp({ target: 'instagram', message: SHARE_APP_MESSAGE, url: 'https://fresherflow.in/app' });
+        await shareToInstalledApp({ target: 'instagram', message: SHARE_APP_MESSAGE, url: `${MOBILE_SITE_URL}/app` });
         dismissSheet();
     }, []);
 
     const handleArattai = useCallback(async () => {
-        await shareToInstalledApp({ target: 'arattai', message: SHARE_APP_MESSAGE, url: 'https://fresherflow.in/app' });
+        await shareToInstalledApp({ target: 'arattai', message: SHARE_APP_MESSAGE, url: `${MOBILE_SITE_URL}/app` });
         dismissSheet();
     }, []);
 
     const handleCopyLink = useCallback(async () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        await Clipboard.setStringAsync('https://fresherflow.in/app');
+        await Clipboard.setStringAsync(`${MOBILE_SITE_URL}/app`);
         showToast('Link copied to clipboard', 'success');
         dismissSheet();
     }, [showToast]);

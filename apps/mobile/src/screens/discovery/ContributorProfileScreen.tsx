@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useCallback } from 'react';
+import { Opportunity } from '@fresherflow/types';
 import { FlashList } from '@shopify/flash-list';
 import {
     View,
@@ -177,6 +178,10 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
         );
     }
 
+    const handleJobPress = useCallback((opportunity: Opportunity) => {
+        navigation.navigate('JobDetail', { opportunity, opportunityId: opportunity.id });
+    }, [navigation]);
+
     return (
         <Screen safe={false}>
             <View style={{ paddingTop: insets.top + 10 }}>
@@ -193,7 +198,7 @@ const ContributorProfileScreen: React.FC<Props> = ({ route, navigation }) => {
                 renderItem={({ item }) => (
                     <JobCard
                         opportunity={item}
-                        onPress={() => navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id })}
+                        onPress={handleJobPress}
                     />
                 )}
                 ListHeaderComponent={renderHeader}
