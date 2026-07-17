@@ -25,7 +25,12 @@ const router: Router = express.Router();
 
 
 const RP_ID = process.env.RP_ID || 'localhost';
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@fresherflow.com').toLowerCase();
+function getAdminEmail(): string {
+    if (!process.env.ADMIN_EMAIL) {
+        throw new Error('FATAL: ADMIN_EMAIL environment variable is required for admin authentication.');
+    }
+    return process.env.ADMIN_EMAIL.toLowerCase();
+}
 
 function normalizeOrigin(value: string): string | null {
     const trimmed = value.trim();
@@ -176,7 +181,7 @@ async function getAdminUser(email: string) {
     if (user) return user;
 
     // Bootstrap: If this matches the env admin email and NO admin exists, create it.
-    if (email.toLowerCase() === ADMIN_EMAIL) {
+    if (email.toLowerCase() === getAdminEmail()) {
         const anyAdmin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
         if (!anyAdmin) {
             return await prisma.user.upsert({
@@ -202,7 +207,7 @@ async function getAdminUser(email: string) {
 router.post('/register/options', adminAuthLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email } = req.body;
-        if (email?.toLowerCase() !== ADMIN_EMAIL) {
+        if (email?.toLowerCase() !== getAdminEmail()) {
             return next(new AppError('Forbidden', 403));
         }
 
@@ -310,7 +315,7 @@ router.post('/login/options', adminAuthLimiter, async (req: Request, res: Respon
     try {
         const { email } = req.body;
 
-        if (email?.toLowerCase() !== ADMIN_EMAIL) {
+        if (email?.toLowerCase() !== getAdminEmail()) {
             return next(new AppError('Invalid admin email', 401));
         }
 
@@ -421,7 +426,7 @@ router.post('/login/verify', adminAuthLimiter, async (req: Request, res: Respons
 router.post('/login/totp', adminAuthLimiter, async (req: Request, res: Response, next: NextFunction) => {
     try {
         const { email, code } = req.body as { email?: string; code?: string };
-        if (email?.toLowerCase() !== ADMIN_EMAIL) {
+        if (email?.toLowerCase() !== getAdminEmail()) {
             return next(new AppError('Invalid admin email', 401));
         }
 

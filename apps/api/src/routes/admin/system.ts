@@ -124,17 +124,24 @@ router.post('/regenerate-feeds', requireAdmin, async (req: Request, res: Respons
         const webUrl = process.env.PUBLIC_WEB_URL;
         if (secret && webUrl) {
             const urls = webUrl.split(',').map(u => u.trim()).filter(Boolean);
-            for (const url of urls) {
-                try {
-                    await fetch(`${url}/api/revalidate`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
-                    });
-                } catch {
-                    // Non-fatal — feed is already updated in R2, tag bust is best-effort
-                }
-            }
+            await Promise.all(
+                urls.map(async (url) => {
+                    try {
+                        const response = await fetch(`${url}/api/revalidate`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
+                        });
+                        if (!response.ok) {
+                            const errorText = await response.text().catch(() => 'No response body');
+                            logger.error(`[Regenerate Feeds Revalidate] Failed for ${url}/api/revalidate - Status: ${response.status} - Body: ${errorText}`);
+                        }
+                    } catch (err: unknown) {
+                        const message = err instanceof Error ? err.message : String(err);
+                        logger.error(`[Regenerate Feeds Revalidate] Network/Fetch error for ${url}/api/revalidate: ${message}`);
+                    }
+                })
+            );
         }
 
         // Drain Redis cache queues into BullMQ worker for trickle revalidation
@@ -173,26 +180,28 @@ router.post('/revalidate-web', requireAdmin, async (req: Request, res: Response,
         const urls = webUrl.split(',').map(u => u.trim()).filter(Boolean);
         let hasError = false;
 
-        for (const url of urls) {
-            try {
-                // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
-                const response = await fetch(`${url}/api/revalidate`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
-                });
+        await Promise.all(
+            urls.map(async (url) => {
+                try {
+                    // Tags only — no paths. See ⚠️ ISR WRITE SAFETY note at the top of this file.
+                    const response = await fetch(`${url}/api/revalidate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ secret, tags: FEED_REVALIDATE_TAGS }),
+                    });
 
-                if (!response.ok) {
-                    const errorText = await response.text().catch(() => 'No response body');
-                    logger.error(`[Revalidate] Failed for ${url}/api/revalidate - Status: ${response.status} - Body: ${errorText}`);
+                    if (!response.ok) {
+                        const errorText = await response.text().catch(() => 'No response body');
+                        logger.error(`[Revalidate] Failed for ${url}/api/revalidate - Status: ${response.status} - Body: ${errorText}`);
+                        hasError = true;
+                    }
+                } catch (err: unknown) {
+                    const message = err instanceof Error ? err.message : String(err);
+                    logger.error(`[Revalidate] Network/Fetch error for ${url}/api/revalidate: ${message}`);
                     hasError = true;
                 }
-            } catch (err: unknown) {
-                const message = err instanceof Error ? err.message : String(err);
-                logger.error(`[Revalidate] Network/Fetch error for ${url}/api/revalidate: ${message}`);
-                hasError = true;
-            }
-        }
+            })
+        );
 
         if (hasError) {
             throw new Error(`One or more web servers responded with an error or could not be reached.`);

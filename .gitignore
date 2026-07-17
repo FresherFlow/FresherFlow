@@ -88,6 +88,7 @@ scripts/dump/*
 scripts/output
 scripts/*/*.json
 scripts/*.json
+scripts/job-discovery/ats-boards/
 
 scripts/output/*.json
 

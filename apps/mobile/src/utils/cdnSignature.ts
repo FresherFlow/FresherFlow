@@ -17,12 +17,9 @@ import Constants from 'expo-constants';
 
 /** Read the signing secret from build-time constants (never from EXPO_PUBLIC_) */
 const getCdnSecret = (): string | undefined => {
-    // Primary: EAS Build secret baked in via app.config.js extra
-    const fromConstants = (Constants.expoConfig?.extra as any)?.cdnSignatureSecret;
-    if (fromConstants) return fromConstants;
-    // Fallback: Use EXPO_PUBLIC_ env var to support OTA updates without a new native release.
-    // Note: This embeds the secret in the JS bundle.
-    return process.env.EXPO_PUBLIC_CDN_SIGNATURE_SECRET;
+    // Only source: EAS Build secret baked in via app.config.js extra
+    // Never use EXPO_PUBLIC_ — it embeds the secret in the JS bundle (extractable by anyone)
+    return (Constants.expoConfig?.extra as any)?.cdnSignatureSecret;
 };
 
 

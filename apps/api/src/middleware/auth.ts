@@ -141,7 +141,7 @@ export async function requireAdmin(req: express.Request, res: Response, next: Ne
             await prisma.user.create({
                 data: {
                     id: adminId,
-                    email: process.env.ADMIN_EMAIL || 'cheekatlamukesh+admin@gmail.com',
+                    email: process.env.ADMIN_EMAIL!,
                     fullName: 'Admin User',
                     role: 'ADMIN',
                     isAnonymous: false,
