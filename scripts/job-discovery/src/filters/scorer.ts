@@ -19,39 +19,79 @@ export function evaluateTitle(title: string): { contributions: ScoreContribution
     
     const lowerTitle = title.toLowerCase();
 
-    // Strict fresher titles
-    const strictTitles = ["associate software engineer", "graduate trainee", "junior", "entry level", "fresher", "graduate software engineer"];
-    let matchedStrict = false;
-    for (const t of strictTitles) {
+    // FIRST PREFERENCE: intern / internship / apprentice / trainee — always treated as target roles
+    const firstPreferenceTitles = ['intern', 'internship', 'apprentice', 'trainee'];
+    let matchedFirstPreference = false;
+    for (const t of firstPreferenceTitles) {
         if (lowerTitle.includes(t)) {
-            matchedStrict = true;
+            matchedFirstPreference = true;
             signals.push({
                 type: 'title',
                 section: 'TITLE',
-                rule: 'TITLE_STRICT_FRESHER',
-                weight: WEIGHTS.TITLE_STRICT_FRESHER,
+                rule: 'TITLE_FIRST_PREFERENCE',
+                weight: WEIGHTS.TITLE_FIRST_PREFERENCE,
                 matched: t,
                 context: title
             });
-            contributions.push({ rule: 'TITLE_STRICT_FRESHER', delta: WEIGHTS.TITLE_STRICT_FRESHER, section: 'TITLE' });
-            trace.push({ step: 'evaluateTitle', result: 'matched strict', rule: 'TITLE_STRICT_FRESHER', delta: WEIGHTS.TITLE_STRICT_FRESHER });
-            break; // Only match one
+            contributions.push({ rule: 'TITLE_FIRST_PREFERENCE', delta: WEIGHTS.TITLE_FIRST_PREFERENCE, section: 'TITLE' });
+            trace.push({ step: 'evaluateTitle', result: 'matched first preference', rule: 'TITLE_FIRST_PREFERENCE', delta: WEIGHTS.TITLE_FIRST_PREFERENCE });
+            break;
         }
     }
 
-    // Keyword fresher (if it hasn't already matched strict)
-    if (!matchedStrict) {
-        if (lowerTitle.includes('intern') || lowerTitle.includes('campus')) {
+    // Strict fresher titles (second preference)
+    const strictTitles = ["associate software engineer", "graduate trainee", "junior", "entry level", "fresher", "graduate software engineer", "associate", "graduate"];
+    let matchedStrict = false;
+    if (!matchedFirstPreference) {
+        for (const t of strictTitles) {
+            if (lowerTitle.includes(t)) {
+                matchedStrict = true;
+                signals.push({
+                    type: 'title',
+                    section: 'TITLE',
+                    rule: 'TITLE_STRICT_FRESHER',
+                    weight: WEIGHTS.TITLE_STRICT_FRESHER,
+                    matched: t,
+                    context: title
+                });
+                contributions.push({ rule: 'TITLE_STRICT_FRESHER', delta: WEIGHTS.TITLE_STRICT_FRESHER, section: 'TITLE' });
+                trace.push({ step: 'evaluateTitle', result: 'matched strict', rule: 'TITLE_STRICT_FRESHER', delta: WEIGHTS.TITLE_STRICT_FRESHER });
+                break;
+            }
+        }
+    }
+
+    // Keyword fresher (if hasn't matched above)
+    if (!matchedFirstPreference && !matchedStrict) {
+        if (lowerTitle.includes('campus')) {
             signals.push({
                 type: 'title',
                 section: 'TITLE',
                 rule: 'TITLE_KEYWORD_FRESHER',
                 weight: WEIGHTS.TITLE_KEYWORD_FRESHER,
-                matched: 'intern/campus',
+                matched: 'campus',
                 context: title
             });
             contributions.push({ rule: 'TITLE_KEYWORD_FRESHER', delta: WEIGHTS.TITLE_KEYWORD_FRESHER, section: 'TITLE' });
             trace.push({ step: 'evaluateTitle', result: 'matched keyword', rule: 'TITLE_KEYWORD_FRESHER', delta: WEIGHTS.TITLE_KEYWORD_FRESHER });
+        }
+    }
+
+    // Blocker: aggregator drive / mass hiring titles
+    const aggregatorDriveTitles = ['mega drive', 'off campus drive', 'off-campus drive', 'mass hiring', 'pool campus', 'bulk hiring', 'walkin drive', 'walk-in drive'];
+    for (const dt of aggregatorDriveTitles) {
+        if (lowerTitle.includes(dt)) {
+            signals.push({
+                type: 'title',
+                section: 'TITLE',
+                rule: 'TITLE_BLOCKER_DRIVE',
+                weight: -100,
+                matched: dt,
+                context: title
+            });
+            contributions.push({ rule: 'TITLE_BLOCKER_DRIVE', delta: -100, section: 'TITLE' });
+            trace.push({ step: 'evaluateTitle', result: 'matched drive blocker', rule: 'TITLE_BLOCKER_DRIVE', delta: -100 });
+            break;
         }
     }
 
@@ -178,6 +218,11 @@ export function evaluateDescription(sectionType: SectionType, text: string): { c
     const lowerText = text.toLowerCase();
 
     const checkPhrases: { phrase: string, rule: RuleId, weight: number }[] = [
+        { phrase: 'intern', rule: 'DESC_INTERN', weight: WEIGHTS.DESC_INTERN },
+        { phrase: 'internship', rule: 'DESC_INTERN', weight: WEIGHTS.DESC_INTERN },
+        { phrase: 'apprentice', rule: 'DESC_APPRENTICE', weight: WEIGHTS.DESC_APPRENTICE },
+        { phrase: 'apprenticeship', rule: 'DESC_APPRENTICE', weight: WEIGHTS.DESC_APPRENTICE },
+        { phrase: 'trainee', rule: 'DESC_TRAINEE', weight: WEIGHTS.DESC_TRAINEE },
         { phrase: 'entry level', rule: 'DESC_ENTRY_LEVEL', weight: WEIGHTS.DESC_ENTRY_LEVEL },
         { phrase: 'new grad', rule: 'DESC_NEW_GRAD', weight: WEIGHTS.DESC_NEW_GRAD },
         { phrase: 'campus hiring', rule: 'DESC_CAMPUS_HIRING', weight: WEIGHTS.DESC_CAMPUS_HIRING },
@@ -282,8 +327,16 @@ export function scoreJobDescription(title: string, text: string): ScoreResult {
         verdict = "MEDIUM";
         trace.push({ step: 'verdict', result: 'MEDIUM', details: `Score > 0` });
     } else if (score === 0) {
-        verdict = "UNKNOWN";
-        trace.push({ step: 'verdict', result: 'UNKNOWN', details: `Score == 0` });
+        // UNKNOWN: only pass if title itself had a positive signal, otherwise reject
+        // This prevents empty-description jobs (no NLP signals) from silently passing
+        const hasTitlePositive = positive.some(s => s.section === 'TITLE');
+        if (hasTitlePositive) {
+            verdict = "MEDIUM"; // Promote to MEDIUM so it gets reviewed, not silently passed
+            trace.push({ step: 'verdict', result: 'MEDIUM', details: `UNKNOWN promoted: title has positive signal` });
+        } else {
+            verdict = "REJECT";
+            trace.push({ step: 'verdict', result: 'REJECT', details: `UNKNOWN rejected: no title signal and no description signals` });
+        }
     } else {
         verdict = "REJECT";
         trace.push({ step: 'verdict', result: 'REJECT', details: `Score < 0` });
@@ -294,8 +347,6 @@ export function scoreJobDescription(title: string, text: string): ScoreResult {
     
     if (blockers.length > 0) {
         confidence = 100; // 100% confident it's a reject
-    } else if (verdict === 'UNKNOWN') {
-        confidence = 0;
     }
 
     trace.push({ step: 'confidence', result: `${confidence}%` });

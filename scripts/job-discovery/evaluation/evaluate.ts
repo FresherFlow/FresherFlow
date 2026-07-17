@@ -51,12 +51,12 @@ async function runEvaluation() {
 
         const predictedPositive = result.verdict === 'HIGH' || result.verdict === 'MEDIUM';
         const predictedNegative = result.verdict === 'REJECT';
-        const predictedUnknown = result.verdict === 'UNKNOWN';
+        const predictedUnknown = false; // result.verdict === 'UNKNOWN';
 
         const isCorrect = (job.isFresher && predictedPositive) || (!job.isFresher && predictedNegative);
         
         // Calibration
-        if (result.verdict !== 'UNKNOWN') {
+        if (true) {
             const bucketIndex = Math.min(9, Math.floor(result.confidence / 10));
             confidenceBuckets[bucketIndex].total++;
             if (isCorrect) {

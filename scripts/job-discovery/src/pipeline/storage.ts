@@ -7,6 +7,7 @@ import { uploadJsonToR2, listR2Objects } from '../utils/r2.js';
 import { saveVisited, saveRejectedReasons } from '../utils/storage.js';
 import { parseJobUrl } from '../core/url-parser.js';
 import { withConcurrency } from '../ats/index.js';
+import { upsertJobs } from '../repositories/discoveredJobs.js';
 
 export async function persistLocalData(state: DiscoveryState) {
     // Save local state files
@@ -39,77 +40,15 @@ export async function persistLocalData(state: DiscoveryState) {
     console.log(`Saved all ${validJobs.length} passed jobs to ${allPassedOutputPath} for manual verification`);
 }
 
-export async function uploadToDataLake(state: DiscoveryState) {
+export async function uploadToDataLake(state: DiscoveryState, runId: string | null) {
     const allJobs = state.newJobsFound;
     const r2Bucket = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
 
-    // ── R2 Bronze Data Lake Upload ──────────────────────────────────────────────────
+    // ── Supabase Structured Data Upsert ──────────────────────────────────────────────────
     if (allJobs.length > 0) {
-        console.log(`\nUploading ${allJobs.length} jobs to R2 Bronze Data Lake...`);
-        const today = new Date().toISOString().split('T')[0];
-        const nowHrMin = new Date().toISOString().split('T')[1].substring(0,5).replace(':','-');
-        
-        let uploadedCount = 0;
-        const uploadTasks = allJobs.map(job => async () => {
-            try {
-                let key = '';
-                const parsed = parseJobUrl(job.applyLink);
-                
-                // Embed discoveredAt into the JSON payload for Admin UI grouping
-                const payloadToUpload = { ...job, discoveredAt: today };
-
-                let urlSlug = 'job';
-                try {
-                    const segments = new URL(job.applyLink).pathname.split('/').filter(Boolean);
-                    if (segments.length > 0) urlSlug = segments[segments.length - 1].replace(/[^a-zA-Z0-9-]/g, '').substring(0, 30);
-                } catch {}
-                const hash = crypto.createHash('md5').update(job.applyLink).digest('hex').substring(0, 8);
-                const uniqueId = `${urlSlug || 'job'}-${hash}`;
-
-                if (parsed && parsed.adapter) {
-                    key = `jobs/ats/${parsed.adapter}/${parsed.company}/${parsed.jobId}.json`;
-                } else if (job.sourceType === 'ATS') {
-                    const tempParsed = parseJobUrl(job.applyLink);
-                    const company = tempParsed?.company || job.company || 'unknown';
-                    const jobId = tempParsed?.jobId || uniqueId;
-                    key = `jobs/non-ats/${company}/${jobId}.json`;
-                } else {
-                    key = `jobs/aggregators/${today}/${nowHrMin}/${uniqueId}.json`;
-                }
-                
-                const success = await uploadJsonToR2(payloadToUpload, r2Bucket, key);
-                if (success) uploadedCount++;
-            } catch (err) {
-                console.error(`Failed to upload job to R2 Data Lake:`, err);
-            }
-        });
-
-        await withConcurrency(uploadTasks, 5);
-        console.log(`Successfully uploaded ${uploadedCount} Micro-JSONs to Bronze Data Lake!`);
-
-        // ── Backup Master File ──────────────────────────────────────────────────
-        try {
-            const atsJobs = allJobs.filter(j => j.sourceType === 'ATS');
-            const aggJobs = allJobs.filter(j => j.sourceType === 'AGGREGATOR');
-            const masterFile = {
-                version: 1,
-                date: today,
-                time: nowHrMin,
-                totalJobs: allJobs.length,
-                stats: { ats: atsJobs.length, aggregators: aggJobs.length },
-                jobs: {
-                    ats: atsJobs,
-                    aggregators: aggJobs
-                }
-            };
-            const masterKey = `jobs/backups/${today}/${nowHrMin}_master_discovered_jobs.json`;
-            const masterSuccess = await uploadJsonToR2(masterFile, r2Bucket, masterKey);
-            if (masterSuccess) {
-                console.log(`Successfully uploaded master backup file containing all ${allJobs.length} jobs to ${masterKey}`);
-            }
-        } catch (err) {
-            console.error('Failed to upload master backup file', err);
-        }
+        console.log(`\nUpserting ${allJobs.length} jobs to Supabase...`);
+        await upsertJobs(allJobs, runId);
+        console.log(`Successfully completed Supabase upserts!`);
     }
 
     // ── Update ATS Boards Registry in R2 ─────────────────────────────────────

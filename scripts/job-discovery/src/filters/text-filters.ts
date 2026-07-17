@@ -18,7 +18,8 @@ export function isFresherJob(text: string): boolean {
     }
 
     // Catch bare "X to Y Years" / "X-Y Years" with no keyword prefix (e.g. label rows like "5 to 7 Years")
-    const bareRangeRegex = /\b(?:[3-9]|[1-9]\d)\s*(?:-|–|\bto\b)\s*(?:[3-9]|[1-9]\d)\s*(?:years?|yrs?)\b/gi;
+    // Fixed: lower bound is now [2-9] to also catch "2-4 years"
+    const bareRangeRegex = /\b(?:[2-9]|[1-9]\d)\s*(?:-|\u2013|\bto\b)\s*(?:[3-9]|[1-9]\d)\s*(?:years?|yrs?)\b/gi;
     if (bareRangeRegex.test(lowerText)) {
         return false;
     }
@@ -127,9 +128,15 @@ export function hasFresherKeyword(text: string): boolean {
     return false;
 }
 
-// Check if a page is actually a job post (vs a course, syllabus, prep guide, roadmap, exam result)
+// Check if a page is actually a job post (vs a course, syllabus, prep guide, roadmap, exam result, or aggregator drive)
 export function isActualJob(title: string): boolean {
     const titleLower = title.toLowerCase();
+
+    // Aggregator drive / mass hiring posts — not real job applications
+    const driveKeywords = ['mega drive', 'off campus drive', 'off-campus drive', 'mass hiring', 'pool campus', 'bulk hiring', 'walkin drive', 'walk-in drive'];
+    for (const kw of driveKeywords) {
+        if (titleLower.includes(kw)) return false;
+    }
 
     // Only block if the title explicitly indicates it is a course, syllabus, mock test, study material, roadmap, or exam info.
     const titleBlacklist = [

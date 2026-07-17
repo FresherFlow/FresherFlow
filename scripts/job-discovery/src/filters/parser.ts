@@ -38,7 +38,7 @@ export function extractSections(text: string): { sections: Section[], warnings: 
         const rawLine = lines[i];
         const lineLen = rawLine.length + 1; // +1 for newline
         const trimmed = rawLine.trim();
-        const lower = trimmed.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim();
+        const lower = trimmed.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/[^a-z0-9\s']/g, ' ').replace(/\s+/g, ' ').trim().trim();
         
         let foundHeader: SectionType | null = null;
         let matchedHeading = "";

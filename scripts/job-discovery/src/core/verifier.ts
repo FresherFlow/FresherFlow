@@ -87,8 +87,13 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
                 console.log(`  -> Navigation failed and page body is empty/too short. Marking as failed.`);
                 return { live: false, status: 'failed', atsText: '', rejectReason: `Navigation failed and short body` };
             }
-            console.log(`  -> Page body is empty or too short (${bodyText?.trim().length || 0} chars). Treating as live.`);
-            return { live: true, status: 'live', atsText: '', finalUrl };
+            // Retry: wait 3 more seconds for JS-heavy pages to render
+            await page.waitForTimeout(3000);
+            bodyText = await page.locator('body').innerText({ timeout: 3000 }).catch(() => '');
+            if (!bodyText || bodyText.trim().length < 100) {
+                console.log(`  -> Page body still too short after retry (${bodyText?.trim().length || 0} chars). Marking as failed to avoid bypassing NLP.`);
+                return { live: false, status: 'failed', atsText: '', rejectReason: `Body too short after retry: ${bodyText?.trim().length || 0} chars` };
+            }
         }
 
         const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
@@ -107,9 +112,6 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
             const mainRule = scoreResult.metadata.blockingRule || scoreResult.evidence.blockers[0]?.rule || scoreResult.evidence.negative[0]?.rule || 'SCORE_TOO_LOW';
             console.log(`  -> ATS page rejected by scorer (Score: ${scoreResult.score}). Marking as expired.`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `Scorer rejected (Score: ${scoreResult.score}, Reason: ${mainRule})` };
-        } else if (scoreResult.verdict === 'UNKNOWN') {
-            console.log(`  -> ATS page returned UNKNOWN confidence by scorer. Treating as live.`);
-            isReview = false;
         } else if (scoreResult.verdict === 'MEDIUM') {
             console.log(`  -> ATS page returned MEDIUM confidence (${scoreResult.score}). Treating as live.`);
             isReview = false;

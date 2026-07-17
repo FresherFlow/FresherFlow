@@ -15,6 +15,7 @@ import { EightfoldAdapter } from './EightfoldAdapter.js';
 import { DarwinBoxAdapter } from './DarwinBoxAdapter.js';
 import { isPotentialFresherJob, isLocationIndiaOrRemote } from '../filters/ats-filters.js';
 import { scoreJobDescription } from '../filters/scorer.js';
+import type { RunStats } from '../pipeline/state.js';
 
 export interface AtsRegistry {
     [key: string]: Record<string, string> | undefined;
@@ -62,7 +63,8 @@ async function runProvider(
     adapter: import('./BaseAdapter.js').AtsAdapter,
     data: Record<string, string>,
     delay: number,
-    companyConcurrency: number
+    companyConcurrency: number,
+    stats: RunStats
 ): Promise<AtsJob[]> {
     const companies = Object.entries(data);
     if (companies.length === 0) return [];
@@ -70,14 +72,17 @@ async function runProvider(
     console.log(`\nStarting ${name} adapter (${companies.length} companies)...`);
 
     const allJobs: AtsJob[] = [];
+    let totalRaw = 0, totalPassedFilter = 0, totalPassedScorer = 0;
 
     const tasks = companies.map(([companyId, companyName]) => async (): Promise<AtsJob> => {
         const jobs = await adapter.fetchJobs(companyId, companyName);
+        totalRaw += jobs.length;
 
         const fresherJobs = jobs.filter(j =>
             isPotentialFresherJob(j.title) &&
             (!j.location || isLocationIndiaOrRemote(j.location))
         );
+        totalPassedFilter += fresherJobs.length;
 
         const finalJobs: AtsJob[] = [];
         let rejectedCount = 0;
@@ -106,20 +111,27 @@ async function runProvider(
 
             finalJobs.push(job);
         }
+        totalPassedScorer += finalJobs.length;
 
         console.log(`  -> ${companyName}: ${jobs.length} total, ${fresherJobs.length} passed filter, ${finalJobs.length} passed scorer (${rejectedCount} rejected)`);
         allJobs.push(...finalJobs);
         await sleep(delay);
 
-        return null as unknown as AtsJob; // tasks array is for concurrency, results collected via allJobs
+        return null as unknown as AtsJob;
     });
 
     await withConcurrency(tasks, companyConcurrency);
+
+    // Write per-provider stats
+    stats.ats_raw[name] = totalRaw;
+    stats.ats_passed_filter[name] = totalPassedFilter;
+    stats.ats_passed_scorer[name] = totalPassedScorer;
+
     return allJobs;
 }
 
 // ─── Main entry ───────────────────────────────────────────────────────────────
-export async function runAtsDiscovery(registry: AtsRegistry): Promise<AtsJob[]> {
+export async function runAtsDiscovery(registry: AtsRegistry, stats: RunStats): Promise<AtsJob[]> {
     console.log(`\n--- Starting ATS Direct Discovery (parallel) ---`);
 
     const adapters: Array<{
@@ -147,14 +159,21 @@ export async function runAtsDiscovery(registry: AtsRegistry): Promise<AtsJob[]> 
         { name: 'DarwinBox',        adapter: new DarwinBoxAdapter(),       data: registry.darwinbox,      delay: 1000, companyConcurrency: 2 },
     ];
 
-    const activeAdapters = adapters.filter(
-        a => a.data && Object.keys(a.data).length > 0
-    );
+    const providerFilter = process.env.ATS_PROVIDER?.toLowerCase().trim();
+    const activeAdapters = adapters.filter(a => {
+        if (!a.data || Object.keys(a.data).length === 0) return false;
+        if (providerFilter && a.name.toLowerCase() !== providerFilter) return false;
+        return true;
+    });
 
-    // Run ALL providers in parallel
+    if (providerFilter) {
+        console.log(`--- Running SINGLE provider: ${providerFilter} ---`);
+    }
+
+    // Run ALL providers in parallel — pass stats so each provider records its own counts
     const providerResults = await Promise.all(
         activeAdapters.map(({ name, adapter, data, delay, companyConcurrency }) =>
-            runProvider(name, adapter, data!, delay, companyConcurrency)
+            runProvider(name, adapter, data!, delay, companyConcurrency, stats)
         )
     );
 

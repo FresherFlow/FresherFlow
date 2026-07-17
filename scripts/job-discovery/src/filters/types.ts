@@ -8,9 +8,11 @@ export type SectionType =
     | "BODY"; // Parsed content that isn't a recognized section (replaces UNKNOWN)
 
 export type RuleId = 
+    | "TITLE_FIRST_PREFERENCE"
     | "TITLE_STRICT_FRESHER"
     | "TITLE_KEYWORD_FRESHER"
     | "TITLE_BLOCKER_SENIOR"
+    | "TITLE_BLOCKER_DRIVE"
     | "EXP_0_2"
     | "EXP_3_5"
     | "BLOCKER_EXP_3_5"
@@ -27,7 +29,9 @@ export type RuleId =
     | "DESC_FRESHER"
     | "DESC_EARLY_CAREER"
     | "DESC_ASSOCIATE"
-    | "DESC_TRAINEE";
+    | "DESC_TRAINEE"
+    | "DESC_INTERN"
+    | "DESC_APPRENTICE";
 
 export type ParseWarning = 
     | "NO_HEADERS_FOUND"
@@ -67,7 +71,7 @@ export interface DecisionTraceEvent {
 export interface ScoreResult {
     score: number;
     confidence: number;
-    verdict: "HIGH" | "MEDIUM" | "UNKNOWN" | "REJECT";
+    verdict: "HIGH" | "MEDIUM" | "REJECT";
     version: {
         engine: "1.2.0";
         weights: "1.0.0";

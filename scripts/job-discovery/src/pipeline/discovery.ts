@@ -35,7 +35,7 @@ export async function discoverAtsJobs(state: DiscoveryState) {
         console.error("Critical error fetching ATS registry from CDN:", err);
     }
 
-    const atsJobs = await runAtsDiscovery(state.atsRegistry);
+    const atsJobs = await runAtsDiscovery(state.atsRegistry, state.stats);
 
     let atsQueued = 0, atsRejected = 0;
     for (const job of atsJobs) {
@@ -215,7 +215,7 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                     if (isFresherJob(aggregatorTitle)) {
                         console.log(`  -> Title contains strong fresher regex patterns. Skipping review flag.`);
                         isAggregatorReview = false;
-                    } else if (scoreResult.verdict === 'UNKNOWN' || scoreResult.verdict === 'MEDIUM') {
+                    } else if (scoreResult.verdict === 'MEDIUM') {
                         // Keep review required if we aren't 100% sure
                         isAggregatorReview = true;
                     }

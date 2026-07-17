@@ -3,59 +3,89 @@ import { DiscoveryState } from './state.js';
 import { sendTelegramMessage } from '../utils/telegram.js';
 
 export async function sendNotifications(state: DiscoveryState) {
-    // ── Send Telegram alert ───────────────────────────────────────────────────
-    if (state.newJobsFound.length > 0) {
-        const validJobs = state.newJobsFound.filter(j => !j.reviewRequired);
-        const reviewJobs = state.newJobsFound.filter(j => j.reviewRequired);
-
-        let msg = "";
-        if (validJobs.length > 0) {
-            const atsCount = validJobs.filter(j => j.sourceType === 'ATS').length;
-            const aggCount = validJobs.filter(j => j.sourceType === 'AGGREGATOR').length;
-            msg += `🔥 <b>Job Discovery Bot Found ${validJobs.length} New Fresher Jobs!</b> 🔥\n`;
-            msg += `<i>(${atsCount} ATS Direct, ${aggCount} Aggregator)</i>\n\n`;
-            for (const job of validJobs.slice(0, 15)) {
-                const badge = job.sourceType === 'ATS' ? '🏢' : '🌐';
-                msg += `- ${badge} <b>${job.title}</b> (via ${job.source})\n  Link: ${job.applyLink}\n\n`;
-            }
-            if (validJobs.length > 15) msg += `...and ${validJobs.length - 15} more!\n\n`;
-        }
-
-        if (reviewJobs.length > 0) {
-            msg += `⚠️ <b>Review Required Jobs:</b> ⚠️\n\n`;
-            for (const job of reviewJobs.slice(0, 10)) {
-                msg += `- <b>${job.title}</b> (via ${job.source})\n  Link: ${job.applyLink}\n\n`;
-            }
-            if (reviewJobs.length > 10) msg += `...and ${reviewJobs.length - 10} more!\n\n`;
-        }
-
-        msg += `Please add these to the Admin Dashboard.`;
-        console.log("Sending Telegram message:", msg);
-        await sendTelegramMessage(msg);
-
-        const apiBaseUrl = (process.env.API_BASE_URL || '').trim().replace(/\/$/, '');
-        if (apiBaseUrl) {
-            console.log(`Waking up Render API server: ${apiBaseUrl}/api/health`);
-            fetch(`${apiBaseUrl}/api/health`).catch(() => {});
-        }
-    } else {
+    if (state.newJobsFound.length === 0) {
         console.log("No new jobs found this run.");
+        return;
+    }
+
+    const validJobs = state.newJobsFound.filter(j => !j.reviewRequired);
+    const reviewJobs = state.newJobsFound.filter(j => j.reviewRequired);
+    const atsJobs = state.newJobsFound.filter(j => j.sourceType === 'ATS');
+    const aggJobs = state.newJobsFound.filter(j => j.sourceType === 'AGGREGATOR');
+
+    // ── Per-ATS breakdown (counts only, no links) ─────────────────────────────
+    const atsPerProvider: Record<string, number> = {};
+    for (const job of atsJobs) {
+        const provider = job.source || 'unknown';
+        atsPerProvider[provider] = (atsPerProvider[provider] || 0) + 1;
+    }
+    const atsBreakdown = Object.entries(atsPerProvider)
+        .sort((a, b) => b[1] - a[1])
+        .map(([p, n]) => `  • ${p}: ${n}`)
+        .join('\n');
+
+    // ── Aggregator jobs (title + link) ────────────────────────────────────────
+    const aggLines = aggJobs
+        .slice(0, 15) // cap at 15 so message doesn't hit Telegram 4096 char limit
+        .map(j => `  🌐 ${j.title} (${j.source})\n  ${j.applyLink}`)
+        .join('\n\n');
+    const aggOverflow = aggJobs.length > 15 ? `\n  ...and ${aggJobs.length - 15} more` : '';
+
+    // ── Build message ─────────────────────────────────────────────────────────
+    let tgMsg = `🔥 Job Discovery Run\n`;
+    tgMsg += `Total: ${state.newJobsFound.length} jobs`;
+    if (reviewJobs.length > 0) {
+        tgMsg += ` (${validJobs.length} confirmed, ${reviewJobs.length} review)`;
+    }
+    tgMsg += `\n\n`;
+
+    tgMsg += `🏢 ATS Direct: ${atsJobs.length}\n${atsBreakdown || '  (none)'}`;
+    tgMsg += `\n\n`;
+
+    tgMsg += `🌐 Aggregator: ${aggJobs.length}\n`;
+    if (aggJobs.length > 0) {
+        tgMsg += aggLines + aggOverflow;
+    } else {
+        tgMsg += `  (none)`;
+    }
+
+    tgMsg += `\n\n✅ Uploaded to Supabase`;
+
+    console.log("Sending Telegram message:\n" + tgMsg);
+    await sendTelegramMessage(tgMsg);
+
+    const apiBaseUrl = (process.env.API_BASE_URL || '').trim().replace(/\/$/, '');
+    if (apiBaseUrl) {
+        console.log(`Waking up Render API server: ${apiBaseUrl}/api/health`);
+        await fetch(`${apiBaseUrl}/api/health`).catch(() => {});
     }
 }
 
 export async function writeGitHubSummary(state: DiscoveryState) {
-    // ── Run Summary ───────────────────────────────────────────────────────────
-    const atsTotal = state.newJobsFound.filter(j => j.sourceType === 'ATS').length;
-    const aggTotal = state.newJobsFound.filter(j => j.sourceType === 'AGGREGATOR').length;
+    const atsJobs = state.newJobsFound.filter(j => j.sourceType === 'ATS');
+    const aggJobs = state.newJobsFound.filter(j => j.sourceType === 'AGGREGATOR');
     const reviewTotal = state.newJobsFound.filter(j => j.reviewRequired).length;
     const confirmedTotal = state.newJobsFound.filter(j => !j.reviewRequired).length;
+
+    // Per-provider breakdown for console
+    const atsPerProvider: Record<string, number> = {};
+    for (const job of atsJobs) {
+        const p = job.source || 'unknown';
+        atsPerProvider[p] = (atsPerProvider[p] || 0) + 1;
+    }
+    const providerLines = Object.entries(atsPerProvider)
+        .sort((a, b) => b[1] - a[1])
+        .map(([p, n]) => `║  ├─ ${p.padEnd(22)}: ${String(n).padEnd(16)}║`)
+        .join('\n');
+
     console.log(`
 ╔══════════════════════════════════════════════════╗
 ║               RUN SUMMARY                        ║
 ╠══════════════════════════════════════════════════╣
 ║  Total new jobs found    : ${String(state.newJobsFound.length).padEnd(20)}║
-║  ├─ ATS Direct           : ${String(atsTotal).padEnd(20)}║
-║  └─ Aggregator           : ${String(aggTotal).padEnd(20)}║
+║  ├─ ATS Direct           : ${String(atsJobs.length).padEnd(20)}║
+${providerLines}
+║  └─ Aggregator           : ${String(aggJobs.length).padEnd(20)}║
 ║                                                  ║
 ║  Confirmed (no review)   : ${String(confirmedTotal).padEnd(20)}║
 ║  Flagged for review      : ${String(reviewTotal).padEnd(20)}║
@@ -64,20 +94,38 @@ export async function writeGitHubSummary(state: DiscoveryState) {
     // ── GitHub Actions step summary ───────────────────────────────────────────
     if (process.env.GITHUB_STEP_SUMMARY) {
         let summary = `## Job Discovery Bot Results\n\n`;
-        summary += `Discovered **${state.newJobsFound.length}** new jobs and uploaded them to the \`R2 Bronze Data Lake\`.\n\n`;
-        
-        summary += `- **ATS Jobs**: ${atsTotal}\n- **Aggregator Jobs**: ${aggTotal}\n\n`;
-        
-        if (state.newJobsFound.length > 0) {
-            summary += `### Discovered Jobs\n`;
-            state.newJobsFound.forEach(j => {
+        summary += `Discovered **${state.newJobsFound.length}** new jobs → uploaded to **Supabase**.\n\n`;
+
+        // ATS count breakdown table
+        summary += `### ATS Direct (${atsJobs.length})\n`;
+        summary += `| Provider | Jobs Found |\n|---|---|\n`;
+        for (const [p, n] of Object.entries(atsPerProvider).sort((a, b) => b[1] - a[1])) {
+            summary += `| ${p} | ${n} |\n`;
+        }
+        summary += `\n`;
+
+        // Full ATS job links
+        if (atsJobs.length > 0) {
+            atsJobs.forEach(j => {
                 const reviewMark = j.reviewRequired ? ' (⚠️ Review)' : '';
-                const typeMark = j.sourceType === 'ATS' ? '🏢' : '🌐';
-                summary += `- ${typeMark} **${j.title}** (via ${j.source})${reviewMark}: ${j.applyLink}\n`;
+                summary += `- 🏢 **${j.title}** via ${j.source}${reviewMark}: ${j.applyLink}\n`;
+            });
+            summary += `\n`;
+        }
+
+        // Aggregator list with links
+        summary += `### Aggregator (${aggJobs.length})\n`;
+        if (aggJobs.length > 0) {
+            aggJobs.forEach(j => {
+                const reviewMark = j.reviewRequired ? ' (⚠️ Review)' : '';
+                summary += `- 🌐 **${j.title}** via ${j.source}${reviewMark}: ${j.applyLink}\n`;
             });
         } else {
-            summary += `No new fresher jobs were found during this run.`;
+            summary += `No aggregator jobs this run.\n`;
         }
+
         await fs.appendFile(process.env.GITHUB_STEP_SUMMARY, summary);
     }
 }
+
+
