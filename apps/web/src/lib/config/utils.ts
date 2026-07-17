@@ -75,7 +75,11 @@ export function getHostRole(hostname: string, request: NextRequest) {
     const { PUBLIC_WEB_HOST, APP_WEB_HOST, ADMIN_WEB_HOST } = resolveHosts(request);
     const baseHost = getRegistrableBaseHost(normalizedHost);
 
-    if (normalizedHost === ADMIN_WEB_HOST || normalizedHost.startsWith('admin.')) {
+    if (
+        normalizedHost === ADMIN_WEB_HOST ||
+        normalizedHost.startsWith('admin.') ||
+        normalizedHost.startsWith('caps.')
+    ) {
         return 'admin' as const;
     }
 

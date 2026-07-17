@@ -127,7 +127,7 @@ function getCDNTimeout(): number {
  */
 function getCDNFetchOptions(options: CDNFetchOptions = {}): CDNFetchOptions {
     const headers = new Headers(options.headers || {});
-    headers.set('Origin', SITE_URL || 'https://fresherflow.com');
+    headers.set('Origin', SITE_URL );
     return {
         ...options,
         headers,

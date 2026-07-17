@@ -1,17 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { 
-    ClipboardIcon, 
+import { useEffect, useRef, useState } from 'react';
+import {
+    ClipboardIcon,
     CheckIcon,
     MagnifyingGlassIcon,
-    ShareIcon,
     SparklesIcon,
     ChevronDownIcon,
     ChevronRightIcon,
     LinkIcon,
-    BellIcon
+    BellIcon,
+    PaperAirplaneIcon,
+    ArrowPathIcon,
+    SignalIcon,
+    SignalSlashIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
+import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
 
 function TelegramBrandIcon({ className }: { className?: string }) {
@@ -37,6 +42,16 @@ import { ThemeToggle } from '@repo/ui/ThemeToggle';
 import { capitalizeSkill } from '@/features/opportunities/domain/opportunityDisplay';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 
+const PROD_SITE_URL = SITE_URL.includes('localhost') ? 'https://fresherflow.in' : SITE_URL;
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+type SendPlatform = 'telegram' | 'x' | 'linkedin';
+type SendStatus = 'idle' | 'sending' | 'sent' | 'error';
+type PlatformAvailability = Record<SendPlatform, boolean>;
+const PLATFORM_LABEL: Record<SendPlatform, string> = { telegram: 'Telegram', x: 'X / Twitter', linkedin: 'LinkedIn' };
+
+type Platform = 'whatsapp' | 'telegram' | 'twitter' | 'linkedin';
+
 export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean }) {
     const { theme, toggleTheme } = useTheme();
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
@@ -47,8 +62,17 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
     const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({});
     const [isSingleModalOpen, setIsSingleModalOpen] = useState(false);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-    const [activePlatform, setActivePlatform] = useState<'whatsapp' | 'telegram' | 'twitter' | 'linkedin'>('whatsapp');
+
+    const [bulkPreviewPlatform, setBulkPreviewPlatform] = useState<Platform>('whatsapp');
     const [collapsedCategories, setCollapsedCategories] = useState<Record<string, boolean>>({});
+
+    // Worker + platform send state
+    const [workerOnline, setWorkerOnline] = useState<boolean>(false);
+    const [workerUptime, setWorkerUptime] = useState<number | null>(null);
+    const [platforms, setPlatforms] = useState<PlatformAvailability>({ telegram: false, x: false, linkedin: false });
+    const [statusLoading, setStatusLoading] = useState(true);
+    const [sendStatuses, setSendStatuses] = useState<Record<string, SendStatus>>({});
+    const healthIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
     const toggleCollapseCategory = (category: string) => {
         setCollapsedCategories((prev) => ({
@@ -181,9 +205,9 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
 📍 Location: ${locations}${tgSkills}${tgSalary}
 
 ⭕️ Apply Now:
-${SITE_URL}/${opp.slug}
+${PROD_SITE_URL}/${opp.slug}
 
-📱 More jobs: ${SITE_URL.replace(/^https?:\/\//, '')}/app`;
+📱 More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
         }
 
         if (platform === 'twitter') {
@@ -196,7 +220,7 @@ ${twBatch}
 📍 ${locations}
 
 Apply 👇
-${SITE_URL}/${opp.slug}
+${PROD_SITE_URL}/${opp.slug}
 
 ${twHashtags}`;
         }
@@ -214,9 +238,9 @@ ${twHashtags}`;
 📍 Location: ${locations}${liSkills}${liSalary}
 
 Apply:
-${SITE_URL}/${opp.slug}
+${PROD_SITE_URL}/${opp.slug}
 
-📱 More jobs: ${SITE_URL.replace(/^https?:\/\//, '')}/app
+📱 More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app
 
 ${liHashtags}`;
         }
@@ -233,36 +257,37 @@ ${liHashtags}`;
 > 📍 *Location:* ${locations}${waSkills}${waSalary}
 
 ⭕️ *Apply Now:*
-${SITE_URL}/${opp.slug}
+${PROD_SITE_URL}/${opp.slug}
 
-📱 *More jobs on FresherFlow:* ${SITE_URL.replace(/^https?:\/\//, '')}/app`;
+📱 *More jobs on FresherFlow:* ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
     };
 
-    const formatBulkCaption = () => {
+    const formatBulkCaption = (platformOverride?: Platform) => {
+        const p = platformOverride ?? bulkPreviewPlatform;
         const selectedOpps = opportunities.filter((opp) => selectedOppIds.includes(opp.id));
         if (selectedOpps.length === 0) return '';
 
-        if (activePlatform === 'whatsapp') {
+        if (p === 'whatsapp') {
             let body = `🚨 *Today's Job Updates*\n\n`;
             selectedOpps.forEach((opp, index) => {
                 const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 ${SITE_URL}/${opp.slug}\n\n`;
+                body += `${numEmoji} *${opp.company}*\n> ${opp.title}\n🔗 ${PROD_SITE_URL}/${opp.slug}\n\n`;
             });
-            body += `📱 *More jobs:* ${SITE_URL.replace(/^https?:\/\//, '')}/app`;
+            body += `📱 *More jobs:* ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
             return body;
         }
 
-        if (activePlatform === 'telegram') {
+        if (p === 'telegram') {
             let body = `🚨 Today's Job Updates\n\n`;
             selectedOpps.forEach((opp, index) => {
                 const numEmoji = getNumberEmoji(index + 1);
-                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 ${SITE_URL}/${opp.slug}\n\n`;
+                body += `${numEmoji} ${opp.company} — ${opp.title}\n🔗 ${PROD_SITE_URL}/${opp.slug}\n\n`;
             });
-            body += `📱 More jobs: ${SITE_URL.replace(/^https?:\/\//, '')}/app`;
+            body += `📱 More jobs: ${PROD_SITE_URL.replace(/^https?:\/\//, '')}/app`;
             return body;
         }
 
-        if (activePlatform === 'linkedin') {
+        if (p === 'linkedin') {
             return `⚠️ LinkedIn is not optimized for long job lists. To maximize engagement, we recommend posting each job as an individual post instead!`;
         }
 
@@ -270,17 +295,71 @@ ${SITE_URL}/${opp.slug}
         return `⚠️ Twitter/X is not optimized for long job lists. To maximize engagement, we recommend posting each job as an individual tweet instead!`;
     };
 
+    // ─── Worker health ────────────────────────────────────────────────────────
+    const checkWorkerHealth = async () => {
+        try {
+            const [healthRes, platRes] = await Promise.all([
+                fetch('/api/admin/social/worker-health'),
+                fetch('/api/admin/social/platforms'),
+            ]);
+            const health = await healthRes.json() as { online: boolean; uptime?: number | null };
+            const plat = await platRes.json() as PlatformAvailability;
+            setWorkerOnline(health.online);
+            setWorkerUptime(health.uptime ?? null);
+            setPlatforms(plat);
+        } catch {
+            setWorkerOnline(false);
+        } finally {
+            setStatusLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        void checkWorkerHealth();
+        healthIntervalRef.current = setInterval(() => { void checkWorkerHealth(); }, 300_000);
+        return () => { if (healthIntervalRef.current) clearInterval(healthIntervalRef.current); };
+    }, []);
+
+    // ─── Send caption ─────────────────────────────────────────────────────────
+    const sendCaption = async (platform: SendPlatform, text: string, key: string) => {
+        setSendStatuses(prev => ({ ...prev, [key]: 'sending' }));
+        try {
+            const res = await fetch('/api/admin/social/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ platform, text }),
+            });
+            const data = await res.json() as { ok?: boolean; error?: string };
+            if (!res.ok || !data.ok) throw new Error(data.error ?? 'Send failed');
+            setSendStatuses(prev => ({ ...prev, [key]: 'sent' }));
+            toast.success(`Sent to ${PLATFORM_LABEL[platform]}!`);
+            setTimeout(() => setSendStatuses(prev => ({ ...prev, [key]: 'idle' })), 4000);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            setSendStatuses(prev => ({ ...prev, [key]: 'error' }));
+            toast.error(`${PLATFORM_LABEL[platform]} failed: ${msg}`);
+            setTimeout(() => setSendStatuses(prev => ({ ...prev, [key]: 'idle' })), 5000);
+        }
+    };
+
+
+    const getSendIcon = (status: SendStatus | undefined) => {
+        if (status === 'sending') return <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />;
+        if (status === 'sent') return <CheckCircleIcon className="w-3.5 h-3.5 text-green-500" />;
+        if (status === 'error') return <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-500" />;
+        return <PaperAirplaneIcon className="w-3.5 h-3.5" />;
+    };
+
+    const formatUptime = (s: number) => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m` : `${Math.floor(s / 3600)}h${Math.floor((s % 3600) / 60)}m`;
+
     // Clipboard copy wrapper
     const copyToClipboard = async (text: string, key: string) => {
         try {
             await navigator.clipboard.writeText(text);
             setCopiedStates((prev) => ({ ...prev, [key]: true }));
             toast.success('Caption copied!');
-            setTimeout(() => {
-                setCopiedStates((prev) => ({ ...prev, [key]: false }));
-            }, 2000);
-        } catch (err) {
-            console.error('Copy failed', err);
+            setTimeout(() => setCopiedStates((prev) => ({ ...prev, [key]: false })), 2000);
+        } catch {
             toast.error('Failed to copy text.');
         }
     };
@@ -368,17 +447,33 @@ ${SITE_URL}/${opp.slug}
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
                     {/* Left: Feed opportunities selector */}
-                    <div className="lg:col-span-2 h-screen sm:h-auto rounded-none sm:rounded-2xl border-y sm:border border-x-0 sm:border-border bg-card p-3 sm:p-4 shadow-none sm:shadow-sm flex flex-col space-y-4 overflow-hidden">
-                        {/* Title inside left column */}
+                    <div className="lg:col-span-2 h-screen sm:h-auto rounded-none sm:rounded-2xl border-y sm:border border-x-0 sm:border-border bg-[#F5F4EF] dark:bg-card p-3 sm:p-4 shadow-none sm:shadow-sm flex flex-col space-y-4 overflow-hidden">
+                        {/* Title + worker status pill */}
                         <div className="border-b border-border pb-3 shrink-0 flex items-start justify-between gap-4">
                             <div className="min-w-0">
                                 <h1 className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
                                     <SparklesIcon className="h-5 w-5 text-primary" />
                                     Social Captions Generator
                                 </h1>
-                                <p className="text-[11px] text-muted-foreground mt-1">
-                                    Extract live jobs from the CDN feed and generate custom WhatsApp & Telegram broadcast updates.
-                                </p>
+                                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                                    <p className="text-[11px] text-muted-foreground">
+                                        Generate &amp; send captions to Telegram, X, LinkedIn.
+                                    </p>
+                                    {/* Inline worker status */}
+                                    <span className="flex items-center gap-1 text-[10px] font-medium">
+                                        {statusLoading
+                                            ? <ArrowPathIcon className="w-3 h-3 animate-spin text-muted-foreground" />
+                                            : workerOnline
+                                            ? <SignalIcon className="w-3 h-3 text-emerald-500" />
+                                            : <SignalSlashIcon className="w-3 h-3 text-red-400" />}
+                                        <span className={workerOnline ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}>
+                                            {statusLoading ? 'checking…' : workerOnline ? `worker online${workerUptime ? ` · ${formatUptime(workerUptime)}` : ''}` : 'worker offline'}
+                                        </span>
+                                        <button onClick={() => { void checkWorkerHealth(); }} className="text-muted-foreground hover:text-foreground" title="Refresh">
+                                            <ArrowPathIcon className="w-2.5 h-2.5" />
+                                        </button>
+                                    </span>
+                                </div>
                             </div>
                             {!isAdmin && (
                                 <div className="shrink-0 pt-0.5">
@@ -414,7 +509,7 @@ ${SITE_URL}/${opp.slug}
                                     <div key={category} className="pb-5 space-y-2">
                                         <h4 
                                             onClick={() => toggleCollapseCategory(category)}
-                                            className="sticky top-0 bg-card z-10 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary border-b border-border flex items-center justify-between cursor-pointer select-none hover:text-primary/80"
+                                            className="sticky top-0 bg-[#F5F4EF] dark:bg-card z-10 py-1.5 text-[10px] font-bold uppercase tracking-wider text-primary border-b border-border flex items-center justify-between cursor-pointer select-none hover:text-primary/80"
                                         >
                                             <span className="flex items-center gap-1">
                                                 {collapsedCategories[category] ? (
@@ -441,13 +536,14 @@ ${SITE_URL}/${opp.slug}
                                                     const pushLocations = opp.locations && opp.locations.length > 0 ? opp.locations.join(', ') : 'India';
                                                     const pushDegrees = getDegreesText(opp);
                                                     const pushMessage = `Location: ${pushLocations} | Eligibility: ${pushDegrees}. Tap to apply.`;
-                                                    const pushUrl = `${SITE_URL}/${opp.slug || opp.id}`;
+                                                    const pushUrl = `${PROD_SITE_URL}/${opp.slug || opp.id}`;
                                                     const pushQuery = `?title=${encodeURIComponent(pushTitle)}&message=${encodeURIComponent(pushMessage)}&url=${encodeURIComponent(pushUrl)}`;
 
                                                     return (
                                                         <div
                                                             key={opp.id}
                                                             onClick={() => setActiveOppId(opp.id)}
+                                                            onContextMenu={(e) => { e.preventDefault(); setActiveOppId(opp.id); setIsSingleModalOpen(true); }}
                                                             className={`relative overflow-hidden group rounded-xl border p-3 cursor-pointer transition-all duration-200 flex items-start gap-3 ${
                                                                 activeOppId === opp.id
                                                                     ? 'border-border bg-primary/5 pl-3.5'
@@ -489,20 +585,21 @@ ${SITE_URL}/${opp.slug}
                                                                             {opp.type}
                                                                         </span>
                                                                     </div>
-                                                                    <div className="flex items-center gap-2 md:gap-3 shrink-0">
-                                                                        <button onClick={(e) => { e.stopPropagation(); copyToClipboard(formatSingleCaption(opp, 'whatsapp'), `wa_${opp.id}`); }} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Copy WhatsApp Caption">
+                                                                    {/* Copy icons with hover preview captions */}
+                                                                    <div className="flex items-center gap-2 md:gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                        <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'whatsapp'), `wa_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'whatsapp')}>
                                                                             {copiedStates[`wa_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <WhatsAppBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                         </button>
-                                                                        <button onClick={(e) => { e.stopPropagation(); copyToClipboard(formatSingleCaption(opp, 'telegram'), `tg_${opp.id}`); }} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Copy Telegram Caption">
+                                                                        <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'telegram'), `tg_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'telegram')}>
                                                                             {copiedStates[`tg_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <TelegramBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                         </button>
-                                                                        <button onClick={(e) => { e.stopPropagation(); copyToClipboard(formatSingleCaption(opp, 'twitter'), `tw_${opp.id}`); }} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Copy Twitter/X Caption">
+                                                                        <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'twitter'), `tw_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'twitter')}>
                                                                             {copiedStates[`tw_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <XBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                         </button>
-                                                                        <button onClick={(e) => { e.stopPropagation(); copyToClipboard(formatSingleCaption(opp, 'linkedin'), `li_${opp.id}`); }} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Copy LinkedIn Caption">
+                                                                        <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'linkedin'), `li_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'linkedin')}>
                                                                             {copiedStates[`li_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkedInBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                         </button>
-                                                                        <button onClick={(e) => { e.stopPropagation(); copyToClipboard(`${SITE_URL}/${opp.slug}`, `link_${opp.id}`); }} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title="Copy Apply Link">
+                                                                        <button onClick={() => copyToClipboard(`${PROD_SITE_URL}/${opp.slug}`, `link_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={`${PROD_SITE_URL}/${opp.slug}`}>
                                                                             {copiedStates[`link_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkIcon className="w-4 h-4 md:w-5 md:h-5" />}
                                                                         </button>
                                                                         {isAdmin && (
@@ -529,13 +626,121 @@ ${SITE_URL}/${opp.slug}
                         </div>
                     </div>
 
-                    {/* Right: Caption Previewers */}
-                    <div className="hidden lg:block space-y-6">
+                    {/* Right: Single preview + Bulk */}
+                    <div className="hidden lg:block space-y-4">
 
+                        {/* Active job — Publish Actions */}
+                        {activeOpportunity && (
+                            <div className="rounded-2xl border border-border bg-[#F5F4EF] dark:bg-card p-4 shadow-sm space-y-3">
+                                <div className="flex items-center gap-3">
+                                    <CompanyLogo
+                                        companyName={activeOpportunity!.company}
+                                        companyWebsite={activeOpportunity!.companyWebsite}
+                                        companyLogoUrl={activeOpportunity!.companyLogoUrl}
+                                        applyLink={activeOpportunity!.applyLink}
+                                        className="w-10 h-10 rounded-lg border border-border shadow-sm flex-shrink-0"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <h3 className="text-sm font-bold text-foreground leading-tight truncate">{activeOpportunity!.company}</h3>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{activeOpportunity!.title}</p>
+                                    </div>
+                                </div>
 
-                        {/* Bulk Job Updates Caption */}
-                        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm space-y-4">
-                            <div className="flex items-center justify-between border-b border-border pb-3">
+                                <div className="space-y-2 border-t border-border/50 pt-3">
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center mb-1">Publish to Platform</p>
+                                    {workerOnline ? (
+                                        <div className="grid gap-2">
+                                            {([
+                                                { p: 'telegram' as SendPlatform, label: 'Telegram', icon: <TelegramBrandIcon className="w-4 h-4" /> },
+                                                { p: 'x' as SendPlatform, label: 'X (Twitter)', icon: <XBrandIcon className="w-4 h-4" /> },
+                                                { p: 'linkedin' as SendPlatform, label: 'LinkedIn', icon: <LinkedInBrandIcon className="w-4 h-4" /> },
+                                            ]).map(({ p, label, icon }) => {
+                                                const cap = formatSingleCaption(activeOpportunity!, p === 'x' ? 'twitter' : p);
+                                                const sKey = `panel_send_${p}_${activeOpportunity!.id}`;
+                                                const status = sendStatuses[sKey];
+                                                const canSend = platforms[p];
+                                                
+                                                return (
+                                                    <button
+                                                        key={p}
+                                                        disabled={!canSend || status === 'sending'}
+                                                        onClick={() => sendCaption(p, cap, sKey)}
+                                                        className={`flex items-center justify-between py-2 px-3 rounded-xl border transition-all ${
+                                                            !canSend ? 'border-border bg-muted/20 opacity-50 cursor-not-allowed'
+                                                            : status === 'sent' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 shadow-sm'
+                                                            : status === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-500 shadow-sm'
+                                                            : 'border-border bg-[#F5F4EF] dark:bg-card hover:bg-muted/50 hover:border-primary/30 shadow-sm group'
+                                                        }`}
+                                                        title={!canSend ? 'Platform not configured' : `Publish directly to ${label}`}
+                                                    >
+                                                        <div className="flex items-center gap-2.5">
+                                                            {icon}
+                                                            <span className="text-xs font-bold text-foreground">{label}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-2">
+                                                            {p === 'x' && cap.length > 280 && (
+                                                                <span className="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-md">
+                                                                    {cap.length}/280
+                                                                </span>
+                                                            )}
+                                                            <span className={`text-[11px] font-semibold flex items-center gap-1 ${
+                                                                !canSend ? 'text-muted-foreground' : 'text-primary opacity-80 group-hover:opacity-100'
+                                                            }`}>
+                                                                {getSendIcon(status)}
+                                                                {!canSend ? 'Offline' : status === 'sent' ? 'Sent' : status === 'error' ? 'Retry' : status === 'sending' ? 'Sending…' : 'Send'}
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                );
+                                            })}
+                                            {(() => {
+                                                const activeTargets = (['telegram', 'x', 'linkedin'] as SendPlatform[]).filter(p => platforms[p]);
+                                                const masterKey = `master_publish_${activeOpportunity!.id}`;
+                                                const masterStatus = sendStatuses[masterKey];
+                                                const masterSending = masterStatus === 'sending';
+                                                const masterSent = masterStatus === 'sent';
+                                                
+                                                const publishToAll = async () => {
+                                                    if (activeTargets.length === 0) return;
+                                                    setSendStatuses(prev => ({ ...prev, [masterKey]: 'sending' }));
+                                                    await Promise.allSettled(activeTargets.map(p => {
+                                                        const text = formatSingleCaption(activeOpportunity!, p === 'x' ? 'twitter' : p);
+                                                        return sendCaption(p, text, `panel_send_${p}_${activeOpportunity!.id}`);
+                                                    }));
+                                                    setSendStatuses(prev => ({ ...prev, [masterKey]: 'sent' }));
+                                                    setTimeout(() => setSendStatuses(prev => ({ ...prev, [masterKey]: 'idle' })), 4000);
+                                                };
+
+                                                return (
+                                                    <button
+                                                        disabled={activeTargets.length === 0 || masterSending}
+                                                        onClick={publishToAll}
+                                                        className={`w-full flex items-center justify-center gap-2 py-2 mt-1 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                                                            masterSent ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
+                                                            : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
+                                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                                    >
+                                                        {masterSending
+                                                            ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Publishing All…</>
+                                                            : masterSent
+                                                            ? <><CheckCircleIcon className="w-4 h-4" /> Published to All</>
+                                                            : <><PaperAirplaneIcon className="w-4 h-4" /> Publish</>}
+                                                    </button>
+                                                );
+                                            })()}
+                                        </div>
+                                    ) : (
+                                        <div className="py-6 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl bg-muted/15">
+                                            Worker offline. Cannot publish.
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Bulk Job Updates — with blast send */}
+                        <div className="rounded-2xl border border-border bg-[#F5F4EF] dark:bg-card p-4 shadow-sm space-y-3">
+                            <div className="flex items-center justify-between border-b border-border pb-2">
                                 <div>
                                     <h3 className="text-sm font-bold text-foreground">{"Today's Bulk Job Updates"}</h3>
                                     <p className="text-[10px] text-muted-foreground mt-0.5">
@@ -545,28 +750,65 @@ ${SITE_URL}/${opp.slug}
                                 <button
                                     disabled={selectedOppIds.length === 0}
                                     onClick={() => copyToClipboard(formatBulkCaption(), 'bulk')}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold transition-all duration-200"
+                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-semibold transition-all duration-200 shadow-sm"
                                 >
-                                    {copiedStates['bulk'] ? (
-                                        <>
-                                            <CheckIcon className="h-3.5 w-3.5" />
-                                            Copied
-                                        </>
-                                    ) : (
-                                        <>
-                                            <ClipboardIcon className="h-3.5 w-3.5" />
-                                            Copy Bulk Update
-                                        </>
-                                    )}
+                                    {copiedStates['bulk'] ? <><CheckIcon className="h-3.5 w-3.5" /> Copied</> : <><ClipboardIcon className="h-3.5 w-3.5" /> Copy Bulk</>}
                                 </button>
                             </div>
-                            {selectedOppIds.length > 0 ? (
-                                <div className="w-full bg-muted/20 border border-border rounded-xl p-4 text-xs font-mono whitespace-pre-wrap break-words overflow-y-auto max-h-[600px] select-text">
-                                    {formatBulkCaption()}
+                            <div className="flex gap-2 h-48">
+                                <div className="flex-1 bg-muted/20 border border-border rounded-xl p-3 text-xs font-mono whitespace-pre-wrap break-words overflow-y-auto select-text">
+                                    {selectedOppIds.length > 0 ? formatBulkCaption() : <span className="text-muted-foreground/50">Check boxes next to jobs on the left to generate bulk captions.</span>}
                                 </div>
-                            ) : (
-                                <div className="py-12 text-center text-xs text-muted-foreground border border-dashed border-border rounded-xl bg-muted/15">
-                                    Check boxes next to opportunities on the left to compile a bulk update message.
+                                <div className="flex flex-col gap-1.5 bg-muted/30 border border-border rounded-xl p-1.5 justify-center">
+                                    {([
+                                        { p: 'whatsapp' as Platform, icon: <WhatsAppBrandIcon className="w-4 h-4" /> },
+                                        { p: 'telegram' as Platform, icon: <TelegramBrandIcon className="w-4 h-4" /> },
+                                        { p: 'twitter' as Platform, icon: <XBrandIcon className="w-4 h-4" /> },
+                                        { p: 'linkedin' as Platform, icon: <LinkedInBrandIcon className="w-4 h-4" /> },
+                                    ]).map(({ p, icon }) => (
+                                        <button
+                                            key={p}
+                                            onClick={() => setBulkPreviewPlatform(p)}
+                                            className={`p-2 rounded-lg transition-all ${bulkPreviewPlatform === p ? 'bg-[#F5F4EF] dark:bg-card shadow-sm text-foreground border border-border' : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent'}`}
+                                            title={`Preview for ${p}`}
+                                        >
+                                            {icon}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Publish Bulk to Telegram */}
+                            {workerOnline && (
+                                <div className="pt-2 border-t border-border">
+                                    {(() => {
+                                        const sKey = `bulk_send_telegram`;
+                                        const status = sendStatuses[sKey];
+                                        const isSent = status === 'sent';
+                                        const sending = status === 'sending';
+                                        
+                                        const publishBulkToTg = async () => {
+                                            const text = formatBulkCaption('telegram');
+                                            await sendCaption('telegram', text, sKey);
+                                        };
+
+                                        return (
+                                            <button
+                                                disabled={!platforms.telegram || sending || selectedOppIds.length === 0}
+                                                onClick={publishBulkToTg}
+                                                className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                                                    isSent ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
+                                                    : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
+                                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                            >
+                                                {sending
+                                                    ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Publishing to TG…</>
+                                                    : isSent
+                                                    ? <><CheckCircleIcon className="w-4 h-4" /> Published to TG</>
+                                                    : <><TelegramBrandIcon className="w-4 h-4" /> Publish Bulk to TG</>}
+                                            </button>
+                                        );
+                                    })()}
                                 </div>
                             )}
                         </div>
@@ -574,140 +816,186 @@ ${SITE_URL}/${opp.slug}
                 </div>
             )}
 
-            {/* Mobile Floating Action Buttons */}
-            <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40 lg:hidden">
-                {activeOpportunity && (
-                    <button
-                        onClick={() => setIsSingleModalOpen(true)}
-                        className="p-3.5 rounded-full bg-primary text-primary-foreground shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 border border-border flex items-center justify-center"
-                        title="View Single Caption"
-                    >
-                        <ShareIcon className="h-5 w-5" />
-                    </button>
-                )}
+            {/* Mobile FAB — bulk only */}
+            <div className="fixed bottom-6 right-6 z-40 lg:hidden">
                 <button
                     onClick={() => setIsBulkModalOpen(true)}
                     disabled={selectedOppIds.length === 0}
-                    className="p-3.5 rounded-full bg-primary text-primary-foreground shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 border border-border flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                    title="View Bulk Update"
+                    className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-primary text-primary-foreground shadow-2xl hover:scale-105 active:scale-95 transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-bold"
+                    title="Bulk caption"
                 >
-                    <SparklesIcon className="h-5 w-5" />
+                    <SparklesIcon className="h-4 w-4" />
+                    {selectedOppIds.length > 0 ? `Bulk (${selectedOppIds.length})` : 'Bulk'}
                 </button>
             </div>
 
-            {/* Mobile Single Caption Modal */}
-            {isSingleModalOpen && activeOpportunity && (
-                <div 
+            {/* Mobile Single Caption Bottom Sheet */}
+            {isSingleModalOpen && activeOpportunity! && (
+                <div
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center lg:hidden"
                     onClick={() => setIsSingleModalOpen(false)}
                 >
-                    <div 
-                        className="bg-card w-full max-w-md rounded-t-3xl p-6 space-y-4 animate-in slide-in-from-bottom duration-300 shadow-2xl border-t border-border"
+                    <div
+                        className="bg-[#F5F4EF] dark:bg-card w-full max-w-md rounded-t-3xl p-5 space-y-3 animate-in slide-in-from-bottom duration-300 shadow-2xl border-t border-border"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between border-b border-border pb-3">
-                            <div className="flex items-center gap-3">
-                                <CompanyLogo
-                                    companyName={activeOpportunity.company}
-                                    companyWebsite={activeOpportunity.companyWebsite}
-                                    companyLogoUrl={activeOpportunity.companyLogoUrl}
-                                    applyLink={activeOpportunity.applyLink}
-                                    className="w-10 h-10 rounded-lg border border-border"
-                                />
-                                <div>
-                                    <h3 className="text-sm font-bold text-foreground">Single Job Caption</h3>
-                                    <p className="text-[10px] text-muted-foreground mt-0.5">{activeOpportunity.company}</p>
-                                </div>
+                        {/* Header */}
+                        <div className="flex items-center gap-3 pb-3 border-b border-border">
+                            <CompanyLogo
+                                companyName={activeOpportunity!.company}
+                                companyWebsite={activeOpportunity!.companyWebsite}
+                                companyLogoUrl={activeOpportunity!.companyLogoUrl}
+                                applyLink={activeOpportunity!.applyLink}
+                                className="w-9 h-9 rounded-xl border border-border shrink-0"
+                            />
+                            <div className="min-w-0 flex-1">
+                                <h3 className="text-sm font-bold text-foreground truncate">{activeOpportunity!.company}</h3>
+                                <p className="text-[10px] text-muted-foreground truncate">{activeOpportunity!.title}</p>
                             </div>
-                            <button
-                                onClick={() => copyToClipboard(formatSingleCaption(activeOpportunity, activePlatform), `single_m_${activeOpportunity.id}`)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold"
-                            >
-                                {copiedStates[`single_m_${activeOpportunity.id}`] ? (
-                                    <>
-                                        <CheckIcon className="h-3.5 w-3.5" />
-                                        Copied
-                                    </>
-                                ) : (
-                                    <>
-                                        <ClipboardIcon className="h-3.5 w-3.5" />
-                                        Copy
-                                    </>
-                                )}
+                            <button onClick={() => setIsSingleModalOpen(false)} className="p-1.5 rounded-lg bg-muted text-muted-foreground">
+                                <CheckIcon className="w-4 h-4" />
                             </button>
                         </div>
 
-                        {/* Mobile Platform Selector Tabs */}
-                        <div className="flex gap-1 border-b border-border pb-2">
-                            {(['whatsapp', 'telegram', 'twitter', 'linkedin'] as const).map((platform) => (
-                                <button
-                                    key={platform}
-                                    onClick={() => setActivePlatform(platform)}
-                                    className={`flex-1 py-1 rounded-md text-[10px] font-bold transition-all uppercase ${
-                                        activePlatform === platform
-                                            ? 'bg-primary/10 text-primary border border-primary/20'
-                                            : 'bg-muted/40 hover:bg-muted text-muted-foreground border border-transparent'
-                                    }`}
-                                >
-                                    {platform}
-                                </button>
-                            ))}
-                        </div>
+                        {/* Per-platform rows */}
+                        {([
+                            { p: 'whatsapp' as const, label: 'WhatsApp', icon: <WhatsAppBrandIcon className="w-4 h-4" /> },
+                            { p: 'telegram' as const, label: 'Telegram', icon: <TelegramBrandIcon className="w-4 h-4" />, sendP: 'telegram' as SendPlatform },
+                            { p: 'twitter' as const, label: 'X / Twitter', icon: <XBrandIcon className="w-4 h-4" />, sendP: 'x' as SendPlatform },
+                            { p: 'linkedin' as const, label: 'LinkedIn', icon: <LinkedInBrandIcon className="w-4 h-4" />, sendP: 'linkedin' as SendPlatform },
+                        ] as { p: 'whatsapp'|'telegram'|'twitter'|'linkedin'; label: string; icon: React.ReactNode; sendP?: SendPlatform }[]).map(({ p, label, icon, sendP }) => {
+                            const cap = formatSingleCaption(activeOpportunity!, p);
+                            const copyKey = `mob_${p}_${activeOpportunity!.id}`;
+                            const sKey = sendP ? `mob_send_${sendP}_${activeOpportunity!.id}` : '';
+                            const status = sKey ? sendStatuses[sKey] : undefined;
+                            const canSend = workerOnline && sendP && platforms[sendP];
+                            return (
+                                <div key={p} className="flex items-center gap-3 py-2 border-b border-border/40 last:border-0">
+                                    <span className="shrink-0">{icon}</span>
+                                    <span className="flex-1 text-xs font-medium text-muted-foreground">{label}</span>
+                                    <button
+                                        onClick={() => copyToClipboard(cap, copyKey)}
+                                        className="p-2 rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground transition-colors"
+                                        title={`Copy ${label}`}
+                                    >
+                                        {copiedStates[copyKey] ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardIcon className="w-4 h-4" />}
+                                    </button>
+                                    {canSend && (
+                                        <button
+                                            disabled={status === 'sending'}
+                                            onClick={() => sendCaption(sendP!, cap, sKey)}
+                                            className={`flex items-center justify-center p-2 rounded-xl text-xs font-semibold transition-all ${
+                                                status === 'sent' ? 'bg-emerald-500/10 text-emerald-600 px-3'
+                                                : status === 'error' ? 'bg-red-500/10 text-red-500 px-3'
+                                                : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                            } disabled:opacity-60`}
+                                            title="Send to platform"
+                                        >
+                                            {getSendIcon(status)}
+                                            {status === 'sent' ? <span className="ml-1">Sent</span> : status === 'error' ? <span className="ml-1">Retry</span> : null}
+                                        </button>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        
+                        {/* Master Publish All Button for Mobile */}
+                        {(() => {
+                            const activeTargets = (['telegram', 'x', 'linkedin'] as SendPlatform[]).filter(p => platforms[p]);
+                            const masterKey = `mob_master_publish_${activeOpportunity!.id}`;
+                            const masterStatus = sendStatuses[masterKey];
+                            const masterSending = masterStatus === 'sending';
+                            const masterSent = masterStatus === 'sent';
+                            
+                            const publishToAll = async () => {
+                                if (activeTargets.length === 0) return;
+                                setSendStatuses(prev => ({ ...prev, [masterKey]: 'sending' }));
+                                await Promise.allSettled(activeTargets.map(p => {
+                                    const text = formatSingleCaption(activeOpportunity!, p === 'x' ? 'twitter' : p);
+                                    return sendCaption(p, text, `mob_send_${p}_${activeOpportunity!.id}`);
+                                }));
+                                setSendStatuses(prev => ({ ...prev, [masterKey]: 'sent' }));
+                                setTimeout(() => setSendStatuses(prev => ({ ...prev, [masterKey]: 'idle' })), 4000);
+                            };
 
-                        <textarea
-                            readOnly
-                            value={formatSingleCaption(activeOpportunity, activePlatform)}
-                            rows={10}
-                            className="w-full bg-muted/20 border border-border rounded-xl p-4 text-xs font-mono outline-none resize-none"
-                        />
-                        <button
-                            onClick={() => setIsSingleModalOpen(false)}
-                            className="w-full py-2.5 rounded-xl border border-border bg-muted hover:bg-muted/80 text-xs font-semibold"
-                        >
-                            Close
-                        </button>
+                            return workerOnline && (
+                                <button
+                                    disabled={activeTargets.length === 0 || masterSending}
+                                    onClick={publishToAll}
+                                    className={`w-full flex items-center justify-center gap-2 py-3 mt-2 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                                        masterSent ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
+                                        : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
+                                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                    {masterSending
+                                        ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Publishing All…</>
+                                        : masterSent
+                                        ? <><CheckCircleIcon className="w-4 h-4" /> Published to All</>
+                                        : <><PaperAirplaneIcon className="w-4 h-4" /> Publish to All</>}
+                                </button>
+                            );
+                        })()}
                     </div>
                 </div>
             )}
 
             {/* Mobile Bulk Caption Modal */}
             {isBulkModalOpen && (
-                <div 
+                <div
                     className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end justify-center lg:hidden"
                     onClick={() => setIsBulkModalOpen(false)}
                 >
-                    <div 
-                        className="bg-card w-full max-w-md rounded-t-3xl p-6 space-y-4 animate-in slide-in-from-bottom duration-300 shadow-2xl border-t border-border"
+                    <div
+                        className="bg-[#F5F4EF] dark:bg-card w-full max-w-md rounded-t-3xl p-5 space-y-3 animate-in slide-in-from-bottom duration-300 shadow-2xl border-t border-border"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="flex items-center justify-between border-b border-border pb-3">
+                        <div className="flex items-center justify-between pb-3 border-b border-border">
                             <div>
                                 <h3 className="text-sm font-bold text-foreground">Bulk Job Updates</h3>
                                 <p className="text-[10px] text-muted-foreground mt-0.5">Selected: <span className="font-semibold text-foreground">{selectedOppIds.length} job(s)</span></p>
                             </div>
                             <button
                                 onClick={() => copyToClipboard(formatBulkCaption(), 'bulk_m')}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-semibold"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-muted hover:bg-muted/80 border border-border text-xs font-semibold"
                             >
-                                {copiedStates['bulk_m'] ? (
-                                    <>
-                                        <CheckIcon className="h-3.5 w-3.5" />
-                                        Copied
-                                    </>
-                                ) : (
-                                    <>
-                                        <ClipboardIcon className="h-3.5 w-3.5" />
-                                        Copy All
-                                    </>
-                                )}
+                                {copiedStates['bulk_m'] ? <><CheckIcon className="h-3.5 w-3.5 text-green-500" /> Copied</> : <><ClipboardIcon className="h-3.5 w-3.5" /> Copy</>}
                             </button>
                         </div>
-                        <textarea
-                            readOnly
-                            value={formatBulkCaption()}
-                            rows={10}
-                            className="w-full bg-muted/20 border border-border rounded-xl p-4 text-xs font-mono outline-none resize-none"
-                        />
+
+                        {/* Publish Bulk to Telegram */}
+                        {workerOnline && (
+                            <div className="pt-2 border-t border-border">
+                                {(() => {
+                                    const sKey = `bulk_send_telegram`;
+                                    const status = sendStatuses[sKey];
+                                    const isSent = status === 'sent';
+                                    const sending = status === 'sending';
+                                    
+                                    const publishBulkToTg = async () => {
+                                        const text = formatBulkCaption('telegram');
+                                        await sendCaption('telegram', text, sKey);
+                                    };
+
+                                    return (
+                                        <button
+                                            disabled={!platforms.telegram || sending || selectedOppIds.length === 0}
+                                            onClick={publishBulkToTg}
+                                            className={`w-full flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold transition-all shadow-sm ${
+                                                isSent ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
+                                                : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
+                                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                        >
+                                            {sending
+                                                ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Publishing to TG…</>
+                                                : isSent
+                                                ? <><CheckCircleIcon className="w-4 h-4" /> Published to TG</>
+                                                : <><TelegramBrandIcon className="w-4 h-4" /> Publish Bulk to TG</>}
+                                        </button>
+                                    );
+                                })()}
+                            </div>
+                        )}
+
                         <button
                             onClick={() => setIsBulkModalOpen(false)}
                             className="w-full py-2.5 rounded-xl border border-border bg-muted hover:bg-muted/80 text-xs font-semibold"
@@ -720,3 +1008,5 @@ ${SITE_URL}/${opp.slug}
         </div>
     );
 }
+
+

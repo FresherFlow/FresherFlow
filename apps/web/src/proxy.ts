@@ -56,6 +56,54 @@ export default function middleware(req: NextRequest) {
         );
     }
 
+    // 0b. Enforce Basic Auth on cap subdomain and block captions page on main domain
+    const host = req.headers.get('host') || '';
+    const isCapSubdomain = host.startsWith('cap.');
+
+    if (isCapSubdomain) {
+        const basicAuth = req.headers.get('authorization');
+        let authenticated = false;
+
+        if (basicAuth) {
+            try {
+                const authValue = basicAuth.split(' ')[1];
+                const [user, pwd] = atob(authValue).split(':');
+
+                const expectedUser = process.env.BASIC_AUTH_USER;
+                const expectedPass = process.env.BASIC_AUTH_PASSWORD;
+
+                if (expectedUser && expectedPass && user === expectedUser && pwd === expectedPass) {
+                    authenticated = true;
+                }
+            } catch (e) {
+                // Fail silently
+            }
+        }
+
+        if (!authenticated) {
+            return new NextResponse('Auth Required', {
+                status: 401,
+                headers: {
+                    'WWW-Authenticate': 'Basic realm="Secure Area"',
+                },
+            });
+        }
+
+        // Rewrite root path "/" or "/captions" on the subdomain to the internal "/captions" route
+        if (pathname === '/' || pathname === '/captions') {
+            const url = req.nextUrl.clone();
+            url.pathname = '/captions';
+            return NextResponse.rewrite(url);
+        }
+    } else {
+        // Hide captions page on the main domain (redirect to 404)
+        if (pathname === '/captions') {
+            const url = req.nextUrl.clone();
+            url.pathname = '/404';
+            return NextResponse.rewrite(url);
+        }
+    }
+
     // 1. Handle Host Restrictions & Rewrites
     const hostResult = handleHostRouting(req);
     if (hostResult && hostResult.status >= 300 && hostResult.status < 400) {

@@ -109,9 +109,11 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                             setPastedJson={form.setPastedJson}
                             isParsing={form.isParsing}
                             handleAutoFill={() => void form.handleAutoFill(form.pastedText)}
-                            applyJsonToForm={() => {
+                            applyJsonToForm={(overrideJson?: string) => {
                                 try {
-                                    const parsed = JSON.parse(form.pastedJson);
+                                    const jsonStr = overrideJson ?? form.pastedJson;
+                                    const parsed = JSON.parse(jsonStr);
+                                    if (overrideJson) form.setPastedJson(overrideJson);
                                     form.applyJsonData(parsed);
                                     form.setShowParser(false);
                                 } catch {
@@ -133,11 +135,39 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
             {/* Mobile Floating Action Button (FAB) for Auto-fill */}
             <button
                 type="button"
-                onClick={() => form.setShowParser(true)}
-                className="fixed bottom-20 right-4 z-50 md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all outline-none"
+                disabled={form.isParsing}
+                onClick={async () => {
+                    if (!form.title) {
+                        try {
+                            const text = await navigator.clipboard.readText();
+                            if (text && text.trim().startsWith('{')) {
+                                try {
+                                    const parsed = JSON.parse(text);
+                                    form.applyJsonData(parsed);
+                                    toast.success("Form updated from JSON clipboard.");
+                                } catch {
+                                    toast.error("Clipboard does not contain valid JSON data.");
+                                }
+                            } else if (text) {
+                                toast.error("Clipboard does not contain valid JSON data.");
+                            } else {
+                                toast.error("Clipboard is empty.");
+                            }
+                        } catch {
+                            toast.error("Could not read clipboard. Please use the manual parser menu.");
+                        }
+                    } else {
+                        form.setShowParser(true);
+                    }
+                }}
+                className="fixed bottom-20 right-4 z-50 md:hidden flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 active:scale-95 transition-all outline-none disabled:opacity-50"
                 aria-label="Auto-fill helper"
             >
-                <BoltIcon className="w-6 h-6 animate-pulse" />
+                {form.isParsing ? (
+                    <div className="w-5 h-5 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                ) : (
+                    <BoltIcon className="w-6 h-6 animate-pulse" />
+                )}
             </button>
 
             <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 md:space-y-4">
@@ -426,11 +456,39 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
                     </button>
                     <button
                         type="button"
-                        onClick={() => form.setShowParser(true)}
-                        className="hidden md:inline-flex h-9 items-center justify-center rounded-full border border-input bg-background px-5 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-colors gap-1.5"
+                        disabled={form.isParsing}
+                        onClick={async () => {
+                            if (!form.title) {
+                                try {
+                                    const text = await navigator.clipboard.readText();
+                                    if (text && text.trim().startsWith('{')) {
+                                        try {
+                                            const parsed = JSON.parse(text);
+                                            form.applyJsonData(parsed);
+                                            toast.success("Form updated from JSON clipboard.");
+                                        } catch {
+                                            toast.error("Clipboard does not contain valid JSON data.");
+                                        }
+                                    } else if (text) {
+                                        toast.error("Clipboard does not contain valid JSON data.");
+                                    } else {
+                                        toast.error("Clipboard is empty.");
+                                    }
+                                } catch {
+                                    toast.error("Could not read clipboard. Please use the manual parser menu.");
+                                }
+                            } else {
+                                form.setShowParser(true);
+                            }
+                        }}
+                        className="hidden md:inline-flex h-9 items-center justify-center rounded-full border border-input bg-background px-5 text-sm font-semibold text-foreground hover:bg-accent hover:text-accent-foreground transition-colors gap-1.5 disabled:opacity-50"
                     >
-                        <BoltIcon className="w-4 h-4 text-primary" />
-                        Auto-fill
+                        {form.isParsing ? (
+                            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                            <BoltIcon className="w-4 h-4 text-primary" />
+                        )}
+                        {form.isParsing ? 'Processing...' : (!form.title ? 'Paste & Fill' : 'Auto-fill')}
                     </button>
                 </div>
 

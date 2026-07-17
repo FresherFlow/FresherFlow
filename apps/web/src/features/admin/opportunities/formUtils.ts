@@ -168,6 +168,8 @@ export type DuplicateOpportunity = {
     sourceLink?: string;
     applyLink?: string;
     status: string;
+    deletedAt?: string | null;
+    expiresAt?: string | null;
     updatedAt: string;
 };
 

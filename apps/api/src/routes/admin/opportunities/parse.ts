@@ -19,7 +19,10 @@ let parserModulePromise: Promise<ParserModule> | null = null;
 function getParserModule(): Promise<ParserModule> {
     if (!parserModulePromise) {
         const bundledParserPath = path.resolve(__dirname, '../../../_vendor/parser/index.js');
-        parserModulePromise = dynamicImport(pathToFileURL(bundledParserPath).href);
+        parserModulePromise = dynamicImport(pathToFileURL(bundledParserPath).href).catch(() => {
+            // Fallback for local development where _vendor is not created
+            return dynamicImport('@fresherflow/parser');
+        });
     }
 
     return parserModulePromise;

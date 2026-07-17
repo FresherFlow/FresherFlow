@@ -33,7 +33,7 @@ export default async function PendingJobsPage() {
         console.error('R2 credentials missing, skipping fetch');
     } else {
         try {
-            const bucketName = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+            const bucketName = process.env.R2_BUCKET_NAME;
         const listCommand = new ListObjectsV2Command({
             Bucket: bucketName,
             Prefix: 'jobs/',

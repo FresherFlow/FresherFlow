@@ -22,7 +22,7 @@ export async function GET() {
     }
 
     try {
-        const bucketName = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+        const bucketName = process.env.R2_BUCKET_NAME;
         const jobs: any[] = [];
         
         const prefixes = ['jobs/ats/', 'jobs/non-ats/', 'jobs/aggregators/'];
@@ -137,7 +137,7 @@ export async function DELETE(request: Request) {
             return NextResponse.json({ error: 'Missing object key' }, { status: 400 });
         }
 
-        const bucketName = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+        const bucketName = process.env.R2_BUCKET_NAME ;
         const command = new DeleteObjectCommand({
             Bucket: bucketName,
             Key: key,

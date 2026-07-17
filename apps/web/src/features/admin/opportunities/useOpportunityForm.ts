@@ -299,7 +299,17 @@ export function useOpportunityForm(
                 : 0;
             const score =
               titleScore * 0.5 + companyScore * 0.35 + applyDomainScore * 0.15;
-            return { ...opp, score };
+            
+            let displayStatus = opp.status;
+            if (opp.deletedAt) {
+              displayStatus = 'DELETED';
+            } else if (opp.expiresAt && new Date(opp.expiresAt) < new Date()) {
+              displayStatus = 'EXPIRED';
+            } else if (opp.status === 'PUBLISHED') {
+              displayStatus = 'LIVE';
+            }
+
+            return { ...opp, score, status: displayStatus };
           })
           .filter((opp) => opp.score >= 0.45)
           .sort((a, b) => b.score - a.score)

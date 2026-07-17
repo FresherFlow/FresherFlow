@@ -8,7 +8,7 @@ interface ParserSectionProps {
     isParsing: boolean;
     pastedJson: string;
     setPastedJson: (val: string) => void;
-    applyJsonToForm: () => void;
+    applyJsonToForm: (overrideJson?: string) => void;
     jsonReport: {
         valid: boolean;
         type: string | null;
@@ -163,11 +163,23 @@ export function ParserSection({
                         <div className="flex gap-2">
                             <button
                                 type="button"
-                                onClick={applyJsonToForm}
-                                disabled={!pastedJson.trim()}
-                                className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-md transition-all shadow-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                                onClick={async () => {
+                                    if (!pastedJson.trim()) {
+                                        try {
+                                            const text = await navigator.clipboard.readText();
+                                            if (text) {
+                                                applyJsonToForm(text);
+                                            }
+                                        } catch (err) {
+                                            console.error("Failed to read clipboard", err);
+                                        }
+                                    } else {
+                                        applyJsonToForm();
+                                    }
+                                }}
+                                className="flex-1 h-10 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-md transition-all shadow-sm flex items-center justify-center gap-2"
                             >
-                                Apply JSON
+                                {!pastedJson.trim() ? 'Paste JSON & Apply' : 'Apply JSON'}
                             </button>
                             {clearAllFields && (
                                 <button
