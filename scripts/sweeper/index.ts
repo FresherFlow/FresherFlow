@@ -9,7 +9,11 @@ import { listR2Objects, deleteR2Object } from '../job-discovery/src/utils/r2.js'
 await loadEnv();
 
 const API_URL = (process.env.API_URL || '').trim().replace(/\/$/, '');
-const INTERNAL_API_SECRET = (process.env.INTERNAL_API_SECRET || '').trim();
+if (!process.env.INTERNAL_API_SECRET) {
+    console.error('FATAL: INTERNAL_API_SECRET environment variable is required but not set.');
+    process.exit(1);
+}
+const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET.trim();
 
 interface SweeperCheckResult {
     status: 'live' | 'expired' | 'review';
@@ -399,7 +403,10 @@ async function run() {
 
         // ── R2 Micro-JSON Cleanup Pass ───────────────────────────────────────
         console.log("\n--- Starting R2 Pending Jobs Cleanup ---");
-        const r2Bucket = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+        if (!process.env.R2_BUCKET_NAME) {
+            throw new Error('FATAL: R2_BUCKET_NAME environment variable is required but not set.');
+        }
+        const r2Bucket: string = process.env.R2_BUCKET_NAME;
         const pendingObjects = await listR2Objects(r2Bucket, 'pending-jobs/');
         
         if (pendingObjects.length > 0) {

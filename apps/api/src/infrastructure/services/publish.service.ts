@@ -1,5 +1,5 @@
 import { Opportunity } from '@fresherflow/types';
-import TelegramService from './telegram.service';
+// import TelegramService from './telegram.service';
 import { sendNewJobAlerts } from './notification.service';
 import { invalidatePublicOpportunityCache } from './publicOpportunityCache.service';
 import { logger } from '@fresherflow/logger';
@@ -48,6 +48,7 @@ export async function handleOpportunityPublished(
   });
 
   // 1. Telegram Notifications (to admin/internal monitoring channels)
+  /*
   TelegramService.notifyNewJob(
     opportunity.title, 
     opportunity.company, 
@@ -75,6 +76,7 @@ export async function handleOpportunityPublished(
       });
     });
   }
+  */
 
   // 3. User alerts (Instant Email/Push/App)
   sendNewJobAlerts(opportunity.id).catch((err) => {

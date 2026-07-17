@@ -1,17 +1,20 @@
 import { listR2Objects, downloadJsonFromR2, uploadJsonToR2 } from './r2.js';
 import { ATS_PROVIDERS } from '../config.js';
 
-const r2Bucket = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+function getBucket(): string {
+    if (!process.env.R2_BUCKET_NAME) throw new Error('R2_BUCKET_NAME is not set.');
+    return process.env.R2_BUCKET_NAME;
+}
 
 // Load cached visited URLs from sharded R2 folders
 export async function loadVisited(): Promise<Record<string, string[]>> {
     const visited: Record<string, string[]> = {};
     console.log(`Loading visited state from R2 folders...`);
-    const objects = await listR2Objects(r2Bucket, 'discovery-state/visited/');
+    const objects = await listR2Objects(getBucket(), 'discovery-state/visited/');
     
     await Promise.all(objects.map(async (obj) => {
         if (!obj.Key || !obj.Key.endsWith('.json')) return;
-        const data = await downloadJsonFromR2(r2Bucket, obj.Key);
+        const data = await downloadJsonFromR2(getBucket(), obj.Key);
         if (data && Array.isArray(data)) {
             // Reconstruct the provider key from the file name
             let providerName = obj.Key.split('/').pop()?.replace('.json', '') || '';
@@ -41,7 +44,7 @@ export async function saveVisited(visited: Record<string, string[]>) {
         const fileName = key === '__discovered_apply_links__' ? 'discovered_links' : key;
         const r2Key = `discovery-state/visited/${folder}/${fileName}.json`;
         
-        await uploadJsonToR2(arr, r2Bucket, r2Key);
+        await uploadJsonToR2(arr, getBucket(), r2Key);
     }));
 }
 
@@ -49,11 +52,11 @@ export async function saveVisited(visited: Record<string, string[]>) {
 export async function loadRejectedReasons(): Promise<Record<string, string>> {
     const reasons: Record<string, string> = {};
     console.log(`Loading rejected reasons from R2 folders...`);
-    const objects = await listR2Objects(r2Bucket, 'discovery-state/rejected/');
+    const objects = await listR2Objects(getBucket(), 'discovery-state/rejected/');
     
     await Promise.all(objects.map(async (obj) => {
         if (!obj.Key || !obj.Key.endsWith('.json')) return;
-        const data = await downloadJsonFromR2(r2Bucket, obj.Key);
+        const data = await downloadJsonFromR2(getBucket(), obj.Key);
         if (data && typeof data === 'object' && !Array.isArray(data)) {
             Object.assign(reasons, data);
         }
@@ -80,6 +83,6 @@ export async function saveRejectedReasons(reasons: Record<string, string>) {
     await Promise.all(Object.entries(sharded).map(async ([domain, data]) => {
         if (Object.keys(data).length === 0) return;
         const r2Key = `discovery-state/rejected/${domain}.json`;
-        await uploadJsonToR2(data, r2Bucket, r2Key);
+        await uploadJsonToR2(data, getBucket(), r2Key);
     }));
 }

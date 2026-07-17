@@ -67,16 +67,6 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
       // Let's use `onConflict: 'source, external_id'` as a generic string and if it fails, fallback.
       // Alternatively, let's just use `upsert` and ignore errors (the logs might complain, but it's safe).
       
-      const { error } = await supabase
-        .from('discovered_jobs')
-        .upsert(chunk, { ignoreDuplicates: false, onConflict: 'apply_link' }); // Wait, the user asked for compound. Let's not pass onConflict and let Supabase infer, or we can just omit it and it might fail if we don't pass PK.
-        // Actually, if we just use `upsert` without `onConflict`, it requires the PK.
-        // We can just use `insert` with `{ defaultToNull: false }`? No, we want to update `last_seen_at`.
-        
-      // For now, let's use a workaround: The user's SQL creates `idx_discovered_jobs_unique_ext_id` and `idx_discovered_jobs_unique_link`. 
-      // We can't specify partial indexes in `onConflict`. We will just `insert` and let the DB throw a constraint error, which we ignore.
-      // Wait, the user specifically requested: "Instead of creating another row, your upsert updates: created_at = first discovered, last_seen_at = latest crawl"
-      
       // To do this properly with multiple partial indexes via PostgREST is impossible in a single `upsert`.
       // We will separate the chunk into two groups: those with external_id, and those without.
       const withExt = chunk.filter(j => j.external_id !== null);

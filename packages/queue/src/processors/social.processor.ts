@@ -3,7 +3,6 @@ import { prisma } from '@fresherflow/database';
 import { logger } from '@fresherflow/logger';
 import { SocialPlatform, SocialPostStatus } from '@prisma/client';
 import axios from 'axios';
-import { TwitterApi } from 'twitter-api-v2';
 
 interface SocialJobData {
   socialPostId: string;
@@ -48,11 +47,12 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
 
   try {
     let externalPostId: string | null = null;
+    const title = post.opportunity ? `${post.opportunity.company} - ${post.opportunity.title}` : 'New Opportunity';
 
     if (post.platform === SocialPlatform.X) {
-      externalPostId = await postToX(text);
+      externalPostId = await postToX(title, text);
     } else if (post.platform === SocialPlatform.LINKEDIN) {
-      externalPostId = await postToLinkedIn(text);
+      externalPostId = await postToLinkedIn(title, text);
     } else if (post.platform === SocialPlatform.FACEBOOK) {
       externalPostId = await postToFacebook(text);
     }
@@ -111,45 +111,69 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
   }
 }
 
-async function postToX(text: string): Promise<string> {
-  const client = new TwitterApi({
-    appKey: process.env.X_API_KEY || '',
-    appSecret: process.env.X_API_SECRET || '',
-    accessToken: process.env.X_ACCESS_TOKEN || '',
-    accessSecret: process.env.X_ACCESS_TOKEN_SECRET || '',
-  });
+async function postToBuffer(channelId: string | undefined, text: string): Promise<string> {
+  const apiKey = process.env.BUFFER_API_KEY;
+  if (!apiKey) {
+    throw new Error('Buffer API key is not configured. Set BUFFER_API_KEY in environment.');
+  }
+  if (!channelId) {
+    throw new Error('Buffer Channel ID is not configured.');
+  }
 
-  const response = (await Promise.race([
-    client.v2.tweet(text),
-    new Promise((_, reject) => setTimeout(() => reject(new Error('X (Twitter) timeout after 15s')), 15000))
-  ])) as { data: { id: string } };
-
-  return response.data.id;
-}
-
-async function postToLinkedIn(text: string): Promise<string> {
-  const org = process.env.LINKEDIN_ORGANIZATION_URN;
-  const token = process.env.LINKEDIN_ACCESS_TOKEN;
-
-  const res = await axios.post('https://api.linkedin.com/v2/ugcPosts', {
-    author: org,
-    lifecycleState: 'PUBLISHED',
-    specificContent: {
-      'com.linkedin.ugc.ShareContent': {
-        shareCommentary: { text },
-        shareMediaCategory: 'NONE',
+  const response = await axios.post('https://api.buffer.com', {
+    query: `
+      mutation CreatePost($input: CreatePostInput!) {
+        createPost(input: $input) {
+          ... on PostActionSuccess {
+            post {
+              id
+            }
+          }
+          ... on MutationError {
+            message
+          }
+        }
+      }
+    `,
+    variables: {
+      input: {
+        channelId,
+        text,
+        schedulingType: 'automatic',
+        mode: 'shareNow',
       },
     },
-    visibility: { 'com.linkedin.ugc.MemberNetworkVisibility': 'PUBLIC' },
   }, {
     headers: {
-      Authorization: `Bearer ${token}`,
-      'X-Restli-Protocol-Version': '2.0.0',
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${apiKey}`,
     },
     timeout: 15000,
   });
 
-  return res.headers['x-restli-id'] || 'unknown';
+  if (response.data?.errors) {
+    throw new Error(`Buffer GraphQL Error (CreatePost): ${JSON.stringify(response.data.errors)}`);
+  }
+
+  const result = response.data?.data?.createPost;
+  if (result?.message) {
+    throw new Error(`Buffer CreatePost Error: ${result.message}`);
+  }
+
+  const postId = result?.post?.id;
+  if (!postId) {
+    throw new Error(`Failed to create Buffer Post: ${JSON.stringify(response.data)}`);
+  }
+
+  return postId;
+}
+
+async function postToX(title: string, text: string): Promise<string> {
+  return postToBuffer(process.env.BUFFER_X_CHANNEL_ID, text);
+}
+
+async function postToLinkedIn(title: string, text: string): Promise<string> {
+  return postToBuffer(process.env.BUFFER_LINKEDIN_CHANNEL_ID, text);
 }
 
 async function postToFacebook(text: string): Promise<string> {

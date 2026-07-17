@@ -11,7 +11,7 @@ import http from 'http';
 import { env } from '@fresherflow/config';
 import { logger, setupCleanLogging } from '@fresherflow/logger';
 import { redis } from '@fresherflow/redis';
-import { handleSeed, handleDrain, isAuthorized } from './social.handler';
+import { handleSeed, handleDrain, handleSend, handlePlatforms, isAuthorized } from './social.handler';
 
 setupCleanLogging();
 
@@ -69,7 +69,7 @@ http.createServer(async (req, res) => {
     try {
         const requestUrl = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
-        if (!ENABLE_DEEP_HEALTH || requestUrl.pathname === '/' || requestUrl.pathname === '/health') {
+        if (requestUrl.pathname === '/' || requestUrl.pathname === '/health') {
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
                 status: 'ok',
@@ -99,6 +99,26 @@ http.createServer(async (req, res) => {
                 return;
             }
             await handleDrain(res);
+            return;
+        }
+
+        if (req.method === 'GET' && requestUrl.pathname === '/social/platforms') {
+            if (!isAuthorized(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+            handlePlatforms(res);
+            return;
+        }
+
+        if (req.method === 'POST' && requestUrl.pathname === '/social/send') {
+            if (!isAuthorized(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+            await handleSend(req, res);
             return;
         }
         // ─────────────────────────────────────────────────────────────────────

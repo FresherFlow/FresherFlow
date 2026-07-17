@@ -94,7 +94,7 @@ export async function postJobToApi(
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'x-api-key': process.env.INTERNAL_API_SECRET || '',
+                'x-api-key': process.env.INTERNAL_API_SECRET ?? '',
             },
             body: JSON.stringify(payload),
         });

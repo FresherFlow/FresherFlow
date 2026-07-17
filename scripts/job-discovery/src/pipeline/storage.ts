@@ -42,7 +42,11 @@ export async function persistLocalData(state: DiscoveryState) {
 
 export async function uploadToDataLake(state: DiscoveryState, runId: string | null) {
     const allJobs = state.newJobsFound;
-    const r2Bucket = process.env.R2_BUCKET_NAME || 'fresherflow-cdn';
+
+    if (!process.env.R2_BUCKET_NAME) {
+        throw new Error('FATAL: R2_BUCKET_NAME environment variable is required but not set.');
+    }
+    const r2Bucket: string = process.env.R2_BUCKET_NAME;
 
     // ── Supabase Structured Data Upsert ──────────────────────────────────────────────────
     if (allJobs.length > 0) {
