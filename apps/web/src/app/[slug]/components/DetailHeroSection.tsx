@@ -1,7 +1,7 @@
 import { Opportunity } from '@fresherflow/types';
 import { cn } from '@repo/ui/utils/cn';
 import CompanyLogo from '@/ui/CompanyLogo';
-import { slugify } from '@fresherflow/utils';
+import { slugify } from '@fresherflow/utils/slugify';
 import Link from 'next/link';
 import ClockIcon from '@heroicons/react/24/outline/ClockIcon';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';

@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
+import { slugify } from '@fresherflow/utils/slugify';
+import { unstable_noStore } from 'next/cache';
+import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -26,8 +29,6 @@ export async function generateStaticParams() {
     // This prevents bots crawling skill slugs from triggering on-demand renders and ISR writes.
     const staticParams = new Set(TOP_SKILLS);
     try {
-        const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-        const { slugify } = await import('@fresherflow/utils');
         const feed = await fetchBootstrapFeed();
         if (feed?.opportunities) {
             for (const opp of feed.opportunities) {
@@ -66,7 +67,6 @@ function formatSkillLabel(slug: string): string {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const { name } = await params;
-    const { slugify } = await import('@fresherflow/utils');
     const slug = slugify(decodeURIComponent(name));
     const label = formatSkillLabel(name);
 
@@ -105,7 +105,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SkillPage({ params }: Props) {
     const { name: rawName } = await params;
-    const { slugify } = await import('@fresherflow/utils');
     const slug = slugify(decodeURIComponent(rawName));
 
     if (!slug) {
@@ -125,12 +124,10 @@ export default async function SkillPage({ params }: Props) {
     // No jobs match this skill slug — don't cache the empty page in ISR.
     // Bots crawling arbitrary skill URLs would write thousands of empty ISR entries.
     if (filtered.length === 0) {
-        const { unstable_noStore } = await import('next/cache');
         unstable_noStore();
         notFound();
     }
 
-    const { extractHubRelations } = await import('@/features/opportunities/utils/hubLinking');
     const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered, { skill: slug });
 
     const lastUpdated = feed?.generatedAt 

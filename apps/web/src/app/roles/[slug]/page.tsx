@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
+import { slugify } from '@fresherflow/utils/slugify';
+import { unstable_noStore } from 'next/cache';
+import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -53,7 +56,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const title = `${roleInfo.label} Jobs for Freshers 2026`;
     const description = `Explore verified off-campus job openings, entry-level vacancies, and internships for ${roleInfo.label}s. Direct apply links and zero spam.`;
     const base = SITE_URL.replace(/\/+$/, '');
-    const { slugify } = await import('@fresherflow/utils');
     const slugNormalized = slugify(decodeURIComponent(slug));
     const ogImageUrl = `${CDN_URL}/og/roles/${slugNormalized}.png`;
 
@@ -95,7 +97,6 @@ export default async function RolePage({ params }: Props) {
         roleInfo = { label, keywords: [label.toLowerCase()] };
     }
 
-    const { slugify } = await import('@fresherflow/utils');
     const feed = await fetchBootstrapFeed(false, undefined, true);
     const opportunities = feed?.opportunities || [];
 
@@ -119,16 +120,15 @@ export default async function RolePage({ params }: Props) {
         });
         if (matchesKeyword) return true;
 
+        // 4. Fallback to title string mapping
         return false;
     });
 
     if (filtered.length === 0) {
-        const { unstable_noStore } = await import('next/cache');
         unstable_noStore();
         notFound();
     }
 
-    const { extractHubRelations } = await import('@/features/opportunities/utils/hubLinking');
     const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered, { role: slug });
 
     const lastUpdated = feed?.generatedAt 

@@ -3,6 +3,9 @@ import { notFound } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
+import { slugify } from '@fresherflow/utils/slugify';
+import { unstable_noStore } from 'next/cache';
+import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -58,7 +61,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     const title = `Fresher Jobs in ${locInfo.label} 2026 | Off-Campus Placements`;
     const description = `Find verified entry-level job openings, off-campus drives, and internships in ${locInfo.label} for freshers. Direct application links with zero redirect spam.`;
     const base = SITE_URL.replace(/\/+$/, '');
-    const { slugify } = await import('@fresherflow/utils');
     const slug = slugify(decodeURIComponent(city));
     const ogImageUrl = `${CDN_URL}/og/location/${slug}.png`;
 
@@ -116,12 +118,10 @@ export default async function LocationPage({ params }: Props) {
     });
 
     if (filtered.length === 0) {
-        const { unstable_noStore } = await import('next/cache');
         unstable_noStore();
         notFound();
     }
 
-    const { extractHubRelations } = await import('@/features/opportunities/utils/hubLinking');
     const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered, { city });
 
     const lastUpdated = feed?.generatedAt 

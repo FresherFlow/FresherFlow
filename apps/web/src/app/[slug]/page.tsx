@@ -15,6 +15,8 @@ import {
     getTypeHubPath,
     ExtendedOpportunity
 } from './opportunitySeo';
+import { fetchBootstrapFeed, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api/cdnFeed';
+import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
 
 const CRAWLER_PATHS = new Set(['wp-admin', 'wp-login.php', 'xmlrpc.php', 'ads.txt', 'phpmyadmin', 'admin.php', 'demo', 'generate', 'blog', 'null', 'undefined']);
 
@@ -43,7 +45,6 @@ export const dynamicParams = true;
 
 export async function generateStaticParams() {
     try {
-        const { fetchBootstrapFeed, fetchGovernmentFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
         const [feed, govtFeed, expiredFeed] = await Promise.all([
             fetchBootstrapFeed(),
             fetchGovernmentFeed(),
@@ -102,7 +103,13 @@ export default async function OpportunityDetailPage({ params }: Props) {
     let relatedOpportunitiesData: Opportunity[] = [];
 
     try {
-        opportunityData = await fetchOpportunityForPage(slugOrId);
+        // Parallelize opportunity details and bootstrap feed fetching
+        const [oppResult, feed] = await Promise.all([
+            fetchOpportunityForPage(slugOrId),
+            fetchBootstrapFeed(false, undefined, true)
+        ]);
+
+        opportunityData = oppResult;
 
         // Job not found in CDN feed — return a real 404 so Google doesn't
         // soft-404 the page (200 with error UI = Soft 404 in GSC).
@@ -125,14 +132,7 @@ export default async function OpportunityDetailPage({ params }: Props) {
             permanentRedirect(getTypeHubPath(opportunityData.type));
         }
 
-        // Server-Side Related Opportunities Resolution
-        // fetchOpportunityForPage already fetched the bootstrap feed internally.
-        // Re-use it via a second call — Next.js deduplicates identical fetch() calls
-        // within the same render pass (same URL + options = cache hit, no extra network I/O).
-        const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
-        const feed = await fetchBootstrapFeed(false, undefined, true);
         if (feed?.opportunities) {
-            const { getRelatedOpportunities } = await import('@/features/opportunities/utils/detailUtils');
             relatedOpportunitiesData = getRelatedOpportunities(opportunityData, feed.opportunities);
         }
     } catch (err) {

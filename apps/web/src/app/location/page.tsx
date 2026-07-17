@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
-import { slugify } from '@fresherflow/utils';
+import { slugify } from '@fresherflow/utils/slugify';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 

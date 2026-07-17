@@ -21,7 +21,7 @@ const MobileNavMenu = dynamic(() => import('@/lib/navigation/MobileNavMenu'), { 
 import Link from 'next/link';
 import { Button } from '@/ui/Button';
 import { OpportunityDetailSkeleton } from '@/ui/Skeleton';import { cn } from '@repo/ui/utils/cn';
-import { slugify } from '@fresherflow/utils';
+import { slugify } from '@fresherflow/utils/slugify';
 
 // Subcomponents
 const WalkInDetailsCard = dynamic(() => import('./components/WalkInDetailsCard').then(m => m.WalkInDetailsCard));

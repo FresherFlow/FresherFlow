@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { logRouteResult } from '@/lib/observability';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
+import { fetchBootstrapFeed, fetchGovernmentFeed, fetchExpiredFeed } from '@/lib/api/cdnFeed';
 
 export const revalidate = false; // on-demand only — busted via revalidateTag on publish
 // dynamicParams = true: allows newly published jobs to be dynamically generated on their first visit,
@@ -12,7 +13,6 @@ export const dynamicParams = true;
 
 export async function generateStaticParams() {
     try {
-        const { fetchBootstrapFeed, fetchGovernmentFeed, fetchExpiredFeed } = await import('@/lib/api/cdnFeed');
         const [feed, govtFeed, expiredFeed] = await Promise.all([
             fetchBootstrapFeed(),
             fetchGovernmentFeed(),
@@ -87,7 +87,6 @@ export default async function WalkInsCityLandingPage({ params }: { params: Promi
     const { city } = await params;
     
     // Validate city against feed to prevent cache poisoning by bots
-    const { fetchBootstrapFeed } = await import('@/lib/api/cdnFeed');
     const feed = await fetchBootstrapFeed(false, undefined, true);
     const hasCity = feed?.opportunities?.some(opp => 
         opp.type === 'WALKIN' && 

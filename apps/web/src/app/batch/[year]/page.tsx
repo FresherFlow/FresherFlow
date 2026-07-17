@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
+import { extractHubRelations } from '@/features/opportunities/utils/hubLinking';
 
 export const revalidate = false;
 export const dynamicParams = true;
@@ -79,7 +80,6 @@ export default async function BatchPage({ params }: Props) {
         opp.allowedPassoutYears.includes(year)
     );
 
-    const { extractHubRelations } = await import('@/features/opportunities/utils/hubLinking');
     const { topCompanies, relatedSkills, relatedLocations } = extractHubRelations(filtered);
 
     const lastUpdated = feed?.generatedAt 

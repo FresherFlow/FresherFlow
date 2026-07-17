@@ -5,7 +5,8 @@ import { getOpportunityPath } from '@/features/opportunities/domain/opportunityP
 import { parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
 import { getDriveDates, isCampusDriveOpportunity } from '@/lib/utils/driveTimeline';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
-
+import { fetchBootstrapFeed, fetchExpiredFeed, fetchGovernmentFeed } from '@/lib/api/cdnFeed';
+import { slugify } from '@fresherflow/utils/slugify';
 
 export interface ExtendedOpportunity extends Opportunity {
     updatedAt?: string | Date;
@@ -114,8 +115,6 @@ function parseStructuredSalary(opportunity: Opportunity): ParsedSalary | null {
 // feed JSON separately. With cache(), the second call is free.
 export const fetchOpportunityForPage = cache(async (slugOrId: string): Promise<ExtendedOpportunity | null> => {
     try {
-        const { fetchBootstrapFeed, fetchExpiredFeed, fetchGovernmentFeed } = await import('@/lib/api/cdnFeed');
-
         // Fetch all three feeds in parallel — eliminates sequential 3× CDN latency on cold cache.
         // Each uses force-cache so on a warm CDN, all three complete near-simultaneously.
         // On a cold CDN (post-publish bust), parallel saves up to 2× the wait vs sequential.
@@ -358,10 +357,6 @@ export const generateOpportunityBreadcrumbsJsonLd = (opportunity: Opportunity) =
     const base = SITE_URL.replace(/\/+$/, '');
     const typeLabel = opportunity.type === 'INTERNSHIP' ? 'Internships' : opportunity.type === 'WALKIN' ? 'Walk-ins' : 'Jobs';
     const typePath = opportunity.type === 'INTERNSHIP' ? '/internships' : opportunity.type === 'WALKIN' ? '/walk-ins' : '/jobs';
-    
-    // Dynamic import to avoid build-time issues
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { slugify } = require('@fresherflow/utils');
     const companySlug = slugify(opportunity.company || '');
     
     return {

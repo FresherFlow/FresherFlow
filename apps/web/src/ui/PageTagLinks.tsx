@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { slugify } from '@fresherflow/utils';
+import { slugify } from '@fresherflow/utils/slugify';
 
 interface TagLink {
     label: string;

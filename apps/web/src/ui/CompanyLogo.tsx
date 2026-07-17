@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import { cn } from '@/lib/utils/utils';
-import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils';
+import { BRAND_DOMAINS, getRootDomain } from '@fresherflow/utils/domains';
 import { CDN_URL } from '@/lib/utils/runtimeConfig';
 import ShieldCheckIcon from '@heroicons/react/24/solid/ShieldCheckIcon';
 

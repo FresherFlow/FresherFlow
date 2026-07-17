@@ -9,15 +9,15 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import { PageTagLinks } from '@/ui/PageTagLinks';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
-import { slugify } from '@fresherflow/utils';
+import { slugify } from '@fresherflow/utils/slugify';
 import { getCompanyDescription, TIER_A_SLUGS } from '@/features/companies/utils/companyContent';
+import { fetchCompanyShard, fetchCompaniesMetadata } from '@/lib/api/cdnFeed';
 
 export const revalidate = false;
 export const dynamicParams = true;
 
 export async function generateStaticParams() {
     try {
-        const { fetchCompaniesMetadata } = await import('@/lib/api/cdnFeed');
         const companyDirectory = await fetchCompaniesMetadata();
         if (!companyDirectory) return [];
 
@@ -84,8 +84,6 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         logRouteResult('/companies/[slug]', '308');
         permanentRedirect(`/companies/${properSlug}`);
     }
-
-    const { fetchCompanyShard, fetchCompaniesMetadata } = await import('@/lib/api/cdnFeed');
 
     const companyDirectory = await fetchCompaniesMetadata(true);
     if (companyDirectory && companyDirectory.length > 0) {

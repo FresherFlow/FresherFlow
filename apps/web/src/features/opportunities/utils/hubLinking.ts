@@ -1,5 +1,5 @@
 import { Opportunity } from '@fresherflow/types';
-import { slugify } from '@fresherflow/utils';
+import { slugify } from '@fresherflow/utils/slugify';
 
 export interface HubLink {
     label: string;
