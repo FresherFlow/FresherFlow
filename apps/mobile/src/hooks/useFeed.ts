@@ -5,7 +5,7 @@ import { useFollows } from '@/hooks/useFollows';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
 import { getLocalProfile } from '@/utils/cache/localProfile';
-import { calculateMatchScore } from '@/utils/matchScoring';
+import { calculateOpportunityMatch } from '@fresherflow/domain';
 import Fuse from 'fuse.js';
 
 export const useFeed = (initialFeedType: string | null = null) => {
@@ -181,7 +181,7 @@ export const useFeed = (initialFeedType: string | null = null) => {
 
         // Map and compute relevance scores for all items in result
         const scored = result.map(job => {
-            const matchResult = calculateMatchScore(localProfile, job as any);
+            const matchResult = calculateOpportunityMatch(localProfile, job as any);
             let score = matchResult.score;
 
             const activeSavedJobsData = snapshot.savedJobsData || savedJobsData;

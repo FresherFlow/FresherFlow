@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Image as ExpoImage } from 'expo-image';
-import { useFeedStore, getLogoCacheKey } from '@/store/useFeedStore';
+import { useFeedStore } from '@/store/useFeedStore';
+import { getLogoCacheKey } from '@/utils/cache/syncModule';
 import { storage } from '@/utils/storage';
 import axios from 'axios';
 import { COMPANIES_METADATA_URL } from '@/config/api';

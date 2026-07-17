@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Pressable } from 'react-native';
 import { Bookmark, Clock, ChevronRight, IndianRupee } from 'lucide-react-native';
 import { Opportunity, GovernmentApplicationStatus } from '@fresherflow/types';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -12,7 +12,7 @@ import { format, parseISO, isValid } from 'date-fns';
 
 interface Props {
   opportunity: Opportunity;
-  onPress: () => void;
+  onPress: (opportunity: Opportunity) => void;
   onSave?: (opportunity: Opportunity) => void;
   isSaved?: boolean;
   isViewed?: boolean;
@@ -89,7 +89,7 @@ export const GovtJobCard = memo(({
       <SurfaceCard
         onPress={() => {
           haptic.light();
-          onPress();
+          onPress(opportunity);
         }}
         style={styles.container}
       >
@@ -125,8 +125,11 @@ export const GovtJobCard = memo(({
             </View>
           </View>
 
-          <TouchableOpacity
-            style={styles.bookmarkBtn}
+          <Pressable
+            style={({ pressed }) => [
+                styles.bookmarkBtn,
+                pressed && { opacity: 0.6 }
+            ]}
             onPress={() => {
               haptic.success();
               onSave?.(opportunity);
@@ -137,7 +140,7 @@ export const GovtJobCard = memo(({
               color={isSaved ? currentTheme.colors.primary : currentTheme.colors.textMuted}
               fill={isSaved ? currentTheme.colors.primary : 'transparent'}
             />
-          </TouchableOpacity>
+          </Pressable>
         </View>
 
         <View style={styles.badgeRow}>

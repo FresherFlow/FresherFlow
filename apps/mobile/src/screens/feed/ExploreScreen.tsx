@@ -188,6 +188,11 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const resultsCount = results.length;
     const activeFilterCount = (filters.types?.length || 0) + (filters.workModes?.length || 0) + (filters.batchYears?.length || 0) + (filters.tag ? 1 : 0);
 
+    const handleJobPress = useCallback((opportunity: Opportunity) => {
+        void useFeedStore.getState().markAsOpened(opportunity.id);
+        navigation.navigate('JobDetail', { opportunity, opportunityId: opportunity.id });
+    }, [navigation]);
+
     // Memoized list data so FlashList receives a stable array reference between renders.
     // Previously this was an inline IIFE which created a new array on every render.
     const listData = useMemo((): ExploreItem[] => {
@@ -541,11 +546,8 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             <JobCard
                                 opportunity={item.data}
                                 index={index}
-                                onPress={() => {
-                                    void useFeedStore.getState().markAsOpened(item.data.id);
-                                    navigation.navigate('JobDetail', { opportunity: item.data, opportunityId: item.data.id });
-                                }}
-                                onSave={() => handleToggleSave(item.data)}
+                                onPress={handleJobPress}
+                                onSave={handleToggleSave}
                                 isSaved={isSaved(item.data.id)}
                                 isViewed={openedIds.has(item.data.id)}
                             />

@@ -99,6 +99,11 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         }
     }, [activeTab, latestJobs, appliedJobs, highlights, recentActivity]);
 
+    const handleJobPress = useCallback((opportunity: Opportunity) => {
+        void saveDetailCache(opportunity);
+        navigation.navigate('JobDetail', { opportunity, opportunityId: opportunity.id });
+    }, [navigation]);
+
     const renderHeader = () => (
         <View style={{ backgroundColor: currentTheme.colors.background }}>
             <View style={styles.headerArea}>
@@ -336,10 +341,7 @@ const DashboardScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                     <JobCard
                         opportunity={item}
                         index={index}
-                        onPress={() => {
-                            void saveDetailCache(item);
-                            navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
-                        }}
+                        onPress={handleJobPress}
                         onSave={() => toggleSave(item)}
                         isSaved={isSaved(item.id)}
                     />

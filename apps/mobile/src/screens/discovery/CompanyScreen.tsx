@@ -97,39 +97,65 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
         );
     }, [companyName, getResourcesByGroup, jobs, resources]);
 
+    const getDomainInfo = (urlStr: string) => {
+        try {
+            const normalized = urlStr.indexOf('://') !== -1 ? urlStr : `https://${urlStr}`;
+            const parsed = new URL(normalized);
+            return {
+                host: parsed.hostname.toLowerCase(),
+                pathname: parsed.pathname.toLowerCase(),
+                search: parsed.search.toLowerCase()
+            };
+        } catch {
+            return { host: '', pathname: '', search: '' };
+        }
+    };
+
     // Derive colour from URL — URL is the single source of truth
     const getColorByUrl = (url: string, opacity: number = 1) => {
-        const u = url.toLowerCase();
+        const { host, pathname } = getDomainInfo(url);
+        const hostParts = host.split('.');
         let hex = currentTheme.colors.primary;
-        if (u.includes('youtube.com') || u.includes('youtu.be')) hex = '#EF4444';
-        else if (u.endsWith('.pdf')) hex = '#EA580C';
-        else if (u.includes('roadmap.sh')) hex = '#3B82F6';
-        else if (
-            u.includes('drive.google.com') ||
-            u.includes('dropbox.com') ||
-            u.includes('onedrive') ||
-            u.includes('box.com') ||
-            u.includes('sharepoint')
-        ) hex = '#10B981';
-        else hex = '#8B5CF6';
+        if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'youtu.be') {
+            hex = '#EF4444';
+        } else if (pathname.endsWith('.pdf')) {
+            hex = '#EA580C';
+        } else if (host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) {
+            hex = '#3B82F6';
+        } else if (
+            host === 'drive.google.com' || host.endsWith('.drive.google.com') ||
+            host === 'dropbox.com' || host.endsWith('.dropbox.com') ||
+            hostParts.includes('onedrive') ||
+            host === 'box.com' || host.endsWith('.box.com') ||
+            hostParts.includes('sharepoint')
+        ) {
+            hex = '#10B981';
+        } else {
+            hex = '#8B5CF6';
+        }
         return alpha(hex, opacity);
     };
 
     const getIconByUrl = (url: string) => {
         const size = 20;
-        const u = url.toLowerCase();
+        const { host, pathname, search } = getDomainInfo(url);
+        const hostParts = host.split('.');
         const color = getColorByUrl(url, 1);
-        if (u.includes('youtube.com') || u.includes('youtu.be')) return <PlayCircle size={size} color={color} />;
-        if (u.endsWith('.pdf')) return <FileText size={size} color={color} />;
-        if (u.includes('roadmap.sh')) return <Compass size={size} color={color} />;
+        if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'youtu.be') return <PlayCircle size={size} color={color} />;
+        if (pathname.endsWith('.pdf')) return <FileText size={size} color={color} />;
+        if (host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) return <Compass size={size} color={color} />;
         if (
-            u.includes('drive.google.com') ||
-            u.includes('dropbox.com') ||
-            u.includes('onedrive') ||
-            u.includes('box.com') ||
-            u.includes('sharepoint')
+            host === 'drive.google.com' || host.endsWith('.drive.google.com') ||
+            host === 'dropbox.com' || host.endsWith('.dropbox.com') ||
+            hostParts.includes('onedrive') ||
+            host === 'box.com' || host.endsWith('.box.com') ||
+            hostParts.includes('sharepoint')
         ) {
-            return (u.includes('folder') || u.includes('folders') || u.includes('id='))
+            const isFolder =
+                pathname.indexOf('folder') !== -1 ||
+                pathname.indexOf('folders') !== -1 ||
+                search.indexOf('id=') !== -1;
+            return isFolder
                 ? <FolderOpen size={size} color={color} />
                 : <FileText size={size} color={color} />;
         }
@@ -160,6 +186,11 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         showSuccess(wasSaved ? 'Opportunity removed from saves' : 'Opportunity saved successfully!');
     };
+
+    const handleJobPress = useCallback((opportunity: Opportunity) => {
+        void saveDetailCache(opportunity);
+        navigation.navigate('JobDetail', { opportunity, opportunityId: opportunity.id });
+    }, [navigation]);
 
     const handleToggleFollow = async () => {
         if (isAnonymous) {
@@ -444,11 +475,8 @@ const CompanyScreen: React.FC<Props> = memo(({ navigation, route }: Props) => {
                             <JobCard
                                 opportunity={opportunity}
                                 index={index}
-                                onPress={() => {
-                                    void saveDetailCache(opportunity);
-                                    navigation.navigate('JobDetail', { opportunity, opportunityId: opportunity.id });
-                                }}
-                                onSave={() => handleToggleSave(opportunity)}
+                                onPress={handleJobPress}
+                                onSave={handleToggleSave}
                                 isSaved={isSaved(opportunity.id)}
                             />
                         );

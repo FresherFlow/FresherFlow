@@ -46,6 +46,8 @@ export type RootStackParamList = {
   OTAUpdates: undefined;
   FollowedCompanies: undefined;
   Onboarding: undefined;
+  StoryIntro: undefined;
+  TaskSetupList: undefined;
   SkillSearch: { skill: string };
   ResourcesDirectory: { filterSkills?: string[] } | undefined;
   ResourceGroupDetail: { groupType: 'COMPANY' | 'SKILL'; groupId: string; groupName: string; logoUrl?: string };

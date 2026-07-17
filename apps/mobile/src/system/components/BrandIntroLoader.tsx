@@ -3,7 +3,7 @@ import { StyleSheet, View, Animated } from 'react-native';
 import LogoWhiteImage from '../../../assets/logo-white.png';
 import * as SplashScreen from 'expo-splash-screen';
 
-export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () => void }> = ({ onComplete }) => {
+export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () => void }> = ({ isLoading, onComplete }) => {
   const scaleAnim = React.useRef(new Animated.Value(1)).current;
   const opacityAnim = React.useRef(new Animated.Value(1)).current;
 
@@ -23,6 +23,8 @@ export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () =>
   }, []);
 
   useEffect(() => {
+    if (isLoading) return; // Wait until app data is actually loaded
+
     // Fast exit: scale-up + fade, then reveal app immediately
     Animated.parallel([
       Animated.timing(scaleAnim, {
@@ -38,7 +40,7 @@ export const BrandIntroLoader: React.FC<{ isLoading?: boolean, onComplete: () =>
     ]).start(() => {
       onCompleteRef.current();
     });
-  }, [scaleAnim, opacityAnim]);
+  }, [isLoading, scaleAnim, opacityAnim]);
 
   return (
     <View 

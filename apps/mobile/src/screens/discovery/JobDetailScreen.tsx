@@ -15,6 +15,7 @@ import {
   LayoutAnimation,
   Image,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import {
@@ -202,39 +203,71 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     return matched;
   }, [opportunity, resources]);
 
+  const getDomainInfo = (urlStr: string) => {
+    try {
+      const normalized = urlStr.indexOf('://') !== -1 ? urlStr : `https://${urlStr}`;
+      const parsed = new URL(normalized);
+      return {
+        host: parsed.hostname.toLowerCase(),
+        pathname: parsed.pathname.toLowerCase(),
+        search: parsed.search.toLowerCase()
+      };
+    } catch {
+      return { host: '', pathname: '', search: '' };
+    }
+  };
+
   // Derive colour from URL — URL is the single source of truth
   const getColorByUrl = (url: string, opacity: number = 1) => {
-    const u = url.toLowerCase();
+    const { host, pathname } = getDomainInfo(url);
+    const hostParts = host.split('.');
     let hex = currentTheme.colors.primary;
-    if (u.includes('youtube.com') || u.includes('youtu.be')) hex = '#EF4444';
-    else if (u.endsWith('.pdf')) hex = '#EA580C';
-    else if (u.includes('roadmap.sh')) hex = '#3B82F6';
-    else if (
-      u.includes('drive.google.com') ||
-      u.includes('dropbox.com') ||
-      u.includes('onedrive') ||
-      u.includes('box.com') ||
-      u.includes('sharepoint')
-    ) hex = '#10B981';
-    else hex = '#8B5CF6';
+    if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'youtu.be') {
+      hex = '#EF4444';
+    } else if (pathname.endsWith('.pdf')) {
+      hex = '#EA580C';
+    } else if (host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) {
+      hex = '#3B82F6';
+    } else if (
+      host === 'drive.google.com' || host.endsWith('.drive.google.com') ||
+      host === 'dropbox.com' || host.endsWith('.dropbox.com') ||
+      hostParts.includes('onedrive') ||
+      host === 'box.com' || host.endsWith('.box.com') ||
+      hostParts.includes('sharepoint')
+    ) {
+      hex = '#10B981';
+    } else {
+      hex = '#8B5CF6';
+    }
     return alpha(hex, opacity);
   };
 
   const getIconByUrl = (url: string) => {
     const size = 18;
-    const u = url.toLowerCase();
+    const { host, pathname, search } = getDomainInfo(url);
+    const hostParts = host.split('.');
     const color = getColorByUrl(url, 1);
-    if (u.includes('youtube.com') || u.includes('youtu.be')) return <PlayCircle size={size} color={color} />;
-    if (u.endsWith('.pdf')) return <FileText size={size} color={color} />;
-    if (u.includes('roadmap.sh')) return <Compass size={size} color={color} />;
+    if (host === 'youtube.com' || host === 'www.youtube.com' || host === 'youtu.be') {
+      return <PlayCircle size={size} color={color} />;
+    }
+    if (pathname.endsWith('.pdf')) {
+      return <FileText size={size} color={color} />;
+    }
+    if (host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) {
+      return <Compass size={size} color={color} />;
+    }
     if (
-      u.includes('drive.google.com') ||
-      u.includes('dropbox.com') ||
-      u.includes('onedrive') ||
-      u.includes('box.com') ||
-      u.includes('sharepoint')
+      host === 'drive.google.com' || host.endsWith('.drive.google.com') ||
+      host === 'dropbox.com' || host.endsWith('.dropbox.com') ||
+      hostParts.includes('onedrive') ||
+      host === 'box.com' || host.endsWith('.box.com') ||
+      hostParts.includes('sharepoint')
     ) {
-      return (u.includes('folder') || u.includes('folders') || u.includes('id='))
+      const isFolder =
+        pathname.indexOf('folder') !== -1 ||
+        pathname.indexOf('folders') !== -1 ||
+        search.indexOf('id=') !== -1;
+      return isFolder
         ? <FolderOpen size={size} color={color} />
         : <FileText size={size} color={color} />;
     }
@@ -571,14 +604,17 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                     style={styles.heroGradient}
                 />
                 <View style={styles.titleRow}>
-                    <Text 
-                        style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}
-                        numberOfLines={2}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.7}
-                    >
-                        {opportunity.title}
-                    </Text>
+                    {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
+                    <Reanimated.View sharedTransitionTag={`title-${opportunity.id}`} style={{ flex: 1 }}>
+                        <Text 
+                            style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}
+                            numberOfLines={2}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.7}
+                        >
+                            {opportunity.title}
+                        </Text>
+                    </Reanimated.View>
                 </View>
                 {opportunity.matchReason && opportunity.matchScore !== undefined && opportunity.matchScore > 0 && (
                     <Text style={[
@@ -599,13 +635,16 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                             currentJob: opportunity
                         })}
                     >
-                        <CompanyLogo
-                            name={opportunity.company}
-                            website={opportunity.companyWebsite}
-                            applyLink={opportunity.applyLink}
-                            logoUrl={opportunity.companyLogoUrl}
-                            size={56}
-                        />
+                        {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
+                        <Reanimated.View sharedTransitionTag={`logo-${opportunity.id}`}>
+                            <CompanyLogo
+                                name={opportunity.company}
+                                website={opportunity.companyWebsite}
+                                applyLink={opportunity.applyLink}
+                                logoUrl={opportunity.companyLogoUrl}
+                                size={56}
+                            />
+                        </Reanimated.View>
                         <View style={{ flex: 1, gap: 4 }}>
                             <Text style={[styles.companyName, { color: currentTheme.colors.text }]}>{opportunity.company}</Text>
                             <View style={styles.badgeRow}>

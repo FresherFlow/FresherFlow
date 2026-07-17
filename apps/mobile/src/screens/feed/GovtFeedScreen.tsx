@@ -155,6 +155,14 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
 
     return data;
   }, [isBootstrapping, filteredOpportunities, isRefreshing, isSyncing]);
+  const handleJobPress = useCallback((opportunity: Opportunity) => {
+      void useFeedStore.getState().markAsOpened(opportunity.id);
+      navigation.navigate('GovtJobDetail', { opportunity, opportunityId: opportunity.id });
+  }, [navigation]);
+
+  const handleJobSave = useCallback((opportunity: Opportunity) => {
+      toggleSave(opportunity);
+  }, [toggleSave]);
 
   const renderItem = useCallback(({ item }: { item: GovtFeedItem }) => {
     switch (item.type) {
@@ -163,11 +171,8 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
             <GovtJobCard
                 opportunity={item.data}
                 index={item.index}
-                onPress={() => {
-                    void useFeedStore.getState().markAsOpened(item.data.id);
-                    navigation.navigate('GovtJobDetail', { opportunity: item.data, opportunityId: item.data.id });
-                }}
-                onSave={() => toggleSave(item.data)}
+                onPress={handleJobPress}
+                onSave={handleJobSave}
                 isSaved={isSaved(item.data.id)}
                 isViewed={openedIds.has(item.data.id)}
             />
@@ -225,11 +230,8 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
             keyExtractor={(item) => item.key}
             // @ts-expect-error - FlashList typing bug with estimatedItemSize
             estimatedItemSize={180}
+            getItemType={(item) => item.type}
             drawDistance={800}
-            removeClippedSubviews={true}
-            windowSize={3}
-            maxToRenderPerBatch={5}
-            initialNumToRender={5}
             showsVerticalScrollIndicator={false}
 
             contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + mScale(60) }]}

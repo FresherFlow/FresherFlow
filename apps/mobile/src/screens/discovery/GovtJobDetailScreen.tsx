@@ -16,6 +16,7 @@ import {
   TextInput,
   Modal,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 import {
@@ -67,7 +68,7 @@ import { renderFormattedDescription } from '@/system/components/DescriptionParse
 import { markJobAsSeen } from '@/utils/cache/seenJobs';
 import { formatSalary } from '@/utils/formatters';
 import { openExternalURL } from '@/utils/browser';
-import { calculateMatchScore } from '@/utils/matchScoring';
+import { calculateOpportunityMatch } from '@fresherflow/domain';
 
 import { useNotifications } from '@repo/frontend-core';
 import { useToast } from '@/contexts/ToastContext';
@@ -154,7 +155,7 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
 
   const matchResult = useMemo(() => {
     if (!opportunity) return null;
-    return calculateMatchScore(profile, opportunity);
+    return calculateOpportunityMatch(profile, opportunity);
   }, [profile, opportunity]);
 
   const isFollowingCompany = useMemo(() => {
@@ -1522,14 +1523,17 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
                     style={styles.heroGradient}
                 />
                 <View style={styles.titleRow}>
-                    <Text 
-                        style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}
-                        numberOfLines={2}
-                        adjustsFontSizeToFit
-                        minimumFontScale={0.7}
-                    >
-                        {opportunity.title}
-                    </Text>
+                    {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
+                    <Reanimated.View sharedTransitionTag={`title-${opportunity.id}`} style={{ flex: 1 }}>
+                        <Text 
+                            style={[styles.title, { color: currentTheme.colors.text, flex: 1 }]}
+                            numberOfLines={2}
+                            adjustsFontSizeToFit
+                            minimumFontScale={0.7}
+                        >
+                            {opportunity.title}
+                        </Text>
+                    </Reanimated.View>
                 </View>
                 {matchResult && matchResult.reason && matchResult.score !== undefined && matchResult.score > 0 && (
                     <Text style={[
@@ -1550,14 +1554,17 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
                             currentJob: opportunity
                         })}
                     >
-                        <CompanyLogo
-                            name={opportunity.company}
-                            website={opportunity.companyWebsite}
-                            applyLink={opportunity.applyLink}
-                            logoUrl={opportunity.companyLogoUrl}
-                            size={56}
-                            isGovernment={true}
-                        />
+                        {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
+                        <Reanimated.View sharedTransitionTag={`logo-${opportunity.id}`}>
+                            <CompanyLogo
+                                name={opportunity.company}
+                                website={opportunity.companyWebsite}
+                                applyLink={opportunity.applyLink}
+                                logoUrl={opportunity.companyLogoUrl}
+                                size={56}
+                                isGovernment={true}
+                            />
+                        </Reanimated.View>
                         <View style={{ flex: 1, gap: 4 }}>
                             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                                 <Text style={[styles.companyName, { color: currentTheme.colors.text }]} numberOfLines={1}>

@@ -5,10 +5,10 @@ import {
   View,
   TextInput,
   TouchableOpacity,
-  FlatList,
   StatusBar,
   Platform,
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Search, X, ChevronRight, Check, Plus, Building2, Landmark } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
@@ -315,14 +315,16 @@ const FollowedCompaniesScreen: React.FC<Props> = memo(({ navigation }: Props) =>
         </View>
 
         {/* Companies List */}
-        <FlatList
-          ref={listRef}
+        <FlashList
+          ref={listRef as any}
           data={filteredCompanies}
           keyExtractor={(item) => item.key}
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
           scrollEventThrottle={16}
+          // @ts-expect-error - FlashList typing bug with estimatedItemSize
+          estimatedItemSize={80}
           contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>

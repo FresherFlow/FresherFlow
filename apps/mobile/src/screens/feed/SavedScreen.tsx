@@ -155,6 +155,16 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         return [{ id: 'nudge-header-item', isHeader: true } as any, ...filteredSavedJobs];
     }, [filteredSavedJobs, savedResources, activeTab]);
 
+    const handleGovtJobPress = useCallback((opportunity: Opportunity) => {
+        void useFeedStore.getState().markAsOpened(opportunity.id);
+        navigation.navigate('GovtJobDetail', { opportunity, opportunityId: opportunity.id });
+    }, [navigation]);
+
+    const handleJobPress = useCallback((opportunity: Opportunity) => {
+        void useFeedStore.getState().markAsOpened(opportunity.id);
+        navigation.navigate('JobDetail', { opportunity, opportunityId: opportunity.id });
+    }, [navigation]);
+
     const renderItem = useCallback(({ item, index }: { item: any, index: number }) => {
         if (item.isHeader) {
             const currentList = activeTab === 'JOBS' ? filteredSavedJobs : savedResources;
@@ -232,10 +242,7 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                 <GovtJobCard
                     opportunity={item}
                     index={index - 1}
-                    onPress={() => {
-                        void useFeedStore.getState().markAsOpened(item.id);
-                        navigation.navigate('GovtJobDetail', { opportunity: item, opportunityId: item.id });
-                    }}
+                    onPress={handleGovtJobPress}
                     isSaved={isSaved(item.id)}
                     onSave={handleToggleSave}
                     isViewed={openedIds.has(item.id)}
@@ -247,16 +254,13 @@ const SavedScreen: React.FC<Props> = memo(({ navigation }: Props) => {
             <JobCard
                 opportunity={item}
                 index={index - 1}
-                onPress={() => {
-                    void useFeedStore.getState().markAsOpened(item.id);
-                    navigation.navigate('JobDetail', { opportunity: item, opportunityId: item.id });
-                }}
+                onPress={handleJobPress}
                 isSaved={isSaved(item.id)}
                 onSave={handleToggleSave}
                 isViewed={openedIds.has(item.id)}
             />
         );
-    }, [filteredSavedJobs, savedResources, activeTab, isSavedResource, toggleSaveResource, renderEmpty, loading, currentTheme, isSaved, handleToggleSave, navigation, sector, openedIds]);
+    }, [filteredSavedJobs, savedResources, activeTab, isSavedResource, toggleSaveResource, renderEmpty, loading, currentTheme, isSaved, handleToggleSave, navigation, sector, openedIds, handleGovtJobPress, handleJobPress]);
 
     return (
         <Screen safe={false}>

@@ -1,5 +1,5 @@
 import React, { memo } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { StyleSheet, Text, View, TouchableOpacity, Pressable } from 'react-native';
 import { IndianRupee, MapPin, Users, Clock, Bookmark, ChevronRight, Briefcase, Trophy } from 'lucide-react-native';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
@@ -14,10 +14,11 @@ import { formatSalary } from '@/utils/formatters';
 import { toTitleCase, formatListToTitleCase } from '@/utils/text';
 import { getDisplayHandle } from '@fresherflow/utils';
 import { useCitiesMetadata } from '@/hooks/useCitiesMetadata';
+import Reanimated from 'react-native-reanimated';
 
 interface Props {
   opportunity: Opportunity & { matchReason?: string; matchScore?: number; isEligible?: boolean };
-  onPress: () => void;
+  onPress: (opportunity: Opportunity) => void;
   onSave?: (opportunity: Opportunity) => void;
   isSaved?: boolean;
   isViewed?: boolean;
@@ -106,7 +107,7 @@ export const OpportunityCard = memo(({
         <SurfaceCard
             onPress={() => {
                 haptic.light();
-                onPress();
+                onPress(opportunity);
             }}
             onLongPress={handleLongPress}
             style={[
@@ -168,35 +169,42 @@ export const OpportunityCard = memo(({
                 )}
             </View>
             <View style={styles.companyRow}>
-                <CompanyLogo
-                    name={opportunity.company}
-                    website={opportunity.companyWebsite}
-                    applyLink={opportunity.applyLink}
-                    logoUrl={opportunity.companyLogoUrl}
-                    size={mScale(40)}
-                />
+                {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
+                <Reanimated.View sharedTransitionTag={`logo-${opportunity.id}`}>
+                    <CompanyLogo
+                        name={opportunity.company}
+                        website={opportunity.companyWebsite}
+                        applyLink={opportunity.applyLink}
+                        logoUrl={opportunity.companyLogoUrl}
+                        size={mScale(40)}
+                    />
+                </Reanimated.View>
                 <View style={styles.titleWrapper}>
-                    <Text 
-                        style={[
-                            styles.title, 
-                            { 
-                                color: isViewed ? alpha(currentTheme.colors.text, 0.8) : currentTheme.colors.text,
-                                fontWeight: isViewed ? '700' : '900'
-                            }
-                        ]} 
-                        numberOfLines={2}
-                    >
-                        {opportunity.title}
-                    </Text>
+                    {/* @ts-expect-error - sharedTransitionTag typing mismatch */}
+                    <Reanimated.View sharedTransitionTag={`title-${opportunity.id}`}>
+                        <Text 
+                            style={[
+                                styles.title, 
+                                { 
+                                    color: isViewed ? alpha(currentTheme.colors.text, 0.8) : currentTheme.colors.text,
+                                    fontWeight: isViewed ? '700' : '900'
+                                }
+                            ]} 
+                            numberOfLines={2}
+                        >
+                            {opportunity.title}
+                        </Text>
+                    </Reanimated.View>
                     <Text style={[styles.company, { color: currentTheme.colors.textMuted }]} numberOfLines={1}>{opportunity.company}</Text>
                 </View>
             </View>
         </View>
 
-            <TouchableOpacity
-                style={[
+            <Pressable
+                style={({ pressed }) => [
                     styles.bookmarkBtn,
-                    { backgroundColor: 'transparent' }
+                    { backgroundColor: 'transparent' },
+                    pressed && { opacity: 0.6 }
                 ]}
                 onPress={() => {
                     haptic.success();
@@ -208,7 +216,7 @@ export const OpportunityCard = memo(({
                     color={isSaved ? currentTheme.colors.primary : currentTheme.colors.textMuted}
                     fill={isSaved ? currentTheme.colors.primary : 'transparent'}
                 />
-            </TouchableOpacity>
+            </Pressable>
       </View>
 
       {(() => {

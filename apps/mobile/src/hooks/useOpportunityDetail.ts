@@ -13,7 +13,7 @@ import { markJobAsSeen, isJobOpened, markJobAsOpened } from '@/utils/cache/seenJ
 import { getLocalProfile } from '@/utils/cache/localProfile';
 import { generateCdnSignature } from '@/utils/cdnSignature';
 import { BOOTSTRAP_FEED_URL } from '@/config/api';
-import { calculateMatchScore } from '@/utils/matchScoring';
+import { calculateOpportunityMatch } from '@fresherflow/domain';
 import { MOBILE_SITE_URL } from '@/utils/runtime';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
@@ -127,7 +127,7 @@ export const useOpportunityDetail = (
                 if (cancelled) return;
 
                 const profile = await getLocalProfile();
-                const match = calculateMatchScore(profile, foundOpportunity);
+                const match = calculateOpportunityMatch(profile, foundOpportunity);
                 // Robust Check: If API/CDN returns partial data but we have a better cached version, use cache
                 const hasFullData = !!foundOpportunity.description;
                 const cachedHasFullData = !!cached?.description;

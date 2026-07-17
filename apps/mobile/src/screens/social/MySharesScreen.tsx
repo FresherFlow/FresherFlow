@@ -212,7 +212,7 @@ const MySharesScreen: React.FC<Props> = ({ route, navigation }) => {
                         </View>
                     ) : null
                 }
-                removeClippedSubviews={Platform.OS === 'android'}
+
             />
         </Screen>
     );

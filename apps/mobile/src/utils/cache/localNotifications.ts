@@ -19,7 +19,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Opportunity, Profile } from '@fresherflow/types';
 import { getLocalProfile } from './localProfile';
 import { getLocalAlertPrefs } from './localAlerts';
-import { calculateMatchScore } from '../matchScoring';
+import { calculateOpportunityMatch } from '@fresherflow/domain';
 import { getSeenIds } from './seenJobs';
 import { getJSON, setJSON, getString, setString } from '../storage';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -276,7 +276,7 @@ export async function diffAndNotify(freshJobs: Opportunity[]): Promise<number> {
       // Skip expired
       if (job.expiresAt && new Date(job.expiresAt).getTime() <= now) continue;
 
-      const match = calculateMatchScore(profile, job);
+      const match = calculateOpportunityMatch(profile, job);
       if (!match.isEligible) continue; // eligibility is mandatory
 
       const enriched: AlertOpportunity = {

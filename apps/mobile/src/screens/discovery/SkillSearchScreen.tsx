@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, TextInput, Keyboard, TouchableWithoutFeedback } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
@@ -99,6 +99,10 @@ export default function SkillSearchScreen({ navigation, route }: Props) {
         Keyboard.dismiss();
         listRef.current?.scrollToOffset({ offset: 0, animated: false });
     };
+
+    const handleJobPress = useCallback((opportunity: Opportunity) => {
+        navigation.push('JobDetail', { opportunity, opportunityId: opportunity.id });
+    }, [navigation]);
 
     const toggleSkillByName = async (targetSkill: string) => {
         if (isAnonymous) {
@@ -287,7 +291,7 @@ export default function SkillSearchScreen({ navigation, route }: Props) {
                     renderItem={({ item }) => (
                         <JobCard 
                             opportunity={item} 
-                            onPress={() => navigation.push('JobDetail', { opportunity: item, opportunityId: item.id })}
+                            onPress={handleJobPress}
                         />
                     )}
                 />
