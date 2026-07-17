@@ -6,6 +6,8 @@ dotenv.config();
 dotenv.config({ path: path.join(__dirname, '../.env') });
 dotenv.config({ path: path.join(__dirname, '../../.env') });
 
+process.env.IS_API = 'true';
+
 import fs from 'fs';
 
 import express, { Application } from 'express';

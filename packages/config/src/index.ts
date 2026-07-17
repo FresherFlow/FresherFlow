@@ -38,8 +38,8 @@ const envSchema = z.object({
     DATABASE_URL: z.string().optional(),
     DIRECT_DATABASE_URL: z.string().optional(),
     REDIS_URL: z.string().optional(),
-    JWT_ACCESS_SECRET: z.string(),
-    JWT_REFRESH_SECRET: z.string(),
+    JWT_ACCESS_SECRET: z.string().default(''),
+    JWT_REFRESH_SECRET: z.string().default(''),
     FRONTEND_URL: z.string().optional(),
     FRONTEND_URLS: z.string().optional(),
     SENTRY_DSN: z.string().optional(),
@@ -56,13 +56,25 @@ const envSchema = z.object({
     ENABLE_INGESTION: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
     ENABLE_CRON_TASKS: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
     REDIS_ENABLED: z.preprocess((value) => parseBooleanEnv(value, true), z.boolean().default(true)),
+    IS_API: z.preprocess((value) => parseBooleanEnv(value, false), z.boolean().default(false)),
 }).superRefine((value, ctx) => {
-    if (value.NODE_ENV !== 'test' && !value.DATABASE_URL) {
-        ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            path: ['DATABASE_URL'],
-            message: 'Required',
-        });
+
+
+    if (value.NODE_ENV !== 'test' && value.IS_API) {
+        if (!value.JWT_ACCESS_SECRET || value.JWT_ACCESS_SECRET === '') {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['JWT_ACCESS_SECRET'],
+                message: 'Required when running as API',
+            });
+        }
+        if (!value.JWT_REFRESH_SECRET || value.JWT_REFRESH_SECRET === '') {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                path: ['JWT_REFRESH_SECRET'],
+                message: 'Required when running as API',
+            });
+        }
     }
 });
 
