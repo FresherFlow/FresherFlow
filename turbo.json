@@ -17,7 +17,15 @@
         "FIREBASE_PROJECT_ID",
         "FIREBASE_CLIENT_EMAIL",
         "FIREBASE_PRIVATE_KEY",
-        "REVALIDATE_SECRET_TOKEN"
+        "REVALIDATE_SECRET_TOKEN",
+        "R2_ENDPOINT",
+        "R2_ACCESS_KEY_ID",
+        "R2_SECRET_ACCESS_KEY",
+        "R2_BUCKET_NAME",
+        "BASIC_AUTH_USER",
+        "BASIC_AUTH_PASSWORD",
+        "WORKER_URL",
+        "WORKER_SECRET"
     ],
     "tasks": {
         "build": {

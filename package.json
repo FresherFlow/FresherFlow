@@ -51,6 +51,7 @@
     "build:mobile": "turbo run build --filter=mobile",
     "deploy:web": "pnpm build:web",
     "deploy:api": "turbo run db:generate --filter=fresherflow-api && pnpm --filter ./apps/api prisma:migrate && turbo run build --filter=fresherflow-api",
+    "deploy:worker": "turbo run build --filter=fresherflow-worker",
     "start:api": "pnpm --filter ./apps/api start",
     "start:worker": "pnpm --filter ./apps/api start:worker",
     "start:web": "pnpm --filter ./apps/web start",
