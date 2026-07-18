@@ -35,7 +35,12 @@ export async function discoverAtsJobs(state: DiscoveryState) {
         console.error("Critical error fetching ATS registry from CDN:", err);
     }
 
-    const atsJobs = await runAtsDiscovery(state.atsRegistry, state.stats);
+    const atsJobs = await runAtsDiscovery(
+        state.atsRegistry,
+        state.stats,
+        state.knownLinks,
+        state.visited["__discovered_apply_links__"]
+    );
 
     let atsQueued = 0, atsRejected = 0;
     for (const job of atsJobs) {

@@ -16,6 +16,7 @@ import { DarwinBoxAdapter } from './DarwinBoxAdapter.js';
 import { isPotentialFresherJob, isLocationIndiaOrRemote } from '../filters/ats-filters.js';
 import { scoreJobDescription } from '../filters/scorer.js';
 import type { RunStats } from '../pipeline/state.js';
+import { normalizeUrl } from '../utils/url.js';
 
 export interface AtsRegistry {
     [key: string]: Record<string, string> | undefined;
@@ -64,7 +65,9 @@ async function runProvider(
     data: Record<string, string>,
     delay: number,
     companyConcurrency: number,
-    stats: RunStats
+    stats: RunStats,
+    knownLinks: Set<string>,
+    visitedSet: Set<string>
 ): Promise<AtsJob[]> {
     const companies = Object.entries(data);
     if (companies.length === 0) return [];
@@ -88,6 +91,12 @@ async function runProvider(
         let rejectedCount = 0;
 
         for (const job of fresherJobs) {
+            const normalizedLink = normalizeUrl(job.applyLink);
+            if (knownLinks.has(normalizedLink) || visitedSet.has(normalizedLink)) {
+                // Skip already known jobs early to avoid details fetch and NLP scoring
+                continue;
+            }
+
             if (!job.description && adapter.fetchJobDetails) {
                 try {
                     const desc = await adapter.fetchJobDetails(job);
@@ -131,8 +140,14 @@ async function runProvider(
 }
 
 // ─── Main entry ───────────────────────────────────────────────────────────────
-export async function runAtsDiscovery(registry: AtsRegistry, stats: RunStats): Promise<AtsJob[]> {
+export async function runAtsDiscovery(
+    registry: AtsRegistry,
+    stats: RunStats,
+    knownLinks: Set<string>,
+    visitedApplyLinks: string[]
+): Promise<AtsJob[]> {
     console.log(`\n--- Starting ATS Direct Discovery (parallel) ---`);
+    const visitedSet = new Set(visitedApplyLinks);
 
     const adapters: Array<{
         name: string;
@@ -173,7 +188,7 @@ export async function runAtsDiscovery(registry: AtsRegistry, stats: RunStats): P
     // Run ALL providers in parallel — pass stats so each provider records its own counts
     const providerResults = await Promise.all(
         activeAdapters.map(({ name, adapter, data, delay, companyConcurrency }) =>
-            runProvider(name, adapter, data!, delay, companyConcurrency, stats)
+            runProvider(name, adapter, data!, delay, companyConcurrency, stats, knownLinks, visitedSet)
         )
     );
 

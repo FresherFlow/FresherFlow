@@ -80,7 +80,10 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
                 }
 
                 if (checkResult.live) {
-                    const actualApplyLink = checkResult.finalUrl || candidate.applyLink;
+                    let actualApplyLink = checkResult.finalUrl || candidate.applyLink;
+                    if (actualApplyLink.includes('accounts.google.com') || actualApplyLink.includes('google.com/accounts')) {
+                        actualApplyLink = candidate.applyLink;
+                    }
                     console.log(`  ✅ LIVE: ${actualApplyLink} (${checkResult.status})`);
 
                     let jobTitle = await page.title().catch(() => "");

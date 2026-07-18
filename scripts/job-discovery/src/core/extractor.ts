@@ -23,7 +23,7 @@ export function isValidApplyLink(urlStr: string, currentDomain: string): boolean
             'facebook.com', 'twitter.com', 'x.com', 'linkedin.com', 'whatsapp.com', 
             'telegram.org', 't.me', 'telegram.me', 'telegram.dog', 'youtube.com', 'youtu.be', 
             'instagram.com', 'foundit.in', 'naukri.com', 'cloudflare.com', 
-            'play.google.com', 'plus.google.com', 'apps.apple.com',
+            'play.google.com', 'plus.google.com', 'accounts.google.com', 'apps.apple.com',
             'pinterest.com', 'reddit.com', 'github.com/MukeshCheekatla',
             'openinapp.co', 'openinapp.link', 'linktr.ee', 'bio.link', 'bit.ly', 'tinyurl.com',
             'freshershunt.in', 'jobsaddafreshers.com', 'internshipss.com', 'placementdrive.in',
