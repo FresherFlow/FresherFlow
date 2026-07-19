@@ -86,6 +86,9 @@ export class OracleAdapter implements AtsAdapter {
                         } catch {
                             // ignore — siteNumber stays null
                         }
+                        if (!siteNumber) {
+                            siteNumber = siteCode;
+                        }
                     }
                 }
             }

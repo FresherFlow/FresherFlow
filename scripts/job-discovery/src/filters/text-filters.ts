@@ -1,4 +1,4 @@
-import { EXPERIENCED_PHRASES, FRESHER_PHRASES } from '../config.js';
+import { EXPERIENCED_REGEXES, FRESHER_REGEXES } from '../config.js';
 
 // Is this a fresher job?
 export function isFresherJob(text: string): boolean {
@@ -26,38 +26,38 @@ export function isFresherJob(text: string): boolean {
 
     // Check for experience requirements like "1 year of experience", "2 years' experience"
     // Does NOT match if preceded by "0-" or "0 to"
-    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
+    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b\d{2,}\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
     if (expReqRegex.test(lowerText)) {
         return false;
     }
 
     // Check for "1+ years of experience", "2+ yrs experience", "4+ years expertise"
-    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
+    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
     if (plusExpRegex.test(lowerText)) {
         return false;
     }
 
     // Check for "minimum of 1 year of experience", "min 2 years experience"
-    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b10\b)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}(?:experience|expertise)/gi;
+    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}(?:experience|expertise)/gi;
     if (minExpRegex.test(lowerText)) {
         return false;
     }
     
     // Standalone experience that doesn't say "of experience" but implies it:
     // "Experience: 1 year", "Exp - 2 yrs", "Requires 1 year", "Experience: 8+yrs"
-    const standaloneExpRegex = /(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b10\b)\s*\+?\s*(?:years?|yrs?|y\b)/gi;
+    const standaloneExpRegex = /(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b\d{2,}\b)\s*\+?\s*(?:years?|yrs?|y\b)/gi;
     if (standaloneExpRegex.test(lowerText)) {
         return false;
     }
     
     // If it explicitly asks for experience (e.g. 3+ years), it is NOT a fresher job.
-    for (const phrase of EXPERIENCED_PHRASES) {
-        if (lowerText.includes(phrase)) return false;
+    for (const pattern of EXPERIENCED_REGEXES) {
+        if (pattern.test(lowerText)) return false;
     }
 
     // If it explicitly says fresher/entry-level/intern, it is.
-    for (const phrase of FRESHER_PHRASES) {
-        if (lowerText.includes(phrase)) return true;
+    for (const pattern of FRESHER_REGEXES) {
+        if (pattern.test(lowerText)) return true;
     }
     // Default to true to avoid missing potential entry level/fresher jobs
     return true; 
@@ -122,8 +122,8 @@ export function isSeniorJob(text: string): boolean {
 // Check if the text contains any fresher keywords
 export function hasFresherKeyword(text: string): boolean {
     const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
-    for (const phrase of FRESHER_PHRASES) {
-        if (lowerText.includes(phrase)) return true;
+    for (const pattern of FRESHER_REGEXES) {
+        if (pattern.test(lowerText)) return true;
     }
     return false;
 }

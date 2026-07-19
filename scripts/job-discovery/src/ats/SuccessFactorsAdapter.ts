@@ -6,7 +6,12 @@ export class SuccessFactorsAdapter implements AtsAdapter {
     async fetchJobs(companyUrl: string, companyName: string): Promise<AtsJob[]> {
         // e.g. https://career5.successfactors.eu/career?company=WNS
         try {
-            const response = await fetch(companyUrl, {
+            let resolvedUrl = companyUrl;
+            if (!resolvedUrl.startsWith('http://') && !resolvedUrl.startsWith('https://')) {
+                resolvedUrl = `https://career5.successfactors.eu/career?company=${companyUrl}`;
+            }
+
+            const response = await fetch(resolvedUrl, {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
                 }
@@ -36,7 +41,7 @@ export class SuccessFactorsAdapter implements AtsAdapter {
                 title = title.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
                 if (applyLink.startsWith('/')) {
-                    const urlObj = new URL(companyUrl);
+                    const urlObj = new URL(resolvedUrl);
                     applyLink = `${urlObj.origin}${applyLink}`;
                 }
 

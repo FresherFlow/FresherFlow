@@ -157,21 +157,21 @@ export async function runAtsDiscovery(
         companyConcurrency: number;
     }> = [
         // ── Phase 1 ──────────────────────────────────────────────────────────
-        { name: 'Greenhouse',       adapter: new GreenhouseAdapter(),      data: registry.greenhouse,     delay: 800,  companyConcurrency: 3 },
-        { name: 'Lever',            adapter: new LeverAdapter(),           data: registry.lever,          delay: 800,  companyConcurrency: 3 },
-        { name: 'Workday',          adapter: new WorkdayAdapter(),         data: registry.workday,        delay: 2000, companyConcurrency: 2 },
-        { name: 'Ashby',            adapter: new AshbyAdapter(),           data: registry.ashby ?? registry.ashbyhq, delay: 800, companyConcurrency: 3 },
-        { name: 'SmartRecruiters',  adapter: new SmartRecruitersAdapter(), data: registry.smartrecruiters, delay: 800, companyConcurrency: 3 },
-        { name: 'Oracle',           adapter: new OracleAdapter(),          data: registry.oracle,         delay: 1000, companyConcurrency: 2 },
-        { name: 'iCIMS',            adapter: new ICimsAdapter(),           data: registry.icims,          delay: 1000, companyConcurrency: 2 },
-        { name: 'SuccessFactors',   adapter: new SuccessFactorsAdapter(),  data: registry.successfactors, delay: 1500, companyConcurrency: 2 },
+        { name: 'Greenhouse',       adapter: new GreenhouseAdapter(),      data: registry.greenhouse,     delay: 800,  companyConcurrency: 4 },
+        { name: 'Lever',            adapter: new LeverAdapter(),           data: registry.lever,          delay: 800,  companyConcurrency: 4 },
+        { name: 'Workday',          adapter: new WorkdayAdapter(),         data: registry.workday,        delay: 2000, companyConcurrency: 5 },
+        { name: 'Ashby',            adapter: new AshbyAdapter(),           data: registry.ashby ?? registry.ashbyhq, delay: 800, companyConcurrency: 4 },
+        { name: 'SmartRecruiters',  adapter: new SmartRecruitersAdapter(), data: registry.smartrecruiters, delay: 800, companyConcurrency: 4 },
+        { name: 'Oracle',           adapter: new OracleAdapter(),          data: registry.oracle,         delay: 1000, companyConcurrency: 4 },
+        { name: 'iCIMS',            adapter: new ICimsAdapter(),           data: registry.icims,          delay: 1000, companyConcurrency: 4 },
+        { name: 'SuccessFactors',   adapter: new SuccessFactorsAdapter(),  data: registry.successfactors, delay: 1500, companyConcurrency: 4 },
         // ── Phase 2 ──────────────────────────────────────────────────────────
-        { name: 'BambooHR',         adapter: new BambooHRAdapter(),        data: registry.bamboohr,       delay: 800,  companyConcurrency: 3 },
-        { name: 'Recruitee',        adapter: new RecruiteeAdapter(),       data: registry.recruitee,      delay: 800,  companyConcurrency: 3 },
-        { name: 'Jobvite',          adapter: new JobviteAdapter(),         data: registry.jobvite,        delay: 800,  companyConcurrency: 3 },
-        { name: 'Teamtailor',       adapter: new TeamtailorAdapter(),      data: registry.teamtailor,     delay: 800,  companyConcurrency: 3 },
-        { name: 'Eightfold',        adapter: new EightfoldAdapter(),       data: registry.eightfold,      delay: 1000, companyConcurrency: 2 },
-        { name: 'DarwinBox',        adapter: new DarwinBoxAdapter(),       data: registry.darwinbox,      delay: 1000, companyConcurrency: 2 },
+        { name: 'BambooHR',         adapter: new BambooHRAdapter(),        data: registry.bamboohr,       delay: 800,  companyConcurrency: 4 },
+        { name: 'Recruitee',        adapter: new RecruiteeAdapter(),       data: registry.recruitee,      delay: 800,  companyConcurrency: 4 },
+        { name: 'Jobvite',          adapter: new JobviteAdapter(),         data: registry.jobvite,        delay: 800,  companyConcurrency: 4 },
+        { name: 'Teamtailor',       adapter: new TeamtailorAdapter(),      data: registry.teamtailor,     delay: 800,  companyConcurrency: 4 },
+        { name: 'Eightfold',        adapter: new EightfoldAdapter(),       data: registry.eightfold,      delay: 1000, companyConcurrency: 3 },
+        { name: 'DarwinBox',        adapter: new DarwinBoxAdapter(),       data: registry.darwinbox,      delay: 1000, companyConcurrency: 3 },
     ];
 
     const providerFilter = process.env.ATS_PROVIDER?.toLowerCase().trim();

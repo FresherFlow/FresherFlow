@@ -3,7 +3,7 @@ import { chromium, Page } from 'playwright';
 // Shared utilities — canonical source lives in job-discovery/src
 import { signUrl } from '../job-discovery/src/utils/url.js';
 import { sendTelegramMessage } from '../job-discovery/src/utils/telegram.js';
-import { EXPIRED_PHRASES, loadEnv } from '../job-discovery/src/config.js';
+import { EXPIRED_REGEXES, loadEnv } from '../job-discovery/src/config.js';
 import { listR2Objects, deleteR2Object } from '../job-discovery/src/utils/r2.js';
 
 await loadEnv();
@@ -101,8 +101,8 @@ async function checkJob(page: Page, url: string, isSecondPass = false): Promise<
         const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
         let hasExpiredPhrase = false;
-        for (const phrase of EXPIRED_PHRASES) {
-            if (lowerText.includes(phrase)) {
+        for (const pattern of EXPIRED_REGEXES) {
+            if (pattern.test(lowerText)) {
                 hasExpiredPhrase = true;
                 break;
             }

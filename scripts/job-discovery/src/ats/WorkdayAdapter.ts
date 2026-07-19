@@ -31,13 +31,42 @@ export class WorkdayAdapter implements AtsAdapter {
             const tenant = urlObj.hostname.split('.')[0];
             const board = extractWorkdayBoard(urlObj.pathname);
 
-            if (!tenant || !board) {
+            if (!tenant) {
                 console.warn(`[Workday] Invalid URL for ${companyName}: ${companyUrl}`);
                 return [];
             }
 
-            const apiUrl = `${urlObj.origin}/wday/cxs/${tenant}/${board}/jobs`;
-            const baseUrl = `${urlObj.origin}/${board}`;
+            let activeBoard = board;
+            if (!activeBoard || LOCALE_RE.test(activeBoard)) {
+                let found = false;
+                const commonBoards = ['Careers', 'External', 'ExternalCareerSite', 'External_Career_Site', 'jobs', 'recruiting', 'careers'];
+                for (const candidate of commonBoards) {
+                    const probeUrl = `${urlObj.origin}/wday/cxs/${tenant}/${candidate}/jobs`;
+                    try {
+                        const response = await fetch(probeUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                            },
+                            body: JSON.stringify({ limit: 1, offset: 0 })
+                        });
+                        if (response.ok || response.status === 422) {
+                            activeBoard = candidate;
+                            found = true;
+                            break;
+                        }
+                    } catch {
+                        // ignore
+                    }
+                }
+                if (!found) {
+                    activeBoard = 'Careers'; // Exclude locale name
+                }
+            }
+
+            const apiUrl = `${urlObj.origin}/wday/cxs/${tenant}/${activeBoard}/jobs`;
+            const baseUrl = `${urlObj.origin}/${activeBoard}`;
 
             const allJobs: AtsJob[] = [];
             const seen = new Set<string>();
@@ -77,7 +106,7 @@ export class WorkdayAdapter implements AtsAdapter {
                     if (!j.title || !j.externalPath || j.externalPath === 'undefined') continue;
 
                     // Safely build apply URL even when externalPath has a leading /en-US/...
-                    const applyLink = new URL(j.externalPath, `${urlObj.origin}/${board}/`).toString();
+                    const applyLink = new URL(j.externalPath, `${urlObj.origin}/${activeBoard}/`).toString();
 
                     // Guard: skip if URL contains literal 'undefined' (malformed data)
                     if (applyLink.includes('/undefined')) continue;

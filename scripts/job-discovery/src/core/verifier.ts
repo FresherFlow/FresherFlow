@@ -1,5 +1,5 @@
 import { Page } from 'playwright';
-import { EXPIRED_PHRASES, EXPERIENCED_PHRASES } from '../config.js';
+import { EXPIRED_REGEXES } from '../config.js';
 import { isActualJob } from '../filters/text-filters.js';
 import { scoreJobDescription } from '../filters/scorer.js';
 import { logDecision } from '../utils/logger.js';
@@ -47,6 +47,24 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
             console.log(`  -> URL indicates job not found / redirect to portal: ${finalUrl}. Marking as expired.`);
             return { live: false, status: 'expired', atsText: '', rejectReason: `URL pattern indicates job not found (${finalUrl})` };
         }
+
+        // Generic redirect check: if it redirected to a parent/careers list path of the original URL, it's expired
+        try {
+            const origUrlObj = new URL(url);
+            const finalUrlObj = new URL(finalUrl);
+            
+            // Only flag if we are on the same domain (e.g. company portal)
+            if (origUrlObj.hostname === finalUrlObj.hostname) {
+                const cleanPath = (p: string) => p.replace(/\/$/, '').replace(/^\/(en-us|en-gb|en)\b/i, '').toLowerCase();
+                const cOrig = cleanPath(origUrlObj.pathname);
+                const cFinal = cleanPath(finalUrlObj.pathname);
+                
+                if (cOrig !== cFinal && cOrig.startsWith(cFinal) && cFinal.length < cOrig.length) {
+                    console.log(`  -> Redirect to parent page detected: ${cOrig} -> ${cFinal}. Marking as expired.`);
+                    return { live: false, status: 'expired', atsText: '', rejectReason: `Redirected to parent portal path (${finalUrl})` };
+                }
+            }
+        } catch {}
 
         const pageTitle = await page.title().catch(() => "");
         const lowerTitle = pageTitle.toLowerCase().trim();
@@ -98,9 +116,9 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
 
         const lowerText = bodyText.toLowerCase().replace(/[\u2018\u2019]/g, "'").replace(/\s+/g, ' ');
 
-        for (const phrase of EXPIRED_PHRASES) {
-            if (lowerText.includes(phrase)) {
-                return { live: false, status: 'expired', atsText: '', rejectReason: `Found expired phrase: "${phrase}"` };
+        for (const pattern of EXPIRED_REGEXES) {
+            if (pattern.test(lowerText)) {
+                return { live: false, status: 'expired', atsText: '', rejectReason: `Found expired pattern: ${pattern.toString()}` };
             }
         }
 
