@@ -77,7 +77,7 @@ export async function findActualApplyLink(page: Page, context: BrowserContext, c
         }
 
         // 1. Try to find links containing explicit apply/register/click here/submit text
-        const applyButtons = await rootLocator.locator('a', { hasText: /(apply|register|click here|submit)/i }).elementHandles();
+        const applyButtons = await rootLocator.locator('a, button', { hasText: /(apply|register|click here|submit)/i }).elementHandles();
         for (const btn of applyButtons) {
             const href = await btn.getAttribute('href');
             if (href) {

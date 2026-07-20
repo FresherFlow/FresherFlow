@@ -56,15 +56,16 @@ export default function middleware(req: NextRequest) {
         );
     }
 
-    // 0b. Enforce Basic Auth on cap subdomain and block captions page on main domain
+    // 0b. Enforce Basic Auth / Cookie check on cap subdomain and block captions page on main domain
     const host = req.headers.get('host') || '';
     const isCapSubdomain = host.startsWith('cap.');
 
     if (isCapSubdomain) {
+        const hasAuthCookie = req.cookies.get('captions_auth')?.value === '1';
         const basicAuth = req.headers.get('authorization');
-        let authenticated = false;
+        let authenticated = hasAuthCookie;
 
-        if (basicAuth) {
+        if (!authenticated && basicAuth) {
             try {
                 const authValue = basicAuth.split(' ')[1];
                 const [user, pwd] = atob(authValue).split(':');
@@ -75,18 +76,21 @@ export default function middleware(req: NextRequest) {
                 if (expectedUser && expectedPass && user === expectedUser && pwd === expectedPass) {
                     authenticated = true;
                 }
-            } catch (e) {
+            } catch {
                 // Fail silently
             }
         }
 
         if (!authenticated) {
-            return new NextResponse('Auth Required', {
-                status: 401,
-                headers: {
-                    'WWW-Authenticate': 'Basic realm="Secure Area"',
-                },
-            });
+            const isApi = pathname.startsWith('/api/');
+            if (isApi) {
+                return new NextResponse('Auth Required', {
+                    status: 401,
+                    headers: {
+                        'WWW-Authenticate': 'Basic realm="Secure Area"',
+                    },
+                });
+            }
         }
 
         // Rewrite root path "/" or "/captions" on the subdomain to the internal "/captions" route

@@ -7,7 +7,7 @@ import { processEmailJob } from './processors/email.processor';
 import { processCronJob } from './processors/cron.processor';
 import { processPushJob } from './processors/push.processor';
 import { processTelegramJob } from './processors/telegram.processor';
-import { processSocialJob } from './processors/social.processor';
+import { processSocialJob, postToX, postToLinkedIn } from './processors/social.processor';
 import { processIngestionJob } from './processors/ingestion.processor';
 import { processCacheRevalidateJob } from './processors/revalidate.processor';
 
@@ -144,6 +144,11 @@ export const WORKER_DEFINITIONS = [
                 }
                 return processSocialJob(job);
             }
+            if (job.name === 'scheduled-social') {
+                const { platform, text } = job.data as ScheduledSocialJobData;
+                logger.info('[broadcast] Firing scheduled social post', { platform });
+                return processScheduledSocialJob(platform, text);
+            }
             throw new Error(`[broadcast] Unknown job name: ${job.name}`);
         },
     },
@@ -221,4 +226,28 @@ export interface TelegramJobData {
 
 export interface SocialJobData {
     socialPostId: string;
+}
+
+export interface ScheduledSocialJobData {
+    platform: 'telegram' | 'x' | 'linkedin';
+    text: string;
+}
+
+// ─── Scheduled social post processor ─────────────────────────────────────────
+async function processScheduledSocialJob(platform: string, text: string): Promise<void> {
+    if (platform === 'telegram') {
+        const botToken = process.env.TELEGRAM_BOT_TOKEN;
+        const channel = process.env.TELEGRAM_PUBLIC_CHANNEL;
+        if (!botToken || !channel) throw new Error('Telegram not configured');
+        const axios = (await import('axios')).default;
+        await axios.post(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+            chat_id: channel, text, parse_mode: 'HTML', disable_web_page_preview: false,
+        }, { timeout: 15000 });
+    } else if (platform === 'x') {
+        await postToX(text);
+    } else if (platform === 'linkedin') {
+        await postToLinkedIn(text);
+    } else {
+        throw new Error(`Unknown platform: ${platform}`);
+    }
 }

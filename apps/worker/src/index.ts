@@ -11,7 +11,7 @@ import http from 'http';
 import { env } from '@fresherflow/config';
 import { logger, setupCleanLogging } from '@fresherflow/logger';
 import { redis } from '@fresherflow/redis';
-import { handleSeed, handleDrain, handleSend, handlePlatforms, isAuthorized } from './social.handler';
+import { handleSend, handlePlatforms, handleSchedule, handleCancelSchedule, isAuthorized } from './social.handler';
 
 setupCleanLogging();
 
@@ -81,26 +81,6 @@ http.createServer(async (req, res) => {
             return;
         }
 
-        // ─── Social auto-post endpoints ──────────────────────────────────────
-        if (req.method === 'POST' && requestUrl.pathname === '/social/seed') {
-            if (!isAuthorized(req)) {
-                res.writeHead(401, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Unauthorized' }));
-                return;
-            }
-            await handleSeed(res);
-            return;
-        }
-
-        if (req.method === 'POST' && requestUrl.pathname === '/social/drain') {
-            if (!isAuthorized(req)) {
-                res.writeHead(401, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ error: 'Unauthorized' }));
-                return;
-            }
-            await handleDrain(res);
-            return;
-        }
 
         if (req.method === 'GET' && requestUrl.pathname === '/social/platforms') {
             if (!isAuthorized(req)) {
@@ -119,6 +99,26 @@ http.createServer(async (req, res) => {
                 return;
             }
             await handleSend(req, res);
+            return;
+        }
+
+        if (req.method === 'POST' && requestUrl.pathname === '/social/schedule') {
+            if (!isAuthorized(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+            await handleSchedule(req, res);
+            return;
+        }
+
+        if (req.method === 'DELETE' && requestUrl.pathname === '/social/schedule') {
+            if (!isAuthorized(req)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+            await handleCancelSchedule(req, res);
             return;
         }
         // ─────────────────────────────────────────────────────────────────────

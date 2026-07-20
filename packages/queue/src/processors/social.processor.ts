@@ -47,12 +47,11 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
 
   try {
     let externalPostId: string | null = null;
-    const title = post.opportunity ? `${post.opportunity.company} - ${post.opportunity.title}` : 'New Opportunity';
 
     if (post.platform === SocialPlatform.X) {
-      externalPostId = await postToX(title, text);
+      externalPostId = await postToX(text);
     } else if (post.platform === SocialPlatform.LINKEDIN) {
-      externalPostId = await postToLinkedIn(title, text);
+      externalPostId = await postToLinkedIn(text);
     } else if (post.platform === SocialPlatform.FACEBOOK) {
       externalPostId = await postToFacebook(text);
     }
@@ -111,7 +110,7 @@ export async function processSocialJob(job: Job<SocialJobData>): Promise<void> {
   }
 }
 
-async function postToBuffer(channelId: string | undefined, text: string): Promise<string> {
+export async function postToBuffer(channelId: string | undefined, text: string): Promise<string> {
   const apiKey = process.env.BUFFER_API_KEY;
   if (!apiKey) {
     throw new Error('Buffer API key is not configured. Set BUFFER_API_KEY in environment.');
@@ -168,11 +167,11 @@ async function postToBuffer(channelId: string | undefined, text: string): Promis
   return postId;
 }
 
-async function postToX(title: string, text: string): Promise<string> {
+export async function postToX(text: string): Promise<string> {
   return postToBuffer(process.env.BUFFER_X_CHANNEL_ID, text);
 }
 
-async function postToLinkedIn(title: string, text: string): Promise<string> {
+export async function postToLinkedIn(text: string): Promise<string> {
   return postToBuffer(process.env.BUFFER_LINKEDIN_CHANNEL_ID, text);
 }
 

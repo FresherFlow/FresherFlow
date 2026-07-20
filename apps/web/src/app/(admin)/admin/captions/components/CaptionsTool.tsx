@@ -15,6 +15,9 @@ import {
     SignalIcon,
     SignalSlashIcon,
     ExclamationTriangleIcon,
+    ClockIcon,
+    TrashIcon,
+    XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon } from '@heroicons/react/24/solid';
 import Link from 'next/link';
@@ -52,8 +55,106 @@ const PLATFORM_LABEL: Record<SendPlatform, string> = { telegram: 'Telegram', x: 
 
 type Platform = 'whatsapp' | 'telegram' | 'twitter' | 'linkedin';
 
+// ─── PillDropdown ─────────────────────────────────────────────────────────────
+// A compact custom dropdown with keyboard arrow navigation support.
+function PillDropdown({ value, options, onChange, label, className }: {
+    value: string;
+    options: string[];
+    onChange: (v: string) => void;
+    label?: string;
+    className?: string;
+}) {
+    const [open, setOpen] = useState(false);
+    const [focusedIdx, setFocusedIdx] = useState(-1);
+    const ref = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        function handleClick(e: MouseEvent) {
+            if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+        }
+        document.addEventListener('mousedown', handleClick);
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, []);
+
+    // Sync focused index to current value when opening
+    useEffect(() => {
+        if (open) {
+            const idx = options.indexOf(value);
+            setFocusedIdx(idx >= 0 ? idx : 0);
+        }
+    }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Scroll focused option into view
+    useEffect(() => {
+        if (open && listRef.current && focusedIdx >= 0) {
+            const el = listRef.current.children[focusedIdx] as HTMLElement;
+            el?.scrollIntoView({ block: 'nearest' });
+        }
+    }, [focusedIdx, open]);
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (!open) {
+            if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setOpen(true);
+            }
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            setFocusedIdx(i => (i + 1) % options.length);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            setFocusedIdx(i => (i - 1 + options.length) % options.length);
+        } else if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            if (focusedIdx >= 0 && options[focusedIdx]) { onChange(options[focusedIdx]); setOpen(false); }
+        } else if (e.key === 'Escape') {
+            setOpen(false);
+        }
+    };
+
+    return (
+        <div ref={ref} className="relative inline-block">
+            {label && <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider block mb-1 font-sans">{label}</span>}
+            <button
+                onClick={() => setOpen(o => !o)}
+                onKeyDown={handleKeyDown}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-muted hover:bg-muted/80 border border-border text-sm font-semibold text-foreground transition-all justify-between ${className || 'min-w-[3.5rem]'}`}
+            >
+                <span>{value}</span>
+                <ChevronDownIcon className={`w-3 h-3 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+            </button>
+            {open && (
+                <div className="absolute top-full left-0 mt-1 z-[60] bg-card border border-border rounded-xl shadow-xl overflow-hidden min-w-full">
+                    <div ref={listRef} className="max-h-48 overflow-y-auto">
+                        {options.map((opt, idx) => (
+                            <button
+                                key={opt}
+                                onClick={() => { onChange(opt); setOpen(false); }}
+                                onMouseEnter={() => setFocusedIdx(idx)}
+                                className={`w-full text-left px-3 py-2 text-sm font-medium transition-colors ${
+                                    opt === value
+                                    ? 'bg-primary text-primary-foreground font-bold'
+                                    : idx === focusedIdx
+                                    ? 'bg-muted/80 text-foreground'
+                                    : 'text-foreground hover:bg-muted'
+                                }`}
+                            >
+                                {opt}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
 export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean }) {
     const { theme, toggleTheme } = useTheme();
+
     const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
@@ -73,6 +174,17 @@ export default function CaptionsTool({ isAdmin = false }: { isAdmin?: boolean })
     const [statusLoading, setStatusLoading] = useState(true);
     const [sendStatuses, setSendStatuses] = useState<Record<string, SendStatus>>({});
     const healthIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+    // ─── Local state to persist scheduled posts ────────────────────────────────
+    const [scheduledPosts, setScheduledPosts] = useState<Record<string, { platform: string; time: number; jobId?: string }[]>>(() => {
+        if (typeof window === 'undefined') return {};
+        try {
+            return JSON.parse(localStorage.getItem('captions_scheduled_posts') || '{}');
+        } catch {
+            return {};
+        }
+    });
+
 
     const toggleCollapseCategory = (category: string) => {
         setCollapsedCategories((prev) => ({
@@ -341,14 +453,249 @@ ${PROD_SITE_URL}/${opp.slug}
             setTimeout(() => setSendStatuses(prev => ({ ...prev, [key]: 'idle' })), 5000);
         }
     };
+    // ─── Schedule caption states ───────────────────────────────────────────────
+    const [isScheduleActive, setIsScheduleActive] = useState(false);
+    const [scheduledAt, setScheduledAt] = useState('');
+    const [scheduleDay, setScheduleDay] = useState<'today' | 'tomorrow' | string>('today');
+    const [scheduleHour, setScheduleHour] = useState('09');
+    const [scheduleMinute, setScheduleMinute] = useState('00');
+    const [scheduleAmPm, setScheduleAmPm] = useState<'AM' | 'PM'>('AM');
+    const [scheduleStatuses, setScheduleStatuses] = useState<Record<string, SendStatus>>({});
+    const [isTimePickerOpen, setIsTimePickerOpen] = useState(false);
+    const [cancelHoverPost, setCancelHoverPost] = useState<string | null>(null); // key = `${oppId}_${platform}`
 
+    // Auto-initialize default time on load
+    useEffect(() => {
+        const now = new Date();
+        let nextHour = now.getHours() + 1;
+        let ampm: 'AM' | 'PM' = 'AM';
+        
+        if (nextHour >= 24) {
+            setScheduleDay('tomorrow');
+            nextHour = 9;
+            ampm = 'AM';
+        } else {
+            if (nextHour >= 12) {
+                ampm = 'PM';
+                if (nextHour > 12) nextHour -= 12;
+            } else if (nextHour === 0) {
+                nextHour = 12;
+            }
+        }
+        setScheduleHour(String(nextHour).padStart(2, '0'));
+        setScheduleMinute('00');
+        setScheduleAmPm(ampm);
+    }, []);
 
-    const getSendIcon = (status: SendStatus | undefined) => {
-        if (status === 'sending') return <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />;
-        if (status === 'sent') return <CheckCircleIcon className="w-3.5 h-3.5 text-green-500" />;
-        if (status === 'error') return <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-500" />;
-        return <PaperAirplaneIcon className="w-3.5 h-3.5" />;
+    // Helper to get valid hours list for the currently selected day & AM/PM
+    const getHourOptions = () => {
+        const allHours = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'));
+        if (scheduleDay !== 'today') return allHours;
+        
+        const now = new Date();
+        const cur24 = now.getHours();
+        
+        if (scheduleAmPm === 'PM') {
+            if (cur24 < 12) return allHours;
+            return allHours.filter(h => {
+                let h24 = parseInt(h);
+                if (h24 < 12) h24 += 12;
+                return h24 >= cur24;
+            });
+        } else {
+            if (cur24 >= 12) return [];
+            return allHours.filter(h => {
+                let h24 = parseInt(h);
+                if (h24 === 12) h24 = 0;
+                return h24 >= cur24;
+            });
+        }
     };
+
+    // Helper to get valid minutes list for current selections
+    const getMinOptions = () => {
+        const allMins = ['00','05','10','15','20','25','30','35','40','45','50','55'];
+        if (scheduleDay !== 'today') return allMins;
+        
+        const now = new Date();
+        const cur24 = now.getHours();
+        
+        let selHr24 = parseInt(scheduleHour);
+        if (scheduleAmPm === 'PM' && selHr24 < 12) selHr24 += 12;
+        if (scheduleAmPm === 'AM' && selHr24 === 12) selHr24 = 0;
+        
+        if (selHr24 === cur24) {
+            const curMin = now.getMinutes();
+            return allMins.filter(m => parseInt(m) > curMin);
+        }
+        return allMins;
+    };
+
+    // Effect to validate and adjust selected schedule time automatically
+    useEffect(() => {
+        const now = new Date();
+        const cur24 = now.getHours();
+        const curIsPM = cur24 >= 12;
+        
+        if (scheduleDay === 'today') {
+            // 1. Check AM/PM
+            const validAmPm = curIsPM ? 'PM' : scheduleAmPm;
+            if (scheduleAmPm !== validAmPm) {
+                setScheduleAmPm(validAmPm);
+                return;
+            }
+            
+            // 2. Check Hour
+            const validHours = getHourOptions();
+            if (validHours.length > 0 && !validHours.includes(scheduleHour)) {
+                setScheduleHour(validHours[0]);
+                return;
+            }
+            
+            // 3. Check Minutes
+            let selHr24 = parseInt(scheduleHour);
+            if (scheduleAmPm === 'PM' && selHr24 < 12) selHr24 += 12;
+            if (scheduleAmPm === 'AM' && selHr24 === 12) selHr24 = 0;
+            
+            if (selHr24 === cur24) {
+                const validMins = getMinOptions();
+                if (validMins.length > 0 && !validMins.includes(scheduleMinute)) {
+                    setScheduleMinute(validMins[0]);
+                } else if (validMins.length === 0) {
+                    // No remaining minutes in this hour, increment hour
+                    const nextHrIdx = validHours.indexOf(scheduleHour) + 1;
+                    if (nextHrIdx < validHours.length) {
+                        setScheduleHour(validHours[nextHrIdx]);
+                        setScheduleMinute('00');
+                    } else {
+                        // Switch to tomorrow
+                        setScheduleDay('tomorrow');
+                        setScheduleHour('09');
+                        setScheduleMinute('00');
+                        setScheduleAmPm('AM');
+                    }
+                }
+            }
+        }
+    }, [scheduleDay, scheduleHour, scheduleMinute, scheduleAmPm]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // Derive scheduledAt whenever day/time changes
+    useEffect(() => {
+        const baseDate = new Date();
+        if (scheduleDay === 'tomorrow') {
+            baseDate.setDate(baseDate.getDate() + 1);
+        } else if (scheduleDay !== 'today') {
+            const [y, m, d] = scheduleDay.split('-').map(Number);
+            baseDate.setFullYear(y, m - 1, d);
+        }
+        
+        let hr = parseInt(scheduleHour);
+        if (scheduleAmPm === 'PM' && hr < 12) hr += 12;
+        if (scheduleAmPm === 'AM' && hr === 12) hr = 0;
+        
+        baseDate.setHours(hr, parseInt(scheduleMinute), 0, 0);
+        setScheduledAt(baseDate.toISOString());
+    }, [scheduleDay, scheduleHour, scheduleMinute, scheduleAmPm]);
+
+    // Close scheduled post hover card when clicking anywhere outside
+    useEffect(() => {
+        function handleClickOutside(e: MouseEvent) {
+            const target = e.target as HTMLElement;
+            if (!target.closest('.schedule-badge-container')) {
+                setCancelHoverPost(null);
+            }
+        }
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const getNext7Days = () => {
+        const days = [];
+        const today = new Date();
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(today.getDate() + i);
+            const dateStr = d.toISOString().slice(0, 10);
+            let label = '';
+            if (i === 0) label = 'Today';
+            else if (i === 1) label = 'Tomorrow';
+            else label = d.toLocaleDateString([], { weekday: 'short', day: 'numeric' });
+            days.push({ value: dateStr, label });
+        }
+        return days;
+    };
+
+    const scheduleCaption = async (platform: SendPlatform, text: string, key: string) => {
+        if (!isScheduleActive || !scheduledAt) { toast.error('Pick a date/time first'); return; }
+        const timeMs = new Date(scheduledAt).getTime();
+        setScheduleStatuses(prev => ({ ...prev, [key]: 'sending' }));
+        try {
+            const res = await fetch('/api/admin/social/schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ platform, text, scheduledAt: timeMs }),
+            });
+            const data = await res.json() as { ok?: boolean; error?: string; jobId?: string };
+            if (!res.ok || !data.ok) throw new Error(data.error ?? 'Schedule failed');
+            setScheduleStatuses(prev => ({ ...prev, [key]: 'sent' }));
+            
+            // Persist the scheduled post in state and localStorage with its jobId
+            setScheduledPosts(prev => {
+                const updated = { ...prev };
+                const oppId = activeOpportunity!.id;
+                const platformList = updated[oppId] || [];
+                const filtered = platformList.filter(item => item.platform !== platform);
+                updated[oppId] = [...filtered, { platform, time: timeMs, jobId: data.jobId || '' }];
+                localStorage.setItem('captions_scheduled_posts', JSON.stringify(updated));
+                return updated;
+            });
+
+            toast.success(`Scheduled to ${PLATFORM_LABEL[platform]}!`);
+            setTimeout(() => setScheduleStatuses(prev => ({ ...prev, [key]: 'idle' })), 4000);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            setScheduleStatuses(prev => ({ ...prev, [key]: 'error' }));
+            toast.error(`Schedule failed: ${msg}`);
+            setTimeout(() => setScheduleStatuses(prev => ({ ...prev, [key]: 'idle' })), 5000);
+        }
+    };
+
+    const cancelSchedule = async (oppId: string, platform: string, jobId: string) => {
+        if (!jobId || jobId.trim() === '') {
+            setScheduledPosts(prev => {
+                const updated = { ...prev };
+                const list = updated[oppId] || [];
+                updated[oppId] = list.filter(item => item.platform !== platform);
+                localStorage.setItem('captions_scheduled_posts', JSON.stringify(updated));
+                return updated;
+            });
+            toast.success(`Cancelled schedule for ${PLATFORM_LABEL[platform as SendPlatform] || platform}`);
+            return;
+        }
+        try {
+            const res = await fetch('/api/admin/social/schedule', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ jobId }),
+            });
+            const data = await res.json() as { ok?: boolean; error?: string };
+            if (!res.ok || !data.ok) throw new Error(data.error ?? 'Cancel failed');
+            
+            setScheduledPosts(prev => {
+                const updated = { ...prev };
+                const list = updated[oppId] || [];
+                updated[oppId] = list.filter(item => item.platform !== platform);
+                localStorage.setItem('captions_scheduled_posts', JSON.stringify(updated));
+                return updated;
+            });
+            toast.success(`Cancelled schedule for ${PLATFORM_LABEL[platform as SendPlatform] || platform}`);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Unknown error';
+            toast.error(`Could not cancel: ${msg}`);
+        }
+    };
+
+
 
     const formatUptime = (s: number) => s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m` : `${Math.floor(s / 3600)}h${Math.floor((s % 3600) / 60)}m`;
 
@@ -437,6 +784,8 @@ ${PROD_SITE_URL}/${opp.slug}
         }
     };
 
+    // The lock has been moved up to the parent page route.
+    
     return (
         <div className="animate-in fade-in duration-500 text-foreground">
             {loading ? (
@@ -544,7 +893,7 @@ ${PROD_SITE_URL}/${opp.slug}
                                                             key={opp.id}
                                                             onClick={() => setActiveOppId(opp.id)}
                                                             onContextMenu={(e) => { e.preventDefault(); setActiveOppId(opp.id); setIsSingleModalOpen(true); }}
-                                                            className={`relative overflow-hidden group rounded-xl border p-3 cursor-pointer transition-all duration-200 flex items-start gap-3 ${
+                                                            className={`relative group rounded-xl border p-3 cursor-pointer transition-all duration-200 flex items-start gap-3 ${
                                                                 activeOppId === opp.id
                                                                     ? 'border-border bg-primary/5 pl-3.5'
                                                                     : 'border-border/85 bg-secondary/20 hover:bg-secondary/40'
@@ -574,45 +923,136 @@ ${PROD_SITE_URL}/${opp.slug}
                                                                         className="h-4 w-4 rounded-md border-border text-primary focus:ring-primary cursor-pointer shrink-0 mt-0.5"
                                                                     />
                                                                 </div>
-                                                                <div className="flex items-center justify-between mt-2.5">
-                                                                    <div className="flex flex-wrap gap-1">
-                                                                        {getSalaryText(opp) && (
-                                                                            <span className="text-[9px] px-1.5 py-0.5 rounded-md border border-border bg-muted text-muted-foreground">
-                                                                                {getSalaryText(opp)}
-                                                                            </span>
-                                                                        )}
-                                                                        <span className="text-[9px] px-1.5 py-0.5 rounded-md border border-border bg-muted text-muted-foreground">
-                                                                            {opp.type}
-                                                                        </span>
+                                                                <div className="mt-2.5 space-y-1.5">
+                                                                    {/* Tags + schedule badges row — left aligned, never collides with icons */}
+                                                                    <div className="flex flex-wrap gap-1 items-center">
+                                                                        {(() => {
+                                                                            const scheds = scheduledPosts[opp.id] || [];
+                                                                            const activeScheds = scheds.filter(s => s.time > Date.now());
+                                                                            if (activeScheds.length === 0) return null;
+                                                                            
+                                                                            // Group by exact scheduled time
+                                                                            const groups: Record<number, typeof activeScheds> = {};
+                                                                            activeScheds.forEach(s => {
+                                                                                if (!groups[s.time]) groups[s.time] = [];
+                                                                                groups[s.time].push(s);
+                                                                            });
+
+                                                                            return Object.entries(groups).map(([timeKey, items]) => {
+                                                                                const timeNum = Number(timeKey);
+                                                                                const timeStr = new Date(timeNum).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+                                                                                const displayTime = new Date(timeNum).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                                                                                const hKey = `${opp.id}_${timeNum}`;
+
+                                                                                return (
+                                                                                    <div key={timeNum} className="relative shrink-0 schedule-badge-container">
+                                                                                        {/* Combined Badge Button */}
+                                                                                        <button
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                setCancelHoverPost(prev => prev === hKey ? null : hKey);
+                                                                                            }}
+                                                                                            className={`flex items-center gap-1.5 text-[10px] font-bold px-2 py-0.5 rounded-lg border transition-all ${
+                                                                                                cancelHoverPost === hKey
+                                                                                                ? 'bg-muted border-border text-foreground shadow-sm'
+                                                                                                : 'bg-muted/60 border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground'
+                                                                                            }`}
+                                                                                            title={`Scheduled at ${timeStr}`}
+                                                                                        >
+                                                                                            <div className="flex items-center gap-0.5">
+                                                                                                {items.map(item => {
+                                                                                                    const p = item.platform.toLowerCase();
+                                                                                                    if (p === 'telegram') return <TelegramBrandIcon key={p} className="w-3.5 h-3.5 text-primary shrink-0" />;
+                                                                                                    if (p === 'x' || p === 'twitter') return <XBrandIcon key={p} className="w-3.5 h-3.5 text-foreground dark:text-white shrink-0" />;
+                                                                                                    if (p === 'linkedin') return <LinkedInBrandIcon key={p} className="w-3.5 h-3.5 text-[#0A66C2] shrink-0" />;
+                                                                                                    return <ClockIcon key={p} className="w-3.5 h-3.5 text-muted-foreground shrink-0" />;
+                                                                                                })}
+                                                                                            </div>
+                                                                                            <span className="font-bold text-[10px] tracking-tight">{displayTime}</span>
+                                                                                        </button>
+
+                                                                                        {/* Combined Cancel Hover Popover Card */}
+                                                                                        {cancelHoverPost === hKey && (
+                                                                                            <div
+                                                                                                className="absolute bottom-full left-0 mb-2 z-50 w-60 bg-card border border-border rounded-2xl shadow-2xl p-3 animate-in fade-in slide-in-from-bottom-2 duration-150"
+                                                                                                onClick={e => e.stopPropagation()}
+                                                                                            >
+                                                                                                <div className="flex items-center justify-between pb-1.5 border-b border-border/50 mb-2 pr-5">
+                                                                                                    <span className="text-[10px] font-bold text-foreground uppercase tracking-wider">Scheduled Posts</span>
+                                                                                                    <button 
+                                                                                                        onClick={() => setCancelHoverPost(null)}
+                                                                                                        className="absolute top-2 right-2 p-1 rounded-full hover:bg-muted text-muted-foreground transition-colors"
+                                                                                                    >
+                                                                                                        <XMarkIcon className="w-3.5 h-3.5" />
+                                                                                                    </button>
+                                                                                                </div>
+                                                                                                <div className="text-[11px] text-muted-foreground mb-1.5">
+                                                                                                    Time: <span className="font-bold text-foreground">{timeStr}</span>
+                                                                                                </div>
+                                                                                                
+                                                                                                <div className="space-y-1 max-h-32 overflow-y-auto pr-0.5">
+                                                                                                    {items.map(item => (
+                                                                                                        <div key={item.platform} className="flex items-center justify-between bg-muted/40 rounded-lg px-2 py-1.5 border border-border/30">
+                                                                                                            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-foreground">
+                                                                                                                {item.platform === 'telegram' && <TelegramBrandIcon className="w-3 h-3 shrink-0" />}
+                                                                                                                {(item.platform === 'x' || item.platform === 'twitter') && <XBrandIcon className="w-3 h-3 shrink-0" />}
+                                                                                                                {item.platform === 'linkedin' && <LinkedInBrandIcon className="w-3 h-3 shrink-0" />}
+                                                                                                                <span>{PLATFORM_LABEL[item.platform as SendPlatform] || item.platform}</span>
+                                                                                                            </div>
+                                                                                                            <button
+                                                                                                                onClick={async () => {
+                                                                                                                    await cancelSchedule(opp.id, item.platform as SendPlatform, item.jobId || '');
+                                                                                                                    const updated = (scheduledPosts[opp.id] || []).filter(s => s.time > Date.now() && s.platform !== item.platform);
+                                                                                                                    if (updated.filter(s => s.time === timeNum).length === 0) {
+                                                                                                                        setCancelHoverPost(null);
+                                                                                                                    }
+                                                                                                                }}
+                                                                                                                className="p-1 rounded text-red-500 hover:bg-red-500/10 transition-colors shrink-0"
+                                                                                                                title="Cancel schedule"
+                                                                                                            >
+                                                                                                                <TrashIcon className="w-3.5 h-3.5" />
+                                                                                                            </button>
+                                                                                                        </div>
+                                                                                                    ))}
+                                                                                                </div>
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                );
+                                                                            });
+                                                                        })()}
                                                                     </div>
-                                                                    {/* Copy icons with hover preview captions */}
-                                                                    <div className="flex items-center gap-2 md:gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                                        <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'whatsapp'), `wa_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'whatsapp')}>
-                                                                            {copiedStates[`wa_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <WhatsAppBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
-                                                                        </button>
-                                                                        <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'telegram'), `tg_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'telegram')}>
-                                                                            {copiedStates[`tg_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <TelegramBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
-                                                                        </button>
-                                                                        <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'twitter'), `tw_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'twitter')}>
-                                                                            {copiedStates[`tw_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <XBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
-                                                                        </button>
-                                                                        <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'linkedin'), `li_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'linkedin')}>
-                                                                            {copiedStates[`li_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkedInBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
-                                                                        </button>
-                                                                        <button onClick={() => copyToClipboard(`${PROD_SITE_URL}/${opp.slug}`, `link_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={`${PROD_SITE_URL}/${opp.slug}`}>
-                                                                            {copiedStates[`link_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkIcon className="w-4 h-4 md:w-5 md:h-5" />}
-                                                                        </button>
-                                                                        {isAdmin && (
-                                                                            <Link 
-                                                                                href={`/admin/push${pushQuery}`}
-                                                                                onClick={(e) => e.stopPropagation()}
-                                                                                className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
-                                                                                title="Send Push Notification"
-                                                                            >
-                                                                                <BellIcon className="w-4 h-4 md:w-5 md:h-5" />
-                                                                            </Link>
-                                                                        )}
-                                                                    </div>
+
+                                                                    {/* Copy icons with hover preview captions (only shown when card is selected) */}
+                                                                    {activeOppId === opp.id && (
+                                                                        <div className="flex items-center gap-2 md:gap-3 shrink-0 animate-in fade-in duration-200" onClick={(e) => e.stopPropagation()}>
+                                                                            <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'whatsapp'), `wa_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'whatsapp')}>
+                                                                                {copiedStates[`wa_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <WhatsAppBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                            </button>
+                                                                            <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'telegram'), `tg_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'telegram')}>
+                                                                                {copiedStates[`tg_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <TelegramBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                            </button>
+                                                                            <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'twitter'), `tw_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'twitter')}>
+                                                                                {copiedStates[`tw_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <XBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                            </button>
+                                                                            <button onClick={() => copyToClipboard(formatSingleCaption(opp, 'linkedin'), `li_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={formatSingleCaption(opp, 'linkedin')}>
+                                                                                {copiedStates[`li_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkedInBrandIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                            </button>
+                                                                            <button onClick={() => copyToClipboard(`${PROD_SITE_URL}/${opp.slug}`, `link_${opp.id}`)} className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors" title={`${PROD_SITE_URL}/${opp.slug}`}>
+                                                                                {copiedStates[`link_${opp.id}`] ? <CheckIcon className="w-4 h-4 md:w-5 md:h-5 text-green-500" /> : <LinkIcon className="w-4 h-4 md:w-5 md:h-5" />}
+                                                                            </button>
+                                                                            {isAdmin && (
+                                                                                <Link 
+                                                                                    href={`/admin/push${pushQuery}`}
+                                                                                    onClick={(e) => e.stopPropagation()}
+                                                                                    className="p-1.5 md:p-2 rounded-md bg-muted/50 hover:bg-muted text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center"
+                                                                                    title="Send Push Notification"
+                                                                                >
+                                                                                    <BellIcon className="w-4 h-4 md:w-5 md:h-5" />
+                                                                                </Link>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         </div>
@@ -632,46 +1072,129 @@ ${PROD_SITE_URL}/${opp.slug}
                         {/* Active job — Publish Actions */}
                         {activeOpportunity && (
                             <div className="rounded-2xl border border-border bg-[#F5F4EF] dark:bg-card p-4 shadow-sm space-y-3">
-                                <div className="flex items-center gap-3">
-                                    <CompanyLogo
-                                        companyName={activeOpportunity!.company}
-                                        companyWebsite={activeOpportunity!.companyWebsite}
-                                        companyLogoUrl={activeOpportunity!.companyLogoUrl}
-                                        applyLink={activeOpportunity!.applyLink}
-                                        className="w-10 h-10 rounded-lg border border-border shadow-sm flex-shrink-0"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <h3 className="text-sm font-bold text-foreground leading-tight truncate">{activeOpportunity!.company}</h3>
-                                        <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{activeOpportunity!.title}</p>
+                                <div className="space-y-3">
+                                    <div className="flex items-center gap-3">
+                                        <CompanyLogo
+                                            companyName={activeOpportunity!.company}
+                                            companyWebsite={activeOpportunity!.companyWebsite}
+                                            companyLogoUrl={activeOpportunity!.companyLogoUrl}
+                                            applyLink={activeOpportunity!.applyLink}
+                                            className="w-10 h-10 rounded-lg border border-border shadow-sm flex-shrink-0"
+                                        />
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="text-sm font-bold text-foreground leading-tight truncate">{activeOpportunity!.company}</h3>
+                                            <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-1">{activeOpportunity!.title}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-3 border-t border-border/50 pt-3">
+                                        {/* Send / Schedule Tabs */}
+                                        <div className="flex rounded-xl border border-border/80 overflow-hidden bg-background p-0.5 h-8 shrink-0">
+                                            <button
+                                                onClick={() => { setIsScheduleActive(false); setIsTimePickerOpen(false); }}
+                                                className={`flex-1 text-[11px] font-bold rounded-lg transition-all ${
+                                                    !isScheduleActive 
+                                                    ? 'bg-primary text-primary-foreground shadow-sm' 
+                                                    : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
+                                                }`}
+                                            >
+                                                Send Now
+                                            </button>
+                                            <button
+                                                onClick={() => { setIsScheduleActive(true); }}
+                                                className={`flex-1 text-[11px] font-bold rounded-lg transition-all ${
+                                                    isScheduleActive 
+                                                    ? 'bg-primary text-primary-foreground shadow-sm' 
+                                                    : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
+                                                }`}
+                                            >
+                                                Schedule
+                                            </button>
+                                        </div>
+
+                                        {/* Schedule time trigger — shows current time, click opens picker */}
+                                        {workerOnline && isScheduleActive && (
+                                            <div className="relative">
+                                                <button
+                                                    onClick={() => setIsTimePickerOpen(v => !v)}
+                                                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-[11px] font-semibold ${
+                                                        isTimePickerOpen
+                                                        ? 'border-primary/60 bg-primary/5 text-primary'
+                                                        : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-center gap-1.5">
+                                                        <ClockIcon className="w-3.5 h-3.5 shrink-0" />
+                                                        <span>{new Date(scheduledAt).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                                    </div>
+                                                    <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform ${isTimePickerOpen ? 'rotate-180' : ''}`} />
+                                                </button>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 
-                                <div className="space-y-2 border-t border-border/50 pt-3">
-                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center mb-1">Publish to Platform</p>
+                                <div>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground text-center mb-1 shrink-0">
+                                        {isScheduleActive ? 'Schedule to Platform' : 'Publish to Platform'}
+                                    </p>
+
                                     {workerOnline ? (
-                                        <div className="grid gap-2">
+                                        <div className="grid gap-2 shrink-0">
                                             {([
                                                 { p: 'telegram' as SendPlatform, label: 'Telegram', icon: <TelegramBrandIcon className="w-4 h-4" /> },
                                                 { p: 'x' as SendPlatform, label: 'X (Twitter)', icon: <XBrandIcon className="w-4 h-4" /> },
                                                 { p: 'linkedin' as SendPlatform, label: 'LinkedIn', icon: <LinkedInBrandIcon className="w-4 h-4" /> },
                                             ]).map(({ p, label, icon }) => {
                                                 const cap = formatSingleCaption(activeOpportunity!, p === 'x' ? 'twitter' : p);
-                                                const sKey = `panel_send_${p}_${activeOpportunity!.id}`;
-                                                const status = sendStatuses[sKey];
+                                                const sKey = isScheduleActive ? `sched_${p}_${activeOpportunity!.id}` : `panel_send_${p}_${activeOpportunity!.id}`;
+                                                const status = isScheduleActive ? scheduleStatuses[sKey] : sendStatuses[sKey];
                                                 const canSend = platforms[p];
+
+                                                // Check if already scheduled for this platform
+                                                const oppScheds = scheduledPosts[activeOpportunity!.id] || [];
+                                                const existingSched = oppScheds.find(s => s.platform === p && s.time > Date.now());
+                                                const isAlreadyScheduled = isScheduleActive && !!existingSched;
+
+                                                if (isAlreadyScheduled) {
+                                                    return (
+                                                        <button
+                                                            key={p}
+                                                            onClick={() => cancelSchedule(activeOpportunity!.id, p, existingSched.jobId || '')}
+                                                            className="flex items-center justify-between py-2 px-3 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-500 transition-all shadow-sm"
+                                                            title={`Cancel scheduled ${label} post`}
+                                                        >
+                                                            <div className="flex items-center gap-2.5">
+                                                                {icon}
+                                                                <span className="text-xs font-bold">{label}</span>
+                                                                <span className="text-[10px] opacity-70">{new Date(existingSched.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1.5 text-[11px] font-semibold">
+                                                                <TrashIcon className="w-3.5 h-3.5" />
+                                                                Cancel
+                                                            </div>
+                                                        </button>
+                                                    );
+                                                }
                                                 
                                                 return (
                                                     <button
                                                         key={p}
                                                         disabled={!canSend || status === 'sending'}
-                                                        onClick={() => sendCaption(p, cap, sKey)}
+                                                        onClick={() => {
+                                                            if (isScheduleActive) {
+                                                                scheduleCaption(p, cap, sKey);
+                                                            } else {
+                                                                sendCaption(p, cap, sKey);
+                                                            }
+                                                        }}
                                                         className={`flex items-center justify-between py-2 px-3 rounded-xl border transition-all ${
                                                             !canSend ? 'border-border bg-muted/20 opacity-50 cursor-not-allowed'
                                                             : status === 'sent' ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 shadow-sm'
                                                             : status === 'error' ? 'border-red-500/30 bg-red-500/10 text-red-500 shadow-sm'
                                                             : 'border-border bg-[#F5F4EF] dark:bg-card hover:bg-muted/50 hover:border-primary/30 shadow-sm group'
                                                         }`}
-                                                        title={!canSend ? 'Platform not configured' : `Publish directly to ${label}`}
+                                                        title={!canSend ? 'Platform not configured' : isScheduleActive ? `Schedule to ${label}` : `Publish directly to ${label}`}
                                                     >
                                                         <div className="flex items-center gap-2.5">
                                                             {icon}
@@ -686,8 +1209,12 @@ ${PROD_SITE_URL}/${opp.slug}
                                                             <span className={`text-[11px] font-semibold flex items-center gap-1 ${
                                                                 !canSend ? 'text-muted-foreground' : 'text-primary opacity-80 group-hover:opacity-100'
                                                             }`}>
-                                                                {getSendIcon(status)}
-                                                                {!canSend ? 'Offline' : status === 'sent' ? 'Sent' : status === 'error' ? 'Retry' : status === 'sending' ? 'Sending…' : 'Send'}
+                                                                {status === 'sending' ? <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+                                                                    : status === 'sent' ? <CheckCircleIcon className="w-3.5 h-3.5 text-green-500" />
+                                                                    : status === 'error' ? <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-500" />
+                                                                    : isScheduleActive ? <ClockIcon className="w-3.5 h-3.5" />
+                                                                    : <PaperAirplaneIcon className="w-3.5 h-3.5" />}
+                                                                {!canSend ? 'Offline' : status === 'sent' ? 'Sent' : status === 'error' ? 'Retry' : status === 'sending' ? 'Sending…' : isScheduleActive ? 'Schedule' : 'Send'}
                                                             </span>
                                                         </div>
                                                     </button>
@@ -695,36 +1222,46 @@ ${PROD_SITE_URL}/${opp.slug}
                                             })}
                                             {(() => {
                                                 const activeTargets = (['telegram', 'x', 'linkedin'] as SendPlatform[]).filter(p => platforms[p]);
-                                                const masterKey = `master_publish_${activeOpportunity!.id}`;
-                                                const masterStatus = sendStatuses[masterKey];
+                                                const masterKey = isScheduleActive ? `master_schedule_${activeOpportunity!.id}` : `master_publish_${activeOpportunity!.id}`;
+                                                const masterStatus = isScheduleActive ? scheduleStatuses[masterKey] : sendStatuses[masterKey];
                                                 const masterSending = masterStatus === 'sending';
                                                 const masterSent = masterStatus === 'sent';
                                                 
-                                                const publishToAll = async () => {
+                                                const executeAll = async () => {
                                                     if (activeTargets.length === 0) return;
-                                                    setSendStatuses(prev => ({ ...prev, [masterKey]: 'sending' }));
-                                                    await Promise.allSettled(activeTargets.map(p => {
-                                                        const text = formatSingleCaption(activeOpportunity!, p === 'x' ? 'twitter' : p);
-                                                        return sendCaption(p, text, `panel_send_${p}_${activeOpportunity!.id}`);
-                                                    }));
-                                                    setSendStatuses(prev => ({ ...prev, [masterKey]: 'sent' }));
-                                                    setTimeout(() => setSendStatuses(prev => ({ ...prev, [masterKey]: 'idle' })), 4000);
+                                                    if (isScheduleActive) {
+                                                        setScheduleStatuses(prev => ({ ...prev, [masterKey]: 'sending' }));
+                                                        await Promise.allSettled(activeTargets.map(p => {
+                                                            const text = formatSingleCaption(activeOpportunity!, p === 'x' ? 'twitter' : p);
+                                                            return scheduleCaption(p, text, `sched_${p}_${activeOpportunity!.id}`);
+                                                        }));
+                                                        setScheduleStatuses(prev => ({ ...prev, [masterKey]: 'sent' }));
+                                                        setTimeout(() => setScheduleStatuses(prev => ({ ...prev, [masterKey]: 'idle' })), 4000);
+                                                    } else {
+                                                        setSendStatuses(prev => ({ ...prev, [masterKey]: 'sending' }));
+                                                        await Promise.allSettled(activeTargets.map(p => {
+                                                            const text = formatSingleCaption(activeOpportunity!, p === 'x' ? 'twitter' : p);
+                                                            return sendCaption(p, text, `panel_send_${p}_${activeOpportunity!.id}`);
+                                                        }));
+                                                        setSendStatuses(prev => ({ ...prev, [masterKey]: 'sent' }));
+                                                        setTimeout(() => setSendStatuses(prev => ({ ...prev, [masterKey]: 'idle' })), 4000);
+                                                    }
                                                 };
 
                                                 return (
                                                     <button
                                                         disabled={activeTargets.length === 0 || masterSending}
-                                                        onClick={publishToAll}
+                                                        onClick={executeAll}
                                                         className={`w-full flex items-center justify-center gap-2 py-2 mt-1 rounded-xl text-xs font-bold transition-all shadow-sm ${
                                                             masterSent ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-600'
                                                             : 'bg-primary text-primary-foreground hover:bg-primary/90 hover:shadow-md'
                                                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                                                     >
                                                         {masterSending
-                                                            ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> Publishing All…</>
+                                                            ? <><ArrowPathIcon className="w-4 h-4 animate-spin" /> {isScheduleActive ? 'Scheduling All…' : 'Publishing All…'}</>
                                                             : masterSent
-                                                            ? <><CheckCircleIcon className="w-4 h-4" /> Published to All</>
-                                                            : <><PaperAirplaneIcon className="w-4 h-4" /> Publish</>}
+                                                            ? <><CheckCircleIcon className="w-4 h-4" /> {isScheduleActive ? 'Scheduled to All' : 'Published to All'}</>
+                                                            : <><PaperAirplaneIcon className="w-4 h-4" /> {isScheduleActive ? 'Schedule to All' : 'Publish to All'}</>}
                                                     </button>
                                                 );
                                             })()}
@@ -739,7 +1276,7 @@ ${PROD_SITE_URL}/${opp.slug}
                         )}
 
                         {/* Bulk Job Updates — with blast send */}
-                        <div className="rounded-2xl border border-border bg-[#F5F4EF] dark:bg-card p-4 shadow-sm space-y-3">
+                        <div className="rounded-2xl border border-border bg-[#F5F4EF] dark:bg-card p-4 shadow-sm space-y-3 flex flex-col">
                             <div className="flex items-center justify-between border-b border-border pb-2">
                                 <div>
                                     <h3 className="text-sm font-bold text-foreground">{"Today's Bulk Job Updates"}</h3>
@@ -857,6 +1394,54 @@ ${PROD_SITE_URL}/${opp.slug}
                             </button>
                         </div>
 
+                        {/* Mobile Send / Schedule Tabs */}
+                        {workerOnline && (
+                            <div className="pb-3 border-b border-border space-y-2">
+                                <div className="flex rounded-xl border border-border/80 overflow-hidden bg-background p-0.5 h-8">
+                                    <button
+                                        onClick={() => setIsScheduleActive(false)}
+                                        className={`flex-1 text-[11px] font-bold rounded-lg transition-all ${
+                                            !isScheduleActive 
+                                            ? 'bg-primary text-primary-foreground shadow-sm' 
+                                            : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
+                                        }`}
+                                    >
+                                        Send Now
+                                    </button>
+                                    <button
+                                        onClick={() => setIsScheduleActive(true)}
+                                        className={`flex-1 text-[11px] font-bold rounded-lg transition-all ${
+                                            isScheduleActive 
+                                            ? 'bg-primary text-primary-foreground shadow-sm' 
+                                            : 'text-muted-foreground hover:bg-muted/10 hover:text-foreground'
+                                        }`}
+                                    >
+                                        Schedule
+                                    </button>
+                                </div>
+
+                                {isScheduleActive && (
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => setIsTimePickerOpen(v => !v)}
+                                            className={`w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-[11px] font-semibold ${
+                                                isTimePickerOpen
+                                                ? 'border-primary/60 bg-primary/5 text-primary'
+                                                : 'border-border bg-background text-muted-foreground hover:border-primary/40 hover:text-foreground'
+                                            }`}
+                                        >
+                                            <div className="flex items-center gap-1.5">
+                                                <ClockIcon className="w-3.5 h-3.5 shrink-0" />
+                                                <span>{new Date(scheduledAt).toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                            <ChevronDownIcon className={`w-3.5 h-3.5 transition-transform ${isTimePickerOpen ? 'rotate-180' : ''}`} />
+                                        </button>
+                                    </div>
+                                )}
+
+                            </div>
+                        )}
+
                         {/* Per-platform rows */}
                         {([
                             { p: 'whatsapp' as const, label: 'WhatsApp', icon: <WhatsAppBrandIcon className="w-4 h-4" /> },
@@ -866,9 +1451,14 @@ ${PROD_SITE_URL}/${opp.slug}
                         ] as { p: 'whatsapp'|'telegram'|'twitter'|'linkedin'; label: string; icon: React.ReactNode; sendP?: SendPlatform }[]).map(({ p, label, icon, sendP }) => {
                             const cap = formatSingleCaption(activeOpportunity!, p);
                             const copyKey = `mob_${p}_${activeOpportunity!.id}`;
-                            const sKey = sendP ? `mob_send_${sendP}_${activeOpportunity!.id}` : '';
-                            const status = sKey ? sendStatuses[sKey] : undefined;
+                            const sKey = sendP ? (isScheduleActive ? `mob_sched_${sendP}_${activeOpportunity!.id}` : `mob_send_${sendP}_${activeOpportunity!.id}`) : '';
+                            const status = sKey ? (isScheduleActive ? scheduleStatuses[sKey] : sendStatuses[sKey]) : undefined;
                             const canSend = workerOnline && sendP && platforms[sendP];
+
+                            const oppScheds = scheduledPosts[activeOpportunity!.id] || [];
+                            const existingSched = sendP ? oppScheds.find(s => s.platform === sendP && s.time > Date.now()) : undefined;
+                            const isAlreadyScheduled = isScheduleActive && !!existingSched;
+
                             return (
                                 <div key={p} className="flex items-center gap-3 py-2 border-b border-border/40 last:border-0">
                                     <span className="shrink-0">{icon}</span>
@@ -881,26 +1471,47 @@ ${PROD_SITE_URL}/${opp.slug}
                                         {copiedStates[copyKey] ? <CheckIcon className="w-4 h-4 text-green-500" /> : <ClipboardIcon className="w-4 h-4" />}
                                     </button>
                                     {canSend && (
-                                        <button
-                                            disabled={status === 'sending'}
-                                            onClick={() => sendCaption(sendP!, cap, sKey)}
-                                            className={`flex items-center justify-center p-2 rounded-xl text-xs font-semibold transition-all ${
-                                                status === 'sent' ? 'bg-emerald-500/10 text-emerald-600 px-3'
-                                                : status === 'error' ? 'bg-red-500/10 text-red-500 px-3'
-                                                : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                                            } disabled:opacity-60`}
-                                            title="Send to platform"
-                                        >
-                                            {getSendIcon(status)}
-                                            {status === 'sent' ? <span className="ml-1">Sent</span> : status === 'error' ? <span className="ml-1">Retry</span> : null}
-                                        </button>
+                                        isAlreadyScheduled ? (
+                                            <button
+                                                onClick={() => cancelSchedule(activeOpportunity!.id, sendP!, existingSched.jobId || '')}
+                                                className="flex items-center justify-center p-2 rounded-xl text-xs font-semibold bg-red-500/10 hover:bg-red-500/20 text-red-500 px-3 transition-all"
+                                                title={`Cancel scheduled ${label} post`}
+                                            >
+                                                <TrashIcon className="w-3.5 h-3.5 mr-1" />
+                                                Cancel
+                                            </button>
+                                        ) : (
+                                            <button
+                                                disabled={status === 'sending'}
+                                                onClick={() => {
+                                                    if (isScheduleActive) {
+                                                        scheduleCaption(sendP!, cap, sKey);
+                                                    } else {
+                                                        sendCaption(sendP!, cap, sKey);
+                                                    }
+                                                }}
+                                                className={`flex items-center justify-center p-2 rounded-xl text-xs font-semibold transition-all ${
+                                                    status === 'sent' ? 'bg-emerald-500/10 text-emerald-600 px-3'
+                                                    : status === 'error' ? 'bg-red-500/10 text-red-500 px-3'
+                                                    : 'bg-primary text-primary-foreground hover:bg-primary/90'
+                                                } disabled:opacity-60`}
+                                                title={isScheduleActive ? 'Schedule post' : 'Send to platform'}
+                                            >
+                                                {status === 'sending' ? <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+                                                    : status === 'sent' ? <CheckCircleIcon className="w-3.5 h-3.5 text-green-500" />
+                                                    : status === 'error' ? <ExclamationTriangleIcon className="w-3.5 h-3.5 text-red-500" />
+                                                    : isScheduleActive ? <ClockIcon className="w-3.5 h-3.5 text-primary-foreground" />
+                                                    : <PaperAirplaneIcon className="w-3.5 h-3.5 text-primary-foreground" />}
+                                                {status === 'sent' ? <span className="ml-1">Sent</span> : status === 'error' ? <span className="ml-1">Retry</span> : null}
+                                            </button>
+                                        )
                                     )}
                                 </div>
                             );
                         })}
                         
                         {/* Master Publish All Button for Mobile */}
-                        {(() => {
+                        {!isScheduleActive && (() => {
                             const activeTargets = (['telegram', 'x', 'linkedin'] as SendPlatform[]).filter(p => platforms[p]);
                             const masterKey = `mob_master_publish_${activeOpportunity!.id}`;
                             const masterStatus = sendStatuses[masterKey];
@@ -935,6 +1546,7 @@ ${PROD_SITE_URL}/${opp.slug}
                                 </button>
                             );
                         })()}
+
                     </div>
                 </div>
             )}
@@ -1005,6 +1617,93 @@ ${PROD_SITE_URL}/${opp.slug}
                     </div>
                 </div>
             )}
+
+
+
+
+
+
+            {/* Center-screen Global Time Picker Modal */}
+            {isTimePickerOpen && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                    {/* Backdrop */}
+                    <div 
+                        className="fixed inset-0 bg-black/50 dark:bg-black/70 backdrop-blur-sm transition-opacity" 
+                        onClick={() => setIsTimePickerOpen(false)}
+                    />
+                    
+                    {/* Modal container */}
+                    <div className="relative w-full max-w-sm bg-card border border-border rounded-2xl shadow-2xl overflow-visible z-10 p-5 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+                        {/* Close button X */}
+                        <button
+                            onClick={() => setIsTimePickerOpen(false)}
+                            className="absolute top-4 right-4 p-1 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors z-20"
+                            title="Close"
+                        >
+                            <XMarkIcon className="w-5 h-5" />
+                        </button>
+
+                        {/* Title & Info */}
+                        <div className="space-y-1">
+                            <p className="text-xs font-bold text-foreground uppercase tracking-wider">Schedule Time</p>
+                            <p className="text-[12px] text-muted-foreground font-medium">
+                                {new Date(scheduledAt).toLocaleString([], { dateStyle: 'full', timeStyle: 'short' })}
+                            </p>
+                        </div>
+
+                        {/* Dropdown Pickers */}
+                        <div className="flex items-end justify-between gap-1.5 pt-2 border-t border-border/40">
+                            <PillDropdown
+                                label="Day"
+                                value={(() => {
+                                    const days = getNext7Days();
+                                    if (scheduleDay === 'today') return days[0]?.label ?? 'Today';
+                                    if (scheduleDay === 'tomorrow') return days[1]?.label ?? 'Tomorrow';
+                                    return days.find(d => d.value === scheduleDay)?.label ?? scheduleDay;
+                                })()}
+                                options={getNext7Days().map(d => d.label)}
+                                onChange={(label) => {
+                                    const days = getNext7Days();
+                                    const day = days.find(d => d.label === label);
+                                    if (!day) return;
+                                    if (day.label === 'Today') setScheduleDay('today');
+                                    else if (day.label === 'Tomorrow') setScheduleDay('tomorrow');
+                                    else setScheduleDay(day.value);
+                                }}
+                                className="min-w-[6.5rem]"
+                            />
+                            <PillDropdown 
+                                label="Hour" 
+                                value={scheduleHour} 
+                                options={getHourOptions()} 
+                                onChange={setScheduleHour} 
+                            />
+                            <span className="text-muted-foreground font-bold text-sm pb-2 shrink-0">:</span>
+                            <PillDropdown 
+                                label="Min" 
+                                value={scheduleMinute} 
+                                options={getMinOptions()} 
+                                onChange={setScheduleMinute} 
+                            />
+                            <PillDropdown 
+                                label="AM/PM" 
+                                value={scheduleAmPm} 
+                                options={scheduleDay === 'today' && new Date().getHours() >= 12 ? ['PM'] : ['AM', 'PM']} 
+                                onChange={(v) => setScheduleAmPm(v as 'AM' | 'PM')} 
+                            />
+                        </div>
+
+                        {/* Confirm Button */}
+                        <button
+                            onClick={() => setIsTimePickerOpen(false)}
+                            className="w-full mt-2 py-3 rounded-xl bg-primary text-primary-foreground text-xs font-bold transition-all hover:opacity-90 shadow-md"
+                        >
+                            Confirm Schedule Time
+                        </button>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 }

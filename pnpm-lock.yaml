@@ -838,9 +838,6 @@ importers:
       '@fresherflow/constants':
         specifier: '*'
         version: link:../../packages/constants
-      '@fresherflow/database':
-        specifier: '*'
-        version: link:../../packages/database
       '@fresherflow/logger':
         specifier: '*'
         version: link:../../packages/logger
@@ -859,9 +856,6 @@ importers:
       '@fresherflow/utils':
         specifier: '*'
         version: link:../../packages/utils
-      '@prisma/client':
-        specifier: ^6.2.0
-        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
       bullmq:
         specifier: ^5.41.6
         version: 5.77.1(redis@5.12.1)
@@ -890,9 +884,6 @@ importers:
       nodemon:
         specifier: ^3.1.9
         version: 3.1.14
-      prisma:
-        specifier: ^6.2.0
-        version: 6.19.3(typescript@5.9.3)
       ts-node:
         specifier: ^10.9.2
         version: 10.9.2(@types/node@22.19.19)(typescript@5.9.3)
