@@ -58,9 +58,9 @@ export function parseJobTextLite(rawText: string): ParsedJob {
 
     // Company
     const companyPatterns = [
-        /(?:About|Join|At)\s+([A-Z][^\n,]{2,40})(?:\n|,|\s+(?:is|makes|offers)\b)/i,
-        /([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})\s+(?:is\s+(?:a|an)|makes|offers|provides|specializes)/i,
-        /Working (?:at|with|for)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,3})/i,
+        /(?:About|Join|At)\s+([A-Z][A-Za-z0-9\s.-]{2,30})/i,
+        /([A-Z][A-Za-z0-9\s.-]{2,30})\s+(?:is\s+a|is\s+an|makes|offers|provides|specializes)/i,
+        /Working\s+(?:at|with|for)\s+([A-Z][A-Za-z0-9\s.-]{2,30})/i,
     ];
     for (const pattern of companyPatterns) {
         const m = text.match(pattern);

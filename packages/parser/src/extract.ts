@@ -187,11 +187,9 @@ export function extractWorkMode(text: string): WorkMode {
 // ── Experience ────────────────────────────────────────────────────────────────
 
 export function extractExperience(text: string): { min?: number; max?: number } {
-    const rangMatch = text.match(/(\d+)\s*-\s*(\d+)\s*(?:year|yr)s?/i) ||
-                      text.match(/(\d+)\s+to\s+(\d+)\s*(?:year|yr)s?/i);
-    if (rangMatch) return { min: parseInt(rangMatch[1]), max: parseInt(rangMatch[2]) };
-    const minOnly = text.match(/(\d+)\+?\s*(?:year|yr)s?\s+(?:exp|experience)/i) ||
-                    text.match(/(\d+)\+?\s*(?:year|yr)s*(?:exp|experience)/i);
+    const rangeMatch = text.match(/(\d+)\s*(?:-|to)\s*(\d+)\s*(?:year|yr)s?/i);
+    if (rangeMatch) return { min: parseInt(rangeMatch[1]), max: parseInt(rangeMatch[2]) };
+    const minOnly = text.match(/(\d+)\+?\s*(?:year|yr)s?\s*exp/i);
     if (minOnly) return { min: parseInt(minOnly[1]) };
     return {};
 }

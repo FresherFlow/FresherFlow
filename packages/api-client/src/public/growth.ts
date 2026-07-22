@@ -34,7 +34,17 @@ function getGrowthSessionId(): string {
     try {
         const existing = window.sessionStorage.getItem('ff_growth_session_v1');
         if (existing) return existing;
-        const next = `g-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+        
+        let randStr = '';
+        if (typeof window !== 'undefined' && window.crypto) {
+            const array = new Uint32Array(2);
+            window.crypto.getRandomValues(array);
+            randStr = Array.from(array).map(n => n.toString(36)).join('');
+        } else {
+            randStr = Date.now().toString(36);
+        }
+        
+        const next = `g-${Date.now()}-${randStr.slice(0, 8)}`;
         window.sessionStorage.setItem('ff_growth_session_v1', next);
         return next;
     } catch { return 'session-unavailable'; }

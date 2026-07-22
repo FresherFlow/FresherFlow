@@ -45,8 +45,13 @@ export class ApiClient {
         this.storage = storage;
         this.onErrorCallback = options?.onError;
 
+        let cleanedBaseUrl = baseUrl;
+        while (cleanedBaseUrl.endsWith('/')) {
+            cleanedBaseUrl = cleanedBaseUrl.slice(0, -1);
+        }
+
         this.axiosInstance = axios.create({
-            baseURL: baseUrl.replace(/\/+$/, ''),
+            baseURL: cleanedBaseUrl,
             timeout: 10000,
             headers: {
                 Accept: 'application/json',
@@ -157,7 +162,7 @@ export function configureClient(baseUrl?: string, storage?: SecureStorage, optio
 
 export async function apiClient<T = unknown>(endpoint: string, options: RequestOptions = {}): Promise<T> {
     if (!globalClient) {
-        throw new Error('ApiClient not configured. Call configureClient(...) before using endpoints.');
+        configureClient();
     }
-    return globalClient.request<T>(endpoint, options);
+    return globalClient!.request<T>(endpoint, options);
 }

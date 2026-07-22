@@ -21,6 +21,9 @@ export interface ReferrerStats {
 }
 
 export const adminUsersApi = {
+    getUsers: () =>
+        apiClient<{ users: User[] }>('/api/admin/users'),
+
     getClaimedHandles: () =>
         apiClient<{ handles: ClaimedHandle[] }>('/api/admin/users/handles'),
 

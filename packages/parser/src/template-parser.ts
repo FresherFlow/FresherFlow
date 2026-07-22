@@ -145,12 +145,12 @@ const TITLE_NOISE_PATTERNS = [
     /\s*[|–-]\s*apply\s+soon\s*!?$/i,
     /\s*\|\s*freshers?(?:\s*\|)?/i,
     /\s*\|\s*(?:multiple locations?|pan india)(?:\s*\|)?/i,
-    /\s*off\s+campus\s+drive\s+\d{4}\s*/i,
+    /\s*off\s+campus\s+drive\s+\d{4}/i,
     /(?:\s*–)?\s*apply\s+now\s*!?$/i,
-    /\s*\|\s*\d{4}\s*$/i,
-    /\s*\[\s*\d{4}\s*\]\s*$/i,
-    /\s+recruitment(?:\s+drive)?\s+\d{4}\s+/i,
-    /\s+recruitment(?:\s+drive)?\s+/i,
+    /\s*\|\s*\d{4}$/i,
+    /\s*\[\s*\d{4}\s*\]$/i,
+    /\s+recruitment(?:\s+drive)?\s+\d{4}/i,
+    /\s+recruitment(?:\s+drive)?/i,
 ];
 
 export function cleanAggregatorTitle(aggregatorTitle: string): string {
@@ -158,16 +158,22 @@ export function cleanAggregatorTitle(aggregatorTitle: string): string {
     let title = aggregatorTitle;
 
     // Pattern 1: "XYZ Recruitment: Hiring Role Name - Apply Now"
-    // Handles "hiring ", "hiring: ", "hiring for ", etc.
-    const hiringMatch = title.match(/\bhiring(?:\s+|:\s+|\s+for\s+)(.+)$/i);
-    if (hiringMatch && hiringMatch[1].length < 80) {
-        title = hiringMatch[1];
-        // Strip trailing suffixes like " | Location" or " - Apply Now" safely
-        const suffixMatch = title.match(/(.+?)\s*[|–]\s*(?:apply\s+(?:now|soon|online)|[A-Za-z][A-Za-z\s]*)$/i);
-        if (suffixMatch) title = suffixMatch[1];
+    const hiringIdx = title.toLowerCase().indexOf('hiring');
+    if (hiringIdx !== -1 && hiringIdx < 50) {
+        let rolePart = title.slice(hiringIdx + 6).trim();
+        if (rolePart.startsWith(':')) {
+            rolePart = rolePart.slice(1).trim();
+        } else if (rolePart.toLowerCase().startsWith('for ')) {
+            rolePart = rolePart.slice(4).trim();
+        }
+        if (rolePart.length > 0 && rolePart.length < 80) {
+            title = rolePart;
+            // Strip trailing suffixes like " | Location" or " - Apply Now" safely
+            const suffixMatch = title.match(/(.+?)\s*[|–]\s*(?:apply\s+(?:now|soon|online)|[A-Za-z][A-Za-z\s]*)$/i);
+            if (suffixMatch) title = suffixMatch[1];
+        }
     } else {
         // Pattern 2: "Company Recruitment Drive; Role – Apply Now"
-        // Safely strip the "Company Recruitment Drive;" prefix if present
         const prefixMatch = title.match(/^[^;]+;\s*(.*)/);
         if (prefixMatch && prefixMatch[1].length > 5) {
             title = prefixMatch[1].trim();

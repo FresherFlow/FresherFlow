@@ -75,7 +75,16 @@ export function cleanClickbait(markdown: string): string {
     clean = filteredLines.join('\n');
 
     // Strip "How to Apply" lines and nearby links
-    clean = clean.replace(/#*\s*How to Apply[\s\S]{0,150}?(?:\[[^\]]+\]\([^)]+\)|https?:\/\/\S+)/gi, '');
+    const htaIndex = clean.toLowerCase().indexOf('how to apply');
+    if (htaIndex !== -1) {
+        const windowSize = 200;
+        const substring = clean.slice(htaIndex, htaIndex + windowSize);
+        const urlMatch = substring.match(/(?:\[[^\]]+\]\([^)]+\)|https?:\/\/\S+)/i);
+        if (urlMatch && urlMatch.index !== undefined) {
+            const urlEnd = htaIndex + urlMatch.index + urlMatch[0].length;
+            clean = clean.slice(0, htaIndex) + clean.slice(urlEnd);
+        }
+    }
 
     // Strip "Posted in" / "Published by admin" lines (aggregator category tags)
     clean = clean.replace(/^Posted in .*$/gmi, '');

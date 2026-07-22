@@ -9,14 +9,8 @@ export interface SlugOptions {
  * Lowercases, strips invalid chars, collapses hyphens.
  */
 export function sanitizeCustomSlug(raw: string): string {
-    return raw
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]+/g, '')
-        .replace(/[\s-]+/g, '-')
-        .replace(/^-+/, '')
-        .replace(/-+$/, '')
-        .substring(0, 120);
+    const words = raw.toLowerCase().trim().split(/[^a-z0-9_]+/);
+    return words.filter(Boolean).join('-').substring(0, 120);
 }
 
 /**
@@ -26,13 +20,10 @@ export function sanitizeCustomSlug(raw: string): string {
  * Govt jobs:     "ssc-cgl-2026"  (no random suffix — use resolveGovtSlug for collision safety)
  */
 export function generateSlug(title: string, company: string, id?: string, options?: SlugOptions): string {
-    const clean = (text: string) => text
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]+/g, '')
-        .replace(/[\s-]+/g, '-')
-        .replace(/^-+/, '')
-        .replace(/-+$/, '');
+    const clean = (text: string) => {
+        const words = text.toLowerCase().trim().split(/[^a-z0-9_]+/);
+        return words.filter(Boolean).join('-');
+    };
 
     // ── Government / Exam SEO slug ────────────────────────────────────────────
     // Target: "ssc-cgl-2026", "telangana-police-recruitment-2026"
@@ -41,7 +32,7 @@ export function generateSlug(title: string, company: string, id?: string, option
         const currentYear = options.year || new Date().getFullYear();
         const yearStr = currentYear.toString();
 
-        let slug = clean(title).substring(0, 80).replace(/-+$/, '');
+        let slug = clean(title).substring(0, 80);
 
         if (!slug.includes(yearStr)) {
             slug = `${slug}-${yearStr}`;
@@ -90,12 +81,12 @@ export function extractIdFromSlug(slug: string): string | null {
  */
 export function slugify(text: string): string {
     return text
+        .toString()
         .toLowerCase()
         .trim()
-        .replace(/[^\w\s-]+/g, '')
-        .replace(/[\s-]+/g, '-')
-        .replace(/^-+/, '')
-        .replace(/-+$/, '');
+        .replace(/\s+/g, '-')
+        .replace(/[^\w-]+/g, '')
+        .replace(/--+/g, '-');
 }
 
 /**
@@ -180,12 +171,5 @@ export function getCompanySlug(name: string, url: string | null): string {
     
     const nameToSlugify = cleanedName.length > 0 ? cleanedName : name;
 
-    return nameToSlugify
-        .toLowerCase()
-        .trim()
-        .replace(/[^\w\s-]+/g, '')
-        .replace(/[\s-]+/g, '-')
-        .replace(/^-+/, '')
-        .replace(/-+$/, '');
+    return slugify(nameToSlugify);
 }
-
