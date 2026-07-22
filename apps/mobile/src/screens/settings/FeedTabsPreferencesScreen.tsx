@@ -80,6 +80,10 @@ const FeedTabsPreferencesScreen = ({ navigation }: Props) => {
   const [tabToDelete, setTabToDelete] = useState<{ id: string; label: string } | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
 
+  const [addSkillFeedVisible, setAddSkillFeedVisible] = useState(false);
+  const [skillFeedName, setSkillFeedName] = useState('');
+  const [skillFeedSkills, setSkillFeedSkills] = useState('');
+
   useFocusEffect(
     useCallback(() => {
       hideTabBar();
@@ -138,6 +142,39 @@ const FeedTabsPreferencesScreen = ({ navigation }: Props) => {
     setErrorText(null);
     setAddPopupVisible(false);
   }, [yearInput, customFeedTabs, defaultTabs, addCustomFeedTab, showSuccess]);
+
+  const handleAddSkillFeed = useCallback(() => {
+    const trimmedName = skillFeedName.trim();
+    const skills = skillFeedSkills.split(',').map(s => s.trim()).filter(s => s.length > 0);
+    
+    if (!trimmedName) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setErrorText('Please enter a tab name');
+      return;
+    }
+    if (skills.length === 0) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setErrorText('Please enter at least one skill');
+      return;
+    }
+    
+    const id = `skill_${trimmedName.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    
+    if (customFeedTabs.some(t => t.id === id) || defaultTabs.some(t => t.id === id)) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setErrorText('A tab with this name already exists');
+      return;
+    }
+
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    addCustomFeedTab({ id, label: trimmedName, skills });
+    showSuccess(`Created custom feed: ${trimmedName}`);
+    
+    setSkillFeedName('');
+    setSkillFeedSkills('');
+    setErrorText(null);
+    setAddSkillFeedVisible(false);
+  }, [skillFeedName, skillFeedSkills, customFeedTabs, defaultTabs, addCustomFeedTab, showSuccess]);
 
   return (
     <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
@@ -249,6 +286,29 @@ const FeedTabsPreferencesScreen = ({ navigation }: Props) => {
                   Add Graduation Year
                 </Text>
               </TouchableOpacity>
+              
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => {
+                  void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setAddSkillFeedVisible(true);
+                }}
+                style={[
+                  styles.addTabRow,
+                  {
+                    backgroundColor: alpha(currentTheme.colors.primary, 0.03),
+                    borderTopWidth: 0.5,
+                    borderTopColor: alpha(currentTheme.colors.border, 0.1),
+                    borderBottomLeftRadius: mScale(16),
+                    borderBottomRightRadius: mScale(16),
+                  }
+                ]}
+              >
+                <Plus size={18} color={currentTheme.colors.primary} strokeWidth={2.5} />
+                <Text style={[styles.addTabRowText, { color: currentTheme.colors.primary }]}>
+                  Create Skill Feed
+                </Text>
+              </TouchableOpacity>
             </PremiumToggleGroup>
           </View>
         )}
@@ -346,6 +406,95 @@ const FeedTabsPreferencesScreen = ({ navigation }: Props) => {
                 </TouchableOpacity>
               );
             })}
+          </View>
+        </View>
+      </PremiumPopup>
+
+      {/* Add Skill Feed Popup Modal */}
+      <PremiumPopup
+        visible={addSkillFeedVisible}
+        title="Create Skill Feed"
+        description="Filter your feed to only show opportunities matching specific skills."
+        onDismiss={() => {
+          setAddSkillFeedVisible(false);
+          setSkillFeedName('');
+          setSkillFeedSkills('');
+          setErrorText(null);
+        }}
+        actions={[
+          {
+            text: "Cancel",
+            style: "cancel",
+            onPress: () => {
+              setAddSkillFeedVisible(false);
+              setSkillFeedName('');
+              setSkillFeedSkills('');
+              setErrorText(null);
+            }
+          },
+          {
+            text: "Create",
+            style: "default",
+            autoDismiss: false,
+            onPress: handleAddSkillFeed
+          }
+        ]}
+      >
+        <View style={{ width: '100%', marginTop: 12, gap: 12 }}>
+          <View style={styles.formGroup}>
+            <Text style={[styles.inputLabel, { color: currentTheme.colors.text }]}>
+              Tab Name
+            </Text>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[
+                  styles.input,
+                  { 
+                    color: currentTheme.colors.text, 
+                    borderColor: errorText && !skillFeedName ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.3),
+                    backgroundColor: currentTheme.colors.background
+                  }
+                ]}
+                value={skillFeedName}
+                onChangeText={(text) => {
+                  setSkillFeedName(text);
+                  setErrorText(null);
+                }}
+                placeholder="e.g. Frontend Jobs"
+                placeholderTextColor={currentTheme.colors.textMuted}
+                autoFocus
+              />
+            </View>
+          </View>
+
+          <View style={styles.formGroup}>
+            <Text style={[styles.inputLabel, { color: currentTheme.colors.text }]}>
+              Required Skills (comma separated)
+            </Text>
+            <View style={styles.inputRow}>
+              <TextInput
+                style={[
+                  styles.input,
+                  { 
+                    color: currentTheme.colors.text, 
+                    borderColor: errorText && !skillFeedSkills ? currentTheme.colors.error : alpha(currentTheme.colors.border, 0.3),
+                    backgroundColor: currentTheme.colors.background
+                  }
+                ]}
+                value={skillFeedSkills}
+                onChangeText={(text) => {
+                  setSkillFeedSkills(text);
+                  setErrorText(null);
+                }}
+                placeholder="e.g. React, Next.js, TypeScript"
+                placeholderTextColor={currentTheme.colors.textMuted}
+              />
+            </View>
+            {errorText && (
+              <Text style={{ color: currentTheme.colors.error, fontSize: mScale(12), fontWeight: '700', marginTop: 4, marginLeft: 2 }}>
+                {errorText}
+              </Text>
+            )}
           </View>
         </View>
       </PremiumPopup>

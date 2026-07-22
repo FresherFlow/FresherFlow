@@ -89,6 +89,7 @@ export const CDN_URL = resolveCdnUrl();
 
 // Dynamically point to the CDN (Cloudflare R2 + Worker in prod, local Express in dev)
 export const BOOTSTRAP_FEED_URL = `${CDN_URL}/bootstrap-feed.min.json`;
+export const EXPIRED_FEED_URL = `${CDN_URL}/expired-feed.min.json`;
 export const FEED_VERSION_URL = `${CDN_URL}/feed-version.json`;
 export const TAKEN_USERNAMES_URL = `${CDN_URL}/taken-usernames.min.json`;
 export const GET_CATEGORY_SHARD_URL = (id: string) => `${CDN_URL}/categories/${id}.json`;

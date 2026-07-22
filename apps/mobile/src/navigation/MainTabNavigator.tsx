@@ -117,22 +117,32 @@ const ProfileStack = () => (
 const CustomTabBar = React.memo(({ state, descriptors, navigation }: BottomTabBarProps) => {
   const { currentTheme } = useTheme();
   const { tabBarTranslateY, isKeyboardVisible } = useUI();
+  const bottomNavStyle = useAppPreferencesStore(s => s.bottomNavStyle);
 
   const isDark = currentTheme.mode === 'dark';
+  const isFloating = bottomNavStyle === 'floating';
 
   return (
     <Animated.View style={[
       styles.tabBarContainer,
+      isFloating && styles.floatingTabBar,
       {
         transform: [{ translateY: tabBarTranslateY }],
         opacity: isKeyboardVisible ? 0 : 1,
         display: isKeyboardVisible ? 'none' : 'flex',
         backgroundColor: currentTheme.colors.background,
-        borderTopWidth: 1,
+        borderTopWidth: isFloating ? 0 : 1,
         borderTopColor: isDark ? alpha(currentTheme.colors.text, 0.1) : alpha(currentTheme.colors.border, 0.2),
+        ...(isFloating && {
+          shadowColor: currentTheme.colors.text,
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 12,
+          elevation: 10,
+        }),
       },
     ]}>
-      <View style={styles.tabBarInner}>
+      <View style={[styles.tabBarInner, isFloating && styles.floatingTabBarInner]}>
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
 
@@ -257,12 +267,23 @@ const styles = StyleSheet.create({
     right: 0,
     height: Platform.OS === 'ios' ? 80 : 64,
     elevation: 0,
-    overflow: 'hidden',
+    overflow: 'hidden', // Warning: overflow hidden cuts off shadows on iOS. But we need it for classic. We'll override in floating.
+  },
+  floatingTabBar: {
+    bottom: Platform.OS === 'ios' ? 32 : 16,
+    left: 16,
+    right: 16,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'visible',
   },
   tabBarInner: {
     flex: 1,
     flexDirection: 'row',
     paddingBottom: Platform.OS === 'ios' ? 16 : 0,
+  },
+  floatingTabBarInner: {
+    paddingBottom: 0,
   },
   tabItem: {
     flex: 1,

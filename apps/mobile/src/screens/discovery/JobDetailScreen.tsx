@@ -104,6 +104,7 @@ import { CompanyLogo } from '@repo/ui';
 import { mScale, SPACING, RADIUS } from '../../system/constants/dimensions';
 import { CommentSection } from '@/system/components/CommentSection';
 import { TrackerStatusSheet, TrackerStatusSheetRef } from '@/system/components/TrackerStatusSheet';
+import { ApplyTrackerPromptSheet, ApplyTrackerPromptSheetRef } from '@/system/components/ApplyTrackerPromptSheet';
 import { PremiumActionSheet } from '@/system/components/PremiumActionSheet';
 import { SuccessModal } from '@/system/components/SuccessModal';
 import { ComplexityCard } from './components/ComplexityCard';
@@ -141,6 +142,8 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     const {
     opportunity,
     loading,
+    error,
+    eligibilityReason,
     isSaved,
     toggleSave,
     isTracking,
@@ -151,6 +154,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     handleApply,
     handleReport: reportToApi,
     similarOpportunities,
+    checkingExpired,
   } = useOpportunityDetail(
     opportunityId,
     route.params?.opportunity ?? route.params?.job ?? null,
@@ -412,6 +416,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
 
 
     const trackerSheetRef = useRef<TrackerStatusSheetRef>(null);
+    const applyPromptSheetRef = useRef<ApplyTrackerPromptSheetRef>(null);
 
     const handleToggleSave = useCallback(() => {
         if (!opportunity) return;
@@ -420,6 +425,16 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         showSuccess(wasSaved ? 'Opportunity removed from saves' : 'Opportunity saved successfully!');
     }, [opportunity, isSaved, toggleSave, showSuccess]);
+
+    const handlePromptStatusSelect = useCallback((status: ActionType) => {
+        if (!opportunity) return;
+        updateStatus(opportunity.id, status);
+        if (status === ActionType.APPLIED) {
+            showSuccess('Marked as Applied! Track status in Settings > Application Tracker.');
+        } else if (status === ActionType.PLANNED) {
+            showSuccess('Saved to Application Tracker.');
+        }
+    }, [opportunity, updateStatus, showSuccess]);
 
     const handleStatusSelect = useCallback(async (status: ActionType) => {
         if (!opportunity) return;
@@ -484,6 +499,11 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
     return (
       <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
         <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+        {checkingExpired && (
+          <Text style={{ marginTop: 16, color: currentTheme.colors.textMuted, fontSize: 14, fontWeight: '600' }}>
+            Checking archived jobs...
+          </Text>
+        )}
       </View>
     );
   }
@@ -507,7 +527,7 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
             borderRadius: 12,
           }}
         >
-          <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Browse Jobs</Text>
+          <Text style={{ color: currentTheme.colors.background, fontWeight: '700', fontSize: 15 }}>Browse Jobs</Text>
         </TouchableOpacity>
       </View>
     );
@@ -1478,6 +1498,11 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
                 onPress={async () => {
                     const success = await handleApply();
                     if (success) {
+                        // Trigger active application tracker confirmation prompt
+                        setTimeout(() => {
+                            applyPromptSheetRef.current?.present();
+                        }, 1200);
+
                         // Prompt for review after successful application flow
                         if (await StoreReview.hasAction()) {
                             void StoreReview.requestReview();
@@ -1532,6 +1557,15 @@ const JobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props) => 
           opportunity={opportunity}
           currentStatus={getStatus(opportunity.id)}
           onSelect={handleStatusSelect}
+      />
+
+      <ApplyTrackerPromptSheet
+          ref={applyPromptSheetRef}
+          opportunity={opportunity}
+          onSelectStatus={handlePromptStatusSelect}
+          onViewTracker={() => {
+              navigation.navigate('ApplicationTracker' as never);
+          }}
       />
 
 

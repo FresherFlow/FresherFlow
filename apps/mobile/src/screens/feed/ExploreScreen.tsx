@@ -35,6 +35,7 @@ import { FilterChip } from '@/system/components/FilterChip';
 import { UsernameNudgeCard } from '@/system/components/UsernameNudgeCard';
 import { SPACING } from '@/system/constants/dimensions';
 import { useExplore } from '@/hooks/useExplore';
+import { useProfile } from '@/hooks/useProfile';
 import { useFeedStore } from '@/store/useFeedStore';
 import { saveRecentSearchKeyword } from '@/utils/userBehavior';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
@@ -116,6 +117,7 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
         openedIds
     } = useExplore();
 
+    const { profile } = useProfile();
     const filterSheetRef = React.useRef<FilterSheetRef>(null);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const flashListRef = React.useRef<any>(null);
@@ -339,6 +341,52 @@ const ExploreScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             placeholder="Search roles or companies..."
                         />
                     </View>
+
+                    {/* Batch-Year Smart Filter Row */}
+                    <ScrollView
+                        horizontal
+                        showsHorizontalScrollIndicator={false}
+                        style={styles.chipScroll}
+                        contentContainerStyle={[styles.chipContent, { paddingVertical: 4 }]}
+                    >
+                        {[2026, 2025, 2024, 2023].map((year) => {
+                            const isSelected = filters.batchYears?.includes(year);
+                            const isUserBatch = (profile?.gradYear === year) || (profile?.pgYear === year);
+                            return (
+                                <TouchableOpacity
+                                    key={year}
+                                    onPress={() => {
+                                        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                                        const current = filters.batchYears || [];
+                                        const next = isSelected ? current.filter(y => y !== year) : [...current, year];
+                                        setFilters({ batchYears: next });
+                                    }}
+                                    style={[
+                                        styles.batchChip,
+                                        {
+                                            backgroundColor: isSelected 
+                                                ? currentTheme.colors.primary 
+                                                : alpha(currentTheme.colors.text, 0.05),
+                                            borderColor: isUserBatch 
+                                                ? currentTheme.colors.primary 
+                                                : 'transparent',
+                                            borderWidth: isUserBatch ? 1.5 : 0,
+                                        }
+                                    ]}
+                                >
+                                    <Text style={[
+                                        styles.batchChipText,
+                                        { 
+                                            color: isSelected ? currentTheme.colors.inverseText : currentTheme.colors.text,
+                                            fontWeight: isUserBatch || isSelected ? '900' : '700',
+                                        }
+                                    ]}>
+                                        {isUserBatch ? `🎯 ${year} Batch` : `${year} Batch`}
+                                    </Text>
+                                </TouchableOpacity>
+                            );
+                        })}
+                    </ScrollView>
 
                     {(activeFilterCount > 0 || searchQuery) && (
                         <ScrollView
@@ -654,6 +702,18 @@ const styles = StyleSheet.create({
     },
     chipContent: {
         paddingHorizontal: SPACING.lg,
+    },
+    batchChip: {
+        paddingHorizontal: 14,
+        paddingVertical: 7,
+        borderRadius: 20,
+        marginRight: 8,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    batchChipText: {
+        fontSize: 12,
+        letterSpacing: 0.2,
     },
     resultsHeader: {
         paddingHorizontal: SPACING.lg,

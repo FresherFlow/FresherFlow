@@ -8,12 +8,13 @@ import {
   StatusBar,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, Palette, Moon, Sun, Smartphone, Zap } from 'lucide-react-native';
+import { Check, Palette, Moon, Sun, Smartphone, Zap, PanelBottom, AppWindow } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 
 import { useTheme, AppTheme } from '@/contexts/ThemeContext';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '@/navigation/types';
+import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
 
 
 // Premium System
@@ -32,6 +33,7 @@ const alpha = (color: string, opacity: number) => {
 const AppearanceScreen = ({ navigation }: Props) => {
   const insets = useSafeAreaInsets();
   const { currentTheme, themeMode, setThemeMode, isAmoled, toggleAmoled } = useTheme();
+  const { bottomNavStyle, setBottomNavStyle } = useAppPreferencesStore();
 
 
 
@@ -43,6 +45,11 @@ const AppearanceScreen = ({ navigation }: Props) => {
   const onToggleAmoled = useCallback((value: boolean) => {
     toggleAmoled(value);
   }, [toggleAmoled]);
+
+  const handleNavStyleSelect = useCallback((style: 'classic' | 'floating') => {
+    void Haptics.selectionAsync();
+    setBottomNavStyle(style);
+  }, [setBottomNavStyle]);
 
   const isDarkMode = currentTheme.mode === 'dark';
 
@@ -103,6 +110,26 @@ const AppearanceScreen = ({ navigation }: Props) => {
                 />
             </View>
         )}
+
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: currentTheme.colors.textMuted }]}>Navigation Style</Text>
+          <View style={styles.modeGrid}>
+            <ModeCard 
+              label="Classic" 
+              active={bottomNavStyle === 'classic'} 
+              icon={PanelBottom} 
+              onPress={() => handleNavStyleSelect('classic')} 
+              currentTheme={currentTheme}
+            />
+            <ModeCard 
+              label="Floating" 
+              active={bottomNavStyle === 'floating'} 
+              icon={AppWindow} 
+              onPress={() => handleNavStyleSelect('floating')} 
+              currentTheme={currentTheme}
+            />
+          </View>
+        </View>
 
         <View style={[styles.infoBox, { backgroundColor: alpha(currentTheme.colors.text, 0.03), borderColor: alpha(currentTheme.colors.border, 0.3) }]}>
           <View style={[styles.infoIcon, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>

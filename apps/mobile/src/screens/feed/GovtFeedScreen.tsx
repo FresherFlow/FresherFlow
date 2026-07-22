@@ -189,14 +189,37 @@ const GovtFeedTabContent = memo(({ tabId, navigation, isSaved, toggleSave, handl
                 }}
                 style={[styles.skeletonCard, { backgroundColor: currentTheme.colors.surfaceDarkSubtle }]}
             >
-                <View style={styles.skeletonHeader}>
-                    <View style={[styles.skeletonCircle, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]} />
-                    <View style={{ flex: 1, gap: 8 }}>
-                        <View style={[styles.skeletonLine, { width: '80%', backgroundColor: alpha(currentTheme.colors.text, 0.05) }]} />
-                        <View style={[styles.skeletonLine, { width: '40%', height: 12, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
-                    </View>
+                {/* Badge Row */}
+                <View style={styles.skeletonBadgeRow}>
+                    <View style={[styles.skeletonLine, { width: 60, height: 18, borderRadius: 4, backgroundColor: alpha(currentTheme.colors.text, 0.05) }]} />
+                    <View style={[styles.skeletonLine, { width: 80, height: 18, borderRadius: 4, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
                 </View>
-                <View style={[styles.skeletonLine, { width: '100%', marginTop: 20, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+
+                {/* Company & Title Row */}
+                <View style={styles.skeletonHeader}>
+                    <View style={[styles.skeletonLogo, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]} />
+                    <View style={{ flex: 1, gap: 6 }}>
+                        <View style={[styles.skeletonLine, { width: '85%', height: 16, backgroundColor: alpha(currentTheme.colors.text, 0.05) }]} />
+                        <View style={[styles.skeletonLine, { width: '45%', height: 12, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+                    </View>
+                    <View style={[styles.skeletonCircleSmall, { backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+                </View>
+
+                {/* Meta Row */}
+                <View style={[styles.skeletonMetaRow, { borderColor: alpha(currentTheme.colors.text, 0.05) }]}>
+                    <View style={[styles.skeletonLine, { width: 100, height: 12, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+                    <View style={[styles.skeletonLine, { width: 60, height: 12, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+                    <View style={[styles.skeletonLine, { width: 80, height: 12, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+                </View>
+
+                {/* Footer Mirror */}
+                <View style={[styles.skeletonFooter, { borderColor: alpha(currentTheme.colors.text, 0.05) }]}>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                        <View style={[styles.skeletonLine, { width: 40, height: 14, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+                        <View style={[styles.skeletonLine, { width: 40, height: 14, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+                    </View>
+                    <View style={[styles.skeletonLine, { width: 80, height: 14, backgroundColor: alpha(currentTheme.colors.text, 0.03) }]} />
+                </View>
             </MotiView>
         );
       case 'empty': {
@@ -632,25 +655,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   skeletonCard: {
-    height: 180,
     marginHorizontal: SPACING.lg,
     marginBottom: SPACING.md,
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
   skeletonHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
   },
-  skeletonCircle: {
+  skeletonLogo: {
     width: mScale(40),
     height: mScale(40),
-    borderRadius: mScale(20),
+    borderRadius: 8,
+  },
+  skeletonCircleSmall: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  skeletonBadgeRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
+  skeletonMetaRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+  },
+  skeletonFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
   },
   skeletonLine: {
     height: 16,
-    borderRadius: 8,
+    borderRadius: 4,
   },
   emptyContainer: {
     flex: 1,

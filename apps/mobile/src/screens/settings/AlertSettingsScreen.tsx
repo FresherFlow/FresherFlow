@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState, useEffect } from 'react';
 import {
     StyleSheet,
     Text,
@@ -8,6 +8,8 @@ import {
     TextInput,
     ScrollView,
     TouchableOpacity,
+    AppState,
+    Linking,
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 
@@ -15,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
     Bell, 
     Clock, 
+    AlertCircle,
 } from 'lucide-react-native';
 import { Controller } from 'react-hook-form';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -50,6 +53,25 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
     const governmentJobs = watch('governmentJobs');
     const enabled = privateJobs || governmentJobs;
     const minRelevanceScore = watch('minRelevanceScore');
+
+    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+
+    const checkPermission = async () => {
+        const settings = await Notifications.getPermissionsAsync();
+        setHasPermission(
+            settings.granted || settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
+        );
+    };
+
+    useEffect(() => {
+        checkPermission();
+        const subscription = AppState.addEventListener('change', (state) => {
+            if (state === 'active') {
+                checkPermission();
+            }
+        });
+        return () => subscription.remove();
+    }, []);
 
     if (loading) {
         return (
@@ -102,6 +124,38 @@ const AlertSettingsScreen: React.FC<Props> = memo(({ navigation }: Props) => {
                             Configure how and when you want to receive job alerts and updates.
                         </Text>
                     </View>
+
+                    {hasPermission === false && (
+                        <SurfaceCard style={{ marginBottom: 20, backgroundColor: alpha(currentTheme.colors.error || '#CF6679', 0.1), borderColor: alpha(currentTheme.colors.error || '#CF6679', 0.3), borderWidth: 1, padding: 16 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                                <AlertCircle color={currentTheme.colors.error || '#CF6679'} size={24} />
+                                <View style={{ flex: 1 }}>
+                                    <Text style={{ color: currentTheme.colors.text, fontWeight: '700', fontSize: 15 }}>Notifications Disabled</Text>
+                                    <Text style={{ color: currentTheme.colors.textMuted, fontSize: 13, marginTop: 2, lineHeight: 18 }}>
+                                        Please enable notifications in your device settings to receive job alerts.
+                                    </Text>
+                                </View>
+                            </View>
+                            <TouchableOpacity 
+                                style={{ marginTop: 16, backgroundColor: currentTheme.colors.error || '#CF6679', paddingVertical: 12, borderRadius: 12, alignItems: 'center' }}
+                                onPress={async () => {
+                                    const { status, canAskAgain } = await Notifications.getPermissionsAsync();
+                                    if (canAskAgain && status !== 'granted') {
+                                        const result = await Notifications.requestPermissionsAsync();
+                                        if (result.granted || result.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL) {
+                                            setHasPermission(true);
+                                        } else {
+                                            Linking.openSettings();
+                                        }
+                                    } else {
+                                        Linking.openSettings();
+                                    }
+                                }}
+                            >
+                                <Text style={{ color: currentTheme.colors.background, fontWeight: '800', fontSize: 14 }}>Enable Notifications</Text>
+                            </TouchableOpacity>
+                        </SurfaceCard>
+                    )}
 
                     <Text style={[styles.groupLabel, { color: currentTheme.colors.textMuted }]}>Channels</Text>
                     <PremiumToggleGroup>

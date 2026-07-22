@@ -20,7 +20,7 @@ import { ContributionPreviewCard } from '@/system/components/ContributionPreview
 import { ResourcePreviewCard } from '@/system/components/ResourcePreviewCard';
 import { saveDetailCache } from '@/utils/cache/offlineCache';
 import { SPACING, mScale } from '@/system/constants/dimensions';
-import { Zap, BookOpen, CheckCircle2, Clock, XCircle } from 'lucide-react-native';
+import { Zap, BookOpen, CheckCircle2, Clock, XCircle, Plus } from 'lucide-react-native';
 import * as Linking from 'expo-linking';
 import { SurfaceCard } from '@/system/components/PremiumPrimitives';
 
@@ -214,6 +214,21 @@ const MySharesScreen: React.FC<Props> = ({ route, navigation }) => {
                 }
 
             />
+            
+            <TouchableOpacity
+                activeOpacity={0.9}
+                onPress={() => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    // Navigate to the Share tab
+                    navigation.navigate('Share'); 
+                }}
+                style={[
+                    styles.fab,
+                    { backgroundColor: currentTheme.colors.primary, bottom: insets.bottom + SPACING.lg }
+                ]}
+            >
+                <Plus size={24} color={currentTheme.colors.background} />
+            </TouchableOpacity>
         </Screen>
     );
 };
@@ -334,6 +349,20 @@ const styles = StyleSheet.create({
         textAlign: 'center',
         lineHeight: 20,
         paddingHorizontal: 40,
+    },
+    fab: {
+        position: 'absolute',
+        right: SPACING.lg,
+        width: mScale(56),
+        height: mScale(56),
+        borderRadius: mScale(28),
+        alignItems: 'center',
+        justifyContent: 'center',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 8,
     }
 });
 

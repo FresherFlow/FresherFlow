@@ -130,7 +130,6 @@ const AppContent = () => {
   usePushToken();     // Register FCM device token after login
   useEmailLinkSignIn(); // Listen and complete email magic link logins
   const [isLoaded, setIsLoaded] = useState(false);
-  const [updatePopupVisible, setUpdatePopupVisible] = useState(false);
   const pendingNavigationRef = React.useRef<{ screen: string; params: any } | null>(null);
 
   React.useEffect(() => {
@@ -165,12 +164,6 @@ const AppContent = () => {
       SplashScreen.hideAsync().catch(() => {});
     }
   }, [isLoaded]);
-
-  React.useEffect(() => {
-    if (isUpdatePending) {
-      setUpdatePopupVisible(true);
-    }
-  }, [isUpdatePending]);
 
   // OTA Updates: Defer a background check and download on startup
   React.useEffect(() => {
@@ -262,30 +255,6 @@ const AppContent = () => {
         <OfflineBanner />
         <GlobalActionSheet />
       </FirstRunGate>
-
-      <PremiumPopup
-        visible={updatePopupVisible}
-        title="Update Ready"
-        description="A new software update has been downloaded in the background. Reload now to apply the changes?"
-        actions={[
-          {
-            text: 'Later',
-            style: 'cancel',
-            onPress: () => setUpdatePopupVisible(false)
-          },
-          {
-            text: 'Reload',
-            style: 'default',
-            onPress: () => {
-              setUpdatePopupVisible(false);
-              Updates.reloadAsync().catch((err) => {
-                if (__DEV__) { console.warn('[OTA] Reload failed:', err) }
-              });
-            }
-          }
-        ]}
-        onDismiss={() => setUpdatePopupVisible(false)}
-      />
 
       {!isLoaded && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 99999 }]}>

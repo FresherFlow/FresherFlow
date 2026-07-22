@@ -223,7 +223,12 @@ export const OfflineSyncModule = {
                             });
 
                             if (response.status === 200 && response.data) {
-                                if (url.includes('google.com') && (response.data as ArrayBuffer).byteLength < 1000) {
+                                let isGoogle = false;
+                                try {
+                                    const hostname = new URL(url).hostname.toLowerCase();
+                                    isGoogle = hostname === 'google.com' || hostname.endsWith('.google.com');
+                                } catch {}
+                                if (isGoogle && (response.data as ArrayBuffer).byteLength < 1000) {
                                     continue;
                                 }
 

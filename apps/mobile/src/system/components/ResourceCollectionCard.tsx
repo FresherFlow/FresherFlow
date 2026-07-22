@@ -22,6 +22,7 @@ import { alpha } from '@/theme';
 import { openExternalURL } from '@/utils/browser';
 import { SurfaceCard } from './PremiumPrimitives';
 import { SharedResource, ResourceItem } from '@fresherflow/types';
+import { ResourcePreviewCard } from './ResourcePreviewCard';
 
 interface ResourceCollectionCardProps {
   collection: SharedResource;
@@ -70,41 +71,56 @@ export const ResourceCollectionCard: React.FC<ResourceCollectionCardProps> = ({
     }
   };
 
+  const getDomainInfo = (urlStr: string) => {
+    try {
+      const normalized = urlStr.indexOf('://') !== -1 ? urlStr : `https://${urlStr}`;
+      const parsed = new URL(normalized);
+      return {
+        host: parsed.hostname.toLowerCase(),
+        pathname: parsed.pathname.toLowerCase(),
+        search: parsed.search.toLowerCase()
+      };
+    } catch {
+      return { host: '', pathname: '', search: '' };
+    }
+  };
+
   const getColorByUrl = (url: string, type?: string, opacity: number = 1) => {
-    const u = url.toLowerCase();
+    const { host, pathname } = getDomainInfo(url);
     let hex = currentTheme.colors.primary;
-    if (type === 'YOUTUBE' || u.includes('youtube.com') || u.includes('youtu.be')) hex = '#EF4444';
-    else if (type === 'PDF' || u.endsWith('.pdf')) hex = '#EA580C';
-    else if (type === 'ROADMAP' || u.includes('roadmap.sh')) hex = '#3B82F6';
+    if (type === 'YOUTUBE' || host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be') hex = '#EF4444';
+    else if (type === 'PDF' || pathname.endsWith('.pdf')) hex = '#EA580C';
+    else if (type === 'ROADMAP' || host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) hex = '#3B82F6';
     else if (
       type === 'FOLDER' ||
       type === 'FILE' ||
-      u.includes('drive.google.com') ||
-      u.includes('dropbox.com') ||
-      u.includes('onedrive') ||
-      u.includes('box.com') ||
-      u.includes('sharepoint')
+      host === 'drive.google.com' || host.endsWith('.drive.google.com') ||
+      host === 'dropbox.com' || host.endsWith('.dropbox.com') ||
+      host.split('.').includes('onedrive') ||
+      host === 'box.com' || host.endsWith('.box.com') ||
+      host.split('.').includes('sharepoint')
     ) hex = '#10B981';
     else hex = '#8B5CF6';
     return alpha(hex, opacity);
   };
 
   const getIconByUrl = (url: string, type?: string, size = 18) => {
-    const u = url.toLowerCase();
+    const { host, pathname, search } = getDomainInfo(url);
     const color = getColorByUrl(url, type, 1);
-    if (type === 'YOUTUBE' || u.includes('youtube.com') || u.includes('youtu.be')) return <PlayCircle size={size} color={color} />;
-    if (type === 'PDF' || u.endsWith('.pdf')) return <FileText size={size} color={color} />;
-    if (type === 'ROADMAP' || u.includes('roadmap.sh')) return <Compass size={size} color={color} />;
+    if (type === 'YOUTUBE' || host === 'youtube.com' || host.endsWith('.youtube.com') || host === 'youtu.be') return <PlayCircle size={size} color={color} />;
+    if (type === 'PDF' || pathname.endsWith('.pdf')) return <FileText size={size} color={color} />;
+    if (type === 'ROADMAP' || host === 'roadmap.sh' || host.endsWith('.roadmap.sh')) return <Compass size={size} color={color} />;
     if (type === 'FOLDER') return <FolderOpen size={size} color={color} />;
     if (type === 'FILE') return <FileText size={size} color={color} />;
     if (
-      u.includes('drive.google.com') ||
-      u.includes('dropbox.com') ||
-      u.includes('onedrive') ||
-      u.includes('box.com') ||
-      u.includes('sharepoint')
+      host === 'drive.google.com' || host.endsWith('.drive.google.com') ||
+      host === 'dropbox.com' || host.endsWith('.dropbox.com') ||
+      host.split('.').includes('onedrive') ||
+      host === 'box.com' || host.endsWith('.box.com') ||
+      host.split('.').includes('sharepoint')
     ) {
-      return (u.includes('folder') || u.includes('folders') || u.includes('id='))
+      const isFolder = pathname.includes('folder') || pathname.includes('folders') || search.includes('id=');
+      return isFolder
         ? <FolderOpen size={size} color={color} />
         : <FileText size={size} color={color} />;
     }
@@ -182,90 +198,29 @@ export const ResourceCollectionCard: React.FC<ResourceCollectionCardProps> = ({
       {/* List of items */}
       <View style={{ marginTop: 8, gap: 8 }}>
         {visibleItems.map((resItem) => {
-          const isYoutube = resItem.type === 'YOUTUBE' || resItem.url.toLowerCase().includes('youtube.com') || resItem.url.toLowerCase().includes('youtu.be');
-          let ytVideoId = null;
-          if (isYoutube) {
-            const regExp = /^.*(youtu\.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-            const match = resItem.url.match(regExp);
-            if (match && match[2].length === 11) {
-              ytVideoId = match[2];
-            }
-          }
           const itemUrl = resItem.url;
           const isItemBookmarked = isItemSaved ? isItemSaved(resItem.id) : false;
 
           return (
-            <View key={resItem.id} style={{ gap: 8 }}>
-              <TouchableOpacity
-                activeOpacity={0.7}
-                onPress={() => handleOpenLink(itemUrl)}
-                style={[
-                  styles.itemLinkRow,
-                  {
-                    backgroundColor: alpha(currentTheme.colors.text, 0.02),
-                    borderColor: alpha(currentTheme.colors.border, 0.05),
-                    borderWidth: 1
-                  }
-                ]}
-              >
-                <View style={{ marginRight: 4 }}>
-                  {getIconByUrl(itemUrl, resItem.type, 20)}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.itemLinkTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                    {resItem.title}
-                  </Text>
-                  <Text style={{ fontSize: 11, color: currentTheme.colors.textMuted, marginTop: 1 }}>
-                    {getDomainFromUrl(itemUrl)}
-                  </Text>
-                </View>
-
-                {/* Individual Item Save Button + Link Icon */}
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                  {onToggleSaveItem && (
-                    <TouchableOpacity
-                      onPress={(e) => {
-                        e.stopPropagation();
+            <TouchableOpacity
+              key={resItem.id}
+              activeOpacity={0.7}
+              onPress={() => handleOpenLink(itemUrl)}
+            >
+              <ResourcePreviewCard
+                url={itemUrl}
+                fallbackTitle={resItem.title}
+                isSaved={isItemBookmarked}
+                onSave={
+                  onToggleSaveItem
+                    ? () => {
                         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                         onToggleSaveItem(resItem);
-                      }}
-                      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                      style={{
-                        padding: 6,
-                        borderRadius: 8,
-                        backgroundColor: isItemBookmarked ? alpha(currentTheme.colors.primary, 0.1) : 'transparent',
-                        marginRight: 4,
-                      }}
-                    >
-                      <Bookmark
-                        size={14}
-                        color={isItemBookmarked ? currentTheme.colors.primary : alpha(currentTheme.colors.textMuted, 0.5)}
-                        fill={isItemBookmarked ? currentTheme.colors.primary : 'none'}
-                      />
-                    </TouchableOpacity>
-                  )}
-                  <ExternalLink size={14} color={alpha(currentTheme.colors.textMuted, 0.4)} />
-                </View>
-              </TouchableOpacity>
-
-              {ytVideoId && (
-                <TouchableOpacity
-                  activeOpacity={0.9}
-                  onPress={() => handleOpenLink(itemUrl)}
-                  style={[styles.youtubePreviewContainer, { borderColor: alpha(currentTheme.colors.border, 0.1), borderWidth: 1 }]}
-                >
-                  <Image
-                    source={{ uri: `https://img.youtube.com/vi/${ytVideoId}/hqdefault.jpg` }}
-                    style={styles.youtubeThumbnail}
-                  />
-                  <View style={styles.playButtonOverlay}>
-                    <View style={[styles.playButtonCircle, { backgroundColor: '#EF4444' }]}>
-                      <PlayCircle size={24} color="#FFFFFF" />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              )}
-            </View>
+                      }
+                    : undefined
+                }
+              />
+            </TouchableOpacity>
           );
         })}
       </View>

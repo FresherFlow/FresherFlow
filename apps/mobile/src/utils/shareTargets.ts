@@ -34,6 +34,47 @@ const buildDeepLink = ({ target, message, url }: ShareTargetOptions): string => 
   }
 };
 
+export function formatOpportunityShareText(
+  opportunity: {
+    title: string;
+    company: string;
+    locations?: string[];
+    workMode?: string;
+    salaryRange?: string;
+    salaryMin?: number;
+    salaryMax?: number;
+    allowedPassoutYears?: number[];
+  },
+  shareUrl: string
+): string {
+  const parts: string[] = [];
+
+  // Header line
+  parts.push(`🚨 Hiring Alert: ${opportunity.title} at ${opportunity.company}`);
+
+  // Location / Mode
+  const locStr = opportunity.locations && opportunity.locations.length > 0
+    ? opportunity.locations.join(', ')
+    : (opportunity.workMode || 'India');
+  parts.push(`📍 Location: ${locStr}${opportunity.workMode ? ` (${opportunity.workMode})` : ''}`);
+
+  // Salary
+  const sal = opportunity.salaryRange || (opportunity.salaryMin ? `₹${opportunity.salaryMin}${opportunity.salaryMax ? ` - ₹${opportunity.salaryMax}` : ''}` : null);
+  if (sal) {
+    parts.push(`💰 Package: ${sal}`);
+  }
+
+  // Batch Years
+  if (opportunity.allowedPassoutYears && opportunity.allowedPassoutYears.length > 0) {
+    parts.push(`🎓 Eligible Batches: ${opportunity.allowedPassoutYears.join(', ')}`);
+  }
+
+  // Apply Link
+  parts.push(`\n👉 Apply via FresherFlow:\n${shareUrl}`);
+
+  return parts.join('\n');
+}
+
 export async function shareToInstalledApp(options: ShareTargetOptions): Promise<void> {
   const deepLink = buildDeepLink(options);
 
@@ -52,3 +93,4 @@ export async function shareToInstalledApp(options: ShareTargetOptions): Promise<
     url: options.url,
   });
 }
+

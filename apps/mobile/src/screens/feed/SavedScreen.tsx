@@ -336,7 +336,6 @@ const styles = StyleSheet.create({
     },
     scrollContent: {
         paddingBottom: 100,
-        paddingTop: 30,
     },
     resultsHeader: {
         paddingHorizontal: SPACING.lg,

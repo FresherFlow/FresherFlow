@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, useRef } from 'react';
 import { Share } from 'react-native';
 import { openExternalURL } from '@/utils/browser';
+import { formatOpportunityShareText } from '@/utils/shareTargets';
 import axios from 'axios';
 import { Opportunity, OpportunityType, ActionType, FeedbackReason } from '@fresherflow/types';
 import { /* opportunityClicksApi, */ actionsApi, feedbackApi, opportunitiesApi } from '@fresherflow/api-client';
@@ -12,7 +13,7 @@ import { readDetailCache, saveDetailCache, readSimilarCache, saveSimilarCache, r
 import { markJobAsSeen, isJobOpened, markJobAsOpened } from '@/utils/cache/seenJobs';
 import { getLocalProfile } from '@/utils/cache/localProfile';
 import { generateCdnSignature } from '@/utils/cdnSignature';
-import { BOOTSTRAP_FEED_URL } from '@/config/api';
+import { BOOTSTRAP_FEED_URL, EXPIRED_FEED_URL } from '@/config/api';
 import { calculateOpportunityMatch } from '@fresherflow/domain';
 import { MOBILE_SITE_URL } from '@/utils/runtime';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
@@ -47,6 +48,7 @@ export const useOpportunityDetail = (
     const [error, setError] = useState<string | null>(null);
     const [eligibilityReason, setEligibilityReason] = useState<string | null>(null);
     const [similarOpportunities, setSimilarOpportunities] = useState<Opportunity[]>([]);
+    const [checkingExpired, setCheckingExpired] = useState(false);
 
     useEffect(() => {
         let cancelled = false;
@@ -116,6 +118,29 @@ export const useOpportunityDetail = (
                         }
                     } catch (cdnErr) {
                         console.warn('[useOpportunityDetail] CDN fallback failed:', cdnErr);
+                    }
+                }
+
+                // 3.5. Fallback: Fetch expired feed if missed from main feed
+                if (!foundOpportunity) {
+                    try {
+                        if (!cancelled) setCheckingExpired(true);
+                        const signatureParams = generateCdnSignature('/expired-feed.min.json');
+                        const signedUrl = `${EXPIRED_FEED_URL}?t=${signatureParams.t}&sig=${signatureParams.sig}`;
+                        const response = await axios.get(signedUrl, { 
+                             timeout: 5000
+                        });
+
+                        if (response.data?.opportunities) {
+                            const ops = response.data.opportunities as Opportunity[];
+                            foundOpportunity = ops.find(
+                                (opp: Opportunity) => opp.id === opportunityId || opp.slug === opportunityId
+                            ) || null;
+                        }
+                    } catch (cdnErr) {
+                        console.warn('[useOpportunityDetail] Expired CDN fallback failed:', cdnErr);
+                    } finally {
+                        if (!cancelled) setCheckingExpired(false);
                     }
                 }
 
@@ -343,9 +368,10 @@ export const useOpportunityDetail = (
         if (!opportunity) return;
         try {
             const shareUrl = `${MOBILE_SITE_URL}${getPublicOpportunityPath(opportunity)}`;
+            const formattedMessage = formatOpportunityShareText(opportunity, shareUrl);
 
             await Share.share({
-                message: `Check out this opportunity: ${shareUrl}`,
+                message: formattedMessage,
                 url: shareUrl,
                 title: `Share ${opportunity.title || 'Opportunity'}`,
             });
@@ -468,5 +494,6 @@ export const useOpportunityDetail = (
         handleApply,
         handleReport,
         similarOpportunities,
+        checkingExpired,
     };
 };

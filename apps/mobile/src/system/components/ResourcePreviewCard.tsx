@@ -15,6 +15,7 @@ interface ResourcePreviewCardProps {
     isSaved?: boolean;
     onSave?: () => void;
     addedByUsername?: string | null;
+    fallbackTitle?: string;
 }
 
 type Platform = 'youtube' | 'drive' | 'github' | 'notion' | 'generic';
@@ -60,21 +61,23 @@ function getPlatformConfig(platform: Platform, themeMuted: string, themeText: st
     }
 }
 
-export const ResourcePreviewCard: React.FC<ResourcePreviewCardProps> = ({ url, style, isSaved, onSave, addedByUsername }) => {
+export const ResourcePreviewCard: React.FC<ResourcePreviewCardProps> = ({ url, style, isSaved, onSave, addedByUsername, fallbackTitle }) => {
     const { currentTheme } = useTheme();
     const { data, loading } = useLinkPreview(url);
     const platform = detectPlatform(url);
     const platformConfig = getPlatformConfig(platform, currentTheme.colors.textMuted, currentTheme.colors.text);
 
-    if (loading && !data) {
+    const hasImage = !!data?.image;
+    const domainLabel = data?.domain || platformConfig.label || url;
+    const title = data?.title || fallbackTitle || url;
+    
+    const showCompactLayout = !hasImage || platform === 'drive' || platform === 'github' || platform === 'notion' || (!data && !!fallbackTitle);
+
+    if (loading && !data && !fallbackTitle) {
         return null;
     }
 
-    if (!data) return null;
-
-    const hasImage = !!data.image;
-    const domainLabel = platformConfig.label || data.domain || url;
-    const showCompactLayout = !hasImage || platform === 'drive' || platform === 'github' || platform === 'notion';
+    if (!data && !fallbackTitle) return null;
 
     if (showCompactLayout) {
         return (
@@ -91,7 +94,7 @@ export const ResourcePreviewCard: React.FC<ResourcePreviewCardProps> = ({ url, s
                     {/* Middle Info Column */}
                     <View style={{ flex: 1, gap: 2 }}>
                         <Text style={[styles.compactTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                            {data.title || domainLabel || url}
+                            {title}
                         </Text>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                             {domainLabel ? (
@@ -147,9 +150,9 @@ export const ResourcePreviewCard: React.FC<ResourcePreviewCardProps> = ({ url, s
                 />
             )}
             <View style={styles.content}>
-                {data.title ? (
+                {title ? (
                     <Text style={[styles.title, { color: currentTheme.colors.text }]} numberOfLines={2}>
-                        {data.title}
+                        {title}
                     </Text>
                 ) : (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
@@ -160,7 +163,7 @@ export const ResourcePreviewCard: React.FC<ResourcePreviewCardProps> = ({ url, s
                     </View>
                 )}
 
-                {data.description && (
+                {data?.description && (
                     <Text style={[styles.description, { color: currentTheme.colors.textMuted }]} numberOfLines={2}>
                         {data.description}
                     </Text>
@@ -170,7 +173,7 @@ export const ResourcePreviewCard: React.FC<ResourcePreviewCardProps> = ({ url, s
                     <View style={{ flex: 1, marginRight: 8, flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                         <PlatformIcon platform={platform} size={13} color={platformConfig.color} />
                         <View style={{ flex: 1 }}>
-                            {(domainLabel && data.title) ? (
+                            {(domainLabel && title) ? (
                                 <Text style={[styles.domain, { color: platformConfig.color !== currentTheme.colors.textMuted ? platformConfig.color : currentTheme.colors.textMuted }]} numberOfLines={1}>
                                     {domainLabel}
                                 </Text>

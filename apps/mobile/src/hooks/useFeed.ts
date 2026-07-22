@@ -4,6 +4,7 @@ import { useSaved } from '@repo/frontend-core';
 import { useFollows } from '@/hooks/useFollows';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useFeedStore } from '@/store/useFeedStore';
+import { useAppPreferencesStore } from '@/store/useAppPreferencesStore';
 import { getLocalProfile } from '@/utils/cache/localProfile';
 import { calculateOpportunityMatch } from '@fresherflow/domain';
 import Fuse from 'fuse.js';
@@ -21,6 +22,7 @@ export const useFeed = (initialFeedType: string | null = null) => {
     const [activeCity, setActiveCity] = useState('ALL');
     const [selectedTag, setSelectedTag] = useState<string | null>(null);
     const [feedType, setFeedType] = useState<string | null>(initialFeedType);
+    const customFeedTabs = useAppPreferencesStore(s => s.customFeedTabs);
     
     // Subscribe to global store
     const {
@@ -171,6 +173,18 @@ export const useFeed = (initialFeedType: string | null = null) => {
         } else if (feedType && /^\d{4}$/.test(feedType)) {
             const year = Number(feedType);
             result = result.filter(j => !j.allowedPassoutYears || j.allowedPassoutYears.length === 0 || j.allowedPassoutYears.includes(year));
+        } else if (feedType) {
+            // Check if it's a custom skill tab
+            const customTab = customFeedTabs.find(t => t.id === feedType);
+            if (customTab && customTab.skills && customTab.skills.length > 0) {
+                const requiredSkillsLower = customTab.skills.map(s => s.toLowerCase().trim());
+                result = result.filter(j => {
+                    if (!j.requiredSkills || j.requiredSkills.length === 0) return false;
+                    const jobSkillsLower = j.requiredSkills.map(s => s.toLowerCase().trim());
+                    // Intersect: true if opportunity requires at least one of the custom tab skills
+                    return requiredSkillsLower.some(skill => jobSkillsLower.includes(skill));
+                });
+            }
         }
 
         if (searchQuery.trim() && fuseIndex) {

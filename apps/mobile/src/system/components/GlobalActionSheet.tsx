@@ -14,7 +14,7 @@ import { CompanyLogo } from '@repo/ui';
 import { WhatsAppIcon, DiscordIcon, ArattaiIcon } from '@/system/components/SocialIcons';
 import { Copy, Linkedin, Twitter, Send, Instagram, Share2, X } from 'lucide-react-native';
 import { Opportunity } from '@fresherflow/types';
-import { shareToInstalledApp } from '@/utils/shareTargets';
+import { shareToInstalledApp, formatOpportunityShareText } from '@/utils/shareTargets';
 
 export const GlobalActionSheet = () => {
     const { currentTheme } = useTheme();
@@ -175,61 +175,65 @@ const GlobalShareSheet = () => {
 
     const handleWhatsApp = async () => {
         if (!opportunity || !shareUrl) return;
-        const text = `Hey! Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow:\n${shareUrl}`;
+        const text = formatOpportunityShareText(opportunity, shareUrl);
         await shareToInstalledApp({ target: 'whatsapp', message: text, url: shareUrl });
         close();
     };
 
     const handleLinkedIn = async () => {
         if (!opportunity || !shareUrl) return;
-        const text = `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow:\n${shareUrl}`;
+        const text = formatOpportunityShareText(opportunity, shareUrl);
         await shareToInstalledApp({ target: 'linkedin', message: text, url: shareUrl });
         close();
     };
 
     const handleTwitter = async () => {
         if (!opportunity || !shareUrl) return;
-        const text = `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on @Fresherflow:\n${shareUrl}`;
+        const text = formatOpportunityShareText(opportunity, shareUrl);
         await shareToInstalledApp({ target: 'twitter', message: text, url: shareUrl });
         close();
     };
 
     const handleTelegram = async () => {
         if (!opportunity || !shareUrl) return;
-        const text = `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow:\n${shareUrl}`;
+        const text = formatOpportunityShareText(opportunity, shareUrl);
         await shareToInstalledApp({ target: 'telegram', message: text, url: shareUrl });
         close();
     };
 
     const handleDiscord = async () => {
-        if (!shareUrl) return;
-        await Clipboard.setStringAsync(shareUrl);
-        showSuccess('Link copied! Opening Discord...');
-        await shareToInstalledApp({ target: 'discord', message: shareUrl, url: shareUrl });
+        if (!opportunity || !shareUrl) return;
+        const text = formatOpportunityShareText(opportunity, shareUrl);
+        await Clipboard.setStringAsync(text);
+        showSuccess('Formatted message copied! Opening Discord...');
+        await shareToInstalledApp({ target: 'discord', message: text, url: shareUrl });
         close();
     };
 
     const handleInstagram = async () => {
-        if (!shareUrl) return;
-        await Clipboard.setStringAsync(shareUrl);
-        showSuccess('Link copied! Opening Instagram...');
-        await shareToInstalledApp({ target: 'instagram', message: shareUrl, url: shareUrl });
+        if (!opportunity || !shareUrl) return;
+        const text = formatOpportunityShareText(opportunity, shareUrl);
+        await Clipboard.setStringAsync(text);
+        showSuccess('Formatted message copied! Opening Instagram...');
+        await shareToInstalledApp({ target: 'instagram', message: text, url: shareUrl });
         close();
     };
 
     const handleArattai = async () => {
-        if (!shareUrl) return;
-        await Clipboard.setStringAsync(shareUrl);
-        showSuccess('Link copied! Opening Arattai...');
-        await shareToInstalledApp({ target: 'arattai', message: shareUrl, url: shareUrl });
+        if (!opportunity || !shareUrl) return;
+        const text = formatOpportunityShareText(opportunity, shareUrl);
+        await Clipboard.setStringAsync(text);
+        showSuccess('Formatted message copied! Opening Arattai...');
+        await shareToInstalledApp({ target: 'arattai', message: text, url: shareUrl });
         close();
     };
 
     const handleSystemShare = async () => {
         if (!opportunity || !shareUrl) return;
         try {
+            const formatted = formatOpportunityShareText(opportunity, shareUrl);
             await Share.share({
-                message: `Check out this opportunity at ${opportunity.company}: ${opportunity.title} on FresherFlow:\n${shareUrl}`,
+                message: formatted,
                 url: shareUrl,
             });
         } catch (error) {

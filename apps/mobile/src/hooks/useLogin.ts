@@ -100,11 +100,7 @@ export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: s
             // This will trigger onAuthStateChanged in useAuthStore for "Instant Auth"
             await auth().signInWithCredential(googleCredential);
 
-            try {
-                await requestPushPermission();
-            } catch (e) {
-                console.warn('Failed to register push after google login', e);
-            }
+            // Push permission will be requested in Onboarding step 3
         } catch (error: unknown) {
             console.error('[Auth] Google Sign-In failed:', error);
             if (error && typeof error === 'object' && 'code' in error && error.code !== 'ASYNC_OP_IN_PROGRESS') {
@@ -138,11 +134,7 @@ export const useLogin = (route: Props['route'] | { params?: { prefilledEmail?: s
             // Sign-in with Firebase
             await auth().signInWithCredential(firebaseCredential);
 
-            try {
-                await requestPushPermission();
-            } catch (e) {
-                console.warn('Failed to register push after apple login', e);
-            }
+            // Push permission will be requested in Onboarding step 3
         } catch (error: unknown) {
             if (error && typeof error === 'object' && 'code' in error && error.code === 'ERR_CANCELED') {
                 // User canceled the flow - silent fail

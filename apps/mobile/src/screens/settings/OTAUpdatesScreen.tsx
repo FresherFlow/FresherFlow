@@ -43,16 +43,37 @@ export const OTAUpdatesScreen: React.FC = memo(() => {
     const insets = useSafeAreaInsets();
     const { currentTheme } = useTheme();
 
-    const [status, setStatus] = useState<UpdateState>('idle');
+    const { isUpdatePending } = Updates.useUpdates();
+
+    const [status, setStatus] = useState<UpdateState>(isUpdatePending ? 'ready' : 'idle');
     const [progress, setProgress] = useState(0);
     const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [simulatedPopupVisible, setSimulatedPopupVisible] = useState(false);
-    const [readyPopupVisible, setReadyPopupVisible] = useState(false);
+    const [readyPopupVisible, setReadyPopupVisible] = useState(isUpdatePending);
     const [updateMetadata, setUpdateMetadata] = useState<{
         version: string;
         createdAt: string;
         message: string;
-    } | null>(null);
+    } | null>(isUpdatePending ? {
+        version: 'New Version Available',
+        createdAt: new Date().toLocaleDateString(undefined, { dateStyle: 'medium' }),
+        message: 'A background update has been downloaded and is ready to apply.'
+    } : null);
+
+    // If a background update becomes available while on this screen
+    React.useEffect(() => {
+        if (isUpdatePending && status === 'idle') {
+            setStatus('ready');
+            setReadyPopupVisible(true);
+            if (!updateMetadata) {
+                setUpdateMetadata({
+                    version: 'New Version Available',
+                    createdAt: new Date().toLocaleDateString(undefined, { dateStyle: 'medium' }),
+                    message: 'A background update has been downloaded and is ready to apply.'
+                });
+            }
+        }
+    }, [isUpdatePending]);
 
     // Reanimated Spinner rotation
     const rotation = useSharedValue(0);

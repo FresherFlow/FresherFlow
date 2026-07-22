@@ -147,6 +147,7 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
     handleApply,
     handleReport: reportToApi,
     similarOpportunities,
+    checkingExpired,
   } = useOpportunityDetail(
     opportunityId,
     route.params?.opportunity ?? route.params?.job ?? null,
@@ -1420,6 +1421,11 @@ const GovtJobDetailScreen: React.FC<Props> = memo(({ route, navigation }: Props)
     return (
       <View style={[styles.center, { backgroundColor: currentTheme.colors.background }]}>
         <ActivityIndicator size="large" color={currentTheme.colors.primary} />
+        {checkingExpired && (
+          <Text style={{ marginTop: 16, color: currentTheme.colors.textMuted, fontSize: 14, fontWeight: '600' }}>
+            Checking archived govt jobs...
+          </Text>
+        )}
       </View>
     );
   }

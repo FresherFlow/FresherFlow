@@ -28,7 +28,8 @@ import { useRandomCompanyLogos } from '@/hooks/useRandomCompanyLogos';
 // Premium System
 import { Screen } from '@/system/layout/Layout';
 import { SecondaryHeader } from '@/system/components/PremiumPrimitives';
-import { mScale } from '@/system/constants/dimensions';
+import { mScale, SPACING, RADIUS } from '@/system/constants/dimensions';
+import { MotiView, AnimatePresence } from 'moti';
 import auth from '@/config/firebase';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
@@ -319,11 +320,46 @@ const AuthScreen: React.FC<Props & { isOnboarding?: boolean }> = memo(({ route, 
     }, [isAuthenticated, user, skipUsernameSetup, isSyncing, isHandshaking, navigation, isOnboarding]);
 
     const showEmail = false;
+    const isResolvingAuth = isSyncing;
 
     return (
         <Screen safe={false} style={{ backgroundColor: currentTheme.colors.background }}>
             <StatusBar barStyle={currentTheme.mode === 'dark' ? 'light-content' : 'dark-content'} />
             
+            <AnimatePresence>
+                {isResolvingAuth && (
+                    <MotiView
+                        from={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        style={[StyleSheet.absoluteFill, { backgroundColor: alpha(currentTheme.colors.background, 0.85), justifyContent: 'center', alignItems: 'center', zIndex: 1000 }]}
+                    >
+                        <MotiView
+                            from={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            style={{
+                                backgroundColor: currentTheme.colors.surface,
+                                padding: SPACING.xl,
+                                borderRadius: RADIUS.xl,
+                                alignItems: 'center',
+                                shadowColor: '#000',
+                                shadowOffset: { width: 0, height: 10 },
+                                shadowOpacity: 0.1,
+                                shadowRadius: 20,
+                                elevation: 10,
+                                borderWidth: 1,
+                                borderColor: alpha(currentTheme.colors.border, 0.5)
+                            }}
+                        >
+                            <ActivityIndicator size="large" color={currentTheme.colors.primary} style={{ marginBottom: SPACING.md }} />
+                            <Text style={{ color: currentTheme.colors.text, fontSize: mScale(16), fontWeight: '800' }}>Authenticating</Text>
+                            <Text style={{ color: currentTheme.colors.textMuted, fontSize: mScale(13), marginTop: SPACING.xs, fontWeight: '500' }}>Securing your session...</Text>
+                        </MotiView>
+                    </MotiView>
+                )}
+            </AnimatePresence>
+
             <KeyboardAvoidingView
                 behavior={Platform.OS === 'ios' ? 'padding' : undefined}
                 style={{ flex: 1 }}
@@ -435,10 +471,10 @@ const AuthScreen: React.FC<Props & { isOnboarding?: boolean }> = memo(({ route, 
                                         <TouchableOpacity
                                             style={[styles.socialBtn, { backgroundColor: currentTheme.colors.text, borderColor: 'transparent' }]}
                                             onPress={handleGoogleSignIn}
-                                            disabled={emailLoading || googleLoading || appleLoading || isSyncing}
+                                            disabled={emailLoading || googleLoading || appleLoading || isResolvingAuth}
                                             activeOpacity={0.8}
                                         >
-                                            {googleLoading || (isSyncing && isAuthenticated) ? (
+                                            {googleLoading ? (
                                                 <ActivityIndicator color={currentTheme.colors.background} />
                                             ) : (
                                                 <>
@@ -454,10 +490,10 @@ const AuthScreen: React.FC<Props & { isOnboarding?: boolean }> = memo(({ route, 
                                             <TouchableOpacity
                                                 style={[styles.socialBtn, { borderColor: alpha(currentTheme.colors.text, 0.2) }]}
                                                 onPress={handleAppleSignIn}
-                                                disabled={emailLoading || googleLoading || appleLoading || isSyncing}
+                                                disabled={emailLoading || googleLoading || appleLoading || isResolvingAuth}
                                                 activeOpacity={0.8}
                                             >
-                                                {appleLoading || (isSyncing && isAuthenticated) ? (
+                                                {appleLoading ? (
                                                     <ActivityIndicator color={currentTheme.colors.text} />
                                                 ) : (
                                                     <>
@@ -473,7 +509,7 @@ const AuthScreen: React.FC<Props & { isOnboarding?: boolean }> = memo(({ route, 
                                         <TouchableOpacity
                                             style={[styles.socialBtn, { borderColor: alpha(currentTheme.colors.text, 0.2) }]}
                                             onPress={handleContinueAsGuest}
-                                            disabled={emailLoading || googleLoading || appleLoading || guestLoading}
+                                            disabled={emailLoading || googleLoading || appleLoading || guestLoading || isResolvingAuth}
                                             activeOpacity={0.8}
                                         >
                                             {guestLoading ? (

@@ -7,24 +7,27 @@ export type FeedTabId = string;
 export interface CustomFeedTab {
   id: string; // e.g. 'walkins', '2024', '2025'
   label: string; // e.g. 'Walk-ins', '2024 Batch', '2025 Batch'
+  skills?: string[]; // e.g. ['React', 'TypeScript']
 }
 
 /** Bump this whenever TabId or FeedTabId values are renamed/added/removed.
  *  A version mismatch on hydration will reset prefs to defaults, preventing
  *  hidden-tab bugs caused by stale string IDs from old app versions. */
-const PREFS_VERSION = '4';
+const PREFS_VERSION = '5';
 
 interface AppPreferencesState {
   hiddenTabs: TabId[];
   hiddenFeedTabs: FeedTabId[];
   feedTabsOrder: FeedTabId[];
   customFeedTabs: CustomFeedTab[];
+  bottomNavStyle: 'classic' | 'floating';
   hasHydrated: boolean;
   toggleTabVisibility: (tabId: TabId) => void;
   toggleFeedTabVisibility: (tabId: FeedTabId) => void;
   setFeedTabsOrder: (order: FeedTabId[]) => void;
   addCustomFeedTab: (tab: CustomFeedTab) => void;
   removeCustomFeedTab: (id: string) => void;
+  setBottomNavStyle: (style: 'classic' | 'floating') => void;
   hydrate: () => void;
 }
 
@@ -33,6 +36,7 @@ export const useAppPreferencesStore = create<AppPreferencesState>((set, get) => 
   hiddenFeedTabs: ['walkins'],
   feedTabsOrder: [],
   customFeedTabs: [],
+  bottomNavStyle: 'classic',
   hasHydrated: false,
 
   toggleTabVisibility: (tabId) => {
@@ -83,6 +87,11 @@ export const useAppPreferencesStore = create<AppPreferencesState>((set, get) => 
     set({ customFeedTabs: newTabs, hiddenFeedTabs: newHidden });
   },
 
+  setBottomNavStyle: (style) => {
+    setString('bottom_nav_style_pref', style);
+    set({ bottomNavStyle: style });
+  },
+
   hydrate: () => {
     try {
       // Schema version guard: if stored version doesn't match, reset to defaults.
@@ -94,7 +103,8 @@ export const useAppPreferencesStore = create<AppPreferencesState>((set, get) => 
         setString('hidden_feed_tabs_pref', JSON.stringify(['walkins']));
         setString('feed_tabs_order_pref', JSON.stringify([]));
         setString('custom_feed_tabs_pref', JSON.stringify([]));
-        set({ hiddenTabs: [], hiddenFeedTabs: ['walkins'], feedTabsOrder: [], customFeedTabs: [], hasHydrated: true });
+        setString('bottom_nav_style_pref', 'classic');
+        set({ hiddenTabs: [], hiddenFeedTabs: ['walkins'], feedTabsOrder: [], customFeedTabs: [], bottomNavStyle: 'classic', hasHydrated: true });
         return;
       }
 
@@ -110,15 +120,19 @@ export const useAppPreferencesStore = create<AppPreferencesState>((set, get) => 
       const storedCustomTabs = getString('custom_feed_tabs_pref');
       const parsedCustomTabs = storedCustomTabs ? JSON.parse(storedCustomTabs) : [];
 
+      const storedBottomNavStyle = getString('bottom_nav_style_pref');
+      const parsedBottomNavStyle = (storedBottomNavStyle === 'classic' || storedBottomNavStyle === 'floating') ? storedBottomNavStyle : 'classic';
+
       set({
         hiddenTabs: Array.isArray(parsedTabs) ? parsedTabs : [],
         hiddenFeedTabs: Array.isArray(parsedFeedTabs) ? parsedFeedTabs : [],
         feedTabsOrder: Array.isArray(parsedOrder) ? parsedOrder : [],
         customFeedTabs: Array.isArray(parsedCustomTabs) ? parsedCustomTabs : [],
+        bottomNavStyle: parsedBottomNavStyle,
         hasHydrated: true,
       });
     } catch {
-      set({ hiddenTabs: [], hiddenFeedTabs: ['walkins'], feedTabsOrder: [], customFeedTabs: [], hasHydrated: true });
+      set({ hiddenTabs: [], hiddenFeedTabs: ['walkins'], feedTabsOrder: [], customFeedTabs: [], bottomNavStyle: 'classic', hasHydrated: true });
     }
   },
 }));
