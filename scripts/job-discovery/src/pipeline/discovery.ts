@@ -197,8 +197,9 @@ export async function discoverAggregatorJobs(state: DiscoveryState) {
                         state.visited[site.name] = state.visited[site.name].slice(-50000);
                     }
 
-                    await page.goto(jobLink, { waitUntil: 'domcontentloaded', timeout: 15000 }).catch(() => {});
-                    await page.waitForTimeout(2000);
+                    await page.goto(jobLink, { waitUntil: 'load', timeout: 20000 }).catch(() => {});
+                    await page.waitForSelector('article, .post-body, .entry-content, main, #main-content, .post, .job-description', { timeout: 5000 }).catch(() => {});
+                    await page.waitForTimeout(1000);
                     const aggregatorTitle = await page.locator('h1').first().innerText({ timeout: 500 }).catch(() => "");
                     
                     const scoreResult = scoreJobDescription(aggregatorTitle, "");

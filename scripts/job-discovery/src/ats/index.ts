@@ -13,6 +13,7 @@ import { JobviteAdapter } from './JobviteAdapter.js';
 import { TeamtailorAdapter } from './TeamtailorAdapter.js';
 import { EightfoldAdapter } from './EightfoldAdapter.js';
 import { DarwinBoxAdapter } from './DarwinBoxAdapter.js';
+import { SkillCareerHubAdapter } from './SkillCareerHubAdapter.js';
 import { isPotentialFresherJob, isLocationIndiaOrRemote } from '../filters/ats-filters.js';
 import { scoreJobDescription } from '../filters/scorer.js';
 import type { RunStats } from '../pipeline/state.js';
@@ -172,6 +173,7 @@ export async function runAtsDiscovery(
         { name: 'Teamtailor',       adapter: new TeamtailorAdapter(),      data: registry.teamtailor,     delay: 800,  companyConcurrency: 4 },
         { name: 'Eightfold',        adapter: new EightfoldAdapter(),       data: registry.eightfold,      delay: 1000, companyConcurrency: 3 },
         { name: 'DarwinBox',        adapter: new DarwinBoxAdapter(),       data: registry.darwinbox,      delay: 1000, companyConcurrency: 3 },
+        { name: 'SkillCareerHub',   adapter: new SkillCareerHubAdapter(),  data: { 'dummy': 'SkillCareerHub' }, delay: 1000, companyConcurrency: 1 },
     ];
 
     const providerFilter = process.env.ATS_PROVIDER?.toLowerCase().trim();

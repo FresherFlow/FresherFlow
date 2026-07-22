@@ -7,6 +7,9 @@ on:
       - completed
   workflow_dispatch: # Allow manual trigger from GitHub UI
 
+permissions:
+  contents: read
+
 jobs:
   process:
     # Only run if triggered manually OR if the discovery bot run succeeded

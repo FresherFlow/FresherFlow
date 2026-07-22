@@ -12,6 +12,9 @@ on:
       - "packages/**"
       - ".github/workflows/web-ci.yml"
 
+permissions:
+  contents: read
+
 jobs:
   build-web:
     runs-on: ubuntu-latest

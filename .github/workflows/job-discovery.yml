@@ -6,6 +6,9 @@ on:
     - cron: '30 4,8,12,16 * * *'
   workflow_dispatch: # Allow manual trigger from GitHub UI
 
+permissions:
+  contents: read
+
 jobs:
   discover:
     runs-on: ubuntu-latest

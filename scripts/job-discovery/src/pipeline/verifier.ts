@@ -81,9 +81,14 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
 
                 if (checkResult.live) {
                     let actualApplyLink = checkResult.finalUrl || candidate.applyLink;
-                    if (actualApplyLink.includes('accounts.google.com') || actualApplyLink.includes('google.com/accounts')) {
-                        actualApplyLink = candidate.applyLink;
-                    }
+                    try {
+                        const parsedUrl = new URL(actualApplyLink);
+                        const host = parsedUrl.hostname.toLowerCase();
+                        const pathname = parsedUrl.pathname.toLowerCase();
+                        if (host === 'accounts.google.com' || (host === 'google.com' && pathname.startsWith('/accounts'))) {
+                            actualApplyLink = candidate.applyLink;
+                        }
+                    } catch {}
                     console.log(`  ✅ LIVE: ${actualApplyLink} (${checkResult.status})`);
 
                     let jobTitle = await page.title().catch(() => "");
