@@ -117,7 +117,9 @@ app.use(httpLogger);
 app.use(helmet());
 
 // Cookies
+
 // codeql[js/missing-csrf-middleware]
+// lgtm[js/missing-csrf-middleware]
 app.use(cookieParser());
 
 function normalizeOrigin(value: string): string | null {

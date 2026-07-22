@@ -187,8 +187,9 @@ router.get('/me', requireAuth, async (req: Request, res: Response, next: NextFun
 const CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function generateCode(len = 6): string {
     let code = '';
-    const bytes = crypto.randomBytes(len);
-    for (let i = 0; i < len; i++) code += CHARS[bytes[i]! % CHARS.length];
+    for (let i = 0; i < len; i++) {
+        code += CHARS[crypto.randomInt(0, CHARS.length)];
+    }
     return code;
 }
 

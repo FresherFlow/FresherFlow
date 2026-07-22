@@ -180,3 +180,39 @@ export function requireInternalApiKey(req: express.Request, res: Response, next:
 
     next();
 }
+
+/**
+ * Role-Based Access Control (RBAC) Middleware.
+ * Ensures the authenticated user (via req.userId or req.adminId) has one of the required roles.
+ * Must be placed after requireAuth or requireAdmin.
+ */
+export function requireRole(allowedRoles: ('USER' | 'ADMIN')[]) {
+    return async (req: express.Request, res: Response, next: NextFunction) => {
+        const userId = req.userId || req.adminId;
+
+        if (!userId) {
+            return next(new AppError('Authentication required', 401));
+        }
+
+        try {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { role: true },
+            });
+
+            if (!user) {
+                return next(new AppError('User not found', 404));
+            }
+
+            if (!allowedRoles.includes(user.role as 'USER' | 'ADMIN')) {
+                return next(new AppError('Forbidden: Insufficient permissions', 403));
+            }
+
+            next();
+        } catch (error) {
+            logger.error('[requireRole] User role check failed:', error);
+            return next(new AppError('Database is temporarily unavailable. Please try again shortly.', 503));
+        }
+    };
+}
+

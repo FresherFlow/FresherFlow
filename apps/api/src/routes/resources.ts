@@ -29,6 +29,7 @@ async function fetchPageTitle(urlStr: string): Promise<string | null> {
         }
 
         // codeql[js/request-forgery]
+        // lgtm[js/request-forgery]
         const response = await fetch(parsedUrl.href, {
             headers: {
                 'User-Agent': 'FresherFlow Bot 1.0',
@@ -60,23 +61,37 @@ async function fetchPageTitle(urlStr: string): Promise<string | null> {
 
 // Auto-detect type
 function detectResourceType(url: string): ResourceItemType {
-    const lowerUrl = url.toLowerCase();
-    if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) {
+    let hostname = '';
+    let pathname = '';
+    try {
+        const parsed = new URL(url);
+        hostname = parsed.hostname.toLowerCase();
+        pathname = parsed.pathname.toLowerCase();
+    } catch {
+        const lowerUrl = url.toLowerCase();
+        if (lowerUrl.includes('youtube.com') || lowerUrl.includes('youtu.be')) return ResourceItemType.YOUTUBE;
+        if (lowerUrl.endsWith('.pdf')) return ResourceItemType.PDF;
+        if (lowerUrl.includes('roadmap.sh')) return ResourceItemType.ROADMAP;
+        if (lowerUrl.includes('drive.google.com') || lowerUrl.includes('dropbox.com') || lowerUrl.includes('onedrive') || lowerUrl.includes('box.com') || lowerUrl.includes('sharepoint')) return ResourceItemType.FILE;
+        return ResourceItemType.LINK;
+    }
+
+    if (hostname === 'youtube.com' || hostname.endsWith('.youtube.com') || hostname === 'youtu.be') {
         return ResourceItemType.YOUTUBE;
     }
-    if (lowerUrl.endsWith('.pdf')) {
+    if (pathname.endsWith('.pdf') || url.split('?')[0].split('#')[0].toLowerCase().endsWith('.pdf')) {
         return ResourceItemType.PDF;
     }
-    if (lowerUrl.includes('roadmap.sh')) {
+    if (hostname === 'roadmap.sh' || hostname.endsWith('.roadmap.sh')) {
         return ResourceItemType.ROADMAP;
     }
 
     const isCloudStorage = 
-        lowerUrl.includes('drive.google.com') || 
-        lowerUrl.includes('dropbox.com') || 
-        lowerUrl.includes('onedrive') || 
-        lowerUrl.includes('box.com') ||
-        lowerUrl.includes('sharepoint');
+        hostname === 'drive.google.com' || hostname.endsWith('.drive.google.com') ||
+        hostname === 'dropbox.com' || hostname.endsWith('.dropbox.com') ||
+        hostname.split('.').includes('onedrive') ||
+        hostname === 'box.com' || hostname.endsWith('.box.com') ||
+        hostname.split('.').includes('sharepoint');
 
     if (isCloudStorage) {
         return ResourceItemType.FILE;

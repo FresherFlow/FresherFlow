@@ -118,9 +118,9 @@ export const educationSchema = z.object({
 });
 
 export const preferencesSchema = z.object({
-    interestedIn: z.array(z.nativeEnum(OpportunityType)).min(1, 'Select at least one opportunity type'),
-    preferredCities: z.array(z.string()).min(1).max(5, 'Select 1-5 cities'),
-    workModes: z.array(z.nativeEnum(WorkMode)).min(1, 'Select at least one work mode')
+    interestedIn: z.array(z.nativeEnum(OpportunityType)).optional().default([]),
+    preferredCities: z.array(z.string()).max(5, 'Select up to 5 cities').optional().default([]),
+    workModes: z.array(z.nativeEnum(WorkMode)).optional().default([])
 });
 
 export const readinessSchema = z.object({

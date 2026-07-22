@@ -1,9 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
-import prisma from '../../../infrastructure/database/prisma';
-import { OpportunityStatus } from '@fresherflow/types';
 import { withAdminAudit } from '../../../middleware/adminAudit';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
 import { queueNewJobAlerts } from './_helpers';
+import { OpportunityService } from '../../../domain/opportunity/opportunity.service';
 
 const router = Router();
 
@@ -21,46 +20,15 @@ router.post(
             if (!ids || !Array.isArray(ids) || ids.length === 0) {
                 return res.status(400).json({ message: 'IDs array is required' });
             }
-            if (!action) {
-                return res.status(400).json({ message: 'Action is required' });
+            if (!action || !['DELETE', 'ARCHIVE', 'PUBLISH', 'EXPIRE'].includes(action)) {
+                return res.status(400).json({ message: 'Valid action (DELETE, ARCHIVE, PUBLISH, EXPIRE) is required' });
             }
 
-            const now = new Date();
-            let result;
-            let idsNeedingAlerts: string[] = [];
-
-            switch (action) {
-                case 'DELETE':
-                    result = await prisma.opportunity.updateMany({
-                        where: { id: { in: ids } },
-                        data: { status: OpportunityStatus.ARCHIVED, deletedAt: now, deletionReason: reason || 'Bulk deleted by admin' },
-                    });
-                    break;
-                case 'ARCHIVE':
-                    result = await prisma.opportunity.updateMany({
-                        where: { id: { in: ids } },
-                        data: { status: OpportunityStatus.ARCHIVED },
-                    });
-                    break;
-                case 'PUBLISH':
-                    idsNeedingAlerts = (await prisma.opportunity.findMany({
-                        where: { id: { in: ids }, status: { not: OpportunityStatus.PUBLISHED } },
-                        select: { id: true },
-                    })).map(item => item.id);
-                    result = await prisma.opportunity.updateMany({
-                        where: { id: { in: ids } },
-                        data: { status: OpportunityStatus.PUBLISHED, expiredAt: null, deletedAt: null },
-                    });
-                    break;
-                case 'EXPIRE':
-                    result = await prisma.opportunity.updateMany({
-                        where: { id: { in: ids } },
-                        data: { expiredAt: now },
-                    });
-                    break;
-                default:
-                    return res.status(400).json({ message: 'Invalid action' });
-            }
+            const { result, idsNeedingAlerts, oppsForTags } = await OpportunityService.executeBulkAction(
+                ids,
+                action as 'DELETE' | 'ARCHIVE' | 'PUBLISH' | 'EXPIRE',
+                reason
+            );
 
             res.json({
                 message: `Bulk ${action.toLowerCase()} completed`,
@@ -70,10 +38,6 @@ router.post(
                 skippedCount: Math.max(0, ids.length - result.count),
             });
 
-            const oppsForTags = await prisma.opportunity.findMany({
-                where: { id: { in: ids } },
-                select: { id: true, slug: true, company: true, type: true, locations: true, requiredSkills: true, title: true, allowedPassoutYears: true }
-            });
             const { slugify } = await import('@fresherflow/utils');
             const tags = new Set<string>(['homepage-feed']);
             const slugs: string[] = [];
@@ -104,3 +68,4 @@ router.post(
 );
 
 export default router;
+

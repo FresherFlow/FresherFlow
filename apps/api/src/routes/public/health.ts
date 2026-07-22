@@ -1,10 +1,19 @@
 import express, { Request, Response } from 'express';
+import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import prisma from '../../infrastructure/database/prisma';
 import { redis } from '@fresherflow/redis';
 
 const router = express.Router();
+
+const healthLimiter = rateLimit({
+    windowMs: 60 * 1000, // 1 minute
+    max: 30, // Limit to 30 requests per minute
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many requests' },
+});
 
 /**
  * @route   GET /api/health
@@ -23,7 +32,7 @@ router.get('/health', (req: Request, res: Response) => {
  * @route   GET /api/health/deep
  * @desc    Detailed health check (DB, Redis)
  */
-router.get('/health/deep', async (req: Request, res: Response) => {
+router.get('/health/deep', healthLimiter, async (req: Request, res: Response) => {
     if (process.env.ENABLE_HEALTH_CHECK === 'false') {
         res.status(503).json({ error: 'Health checks disabled' });
         return;
@@ -50,7 +59,7 @@ router.get('/health/deep', async (req: Request, res: Response) => {
  * @route   GET /api/stats
  * @desc    Landing page stats (Served from STATIC to save Neon compute)
  */
-router.get('/stats', async (req: Request, res: Response) => {
+router.get('/stats', healthLimiter, async (req: Request, res: Response) => {
     try {
         const statsPath = path.join(process.cwd(), 'public', 'stats.json');
 

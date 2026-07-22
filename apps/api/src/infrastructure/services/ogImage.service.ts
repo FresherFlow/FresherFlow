@@ -61,9 +61,18 @@ const urgencyLabel = (days: number | null) =>
 async function fetchLogoDataUrl(logoUrl: string): Promise<string | null> {
     try {
         let finalLogoUrl = logoUrl;
-        if (finalLogoUrl.includes('logo.clearbit.com/')) {
-            const domain = finalLogoUrl.split('logo.clearbit.com/')[1];
-            finalLogoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+        try {
+            const parsed = new URL(finalLogoUrl);
+            const host = parsed.hostname.toLowerCase();
+            if (host === 'logo.clearbit.com' || host.endsWith('.clearbit.com')) {
+                const parts = parsed.pathname.split('/');
+                const domain = parts[parts.length - 1];
+                if (domain) {
+                    finalLogoUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+                }
+            }
+        } catch {
+            // Ignore URL parsing errors and fallback to raw logoUrl
         }
 
         const controller = new AbortController();

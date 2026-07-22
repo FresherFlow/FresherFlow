@@ -15,8 +15,9 @@ const REF_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 
 function genReferralCode(len = 6): string {
     let code = '';
-    const bytes = crypto.randomBytes(len);
-    for (let i = 0; i < len; i++) code += REF_CHARS[bytes[i]! % REF_CHARS.length];
+    for (let i = 0; i < len; i++) {
+        code += REF_CHARS[crypto.randomInt(0, REF_CHARS.length)];
+    }
     return code;
 }
 

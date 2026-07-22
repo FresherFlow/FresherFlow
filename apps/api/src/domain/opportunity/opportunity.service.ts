@@ -397,4 +397,58 @@ export class OpportunityService {
         // Fallback to ID for backward compatibility
         return await this.getOpportunityById(slugOrId);
     }
+
+    /**
+     * Bulk action execution (DELETE, ARCHIVE, PUBLISH, EXPIRE)
+     */
+    static async executeBulkAction(ids: string[], action: 'DELETE' | 'ARCHIVE' | 'PUBLISH' | 'EXPIRE', reason?: string) {
+        const now = new Date();
+        let result: { count: number };
+        let idsNeedingAlerts: string[] = [];
+
+        switch (action) {
+            case 'DELETE':
+                result = await prisma.opportunity.updateMany({
+                    where: { id: { in: ids } },
+                    data: { status: OpportunityStatus.ARCHIVED as unknown as DbOpportunityStatus, deletedAt: now, deletionReason: reason || 'Bulk deleted by admin' },
+                });
+                break;
+            case 'ARCHIVE':
+                result = await prisma.opportunity.updateMany({
+                    where: { id: { in: ids } },
+                    data: { status: OpportunityStatus.ARCHIVED as unknown as DbOpportunityStatus },
+                });
+                break;
+            case 'PUBLISH':
+                idsNeedingAlerts = (await prisma.opportunity.findMany({
+                    where: { id: { in: ids }, status: { not: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus } },
+                    select: { id: true },
+                })).map(item => item.id);
+                result = await prisma.opportunity.updateMany({
+                    where: { id: { in: ids } },
+                    data: { status: OpportunityStatus.PUBLISHED as unknown as DbOpportunityStatus, expiredAt: null, deletedAt: null },
+                });
+                break;
+            case 'EXPIRE':
+                result = await prisma.opportunity.updateMany({
+                    where: { id: { in: ids } },
+                    data: { expiredAt: now },
+                });
+                break;
+            default:
+                throw new Error('Invalid bulk action');
+        }
+
+        const oppsForTags = await prisma.opportunity.findMany({
+            where: { id: { in: ids } },
+            select: { id: true, slug: true, company: true, type: true, locations: true, requiredSkills: true, title: true, allowedPassoutYears: true }
+        });
+
+        return {
+            result,
+            idsNeedingAlerts,
+            oppsForTags,
+        };
+    }
 }
+
