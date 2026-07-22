@@ -24,6 +24,34 @@ async function postToBuffer(channelId: string | undefined, text: string): Promis
     }
     const { default: axios } = await import("axios");
 
+    const urlMatch = text.match(/(https?:\/\/[^\s]+|fresherflow\.in[^\s]+)/);
+    let extractedUrl: string | undefined;
+    if (urlMatch) {
+        extractedUrl = urlMatch[0];
+        if (!extractedUrl.startsWith('http')) {
+            extractedUrl = `https://${extractedUrl}`;
+        }
+    }
+
+    const input: Record<string, unknown> = {
+        channelId,
+        text,
+        schedulingType: 'automatic',
+        mode: 'shareNow',
+    };
+
+    if (extractedUrl && channelId === process.env.BUFFER_LINKEDIN_CHANNEL_ID) {
+        input.metadata = {
+            linkedin: {
+                linkAttachment: {
+                    url: extractedUrl
+                }
+            }
+        };
+    }
+
+    const variables = { input };
+
     const response = await axios.post('https://api.buffer.com', {
         query: `
           mutation CreatePost($input: CreatePostInput!) {
@@ -39,14 +67,7 @@ async function postToBuffer(channelId: string | undefined, text: string): Promis
             }
           }
         `,
-        variables: {
-            input: {
-                channelId,
-                text,
-                schedulingType: 'automatic',
-                mode: 'shareNow',
-            },
-        },
+        variables,
     }, {
         headers: {
             'Content-Type': 'application/json',
@@ -144,7 +165,7 @@ export async function handleSend(
         const msg = err instanceof Error ? err.message : String(err);
         logger.error("[social:send] Failed", { platform, error: msg });
         res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: msg }));
+        res.end(JSON.stringify({ error: "Failed to send social post" }));
     }
 }
 
@@ -197,7 +218,7 @@ export async function handleSchedule(
         const msg = err instanceof Error ? err.message : String(err);
         logger.error("[social:schedule] Failed to enqueue", { platform, error: msg });
         res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: msg }));
+        res.end(JSON.stringify({ error: "Failed to schedule social post" }));
     }
 }
 
@@ -244,6 +265,6 @@ export async function handleCancelSchedule(
         const msg = err instanceof Error ? err.message : String(err);
         logger.error("[social:cancel-schedule] Failed to cancel", { jobId, error: msg });
         res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: msg }));
+        res.end(JSON.stringify({ error: "Failed to cancel scheduled post" }));
     }
 }

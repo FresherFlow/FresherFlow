@@ -53,9 +53,28 @@ for (const { name, worker } of workers) {
     worker.on('completed', (job) =>
         logger.info(`[${name}] job ${job.id} completed`, { queue: name, jobId: job.id }),
     );
-    worker.on('failed', (job, err) =>
-        logger.error(`[${name}] job ${job?.id} failed`, { queue: name, jobId: job?.id, error: err.message }),
-    );
+    worker.on('failed', (job, err) => {
+        const attemptsMade = job?.attemptsMade ?? 0;
+        const maxAttempts = job?.opts?.attempts ?? 1;
+        const isDeadLetter = attemptsMade >= maxAttempts;
+
+        if (isDeadLetter) {
+            logger.error(`[${name}] [DLQ] job ${job?.id} permanently failed after ${attemptsMade} attempts`, {
+                queue: name,
+                jobId: job?.id,
+                jobName: job?.name,
+                data: job?.data,
+                error: err.message,
+                stack: err.stack,
+            });
+        } else {
+            logger.warn(`[${name}] job ${job?.id} failed (attempt ${attemptsMade}/${maxAttempts})`, {
+                queue: name,
+                jobId: job?.id,
+                error: err.message,
+            });
+        }
+    });
     worker.on('error', (err) =>
         logger.error(`[${name}] worker error`, { queue: name, error: err.message }),
     );
@@ -174,14 +193,35 @@ http.createServer(async (req, res) => {
     logger.info(`Worker health server listening on port ${PORT}`);
 });
 
+let isShuttingDown = false;
+
 async function shutdown() {
-    logger.info('Shutting down workers...');
-    await Promise.all([
-        ...workers.map(({ worker }) => worker.close()),
-        // getQueue instances are shared and closed automatically or on process exit
-    ]);
+    if (isShuttingDown) return;
+    isShuttingDown = true;
+
+    logger.info('Shutting down background workers gracefully...');
+
+    const SHUTDOWN_TIMEOUT_MS = 10000;
+    const timeoutPromise = new Promise((resolve) =>
+        setTimeout(() => {
+            logger.warn(`Shutdown timed out after ${SHUTDOWN_TIMEOUT_MS}ms, forcing exit`);
+            resolve('TIMEOUT');
+        }, SHUTDOWN_TIMEOUT_MS)
+    );
+
+    const closeWorkersPromise = Promise.allSettled(
+        workers.map(async ({ name, worker }) => {
+            logger.info(`Closing worker [${name}]...`);
+            await worker.close();
+            logger.info(`Worker [${name}] closed successfully.`);
+        })
+    );
+
+    await Promise.race([closeWorkersPromise, timeoutPromise]);
+    logger.info('Worker shutdown complete. Exiting process.');
     process.exit(0);
 }
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
