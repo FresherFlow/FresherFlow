@@ -12,7 +12,7 @@ import {
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { ThemeProvider, useTheme } from './src/theme/ThemeProvider';
 import { ToastProvider } from './src/components/ToastProvider';
-import { ErrorBoundary } from './src/features/system/components/ErrorBoundary';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { initSentry } from './src/lib/sentry';
 import { configureClient } from '@fresherflow/api-client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';

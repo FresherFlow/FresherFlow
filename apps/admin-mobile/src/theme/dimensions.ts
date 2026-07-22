@@ -23,19 +23,20 @@ export const mScale = (size: number, factor = 0.5) => size + (scale(size) - size
 
 export const SPACING = {
     xxs: 4,
-    xs: 8,
-    sm: 12,
-    md: 16,
-    lg: 24,
-    xl: 32,
-    xxl: 40,
+    xs: mScale(4),
+    sm: mScale(8),
+    md: mScale(16),
+    lg: mScale(24),
+    xl: mScale(32),
+    xxl: mScale(48),
 };
 
 export const RADIUS = {
+    xs: 4,
     sm: 8,
     md: 12,
     lg: 16,
-    xl: 20,
+    xl: 32,
     xxl: 24,
     full: 9999,
 };
@@ -43,3 +44,4 @@ export const RADIUS = {
 export { SCREEN_WIDTH, SCREEN_HEIGHT };
 export const IS_IOS = Platform.OS === 'ios';
 export const IS_ANDROID = Platform.OS === 'android';
+

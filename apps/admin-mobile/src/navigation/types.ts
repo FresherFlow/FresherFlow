@@ -1,20 +1,20 @@
 import { NavigatorScreenParams } from '@react-navigation/native';
 import { OpportunitiesStackParamList } from './OpportunitiesNavigator';
 import { AnalyticsStackParamList } from './AnalyticsNavigator';
-import { OpsStackParamList } from './OpsNavigator';
+import { ModerationStackParamList } from './ModerationNavigator';
 import { SettingsStackParamList } from './SettingsNavigator';
 
 export type AdminTabParamList = {
-    Home: undefined;
-    Signals: NavigatorScreenParams<OpportunitiesStackParamList> | undefined;
-    Submissions: undefined;
-    Identity: undefined;
-    Post: undefined;
+    Dashboard: NavigatorScreenParams<AnalyticsStackParamList> | undefined;
+    Opportunities: NavigatorScreenParams<OpportunitiesStackParamList> | undefined;
+    PostNew: undefined;
+    Feedback: NavigatorScreenParams<ModerationStackParamList> | undefined;
     Settings: NavigatorScreenParams<SettingsStackParamList> | undefined;
 };
 
 export type AdminStackParamList = {
     MainTabs: NavigatorScreenParams<AdminTabParamList>;
-    Moderation: NavigatorScreenParams<OpsStackParamList>;
+    Moderation: NavigatorScreenParams<ModerationStackParamList>;
     Insights: NavigatorScreenParams<AnalyticsStackParamList>;
+    PostOpportunityModal: undefined;
 };

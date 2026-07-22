@@ -1,92 +1,203 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Edit3, CheckCircle2, Trash2, RotateCcw, Clock } from 'lucide-react-native';
-import { CompanyLogo } from '@repo/ui';
-import { theme } from '@/theme';
-import { type Opportunity } from '@/lib/api';
-import type { NavigationProp } from '@react-navigation/native';
-
-const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
-    PUBLISHED: { bg: theme.colors.success + '20', text: theme.colors.success },
-    DRAFT:     { bg: theme.colors.accent  + '20', text: theme.colors.accent  },
-    ARCHIVED:  { bg: theme.colors.textMuted + '20', text: theme.colors.textMuted },
-    EXPIRED:   { bg: theme.colors.error   + '20', text: theme.colors.error   },
-};
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { Building2, MapPin, Briefcase, IndianRupee, Clock, ChevronRight } from 'lucide-react-native';
+import { SurfaceCard, AppText } from '../common/PremiumPrimitives';
+import { useTheme } from '../../theme/ThemeProvider';
+import { alpha } from '../../theme';
+import { SPACING, RADIUS } from '../../theme/dimensions';
+import { Opportunity } from '@fresherflow/types';
 
 interface JobCardProps {
-    item: Opportunity;
-    navigation: NavigationProp<Record<string, unknown>>;
-    handlePublish: (id: string) => void;
-    handleExpire: (id: string, title: string) => void;
-    handleRestore: (id: string) => void;
-    handleDelete: (id: string, title: string) => void;
+    job: Opportunity;
+    onPress?: () => void;
 }
 
-export const JobCard = ({ 
-    item, 
-    navigation, 
-    handlePublish, 
-    handleExpire, 
-    handleRestore, 
-    handleDelete 
-}: JobCardProps) => {
-    const sc = STATUS_COLORS[item.status] ?? STATUS_COLORS.ARCHIVED;
-    const isExpired = item.status === 'EXPIRED' || item.status === 'ARCHIVED';
+export const JobCard = ({ job, onPress }: JobCardProps) => {
+    const { currentTheme } = useTheme();
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'PUBLISHED': return currentTheme.colors.success;
+            case 'PENDING': return currentTheme.colors.warning;
+            case 'REJECTED': return currentTheme.colors.error;
+            case 'DRAFT': return currentTheme.colors.textMuted;
+            default: return currentTheme.colors.primary;
+        }
+    };
 
     return (
-        <View style={styles.jobCard}>
-            <View style={styles.jobHeader}>
-                <CompanyLogo website={(item as { website?: string | null }).website ?? null} name={String(item.company)} size={38} />
-                <TouchableOpacity style={{ flex: 1, paddingRight: 8, marginLeft: 4 }} onPress={() => navigation.navigate('OpportunityDetail', { opportunityId: item.id })}>
-                    <Text style={styles.jobTitle} numberOfLines={1}>{item.title}</Text>
-                    <Text style={styles.jobCompany}>{String(item.company)}</Text>
-                </TouchableOpacity>
-                <View style={[styles.statusBadge, { backgroundColor: sc.bg }]}>
-                    <Text style={[styles.statusText, { color: sc.text }]}>{item.status}</Text>
+        <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={styles.container}>
+            <SurfaceCard 
+                style={[
+                    styles.card, 
+                    { 
+                        backgroundColor: currentTheme.colors.surface,
+                        borderColor: alpha(currentTheme.colors.border, 0.4) 
+                    }
+                ]}
+            >
+                {/* Header Row: Company & Status */}
+                <View style={styles.headerRow}>
+                    <View style={styles.companyInfo}>
+                        <View style={[styles.avatar, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                            <Building2 size={16} color={currentTheme.colors.primary} />
+                        </View>
+                        <AppText variant="label" style={{ color: currentTheme.colors.textMuted }}>
+                            {job.company}
+                        </AppText>
+                    </View>
+                    
+                    <View style={[
+                        styles.badge, 
+                        { backgroundColor: alpha(getStatusColor(job.status), 0.1) }
+                    ]}>
+                        <AppText 
+                            style={[
+                                styles.badgeText, 
+                                { color: getStatusColor(job.status) }
+                            ]}
+                        >
+                            {job.status}
+                        </AppText>
+                    </View>
                 </View>
-            </View>
-            <View style={styles.jobFooter}>
-                <Text style={styles.jobDate}>
-                    {item.postedAt ? new Date(String(item.postedAt)).toLocaleDateString('en-IN') : '—'}
-                    {' · '}{String(item.type)}
-                </Text>
-                <View style={styles.actionRow}>
-                    {item.status === 'DRAFT' && (
-                        <ActionBtn icon={<CheckCircle2 size={15} color={theme.colors.success} />} onPress={() => handlePublish(String(item.id))} />
-                    )}
-                    {item.status === 'PUBLISHED' && (
-                        <ActionBtn icon={<Clock size={15} color={theme.colors.accent} />} onPress={() => handleExpire(String(item.id), String(item.title))} />
-                    )}
-                    {isExpired && (
-                        <ActionBtn icon={<RotateCcw size={15} color={theme.colors.primary} />} onPress={() => handleRestore(String(item.id))} />
-                    )}
-                    <ActionBtn icon={<Edit3 size={15} color={theme.colors.primary} />} onPress={() => navigation.navigate('PostOpportunity', { opportunityId: item.id })} />
-                    <ActionBtn icon={<Trash2 size={15} color={theme.colors.error} />} onPress={() => handleDelete(String(item.id), String(item.title))} />
+
+                {/* Title */}
+                <AppText variant="h2" style={styles.title} numberOfLines={2}>
+                    {job.title}
+                </AppText>
+
+                {/* Meta Tags Row */}
+                <View style={styles.metaRow}>
+                    {(job.locations && job.locations.length > 0) ? (
+                        <View style={styles.metaItem}>
+                            <MapPin size={14} color={currentTheme.colors.textMuted} />
+                            <AppText variant="body" muted style={styles.metaText} numberOfLines={1}>
+                                {job.locations[0]}{job.locations.length > 1 ? ` +${job.locations.length - 1}` : ''}
+                            </AppText>
+                        </View>
+                    ) : null}
+
+                    {job.workMode ? (
+                        <View style={styles.metaItem}>
+                            <Briefcase size={14} color={currentTheme.colors.textMuted} />
+                            <AppText variant="body" muted style={styles.metaText}>
+                                {job.workMode}
+                            </AppText>
+                        </View>
+                    ) : null}
+
+                    {(job.salaryMin !== undefined) ? (
+                        <View style={styles.metaItem}>
+                            <IndianRupee size={14} color={currentTheme.colors.textMuted} />
+                            <AppText variant="body" muted style={styles.metaText}>
+                                {job.salaryMax ? `${job.salaryMin} - ${job.salaryMax} LPA` : `${job.salaryMin} LPA`}
+                            </AppText>
+                        </View>
+                    ) : null}
                 </View>
-            </View>
-        </View>
+
+                {/* Footer Divider */}
+                <View style={[styles.divider, { backgroundColor: alpha(currentTheme.colors.border, 0.2) }]} />
+
+                {/* Footer Row */}
+                <View style={styles.footerRow}>
+                    <View style={styles.footerLeft}>
+                        <Clock size={14} color={currentTheme.colors.textMuted} />
+                        <AppText variant="body" muted style={styles.footerText}>
+                            Added {new Date(job.postedAt).toLocaleDateString()}
+                        </AppText>
+                    </View>
+                    
+                    <View style={styles.footerRight}>
+                        <AppText style={{ color: currentTheme.colors.primary, fontWeight: '600', fontSize: 13, marginRight: 4 }}>
+                            Manage
+                        </AppText>
+                        <ChevronRight size={16} color={currentTheme.colors.primary} />
+                    </View>
+                </View>
+
+            </SurfaceCard>
+        </TouchableOpacity>
     );
 };
 
-const ActionBtn = ({ icon, onPress }: { icon: React.ReactNode; onPress: () => void }) => (
-    <TouchableOpacity style={styles.actionBtn} onPress={onPress}>{icon}</TouchableOpacity>
-);
-
 const styles = StyleSheet.create({
-    jobCard: {
-        backgroundColor: theme.colors.surface, borderRadius: 12,
-        borderWidth: 1, borderColor: theme.colors.border, padding: 14,
+    container: {
+        marginBottom: SPACING.md,
     },
-    jobHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
-    jobTitle: { fontSize: 15, fontWeight: '700', color: theme.colors.text, marginBottom: 3 },
-    jobCompany: { fontSize: 13, color: theme.colors.textMuted },
-    statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-    statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
-    jobFooter: {
-        flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-        borderTopWidth: 1, borderTopColor: theme.colors.border, paddingTop: 10,
+    card: {
+        padding: SPACING.lg,
+        borderWidth: 1,
+        borderRadius: RADIUS.lg,
     },
-    jobDate: { fontSize: 12, color: theme.colors.textMuted, flex: 1 },
-    actionRow: { flexDirection: 'row', gap: 4 },
-    actionBtn: { padding: 7, borderRadius: 8, backgroundColor: theme.colors.background },
+    headerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: SPACING.sm,
+    },
+    companyInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.sm,
+    },
+    avatar: {
+        width: 24,
+        height: 24,
+        borderRadius: RADIUS.sm,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    badge: {
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: 4,
+        borderRadius: RADIUS.full,
+    },
+    badgeText: {
+        fontSize: 10,
+        fontWeight: 'bold',
+        letterSpacing: 0.5,
+        textTransform: 'uppercase',
+    },
+    title: {
+        marginBottom: SPACING.md,
+        lineHeight: 24,
+    },
+    metaRow: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: SPACING.md,
+        marginBottom: SPACING.md,
+    },
+    metaItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    metaText: {
+        fontSize: 13,
+    },
+    divider: {
+        height: 1,
+        width: '100%',
+        marginBottom: SPACING.md,
+    },
+    footerRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+    },
+    footerLeft: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    footerText: {
+        fontSize: 12,
+    },
+    footerRight: {
+        flexDirection: 'row',
+        alignItems: 'center',
+    }
 });

@@ -1,511 +1,570 @@
-import React, { useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
-    StyleSheet, Text, View, TouchableOpacity,
-    ActivityIndicator, RefreshControl, ScrollView,
+    StyleSheet,
+    View,
+    Text,
+    TouchableOpacity,
+    ActivityIndicator,
+    Platform,
+    Alert,
+    ScrollView
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import Animated, { FadeInDown } from 'react-native-reanimated';
-import { useFocusEffect, useNavigation } from '@react-navigation/native';
-import { Edit3, ArrowUpDown, X, ChevronDown } from 'lucide-react-native';
-import { CompanyLogo } from '@repo/ui';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
+import * as WebBrowser from 'expo-web-browser';
+import { BottomSheetModal, BottomSheetModalProvider, BottomSheetBackdrop } from '@gorhom/bottom-sheet';
+import { Plus, Eye, CheckSquare, MapPin, Briefcase, MoreVertical, MessageCircle, Send, Linkedin, Instagram, Trash2, Clock, ExternalLink } from 'lucide-react-native';
+
+import { Screen } from '../../components/common/Layout';
+import { PremiumHeader, SurfaceCard, AppText } from '../../components/common/PremiumPrimitives';
 import { useTheme } from '../../theme/ThemeProvider';
 import { alpha } from '../../theme';
-import { mScale, SPACING, RADIUS } from '../../theme/dimensions';
-import { useAdminFeed } from './hooks/useAdminFeed';
-import { usePostSyncStore } from './store/usePostSyncStore';
-import { Screen, Section } from '../system/layout/Layout';
-import { SurfaceCard } from '../system/components/PremiumPrimitives';
-import { PremiumSearchBar } from '../system/components/PremiumSearchBar';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { SPACING, RADIUS } from '../../theme/dimensions';
+import { adminOpportunitiesApi } from '@fresherflow/api-client';
+import { Opportunity } from '@fresherflow/types';
+import { useLiveJobStats } from '../../hooks/useLiveJobStats';
 import { OpportunitiesStackParamList } from '../../navigation/OpportunitiesNavigator';
-import type { Opportunity } from '@fresherflow/types';
-import { FilterSortSheet, FilterSortSheetRef, AdminFilterSortState } from './components/FilterSortSheet';
-import { getStatusLabel, getOpportunityStatusColor } from './utils/opportunityUtils';
 
-export const AdminFeedScreen = () => {
-    const navigation = useNavigation<NativeStackNavigationProp<OpportunitiesStackParamList>>();
+type NavigationProp = NativeStackNavigationProp<OpportunitiesStackParamList, 'OpportunitiesList'>;
+
+const JobCardItem: React.FC<{
+    opportunity: Opportunity;
+    onPress: () => void;
+    onActionPress: () => void;
+}> = ({ opportunity, onPress, onActionPress }) => {
     const { currentTheme } = useTheme();
-    const filterSortSheetRef = useRef<FilterSortSheetRef>(null);
+    const stats = useLiveJobStats(opportunity.id);
 
-    const STATUS_OPTIONS = [
-        { label: 'All Statuses', value: '' },
-        { label: 'Live', value: 'LIVE' },
-        { label: 'Draft', value: 'DRAFT' },
-        { label: 'Expired', value: 'EXPIRED' },
-        { label: 'Archived', value: 'ARCHIVED' },
-    ];
-
-    const TYPE_OPTIONS = [
-        { label: 'All Types', value: '' },
-        { label: 'Jobs', value: 'JOB' },
-        { label: 'Internships', value: 'INTERNSHIP' },
-        { label: 'Walk-ins', value: 'WALKIN' },
-    ];
-
-    const SORT_LABELS: Record<string, string> = {
-        postedAt_desc: 'Newest',
-        postedAt_asc: 'Oldest',
-        company_asc: 'Company (A-Z)',
-        company_desc: 'Company (Z-A)',
-        title_asc: 'Title (A-Z)',
-        title_desc: 'Title (Z-A)',
+    const toTitleCase = (str: string) => {
+        if (!str) return '';
+        return str
+            .toLowerCase()
+            .split(' ')
+            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+            .join(' ');
     };
 
-    const {
-        jobs,
-        loading,
-        loadingMore,
-        refreshing,
-        searchInput,
-        setSearchInput,
-        error,
-        fetchJobs,
-        loadMore,
-        onRefresh,
-        handleSearch,
-        summary,
-        statusFilter,
-        setStatusFilter,
-        typeFilter,
-        setTypeFilter,
-        sort,
-        setSort,
-        clearFilters,
-    } = useAdminFeed();
-
-    const showSortOptions = () => {
-        filterSortSheetRef.current?.present();
+    const handleCopyCaption = async (platform: string) => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        let caption = '';
+        if (platform === 'whatsapp' || platform === 'telegram') {
+            caption = `🚀 *${opportunity.title}* at *${opportunity.company}*\n📍 ${opportunity.locations?.join(', ') || 'Remote'}\n💼 ${opportunity.type || 'Job'}\n\nApply now: ${opportunity.applyLink}\n\n#Jobs #FresherFlow`;
+        } else if (platform === 'linkedin') {
+            caption = `We are hiring a ${opportunity.title} at ${opportunity.company}!\n\n📍 Location: ${opportunity.locations?.join(', ') || 'Remote'}\n\nApply here: ${opportunity.applyLink}\n\n#Hiring #${opportunity.company.replace(/\s+/g, '')} #Jobs`;
+        } else {
+            caption = `Hiring: ${opportunity.title} @ ${opportunity.company}\nLink in bio!`;
+        }
+        await Clipboard.setStringAsync(caption);
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     };
 
-    const handleApplyFilters = (state: AdminFilterSortState) => {
-        setStatusFilter(state.status);
-        setTypeFilter(state.type);
-        setSort(state.sort);
-    };
-
-    const currentFilterSortState = useMemo(() => ({
-        status: statusFilter,
-        type: typeFilter,
-        sort,
-    }), [statusFilter, typeFilter, sort]);
-
-    const { syncQueue, isSyncing, queue } = usePostSyncStore();
-
-    useFocusEffect(
-        useCallback(() => {
-            void fetchJobs();
-            void syncQueue();
-        }, [fetchJobs, syncQueue])
-    );
-
-    const renderItem = ({ item, index }: { item: Opportunity; index: number }) => {
-        const statusLabel = getStatusLabel(item);
-        const { bg: badgeBg, text: badgeText, border: badgeBorder } = getOpportunityStatusColor(statusLabel);
-        
-        return (
-            <Animated.View entering={FadeInDown.delay(Math.min(index * 50, 600)).springify()}>
-                <SurfaceCard
-                    style={styles.card}
-                    onPress={() => navigation.navigate('OpportunityDetail', { opportunityId: item.id })}
-                >
-                <View style={styles.cardRow}>
-                    <CompanyLogo
-                        website={(item as Opportunity & { website?: string; companyWebsite?: string }).website || (item as Opportunity & { website?: string; companyWebsite?: string }).companyWebsite || null}
-                        logoUrl={item.companyLogoUrl}
-                        applyLink={item.applyLink}
-                        name={String(item.company)}
-                        size={mScale(44)}
-                    />
-                    <View style={styles.cardContent}>
-                        <Text style={[styles.jobTitle, { color: currentTheme.colors.text }]} numberOfLines={1}>
-                            {item.title}
-                        </Text>
-                        <Text style={[styles.companyName, { color: currentTheme.colors.textMuted }]}>
-                            {String(item.company)}
-                        </Text>
-                        
-                        <View style={styles.metaRow}>
-                            <View style={[styles.statusBadge, { backgroundColor: badgeBg, borderColor: badgeBorder, borderWidth: 1 }]}>
-                                <Text style={[styles.statusText, { color: badgeText }]}>
-                                    {statusLabel}
-                                </Text>
-                            </View>
-                            <Text style={[styles.typeText, { color: currentTheme.colors.textMuted }]}>
-                                {String(item.type)}
-                            </Text>
-                            <Text style={[styles.dateText, { color: alpha(currentTheme.colors.text, 0.3) }]}>
-                                {item.postedAt ? new Date(String(item.postedAt)).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '—'}
-                            </Text>
-                        </View>
-                    </View>
-                    
-                    <TouchableOpacity
-                        style={[styles.editBtn, { backgroundColor: alpha(currentTheme.colors.primary, 0.05) }]}
-                        onPress={() => navigation.navigate('PostOpportunity', { opportunityId: item.id })}
-                    >
-                        <Edit3 size={16} color={currentTheme.colors.primary} />
-                    </TouchableOpacity>
-                </View>
-            </SurfaceCard>
-            </Animated.View>
-        );
+    const handleOpenLink = async () => {
+        if (opportunity.applyLink) {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            await WebBrowser.openBrowserAsync(opportunity.applyLink);
+        }
     };
 
     return (
-        <Screen safe={true}>
-            <FlashList
-                data={jobs}
-                keyExtractor={i => String(i.id)}
-                renderItem={renderItem}
-                // @ts-expect-error - FlashList typing bug with estimatedItemSize
-                estimatedItemSize={mScale(100)}
-                ListHeaderComponent={
-                    <View style={styles.listHeader}>
-                        {queue.length > 0 && (
-                            <View style={[styles.syncBanner, { backgroundColor: alpha(currentTheme.colors.primary, 0.05), borderColor: alpha(currentTheme.colors.primary, 0.1) }]}>
-                                <ActivityIndicator size="small" color={currentTheme.colors.primary} style={{ marginRight: 8 }} />
-                                <Text style={[styles.syncText, { color: currentTheme.colors.text }]}>
-                                    {isSyncing ? `Syncing ${queue.length} items...` : `${queue.length} items pending sync`}
-                                </Text>
-                            </View>
-                        )}
-                        <Section title="Feed Statistics">
-                            <SurfaceCard style={{ padding: SPACING.lg }}>
-                                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md }}>
-                                    <View style={{ flex: 1, minWidth: '45%' }}>
-                                        <Text style={{ fontSize: mScale(12), color: currentTheme.colors.textMuted, fontWeight: '700', marginBottom: 4 }}>TOTAL</Text>
-                                        <Text style={{ fontSize: mScale(28), fontWeight: '900', color: currentTheme.colors.text }}>{String(summary.total || 0)}</Text>
-                                    </View>
-                                    <View style={{ flex: 1, minWidth: '45%' }}>
-                                        <Text style={{ fontSize: mScale(12), color: currentTheme.colors.success, fontWeight: '700', marginBottom: 4 }}>LIVE</Text>
-                                        <Text style={{ fontSize: mScale(28), fontWeight: '900', color: currentTheme.colors.text }}>{String(summary.active || 0)}</Text>
-                                    </View>
-                                    <TouchableOpacity 
-                                        style={{ flex: 1, minWidth: '45%' }}
-                                        onPress={() => navigation.navigate('Submissions')}
-                                        activeOpacity={0.7}
-                                    >
-                                        <Text style={{ fontSize: mScale(12), color: currentTheme.colors.primary, fontWeight: '700', marginBottom: 4 }}>SUBMISSIONS</Text>
-                                        <Text style={{ fontSize: mScale(28), fontWeight: '900', color: currentTheme.colors.text }}>{String(summary.submissions || 0)}</Text>
-                                    </TouchableOpacity>
-                                    <View style={{ flex: 1, minWidth: '45%' }}>
-                                        <Text style={{ fontSize: mScale(12), color: currentTheme.colors.error, fontWeight: '700', marginBottom: 4 }}>EXPIRED</Text>
-                                        <Text style={{ fontSize: mScale(28), fontWeight: '900', color: currentTheme.colors.text }}>{String(summary.expired || 0)}</Text>
-                                    </View>
-                                </View>
-                            </SurfaceCard>
-                        </Section>
-
-                        <Section title="Search & Filter">
-                            <PremiumSearchBar
-                                value={searchInput}
-                                onChangeText={setSearchInput}
-                                placeholder="Search by title, company..."
-                                onClear={() => {
-                                    setSearchInput('');
-                                    handleSearch();
-                                }}
-                                style={styles.searchBar}
-                            />
-                            
-                            <Text style={[styles.filterLabel, { color: currentTheme.colors.textMuted }]}>Status</Text>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.chipsScroll}
-                            >
-                                {STATUS_OPTIONS.map((opt) => {
-                                    const isSelected = statusFilter === opt.value;
-                                    return (
-                                        <TouchableOpacity
-                                            key={opt.value}
-                                            activeOpacity={0.7}
-                                            onPress={() => setStatusFilter(opt.value)}
-                                            style={[
-                                                styles.chip,
-                                                {
-                                                    backgroundColor: isSelected ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05),
-                                                    borderColor: isSelected ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.1),
-                                                }
-                                            ]}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.chipText,
-                                                    {
-                                                        color: isSelected ? currentTheme.colors.background : currentTheme.colors.text,
-                                                        fontWeight: isSelected ? '800' : '600',
-                                                    }
-                                                ]}
-                                            >
-                                                {opt.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </ScrollView>
-
-                            <Text style={[styles.filterLabel, { color: currentTheme.colors.textMuted }]}>Opportunity Type</Text>
-                            <ScrollView
-                                horizontal
-                                showsHorizontalScrollIndicator={false}
-                                contentContainerStyle={styles.chipsScroll}
-                            >
-                                {TYPE_OPTIONS.map((opt) => {
-                                    const isSelected = typeFilter === opt.value;
-                                    return (
-                                        <TouchableOpacity
-                                            key={opt.value}
-                                            activeOpacity={0.7}
-                                            onPress={() => setTypeFilter(opt.value)}
-                                            style={[
-                                                styles.chip,
-                                                {
-                                                    backgroundColor: isSelected ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.05),
-                                                    borderColor: isSelected ? currentTheme.colors.primary : alpha(currentTheme.colors.text, 0.1),
-                                                }
-                                            ]}
-                                        >
-                                            <Text
-                                                style={[
-                                                    styles.chipText,
-                                                    {
-                                                        color: isSelected ? currentTheme.colors.background : currentTheme.colors.text,
-                                                        fontWeight: isSelected ? '800' : '600',
-                                                    }
-                                                ]}
-                                            >
-                                                {opt.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </ScrollView>
-
-                            <View style={styles.actionRow}>
-                                <TouchableOpacity
-                                    activeOpacity={0.7}
-                                    onPress={showSortOptions}
-                                    style={[
-                                        styles.sortButton,
-                                        {
-                                            backgroundColor: alpha(currentTheme.colors.text, 0.05),
-                                            borderColor: alpha(currentTheme.colors.text, 0.1),
-                                        }
-                                    ]}
-                                >
-                                    <ArrowUpDown size={14} color={currentTheme.colors.primary} style={{ marginRight: 6 }} />
-                                    <Text style={[styles.actionRowText, { color: currentTheme.colors.text }]}>
-                                        Sort: {SORT_LABELS[sort] || 'Newest'}
-                                    </Text>
-                                    <ChevronDown size={14} color={currentTheme.colors.textMuted} style={{ marginLeft: 4 }} />
-                                </TouchableOpacity>
-
-                                {(statusFilter !== '' || typeFilter !== '' || sort !== 'postedAt_desc' || searchInput !== '') && (
-                                    <TouchableOpacity
-                                        activeOpacity={0.7}
-                                        onPress={clearFilters}
-                                        style={[
-                                            styles.clearFiltersBtn,
-                                            {
-                                                backgroundColor: alpha(currentTheme.colors.error, 0.05),
-                                                borderColor: alpha(currentTheme.colors.error, 0.1),
-                                            }
-                                        ]}
-                                    >
-                                        <X size={14} color={currentTheme.colors.error} style={{ marginRight: 4 }} />
-                                        <Text style={[styles.actionRowText, { color: currentTheme.colors.error }]}>
-                                            Reset
-                                        </Text>
-                                    </TouchableOpacity>
-                                )}
-                            </View>
-                        </Section>
-                        
-                        <View style={styles.headerPadding} />
-                    </View>
-                }
-                contentContainerStyle={styles.listContainer}
-                refreshControl={
-                    <RefreshControl 
-                        refreshing={refreshing} 
-                        onRefresh={onRefresh} 
-                        tintColor={currentTheme.colors.primary} 
-                    />
-                }
-                onEndReached={loadMore}
-                onEndReachedThreshold={0.4}
-                ListFooterComponent={loadingMore ? <ActivityIndicator color={currentTheme.colors.primary} style={styles.footerLoader} /> : null}
-                ListEmptyComponent={
-                    <View style={styles.emptyContainer}>
-                        <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>
-                            {loading ? 'Fetching listings...' : error || 'No opportunities found.'}
+        <View style={styles.cardContainer}>
+            <SurfaceCard
+                onPress={onPress}
+                style={[
+                    styles.surfaceCard,
+                    {
+                        backgroundColor: currentTheme.colors.surface,
+                        borderColor: alpha(currentTheme.colors.border, 0.4),
+                    }
+                ]}
+            >
+                <View style={styles.cardHeader}>
+                    <View style={styles.titleContainer}>
+                        <Text style={[styles.jobTitle, { color: currentTheme.colors.text }]}>
+                            {toTitleCase(opportunity.title)}
+                        </Text>
+                        <Text style={[styles.companyName, { color: currentTheme.colors.textMuted }]}>
+                            {toTitleCase(opportunity.company)}
                         </Text>
                     </View>
-                }
-                showsVerticalScrollIndicator={false}
-            />
-            <FilterSortSheet
-                ref={filterSortSheetRef}
-                initialState={currentFilterSortState}
-                onApply={handleApplyFilters}
-            />
-        </Screen>
+                    
+                    <TouchableOpacity onPress={onActionPress} style={{ padding: 4 }}>
+                        <MoreVertical size={20} color={currentTheme.colors.textMuted} />
+                    </TouchableOpacity>
+                </View>
+
+                <View style={styles.badgeRow}>
+                    <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.primary, 0.1) }]}>
+                        <Text style={[styles.badgeText, { color: currentTheme.colors.primary }]}>
+                            {opportunity.status}
+                        </Text>
+                    </View>
+                    {opportunity.type && (
+                        <View style={[styles.badge, { backgroundColor: alpha(currentTheme.colors.textMuted, 0.1) }]}>
+                            <Text style={[styles.badgeText, { color: currentTheme.colors.textMuted }]}>
+                                {toTitleCase(opportunity.type)}
+                            </Text>
+                        </View>
+                    )}
+                </View>
+
+                <View style={styles.metaRow}>
+                    <MapPin size={14} color={currentTheme.colors.textMuted} />
+                    <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>
+                        {opportunity.locations && opportunity.locations.length > 0
+                            ? opportunity.locations.map(loc => toTitleCase(loc)).join(', ')
+                            : 'Remote'}
+                    </Text>
+                </View>
+
+                {opportunity.workMode && (
+                    <View style={styles.metaRow}>
+                        <Briefcase size={14} color={currentTheme.colors.textMuted} />
+                        <Text style={[styles.metaText, { color: currentTheme.colors.textMuted }]}>
+                            {toTitleCase(opportunity.workMode)}
+                        </Text>
+                    </View>
+                )}
+
+                <View style={[styles.statsDivider, { backgroundColor: alpha(currentTheme.colors.border, 0.2) }]} />
+                
+                <View style={styles.footerRow}>
+                    <View style={styles.statsRow}>
+                        <View style={styles.statItem}>
+                            <Eye size={14} color={currentTheme.colors.primary} />
+                            <Text style={[styles.statText, { color: currentTheme.colors.text }]}>
+                                {`${stats.views}`}
+                            </Text>
+                        </View>
+                        <View style={styles.statItem}>
+                            <CheckSquare size={14} color={currentTheme.colors.success} />
+                            <Text style={[styles.statText, { color: currentTheme.colors.text }]}>
+                                {`${stats.applied}`}
+                            </Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.quickActionsRow}>
+                        {opportunity.applyLink && (
+                            <TouchableOpacity onPress={handleOpenLink} style={[styles.iconBtn, { backgroundColor: alpha(currentTheme.colors.text, 0.05) }]}>
+                                <ExternalLink size={14} color={currentTheme.colors.textMuted} />
+                            </TouchableOpacity>
+                        )}
+                        <TouchableOpacity onPress={() => handleCopyCaption('whatsapp')} style={[styles.iconBtn, { backgroundColor: alpha('#25D366', 0.1) }]}>
+                            <MessageCircle size={14} color="#25D366" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleCopyCaption('telegram')} style={[styles.iconBtn, { backgroundColor: alpha('#0088cc', 0.1) }]}>
+                            <Send size={14} color="#0088cc" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleCopyCaption('linkedin')} style={[styles.iconBtn, { backgroundColor: alpha('#0077b5', 0.1) }]}>
+                            <Linkedin size={14} color="#0077b5" />
+                        </TouchableOpacity>
+                        <TouchableOpacity onPress={() => handleCopyCaption('instagram')} style={[styles.iconBtn, { backgroundColor: alpha('#E1306C', 0.1) }]}>
+                            <Instagram size={14} color="#E1306C" />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+            </SurfaceCard>
+        </View>
     );
 };
 
+export default function AdminFeedScreen() {
+    const { currentTheme } = useTheme();
+    const navigation = useNavigation<NavigationProp>();
+    
+    // Bottom Sheet
+    const bottomSheetModalRef = useRef<BottomSheetModal>(null);
+    const snapPoints = useMemo(() => ['30%'], []);
+    const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
+
+    const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [refreshing, setRefreshing] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<string>('PUBLISHED');
+
+    const fetchOpportunities = useCallback(async (pageNum: number, shouldRefresh = false, filterStatus = statusFilter) => {
+        if (loading) return;
+        setLoading(true);
+
+        try {
+            const response = await adminOpportunitiesApi.list({
+                page: pageNum,
+                limit: 15,
+                status: filterStatus !== 'ALL' ? filterStatus : undefined
+            });
+
+            if (response && response.opportunities) {
+                const newOpportunities = response.opportunities;
+                let updatedList = newOpportunities;
+                if (!shouldRefresh) {
+                    const existingIds = new Set(opportunities.map(o => o.id));
+                    const filteredOpps = newOpportunities.filter(o => !existingIds.has(o.id));
+                    updatedList = [...opportunities, ...filteredOpps];
+                }
+                
+                setOpportunities(updatedList);
+                
+                const totalAvailable = response.total ?? 0;
+                if (newOpportunities.length < 15 || (totalAvailable && updatedList.length >= totalAvailable)) {
+                    setHasMore(false);
+                } else {
+                    setHasMore(true);
+                }
+            }
+        } catch (error) {
+            console.error('[AdminFeedScreen] Failed to fetch opportunities:', error);
+        } finally {
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, [loading, opportunities, statusFilter]);
+
+    useEffect(() => {
+        void fetchOpportunities(1, true, statusFilter);
+    }, [statusFilter]);
+
+    const handleRefresh = useCallback(() => {
+        setRefreshing(true);
+        setPage(1);
+        void fetchOpportunities(1, true);
+    }, [fetchOpportunities]);
+
+    const handleLoadMore = useCallback(() => {
+        if (hasMore && !loading) {
+            const nextPage = page + 1;
+            setPage(nextPage);
+            void fetchOpportunities(nextPage, false);
+        }
+    }, [hasMore, loading, page, fetchOpportunities]);
+
+    const handleCardPress = useCallback((opportunity: Opportunity) => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        navigation.navigate('OpportunityDetail', { opportunityId: opportunity.id });
+    }, [navigation]);
+
+    const handleActionPress = useCallback((opportunity: Opportunity) => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setSelectedOpp(opportunity);
+        bottomSheetModalRef.current?.present();
+    }, []);
+
+    const handlePostPress = useCallback(() => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        navigation.navigate('PostOpportunity', {});
+    }, [navigation]);
+
+    const handleExpire = async () => {
+        if (!selectedOpp) return;
+        bottomSheetModalRef.current?.dismiss();
+        try {
+            await adminOpportunitiesApi.expire(selectedOpp.id, 'Admin action');
+            handleRefresh();
+        } catch (e) {
+            Alert.alert('Error', 'Failed to expire listing.');
+        }
+    };
+
+    const handleDelete = () => {
+        if (!selectedOpp) return;
+        bottomSheetModalRef.current?.dismiss();
+        setTimeout(() => {
+            Alert.alert('Confirm Delete', 'Are you sure?', [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Delete', style: 'destructive', onPress: async () => {
+                    try {
+                        await adminOpportunitiesApi.delete(selectedOpp.id);
+                        handleRefresh();
+                    } catch (e) {
+                        Alert.alert('Error', 'Failed to delete listing.');
+                    }
+                }}
+            ]);
+        }, 500); // Allow modal to close first
+    };
+
+    const FilterChip = ({ label, value }: { label: string, value: string }) => {
+        const isActive = statusFilter === value;
+        return (
+            <TouchableOpacity 
+                onPress={() => setStatusFilter(value)}
+                style={[
+                    styles.filterChip,
+                    { backgroundColor: isActive ? currentTheme.colors.primary : alpha(currentTheme.colors.border, 0.2) }
+                ]}
+            >
+                <Text style={[
+                    styles.filterChipText, 
+                    { color: isActive ? currentTheme.colors.background : currentTheme.colors.text }
+                ]}>
+                    {label}
+                </Text>
+            </TouchableOpacity>
+        );
+    };
+
+    const renderItem = useCallback(({ item }: { item: Opportunity }) => {
+        return (
+            <JobCardItem
+                opportunity={item}
+                onPress={() => handleCardPress(item)}
+                onActionPress={() => handleActionPress(item)}
+            />
+        );
+    }, [handleCardPress, handleActionPress]);
+
+    const renderBackdrop = useCallback(
+        (props: any) => (
+            <BottomSheetBackdrop
+                {...props}
+                disappearsOnIndex={-1}
+                appearsOnIndex={0}
+                opacity={0.4}
+            />
+        ),
+        []
+    );
+
+    return (
+        <BottomSheetModalProvider>
+            <Screen safe={false} style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
+                <PremiumHeader
+                    title="Opportunities"
+                    subtitle="Manage and moderate listings"
+                    showBack={false}
+                />
+
+                <View style={styles.filterContainer}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingHorizontal: SPACING.lg }}>
+                        <FilterChip label="Published" value="PUBLISHED" />
+                        <FilterChip label="Pending" value="PENDING" />
+                        <FilterChip label="Draft" value="DRAFT" />
+                        <FilterChip label="Expired" value="EXPIRED" />
+                        <FilterChip label="All" value="ALL" />
+                    </ScrollView>
+                </View>
+
+                <FlashList<Opportunity>
+                    data={opportunities}
+                    renderItem={renderItem}
+                    keyExtractor={(item) => item.id}
+                    {...({ estimatedItemSize: 175 } as any)}
+                    onEndReached={handleLoadMore}
+                    onEndReachedThreshold={0.3}
+                    onRefresh={handleRefresh}
+                    refreshing={refreshing}
+                    ListFooterComponent={loading ? <ActivityIndicator style={{ margin: 20 }} color={currentTheme.colors.primary} /> : null}
+                    ListEmptyComponent={
+                        loading ? null : (
+                            <View style={styles.emptyContainer}>
+                                <Text style={[styles.emptyText, { color: currentTheme.colors.textMuted }]}>
+                                    No Opportunities Found
+                                </Text>
+                            </View>
+                        )
+                    }
+                    contentContainerStyle={styles.listContent}
+                    showsVerticalScrollIndicator={false}
+                />
+
+                <TouchableOpacity
+                    style={[
+                        styles.fab,
+                        {
+                            backgroundColor: currentTheme.colors.primary,
+                            shadowColor: currentTheme.colors.background,
+                        }
+                    ]}
+                    activeOpacity={0.8}
+                    onPress={handlePostPress}
+                >
+                    <Plus size={28} color={currentTheme.colors.inverseText || currentTheme.colors.background} />
+                </TouchableOpacity>
+
+                <BottomSheetModal
+                    ref={bottomSheetModalRef}
+                    index={0}
+                    snapPoints={snapPoints}
+                    backdropComponent={renderBackdrop}
+                    backgroundStyle={{ backgroundColor: currentTheme.colors.surface }}
+                    handleIndicatorStyle={{ backgroundColor: alpha(currentTheme.colors.text, 0.2) }}
+                >
+                    <View style={styles.bottomSheetContent}>
+                        <AppText variant="sectionTitle" style={{ marginBottom: SPACING.lg, paddingHorizontal: SPACING.md }}>
+                            {selectedOpp?.title || 'Manage Listing'}
+                        </AppText>
+                        
+                        <TouchableOpacity onPress={handleExpire} style={[styles.bsActionRow, { borderBottomColor: alpha(currentTheme.colors.border, 0.2), borderBottomWidth: 1 }]}>
+                            <View style={[styles.bsIcon, { backgroundColor: alpha('#F59E0B', 0.1) }]}>
+                                <Clock size={20} color="#F59E0B" />
+                            </View>
+                            <AppText style={{ fontSize: 16, fontWeight: '600', color: currentTheme.colors.text }}>Mark as Expired</AppText>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity onPress={handleDelete} style={styles.bsActionRow}>
+                            <View style={[styles.bsIcon, { backgroundColor: alpha('#EF4444', 0.1) }]}>
+                                <Trash2 size={20} color="#EF4444" />
+                            </View>
+                            <AppText style={{ fontSize: 16, fontWeight: '600', color: '#EF4444' }}>Delete Opportunity</AppText>
+                        </TouchableOpacity>
+                    </View>
+                </BottomSheetModal>
+            </Screen>
+        </BottomSheetModalProvider>
+    );
+}
+
 const styles = StyleSheet.create({
-    headerBtn: {
-        height: mScale(36),
-        paddingHorizontal: SPACING.md,
+    container: {
+        flex: 1,
     },
-    listHeader: {
-        marginBottom: SPACING.md,
+    filterContainer: {
+        paddingVertical: SPACING.sm,
+        marginBottom: SPACING.sm,
     },
-    metricsGrid: {
-        gap: SPACING.sm,
-        marginTop: 4,
+    filterChip: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20,
     },
-    metricsRow: {
-        flexDirection: 'row',
-        gap: SPACING.sm,
+    filterChipText: {
+        fontSize: 13,
+        fontWeight: '600',
     },
-    searchBar: {
-        marginTop: 8,
+    listContent: {
+        paddingBottom: 100, 
     },
-    headerPadding: {
-        height: SPACING.md,
-    },
-    listContainer: {
+    cardContainer: {
         paddingHorizontal: SPACING.lg,
-        paddingBottom: 140,
-        paddingTop: SPACING.md,
-    },
-    card: {
         marginBottom: SPACING.md,
+    },
+    surfaceCard: {
+        borderWidth: 0.5,
+        borderRadius: RADIUS.lg, 
         padding: SPACING.md,
     },
-    cardRow: {
+    cardHeader: {
         flexDirection: 'row',
-        alignItems: 'center',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
     },
-    cardContent: {
+    titleContainer: {
         flex: 1,
-        marginLeft: SPACING.md,
+        marginRight: SPACING.sm,
     },
     jobTitle: {
-        fontSize: mScale(16),
-        fontWeight: '800',
-        letterSpacing: -0.3,
+        fontSize: 16,
+        fontWeight: 'bold',
+        lineHeight: 22,
     },
     companyName: {
-        fontSize: mScale(13),
+        fontSize: 14,
         fontWeight: '600',
         marginTop: 2,
+    },
+    badgeRow: {
+        flexDirection: 'row',
+        gap: 8,
+        marginTop: SPACING.sm,
+    },
+    badge: {
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: 4,
+        borderRadius: RADIUS.sm,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    badgeText: {
+        fontSize: 10,
+        fontWeight: 'bold',
     },
     metaRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: SPACING.sm,
-        marginTop: 8,
+        marginTop: SPACING.sm,
+        gap: SPACING.xs,
     },
-    statusBadge: {
-        paddingHorizontal: 8,
-        paddingVertical: 4,
-        borderRadius: RADIUS.sm,
+    metaText: {
+        fontSize: 13,
+        fontWeight: '500',
     },
-    statusText: {
-        fontSize: mScale(9),
-        fontWeight: '900',
-        letterSpacing: 0.5,
+    statsDivider: {
+        height: 0.5,
+        marginVertical: SPACING.sm,
     },
-    typeText: {
-        fontSize: mScale(12),
-        fontWeight: '700',
+    footerRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
     },
-    dateText: {
-        fontSize: mScale(11),
+    statsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: SPACING.md,
+    },
+    quickActionsRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    statItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+    },
+    statText: {
+        fontSize: 13,
         fontWeight: '600',
     },
-    editBtn: {
-        width: mScale(36),
-        height: mScale(36),
-        borderRadius: RADIUS.md,
-        alignItems: 'center',
-        justifyContent: 'center',
-        marginLeft: SPACING.sm,
-    },
-    footerLoader: {
-        padding: SPACING.xl,
+    iconBtn: {
+        padding: 6,
+        borderRadius: 8,
     },
     emptyContainer: {
-        paddingTop: 80,
+        paddingVertical: 80,
         alignItems: 'center',
+        justifyContent: 'center',
     },
     emptyText: {
-        fontSize: mScale(14),
+        fontSize: 16,
         fontWeight: '600',
     },
-    syncBanner: {
+    fab: {
+        position: 'absolute',
+        bottom: 28,
+        right: 28,
+        width: 56,
+        height: 56,
+        borderRadius: 28,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 8,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
+        ...Platform.select({
+            ios: {
+                shadowColor: '#000000',
+            },
+        }),
+    },
+    bottomSheetContent: {
+        flex: 1,
+        padding: SPACING.md,
+    },
+    bsActionRow: {
         flexDirection: 'row',
         alignItems: 'center',
-        padding: 12,
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-        marginBottom: SPACING.md,
+        paddingVertical: 16,
+        paddingHorizontal: SPACING.md,
+        gap: 16,
     },
-    syncText: {
-        fontSize: mScale(12),
-        fontWeight: '700',
-    },
-    filterLabel: {
-        fontSize: mScale(12),
-        fontWeight: '800',
-        textTransform: 'uppercase',
-        letterSpacing: 0.8,
-        marginTop: SPACING.md,
-        marginBottom: 6,
-        marginLeft: 2,
-    },
-    chipsScroll: {
-        paddingVertical: 4,
-        gap: 8,
-    },
-    chip: {
-        paddingHorizontal: 16,
-        paddingVertical: 8,
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-        marginRight: 6,
-    },
-    chipText: {
-        fontSize: mScale(13),
-    },
-    actionRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 10,
-        marginTop: SPACING.md,
-        flexWrap: 'wrap',
-    },
-    sortButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-    },
-    clearFiltersBtn: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        paddingHorizontal: 14,
-        paddingVertical: 10,
-        borderRadius: RADIUS.md,
-        borderWidth: 1,
-    },
-    actionRowText: {
-        fontSize: mScale(13),
-        fontWeight: '700',
-    },
+    bsIcon: {
+        padding: 10,
+        borderRadius: 12,
+    }
 });

@@ -41,6 +41,10 @@ const getPremiumDarkColors = (isAmoled: boolean) => ({
     border: 'rgba(255, 82, 82, 0.2)',
     text: '#FF5252',
   },
+  rating: {
+    background: 'rgba(251, 191, 36, 0.1)',
+    text: '#FBBF24',
+  },
   // Semantic Tokens
   dividerSubtle: 'rgba(245, 247, 248, 0.05)',
   glassSubtle: 'rgba(245, 247, 248, 0.03)',
@@ -49,6 +53,12 @@ const getPremiumDarkColors = (isAmoled: boolean) => ({
   black: '#000000',
   blackTranslucent: 'rgba(0, 0, 0, 0.05)',
   blackOverlay: 'rgba(0, 0, 0, 0.5)',
+  // Extracted Inline Colors
+  shadowLight: 'rgba(0, 0, 0, 0.04)',
+  shadowMedium: 'rgba(0, 0, 0, 0.08)',
+  borderTranslucent: 'rgba(0, 0, 0, 0.05)',
+  surfaceDarkSubtle: 'rgba(0,0,0,0.02)',
+  whiteTranslucent20: 'rgba(255, 255, 255, 0.2)',
 });
 
 const lightBaseColors = {
@@ -84,6 +94,10 @@ const lightBaseColors = {
     border: '#FECACA',
     text: '#EF4444',
   },
+  rating: {
+    background: '#FEF9C3',
+    text: '#92400E',
+  },
   // Semantic Tokens
   dividerSubtle: 'rgba(15, 23, 42, 0.05)',
   glassSubtle: 'rgba(15, 23, 42, 0.03)',
@@ -92,6 +106,12 @@ const lightBaseColors = {
   black: '#000000',
   blackTranslucent: 'rgba(0, 0, 0, 0.05)',
   blackOverlay: 'rgba(0, 0, 0, 0.5)',
+  // Extracted Inline Colors
+  shadowLight: 'rgba(0, 0, 0, 0.04)',
+  shadowMedium: 'rgba(0, 0, 0, 0.08)',
+  borderTranslucent: 'rgba(0, 0, 0, 0.05)',
+  surfaceDarkSubtle: 'rgba(0,0,0,0.02)',
+  whiteTranslucent20: 'rgba(255, 255, 255, 0.2)',
 };
 
 const DEFAULT_TOKENS = {

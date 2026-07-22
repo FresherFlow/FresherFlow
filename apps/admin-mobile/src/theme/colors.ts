@@ -9,9 +9,9 @@ export const colors = {
     textMuted: 'rgba(245, 247, 248, 0.7)',
     border: 'rgba(245, 247, 248, 0.12)',
     muted: 'rgba(245, 247, 248, 0.38)',
-    error: '#FF5252',
-    success: '#4ADE80',
-    warning: '#FBBF24',
+    error: '#CF6679',
+    success: '#03DAC6',
+    warning: '#FFB74D',
     info: '#D2E8F7',
     overlay: 'rgba(2, 4, 4, 0.7)',
     inverseText: '#0F172A',
@@ -45,4 +45,11 @@ export const colors = {
     // Static Translucent Tokens
     blackTranslucent: 'rgba(0, 0, 0, 0.05)',
     blackOverlay: 'rgba(0, 0, 0, 0.5)',
+    
+    // Extracted Inline Colors (per user rules)
+    shadowLight: 'rgba(0, 0, 0, 0.04)',
+    shadowMedium: 'rgba(0, 0, 0, 0.08)',
+    borderTranslucent: 'rgba(0, 0, 0, 0.05)',
+    surfaceDarkSubtle: 'rgba(0,0,0,0.02)',
+    whiteTranslucent20: 'rgba(255, 255, 255, 0.2)',
 };

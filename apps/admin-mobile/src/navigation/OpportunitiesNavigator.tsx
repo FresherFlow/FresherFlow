@@ -1,12 +1,20 @@
 import React from 'react';
+import { View, Text } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { AdminFeedScreen } from '../features/opportunities/AdminFeedScreen';
-import { PostOpportunityScreen } from '../features/opportunities/PostOpportunityScreen';
-import { OpportunityDetailScreen } from '../features/opportunities/OpportunityDetailScreen';
-import { OpportunityFeedbackScreen } from '../features/opportunities/OpportunityFeedbackScreen';
-import { SubmissionsScreen } from '../features/opportunities/SubmissionsScreen';
 import { useTheme } from '../theme/ThemeProvider';
 import { createStackScreenOptions } from './options';
+
+import AdminFeedScreen from '../features/opportunities/AdminFeedScreen';
+
+import PostOpportunityScreen from '../features/opportunities/PostOpportunityScreen';
+import OpportunityDetailScreen from '../features/opportunities/OpportunityDetailScreen';
+import OpportunityFeedbackScreen from '../features/opportunities/OpportunityFeedbackScreen';
+
+const SubmissionsScreen = () => (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Submissions Screen (Mock)</Text>
+    </View>
+);
 
 export type OpportunitiesStackParamList = {
     OpportunitiesList: undefined;
@@ -45,7 +53,7 @@ export const OpportunitiesNavigator = ({ initialRoute = 'OpportunitiesList' }: {
                 component={OpportunityFeedbackScreen}
                 options={{
                     title: 'Verification Feedback',
-                    headerShown: true,
+                    headerShown: false,
                 }}
             />
             <Stack.Screen

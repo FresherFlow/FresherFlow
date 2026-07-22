@@ -1,6 +1,6 @@
 import React from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { LoginScreen } from '../features/auth/LoginScreen';
+import LoginScreen from '../features/auth/LoginScreen';
 
 export type AuthStackParamList = {
     Login: undefined;
@@ -15,5 +15,3 @@ export const AuthNavigator = () => {
         </Stack.Navigator>
     );
 };
-
-

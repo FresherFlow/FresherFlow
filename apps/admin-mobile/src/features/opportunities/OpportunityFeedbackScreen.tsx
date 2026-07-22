@@ -1,227 +1,136 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import {
-    ActivityIndicator,
-    Linking,
-    RefreshControl,
     StyleSheet,
-    Text,
-    TouchableOpacity,
     View,
+    TextInput,
+    TouchableOpacity,
+    Text,
+    ActivityIndicator,
+    Alert,
+    KeyboardAvoidingView,
+    Platform
 } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { useFocusEffect, useRoute } from '@react-navigation/native';
-import type { RouteProp } from '@react-navigation/native';
-import { OpportunitiesStackParamList } from '@/navigation/OpportunitiesNavigator';
-import { ChevronDown, ChevronUp, Mail, MessageSquare, Star } from 'lucide-react-native';
-import { adminFeedbackApi } from '@fresherflow/api-client';
-import { CompanyLogo } from '@repo/ui';
-import { theme } from '../../theme';
+import { useRoute, useNavigation } from '@react-navigation/native';
+import * as Haptics from 'expo-haptics';
+import { ShieldAlert } from 'lucide-react-native';
+import { Screen } from '../../components/common/Layout';
+import { PremiumHeader, AppText } from '../../components/common/PremiumPrimitives';
+import { useTheme } from '../../theme/ThemeProvider';
+import { alpha } from '../../theme';
+import { adminOpportunitiesApi } from '@fresherflow/api-client';
 
-type FeedbackItem = {
-    id: string;
-    message?: string | null;
-    rating?: number | null;
-    category?: string | null;
-    createdAt: string | Date;
-    user?: { fullName?: string; email?: string } | null;
-};
+export default function OpportunityFeedbackScreen() {
+    const { currentTheme } = useTheme();
+    const route = useRoute<any>();
+    const navigation = useNavigation<any>();
+    const { opportunityId, title, company } = route.params;
 
-const StarRow = ({ rating }: { rating: number }) => (
-    <View style={styles.starRow}>
-        {[1, 2, 3, 4, 5].map((index) => (
-            <Star
-                key={index}
-                size={12}
-                color={index <= rating ? theme.colors.warning : theme.colors.border}
-                fill={index <= rating ? theme.colors.warning : 'none'}
-            />
-        ))}
-    </View>
-);
+    const [reason, setReason] = useState('');
+    const [submitting, setSubmitting] = useState(false);
 
-export const OpportunityFeedbackScreen = () => {
-    const route = useRoute<RouteProp<OpportunitiesStackParamList, 'OpportunityFeedback'>>();
-    const { opportunityId, title, company, website } = route.params;
-
-    const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [refreshing, setRefreshing] = useState(false);
-    const [expanded, setExpanded] = useState<Set<string>>(new Set());
-
-    const fetchFeedback = useCallback(async () => {
-        if (!opportunityId) {
-            setLoading(false);
-            setRefreshing(false);
+    const handleSubmit = async () => {
+        if (!reason.trim()) {
+            Alert.alert('Required', 'Please provide a reason for rejection.');
             return;
         }
 
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        setSubmitting(true);
+
         try {
-            const data = await adminFeedbackApi.opportunityFeedback(opportunityId) as { feedback?: FeedbackItem[] };
-            setFeedback(data.feedback ?? []);
-        } catch {
-            // toast is handled in the api layer
+            await adminOpportunitiesApi.delete(opportunityId); // Optionally pass reason if API supports it
+            Alert.alert('Success', 'Opportunity rejected and removed.');
+            navigation.navigate('OpportunitiesList'); // go back to feed
+        } catch (error) {
+            console.error('[OpportunityFeedbackScreen] Failed to submit feedback:', error);
+            Alert.alert('Error', 'Failed to submit feedback.');
         } finally {
-            setLoading(false);
-            setRefreshing(false);
+            setSubmitting(false);
         }
-    }, [opportunityId]);
-
-    useFocusEffect(useCallback(() => {
-        void fetchFeedback();
-    }, [fetchFeedback]));
-
-    const onRefresh = () => {
-        setRefreshing(true);
-        void fetchFeedback();
-    };
-
-    const toggleExpand = (id: string) => {
-        setExpanded((previous) => {
-            const next = new Set(previous);
-            if (next.has(id)) next.delete(id);
-            else next.add(id);
-            return next;
-        });
-    };
-
-    const ratedFeedback = feedback.filter((item) => item.rating != null);
-    const avgRating = ratedFeedback.length
-        ? (ratedFeedback.reduce((sum, item) => sum + (item.rating ?? 0), 0) / ratedFeedback.length).toFixed(1)
-        : null;
-
-    const renderItem = ({ item }: { item: FeedbackItem }) => {
-        const isExpanded = expanded.has(item.id);
-        const message = item.message?.trim() || 'No message provided';
-        const isLongMessage = message.length > 120;
-
-        return (
-            <TouchableOpacity style={styles.card} activeOpacity={0.85} onPress={() => toggleExpand(item.id)}>
-                <View style={styles.cardHeader}>
-                    <View style={styles.avatar}>
-                        <Text style={styles.avatarText}>{(item.user?.fullName || '?')[0].toUpperCase()}</Text>
-                    </View>
-                    <View style={styles.cardBody}>
-                        <Text style={styles.name}>{item.user?.fullName || 'Anonymous'}</Text>
-                        <Text style={styles.email}>{item.user?.email || '-'}</Text>
-                    </View>
-                    <View style={styles.metaColumn}>
-                        {item.rating != null ? <StarRow rating={item.rating} /> : null}
-                        <Text style={styles.date}>
-                            {new Date(item.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' })}
-                        </Text>
-                    </View>
-                </View>
-
-                {item.category ? (
-                    <View style={styles.categoryChip}>
-                        <Text style={styles.categoryText}>{item.category}</Text>
-                    </View>
-                ) : null}
-
-                <Text style={styles.message}>
-                    {isLongMessage && !isExpanded ? `${message.slice(0, 120)}...` : message}
-                </Text>
-
-                {isLongMessage ? (
-                    <View style={styles.expandRow}>
-                        {isExpanded ? <ChevronUp size={14} color={theme.colors.textMuted} /> : <ChevronDown size={14} color={theme.colors.textMuted} />}
-                        <Text style={styles.expandText}>{isExpanded ? 'Show less' : 'Show more'}</Text>
-                    </View>
-                ) : null}
-
-                {item.user?.email ? (
-                    <TouchableOpacity style={styles.mailButton} onPress={() => Linking.openURL(`mailto:${item.user?.email}`)}>
-                        <Mail size={13} color={theme.colors.primary} />
-                        <Text style={styles.mailText}>Reply via email</Text>
-                    </TouchableOpacity>
-                ) : null}
-            </TouchableOpacity>
-        );
     };
 
     return (
-        <View style={styles.container}>
-            <View style={styles.headerCard}>
-                <CompanyLogo website={website ?? null} name={company ?? '?'} size={40} />
-                <View style={styles.headerBody}>
-                    <Text style={styles.oppTitle} numberOfLines={1}>{title ?? 'Opportunity'}</Text>
-                    <Text style={styles.oppCompany}>{company ?? '-'}</Text>
-                </View>
-                {avgRating ? (
-                    <View style={styles.ratingBadge}>
-                        <Text style={styles.ratingText}>* {avgRating}</Text>
-                        <Text style={styles.ratingCount}>{ratedFeedback.length} ratings</Text>
+        <Screen safe={false} style={[styles.container, { backgroundColor: currentTheme.colors.background }]}>
+            <PremiumHeader
+                title="Provide Feedback"
+                subtitle="Rejecting Opportunity"
+                showBack={true}
+            />
+
+            <KeyboardAvoidingView 
+                style={styles.keyboardView}
+                behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            >
+                <View style={styles.content}>
+                    <View style={[styles.infoCard, { backgroundColor: alpha(currentTheme.colors.error, 0.05), borderColor: alpha(currentTheme.colors.error, 0.2) }]}>
+                        <ShieldAlert size={24} color={currentTheme.colors.error} style={{ marginBottom: 8 }} />
+                        <Text style={[styles.jobTitle, { color: currentTheme.colors.text }]}>{title}</Text>
+                        <Text style={[styles.companyName, { color: currentTheme.colors.textMuted }]}>{company}</Text>
+                        <Text style={[styles.warningText, { color: currentTheme.colors.error }]}>
+                            This will notify the poster about why their opportunity was rejected.
+                        </Text>
                     </View>
-                ) : null}
-            </View>
 
-            <View style={styles.countBar}>
-                <Text style={styles.countText}>
-                    {feedback.length} feedback item{feedback.length !== 1 ? 's' : ''}
-                </Text>
-            </View>
+                    <Text style={[styles.label, { color: currentTheme.colors.text }]}>Reason for Rejection</Text>
+                    <TextInput
+                        style={[styles.input, { 
+                            backgroundColor: currentTheme.colors.surface, 
+                            borderColor: alpha(currentTheme.colors.border, 0.4),
+                            color: currentTheme.colors.text 
+                        }]}
+                        placeholder="e.g. Invalid link, duplicate, irrelevant role..."
+                        placeholderTextColor={currentTheme.colors.textMuted}
+                        value={reason}
+                        onChangeText={setReason}
+                        multiline
+                        numberOfLines={4}
+                        textAlignVertical="top"
+                    />
 
-            {loading ? (
-                <ActivityIndicator size="large" color={theme.colors.primary} style={{ marginTop: 60 }} />
-            ) : (
-                <FlashList
-                    data={feedback}
-                    keyExtractor={(item) => item.id}
-                    renderItem={renderItem}
-                    // @ts-expect-error - FlashList typing bug with estimatedItemSize
-                    estimatedItemSize={mScale(150)}
-                    contentContainerStyle={styles.list}
-                    refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />}
-                    ListEmptyComponent={
-                        <View style={styles.empty}>
-                            <MessageSquare size={40} color={theme.colors.border} />
-                            <Text style={styles.emptyText}>No feedback for this opportunity</Text>
-                        </View>
-                    }
-                />
-            )}
-        </View>
+                    <TouchableOpacity 
+                        style={[styles.submitBtn, { backgroundColor: currentTheme.colors.error, opacity: !reason.trim() ? 0.5 : 1 }]}
+                        onPress={handleSubmit}
+                        disabled={submitting || !reason.trim()}
+                    >
+                        {submitting ? (
+                            <ActivityIndicator color="#FFF" />
+                        ) : (
+                            <Text style={styles.submitBtnText}>Reject & Send Feedback</Text>
+                        )}
+                    </TouchableOpacity>
+                </View>
+            </KeyboardAvoidingView>
+        </Screen>
     );
-};
+}
 
 const styles = StyleSheet.create({
-    container: { flex: 1, backgroundColor: theme.colors.background },
-    headerCard: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.colors.surface,
-        padding: 14,
-        borderBottomWidth: 1,
-        borderBottomColor: theme.colors.border,
+    container: { flex: 1 },
+    keyboardView: { flex: 1 },
+    content: { padding: 16, flex: 1 },
+    infoCard: {
+        padding: 16,
+        borderRadius: 12,
+        borderWidth: 1,
+        marginBottom: 24,
     },
-    headerBody: { flex: 1, marginLeft: 10 },
-    oppTitle: { fontSize: 14, fontWeight: '700', color: theme.colors.text },
-    oppCompany: { fontSize: 12, color: theme.colors.textMuted, marginTop: 2 },
-    ratingBadge: { alignItems: 'center', padding: 8, backgroundColor: theme.colors.rating.background, borderRadius: 10 },
-    ratingText: { fontSize: 16, fontWeight: '800', color: theme.colors.rating.text },
-    ratingCount: { fontSize: 10, color: theme.colors.rating.text, marginTop: 1 },
-    countBar: { paddingHorizontal: 16, paddingVertical: 8 },
-    countText: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600' },
-    list: { padding: 14, gap: 12, paddingBottom: 40 },
-    card: { backgroundColor: theme.colors.surface, borderRadius: 14, borderWidth: 1, borderColor: theme.colors.border, padding: 14 },
-    cardHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 10 },
-    cardBody: { flex: 1 },
-    metaColumn: { alignItems: 'flex-end', gap: 4 },
-    avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: `${theme.colors.secondary}20`, alignItems: 'center', justifyContent: 'center' },
-    avatarText: { fontSize: 14, fontWeight: '700', color: theme.colors.secondary },
-    name: { fontSize: 14, fontWeight: '700', color: theme.colors.text },
-    email: { fontSize: 12, color: theme.colors.textMuted, marginTop: 1 },
-    date: { fontSize: 11, color: theme.colors.textMuted },
-    starRow: { flexDirection: 'row', gap: 2 },
-    categoryChip: { alignSelf: 'flex-start', backgroundColor: `${theme.colors.primary}15`, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 8 },
-    categoryText: { fontSize: 11, fontWeight: '700', color: theme.colors.primary, textTransform: 'capitalize' },
-    message: { fontSize: 14, color: theme.colors.text, lineHeight: 20 },
-    expandRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6 },
-    expandText: { fontSize: 12, color: theme.colors.textMuted, fontWeight: '600' },
-    mailButton: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: theme.colors.border },
-    mailText: { fontSize: 13, fontWeight: '600', color: theme.colors.primary },
-    empty: { paddingTop: 80, alignItems: 'center', gap: 12 },
-    emptyText: { fontSize: 15, color: theme.colors.textMuted },
+    jobTitle: { fontSize: 16, fontWeight: 'bold' },
+    companyName: { fontSize: 14, marginTop: 4 },
+    warningText: { fontSize: 12, marginTop: 12, fontWeight: '500' },
+    label: { fontSize: 14, fontWeight: 'bold', marginBottom: 8 },
+    input: {
+        borderWidth: 1,
+        borderRadius: 12,
+        padding: 16,
+        fontSize: 15,
+        minHeight: 120,
+        marginBottom: 24,
+    },
+    submitBtn: {
+        height: 56,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    submitBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
 });
-
-
