@@ -96,3 +96,5 @@ scripts/output/*.json
 scripts/job-discovery/adapter-tests/
 
 .agents
+
+skills-lock.json

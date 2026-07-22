@@ -5,7 +5,7 @@
     </td>
     <td valign="center" style="border: none; padding-left: 20px;">
       <h1 style="margin: 0; padding: 0; border: none;">FresherFlow</h1>
-      <p style="margin: 5px 0; font-size: 1.1em;">A verified, high-performance job and walk-in discovery engine tailored for graduates and students across India. Built as a fully type-safe TypeScript monorepo.</p>
+      <p style="margin: 5px 0; font-size: 1.1em;">A verified, high-performance job and walk-in discovery engine for graduates and students across India. Built as a fully type-safe TypeScript monorepo.</p>
     </td>
   </tr>
 </table>
@@ -44,66 +44,64 @@
 
 ---
 
-### 🛠️ Core Technology Stack
+## 🛠️ Tech Stack
 
-- 🌐 **Frontend**: **Next.js 16** (App Router Web Portal), **React Native with Expo** (User Mobile App & Admin Moderation Mobile)
-- ⚙️ **Backend**: **Node.js** with **Express** API Gateway, **TypeScript** (Strict Mode)
-- 🚀 **Queues & Background Processing**: **BullMQ** task scheduler and asynchronous worker processors
-- 📦 **Monorepo Manager**: **Turborepo** with high-performance **pnpm** workspaces
-- 🗄️ **Database & Cache**: **PostgreSQL** database (via type-safe **Prisma ORM**), **Redis** for queue state and caching
-
----
-
-## 📱 Android Release & Installation
-
-The mobile app is optimized for high-performance and instant updates.
-
-### 📥 Direct APK Download
-You can download and install the absolute latest release directly to your Android device:
-👉 **[Download Latest Android APK](https://github.com/MukeshCheekatla/FresherFlow/releases/latest/download/FresherFlow.apk)**
-
-> [!NOTE]
-> When installing, you might need to enable **"Install from Unknown Sources"** in your Android security settings, as the app is compiled as a standalone internal distribution build.
-
-### ⚙️ EAS Staging & Production Builds
-For developers and internal testers:
-- **Staging Channel**: Custom test builds listening exclusively to the `staging` OTA update branch.
-- **OTA Hot Reloads**: Hot-fix JS changes can be served instantly using:
-  ```bash
-  cd apps/mobile
-  eas update --branch staging --message "OTA Staging hot-fix"
-  ```
-- **Promotion to Production**: Repromote verified staging JS bundles straight to production with zero binary compile delays:
-  ```bash
-  eas update:republish --from-branch staging --to-branch production
-  ```
+| Layer | Technology |
+|---|---|
+| Web | Next.js 16 App Router |
+| Mobile | React Native + Expo (user app + admin app) |
+| Backend | Node.js + Express, TypeScript (strict) |
+| Queue / Workers | BullMQ + Redis |
+| Database | PostgreSQL via Prisma ORM |
+| Cache | Redis |
+| CDN / Storage | Cloudflare R2 (bootstrap feed, logos, assets) |
+| Monorepo | Turborepo + pnpm workspaces |
 
 ---
 
-## 📂 Monorepo Organization
+## 📱 Android App
 
-The project uses Turborepo with `pnpm` workspaces to maintain isolation across applications and shared packages:
+### Direct APK
+👉 **[Download Latest APK](https://github.com/MukeshCheekatla/FresherFlow/releases/latest/download/FresherFlow.apk)**
+
+> Enable **"Install from Unknown Sources"** in Android settings when installing.
+
+### OTA Updates (for developers)
+Hot-fix JS changes without a new binary build:
+```bash
+# Push to staging
+eas update --branch staging --message "fix: description"
+
+# Promote to production
+eas update:republish --from-branch staging --to-branch production
+```
+
+---
+
+## 📂 Monorepo Structure
 
 ```
 ├── apps/
-│   ├── web/            # Next.js web portal (port 3000)
-│   ├── mobile/         # User mobile application (React Native / Expo)
-│   ├── admin-mobile/   # Moderation and administrative mobile portal
-│   ├── api/            # Central backend REST gateway (port 5000)
-│   ├── worker/         # BullMQ background task processor (port 5001)
-│   └── ingestion/      # Data scrapers and scheduled pollers (port 5002)
+│   ├── web/              # Next.js web portal (port 3000)
+│   ├── mobile/           # User mobile app (React Native / Expo)
+│   ├── admin-mobile/     # Admin moderation app (React Native / Expo)
+│   ├── api/              # Express REST API (port 5000)
+│   └── worker/           # BullMQ background processor (port 5001)
 ├── packages/
-│   ├── database/       # Prisma models, migrations, and PostgreSQL client
-│   ├── types/          # Shared TypeScript interfaces (Source of Truth)
-│   ├── ui/             # Reusable UI component configurations & design tokens
-│   ├── domain/         # Core business logic & suitability matching helpers
-│   ├── api-client/     # Standardized Axios/API SDK wrapper for frontends
-│   └── parser/         # NLP pattern-matching pipeline to parse job listings
+│   ├── database/         # Prisma schema + PostgreSQL client
+│   ├── types/            # Shared TypeScript types (source of truth)
+│   ├── api-client/       # Typed API wrapper used by all frontends
+│   ├── domain/           # Core business logic + eligibility matching
+│   ├── ui/               # Shared UI components
+│   └── parser/           # NLP job description parser
+└── scripts/
+    ├── job-discovery/    # ATS scrapers + aggregator pipeline
+    └── job-processor/    # Job ingestion and submission
 ```
 
 ---
 
-## 🖼️ Application Preview
+## 🖼️ Screenshots
 
 <table width="100%">
   <tr>
@@ -132,49 +130,53 @@ The project uses Turborepo with `pnpm` workspaces to maintain isolation across a
 
 ## 🚀 Getting Started
 
-Ensure you have [pnpm](https://pnpm.io/) installed globally.
+See **[QUICKSTART.md](./QUICKSTART.md)** for the full local setup guide.
 
-1. **Setup & Onboarding Guide**: Refer to our comprehensive [Setup Guide](./docs/setup.md) to set up your environment files (`.env`).
-2. **Install Dependencies**:
-   ```bash
-   pnpm install
-   ```
-3. **Spin Up Development Servers**:
-   ```bash
-   pnpm dev
-   ```
-   *This single command starts the Next.js web portal, mobile builder, backend API, background worker, and ingestion runner concurrently.*
+**Short version:**
 
-### 🛠️ Common Utility Commands
+```bash
+# 1. Install dependencies
+pnpm install
 
-| Script | Purpose |
-| :--- | :--- |
-| `pnpm dev:web` | Run only the Next.js web application |
-| `pnpm dev:mobile` | Run only the user Expo mobile application |
-| `pnpm dev:api` | Run only the REST API express server |
-| `pnpm build` | Builds all packages and services for production |
-| `pnpm typecheck` | Validates TypeScript types across the workspaces |
-| `pnpm db:generate` | Generates the local Prisma Client |
+# 2. Start Redis locally
+docker compose up -d
+
+# 3. Set up environment variables
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+# Fill in DATABASE_URL (Neon) and REDIS_URL in apps/api/.env
+
+# 4. Run API + Web
+pnpm dev:stack
+```
+
+### Dev Commands
+
+| Command | What it runs |
+|---|---|
+| `pnpm dev:api` | API only (port 5000) |
+| `pnpm dev:web` | Web only (port 3000) |
+| `pnpm dev:stack` | API + Web together |
+| `pnpm dev:mobile` | Expo mobile app |
+| `pnpm dev:admin-mobile` | Expo admin app |
+| `pnpm typecheck` | TypeScript check across all packages |
+| `pnpm build` | Production build |
+| `pnpm db:generate` | Regenerate Prisma client after schema changes |
 
 ---
 
-## 🗺️ Product Roadmap
+## 🗺️ Roadmap
 
-We are actively driving towards our Mobile MVP release. To view our milestones, current checklist, and contributor guidelines, check:
-👉 **[Launch Roadmap](./ROADMAP.md)**
+👉 **[ROADMAP.md](./ROADMAP.md)**
 
 ---
 
 ## 🤝 Contributing
 
-We welcome community contributions! Please read our [Contributing Guide](./CONTRIBUTING.md) to learn how to:
-1. Fork the repo and set up your local development environment.
-2. Follow our commit message guidelines ([Commit Playbook](./docs/commit.md)).
-3. Pick up open issues and submit pull requests.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) to get started.
 
 ---
 
 ## ⚖️ License
 
 Distributed under the **MIT License**. See [`LICENSE`](./LICENSE) for more details.
-

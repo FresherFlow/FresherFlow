@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  # Redis — used for BullMQ job queues and API caching
+  # PostgreSQL is NOT here — FresherFlow uses Neon (cloud-hosted Postgres).
+  # Get your DATABASE_URL from https://neon.tech and put it in apps/api/.env
+  redis:
+    image: redis:7-alpine
+    container_name: fresherflow-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  # Mailhog — local SMTP catcher for testing emails without sending real ones
+  # Web UI: http://localhost:8025
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: fresherflow-mailhog
+    ports:
+      - "1025:1025"  # SMTP (API sends email here in dev)
+      - "8025:8025"  # Web UI to inspect sent emails
+    restart: unless-stopped
+
+volumes:
+  redis_data:
