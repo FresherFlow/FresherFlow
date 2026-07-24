@@ -1,28 +1,5 @@
 import { CANONICAL_SKILLS_MAP } from '../metadata.js';
-
-export interface ParsedGreenhouseData {
-    description: string;
-    requiredSkills: string[];
-    allowedDegrees: string[];
-    allowedCourses: string[];
-    experienceMin?: number;
-    experienceMax?: number;
-    incentives?: string;
-    selectionProcess?: string;
-    workplaceType?: 'ONSITE' | 'HYBRID' | 'REMOTE' | null;
-}
-
-// Soft skills / generic words that should NOT be added as technical skills
-const SOFT_SKILL_BLOCKLIST = new Set([
-    'english', 'fluent', 'communication', 'communication skills', 'written communication',
-    'verbal communication', 'written and verbal communication', 'presentation skills',
-    'interpersonal skills', 'teamwork', 'team player', 'problem solving', 'problem-solving',
-    'critical thinking', 'attention to detail', 'time management', 'multitasking',
-    'self-motivated', 'proactive', 'ownership', 'leadership', 'collaboration', 'adaptability',
-    'organization', 'organizational skills', 'analytical skills', 'analytical', 'creativity',
-    'innovation', 'drive', 'motivation', 'fast learner', 'quick learner', 'coachable',
-    'detail-oriented', 'detail oriented', 'growth mindset', 'result-oriented', 'results-oriented',
-]);
+import { SOFT_SKILL_BLOCKLIST } from '../constants.js';
 
 // Location strings that are department/office names, not actual city/region locations
 const FAKE_LOCATION_PATTERNS = [
@@ -59,41 +36,48 @@ function isRealLocation(loc: string): boolean {
 
 function cleanHtmlToMarkdown(html: string): string {
     if (!html) return '';
-    return html
-        // Replace paragraph tags with newlines
-        .replace(/<p[^>]*>/gi, ' ')
-        .replace(/<\/p>/gi, '\n\n')
-        // Replace bold/strong tags with double asterisks
-        .replace(/<strong[^>]*>/gi, '**')
-        .replace(/<\/strong>/gi, '**')
-        .replace(/<b[^>]*>/gi, '**')
-        .replace(/<\/b>/gi, '**')
-        // Replace list items with bullet dashes
-        .replace(/<li[^>]*>/gi, '- ')
-        .replace(/<\/li>/gi, '\n')
-        // Replace list containers
-        .replace(/<ul[^>]*>/gi, ' ')
-        .replace(/<\/ul>/gi, '\n')
-        .replace(/<ol[^>]*>/gi, ' ')
-        .replace(/<\/ol>/gi, '\n')
-        // Replace headings with bold markdown headers
-        .replace(/<h[1-6][^>]*>/gi, '\n**')
-        .replace(/<\/h[1-6]>/gi, '**\n')
-        // Decode HTML entities
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        // Remove other HTML tags
+    const result = html
+        // Headings → **heading**\n
+        .replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, (_, inner) => {
+            const text = inner.replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim();
+            return text ? `\n**${text}**\n` : '';
+        })
+        // List items → - item\n  (must come before <ul>/<li> tag removal)
+        .replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_, inner) => {
+            const text = inner.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            return text ? `\n- ${text}` : '';
+        })
+        // List containers — just newlines
+        .replace(/<\/?[uo]l[^>]*>/gi, '\n')
+        // Paragraphs → double newline
+        .replace(/<p[^>]*>/gi, '\n')
+        .replace(/<\/p>/gi, '\n')
+        // Bold/strong → **text**
+        .replace(/<(?:strong|b)[^>]*>([\s\S]*?)<\/(?:strong|b)>/gi, (_, inner) => {
+            const text = inner.replace(/<[^>]+>/g, '').trim();
+            return text ? `**${text}**` : '';
+        })
+        // HTML entities
+        .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'").replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&')
+        // Remove remaining tags
         .replace(/<[^>]+>/g, ' ')
-        // Clean up redundant spaces and newlines
-        .replace(/[ \t]+/g, ' ')
+        // Normalize horizontal whitespace on each line
+        .split('\n').map(line => line.replace(/[ \t]+/g, ' ').trimEnd()).join('\n')
+        // Remove lines that are blank or only spaces/asterisks (not bullet points or headings)
+        .split('\n').filter((line, i, arr) => {
+            if (line.trim() === '' || /^\*+$/.test(line.trim())) {
+                const prev = arr[i - 1] ?? 'X';
+                return prev.trim() !== '';  // allow at most one blank line
+            }
+            return true;
+        }).join('\n')
+        // Collapse 3+ newlines to 2
         .replace(/\n{3,}/g, '\n\n')
-        .replace(/\n{2,}-\s/g, '\n- ')
         .trim();
+    return result;
 }
+
 
 // Common boilerplate lines that companies paste at the end of every job description.
 // These add zero value for candidates — strip them deterministically.
@@ -258,6 +242,18 @@ function decodeHtmlEntities(str: string): string {
  */
 export function filterRealLocations(locations: string[]): string[] {
     return locations.filter(isRealLocation);
+}
+
+export interface ParsedGreenhouseData {
+    description: string;
+    requiredSkills: string[];
+    allowedDegrees: string[];
+    allowedCourses: string[];
+    experienceMin?: number;
+    experienceMax?: number;
+    incentives?: string;
+    selectionProcess?: string;
+    workplaceType?: 'ONSITE' | 'HYBRID' | 'REMOTE' | null;
 }
 
 /**

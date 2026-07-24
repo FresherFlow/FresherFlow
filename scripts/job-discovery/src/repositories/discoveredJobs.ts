@@ -69,8 +69,18 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
       
       // To do this properly with multiple partial indexes via PostgREST is impossible in a single `upsert`.
       // We will separate the chunk into two groups: those with external_id, and those without.
-      const withExt = chunk.filter(j => j.external_id !== null);
-      const withoutExt = chunk.filter(j => j.external_id === null);
+      // Deduplicate within the batch before upserting to prevent "ON CONFLICT DO UPDATE command cannot affect row a second time"
+      const withExtMap = new Map<string, typeof mappedJobs[0]>();
+      chunk.filter(j => j.external_id !== null).forEach(j => {
+        withExtMap.set(`${j.source}:${j.external_id}`, j);
+      });
+      const withExt = Array.from(withExtMap.values());
+
+      const withoutExtMap = new Map<string, typeof mappedJobs[0]>();
+      chunk.filter(j => j.external_id === null).forEach(j => {
+        withoutExtMap.set(`${j.source}:${j.apply_link}`, j);
+      });
+      const withoutExt = Array.from(withoutExtMap.values());
 
       if (withExt.length > 0) {
         const { error } = await supabase

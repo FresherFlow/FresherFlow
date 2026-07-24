@@ -53,8 +53,21 @@ export class LeverAdapter implements AtsAdapter {
             if (j.openingPlain) descParts.push(j.openingPlain);
             if (j.lists) {
                 for (const list of j.lists) {
-                    if (list.text) descParts.push(list.text);
-                    if (list.content) descParts.push(list.content.replace(/<[^>]+>/g, ' ').trim());
+                    if (list.text) descParts.push(`\n**${list.text.trim()}**\n`);
+                    if (list.content) {
+                        const formattedContent = list.content
+                            .replace(/<li[^>]*>/gi, '\n- ')
+                            .replace(/<\/li>/gi, '')
+                            .replace(/<p[^>]*>/gi, '\n')
+                            .replace(/<\/p>/gi, '')
+                            .replace(/<br\s*\/?>/gi, '\n')
+                            .replace(/<[^>]+>/g, ' ')
+                            .replace(/&nbsp;/gi, ' ')
+                            .replace(/&amp;/gi, '&')
+                            .replace(/\n{3,}/g, '\n\n')
+                            .trim();
+                        descParts.push(formattedContent);
+                    }
                 }
             }
             if (j.additionalPlain) descParts.push(j.additionalPlain);

@@ -4,6 +4,7 @@ import { GoogleGenAI } from '@google/genai';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { S3Client, GetObjectCommand, PutObjectCommand } from '@aws-sdk/client-s3';
 import { setCdnMetadata } from '@fresherflow/parser';
 
 import {
@@ -38,7 +39,7 @@ import {
 } from './src/providers';
 
 import {
-    postJobToApi,
+    saveJobToSupabase,
     resolveCompanyWebsiteAndLogo
 } from './src/api';
 
@@ -50,6 +51,71 @@ async function fileExists(filePath: string): Promise<boolean> {
         return true;
     } catch {
         return false;
+    }
+}
+
+// ─── R2 helpers for processed_urls dedup state ────────────────────────────────
+const R2_PROCESSED_KEY = 'processor/processed_urls.json';
+
+function getR2Client(): S3Client | null {
+    const endpoint = process.env.R2_ENDPOINT;
+    const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+    const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+    if (!endpoint || !accessKeyId || !secretAccessKey) return null;
+    return new S3Client({
+        region: 'auto',
+        endpoint,
+        credentials: { accessKeyId, secretAccessKey },
+    });
+}
+
+async function loadProcessedUrls(localPath: string): Promise<Set<string>> {
+    const r2 = getR2Client();
+    const bucket = process.env.R2_BUCKET_NAME;
+    if (r2 && bucket) {
+        try {
+            const res = await r2.send(new GetObjectCommand({ Bucket: bucket, Key: R2_PROCESSED_KEY }));
+            const str = await res.Body?.transformToString();
+            if (str) {
+                const arr = JSON.parse(str);
+                console.log(`Loaded ${arr.length} processed URLs from R2.`);
+                return new Set(arr);
+            }
+        } catch (e: any) {
+            if (e.name !== 'NoSuchKey') console.warn('[R2] Could not load processed_urls:', e.message);
+        }
+    }
+    // Fallback: local file
+    if (await fileExists(localPath)) {
+        try {
+            const arr = JSON.parse(await fs.readFile(localPath, 'utf8'));
+            if (Array.isArray(arr)) {
+                console.log(`Loaded ${arr.length} processed URLs from local file.`);
+                return new Set(arr);
+            }
+        } catch { /* ignore */ }
+    }
+    return new Set();
+}
+
+async function saveProcessedUrls(urls: Set<string>, localPath: string): Promise<void> {
+    const arr = Array.from(urls);
+    // Always save locally
+    await fs.writeFile(localPath, JSON.stringify(arr, null, 2));
+    // Also persist to R2 if configured
+    const r2 = getR2Client();
+    const bucket = process.env.R2_BUCKET_NAME;
+    if (r2 && bucket) {
+        try {
+            await r2.send(new PutObjectCommand({
+                Bucket: bucket,
+                Key: R2_PROCESSED_KEY,
+                Body: JSON.stringify(arr),
+                ContentType: 'application/json',
+            }));
+        } catch (e: any) {
+            console.warn('[R2] Could not save processed_urls:', e.message);
+        }
     }
 }
 
@@ -126,15 +192,7 @@ async function run(): Promise<void> {
     }
 
     const statePath = path.join(process.cwd(), 'processed_urls.json');
-    let processedUrls = new Set<string>();
-    if (await fileExists(statePath)) {
-        try {
-            const stateData = JSON.parse(await fs.readFile(statePath, 'utf8'));
-            if (Array.isArray(stateData)) processedUrls = new Set(stateData);
-        } catch {
-            console.error('Failed to parse processed_urls.json, starting fresh.');
-        }
-    }
+    const processedUrls = await loadProcessedUrls(statePath);
 
     console.log(`Reading jobs from: ${jobsPath}`);
     const fileContent = await fs.readFile(jobsPath, 'utf8');
@@ -184,7 +242,7 @@ async function run(): Promise<void> {
 
     const saveState = async (url: string) => {
         processedUrls.add(url);
-        await fs.writeFile(statePath, JSON.stringify(Array.from(processedUrls), null, 2));
+        await saveProcessedUrls(processedUrls, statePath);
     };
 
     const successList: { title: string; company: string; url: string }[] = [];
@@ -407,11 +465,11 @@ async function run(): Promise<void> {
 
                 allExtracted.push(extracted);
                 if (ENABLE_API_UPLOAD) {
-                    const apiSuccess = await postJobToApi(extracted, job.aggregatorUrl || job.applyLink, job.applyLink, API_BASE_URL);
+                    const apiSuccess = await saveJobToSupabase(extracted, job.aggregatorUrl || job.applyLink, job.applyLink);
                     if (apiSuccess) {
                         successList.push({ title: extracted.title, company: extracted.company, url: job.applyLink });
                     } else {
-                        failureList.push({ url: job.applyLink, reason: 'API POST submission rejected' });
+                        failureList.push({ url: job.applyLink, reason: 'Supabase insert rejected' });
                     }
                 } else {
                     console.log('Dry-run: skipping API upload.');

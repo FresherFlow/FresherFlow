@@ -93,10 +93,10 @@ export function isLocationIndiaOrRemote(location: string): boolean {
 
     // Fallback basic keywords
     const BASIC_KEYWORDS = [
-        'india', 'remote', 'work from home', 'wfh', 'anywhere', 'home based', 'home-based',
+        /\bindia\b/i, /\bremote\b/i, /\bwork from home\b/i, /\bwfh\b/i, /\banywhere\b/i, /\bhome based\b/i, /\bhome-based\b/i,
     ];
-    for (const kw of BASIC_KEYWORDS) {
-        if (loc.includes(kw)) {
+    for (const regex of BASIC_KEYWORDS) {
+        if (regex.test(loc)) {
             return true;
         }
     }

@@ -1,18 +1,27 @@
 import { AtsAdapter, AtsJob, fetchJson } from './BaseAdapter.js';
 
-// Greenhouse content field is double-HTML-escaped (e.g. &lt;p&gt; not <p>).
-// Unescape once, then strip all tags to get plain text for the scorer.
 function decodeGreenhouseContent(raw: string): string {
-    // First unescape HTML entities (&lt; → <, &gt; → >, &amp; → &, &#39; → ', &quot; → ")
     const unescaped = raw
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
         .replace(/&#39;/g, "'")
         .replace(/&#x27;/g, "'")
-        .replace(/&amp;/g, '&');
-    // Strip HTML tags, collapse whitespace
-    return unescaped.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+        .replace(/&amp;/g, '&')
+        .replace(/&nbsp;/g, ' ');
+
+    return unescaped
+        .replace(/<h[1-6][^>]*>(.*?)<\/h[1-6]>/gi, '\n\n**$1**\n\n')
+        .replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**')
+        .replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**')
+        .replace(/<li[^>]*>/gi, '\n- ')
+        .replace(/<\/li>/gi, '')
+        .replace(/<p[^>]*>/gi, '\n')
+        .replace(/<\/p>/gi, '')
+        .replace(/<br\s*\/?>/gi, '\n')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
 }
 
 interface GreenhouseJob {

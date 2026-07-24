@@ -33,6 +33,20 @@ interface OracleResponse {
     items?: OracleSearchSession[];
 }
 
+/** Clean bloated Oracle titles containing org unit chains separated by pipes */
+function cleanOracleTitle(rawTitle: string): { title: string; extraMeta?: string } {
+    if (!rawTitle) return { title: 'Unknown Title' };
+    
+    if (rawTitle.includes('|')) {
+        const parts = rawTitle.split('|').map(p => p.trim()).filter(Boolean);
+        const cleanTitle = parts[0];
+        const extraMeta = parts.slice(1).join(' • ');
+        return { title: cleanTitle, extraMeta };
+    }
+    
+    return { title: rawTitle.trim() };
+}
+
 /** Derive a human-readable city string from Oracle's workLocation array */
 function resolveCity(req: OracleRequisition): string {
     const locs = [...(req.workLocation ?? []), ...(req.otherWorkLocations ?? [])];
@@ -137,14 +151,22 @@ export class OracleAdapter implements AtsAdapter {
                     if (seen.has(applyLink)) continue;
                     seen.add(applyLink);
 
+                    const { title, extraMeta } = cleanOracleTitle(r.Title);
+                    let finalDescription = r.ShortDescriptionStr || undefined;
+                    if (extraMeta && finalDescription) {
+                        finalDescription = `**Department/Unit:** ${extraMeta}\n\n${finalDescription}`;
+                    } else if (extraMeta && !finalDescription) {
+                        finalDescription = `**Department/Unit:** ${extraMeta}`;
+                    }
+
                     allJobs.push({
                         id: jobId,
-                        title: r.Title,
+                        title,
                         applyLink,
                         company: companyName,
                         location: resolveCity(r),
-                        description: r.ShortDescriptionStr || undefined,
-                        descriptionSource: r.ShortDescriptionStr ? 'API' : 'NONE',
+                        description: finalDescription,
+                        descriptionSource: finalDescription ? 'API' : 'NONE',
                         postedAt: r.PostedDate,
                         department: r.JobFamily,
                         employmentType: r.WorkplaceType,

@@ -43,8 +43,9 @@ export const ATS_PROVIDERS = [
     // Phase 1
     'greenhouse', 'lever', 'workday', 'smartrecruiters', 'myworkdayjobs', 'ashby', 'ashbyhq',
     'oracle', 'icims', 'successfactors',
-    // Phase 2
+    // Phase 2 & 3
     'bamboohr', 'recruitee', 'jobvite', 'teamtailor', 'eightfold', 'darwinbox',
+    'zohorecruit', 'freshteam', 'keka', 'workable'
 ];
 
 export let TARGET_SITES: { name: string; urls: string[] }[] = [];

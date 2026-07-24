@@ -10,22 +10,33 @@ export function signUrl(pathname: string): string {
     return `${CDN_URL}${pathname}?t=${t}&sig=${sig}`;
 }
 
-// Strip query parameters for normalized comparison
+// Strip query parameters and protocols for normalized comparison
 export function normalizeUrl(urlStr: string): string {
     try {
         const url = new URL(urlStr);
         const path = url.pathname.replace(/\/$/, '');
         
-        // Aggressive normalization for Workday URLs
-        if (url.hostname === 'myworkdayjobs.com' || url.hostname.endsWith('.myworkdayjobs.com')) {
-            const parts = path.split('/');
-            const lastPart = parts[parts.length - 1];
-            return `${url.hostname}/${lastPart}`.toLowerCase();
+        let host = url.hostname;
+        if (host.startsWith('www.')) {
+            host = host.slice(4);
         }
         
-        return `${url.origin}${path}`.toLowerCase();
+        // Aggressive normalization for Workday URLs
+        if (host === 'myworkdayjobs.com' || host.endsWith('.myworkdayjobs.com')) {
+            const parts = path.split('/');
+            const lastPart = parts[parts.length - 1];
+            return `${host}/${lastPart}`.toLowerCase();
+        }
+        
+        // Strip origin protocol and www
+        return `${host}${path}`.toLowerCase();
     } catch {
-        return urlStr.split('?')[0].replace(/\/$/, '').toLowerCase();
+        // Fallback for invalid URLs
+        return urlStr.split('?')[0]
+            .replace(/^https?:\/\//i, '')
+            .replace(/^www\./i, '')
+            .replace(/\/$/, '')
+            .toLowerCase();
     }
 }
 

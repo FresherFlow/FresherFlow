@@ -1,4 +1,5 @@
 import { ExtractedJob } from './normalizer';
+import { createClient } from '@supabase/supabase-js';
 
 export function resolveCompanyWebsiteAndLogo(
     company: string,
@@ -57,75 +58,80 @@ export function resolveCompanyWebsiteAndLogo(
     return { website, logoUrl };
 }
 
-// POST parsed job to FresherFlow API
-export async function postJobToApi(
+// POST parsed job to Supabase ProcessedJobs table
+export async function saveJobToSupabase(
     job: ExtractedJob,
     sourceLink: string,
-    applyLink: string,
-    apiBaseUrl: string
+    applyLink: string
 ): Promise<boolean> {
-    const url = `${apiBaseUrl}/api/opportunities/submit`;
-
-    const { website, logoUrl } = resolveCompanyWebsiteAndLogo(job.company, applyLink, job.companyWebsite);
-
-    // Clean applicationDetails — only keep non-empty fields
-    let cleanedAppDetails: Record<string, unknown> | null = null;
-    if (job.applicationDetails && typeof job.applicationDetails === 'object') {
-        const ad = job.applicationDetails;
-        cleanedAppDetails = { method: ad.method || 'DIRECT' };
-        if (ad.platform) cleanedAppDetails.platform = ad.platform;
-        if (ad.estimatedMinutes) cleanedAppDetails.estimatedMinutes = ad.estimatedMinutes;
-        if (ad.requiredItems && ad.requiredItems.length > 0) cleanedAppDetails.requiredItems = ad.requiredItems;
+    const supabaseUrl = process.env.SUPABASE_DISCOVERY_DATABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    
+    if (!supabaseUrl || !supabaseKey) {
+        console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY");
+        return false;
     }
 
+    // Need a clean base URL, assuming SUPABASE_DISCOVERY_DATABASE_URL might be a connection string
+    // If it's a postgres:// connection string, we should probably rely on a direct Supabase REST API URL
+    // Actually, createClient expects the REST API URL (e.g. https://xxx.supabase.co) and the Anon/Service key.
+    // Let's assume SUPABASE_URL is the REST URL.
+    const restUrl = process.env.SUPABASE_URL || process.env.SUPABASE_DISCOVERY_URL;
+    
+    if (!restUrl) {
+         console.error("Missing SUPABASE_URL (needs REST API endpoint)");
+         return false;
+    }
+
+    const supabase = createClient(restUrl, supabaseKey);
+    const { website, logoUrl } = resolveCompanyWebsiteAndLogo(job.company, applyLink, job.companyWebsite);
+
     const payload = {
-        ...job,
-        status: job.status,
-        companyWebsite: website || job.companyWebsite || null,
-        companyLogoUrl: logoUrl || null,
-        sourceLink: null,
-        applyLink,
-        applicationDetails: cleanedAppDetails
+        type: job.type,
+        title: job.title,
+        company: job.company,
+        company_website: website || job.companyWebsite || null,
+        company_logo_url: logoUrl || null,
+        description: job.description,
+        allowed_degrees: job.allowedDegrees,
+        allowed_courses: job.allowedCourses,
+        allowed_specializations: job.allowedSpecializations,
+        allowed_passout_years: job.allowedPassoutYears,
+        required_skills: job.requiredSkills,
+        locations: job.locations,
+        structured_locations: job.structuredLocations,
+        work_mode: job.workMode,
+        experience_min: job.experienceMin,
+        experience_max: job.experienceMax,
+        salary_range: job.salaryRange,
+        salary_amount: job.salaryAmount,
+        salary_period: job.salaryPeriod,
+        employment_type: job.employmentType,
+        job_function: job.jobFunction,
+        incentives: job.incentives,
+        selection_process: job.selectionProcess,
+        notes_highlights: job.notesHighlights,
+        apply_link: applyLink,
+        custom_slug: job.customSlug,
+        application_details: job.applicationDetails,
+        walk_in_details: job.walkInDetails || null,
+        status: 'PENDING_REVIEW'
     };
 
     try {
-        console.log(`POSTing to backend API: ${url}`);
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': process.env.INTERNAL_API_SECRET ?? '',
-            },
-            body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) {
-            let errorMessage = res.statusText;
-            try {
-                const body = await res.json() as Record<string, unknown>;
-                if (body && typeof body.message === 'string') {
-                    errorMessage = body.message;
-                }
-            } catch {
-                // Ignore parsing errors
-            }
-            console.error(`API response failed (${res.status}):`, errorMessage);
+        console.log(`Saving to Supabase: ${job.title} @ ${job.company}`);
+        const { error } = await supabase
+            .from('processed_jobs')
+            .insert(payload);
+            
+        if (error) {
+            console.error("Supabase insert error:", error.message);
             return false;
         }
-
-        let successMessage = "Submitted successfully";
-        try {
-            const data = await res.json() as Record<string, unknown>;
-            if (data && typeof data.message === 'string') {
-                successMessage = data.message;
-            }
-        } catch {
-            // Ignore parsing errors
-        }
-        console.log(`API response success:`, successMessage);
+        console.log(`Saved to Supabase successfully`);
         return true;
     } catch (err) {
-        console.error(`Failed to POST job to API:`, (err as Error).message);
+        console.error(`Failed to save job to Supabase:`, (err as Error).message);
         return false;
     }
 }

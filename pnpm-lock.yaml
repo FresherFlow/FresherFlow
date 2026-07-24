@@ -1436,6 +1436,12 @@ importers:
 
   scripts/job-discovery:
     dependencies:
+      '@fresherflow/parser':
+        specifier: workspace:*
+        version: link:../../packages/parser
+      '@fresherflow/types':
+        specifier: workspace:*
+        version: link:../../packages/types
       '@supabase/supabase-js':
         specifier: ^2.110.7
         version: 2.110.7
@@ -1458,6 +1464,9 @@ importers:
 
   scripts/job-processor:
     dependencies:
+      '@aws-sdk/client-s3':
+        specifier: ^3.600.0
+        version: 3.1053.0
       '@fresherflow/constants':
         specifier: workspace:*
         version: link:../../packages/constants
@@ -1467,6 +1476,9 @@ importers:
       '@google/genai':
         specifier: ^2.10.0
         version: 2.10.0
+      '@supabase/supabase-js':
+        specifier: ^2.110.7
+        version: 2.110.7
       playwright:
         specifier: ^1.44.0
         version: 1.60.0

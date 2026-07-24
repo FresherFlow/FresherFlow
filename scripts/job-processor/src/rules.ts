@@ -68,23 +68,36 @@ function extractBatches(text: string): number[] {
     return Array.from(new Set(batches)).sort();
 }
 
-// Parse experience range from description text (e.g. "0-2 years", "0 to 1 year")
+// Parse experience range from description text
+// Covers: "0-2 years", "2 to 4 years", "2+ years", "minimum 2 years", "at least 3 years", "fresher"
 function extractExperienceFromText(text: string): { min: number; max: number } | null {
-    // "0-2 years", "0 to 2 years experience"
-    const rangeMatch = text.match(/\b(\d+)\s*[-–to]+\s*(\d+)\s*(?:year|yr)/i);
+    // "0-2 years", "0 to 2 years", "1–3 years"
+    const rangeMatch = text.match(/\b(\d+)\s*(?:-|–|to)\s*(\d+)\s*(?:\+\s*)?(?:year|yr)/i);
     if (rangeMatch) {
         const min = parseInt(rangeMatch[1], 10);
         const max = parseInt(rangeMatch[2], 10);
-        if (max <= 10) return { min, max };
+        if (max <= 15) return { min, max };
     }
-    // "0 years", "1 year experience"
+    // "2+ years", "3+ years of experience"
+    const plusMatch = text.match(/\b(\d+)\s*\+\s*(?:year|yr)/i);
+    if (plusMatch) {
+        const min = parseInt(plusMatch[1], 10);
+        if (min <= 10) return { min, max: min + 2 };
+    }
+    // "minimum 2 years", "at least 3 years", "minimum of 1 year"
+    const minMatch = text.match(/(?:minimum|at\s+least|min\.?)\s*(?:of\s+)?(\d+)\s*(?:year|yr)/i);
+    if (minMatch) {
+        const min = parseInt(minMatch[1], 10);
+        if (min <= 10) return { min, max: min + 2 };
+    }
+    // "1 year of experience", "2 years experience"
     const singleMatch = text.match(/\b(\d+)\s*(?:year|yr)s?\s*(?:of\s+)?(?:experience|exp)/i);
     if (singleMatch) {
         const val = parseInt(singleMatch[1], 10);
-        if (val <= 5) return { min: val, max: val };
+        if (val <= 10) return { min: val, max: val };
     }
-    // "Freshers" or "No experience required"
-    if (/\bno experience\b|\b0[\s-]+experience\b|\bfreshers?\s+(?:can|may|are)\b/i.test(text)) {
+    // "Freshers", "No experience required", "0 years"
+    if (/\bno experience\b|\b0[\s-]+experience\b|\bfreshers?\s+(?:can|may|are|eligible)\b|\bfresh graduate/i.test(text)) {
         return { min: 0, max: 0 };
     }
     return null;

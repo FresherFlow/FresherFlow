@@ -7,13 +7,8 @@ import { SmartRecruitersAdapter } from './SmartRecruitersAdapter.js';
 import { OracleAdapter } from './OracleAdapter.js';
 import { ICimsAdapter } from './ICimsAdapter.js';
 import { SuccessFactorsAdapter } from './SuccessFactorsAdapter.js';
-import { BambooHRAdapter } from './BambooHRAdapter.js';
 import { RecruiteeAdapter } from './RecruiteeAdapter.js';
-import { JobviteAdapter } from './JobviteAdapter.js';
-import { TeamtailorAdapter } from './TeamtailorAdapter.js';
-import { EightfoldAdapter } from './EightfoldAdapter.js';
-import { DarwinBoxAdapter } from './DarwinBoxAdapter.js';
-import { SkillCareerHubAdapter } from './SkillCareerHubAdapter.js';
+import { WorkableAdapter } from './WorkableAdapter.js';
 import { isPotentialFresherJob, isLocationIndiaOrRemote } from '../filters/ats-filters.js';
 import { scoreJobDescription } from '../filters/scorer.js';
 import type { RunStats } from '../pipeline/state.js';
@@ -21,7 +16,6 @@ import { normalizeUrl } from '../utils/url.js';
 
 export interface AtsRegistry {
     [key: string]: Record<string, string> | undefined;
-    // Phase 1
     greenhouse?: Record<string, string>;
     lever?: Record<string, string>;
     workday?: Record<string, string>;
@@ -31,13 +25,8 @@ export interface AtsRegistry {
     oracle?: Record<string, string>;
     icims?: Record<string, string>;
     successfactors?: Record<string, string>;
-    // Phase 2
-    bamboohr?: Record<string, string>;
     recruitee?: Record<string, string>;
-    jobvite?: Record<string, string>;
-    teamtailor?: Record<string, string>;
-    eightfold?: Record<string, string>;
-    darwinbox?: Record<string, string>;
+    workable?: Record<string, string>;
 }
 
 // ─── Simple concurrency limiter ───────────────────────────────────────────────
@@ -94,7 +83,6 @@ async function runProvider(
         for (const job of fresherJobs) {
             const normalizedLink = normalizeUrl(job.applyLink);
             if (knownLinks.has(normalizedLink) || visitedSet.has(normalizedLink)) {
-                // Skip already known jobs early to avoid details fetch and NLP scoring
                 continue;
             }
 
@@ -132,7 +120,6 @@ async function runProvider(
 
     await withConcurrency(tasks, companyConcurrency);
 
-    // Write per-provider stats
     stats.ats_raw[name] = totalRaw;
     stats.ats_passed_filter[name] = totalPassedFilter;
     stats.ats_passed_scorer[name] = totalPassedScorer;
@@ -157,23 +144,16 @@ export async function runAtsDiscovery(
         delay: number;
         companyConcurrency: number;
     }> = [
-        // ── Phase 1 ──────────────────────────────────────────────────────────
-        { name: 'Greenhouse',       adapter: new GreenhouseAdapter(),      data: registry.greenhouse,     delay: 800,  companyConcurrency: 4 },
-        { name: 'Lever',            adapter: new LeverAdapter(),           data: registry.lever,          delay: 800,  companyConcurrency: 4 },
-        { name: 'Workday',          adapter: new WorkdayAdapter(),         data: registry.workday,        delay: 2000, companyConcurrency: 5 },
-        { name: 'Ashby',            adapter: new AshbyAdapter(),           data: registry.ashby ?? registry.ashbyhq, delay: 800, companyConcurrency: 4 },
-        { name: 'SmartRecruiters',  adapter: new SmartRecruitersAdapter(), data: registry.smartrecruiters, delay: 800, companyConcurrency: 4 },
-        { name: 'Oracle',           adapter: new OracleAdapter(),          data: registry.oracle,         delay: 1000, companyConcurrency: 4 },
-        { name: 'iCIMS',            adapter: new ICimsAdapter(),           data: registry.icims,          delay: 1000, companyConcurrency: 4 },
-        { name: 'SuccessFactors',   adapter: new SuccessFactorsAdapter(),  data: registry.successfactors, delay: 1500, companyConcurrency: 4 },
-        // ── Phase 2 ──────────────────────────────────────────────────────────
-        { name: 'BambooHR',         adapter: new BambooHRAdapter(),        data: registry.bamboohr,       delay: 800,  companyConcurrency: 4 },
-        { name: 'Recruitee',        adapter: new RecruiteeAdapter(),       data: registry.recruitee,      delay: 800,  companyConcurrency: 4 },
-        { name: 'Jobvite',          adapter: new JobviteAdapter(),         data: registry.jobvite,        delay: 800,  companyConcurrency: 4 },
-        { name: 'Teamtailor',       adapter: new TeamtailorAdapter(),      data: registry.teamtailor,     delay: 800,  companyConcurrency: 4 },
-        { name: 'Eightfold',        adapter: new EightfoldAdapter(),       data: registry.eightfold,      delay: 1000, companyConcurrency: 3 },
-        { name: 'DarwinBox',        adapter: new DarwinBoxAdapter(),       data: registry.darwinbox,      delay: 1000, companyConcurrency: 3 },
-        { name: 'SkillCareerHub',   adapter: new SkillCareerHubAdapter(),  data: { 'dummy': 'SkillCareerHub' }, delay: 1000, companyConcurrency: 1 },
+        { name: 'Greenhouse',      adapter: new GreenhouseAdapter(),      data: registry.greenhouse,                        delay: 800,  companyConcurrency: 4 },
+        { name: 'Lever',           adapter: new LeverAdapter(),           data: registry.lever,                             delay: 800,  companyConcurrency: 4 },
+        { name: 'Workday',         adapter: new WorkdayAdapter(),         data: registry.workday,                           delay: 2000, companyConcurrency: 5 },
+        { name: 'Ashby',           adapter: new AshbyAdapter(),           data: registry.ashby ?? registry.ashbyhq,         delay: 800,  companyConcurrency: 4 },
+        { name: 'SmartRecruiters', adapter: new SmartRecruitersAdapter(), data: registry.smartrecruiters,                   delay: 800,  companyConcurrency: 4 },
+        { name: 'Oracle',          adapter: new OracleAdapter(),          data: registry.oracle,                            delay: 1000, companyConcurrency: 4 },
+        { name: 'iCIMS',           adapter: new ICimsAdapter(),           data: registry.icims,                             delay: 1000, companyConcurrency: 4 },
+        { name: 'SuccessFactors',  adapter: new SuccessFactorsAdapter(),  data: registry.successfactors,                    delay: 1500, companyConcurrency: 4 },
+        { name: 'Recruitee',       adapter: new RecruiteeAdapter(),       data: registry.recruitee,                         delay: 800,  companyConcurrency: 4 },
+        { name: 'Workable',        adapter: new WorkableAdapter(),        data: registry.workable,                          delay: 1000, companyConcurrency: 3 },
     ];
 
     const providerFilter = process.env.ATS_PROVIDER?.toLowerCase().trim();
@@ -187,7 +167,6 @@ export async function runAtsDiscovery(
         console.log(`--- Running SINGLE provider: ${providerFilter} ---`);
     }
 
-    // Run ALL providers in parallel — pass stats so each provider records its own counts
     const providerResults = await Promise.all(
         activeAdapters.map(({ name, adapter, data, delay, companyConcurrency }) =>
             runProvider(name, adapter, data!, delay, companyConcurrency, stats, knownLinks, visitedSet)

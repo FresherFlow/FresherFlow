@@ -21,6 +21,12 @@ export interface AtsJob {
     postedAt?: string;             // ISO date string
     department?: string;
     employmentType?: string;
+    batchYear?: string;
+    degree?: string;
+    experienceLevel?: string;
+    experienceYears?: number;
+    skills?: string[];
+    rawPayload?: unknown;
     source: string;                // e.g. 'ATS_GREENHOUSE', 'ATS_LEVER'
     sourceType: 'ATS';
     boardToken?: string;

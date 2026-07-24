@@ -89,4 +89,40 @@ export class SmartRecruitersAdapter implements AtsAdapter {
 
         return allJobs;
     }
+
+    async fetchJobDetails(job: AtsJob): Promise<string | undefined> {
+        if (!job.id) return undefined;
+        const parts = job.applyLink.split('/');
+        const companyId = parts[3]; // https://jobs.smartrecruiters.com/companyId/jobId
+        if (!companyId) return undefined;
+
+        const url = `https://api.smartrecruiters.com/v1/companies/${companyId}/postings/${job.id}`;
+        const data = await fetchJson<any>(url, {}, 'SmartRecruiters Details');
+        if (!data?.jobAd?.sections) return undefined;
+
+        const sections = data.jobAd.sections;
+        const descParts: string[] = [];
+
+        for (const key of Object.keys(sections)) {
+            const sec = sections[key];
+            if (sec?.title && sec?.text) {
+                descParts.push(`\n**${sec.title.trim()}**\n`);
+                const formatted = sec.text
+                    .replace(/<li[^>]*>/gi, '\n- ')
+                    .replace(/<\/li>/gi, '')
+                    .replace(/<p[^>]*>/gi, '\n')
+                    .replace(/<\/p>/gi, '')
+                    .replace(/<br\s*\/?>/gi, '\n')
+                    .replace(/<[^>]+>/g, ' ')
+                    .replace(/&nbsp;/gi, ' ')
+                    .replace(/&#xa0;/gi, ' ')
+                    .replace(/&amp;/gi, '&')
+                    .replace(/\n{3,}/g, '\n\n')
+                    .trim();
+                descParts.push(formatted);
+            }
+        }
+
+        return descParts.join('\n').trim();
+    }
 }

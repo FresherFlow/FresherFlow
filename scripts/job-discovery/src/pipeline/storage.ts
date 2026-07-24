@@ -8,6 +8,7 @@ import { saveVisited, saveRejectedReasons } from '../utils/storage.js';
 import { parseJobUrl } from '../core/url-parser.js';
 import { withConcurrency } from '../ats/index.js';
 import { upsertJobs } from '../repositories/discoveredJobs.js';
+import { enrichJobPayload } from '../core/job-enricher.js';
 
 export async function persistLocalData(state: DiscoveryState) {
     // Save local state files
@@ -15,8 +16,24 @@ export async function persistLocalData(state: DiscoveryState) {
     await saveVisited(state.visited);
     await saveRejectedReasons(state.rejectedReasons);
 
-    const validJobs = state.newJobsFound.filter(j => !j.reviewRequired);
+    const validRawJobs = state.newJobsFound.filter(j => !j.reviewRequired);
     const reviewJobs = state.newJobsFound.filter(j => j.reviewRequired);
+
+    // Map all valid jobs through the templates.md enricher engine
+    console.log(`\n--- Formatting ${validRawJobs.length} passed jobs into templates.md structure ---`);
+    const validJobs = await Promise.all(validRawJobs.map(async job => {
+        const enriched = await enrichJobPayload({
+            title: job.title,
+            company: job.company || 'Company',
+            description: job.atsText || job.title,
+            applyLink: job.applyLink,
+            location: (job as any).location
+        });
+        return {
+            ...job,
+            payload: enriched
+        };
+    }));
 
     // Save ATS jobs to discovered_jobs.json
     const draftJobs = validJobs.filter(j => j.sourceType === 'ATS');

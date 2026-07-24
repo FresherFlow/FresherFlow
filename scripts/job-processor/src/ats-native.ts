@@ -11,6 +11,58 @@
 import { Page } from 'playwright';
 
 import { parseGreenhouseHtml, filterRealLocations } from './parsers/greenhouse-parser.js';
+import { CANONICAL_CITIES_MAP } from './metadata.js';
+
+/**
+ * Normalizes raw ATS location strings to canonical city names.
+ * e.g. "Bengaluru-VTP" → "Bangalore", "bengaluru" → "Bangalore", "India" → removed
+ * Falls back to the original string if no match.
+ */
+function normalizeLocations(rawLocations: string[]): string[] {
+    const result: string[] = [];
+    const seen = new Set<string>();
+
+    // Words that are countries/generic and not useful as city names
+    const SKIP_TOKENS = new Set(['india', 'remote', 'pan india', 'multiple locations', 'various locations', 'anywhere']);
+
+    for (const raw of rawLocations) {
+        if (!raw || raw.trim().length < 2) continue;
+        const lower = raw.trim().toLowerCase();
+        if (SKIP_TOKENS.has(lower)) continue;
+
+        // Try exact match first
+        if (CANONICAL_CITIES_MAP.has(lower)) {
+            const canonical = CANONICAL_CITIES_MAP.get(lower)!;
+            if (!seen.has(canonical)) { seen.add(canonical); result.push(canonical); }
+            continue;
+        }
+
+        // Try matching against first token (e.g. "Bengaluru-VTP" → "bengaluru")
+        const firstToken = lower.split(/[-,\s]+/)[0];
+        if (firstToken && CANONICAL_CITIES_MAP.has(firstToken)) {
+            const canonical = CANONICAL_CITIES_MAP.get(firstToken)!;
+            if (!seen.has(canonical)) { seen.add(canonical); result.push(canonical); }
+            continue;
+        }
+
+        // Try partial match — if any canonical city key appears in the raw string
+        let matched = false;
+        for (const [key, canonical] of CANONICAL_CITIES_MAP.entries()) {
+            if (lower.includes(key)) {
+                if (!seen.has(canonical)) { seen.add(canonical); result.push(canonical); }
+                matched = true;
+                break;
+            }
+        }
+
+        // Keep as-is if no canonical match found (don't drop data)
+        if (!matched) {
+            const cleaned = raw.trim();
+            if (!seen.has(cleaned)) { seen.add(cleaned); result.push(cleaned); }
+        }
+    }
+    return result;
+}
 
 export interface NativeAtsData {
     title: string;
@@ -67,6 +119,91 @@ function stripHtml(html: string): string {
     return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
+/**
+ * Cleans up description text:
+ * - Collapses lines that are only whitespace/asterisks
+ * - Collapses 3+ consecutive newlines to 2
+ * - Removes trailing spaces on each line
+ * - Ensures bullet points start with '- ' not '\n- '
+ */
+function cleanDescription(text: string): string {
+    return text
+        .split('\n')
+        .map(line => line.trimEnd())
+        // Remove lines that are ONLY whitespace or only asterisks/spaces
+        .filter((line, i, arr) => {
+            if (/^[\s*]+$/.test(line) && line.trim().length === 0) {
+                // Keep at most one blank line between content
+                const prev = arr[i - 1] ?? 'X';
+                return prev.trim().length > 0;
+            }
+            return true;
+        })
+        .join('\n')
+        // Collapse 3+ consecutive newlines to exactly 2
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
+/**
+ * Builds a structured, template-compliant description from Lever's API response.
+ * Lever gives us: descriptionPlain (role intro) + lists[] (sections with headings + bullet items)
+ * Output format: matches docs/data/templates.md
+ *   **Section Heading**\n- bullet 1\n- bullet 2\n\n**Next Section**\n...
+ */
+function buildLeverDescription(data: any): string {
+    const parts: string[] = [];
+
+    // Role intro (descriptionPlain is plain text — keep as-is, cleaned)
+    const intro = (data.descriptionPlain || '').trim();
+    if (intro) parts.push(intro);
+
+    // Each list becomes a section: **heading** + bullet items
+    for (const list of (data.lists || [])) {
+        const heading = (list.text || '').trim();
+        const contentHtml = list.content || '';
+        if (!contentHtml && !heading) continue;
+
+        // Extract <li> items from the content HTML
+        const items: string[] = [];
+        const liPattern = /<li[^>]*>([\s\S]*?)<\/li>/gi;
+        let m: RegExpExecArray | null;
+        while ((m = liPattern.exec(contentHtml)) !== null) {
+            const itemText = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            if (itemText) items.push(`- ${itemText}`);
+        }
+
+        // If no <li> items, fall back to stripping all HTML
+        if (items.length === 0) {
+            const fallback = stripHtml(contentHtml);
+            if (fallback) items.push(fallback);
+        }
+
+        if (items.length === 0 && !heading) continue;
+
+        // Map common Lever section headings to canonical template headings
+        let canonicalHeading = heading;
+        if (/what you.ll\s+(do|own|build|work|drive|manage)/i.test(heading) || /responsibilities|your role/i.test(heading)) {
+            canonicalHeading = 'Responsibilities';
+        } else if (/what we.re looking for|requirements|qualifications|who you are|must.have/i.test(heading)) {
+            canonicalHeading = 'Requirements';
+        } else if (/nice.to.have|preferred|bonus/i.test(heading)) {
+            canonicalHeading = 'Preferred';
+        } else if (/benefits|perks|what we offer|compensation/i.test(heading)) {
+            canonicalHeading = 'Benefits';
+        } else if (/about (the company|us)|who (we are|are we)/i.test(heading)) {
+            // Skip company boilerplate sections
+            continue;
+        }
+
+        const sectionLines = [`**${canonicalHeading}**`];
+        if (items.length > 0) sectionLines.push(...items);
+        parts.push(sectionLines.join('\n'));
+    }
+
+    return cleanDescription(parts.join('\n\n'));
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 1. LEVER — Public JSON API
 // URL: jobs.lever.co/{company}/{jobId}
@@ -97,14 +234,16 @@ async function extractLever(urlObj: URL): Promise<NativeAtsData | null> {
     else if (wt === 'hybrid') wpType = 'HYBRID';
     else if (wt === 'onsite' || wt === 'on-site') wpType = 'ONSITE';
 
+    const desc = buildLeverDescription(data);
+
     return {
         ...EMPTY,
         title: data.text,
         company: '',
-        html,
-        text: stripHtml(html),
+        html: data.descriptionBody || '',
+        text: desc,
         nativeSkills: Array.isArray(data.tags) ? data.tags : [],
-        locations,
+        locations: normalizeLocations(locations),
         workplaceType: wpType,
         department: data.categories?.department || '',
         employmentType: data.categories?.commitment || '',
@@ -138,7 +277,7 @@ async function extractGreenhouse(urlObj: URL, companySlug?: string): Promise<Nat
     for (const off of (data.offices || [])) {
         if (off.name) rawLocations.push(off.name);
     }
-    const locations = filterRealLocations(rawLocations);
+    const locations = normalizeLocations(filterRealLocations(rawLocations));
 
     let experienceLevel = '';
     for (const m of (data.metadata || [])) {
@@ -206,7 +345,7 @@ async function extractAshby(urlObj: URL): Promise<NativeAtsData | null> {
         title: posting.title,
         html: posting.descriptionHtml || '',
         text: stripHtml(posting.descriptionHtml || ''),
-        locations,
+        locations: normalizeLocations(locations),
         workplaceType: posting.isRemote ? 'REMOTE' : null,
         department: posting.department || '',
         employmentType: posting.employmentType || '',
@@ -252,7 +391,7 @@ async function extractSmartRecruiters(urlObj: URL): Promise<NativeAtsData | null
         company: data.company?.name || '',
         html,
         text: stripHtml(html),
-        locations,
+        locations: normalizeLocations(locations),
         workplaceType: wpType,
         department: data.department?.label || '',
         employmentType: data.typeOfEmployment?.label || '',
