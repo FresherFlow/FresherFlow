@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
@@ -94,9 +94,18 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function LocationPage({ params }: Props) {
     const { city } = await params;
-    const locInfo = VALID_LOCATIONS[city as keyof typeof VALID_LOCATIONS] || {
-        label: city.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-        aliases: [city.replace(/-/g, ' ').toLowerCase(), city.toLowerCase()]
+    
+    // Ensure canonical lowercased slug
+    const decodedCity = decodeURIComponent(city);
+    const properSlug = slugify(decodedCity);
+    
+    if (city !== properSlug) {
+        permanentRedirect(`/location/${properSlug}`);
+    }
+
+    const locInfo = VALID_LOCATIONS[properSlug as keyof typeof VALID_LOCATIONS] || {
+        label: decodedCity.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        aliases: [decodedCity.replace(/-/g, ' ').toLowerCase(), decodedCity.toLowerCase()]
     };
 
     const feed = await fetchBootstrapFeed(false, undefined, true);

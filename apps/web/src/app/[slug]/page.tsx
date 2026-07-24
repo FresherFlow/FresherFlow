@@ -115,6 +115,8 @@ export default async function OpportunityDetailPage({ params }: Props) {
         // soft-404 the page (200 with error UI = Soft 404 in GSC).
         if (!opportunityData) {
             logRouteResult('/[slug]', '404');
+            const { unstable_noStore } = await import('next/cache');
+            unstable_noStore();
             notFound();
         }
 

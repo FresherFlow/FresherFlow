@@ -5,13 +5,10 @@ import type { Opportunity } from '@fresherflow/types';
 
 interface HeroSectionProps {
     liveCount: number;
-    opportunities: Opportunity[];
+    companiesCount: number;
 }
 
-export function HeroSection({ liveCount, opportunities }: HeroSectionProps) {
-    const companiesCount = opportunities.length > 0
-        ? new Set(opportunities.map(o => o.company).filter(Boolean)).size
-        : 166;
+export function HeroSection({ liveCount, companiesCount }: HeroSectionProps) {
 
     return (
         <section className="relative min-h-[calc(100vh-3.75rem)] md:min-h-[calc(100vh-4.75rem)] flex items-center justify-center pt-10 pb-14 md:py-20 px-6">

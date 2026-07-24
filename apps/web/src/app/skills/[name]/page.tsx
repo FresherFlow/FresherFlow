@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
@@ -105,11 +105,20 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function SkillPage({ params }: Props) {
     const { name: rawName } = await params;
-    const slug = slugify(decodeURIComponent(rawName));
-
-    if (!slug) {
+    
+    // Ensure canonical lowercased slug
+    const decodedName = decodeURIComponent(rawName);
+    const properSlug = slugify(decodedName);
+    
+    if (!properSlug) {
         notFound();
     }
+    
+    if (rawName !== properSlug) {
+        permanentRedirect(`/skills/${properSlug}`);
+    }
+    
+    const slug = properSlug;
 
     const label = formatSkillLabel(slug);
     const feed = await fetchBootstrapFeed(false, undefined, true);

@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { fetchBootstrapFeed } from '@/lib/api/cdnFeed';
 import ProgrammaticHub from '@/features/opportunities/components/ProgrammaticHub';
 import { SITE_URL, CDN_URL } from '@/lib/utils/runtimeConfig';
@@ -88,7 +88,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function RolePage({ params }: Props) {
-    const { slug } = await params;
+    const { slug: rawSlug } = await params;
+    
+    // Ensure canonical lowercased slug
+    const decodedSlug = decodeURIComponent(rawSlug);
+    const properSlug = slugify(decodedSlug);
+    
+    if (!properSlug) {
+        notFound();
+    }
+    
+    if (rawSlug !== properSlug) {
+        permanentRedirect(`/roles/${properSlug}`);
+    }
+    
+    const slug = properSlug;
+    
     let roleInfo = VALID_ROLES[slug as keyof typeof VALID_ROLES];
 
     if (!roleInfo) {

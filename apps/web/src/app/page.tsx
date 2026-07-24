@@ -49,7 +49,9 @@ export default async function LandingPage() {
     // Race data fetching against a 500ms timeout so a slow CDN never
     // causes a "circling" hang — we render with defaults instead.
     let liveCount = 207;
-    let opportunities: Opportunity[] = [];
+    let companiesCount = 166;
+    let recentOps: Opportunity[] = [];
+    let govtOps: Opportunity[] = [];
 
     try {
         const dataPromise = fetchBootstrapFeed();
@@ -62,8 +64,18 @@ export default async function LandingPage() {
 
         const resolvedFeed = await Promise.race([dataPromise, timeoutPromise]);
         if (resolvedFeed) {
-            opportunities = resolvedFeed.opportunities || [];
-            liveCount = resolvedFeed.count || opportunities.length || 207;
+            const rawOps = resolvedFeed.opportunities || [];
+            liveCount = resolvedFeed.count || rawOps.length || 207;
+            companiesCount = rawOps.length > 0
+                ? new Set(rawOps.map((o: Opportunity) => o.company).filter(Boolean)).size
+                : 166;
+            
+            recentOps = rawOps
+                .filter((o: Opportunity) => !o.governmentJobDetails && String(o.type) !== 'GOVERNMENT')
+                .slice(0, 4);
+                
+            govtOps = rawOps
+                .filter((o: Opportunity) => String(o.type) === 'GOVERNMENT');
         }
     } catch (err) {
         console.error('[Landing] Critical data resolution failure:', err);
@@ -89,14 +101,12 @@ export default async function LandingPage() {
             />
             <div className="min-h-screen bg-background flex flex-col selection:bg-primary/20 relative overflow-hidden">
                 <main className="flex-1 flex flex-col relative z-10">
-                    <HeroSection liveCount={liveCount} opportunities={opportunities} />
+                    <HeroSection liveCount={liveCount} companiesCount={companiesCount} />
 
-
-
-                    <RecentOpportunities opportunities={opportunities} />
+                    <RecentOpportunities opportunities={recentOps} />
                     <CorporateCollections />
                     <ExamCategories />
-                    <GovtNoticeBoard opportunities={opportunities} />
+                    <GovtNoticeBoard opportunities={govtOps} />
                     <FinalCTA />
                 </main>
             </div>

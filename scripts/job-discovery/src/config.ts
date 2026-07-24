@@ -83,7 +83,9 @@ export const EXPIRED_REGEXES = [
     /this job listing has been (removed|deactivated|expired)/i,
     /application period has ended/i,
     /applications are no longer being accepted/i,
-    /the url you have provided is invalid/i
+    /the url you have provided is invalid/i,
+    /an error has occurred\s*page not found/i,
+    /we are sorry this job post no longer exists/i
 ];
 
 // Phrases indicating it's a fresher job

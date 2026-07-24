@@ -80,29 +80,43 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
     const rawSlug = decodeURIComponent(rawSlugParam);
     const properSlug = slugify(rawSlug);
 
-    if (rawSlug !== properSlug) {
-        logRouteResult('/companies/[slug]', '308');
-        permanentRedirect(`/companies/${properSlug}`);
-    }
-
     const companyDirectory = await fetchCompaniesMetadata(true);
+    let targetSlug = properSlug;
+
     if (companyDirectory && companyDirectory.length > 0) {
-        const knownSlugs = new Set(
-            companyDirectory
-                .map(c => c.slug || slugify(c.name || ''))
-                .filter(Boolean)
-        );
-        if (!knownSlugs.has(properSlug)) {
-            logRouteResult('/companies/[slug]', '404');
-            notFound();
+        // 1. Check direct match by c.slug
+        let matched = companyDirectory.find(c => c && c.slug === properSlug);
+
+        // 2. Check match by slugifying c.name
+        if (!matched) {
+            matched = companyDirectory.find(c => c && c.name && slugify(c.name) === properSlug);
+        }
+
+        if (matched) {
+            const canonicalSlug = matched.slug || slugify(matched.name || '');
+            if (canonicalSlug && canonicalSlug !== properSlug) {
+                logRouteResult('/companies/[slug]', '308');
+                permanentRedirect(`/companies/${canonicalSlug}`);
+            }
+            targetSlug = canonicalSlug;
+        } else {
+            const knownSlugs = new Set(
+                companyDirectory
+                    .map(c => c.slug || slugify(c.name || ''))
+                    .filter(Boolean)
+            );
+            if (!knownSlugs.has(properSlug)) {
+                logRouteResult('/companies/[slug]', '404');
+                notFound();
+            }
         }
     }
 
-    const feed = await fetchCompanyShard(properSlug, undefined, true);
+    const feed = await fetchCompanyShard(targetSlug, undefined, true);
     const companyJobs = feed?.opportunities || [];
 
     const companyName = (feed as any)?.company || companyJobs[0]?.company ||
-        properSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        targetSlug.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
     const allSkills = Array.from(new Set(companyJobs.flatMap(j => j.requiredSkills || []))).filter(Boolean);
     const allLocations = Array.from(new Set(companyJobs.flatMap(j => j.locations || []))).filter(Boolean);
@@ -114,7 +128,7 @@ export default async function CompanyProfilePage({ params }: { params: Promise<{
         roles: Array.from(new Set(companyJobs.map(j => j.jobFunction || j.title))).filter(Boolean),
     };
 
-    const companyDescriptionHtml = getCompanyDescription(properSlug, companyName, stats);
+    const companyDescriptionHtml = getCompanyDescription(targetSlug, companyName, stats);
 
     // ── Empty state ───────────────────────────────────────────────────────────
     if (companyJobs.length === 0) {

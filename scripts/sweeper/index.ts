@@ -58,8 +58,13 @@ async function checkJob(page: Page, url: string, isSecondPass = false): Promise<
         
         // Smart Wait: Wait dynamically for Javascript/SPAs (like Workday/Upstox) to paint the job description text.
         await page.waitForFunction(() => {
-            return document.body && document.body.innerText.trim().length > 150;
+            const main = document.querySelector('main, article, [data-automation-id="jobPostingSection"], #content, .job-description, [role="main"]');
+            if (main && (main as HTMLElement).innerText.trim().length > 150) return true;
+            return document.body && document.body.innerText.trim().length > 400;
         }, { timeout: isSecondPass ? 25000 : 8000 }).catch(() => {});
+
+        // Give SPAs a moment to hydrate over their loading states (e.g. Eightfold "Job not found" flash)
+        await page.waitForTimeout(2000);
         
         const pageTitle = await page.title().catch(() => "");
         const lowerTitle = pageTitle.toLowerCase().trim();
@@ -188,7 +193,7 @@ async function run() {
                 // Block heavy resources (images, stylesheets, fonts, media) to speed up checking and prevent hangs
                 await context.route('**/*', (route) => {
                     const type = route.request().resourceType();
-                    if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+                    if (['image', 'font', 'media'].includes(type)) {
                         route.abort();
                     } else {
                         route.continue();
@@ -259,7 +264,7 @@ async function run() {
                 try {
                     await context.route('**/*', (route) => {
                         const type = route.request().resourceType();
-                        if (['image', 'stylesheet', 'font', 'media'].includes(type)) {
+                        if (['image', 'font', 'media'].includes(type)) {
                             route.abort();
                         } else {
                             route.continue();
@@ -423,7 +428,7 @@ async function run() {
                 });
                 await context.route('**/*', (route) => {
                     const type = route.request().resourceType();
-                    if (['image', 'stylesheet', 'font', 'media'].includes(type)) route.abort();
+                    if (['image', 'font', 'media'].includes(type)) route.abort();
                     else route.continue();
                 });
                 const page = await context.newPage();
