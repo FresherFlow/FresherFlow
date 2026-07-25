@@ -99,3 +99,7 @@ export const FRESHER_REGEXES = [
 export const EXPERIENCED_REGEXES = [
     /\b(?:1\.5\+?\s*years?|(?:12|18|24)\+?\s*months?|(?:1\s*years?|1\s*year\s+of|[1-9]\d*)\+?\s*exp)\b/i
 ];
+
+export const DORKER_ENABLED = process.env.DORKER_ENABLED !== 'false';
+export const DORKER_PAGES_PER_QUERY = parseInt(process.env.DORKER_PAGES_PER_QUERY || '2', 10);
+

@@ -2,6 +2,7 @@
     "name":  "@fresherflow/constants",
     "version":  "1.0.0",
     "description":  "Shared constants for Job Platform",
+    "type": "module",
     "main":  "./dist/index.js",
     "react-native": "./index.ts",
     "source": "./index.ts",

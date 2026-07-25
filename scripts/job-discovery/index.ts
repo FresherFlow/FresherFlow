@@ -1,6 +1,7 @@
 import { loadEnv } from './src/config.js';
 import { bootstrapState } from './src/pipeline/bootstrap.js';
 import { discoverAtsJobs, discoverAggregatorJobs } from './src/pipeline/discovery.js';
+import { discoverDorkerJobs } from './src/pipeline/dorker.js';
 import { verifyCandidates } from './src/pipeline/verifier.js';
 import { persistLocalData, uploadToDataLake } from './src/pipeline/storage.js';
 import { sendNotifications, writeGitHubSummary } from './src/pipeline/notifier.js';
@@ -16,10 +17,13 @@ async function run() {
     let runStatus: 'COMPLETED' | 'FAILED' = 'COMPLETED';
 
     try {
-        // 1. Discovery
+        // 1. Discovery (ATS API)
         await discoverAtsJobs(state);
         
-        // 2. Verification (ATS Phase)
+        // 1.5 Discovery (ATS Dorker)
+        await discoverDorkerJobs(state);
+
+        // 2. Verification (ATS Phase - includes API + Dorker)
         await verifyCandidates(state, "ATS");
 
         // 3. Discovery (Aggregators Phase)

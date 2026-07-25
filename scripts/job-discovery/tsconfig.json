@@ -2,10 +2,21 @@
   "compilerOptions": {
     "target": "ESNext",
     "module": "ESNext",
-    "moduleResolution": "node",
+    "moduleResolution": "bundler",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@fresherflow/parser": ["../../packages/parser/src/index.ts"],
+      "@fresherflow/types": ["../../packages/types/index.ts"],
+      "@fresherflow/domain": ["../../packages/domain/src/index.ts"],
+      "@fresherflow/constants": ["../../packages/constants/index.ts"],
+      "@fresherflow/utils": ["../../packages/utils/src/index.ts"],
+      "@fresherflow/utils/*": ["../../packages/utils/src/*"],
+      "@fresherflow/database": ["../../packages/database/src/index.ts"],
+      "@fresherflow/logger": ["../../packages/logger/src/index.ts"],
+      "@fresherflow/config": ["../../packages/config/src/index.ts"]
+    }
   }
 }

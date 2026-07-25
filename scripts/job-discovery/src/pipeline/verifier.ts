@@ -58,6 +58,18 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
                     state.visited["__discovered_apply_links__"].push(normalizedApplyLink);
                     if (state.visited["__discovered_apply_links__"].length > 50000) state.visited["__discovered_apply_links__"] = state.visited["__discovered_apply_links__"].slice(-50000);
 
+                    // Register newly discovered ATS board from dorker — only if the job is confirmed live
+                    const c = candidate as any;
+                    if (c.pendingBoardProvider && c.pendingBoardId) {
+                        if (!state.atsRegistry[c.pendingBoardProvider]) state.atsRegistry[c.pendingBoardProvider] = {};
+                        const providerRegistry = state.atsRegistry[c.pendingBoardProvider]!;
+                        if (!providerRegistry[c.pendingBoardId]) {
+                            providerRegistry[c.pendingBoardId] = c.pendingBoardName || c.pendingBoardId;
+                            state.registryModified = true;
+                            console.log(`  🌟 [Dorker→Registry] NEW board confirmed live: ${c.pendingBoardProvider}/${c.pendingBoardId} (${c.pendingBoardName})`);
+                        }
+                    }
+
                     state.newJobsFound.push({
                         title: nativeData.rawPayload.title || candidate.aggregatorTitle || 'Unknown API Job',
                         applyLink: candidate.applyLink,
@@ -90,6 +102,18 @@ export async function verifyCandidates(state: DiscoveryState, phaseName: string)
                         }
                     } catch {}
                     console.log(`  ✅ LIVE: ${actualApplyLink} (${checkResult.status})`);
+
+                    // Register newly discovered ATS board from dorker — only if confirmed live via Playwright
+                    const cb = candidate as any;
+                    if (cb.pendingBoardProvider && cb.pendingBoardId) {
+                        if (!state.atsRegistry[cb.pendingBoardProvider]) state.atsRegistry[cb.pendingBoardProvider] = {};
+                        const providerRegistryCb = state.atsRegistry[cb.pendingBoardProvider]!;
+                        if (!providerRegistryCb[cb.pendingBoardId]) {
+                            providerRegistryCb[cb.pendingBoardId] = cb.pendingBoardName || cb.pendingBoardId;
+                            state.registryModified = true;
+                            console.log(`  🌟 [Dorker→Registry] NEW board confirmed live: ${cb.pendingBoardProvider}/${cb.pendingBoardId} (${cb.pendingBoardName})`);
+                        }
+                    }
 
                     let jobTitle = await page.title().catch(() => "");
                     jobTitle = jobTitle.replace(/( - Workday| - Lever| - Greenhouse| Careers| - Jobs| \| .*)$/i, '').trim();
