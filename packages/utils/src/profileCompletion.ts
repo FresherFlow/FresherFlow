@@ -54,7 +54,73 @@ export function calculateCompletion(profile: Profile): number {
     return getProfileCompletionDetails(profile).percentage;
 }
 
-// Validation helpers
-export function isProfileComplete(profile: Profile): boolean {
-    return calculateCompletion(profile) === 100;
+export interface ProfileStrengthResult {
+    score: number;
+    missingItems: string[];
 }
+
+export function calculateProfileStrength(
+    profile?: Partial<Profile> | Record<string, unknown> | null,
+    user?: { fullName?: string | null } | Record<string, unknown> | null
+): ProfileStrengthResult {
+    let score = 0;
+    const missingItems: string[] = [];
+
+    const headline = typeof profile?.headline === 'string' ? profile.headline : undefined;
+    const skills = Array.isArray(profile?.skills) ? profile.skills : [];
+    const gradCourse = typeof profile?.gradCourse === 'string' ? profile.gradCourse : undefined;
+    const gradSpecialization = typeof profile?.gradSpecialization === 'string' ? profile.gradSpecialization : undefined;
+    const gradYear = typeof profile?.gradYear === 'number' ? profile.gradYear : undefined;
+    const githubUrl = typeof profile?.githubUrl === 'string' ? profile.githubUrl : undefined;
+    const linkedinUrl = typeof profile?.linkedinUrl === 'string' ? profile.linkedinUrl : undefined;
+    const about = typeof profile?.about === 'string' ? profile.about : undefined;
+    const fullName = typeof user?.fullName === 'string' ? user.fullName : undefined;
+
+    // Headline (20 pts)
+    if (headline?.trim()) {
+        score += 20;
+    } else {
+        missingItems.push('Add a professional headline');
+    }
+
+    // At least 3 skills (20 pts)
+    if (skills.length >= 3) {
+        score += 20;
+    } else {
+        missingItems.push('Add at least 3 skills');
+    }
+
+    // Education complete (20 pts)
+    if (gradCourse && gradSpecialization && gradYear) {
+        score += 20;
+    } else {
+        missingItems.push('Complete your education details');
+    }
+
+    // GitHub or LinkedIn (20 pts)
+    if (githubUrl?.trim() || linkedinUrl?.trim()) {
+        score += 20;
+    } else {
+        missingItems.push('Link your GitHub or LinkedIn');
+    }
+
+    // About filled (10 pts)
+    if (about?.trim()) {
+        score += 10;
+    } else {
+        missingItems.push('Write a short bio in About');
+    }
+
+    // Avatar/Name (10 pts)
+    if (fullName?.trim()) {
+        score += 10;
+    } else {
+        missingItems.push('Add your full name');
+    }
+
+    return {
+        score,
+        missingItems,
+    };
+}
+

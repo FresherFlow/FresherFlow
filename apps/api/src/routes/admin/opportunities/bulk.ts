@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { withAdminAudit } from '../../../middleware/adminAudit';
 import { invalidatePublicOpportunityCache } from '../../../infrastructure/services/publicOpportunityCache.service';
 import { queueNewJobAlerts } from './_helpers';
-import { OpportunityService } from '../../../domain/opportunity/opportunity.service';
+import { OpportunityService } from '../../../infrastructure/services/opportunity.service';
 
 const router = Router();
 

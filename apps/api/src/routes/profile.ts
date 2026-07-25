@@ -151,6 +151,17 @@ router.post('/username/claim', requireAuth, async (req: Request, res: Response, 
     }
 });
 
+// GET /api/profile/public/:username
+router.get('/public/:username', optionalAuth, async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const username = req.params.username as string;
+        const result = await ProfileService.getPublicProfileByUsername(username);
+        res.json(result);
+    } catch (error) {
+        next(error);
+    }
+});
+
 // Backward-compatible aliases
 router.get('/contributions', requireAuth, (req, res, _next) => {
     res.redirect(301, '/api/profile/shares');

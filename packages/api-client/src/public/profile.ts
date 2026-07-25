@@ -3,6 +3,7 @@ import { apiClient } from './apiClient';
 
 export const profileApi = {
     get: () => apiClient('/api/profile'),
+    getPublicProfile: (username: string) => apiClient<{ user: unknown; profile: unknown; projects: unknown[] }>(`/api/profile/public/${username.replace(/^@/, '')}`),
 
     updateProfile: (data: Partial<Profile> & { fullName?: string }) =>
         apiClient('/api/profile', {

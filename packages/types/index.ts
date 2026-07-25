@@ -232,6 +232,16 @@ export interface Profile {
     isPwBD?: boolean | null;
     isExServicemen?: boolean | null;
     homeState?: string | null;
+
+    // Derived & Candidate V1 Identity Fields
+    headline?: string | null;
+    about?: string | null;
+    githubUrl?: string | null;
+    linkedinUrl?: string | null;
+    portfolioUrl?: string | null;
+    openToRecruiters?: boolean | null;
+    profilePublic?: boolean | null;
+    projects?: Project[];
 }
 
 export interface Admin {
@@ -917,5 +927,183 @@ export interface AdminCreateResourceRequest {
         type: ResourceItemType;
         url: string;
     }[];
+}
+
+// ============================================================================
+// COMPANY REGISTRY & ATS TYPES
+// ============================================================================
+
+export interface Company {
+    id: string;
+    name: string;
+    slug: string;
+    website?: string | null;
+    careersUrl?: string | null;
+    logo?: string | null;
+    industry?: string | null;
+    size?: string | null;
+    headquarters?: string | null;
+    verified: boolean;
+    active: boolean;
+    createdAt: string | Date;
+    updatedAt: string | Date;
+    atsSources?: CompanyATS[];
+    statistics?: CompanyStatistics | null;
+    hiringHistory?: HiringHistory[];
+}
+
+export interface CompanyATS {
+    id: string;
+    companyId: string;
+    provider: string;
+    apiEndpoint?: string | null;
+    boardToken?: string | null;
+    careerUrl: string;
+    enabled: boolean;
+    lastSync?: string | Date | null;
+    nextSync?: string | Date | null;
+    failureCount: number;
+    health: 'healthy' | 'degraded' | 'failing' | 'unknown';
+    createdAt: string | Date;
+    updatedAt: string | Date;
+}
+
+export interface CompanyStatistics {
+    id: string;
+    companyId: string;
+    totalJobs: number;
+    avgJobsPerMonth: number;
+    lastHiringDate?: string | Date | null;
+    medianSalary?: number | null;
+    freshersScore: number;
+    updatedAt: string | Date;
+}
+
+export interface HiringHistory {
+    id: string;
+    companyId: string;
+    role: string;
+    batch?: string | null;
+    openedAt: string | Date;
+    closedAt?: string | Date | null;
+    location?: string | null;
+}
+
+export interface SavedCandidate {
+    id: string;
+    recruiterId: string;
+    candidateId: string;
+    collectionName?: string | null;
+    savedAt: string | Date;
+}
+
+export interface ProfileView {
+    id: string;
+    candidateId: string;
+    organizationId?: string | null;
+    recruiterId: string;
+    viewedAt: string | Date;
+}
+
+// ============================================================================
+// ORGANIZATION & RECRUITER TYPES
+// ============================================================================
+
+export enum OrganizationType {
+    COMPANY = 'COMPANY',
+    ENGINEERING_COLLEGE = 'ENGINEERING_COLLEGE',
+    TRAINING_INSTITUTE = 'TRAINING_INSTITUTE',
+    BOOTCAMP = 'BOOTCAMP',
+    NGO = 'NGO',
+    PLACEMENT_CELL = 'PLACEMENT_CELL'
+}
+
+export enum OrgRole {
+    OWNER = 'OWNER',
+    ADMIN = 'ADMIN',
+    RECRUITER = 'RECRUITER',
+    VIEWER = 'VIEWER'
+}
+
+export enum MembershipStatus {
+    PENDING = 'PENDING',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED'
+}
+
+export interface Organization {
+    id: string;
+    name: string;
+    slug: string;
+    type: OrganizationType;
+    website?: string | null;
+    emailDomain?: string | null;
+    logo?: string | null;
+    verified: boolean;
+    verifiedAt?: string | Date | null;
+    active: boolean;
+    createdAt: string | Date;
+    updatedAt: string | Date;
+}
+
+export interface OrganizationMembership {
+    id: string;
+    userId: string;
+    organizationId: string;
+    role: OrgRole;
+    status: MembershipStatus;
+    invitedBy?: string | null;
+    joinedAt: string | Date;
+}
+
+export interface OrganizationInvite {
+    id: string;
+    organizationId: string;
+    email: string;
+    role: OrgRole;
+    invitedBy: string;
+    token: string;
+    expiresAt: string | Date;
+    acceptedAt?: string | Date | null;
+    createdAt: string | Date;
+}
+
+// ============================================================================
+// CANDIDATE PORTFOLIO & RECRUITER ATS TYPES
+// ============================================================================
+
+export interface Project {
+    id: string;
+    userId: string;
+    title: string;
+    description?: string | null;
+    githubUrl?: string | null;
+    liveUrl?: string | null;
+    skills: string[];
+    order: number;
+    createdAt: string | Date;
+}
+
+export enum CandidateInterestStatus {
+    PENDING = 'PENDING',
+    ACCEPTED = 'ACCEPTED',
+    DECLINED = 'DECLINED',
+    EXPIRED = 'EXPIRED',
+    INTERVIEW_SCHEDULED = 'INTERVIEW_SCHEDULED',
+    OFFER_SENT = 'OFFER_SENT',
+    JOINED = 'JOINED',
+    REJECTED = 'REJECTED'
+}
+
+export interface CandidateInterest {
+    id: string;
+    organizationId: string;
+    recruiterId: string;
+    candidateId: string;
+    opportunityId?: string | null;
+    message?: string | null;
+    status: CandidateInterestStatus;
+    createdAt: string | Date;
+    updatedAt: string | Date;
 }
 

@@ -32,6 +32,9 @@ export { usernameApi } from './public/username';
 export { governmentJobsApi } from './public/governmentJobs';
 export { deviceTokenApi } from './public/deviceToken';
 export { resourcesApi } from './public/resources';
+export { organizationsApi } from './public/organizations';
+export { recruiterApi } from './public/recruiter';
+export { candidateApi } from './public/candidate';
 export { publicApi } from './public/index';
 
 export * from './apiClient';
