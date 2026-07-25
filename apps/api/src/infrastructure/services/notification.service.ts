@@ -1,7 +1,7 @@
 import prisma, { Prisma } from '../database/prisma';
 import { AlertChannel, AlertDispatchReason, AlertDispatchStatus, AlertKind, UserFollow } from '@fresherflow/database';
 import { OpportunityStatus, Opportunity, Profile } from '@fresherflow/types';
-import { filterAndRankOpportunitiesForUser } from '../../domain/eligibility';
+import { filterAndRankOpportunitiesForUser } from '@fresherflow/domain';
 import { logger } from '@fresherflow/logger';
 import { EmailService } from './email.service';
 import { sendNewJobPush } from './push.service';

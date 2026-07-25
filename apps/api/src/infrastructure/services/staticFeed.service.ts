@@ -5,7 +5,7 @@ import { INDIAN_CITIES } from '@fresherflow/constants';
 import { logger } from '@fresherflow/logger';
 import { getPublicSiteUrl } from '../../utils/runtimeConfig';
 import { StorageService } from './storage.service';
-import { FeedGeneratorService } from '../../domain/feed/feedGenerator.service';
+import { FeedGeneratorService } from './feedGenerator.service';
 
 /**
  * Service to generate "Distributed Static Data Shards" for discovery.
@@ -35,6 +35,7 @@ export class StaticFeedService {
 
     private static get PUBLIC_ROOT() { return StorageService.getPublicRoot(); }
     private static get BOOTSTRAP_PATH() { return path.join(this.PUBLIC_ROOT, 'bootstrap-feed.min.json'); }
+    private static get FEED_DIR() { return path.join(this.PUBLIC_ROOT, 'feed'); }
     private static get COMPANIES_DIR() { return path.join(this.PUBLIC_ROOT, 'companies'); }
     private static get CATEGORIES_DIR() { return path.join(this.PUBLIC_ROOT, 'categories'); }
     private static get STATS_PATH() { return path.join(this.PUBLIC_ROOT, 'stats.json'); }
@@ -93,6 +94,8 @@ export class StaticFeedService {
         return FeedGeneratorService.generateResourcesFeed();
     }
 
+
+
     /**
      * REFRESH USERNAMES ALONE
      */
@@ -148,7 +151,7 @@ export class StaticFeedService {
                 return exp > now;
             });
 
-            // 4. Generate & Upload Master Bootstrap Feed
+            // 4. Generate & Upload Master Bootstrap Feed & Daily Date-Based Feeds
             if (target === 'all' || target === 'bootstrap') {
                 const bootstrap = {
                     opportunities: activeMapped,
@@ -159,6 +162,8 @@ export class StaticFeedService {
                 const bootstrapBody = JSON.stringify(bootstrap);
                 StorageService.writeLocalFile(this.BOOTSTRAP_PATH, bootstrapBody);
                 await StorageService.uploadToR2('bootstrap-feed.min.json', bootstrapBody, 'application/json');
+
+
             }
 
             // 5. Generate & Upload Government Feed

@@ -75,6 +75,10 @@ import adminGovernmentJobsRoutes from './routes/admin/governmentJobs';
 import adminResourcesRoutes from './routes/admin/resources';
 import publicGovernmentJobsRoutes from './routes/public/governmentJobs';
 import expireJobsRoute from './routes/pipeline/expireJobs';
+import organizationsRoutes from './routes/organizations';
+import recruiterCandidatesRoutes from './routes/recruiterCandidates';
+import candidateInterestsRoutes from './routes/candidateInterests';
+import candidateProjectsRoutes from './routes/candidateProjects';
 
 const app: Application = express();
 const PORT = env.PORT || 5000;
@@ -437,6 +441,10 @@ if (isUserMode) {
     app.use('/api/resources', resourcesRoutes);
     app.use('/api/device-token', deviceTokenRoutes);
     app.use('/api/public/government-jobs', publicGovernmentJobsRoutes);
+    app.use('/api/organizations', organizationsRoutes);
+    app.use('/api/recruiter', recruiterCandidatesRoutes);
+    app.use('/api/interests', candidateInterestsRoutes);
+    app.use('/api/candidate/projects', candidateProjectsRoutes);
 }
 
 if (isAdminMode) {

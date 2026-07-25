@@ -10,6 +10,13 @@ import { FirebaseDbService } from './firebaseDb.service';
 
 export interface ProfileUpdateData {
     fullName?: string;
+    headline?: string | null;
+    about?: string | null;
+    githubUrl?: string | null;
+    linkedinUrl?: string | null;
+    portfolioUrl?: string | null;
+    openToRecruiters?: boolean | null;
+    profilePublic?: boolean | null;
     educationLevel?: EducationLevel;
     tenthYear?: number;
     twelfthYear?: number;
@@ -52,6 +59,7 @@ export interface ReferralData {
     eligibleBatches?: string;
     [key: string]: unknown;
 }
+
 async function hydrateProfileCompletion(userId: string, profile: Partial<Profile> | null) {
     if (!profile) return null;
 
@@ -84,9 +92,6 @@ export class ProfileService {
 
     static async updateProfile(userId: string, data: ProfileUpdateData): Promise<{ profile: Profile, newCompletion: number }> {
         const { fullName, ...profileData } = data;
-        const normalizedGrad = normalizeProfileEducation(profileData.gradCourse, profileData.gradSpecialization);
-        const normalizedPg = normalizeProfileEducation(profileData.pgCourse, profileData.pgSpecialization);
-        const normSkills = normalizeSkills(profileData.skills);
 
         let dob: Date | null | undefined = undefined;
         if (profileData.dob !== undefined) {
@@ -125,31 +130,57 @@ export class ProfileService {
             });
         }
 
+        // Build non-destructive update payload (only set fields explicitly provided in input)
+        const updateObject: Record<string, unknown> = {};
+
+        if (profileData.headline !== undefined) updateObject.headline = profileData.headline;
+        if (profileData.about !== undefined) updateObject.about = profileData.about;
+        if (profileData.githubUrl !== undefined) updateObject.githubUrl = profileData.githubUrl;
+        if (profileData.linkedinUrl !== undefined) updateObject.linkedinUrl = profileData.linkedinUrl;
+        if (profileData.portfolioUrl !== undefined) updateObject.portfolioUrl = profileData.portfolioUrl;
+        if (profileData.openToRecruiters !== undefined) updateObject.openToRecruiters = profileData.openToRecruiters;
+        if (profileData.profilePublic !== undefined) updateObject.profilePublic = profileData.profilePublic;
+
+        if (profileData.educationLevel !== undefined) updateObject.educationLevel = profileData.educationLevel;
+        if (profileData.tenthYear !== undefined) updateObject.tenthYear = profileData.tenthYear;
+        if (profileData.twelfthYear !== undefined) updateObject.twelfthYear = profileData.twelfthYear;
+
+        if (profileData.gradCourse !== undefined || profileData.gradSpecialization !== undefined) {
+            const normalizedGrad = normalizeProfileEducation(profileData.gradCourse, profileData.gradSpecialization);
+            if (profileData.gradCourse !== undefined) updateObject.gradCourse = normalizedGrad.course || profileData.gradCourse;
+            if (profileData.gradSpecialization !== undefined) updateObject.gradSpecialization = normalizedGrad.specialization || profileData.gradSpecialization;
+        }
+
+        if (profileData.gradYear !== undefined) updateObject.gradYear = profileData.gradYear;
+
+        if (profileData.pgCourse !== undefined || profileData.pgSpecialization !== undefined) {
+            const normalizedPg = normalizeProfileEducation(profileData.pgCourse, profileData.pgSpecialization);
+            if (profileData.pgCourse !== undefined) updateObject.pgCourse = normalizedPg.course || profileData.pgCourse;
+            if (profileData.pgSpecialization !== undefined) updateObject.pgSpecialization = normalizedPg.specialization || profileData.pgSpecialization;
+        }
+
+        if (profileData.pgYear !== undefined) updateObject.pgYear = profileData.pgYear;
+
+        if (profileData.interestedIn !== undefined) updateObject.interestedIn = profileData.interestedIn;
+        if (profileData.preferredCities !== undefined) updateObject.preferredCities = profileData.preferredCities;
+        if (profileData.workModes !== undefined) updateObject.workModes = profileData.workModes;
+        if (profileData.availability !== undefined) updateObject.availability = profileData.availability;
+
+        if (profileData.skills !== undefined) {
+            updateObject.skills = normalizeSkills(profileData.skills);
+        }
+
+        if (dob !== undefined) updateObject.dob = dob;
+        if (profileData.gender !== undefined) updateObject.gender = profileData.gender;
+        if (profileData.category !== undefined) updateObject.category = profileData.category;
+        if (profileData.isPwBD !== undefined) updateObject.isPwBD = profileData.isPwBD;
+        if (profileData.isExServicemen !== undefined) updateObject.isExServicemen = profileData.isExServicemen;
+        if (profileData.homeState !== undefined) updateObject.homeState = profileData.homeState;
+
         // Update profile
         let profile = await prisma.profile.update({
             where: { userId },
-            data: {
-                educationLevel: profileData.educationLevel,
-                tenthYear: profileData.tenthYear,
-                twelfthYear: profileData.twelfthYear,
-                gradCourse: normalizedGrad.course,
-                gradSpecialization: normalizedGrad.specialization,
-                gradYear: profileData.gradYear,
-                pgCourse: normalizedPg.course || null,
-                pgSpecialization: normalizedPg.specialization || null,
-                pgYear: profileData.pgYear,
-                interestedIn: profileData.interestedIn,
-                preferredCities: profileData.preferredCities,
-                workModes: profileData.workModes,
-                availability: profileData.availability,
-                skills: normSkills,
-                dob: dob,
-                gender: profileData.gender,
-                category: profileData.category,
-                isPwBD: profileData.isPwBD,
-                isExServicemen: profileData.isExServicemen,
-                homeState: profileData.homeState
-            }
+            data: updateObject
         });
 
         // Recalculate completion percentage
@@ -187,37 +218,38 @@ export class ProfileService {
             pgCourse, pgSpecialization, pgYear,
             dob, gender, category, isPwBD, isExServicemen, homeState
         } = data;
-        const normalizedGrad = normalizeProfileEducation(gradCourse, gradSpecialization);
-        const normalizedPg = normalizeProfileEducation(pgCourse, pgSpecialization);
+        const eduUpdate: Record<string, unknown> = {};
 
-        // Update user if fullName is provided
-        if (fullName) {
-            await prisma.user.update({
-                where: { id: userId },
-                data: { fullName }
-            });
+        if (educationLevel !== undefined) eduUpdate.educationLevel = educationLevel;
+        if (tenthYear !== undefined) eduUpdate.tenthYear = tenthYear;
+        if (twelfthYear !== undefined) eduUpdate.twelfthYear = twelfthYear;
+
+        if (gradCourse !== undefined || gradSpecialization !== undefined) {
+            const normalizedGrad = normalizeProfileEducation(gradCourse, gradSpecialization);
+            if (gradCourse !== undefined) eduUpdate.gradCourse = normalizedGrad.course || gradCourse;
+            if (gradSpecialization !== undefined) eduUpdate.gradSpecialization = normalizedGrad.specialization || gradSpecialization;
         }
+
+        if (gradYear !== undefined) eduUpdate.gradYear = gradYear;
+
+        if (pgCourse !== undefined || pgSpecialization !== undefined) {
+            const normalizedPg = normalizeProfileEducation(pgCourse, pgSpecialization);
+            if (pgCourse !== undefined) eduUpdate.pgCourse = normalizedPg.course || pgCourse;
+            if (pgSpecialization !== undefined) eduUpdate.pgSpecialization = normalizedPg.specialization || pgSpecialization;
+        }
+
+        if (pgYear !== undefined) eduUpdate.pgYear = pgYear;
+        if (dob !== undefined) eduUpdate.dob = dob;
+        if (gender !== undefined) eduUpdate.gender = gender;
+        if (category !== undefined) eduUpdate.category = category;
+        if (isPwBD !== undefined) eduUpdate.isPwBD = isPwBD;
+        if (isExServicemen !== undefined) eduUpdate.isExServicemen = isExServicemen;
+        if (homeState !== undefined) eduUpdate.homeState = homeState;
 
         // Update profile
         let profile = await prisma.profile.update({
             where: { userId },
-            data: {
-                educationLevel: educationLevel,
-                tenthYear,
-                twelfthYear,
-                gradCourse: normalizedGrad.course,
-                gradSpecialization: normalizedGrad.specialization,
-                gradYear,
-                pgCourse: normalizedPg.course || null,
-                pgSpecialization: normalizedPg.specialization || null,
-                pgYear,
-                dob,
-                gender,
-                category,
-                isPwBD,
-                isExServicemen,
-                homeState
-            }
+            data: eduUpdate
         });
 
         // Recalculate completion percentage
@@ -606,5 +638,42 @@ export class ProfileService {
         void StaticFeedService.refreshUsernames();
 
         return updatedUser.username as string;
+    }
+
+    /**
+     * Get public candidate profile by username
+     */
+    static async getPublicProfileByUsername(rawUsername: string) {
+        const username = rawUsername.trim().toLowerCase().replace(/^@/, '');
+
+        const user = await prisma.user.findFirst({
+            where: {
+                username: { equals: username, mode: 'insensitive' }
+            },
+            include: {
+                profile: true,
+                projects: {
+                    orderBy: { order: 'asc' }
+                }
+            }
+        });
+
+        if (!user || !user.profile) {
+            throw new AppError('Candidate not found', 404);
+        }
+
+        return {
+            user: {
+                id: user.id,
+                fullName: user.fullName,
+                username: user.username,
+                createdAt: user.createdAt
+            },
+            profile: {
+                ...user.profile,
+                projects: user.projects
+            },
+            projects: user.projects
+        };
     }
 }

@@ -1,8 +1,8 @@
-import prisma from '../../infrastructure/database/prisma';
+import prisma from '../database/prisma';
 import { Prisma } from '@prisma/client';
 import { OpportunityStatus } from '@fresherflow/types';
 import { logger } from '@fresherflow/logger';
-import { StorageService } from '../../infrastructure/services/storage.service';
+import { StorageService } from './storage.service';
 
 export class FeedGeneratorService {
     private static readonly companySlugMap = new Map<string, string>();

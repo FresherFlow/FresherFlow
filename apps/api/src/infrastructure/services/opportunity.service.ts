@@ -1,9 +1,9 @@
 import prisma, { Prisma, OpportunityStatus as DbOpportunityStatus, EducationLevel as DbEducationLevel, WorkMode as DbWorkMode } from '../../lib/prisma';
-import { OpportunityStatus, OpportunityType, EducationLevel, WorkMode, Availability, Opportunity } from '@fresherflow/types';
-import { EligibilityService } from '../eligibility/eligibility.service';
+import { OpportunityStatus, OpportunityType, EducationLevel, WorkMode, Availability, Opportunity, Profile } from '@fresherflow/types';
+import { calculateOpportunityMatch } from '@fresherflow/domain';
 import { generateSlug, generateCompanyLogoUrl } from '@fresherflow/utils';
 import { searchOpportunitiesQuery, SearchResult, SearchOptions } from '@fresherflow/search';
-import { discoveryEmitter } from '../../infrastructure/events/DiscoveryEmitter';
+import { discoveryEmitter } from '../events/DiscoveryEmitter';
 
 /**
  * Opportunity Service - Business Logic Layer
@@ -291,54 +291,11 @@ export class OpportunityService {
         // Filter by eligibility
         const eligibleOpportunities = (opportunities as unknown as Opportunity[])
             .map((opp) => {
-                const eligibility = EligibilityService.checkEligibility(
-                    {
-                        educationLevel: profile.educationLevel as EducationLevel,
-                        passoutYear: (profile.gradYear as number) || 0,
-                        interestedIn: profile.interestedIn as OpportunityType[],
-                        preferredCities: profile.preferredCities as string[],
-                        workModes: profile.workModes as WorkMode[],
-                        availability: profile.availability as Availability,
-                        skills: profile.skills as string[],
-                    },
-                    {
-                        type: opp.type as OpportunityType,
-                        allowedDegrees: opp.allowedDegrees as EducationLevel[],
-                        allowedCourses: ((opp as unknown) as { allowedCourses: string[] }).allowedCourses || [],
-                        allowedPassoutYears: opp.allowedPassoutYears,
-                        allowedAvailability: (((opp as unknown) as { allowedAvailability: Availability[] }).allowedAvailability || []) as Availability[],
-                        requiredSkills: opp.requiredSkills,
-                        locations: opp.locations,
-                        workMode: opp.workMode as WorkMode,
-                    }
-                );
-
+                const match = calculateOpportunityMatch(profile as unknown as Profile, opp);
                 return {
                     ...opp,
-                    eligible: eligibility.eligible,
-                    matchScore: eligibility.eligible
-                        ? EligibilityService.getMatchScore(
-                            {
-                                educationLevel: profile.educationLevel as EducationLevel,
-                                passoutYear: (profile.gradYear as number) || 0,
-                                interestedIn: profile.interestedIn as OpportunityType[],
-                                preferredCities: profile.preferredCities as string[],
-                                workModes: profile.workModes as WorkMode[],
-                                availability: profile.availability as Availability,
-                                skills: profile.skills as string[],
-                            },
-                            {
-                                type: opp.type as OpportunityType,
-                                allowedDegrees: opp.allowedDegrees as EducationLevel[],
-                                allowedCourses: ((opp as unknown) as { allowedCourses: string[] }).allowedCourses || [],
-                                allowedPassoutYears: opp.allowedPassoutYears,
-                                allowedAvailability: (((opp as unknown) as { allowedAvailability: Availability[] }).allowedAvailability || []) as Availability[],
-                                requiredSkills: opp.requiredSkills,
-                                locations: opp.locations,
-                                workMode: opp.workMode as WorkMode,
-                            }
-                        )
-                        : 0,
+                    eligible: match.isEligible,
+                    matchScore: match.score,
                 };
             })
             .filter((opp) => opp.eligible)
@@ -451,4 +408,3 @@ export class OpportunityService {
         };
     }
 }
-

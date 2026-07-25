@@ -22,9 +22,8 @@ For monorepo-wide rules, architecture, and shared patterns, read the root [`AGEN
 ### Layers
 
 - **Routes** (`src/routes/`): Express routers — thin, validation only
-- **Controllers/Application** (`src/application/`): Request/response orchestration — keep thin
-- **Domain** (`src/domain/`): Core business logic — pure, no Express dependency
-- **Infrastructure** (`src/infrastructure/`): Database queries (Prisma), external service clients
+- **Application** (`src/application/`): Request/response orchestration — keep thin
+- **Infrastructure** (`src/infrastructure/`): Database queries (Prisma), external service clients (services live in `src/infrastructure/services/`)
 - **Middleware** (`src/middleware/`): Auth, rate limiting, logging, error handling
 - **CRON** (`src/cron/`): Scheduled background jobs
 - **Worker** (`src/worker.ts`): BullMQ job processor entry
@@ -123,11 +122,12 @@ For monorepo-wide rules, architecture, and shared patterns, read the root [`AGEN
 
 **Check these before building anything new.** Most domain logic already exists as a service.
 
-### Domain Services (`src/domain/`)
+### Core Infrastructure Services (`src/infrastructure/services/`)
 
 | Service | File | What it does |
 |---|---|---|
-| `feedGenerator.service.ts` | `src/domain/feed/feedGenerator.service.ts` | Builds the bootstrap feed JSON from approved DB rows. **Entry point for all feed generation.** |
+| `feedGenerator.service.ts` | `src/infrastructure/services/feedGenerator.service.ts` | Builds the bootstrap feed JSON from approved DB rows. **Entry point for all feed generation.** |
+| `opportunity.service.ts` | `src/infrastructure/services/opportunity.service.ts` | Opportunity CRUD queries & database operations |
 
 ### Infrastructure Services (`src/infrastructure/services/`)
 
@@ -172,7 +172,7 @@ For monorepo-wide rules, architecture, and shared patterns, read the root [`AGEN
 2. Create Zod validation schema — add to route file or `src/middleware/validate.ts`.
 3. Add route in the relevant file under `src/routes/`.
 4. Add controller function in `src/application/`.
-5. Add business logic in `src/domain/` if complex, or Prisma query in `src/infrastructure/`.
+5. Add business rules in `packages/domain`, or database queries in `src/infrastructure/services/`.
 6. Expose typed wrapper in `packages/api-client/src/`.
 7. Protect with `requireAuth` if user-specific. Add `requireAdmin` for admin routes.
 

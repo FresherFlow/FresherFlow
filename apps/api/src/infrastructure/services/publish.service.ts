@@ -105,10 +105,10 @@ export async function handleOpportunityPublished(
     });
   });
 
-  // Feed regeneration is intentionally NOT triggered here.
-  // Publishing a job only updates the DB. The admin triggers "Generate JSON"
-  // (POST /api/admin/system/regenerate-feeds) to update the CDN feeds and the website.
-
+  // 6. Debounced Feed Refresh
+  import('./staticFeed.service').then(({ StaticFeedService }) => {
+    StaticFeedService.scheduleRefresh();
+  });
 
   // 7. Append new opportunity metadata to R2 CDN files
   MetadataService.appendOpportunityMetadata(opportunity).catch((err) => {
