@@ -146,7 +146,7 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
     }
 
     // Negative (Not blocker, just negative points): 2+ years range or standalone
-    const exp2to5 = /(?:(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp(?:n|erience|\.)?|requires?|requiring|minimum|min)[^a-z0-9]{1,10}(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b))|(?:\b(?:[2-9]|[1-9]\d)\s*(?:-|–|\bto\b)\s*(?:[2-9]|[1-9]\d)\s*(?:years?|yrs?)\b)/gi;
+    const exp2to5 = /(?:(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp(?:n|erience|\.)?|requires?|requiring|minimum|min)[^a-z0-9]{1,10}(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)(?:\s*(?:years?|yrs?|y\b))?)|(?:\b(?:[2-9]|[1-9]\d)\s*(?:-|–|\bto\b)\s*(?:[2-9]|[1-9]\d)\s*(?:years?|yrs?)\b)/gi;
     while ((match = exp2to5.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         
@@ -166,7 +166,7 @@ export function evaluateExperience(sectionType: SectionType, text: string): { co
     }
 
     // Blocker / Strong Negative: 1+ years, 2+ years, 3+ years...
-    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:(?:(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)))/gi;
+    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:(?:(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing))|(?:(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)))/gi;
     while ((match = plusExpRegex.exec(lowerText)) !== null) {
         if (sectionType === 'ABOUT_COMPANY' || sectionType === 'BENEFITS') continue;
         
@@ -217,33 +217,35 @@ export function evaluateDescription(sectionType: SectionType, text: string): { c
 
     const lowerText = text.toLowerCase();
 
-    const checkPhrases: { phrase: string, rule: RuleId, weight: number }[] = [
-        { phrase: 'intern', rule: 'DESC_INTERN', weight: WEIGHTS.DESC_INTERN },
-        { phrase: 'internship', rule: 'DESC_INTERN', weight: WEIGHTS.DESC_INTERN },
-        { phrase: 'apprentice', rule: 'DESC_APPRENTICE', weight: WEIGHTS.DESC_APPRENTICE },
-        { phrase: 'apprenticeship', rule: 'DESC_APPRENTICE', weight: WEIGHTS.DESC_APPRENTICE },
-        { phrase: 'trainee', rule: 'DESC_TRAINEE', weight: WEIGHTS.DESC_TRAINEE },
-        { phrase: 'entry level', rule: 'DESC_ENTRY_LEVEL', weight: WEIGHTS.DESC_ENTRY_LEVEL },
-        { phrase: 'new grad', rule: 'DESC_NEW_GRAD', weight: WEIGHTS.DESC_NEW_GRAD },
-        { phrase: 'campus hiring', rule: 'DESC_CAMPUS_HIRING', weight: WEIGHTS.DESC_CAMPUS_HIRING },
-        { phrase: 'graduate', rule: 'DESC_GRADUATE', weight: WEIGHTS.DESC_GRADUATE },
-        { phrase: 'fresher', rule: 'DESC_FRESHER', weight: WEIGHTS.DESC_FRESHER },
-        { phrase: 'early career', rule: 'DESC_EARLY_CAREER', weight: WEIGHTS.DESC_EARLY_CAREER }
+    const checkPhrases: { phrase: RegExp, rule: RuleId, weight: number }[] = [
+        { phrase: /\bintern\b/, rule: 'DESC_INTERN', weight: WEIGHTS.DESC_INTERN },
+        { phrase: /\binternship\b/, rule: 'DESC_INTERN', weight: WEIGHTS.DESC_INTERN },
+        { phrase: /\bapprentice\b/, rule: 'DESC_APPRENTICE', weight: WEIGHTS.DESC_APPRENTICE },
+        { phrase: /\bapprenticeship\b/, rule: 'DESC_APPRENTICE', weight: WEIGHTS.DESC_APPRENTICE },
+        { phrase: /\btrainee\b/, rule: 'DESC_TRAINEE', weight: WEIGHTS.DESC_TRAINEE },
+        { phrase: /\bentry level\b/, rule: 'DESC_ENTRY_LEVEL', weight: WEIGHTS.DESC_ENTRY_LEVEL },
+        { phrase: /\bnew grad\b/, rule: 'DESC_NEW_GRAD', weight: WEIGHTS.DESC_NEW_GRAD },
+        { phrase: /\bcampus hiring\b/, rule: 'DESC_CAMPUS_HIRING', weight: WEIGHTS.DESC_CAMPUS_HIRING },
+        { phrase: /\bgraduate\b/, rule: 'DESC_GRADUATE', weight: WEIGHTS.DESC_GRADUATE },
+        { phrase: /\bfresher\b/, rule: 'DESC_FRESHER', weight: WEIGHTS.DESC_FRESHER },
+        { phrase: /\bearly career\b/, rule: 'DESC_EARLY_CAREER', weight: WEIGHTS.DESC_EARLY_CAREER }
     ];
 
     for (const check of checkPhrases) {
-        const idx = lowerText.indexOf(check.phrase);
-        if (idx !== -1) {
+        let match;
+        // Need to reset lastIndex since we are reusing the same regex objects if they had global flag, 
+        // but they don't have /g flag so exec will just find the first match.
+        if ((match = check.phrase.exec(lowerText)) !== null) {
             signals.push({
                 type: 'description',
                 section: sectionType,
                 rule: check.rule,
                 weight: check.weight,
-                matched: check.phrase,
-                context: getContext(lowerText, idx, check.phrase.length)
+                matched: match[0],
+                context: getContext(lowerText, match.index, match[0].length)
             });
             contributions.push({ rule: check.rule, delta: check.weight, section: sectionType });
-            trace.push({ step: 'evaluateDescription', result: check.phrase, rule: check.rule, delta: check.weight });
+            trace.push({ step: 'evaluateDescription', result: match[0], rule: check.rule, delta: check.weight });
         }
     }
 

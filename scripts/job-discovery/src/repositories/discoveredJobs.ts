@@ -26,6 +26,7 @@ export async function upsertJobs(jobs: any[], runId: string | null) {
 
     return {
       run_id: runId,
+      company_id: job.companyId || job.company_id || null,
       source: source,
       source_type: job.sourceType,
       company: company,

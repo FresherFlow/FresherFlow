@@ -61,7 +61,7 @@ export async function tryFetchNativeApi(urlStr: string): Promise<RawJobData | nu
         const boardsIdx = parts.indexOf('boards');
         const boardToken = boardsIdx !== -1 ? parts[boardsIdx + 1] : parts[0];
 
-        const data = await fetchJson<any>(`https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs/${jobId}?content=true`);
+        const data = await fetchJson<any>(`https://boards-api.greenhouse.io/v1/boards/${boardToken}/jobs/${jobId}?content=true&questions=true`);
         if (!data || !data.title) return null;
 
         const locations = [];
@@ -70,7 +70,26 @@ export async function tryFetchNativeApi(urlStr: string): Promise<RawJobData | nu
             if (off.name) locations.push(off.name);
         }
 
-        const textForFiltering = stripHtml(data.content || '');
+        let textForFiltering = stripHtml(data.content || '');
+        if (Array.isArray(data.metadata)) {
+            for (const meta of data.metadata) {
+                if (meta.name && meta.value) textForFiltering += ' ' + meta.name + ' ' + meta.value;
+            }
+        }
+        if (Array.isArray(data.questions)) {
+            for (const q of data.questions) {
+                if (q.label) textForFiltering += ' ' + stripHtml(q.label);
+                if (Array.isArray(q.fields)) {
+                    for (const f of q.fields) {
+                        if (Array.isArray(f.values)) {
+                            for (const v of f.values) {
+                                if (v.label) textForFiltering += ' ' + stripHtml(v.label);
+                            }
+                        }
+                    }
+                }
+            }
+        }
         return { adapter, company, jobId, rawPayload: data, textForFiltering, locationsForFiltering: locations };
     }
 

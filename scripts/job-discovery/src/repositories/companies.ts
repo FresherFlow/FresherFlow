@@ -1,0 +1,199 @@
+import { supabase } from '../lib/supabase.js';
+import { parseJobUrl } from '../core/url-parser.js';
+import { DiscoveredJobEntry, RunStats } from '../pipeline/state.js';
+
+function toAtsProviderEnum(source: string): string {
+    const s = (source || '').toUpperCase().trim();
+    if (s.includes('GREENHOUSE')) return 'GREENHOUSE';
+    if (s.includes('LEVER')) return 'LEVER';
+    if (s.includes('WORKDAY')) return 'WORKDAY';
+    if (s.includes('ASHBY')) return 'ASHBY';
+    if (s.includes('SMARTRECRUITERS')) return 'SMARTRECRUITERS';
+    if (s.includes('ORACLE')) return 'ORACLE';
+    if (s.includes('ICIMS')) return 'ICIMS';
+    if (s.includes('SUCCESSFACTORS')) return 'SUCCESSFACTORS';
+    if (s.includes('RECRUITEE')) return 'RECRUITEE';
+    if (s.includes('WORKABLE')) return 'WORKABLE';
+    return 'CUSTOM';
+}
+
+function slugify(text: string): string {
+    return text
+        .toString()
+        .toLowerCase()
+        .trim()
+        .replace(/[^\w\s-]/g, '')
+        .replace(/[\s_-]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'company';
+}
+
+function capitalize(text: string): string {
+    if (!text) return text;
+    return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+// In-memory cache for speed during pipeline execution
+const boardTokenToCompanyIdMap = new Map<string, string>();
+const slugToCompanyIdMap = new Map<string, string>();
+const nameToCompanyIdMap = new Map<string, string>();
+
+/**
+ * Resolves or creates a company entry in Supabase for each discovered job,
+ * upserts ATS mapping to company_ats, attaches company_id to the job entry,
+ * and updates run statistics.
+ */
+export async function resolveAndAttachCompanies(
+    jobs: DiscoveredJobEntry[],
+    stats: RunStats
+): Promise<DiscoveredJobEntry[]> {
+    if (!process.env.SUPABASE_URL || jobs.length === 0) {
+        return jobs;
+    }
+
+    console.log(`\n--- Resolving company registry for ${jobs.length} jobs ---`);
+
+    for (const job of jobs) {
+        try {
+            const parsed = parseJobUrl(job.applyLink);
+            const providerStr = parsed ? parsed.adapter : (job.source || job.sourceType || 'CUSTOM');
+            const boardId = parsed ? parsed.company : null;
+            const providerEnum = toAtsProviderEnum(providerStr);
+
+            // Determine candidate company name
+            let rawName = (job.company || '').trim();
+            if (!rawName || /^company$/i.test(rawName) || /^unknown$/i.test(rawName)) {
+                if (boardId) {
+                    rawName = capitalize(boardId);
+                } else {
+                    try {
+                        const host = new URL(job.applyLink).hostname.replace(/^www\./i, '');
+                        rawName = capitalize(host.split('.')[0]);
+                    } catch {
+                        rawName = 'Unknown Company';
+                    }
+                }
+            }
+
+            const slug = slugify(rawName);
+            const cacheKeyBoard = boardId ? `${providerEnum}:${boardId}` : null;
+            const cacheKeyName = rawName.toLowerCase();
+
+            let companyId: string | null = null;
+            let isNew = false;
+
+            // 1. Check in-memory cache first
+            if (cacheKeyBoard && boardTokenToCompanyIdMap.has(cacheKeyBoard)) {
+                companyId = boardTokenToCompanyIdMap.get(cacheKeyBoard)!;
+            } else if (slugToCompanyIdMap.has(slug)) {
+                companyId = slugToCompanyIdMap.get(slug)!;
+            } else if (nameToCompanyIdMap.has(cacheKeyName)) {
+                companyId = nameToCompanyIdMap.get(cacheKeyName)!;
+            }
+
+            // 2. Lookup in Supabase company_ats by board_token if available
+            if (!companyId && boardId) {
+                const { data: atsData } = await supabase
+                    .from('company_ats')
+                    .select('company_id')
+                    .eq('provider', providerEnum)
+                    .eq('board_token', boardId)
+                    .maybeSingle();
+
+                if (atsData?.company_id) {
+                    companyId = atsData.company_id;
+                }
+            }
+
+            // 3. Lookup in Supabase companies table by slug or name if not found in company_ats
+            if (!companyId) {
+                const { data: companyData } = await supabase
+                    .from('companies')
+                    .select('id')
+                    .or(`slug.eq.${slug},name.ilike.${rawName}`)
+                    .maybeSingle();
+
+                if (companyData?.id) {
+                    companyId = companyData.id;
+                }
+            }
+
+            // 4. Create new company row in companies table if still not found
+            if (!companyId) {
+                const { data: newCompany, error: createError } = await supabase
+                    .from('companies')
+                    .insert({
+                        name: rawName,
+                        slug: slug,
+                        verification_status: 'UNVERIFIED',
+                        active: true
+                    })
+                    .select('id')
+                    .single();
+
+                if (newCompany?.id) {
+                    companyId = newCompany.id;
+                    isNew = true;
+                } else if (createError) {
+                    // Fallback: If insert failed due to duplicate slug, re-fetch
+                    const { data: fallbackCompany } = await supabase
+                        .from('companies')
+                        .select('id')
+                        .eq('slug', slug)
+                        .maybeSingle();
+
+                    if (fallbackCompany?.id) {
+                        companyId = fallbackCompany.id;
+                    }
+                }
+            }
+
+            // 5. If company resolved/created, update company_ats and caches
+            if (companyId) {
+                // Populate caches
+                if (cacheKeyBoard) boardTokenToCompanyIdMap.set(cacheKeyBoard, companyId);
+                slugToCompanyIdMap.set(slug, companyId);
+                nameToCompanyIdMap.set(cacheKeyName, companyId);
+
+                // Upsert company_ats row
+                try {
+                    await supabase
+                        .from('company_ats')
+                        .upsert({
+                            company_id: companyId,
+                            provider: providerEnum,
+                            board_token: boardId || null,
+                            career_url: job.applyLink,
+                            enabled: true,
+                            last_sync: new Date().toISOString(),
+                            health: 'HEALTHY',
+                            failure_count: 0
+                        }, { onConflict: 'company_id,provider' });
+                } catch {
+                    // Ignore ATS mapping upsert non-critical errors
+                }
+
+                // Attach company_id to job
+                job.companyId = companyId;
+                (job as any).company_id = companyId;
+
+                // Bookkeeping stats
+                stats.company_resolved++;
+                if (isNew) {
+                    stats.company_new++;
+                } else {
+                    stats.company_matched++;
+                }
+                stats.company_ats_yield[providerEnum] = (stats.company_ats_yield[providerEnum] || 0) + 1;
+            } else {
+                stats.company_unresolved++;
+            }
+        } catch (err) {
+            stats.company_unresolved++;
+            console.warn(`[Company Registry] Failed to resolve company for ${job.applyLink}:`, (err as Error).message);
+        }
+    }
+
+    console.log(`[Company Registry] Resolved ${stats.company_resolved} jobs (${stats.company_new} new companies, ${stats.company_matched} matched existing, ${stats.company_unresolved} unresolved).`);
+
+    return jobs;
+}

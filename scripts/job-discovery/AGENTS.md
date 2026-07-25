@@ -104,7 +104,14 @@ All pipeline state flows through `DiscoveryState` in `src/pipeline/state.ts`.
 - `src/pipeline/storage.ts` — R2 upload failures silently drop discovered jobs
 - `aggregators.json` — broken selectors cause silent zero-yield from affected sites
 
-## 9) Validation Checklist
+## 9) Testing & Scratch Files
+
+- **Do NOT spam test scripts in the root directory.**
+- Any temporary, one-off, or scratch test files (e.g., `test-capco.ts`, `test-lennox.ts`) must be created inside a `scratch/` folder or the agent's dedicated artifacts directory (e.g., `<appDataDir>/brain/<conversation-id>/scratch/`).
+- If you create scratch files in `scripts/job-discovery/scratch/`, make sure to delete them after use, or ensure they are `.gitignore`d.
+- Never commit one-off debug scripts to version control.
+
+## 10) Validation Checklist
 
 After every change:
 

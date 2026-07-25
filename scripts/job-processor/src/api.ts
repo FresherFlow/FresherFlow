@@ -90,6 +90,7 @@ export async function saveJobToSupabase(
         type: job.type,
         title: job.title,
         company: job.company,
+        company_id: (job as any).companyId || (job as any).company_id || null,
         company_website: website || job.companyWebsite || null,
         company_logo_url: logoUrl || null,
         description: job.description,

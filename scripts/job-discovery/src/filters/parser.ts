@@ -6,7 +6,9 @@ const SECTION_ALIASES: Record<SectionType, string[]> = {
     REQUIREMENTS: [
         "minimum qualifications", "requirements", "what you need", "what you'll need", 
         "basic qualifications", "must have", "experience required", "who you are", 
-        "required skills", "qualifications", "what we are looking for", "what we're looking for"
+        "required skills", "qualifications", "what we are looking for", "what we're looking for",
+        "you are likely to succeed if you have", "who thrives here", "what you will bring",
+        "what you bring", "skills and experience", "what you'll bring"
     ],
     PREFERRED: [
         "preferred qualifications", "nice to have", "bonus points", "desired skills", "preferred skills"

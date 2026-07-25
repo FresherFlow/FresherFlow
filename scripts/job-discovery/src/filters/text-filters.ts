@@ -6,13 +6,13 @@ export function isFresherJob(text: string): boolean {
     
     // Check for ranges like "1-3 years of experience", "2-5 years of relevant experience"
     // Does NOT match "0-1" or "0-2" because the first digit is 1-10.
-    const expRangeRegex = /(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z]+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
+    const expRangeRegex = /(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
     if (expRangeRegex.test(lowerText)) {
         return false;
     }
 
     // Check for "Experience: 1-3 years" / "Years of Expn - 5 to 7" (expn, exp. etc. prefix)
-    const prefixExpRangeRegex = /(?:experience|exp(?:n|erience|\.)?|requires?|requiring)[^a-z0-9]{1,10}(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])\s*(?:years?|yrs?|y\b)/gi;
+    const prefixExpRangeRegex = /(?:experience|exp(?:n|erience|\.)?|requires?|requiring)[^a-z0-9]{1,10}(?:[1-9]|10)\s*(?:-|–|\bto\b)\s*(?:[2-9]|1[0-5])(?:\s*(?:years?|yrs?|y\b))?/gi;
     if (prefixExpRangeRegex.test(lowerText)) {
         return false;
     }
@@ -26,26 +26,26 @@ export function isFresherJob(text: string): boolean {
 
     // Check for experience requirements like "1 year of experience", "2 years' experience"
     // Does NOT match if preceded by "0-" or "0 to"
-    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b\d{2,}\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
+    const expReqRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b\d{2,}\b)\s*(?:years'|year's|years|year|yrs|yr)(?:\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing))?/gi;
     if (expReqRegex.test(lowerText)) {
         return false;
     }
 
     // Check for "1+ years of experience", "2+ yrs experience", "4+ years expertise"
-    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing)/gi;
+    const plusExpRegex = /(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)(?:\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|expertise|proficiency|building|working|developing|engineering|leading|managing))?/gi;
     if (plusExpRegex.test(lowerText)) {
         return false;
     }
 
-    // Check for "minimum of 1 year of experience", "min 2 years experience"
-    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}(?:experience|expertise)/gi;
+    // Check for "minimum of 1 year of experience", "min 2 years experience", "minimum of 2+ years of progressive, hands-on experience"
+    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[1-9]\b|\b\d{2,}\b)\s*\+?\s*(?:years?|yrs?|y\b)?\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|expertise)/gi;
     if (minExpRegex.test(lowerText)) {
         return false;
     }
     
     // Standalone experience that doesn't say "of experience" but implies it:
     // "Experience: 1 year", "Exp - 2 yrs", "Requires 1 year", "Experience: 8+yrs"
-    const standaloneExpRegex = /(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b\d{2,}\b)\s*\+?\s*(?:years?|yrs?|y\b)/gi;
+    const standaloneExpRegex = /(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?<!\b0\s*(?:-|–|\bto\b)\s*)(?:\b[1-9]\b|\b\d{2,}\b)\s*\+?(?:\s*(?:years?|yrs?|y\b))?/gi;
     if (standaloneExpRegex.test(lowerText)) {
         return false;
     }
@@ -68,37 +68,37 @@ export function isSeniorJob(text: string): boolean {
     const lowerText = text.toLowerCase().replace(/[\u2018\u2019]/g, "'");
     
     // Check for ranges like "2-5 years of experience", "10-13 years" (excluding ranges starting with 0 or 1)
-    const expRangeRegex = /(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing)/gi;
+    const expRangeRegex = /(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing)/gi;
     if (expRangeRegex.test(lowerText)) {
         return true;
     }
 
-    // Check for "Experience: 2-5 years"
-    const prefixExpRangeRegex = /(?:experience|exp|requires?|requiring)[^a-z0-9]{1,4}(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)\s*(?:years?|yrs?|y\b)/gi;
+    // Check for "Experience: 2-5 years", "Experience: 6 to 10"
+    const prefixExpRangeRegex = /(?:experience|exp|requires?|requiring)[^a-z0-9]{1,4}(?:[2-9]|\d{2,})\s*(?:-|–|\bto\b)\s*(?:\d+)(?:\s*(?:years?|yrs?|y\b))?/gi;
     if (prefixExpRangeRegex.test(lowerText)) {
         return true;
     }
 
     // Check for experience requirements of 2+ years (e.g. "2 years' experience", "5 year's analytical experience")
-    const expReqRegex = /(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b\d{2,}\b)\s*(?:years'|year's|years|year|yrs|yr)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing)/gi;
+    const expReqRegex = /(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b\d{2,}\b)\s*(?:years'|year's|years|year|yrs|yr)(?:\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing))?/gi;
     if (expReqRegex.test(lowerText)) {
         return true;
     }
 
     // Check for "2+ years of experience", "4+ yr", "10+ years" (excluding 0+, 1+)
-    const plusExpRegex = /(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,4}(?:experience|building|working|developing|engineering|leading|managing)/gi;
+    const plusExpRegex = /(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b\d{2,}\b)\s*\+\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}(?:experience|building|working|developing|engineering|leading|managing)/gi;
     if (plusExpRegex.test(lowerText)) {
         return true;
     }
 
     // Check for "minimum of 2 years", "min 5 years", "at least 4 yrs", etc. (excluding 0, 1)
-    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[2-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z']+\s+){0,3}experience/gi;
+    const minExpRegex = /\b(?:minimum|min|at least)\s*(?:of\s+)?(?:\b[2-9]\b|\b\d{2,}\b)\s*\+?\s*(?:years?|yrs?|y\b)\s*(?:of\s+)?(?:[a-z',-]+\s+){0,5}experience/gi;
     if (minExpRegex.test(lowerText)) {
         return true;
     }
     
-    // Check for standalone experience requirements (e.g. "Requires 2 years", "Experience: 5+ yrs")
-    const standaloneExpRegex = /(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b\d{2,}\b)\s*(?:years?|yrs?|y\b)/gi;
+    // Check for standalone experience requirements (e.g. "Requires 2 years", "Experience: 5+ yrs", "Experience - 6 to 10")
+    const standaloneExpRegex = /(?:experience|exp|requires?|requiring|minimum|min)[^a-z0-9]{1,4}(?<!\b[0-1]\s*(?:-|–|\bto\b)\s*)(?:\b[2-9]\b|\b\d{2,}\b)\s*\+?(?:\s*(?:years?|yrs?|y\b))?/gi;
     if (standaloneExpRegex.test(lowerText)) {
         return true;
     }

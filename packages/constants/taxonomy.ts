@@ -14,7 +14,7 @@ export const CORE_CATEGORIES = [
  * Controlled Tag System (The Meta-data layer)
  * These are suggested to users/admins to avoid duplicate or garbage tags.
  */
-import { INDIAN_CITIES } from './locationTaxonomy';
+import { INDIAN_CITIES } from './locationTaxonomy.js';
 
 export const CONTROLLED_TAGS = {
     BATCHES: ['2026 Batch', '2025 Batch', '2024 Batch', '2023 Batch'],

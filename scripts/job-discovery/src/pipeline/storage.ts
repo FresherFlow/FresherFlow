@@ -8,6 +8,7 @@ import { saveVisited, saveRejectedReasons } from '../utils/storage.js';
 import { parseJobUrl } from '../core/url-parser.js';
 import { withConcurrency } from '../ats/index.js';
 import { upsertJobs } from '../repositories/discoveredJobs.js';
+import { resolveAndAttachCompanies } from '../repositories/companies.js';
 import { enrichJobPayload } from '../core/job-enricher.js';
 
 export async function persistLocalData(state: DiscoveryState) {
@@ -15,6 +16,9 @@ export async function persistLocalData(state: DiscoveryState) {
     delete state.visited["pending_admin_approval"];
     await saveVisited(state.visited);
     await saveRejectedReasons(state.rejectedReasons);
+
+    // Resolve companies against Supabase Company Registry
+    await resolveAndAttachCompanies(state.newJobsFound, state.stats);
 
     const validRawJobs = state.newJobsFound.filter(j => !j.reviewRequired);
     const reviewJobs = state.newJobsFound.filter(j => j.reviewRequired);

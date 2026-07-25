@@ -85,19 +85,27 @@ export async function isJobLive(page: Page, url: string): Promise<JobCheckResult
         }
         
         // Smart Wait: Wait for actual job content — 800 chars minimum so nav menus
-        // (which load first and are typically 100-600 chars on modern portals like Volvo/SAP)
         // don't fire the snapshot early before the real job status/body content renders via JavaScript.
         await page.waitForFunction(() => {
             return document.body && document.body.innerText.trim().length > 800;
         }, { timeout: 10000 }).catch(() => {});
+        
+        // Wait for network idle to allow cross-origin iframes (like ICIMS on custom domains) to finish loading
+        await page.waitForLoadState('networkidle', { timeout: 5000 }).catch(() => {});
+
         // Extract text using Playwright's native locator, which automatically pierces open Shadow DOMs!
         let bodyText = await page.locator('body').innerText({ timeout: 5000 }).catch(() => "");
         
-        // Also extract text from any iframes (Playwright handles cross-origin iframes natively)
-        for (const frame of page.frames()) {
-            if (frame !== page.mainFrame()) {
-                const frameText = await frame.locator('body').innerText({ timeout: 1000 }).catch(() => "");
-                if (frameText) bodyText += '\n' + frameText;
+        // Also extract text from any iframes IN PARALLEL (Playwright handles cross-origin iframes natively)
+        // We use a 2000ms timeout per frame to avoid blocking on hidden tracking pixels.
+        const frameTexts = await Promise.all(page.frames().map(async (frame) => {
+            if (frame === page.mainFrame()) return "";
+            return await frame.locator('body').innerText({ timeout: 2000 }).catch(() => "");
+        }));
+
+        for (const text of frameTexts) {
+            if (text && text.trim().length > 0) {
+                bodyText += '\n' + text.trim();
             }
         }
         if (!bodyText || bodyText.trim().length < 100) {

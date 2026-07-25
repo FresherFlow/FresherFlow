@@ -32,6 +32,7 @@ export async function finishRun(
     failed: number;
     duration_ms: number;
     status: 'COMPLETED' | 'FAILED';
+    metadata?: Record<string, any>;
   }
 ) {
   if (!runId || !process.env.SUPABASE_URL) return;
@@ -47,7 +48,8 @@ export async function finishRun(
         review_required: stats.review_required,
         duplicates: stats.duplicates,
         failed: stats.failed,
-        status: stats.status
+        status: stats.status,
+        metadata: stats.metadata || null
       })
       .eq('id', runId);
 

@@ -59,7 +59,14 @@ async function run() {
             duplicates: 0, // Handled implicitly by Supabase
             failed: state.candidateQueue.length, // Rough proxy for failed processing if left in queue
             duration_ms: Date.now() - startTime,
-            status: runStatus
+            status: runStatus,
+            metadata: {
+                company_resolved: state.stats.company_resolved,
+                company_new: state.stats.company_new,
+                company_matched: state.stats.company_matched,
+                company_unresolved: state.stats.company_unresolved,
+                company_ats_yield: state.stats.company_ats_yield
+            }
         });
     }
 }

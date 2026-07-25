@@ -23,6 +23,8 @@ export interface DiscoveredJobEntry {
     aggregatorTitle?: string;
     atsText?: string;
     company?: string;
+    companyId?: string;
+    company_id?: string;
     isTestBypass?: boolean;
     rawPayload?: any;
     rawHtml?: string;
@@ -58,6 +60,13 @@ export interface RunStats {
     agg_skipped_duplicate: number;
     agg_verified_live: number;
     agg_failed_no_link: number;       // could not find apply link on aggregator page
+
+    // ── Company Registry ──────────────────────────────────────────────────────
+    company_resolved: number;
+    company_new: number;
+    company_matched: number;
+    company_unresolved: number;
+    company_ats_yield: Record<string, number>;
 
     // ── Final output ─────────────────────────────────────────────────────────
     total_found: number;              // all jobs that made it to newJobsFound
@@ -113,6 +122,11 @@ export function createInitialState(): DiscoveryState {
             agg_skipped_duplicate: 0,
             agg_verified_live: 0,
             agg_failed_no_link: 0,
+            company_resolved: 0,
+            company_new: 0,
+            company_matched: 0,
+            company_unresolved: 0,
+            company_ats_yield: {},
             total_found: 0,
             accepted: 0,
             review_required: 0,

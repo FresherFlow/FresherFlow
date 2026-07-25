@@ -350,6 +350,7 @@ async function run(): Promise<void> {
                     type: rules.type ?? 'JOB',
                     title: nativeData?.title || atsContent.title || job.title || '',
                     company: nativeData?.company || job.company || '',
+                    companyId: job.companyId || job.company_id || null,
                     applyLink: job.applyLink,
                     locations: nativeData?.locations ?? [],
                     requiredSkills: nativeData?.nativeSkills ?? [],

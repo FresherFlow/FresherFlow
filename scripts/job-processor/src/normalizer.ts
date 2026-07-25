@@ -42,6 +42,7 @@ export const jobSchema = z.object({
     status: z.enum(['DRAFT', 'PUBLISHED', 'ARCHIVED', 'EXPIRED']).optional().default('DRAFT'),
     title: z.string().min(1),
     company: z.string().min(1),
+    companyId: z.string().optional().nullable(),
     companyWebsite: z.string().optional().default(''),
     companyLogoUrl: z.string().optional().default(''),
     description: z.string().optional().default(''),
@@ -92,6 +93,8 @@ export interface DiscoveredJob {
     sourceType: 'ATS' | 'AGGREGATOR';
     discoveredAt: string;
     company?: string;
+    companyId?: string;
+    company_id?: string;
     location?: string;
     reviewRequired?: boolean;
     aggregatorUrl?: string;
