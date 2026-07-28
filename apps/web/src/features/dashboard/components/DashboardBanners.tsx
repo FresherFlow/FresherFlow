@@ -21,26 +21,41 @@ export function ProfileCompletionBanner() {
     if (isLoading || !profile || pct >= 100) return null;
 
     return (
-        <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="space-y-1.5 flex-1">
-                <p className="text-xs font-semibold text-foreground">
-                    Profile {pct}% complete - finish to unlock all features
-                </p>
-                <div className="h-1.5 w-full max-w-xs bg-muted rounded-full overflow-hidden">
-                    <div
-                        className="h-full bg-primary rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                    />
+        <>
+            <style>{`
+                .banner-enter {
+                    opacity: 1;
+                    transform: scale(1);
+                    transition: opacity 400ms cubic-bezier(0.23, 1, 0.32, 1), transform 400ms cubic-bezier(0.23, 1, 0.32, 1);
+                }
+                @starting-style {
+                    .banner-enter {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                }
+            `}</style>
+            <div className="banner-enter rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div className="space-y-1.5 flex-1">
+                    <p className="text-xs font-semibold text-foreground">
+                        Profile {pct}% complete - finish to unlock all features
+                    </p>
+                    <div className="h-1.5 w-full max-w-xs bg-muted rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-primary rounded-full transition-all duration-500"
+                            style={{ width: `${pct}%` }}
+                        />
+                    </div>
                 </div>
+                <Link
+                    href="/profile/complete"
+                    className="inline-flex items-center gap-1.5 text-[11px] font-bold capitalize tracking-widest text-primary hover:underline whitespace-nowrap active:scale-95 transition-transform"
+                >
+                    Complete profile
+                    <ArrowRightIcon className="w-3 h-3" />
+                </Link>
             </div>
-            <Link
-                href="/profile/complete"
-                className="inline-flex items-center gap-1.5 text-[11px] font-bold capitalize tracking-widest text-primary hover:underline whitespace-nowrap"
-            >
-                Complete profile
-                <ArrowRightIcon className="w-3 h-3" />
-            </Link>
-        </div>
+        </>
     );
 }
 

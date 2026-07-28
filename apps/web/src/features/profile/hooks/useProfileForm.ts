@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
-import { COMMON_SKILLS, INDIAN_CITIES, normalizeSkillName } from '@fresherflow/domain';
+import toast from 'react-hot-toast';
+import { COMMON_SKILLS, INDIAN_CITIES, TOP_TECH_HUBS, normalizeSkillName } from '@fresherflow/domain';
 
 type ProfileLike = {
   educationLevel?: string | null;
@@ -8,6 +9,9 @@ type ProfileLike = {
   gradCourse?: string | null;
   gradSpecialization?: string | null;
   gradYear?: number | null;
+  collegeId?: string | null;
+  collegeName?: string | null;
+  collegeState?: string | null;
   pgCourse?: string | null;
   pgSpecialization?: string | null;
   pgYear?: number | null;
@@ -16,16 +20,31 @@ type ProfileLike = {
   workModes?: string[] | null;
   availability?: string | null;
   skills?: string[] | null;
+  headline?: string | null;
+  about?: string | null;
+  githubUrl?: string | null;
+  linkedinUrl?: string | null;
+  portfolioUrl?: string | null;
+  openToRecruiters?: boolean | null;
 };
 
 export function useProfileForm(cityLimit = 5) {
   const [fullName, setFullName] = useState('');
+  const [headline, setHeadline] = useState('');
+  const [about, setAbout] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [linkedinUrl, setLinkedinUrl] = useState('');
+  const [portfolioUrl, setPortfolioUrl] = useState('');
+  const [openToRecruiters, setOpenToRecruiters] = useState(false);
   const [educationLevel, setEducationLevel] = useState('');
   const [tenthYear, setTenthYear] = useState('');
   const [twelfthYear, setTwelfthYear] = useState('');
   const [gradCourse, setGradCourse] = useState('');
   const [gradSpecialization, setGradSpecialization] = useState('');
   const [gradYear, setGradYear] = useState('');
+  const [collegeId, setCollegeId] = useState('');
+  const [collegeName, setCollegeName] = useState('');
+  const [collegeState, setCollegeState] = useState('');
   const [hasPG, setHasPG] = useState(false);
   const [pgCourse, setPgCourse] = useState('');
   const [pgSpecialization, setPgSpecialization] = useState('');
@@ -47,24 +66,41 @@ export function useProfileForm(cityLimit = 5) {
   );
 
   const filteredCityOptions = useMemo(
-    () =>
-      INDIAN_CITIES.filter(
-        (c) => c.toLowerCase().includes(cityInput.toLowerCase()) && !preferredCities.includes(c)
-      ).slice(0, 10),
+    () => {
+      const input = cityInput.trim().toLowerCase();
+      if (!input) {
+        const availableHubs = TOP_TECH_HUBS.filter((c) => !preferredCities.includes(c));
+        if (availableHubs.length > 0) return availableHubs;
+        return INDIAN_CITIES.filter((c) => !preferredCities.includes(c)).slice(0, 10);
+      }
+      const allCities = Array.from(new Set([...TOP_TECH_HUBS, ...INDIAN_CITIES]));
+      return allCities.filter(
+        (c) => c.toLowerCase().includes(input) && !preferredCities.includes(c)
+      ).slice(0, 10);
+    },
     [cityInput, preferredCities]
   );
 
   const hydrateFromProfile = useCallback((profile: ProfileLike | null | undefined, userFullName?: string | null) => {
     if (!profile) return;
+    setHeadline(profile.headline || '');
+    setAbout(profile.about || '');
+    setGithubUrl(profile.githubUrl || '');
+    setLinkedinUrl(profile.linkedinUrl || '');
+    setPortfolioUrl(profile.portfolioUrl || '');
+    setOpenToRecruiters(Boolean(profile.openToRecruiters));
     setEducationLevel(profile.educationLevel || '');
     setTenthYear(profile.tenthYear?.toString() || '');
     setTwelfthYear(profile.twelfthYear?.toString() || '');
     setGradCourse(profile.gradCourse || '');
     setGradSpecialization(profile.gradSpecialization || '');
     setGradYear(profile.gradYear?.toString() || '');
-    if (profile.pgCourse) {
+    setCollegeId(profile.collegeId || '');
+    setCollegeName(profile.collegeName || '');
+    setCollegeState(profile.collegeState || '');
+    if (profile.pgCourse || profile.educationLevel === 'PG') {
       setHasPG(true);
-      setPgCourse(profile.pgCourse);
+      setPgCourse(profile.pgCourse || '');
       setPgSpecialization(profile.pgSpecialization || '');
       setPgYear(profile.pgYear?.toString() || '');
     } else {
@@ -87,6 +123,10 @@ export function useProfileForm(cityLimit = 5) {
   const addSkillValue = useCallback((rawSkill: string) => {
     const s = normalizeSkillName(rawSkill);
     if (!s || skills.includes(s)) return false;
+    if (skills.length >= 10) {
+      toast.error('Maximum 10 skills allowed.');
+      return false;
+    }
     setSkills((prev) => [...prev, s]);
     return true;
   }, [skills]);
@@ -121,6 +161,18 @@ export function useProfileForm(cityLimit = 5) {
   return {
     fullName,
     setFullName,
+    headline,
+    setHeadline,
+    about,
+    setAbout,
+    githubUrl,
+    setGithubUrl,
+    linkedinUrl,
+    setLinkedinUrl,
+    portfolioUrl,
+    setPortfolioUrl,
+    openToRecruiters,
+    setOpenToRecruiters,
     educationLevel,
     setEducationLevel,
     tenthYear,
@@ -133,6 +185,12 @@ export function useProfileForm(cityLimit = 5) {
     setGradSpecialization,
     gradYear,
     setGradYear,
+    collegeId,
+    setCollegeId,
+    collegeName,
+    setCollegeName,
+    collegeState,
+    setCollegeState,
     hasPG,
     setHasPG,
     pgCourse,

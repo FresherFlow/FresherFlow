@@ -79,6 +79,8 @@ export function OpportunityFormPage({ mode = 'create', opportunityId, initialGov
             <div className="mb-8">
                 <FormHeader
                     isEditMode={isEditMode}
+                    showParser={form.showParser}
+                    setShowParser={form.setShowParser}
                 />
             </div>
 

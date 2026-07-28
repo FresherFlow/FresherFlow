@@ -146,8 +146,12 @@ export function useUnreadNotifications() {
                 return;
             }
             sharedFetchPromise = (async () => {
-                const data = await alertsApi.getUnreadCount() as { count: number };
-                return data.count;
+                try {
+                    const data = await alertsApi.getUnreadCount() as { count?: number };
+                    return typeof data?.count === 'number' ? data.count : 0;
+                } catch {
+                    return 0;
+                }
             })();
             const count = await sharedFetchPromise;
             if (isLogoutInProgress() || !hasActiveSessionCookie()) {

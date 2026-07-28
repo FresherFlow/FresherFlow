@@ -1,4 +1,3 @@
-import DOMPurify from 'isomorphic-dompurify';
 
 interface CompanyStats {
     activeJobsCount: number;
@@ -166,6 +165,10 @@ const TIER_A_PROFILES: Record<string, string> = {
     `
 };
 
+function stripTags(text: string): string {
+    return text.replace(/<[^>]*>/g, '').trim();
+}
+
 export function getCompanyDescription(slug: string, name: string, stats: CompanyStats): string {
     const cleanSlug = slug.toLowerCase();
     
@@ -175,18 +178,18 @@ export function getCompanyDescription(slug: string, name: string, stats: Company
     }
 
     // Programmatically generate a rich description (300-500 words) for other companies (Tier B)
-    const cleanName = DOMPurify.sanitize(name, { ALLOWED_TAGS: [] });
+    const cleanName = stripTags(name);
 
     const locList = stats.locations.length > 0 
-        ? DOMPurify.sanitize(stats.locations.slice(0, 4).join(', '), { ALLOWED_TAGS: [] }) 
+        ? stripTags(stats.locations.slice(0, 4).join(', ')) 
         : 'various technology hubs across India';
     
     const skillList = stats.skills.length > 0 
-        ? DOMPurify.sanitize(stats.skills.slice(0, 5).join(', '), { ALLOWED_TAGS: [] }) 
+        ? stripTags(stats.skills.slice(0, 5).join(', ')) 
         : 'software engineering and logical reasoning skills';
 
     const roleList = stats.roles.length > 0 
-        ? DOMPurify.sanitize(stats.roles.slice(0, 3).join(', '), { ALLOWED_TAGS: [] }) 
+        ? stripTags(stats.roles.slice(0, 3).join(', ')) 
         : 'Associate, Developer, and Intern';
 
     const countText = stats.activeJobsCount === 1 
