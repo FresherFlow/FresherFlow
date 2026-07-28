@@ -19,6 +19,7 @@ interface OpportunityGridProps {
     isSplitView?: boolean;
     selectedOppId?: string | null;
     onSelectOpportunity?: (opp: Opportunity) => void;
+    searchQuery?: string;
 }
 
 export function OpportunityGrid({
@@ -31,7 +32,8 @@ export function OpportunityGrid({
     onRetry,
     isSplitView = false,
     selectedOppId = null,
-    onSelectOpportunity
+    onSelectOpportunity,
+    searchQuery
 }: OpportunityGridProps) {
 
     // Grid layout remains static and independent of selection in Drawer architecture
@@ -91,6 +93,7 @@ export function OpportunityGrid({
                             isAdmin={isAdmin}
                             isSelected={opp.id === selectedOppId || opp.slug === selectedOppId}
                             variant={isSplitView ? "compact" : "default"}
+                            searchQuery={searchQuery}
                             onClick={(e) => {
                                 if (onSelectOpportunity) {
                                     e.preventDefault();

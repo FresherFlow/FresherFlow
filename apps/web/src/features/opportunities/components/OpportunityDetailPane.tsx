@@ -38,6 +38,7 @@ import { useOpportunityDetail } from '@/features/opportunities/hooks/useOpportun
 import { useOpportunityDerivedState } from '@/features/opportunities/hooks/useOpportunityDerivedState';
 import { parseOpportunityLocation, getGroupedLocations } from '@/features/opportunities/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
+import { isNotEligible } from '@/features/opportunities/domain/matchScore';
 
 interface OpportunityDetailPaneProps {
     oppId: string;
@@ -240,6 +241,28 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                             )}
                         </div>
 
+                        {(() => {
+                            const oppWithMatch = opp as Opportunity & { matchScore?: number; matchReason?: string };
+                            if (!oppWithMatch?.matchReason || oppWithMatch?.matchScore === undefined || oppWithMatch?.matchScore <= 0) return null;
+                            const notEligible = isNotEligible(oppWithMatch);
+                            return (
+                                <div className={cn(
+                                    "p-4 rounded-2xl border text-sm font-semibold flex items-start gap-3 mt-4",
+                                    notEligible
+                                        ? "bg-rose-500/5 border-rose-500/20 text-rose-600 dark:text-rose-400"
+                                        : "bg-emerald-500/5 border-emerald-500/20 text-emerald-700 dark:text-emerald-400"
+                                )}>
+                                    <span className="text-lg leading-none mt-0.5">✦</span>
+                                    <div>
+                                        <p className="font-bold">{notEligible ? 'Eligibility Warning' : 'Match Relevance'}</p>
+                                        <p className="text-xs text-muted-foreground mt-0.5 font-medium leading-relaxed">
+                                            {oppWithMatch.matchReason}
+                                        </p>
+                                    </div>
+                                </div>
+                            );
+                        })()}
+
                         {/* Meta boxes — Experience, Employment, Role Title, Salary, Posted, Deadline */}
                         <div className="grid grid-cols-2 gap-2.5">
                             <div className="bg-muted/10 border border-border/40 rounded-xl p-3 flex items-start gap-2.5 min-h-[64px] min-w-0">
@@ -341,11 +364,17 @@ export function OpportunityDetailPane({ oppId, initialData, onClose, isMobile = 
                         )}
 
 
-
-                        <DetailRequirements
-                            opp={opp}
-                            educationDetails={ds.educationDetails}
-                        />
+                        {(() => {
+                            const userProfileSkills = profile?.skills?.map(s => s.toLowerCase()) || [];
+                            return (
+                                <DetailRequirements
+                                    opp={opp}
+                                    educationDetails={ds.educationDetails}
+                                    userProfileSkills={userProfileSkills}
+                                    userProfile={profile}
+                                />
+                            );
+                        })()}
 
                         <AppPromoBanner />
 

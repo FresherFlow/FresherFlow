@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import DevicePhoneMobileIcon from '@heroicons/react/24/outline/DevicePhoneMobileIcon';
+import { ScrollReveal } from '@/features/landing/ScrollReveal';
 
 const TRUST_FEATURES = [
     { title: 'Direct to Official Apply', text: 'Skip ad shorteners, middlemen, and tracking links. Apply directly on official Greenhouse, Lever, or company career portals.' },
@@ -34,18 +35,20 @@ export function TrustLedger() {
                             </p>
                         </div>
                         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-                            <Link href="/download" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-foreground text-background font-bold text-sm hover:bg-foreground/90 transition-colors">
+                            <Link href="/download" className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-foreground text-background font-bold text-sm hover:bg-foreground/90 active:scale-[0.97] transition-transform duration-[160ms] ease-out">
                                 Download APK
                             </Link>
                         </div>
                     </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {TRUST_FEATURES.map((item) => (
-                        <div key={item.title} className="premium-card p-5 space-y-2 border border-border/80 bg-card/65 shadow-sm">
-                            <h3 className="text-sm md:text-base font-bold text-foreground tracking-tight">{item.title}</h3>
-                            <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">{item.text}</p>
-                        </div>
+                    {TRUST_FEATURES.map((item, index) => (
+                        <ScrollReveal key={item.title} delay={index * 50}>
+                            <div className="premium-card p-5 space-y-2 border border-border/80 bg-card/65 shadow-sm hover:shadow-md transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] h-full">
+                                <h3 className="text-sm md:text-base font-bold text-foreground tracking-tight">{item.title}</h3>
+                                <p className="text-xs md:text-sm text-muted-foreground leading-relaxed">{item.text}</p>
+                            </div>
+                        </ScrollReveal>
                     ))}
                 </div>
             </div>

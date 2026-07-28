@@ -35,14 +35,14 @@ export function HeroSection({ liveCount, companiesCount }: HeroSectionProps) {
                 <div className="flex flex-col sm:flex-row items-center gap-3 pt-2 w-full sm:w-auto">
                     <Link
                         href="/opportunities"
-                        className="premium-button w-full sm:w-auto px-8 py-3.5 text-sm font-semibold tracking-wide flex items-center justify-center gap-2"
+                        className="premium-button w-full sm:w-auto px-8 py-3.5 text-sm font-semibold tracking-wide flex items-center justify-center gap-2 active:scale-[0.97] transition-transform duration-[160ms] ease-out"
                     >
                         Browse Jobs
                         <ArrowRightIcon className="w-4 h-4" />
                     </Link>
                     <Link
                         href="/app"
-                        className="premium-button-outline w-full sm:w-auto px-8 py-3.5 text-sm font-semibold tracking-wide flex items-center justify-center gap-2"
+                        className="premium-button-outline w-full sm:w-auto px-8 py-3.5 text-sm font-semibold tracking-wide flex items-center justify-center gap-2 active:scale-[0.97] transition-transform duration-[160ms] ease-out"
                     >
                         Get the App
                     </Link>

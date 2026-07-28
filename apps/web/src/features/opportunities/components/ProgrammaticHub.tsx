@@ -10,6 +10,7 @@ import CompanyLogo from '@/ui/CompanyLogo';
 import { EmptyState } from '@/ui/EmptyState';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 import { OpportunityDetailPane } from './OpportunityDetailPane';
+import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
 
 export interface HubLink {
     label: string;
@@ -53,6 +54,18 @@ export default function ProgrammaticHub({
     const [visibleCount, setVisibleCount] = useState(12);
     const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
     const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
+    const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    useEffect(() => {
+        if (isIntersecting && visibleCount < opportunities.length && !isLoadingMore) {
+            setIsLoadingMore(true);
+            setTimeout(() => {
+                setVisibleCount(prev => prev + 12);
+                setIsLoadingMore(false);
+            }, 600);
+        }
+    }, [isIntersecting, visibleCount, opportunities.length, isLoadingMore]);
 
     useEffect(() => {
         setIsDesktop(window.innerWidth >= 1024);
@@ -104,7 +117,7 @@ export default function ProgrammaticHub({
 
     return (
         <>
-            <div className="w-full max-w-7xl mx-auto px-4 md:px-6 py-6 md:py-10 space-y-8">
+            <div className="w-full max-w-7xl mx-auto px-4 md:px-6 py-6 md:pt-10 md:pb-10 lg:pb-4 space-y-8">
                 {/* Breadcrumbs */}
                 <Breadcrumb items={[
                     { label: 'Home', href: '/' },
@@ -162,14 +175,9 @@ export default function ProgrammaticHub({
                                     window.history.pushState({ modalOpen: true }, '', window.location.href);
                                 }}
                             />
-                            {visibleCount < opportunities.length && (
-                                <div className="flex justify-center pt-8 pb-4">
-                                    <button
-                                        onClick={() => setVisibleCount(prev => prev + 12)}
-                                        className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-sm font-bold text-primary-foreground transition-colors shadow-sm"
-                                    >
-                                        Load more listings
-                                    </button>
+                            {(visibleCount < opportunities.length || isLoadingMore) && (
+                                <div ref={loadMoreRef} className="flex justify-center pt-8 pb-4">
+                                    <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                                 </div>
                             )}
                         </div>

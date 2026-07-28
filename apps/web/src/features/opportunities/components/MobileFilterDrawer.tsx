@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { XMarkIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/ui/Button';
 import { cn } from '@repo/ui/utils/cn';
@@ -72,7 +72,7 @@ function Section({
             <button
                 type="button"
                 onClick={onToggle}
-                className="w-full flex items-center justify-between py-4"
+                className="w-full flex items-center justify-between py-4 focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
             >
                 <span className="text-sm font-semibold text-foreground">{title}</span>
                 <ChevronDownIcon className={cn('w-4 h-4 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
@@ -99,7 +99,7 @@ function Pill({
             onClick={onClick}
             disabled={disabled}
             className={cn(
-                'px-4 py-2 rounded-full text-sm transition',
+                'px-4 py-2 rounded-full text-sm transition focus-visible:ring-2 focus-visible:ring-primary focus:outline-none',
                 active ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground hover:bg-muted/80',
                 disabled && 'opacity-50 cursor-not-allowed'
             )}
@@ -131,6 +131,18 @@ export function MobileFilterDrawer({
     onClear,
 }: MobileFilterDrawerProps) {
     const [openSection, setOpenSection] = useState<OpenSection>(setDraftType ? 'type' : 'location');
+
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
+                onClose();
+            }
+        };
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isOpen, onClose]);
+
     if (!isOpen) return null;
 
     const activeCount = [
@@ -146,9 +158,9 @@ export function MobileFilterDrawer({
 
     return (
         <div className="fixed inset-0 z-90 lg:hidden" role="dialog" aria-modal="true" aria-labelledby="mobile-filter-title">
-            <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+            <div className="absolute inset-0 bg-black/40 animate-in fade-in duration-300 ease-out" onClick={onClose} />
 
-            <div className="absolute bottom-0 pb-[env(safe-area-inset-bottom)] left-0 right-0 max-h-[85vh] rounded-t-3xl bg-background border-t border-border shadow-2xl flex flex-col">
+            <div className="absolute bottom-0 pb-[env(safe-area-inset-bottom)] left-0 right-0 max-h-[85vh] rounded-t-3xl bg-background border-t border-border shadow-2xl flex flex-col animate-in slide-in-from-bottom-[100%] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)]">
                 <div className="flex justify-center py-3">
                     <div className="h-1.5 w-10 rounded-full bg-muted" />
                 </div>
@@ -161,7 +173,7 @@ export function MobileFilterDrawer({
                     <button
                         type="button"
                         onClick={onClose}
-                        className="h-10 w-10 rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted transition-colors flex items-center justify-center"
+                        className="h-10 w-10 rounded-xl border border-border bg-card text-muted-foreground hover:bg-muted transition-colors flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                         aria-label="Close filters"
                     >
                         <XMarkIcon className="w-5 h-5" />
@@ -299,7 +311,7 @@ export function MobileFilterDrawer({
                         <button
                             type="button"
                             onClick={onClear}
-                            className="h-12 rounded-xl border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/60 transition-colors"
+                            className="h-12 rounded-xl border border-border bg-card text-sm font-medium text-foreground hover:bg-muted/60 transition-colors focus-visible:ring-2 focus-visible:ring-primary focus:outline-none"
                         >
                             Clear
                         </button>

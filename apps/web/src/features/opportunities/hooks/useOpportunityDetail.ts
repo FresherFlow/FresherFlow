@@ -1,19 +1,19 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { actionsApi, growthApi } from '@/lib/api/client';
 import { ActionType, type Opportunity, type User } from '@fresherflow/types';
 import toast from 'react-hot-toast';
-import { toastError } from '@/lib/utils/error';
+import { toastError } from '@repo/ui/utils/error-web';
 import { getRecentViewedByIdOrSlug, saveRecentViewed } from '@/lib/api/offline/recentViewed';
-// removed unused sync status import
-import { enqueueOfflineActionTrack, enqueueOfflineSaveToggle } from '@/lib/api/offline/actionQueue';
 import { analytics } from '@/lib/api/analytics';
 import { parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 import { buildLoginFromDetailHref, getDetailShareUrl } from '@/features/opportunities/domain/opportunityDetailHelpers';
 import { getRelatedOpportunities } from '@/features/opportunities/utils/detailUtils';
+import { useFirebaseTracker } from '@/lib/hooks/useFirebaseTracker';
+import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
+import { saveOpportunityToCache } from '@/lib/api/offline/opportunitiesFeedCache';
 
-const WEB_STATIC_DISCOVERY = true;
+
 
 export function useOpportunityDetail(
     id: string, 
@@ -24,23 +24,9 @@ export function useOpportunityDetail(
     const router = useRouter();
     const searchParams = useSearchParams();
     
-    const [opp, setOpp] = useState<Opportunity | null>(() => {
-        if (initialData) return initialData;
-        if (typeof window !== 'undefined') {
-            const cached = getRecentViewedByIdOrSlug(id);
-            if (cached) return cached;
-        }
-        return null;
-    });
+    const [opp, setOpp] = useState<Opportunity | null>(initialData || null);
     
-    const [isLoading, setIsLoading] = useState<boolean>(() => {
-        if (initialData) return false;
-        if (typeof window !== 'undefined') {
-            const cached = getRecentViewedByIdOrSlug(id);
-            if (cached) return false;
-        }
-        return true;
-    });
+    const [isLoading, setIsLoading] = useState<boolean>(!initialData);
 
     const [relatedOpps, setRelatedOpps] = useState<Opportunity[]>(initialRelatedData);
     const [isLoadingRelated, setIsLoadingRelated] = useState(false);
@@ -50,6 +36,29 @@ export function useOpportunityDetail(
     const hasTrackedDetailViewRef = useRef(false);
     const hasShownNotFoundRef = useRef(false);
     const hasAttemptedLoadRef = useRef(false);
+
+    const { trackerMap, writeTrackerItem, removeTrackerItem } = useFirebaseTracker(user?.id);
+    const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
+
+    const enrichedOpp = useMemo(() => {
+        if (!opp) return null;
+        const trackerItem = trackerMap[opp.id];
+        const isSaved = !!savedJobsMap[opp.id];
+        const oppWithActions = { ...opp, isSaved };
+
+        if (trackerItem) {
+            oppWithActions.actions = [
+                {
+                    id: `rtdb-${opp.id}`,
+                    userId: user?.id || '',
+                    opportunityId: opp.id,
+                    actionType: trackerItem.status,
+                    createdAt: new Date(trackerItem.updatedAt),
+                }
+            ];
+        }
+        return oppWithActions;
+    }, [opp, trackerMap, savedJobsMap, user?.id]);
 
     const loadOpportunity = useCallback(async () => {
         if (initialData) return;
@@ -101,6 +110,7 @@ export function useOpportunityDetail(
                 ...sanitized,
                 isSaved: opportunity.isSaved || false
             });
+            saveOpportunityToCache(sanitized as Opportunity);
             saveRecentViewed({
                 ...sanitized,
                 isSaved: opportunity.isSaved || false
@@ -130,6 +140,14 @@ export function useOpportunityDetail(
             setIsLoading(true);
             setError(null);
             hasAttemptedLoadRef.current = true;
+            
+            // Check local cache first on client side to render instantly
+            const cached = getRecentViewedByIdOrSlug(id);
+            if (cached) {
+                setOpp(cached);
+                setIsLoading(false);
+            }
+            
             void loadOpportunity();
         }
         hasTrackedDetailViewRef.current = false;
@@ -146,27 +164,8 @@ export function useOpportunityDetail(
         if (opp && !hasTrackedDetailViewRef.current) {
             hasTrackedDetailViewRef.current = true;
             analytics.jobView(opp.id, opp.company, parseOpportunityLocation(opp.locations).shortLabel);
-            // WEB PIVOT: disabled backend growth tracking on public detail pages.
-            // growthApi.trackEvent('DETAIL_VIEW', 'opportunity_detail', { opportunityId: opp.id }).catch(() => undefined);
         }
     }, [opp]);
-
-    useEffect(() => {
-        if (WEB_STATIC_DISCOVERY || !opp || !user) return;
-
-        const trackView = async () => {
-            try {
-                const currentAction = opp.actions?.[0]?.actionType;
-                if (!currentAction || currentAction === ActionType.VIEWED) {
-                    await actionsApi.track(opp.id, ActionType.VIEWED);
-                }
-            } catch {
-                // Silently fail
-            }
-        };
-
-        trackView();
-    }, [opp, user]);
 
     const initialRelatedDataLength = initialRelatedData?.length || 0;
 
@@ -199,34 +198,17 @@ export function useOpportunityDetail(
 
     const handleToggleSave = async () => {
         if (!opp) return;
-
-        const previousSavedState = opp.isSaved;
-        const newSavedState = !previousSavedState;
-        setOpp(prev => prev ? { ...prev, isSaved: newSavedState } : null);
-
-        if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
-            enqueueOfflineSaveToggle(opp.id, user.id);
-            toast.success('Saved update queued for sync.');
+        if (!user) {
+            const path = getOpportunityPathFromItem(opp);
+            const sp = searchParams.get('source');
+            router.push(buildLoginFromDetailHref(path, sp, searchParams.get('ref')));
             return;
         }
 
         try {
-            throw new Error('Saved jobs are disabled on web');
-            // const result = await savedApi.toggle(opp.id) as { saved: boolean };
-            const result = { saved: newSavedState };
-            if (result.saved !== newSavedState) {
-                setOpp(prev => prev ? { ...prev, isSaved: result.saved } : null);
-            }
-            if (result.saved) {
-                growthApi.trackEvent('SAVE_JOB', 'opportunity_detail').catch(() => undefined);
-            }
+            await toggleSavedJob(opp.id);
+            toast.success(savedJobsMap[opp.id] ? 'Removed from bookmarks' : 'Added to bookmarks');
         } catch (err: unknown) {
-            if (typeof navigator !== 'undefined' && !navigator.onLine && user) {
-                enqueueOfflineSaveToggle(opp.id, user.id);
-                toast.success('Saved update queued for sync.');
-                return;
-            }
-            setOpp(prev => prev ? { ...prev, isSaved: previousSavedState } : null);
             toastError(err, 'Failed to update bookmark');
         }
     };
@@ -240,40 +222,20 @@ export function useOpportunityDetail(
             return;
         }
 
-        const previousActions = opp.actions;
-        setOpp((prev) => {
-            if (!prev) return prev;
-            return {
-                ...prev,
-                actions: [
-                    {
-                        id: `local-${prev.id}`,
-                        userId: user.id,
-                        opportunityId: prev.id,
-                        actionType,
-                        createdAt: new Date(),
-                    }
-                ]
-            };
-        });
-
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-            enqueueOfflineActionTrack(opp.id, actionType, user.id);
-            return;
-        }
+        const currentAction = trackerMap[opp.id]?.status;
+        const isTogglingOff = currentAction === actionType;
 
         setIsUpdatingAction(true);
         try {
-            await actionsApi.track(opp.id, actionType);
-        } catch (err: unknown) {
-            if (typeof navigator !== 'undefined' && !navigator.onLine) {
-                enqueueOfflineActionTrack(opp.id, actionType, user.id);
-                return;
+            saveOpportunityToCache(opp);
+            if (isTogglingOff) {
+                await removeTrackerItem(opp.id);
+                toast.success('Removed from tracker');
+            } else {
+                await writeTrackerItem(opp.id, actionType);
+                toast.success('Progress updated');
             }
-            setOpp((prev) => {
-                if (!prev) return prev;
-                return { ...prev, actions: previousActions };
-            });
+        } catch (err: unknown) {
             toastError(err, 'Could not update progress');
         } finally {
             setIsUpdatingAction(false);
@@ -285,16 +247,10 @@ export function useOpportunityDetail(
 
         analytics.applyClick(opp.id, opp.company, !!opp.applyLink);
         const applyAction = opp.type === 'WALKIN' ? ActionType.PLANNED : ActionType.APPLIED;
+        saveOpportunityToCache(opp);
         if (user) {
-            actionsApi.track(opp.id, applyAction).catch(() => undefined);
+            writeTrackerItem(opp.id, applyAction).catch(() => undefined);
         }
-        // WEB PIVOT: no backend tracking from public web.
-        // growthApi.trackEvent('APPLY_CLICK', 'opportunity_detail').catch(() => undefined);
-        // opportunityClicksApi.trackApplyClick(
-        //     opp.id,
-        //     'opportunity_detail',
-        //     opp.applyLink || opp.companyWebsite || null
-        // ).catch(() => undefined);
 
         if (opp.applyLink) {
             window.open(opp.applyLink, '_blank', 'noopener,noreferrer');
@@ -339,7 +295,7 @@ export function useOpportunityDetail(
     };
 
     return {
-        opp,
+        opp: enrichedOpp,
         setOpp,
         isLoading,
         error,

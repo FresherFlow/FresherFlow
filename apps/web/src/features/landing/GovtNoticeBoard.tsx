@@ -7,6 +7,7 @@ import TrophyIcon from '@heroicons/react/24/outline/TrophyIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import { cn } from '@repo/ui/utils/cn';
 import type { Opportunity } from '@fresherflow/types';
+import { ScrollReveal } from '@/features/landing/ScrollReveal';
 
 interface PhaseGroup {
     key: string;
@@ -42,14 +43,15 @@ export function GovtNoticeBoard({ opportunities }: GovtNoticeBoardProps) {
                     </p>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 items-start">
-                    {PHASE_GROUPS.map(group => {
+                    {PHASE_GROUPS.map((group, index) => {
                         const groupOpps = opportunities.filter(o => {
                             const s = (o.governmentJobDetails as any)?.applicationStatus;
                             return s && group.statuses.includes(s);
                         });
                         if (groupOpps.length === 0) return null;
                         return (
-                            <div key={group.key} className="flex flex-col bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm">
+                            <ScrollReveal key={group.key} delay={index * 50}>
+                                <div className="flex flex-col bg-card border border-border/60 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] h-full">
                                 <div className={cn(
                                     'px-4 py-3 border-b flex items-center gap-2',
                                     group.urgency === 'high'   ? 'bg-destructive/10 border-destructive/20' :
@@ -74,9 +76,9 @@ export function GovtNoticeBoard({ opportunities }: GovtNoticeBoardProps) {
                                                 <li key={opp.id}>
                                                     <Link
                                                         href={`/${opp.slug}`}
-                                                        className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-colors text-xs font-semibold leading-tight group/link"
+                                                        className="flex items-start gap-2 p-2 rounded-lg hover:bg-muted/50 transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] text-xs font-semibold leading-tight group/link active:scale-[0.97]"
                                                     >
-                                                        <ChevronRightIcon className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground group-hover/link:text-primary" />
+                                                        <ChevronRightIcon className="w-3 h-3 mt-0.5 shrink-0 text-muted-foreground group-hover/link:text-primary transition-colors" />
                                                         <span className="group-hover/link:text-primary transition-colors line-clamp-2">
                                                             {opp.title}
                                                             {isNew && (
@@ -100,6 +102,7 @@ export function GovtNoticeBoard({ opportunities }: GovtNoticeBoardProps) {
                                     </Link>
                                 )}
                             </div>
+                            </ScrollReveal>
                         );
                     })}
                 </div>

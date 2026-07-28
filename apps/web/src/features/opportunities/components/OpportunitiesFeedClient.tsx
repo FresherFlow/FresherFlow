@@ -18,6 +18,7 @@ import dynamic from 'next/dynamic';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 import { SITE_URL } from '@/lib/utils/runtimeConfig';
 import { FilterDropdownBar, type FilterBarFilters } from '@/features/opportunities/components/FilterDropdownBar';
+import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
 import { Opportunity } from '@fresherflow/types';
 import { Breadcrumb } from '@/ui/Breadcrumb';
 
@@ -59,6 +60,9 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     const [selectedOpp, setSelectedOpp] = useState<Opportunity | null>(null);
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
     const leftColumnRef = useRef<HTMLDivElement>(null);
+    const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
     const typeParam = searchParams.get('type');
     const [isDesktop, setIsDesktop] = useState<boolean | null>(null);
 
@@ -100,13 +104,13 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
     const handleCloseOpportunityPane = () => {
         const mobileModal = document.getElementById('mobile-detail-modal');
         if (mobileModal) {
-            mobileModal.classList.remove('animate-in', 'slide-in-from-bottom');
-            mobileModal.classList.add('animate-out', 'slide-out-to-bottom', 'fade-out', 'duration-300');
+            mobileModal.classList.remove('animate-in', 'slide-in-from-bottom-[100%]');
+            mobileModal.classList.add('animate-out', 'slide-out-to-bottom-[100%]', 'duration-400', 'ease-[cubic-bezier(0.32,0.72,0,1)]');
         }
         setTimeout(() => {
             setSelectedOpp(null);
             if (window.history.state?.modalOpen) window.history.back();
-        }, 250);
+        }, 400);
     };
     const selectedType = typeParam ? typeParamToEnum(typeParam) : null;
 
@@ -166,6 +170,17 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
         setVisibleCount(PAGE_SIZE);
         setSelectedOpp(null);
     }, [search, selectedType, filters.location, filters.sector, filters.qualification, filters.course, filters.year, filters.closingSoon, filters.saved]);
+
+    // Infinite scroll trigger
+    useEffect(() => {
+        if (isIntersecting && visibleCount < filteredOpps.length && !isLoadingMore) {
+            setIsLoadingMore(true);
+            setTimeout(() => {
+                setVisibleCount(prev => prev + PAGE_SIZE);
+                setIsLoadingMore(false);
+            }, 600);
+        }
+    }, [isIntersecting, visibleCount, filteredOpps.length, isLoadingMore]);
 
     // Auto-select first job on desktop
     useEffect(() => {
@@ -229,11 +244,29 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
 
     return (
         <>
+            <style>{`
+                [role="list"] > [role="listitem"] {
+                    opacity: 0;
+                    animation: staggerFadeIn 400ms cubic-bezier(0.32,0.72,0,1) forwards;
+                }
+                [role="list"] > [role="listitem"]:nth-child(1) { animation-delay: 0ms; }
+                [role="list"] > [role="listitem"]:nth-child(2) { animation-delay: 40ms; }
+                [role="list"] > [role="listitem"]:nth-child(3) { animation-delay: 80ms; }
+                [role="list"] > [role="listitem"]:nth-child(4) { animation-delay: 120ms; }
+                [role="list"] > [role="listitem"]:nth-child(5) { animation-delay: 160ms; }
+                [role="list"] > [role="listitem"]:nth-child(6) { animation-delay: 200ms; }
+                [role="list"] > [role="listitem"]:nth-child(7) { animation-delay: 240ms; }
+                [role="list"] > [role="listitem"]:nth-child(n+8) { animation-delay: 280ms; }
+                @keyframes staggerFadeIn {
+                    from { opacity: 0; transform: translateY(20px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
             <script
                 type="application/ld+json"
                 dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
             />
-            <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pt-2 md:pt-0 pb-10 md:pb-20 space-y-4 md:space-y-6">
+            <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pt-2 md:pt-0 pb-10 md:pb-20 lg:pb-4 space-y-4 md:space-y-6">
                 
                 <div className={cn("pt-2", selectedOpp && "hidden lg:block")}>
                     <Breadcrumb items={[
@@ -271,7 +304,8 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                     {search && (
                                         <button
                                             onClick={() => setSearch('')}
-                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                            aria-label="Clear search"
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-full p-0.5"
                                         >
                                             <XMarkIcon className="w-4 h-4" />
                                         </button>
@@ -283,7 +317,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                     onClick={openMobileFilters}
                                     aria-haspopup="dialog"
                                     aria-expanded={isMobileFilterOpen}
-                                    className="lg:hidden h-10 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0"
+                                    className="lg:hidden h-10 flex items-center justify-center gap-2 px-4 rounded-xl border border-border bg-card text-[10px] font-bold capitalize tracking-widest shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                                 >
                                     <FunnelIcon className="w-4 h-4" />
                                     {mobileActiveCount > 0 ? `Filters (${mobileActiveCount})` : 'Filters'}
@@ -365,20 +399,15 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
                                         setFilters({ location: null, sector: null, qualification: null, course: null, year: null, closingSoon: false, saved: false });
                                     }}
                                 />
-                                {visibleCount < filteredOpps.length && (
-                                    <div className="flex justify-center pt-8 pb-4">
-                                        <button
-                                            onClick={() => setVisibleCount(prev => prev + PAGE_SIZE)}
-                                            className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-sm font-bold text-primary-foreground transition-colors shadow-sm"
-                                        >
-                                            Load more opportunities
-                                        </button>
+                                {(visibleCount < filteredOpps.length || isLoadingMore) && (
+                                    <div ref={loadMoreRef} className="flex justify-center pt-8 pb-4">
+                                        <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                                     </div>
                                 )}
                             </div>
 
                             {/* Right Column: Detail Panel / Empty State (Desktop only) */}
-                            <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="hidden lg:flex flex-col sticky top-24 h-[calc(100vh-8rem)] bg-card border border-border/50 rounded-2xl overflow-hidden shadow-sm animate-in fade-in slide-in-from-bottom-[20px] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)]">
                                 {selectedOpp ? (
                                     <div className="flex-1 overflow-y-auto custom-scrollbar">
                                         <OpportunityDetailPane
@@ -408,7 +437,7 @@ export function OpportunitiesFeedClient({ initialData }: OpportunitiesFeedClient
 
                             {/* Mobile Detail Modal/Drawer (Mobile/Tablet only) */}
                             {selectedOpp && isDesktop === false && (
-                                <div id="mobile-detail-modal" className="lg:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom duration-300">
+                                <div id="mobile-detail-modal" className="lg:hidden fixed inset-0 z-[120] flex flex-col bg-background animate-in slide-in-from-bottom-[100%] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)]">
                                     {/* Safe area padding */}
                                     <div className="pt-[env(safe-area-inset-top)] bg-card shrink-0" />
                                     <div className="flex-1 flex flex-col min-h-0">

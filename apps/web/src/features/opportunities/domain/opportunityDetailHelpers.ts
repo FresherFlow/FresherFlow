@@ -57,7 +57,6 @@ export function getTrackerOptions(isWalkinFlow: boolean) {
         { key: ActionType.ATTENDED, label: 'Attended' },
       ]
     : [
-        { key: ActionType.VIEWED, label: 'Viewed' },
         { key: ActionType.APPLIED, label: 'Applied' },
         { key: ActionType.INTERVIEWED, label: 'Interviewed' },
       ];

@@ -8,6 +8,7 @@ import CircleStackIcon from '@heroicons/react/24/outline/CircleStackIcon';
 import ComputerDesktopIcon from '@heroicons/react/24/outline/ComputerDesktopIcon';
 import ChevronRightIcon from '@heroicons/react/24/outline/ChevronRightIcon';
 import { cn } from '@repo/ui/utils/cn';
+import { ScrollReveal } from '@/features/landing/ScrollReveal';
 
 const COLLECTIONS = [
     { 
@@ -65,12 +66,12 @@ export function CorporateCollections() {
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {COLLECTIONS.map((item) => (
-                            <Link 
-                                key={item.title} 
-                                href={item.href} 
-                                className="group bg-card/60 backdrop-blur border border-border/80 rounded-2xl p-6 md:p-8 hover:border-primary/45 hover:shadow-lg transition-all duration-300 flex flex-col justify-between h-full"
-                            >
+                        {COLLECTIONS.map((item, index) => (
+                            <ScrollReveal key={item.title} delay={index * 50} className="h-full">
+                                <Link 
+                                    href={item.href} 
+                                    className="group bg-card/60 backdrop-blur border border-border/80 rounded-2xl p-6 md:p-8 hover:border-primary/45 hover:shadow-lg transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] flex flex-col justify-between h-full active:scale-[0.97]"
+                                >
                                 <div className="space-y-4 relative z-10">
                                     <div className="flex items-center gap-4">
                                         <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border border-border/50 group-hover:scale-105 transition-transform duration-300', item.bg)}>
@@ -90,6 +91,7 @@ export function CorporateCollections() {
                                     <ChevronRightIcon className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
                                 </div>
                             </Link>
+                            </ScrollReveal>
                         ))}
                     </div>
                 </div>
@@ -112,12 +114,12 @@ export function CorporateCollections() {
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
-                        {JOB_CATEGORIES.map((cat) => (
-                            <Link
-                                key={cat.name}
-                                href={`/opportunities?query=${encodeURIComponent(cat.query)}`}
-                                className="group relative overflow-hidden bg-card/65 backdrop-blur border border-border/60 hover:border-primary/45 hover:shadow-md hover:shadow-primary/5 hover:-translate-y-0.5 rounded-xl p-4 transition-all duration-200 flex items-center gap-4"
-                            >
+                        {JOB_CATEGORIES.map((cat, index) => (
+                            <ScrollReveal key={cat.name} delay={index * 50}>
+                                <Link
+                                    href={`/opportunities?query=${encodeURIComponent(cat.query)}`}
+                                    className="group relative overflow-hidden bg-card/65 backdrop-blur border border-border/60 hover:border-primary/45 hover:shadow-md hover:shadow-primary/5 hover:-translate-y-0.5 rounded-xl p-4 transition-all duration-[250ms] ease-[cubic-bezier(0.23,1,0.32,1)] flex items-center gap-4 active:scale-[0.97]"
+                                >
                                 <div className="absolute -inset-px bg-gradient-to-br from-primary/5 via-transparent to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                                 
                                 <div className={cn('w-12 h-12 rounded-lg flex items-center justify-center shrink-0 border border-border/50 group-hover:scale-105 transition-transform duration-200 relative z-10', cat.bg)}>
@@ -131,8 +133,9 @@ export function CorporateCollections() {
                                         View Feed
                                     </p>
                                 </div>
-                                <ChevronRightIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors group-hover:translate-x-0.5 transition-transform shrink-0 relative z-10" />
-                            </Link>
+                                <ChevronRightIcon className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors group-hover:translate-x-0.5 shrink-0 relative z-10" />
+                                </Link>
+                            </ScrollReveal>
                         ))}
                     </div>
                 </div>

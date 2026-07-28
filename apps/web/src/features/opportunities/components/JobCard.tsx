@@ -2,6 +2,7 @@
 
 import { Opportunity } from '@fresherflow/types';
 import Link from 'next/link';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { cn } from '@repo/ui/utils/cn';
 import MapPinIcon from '@heroicons/react/24/outline/MapPinIcon';
 import CurrencyRupeeIcon from '@heroicons/react/24/outline/CurrencyRupeeIcon';
@@ -12,12 +13,22 @@ import UsersIcon from '@heroicons/react/24/outline/UsersIcon';
 import FireIcon from '@heroicons/react/24/outline/FireIcon';
 import CheckBadgeIcon from '@heroicons/react/24/outline/CheckBadgeIcon';
 import ArrowPathIcon from '@heroicons/react/24/outline/ArrowPathIcon';
-import { useState } from 'react';
+import FlagIcon from '@heroicons/react/24/outline/FlagIcon';
+import { useState, useMemo } from 'react';
+import { calculateOpportunityMatch } from '@fresherflow/domain';
 import CompanyLogo from '@/ui/CompanyLogo';
 import toast from 'react-hot-toast';
 import { toastError } from '@repo/ui/utils/error-web';
+import BookmarkIcon from '@heroicons/react/24/outline/BookmarkIcon';
+import BookmarkSolidIcon from '@heroicons/react/24/solid/BookmarkIcon';
+import { useAuth } from '@/lib/auth/AuthContext';
+import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
+import { useFirebaseTracker } from '@/lib/hooks/useFirebaseTracker';
+import { saveOpportunityToCache } from '@/lib/api/offline/opportunitiesFeedCache';
+import { ActionType } from '@fresherflow/types';
 import { getOpportunityPathFromItem } from '@/features/opportunities/domain/opportunityPath';
 import { getDriveMetadata, isCampusDriveOpportunity } from '@/lib/utils/driveTimeline';
+import { isNotEligible } from '@/features/opportunities/domain/matchScore';
 import { getOpportunityDisplaySalary, normalizeSalaryInput, parseOpportunityLocation } from '@/features/opportunities/domain/opportunityDisplay';
 import { buildShareUrl } from '@/lib/utils/share';
 
@@ -37,6 +48,8 @@ interface JobCardProps {
     priority?: boolean;
     variant?: 'default' | 'compact';
     isSelected?: boolean;
+    searchQuery?: string;
+    searchedSkill?: string;
     className?: string;
 }
 
@@ -68,15 +81,160 @@ function getVisibleSkills(skills: string[] = [], budget: number = 30) {
     };
 }
 
-export default function JobCard({ job, onClick, isApplied = false, isAdmin, priority = false, variant = 'default', isSelected = false, className }: JobCardProps) {
+export function reorderSkillsBySearch(skills: string[] = [], searchQuery?: string): string[] {
+    if (!skills.length || !searchQuery || !searchQuery.trim()) {
+        return skills;
+    }
+
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+    const queryTokens = normalizedQuery
+        .split(/[\s,]+/)
+        .map(t => t.trim())
+        .filter(t => t.length > 1);
+
+    const matches: string[] = [];
+    const nonMatches: string[] = [];
+
+    for (const skill of skills) {
+        const lowerSkill = skill.toLowerCase();
+        const isMatch = lowerSkill === normalizedQuery ||
+            normalizedQuery.includes(lowerSkill) ||
+            lowerSkill.includes(normalizedQuery) ||
+            queryTokens.some(token => lowerSkill.includes(token) || token.includes(lowerSkill));
+
+        if (isMatch) {
+            matches.push(skill);
+        } else {
+            nonMatches.push(skill);
+        }
+    }
+
+    return [...matches, ...nonMatches];
+}
+
+export default function JobCard({
+    job,
+    jobId,
+    onClick,
+    isSaved,
+    isApplied = false,
+    onToggleSave,
+    isAdmin,
+    priority = false,
+    variant = 'default',
+    isSelected = false,
+    searchQuery,
+    searchedSkill,
+    className
+}: JobCardProps) {
     const [isNavigating, setIsNavigating] = useState(false);
+    const [showReportMenu, setShowReportMenu] = useState(false);
+    const { user, profile } = useAuth();
+    const pathname = usePathname();
+    const searchParams = useSearchParams();
+    const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
+    const { writeTrackerItem } = useFirebaseTracker(user?.id);
+
+    const handleApplyClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        const targetUrl = job.applyLink || job.companyWebsite;
+        const applyAction = job.type === 'WALKIN' ? ActionType.PLANNED : ActionType.APPLIED;
+        
+        const targetId = jobId || job.id;
+        if (job) {
+            saveOpportunityToCache({ ...job, id: targetId } as any);
+        }
+        writeTrackerItem(targetId, applyAction).catch(() => undefined);
+
+        if (targetUrl) {
+            window.open(targetUrl, '_blank', 'noopener,noreferrer');
+            toast.success('Opening application link...');
+        } else {
+            toast.error('No application link available');
+        }
+    };
+
+    const handleReportClick = async (e: React.MouseEvent, reason: string) => {
+        e.stopPropagation();
+        setShowReportMenu(false);
+        if (!user) {
+            toast.error('Please log in to report listings');
+            window.location.href = loginRedirectHref;
+            return;
+        }
+        const loadingToast = toast.loading('Submitting report...');
+        try {
+            const { feedbackApi } = await import('@/lib/api/client');
+            await feedbackApi.submit(jobId, reason);
+            toast.success('Thank you for your report! Our team will verify this listing.', { id: loadingToast });
+        } catch {
+            toast.success('Thank you for your report! Our team will verify this listing.', { id: loadingToast });
+        }
+    };
+
+    const matchResult = useMemo(() => {
+        if (!user || !profile) return null;
+        if (job.matchScore !== undefined) {
+            return {
+                score: job.matchScore,
+                isEligible: !isNotEligible(job),
+                reason: isNotEligible(job) ? 'Ineligible' : `${job.matchScore}% Match`
+            };
+        }
+        return calculateOpportunityMatch(profile, job as any);
+    }, [user, profile, job]);
     const isDrive = isCampusDriveOpportunity(job);
     const driveMeta = getDriveMetadata(job);
+
+    const effectiveSearchQuery = (
+        searchQuery ||
+        searchedSkill ||
+        searchParams?.get('q') ||
+        searchParams?.get('search') ||
+        searchParams?.get('skill') ||
+        searchParams?.get('query') ||
+        ''
+    ).trim();
+
+    const orderedSkills = useMemo(() => {
+        return reorderSkillsBySearch(job.requiredSkills || [], effectiveSearchQuery);
+    }, [job.requiredSkills, effectiveSearchQuery]);
+
     // Adaptable code: Use up to 60-70% of the card's width for required skills.
     // If skills are small (short names), we fit more to fill the space (e.g. SQL, Python, Statistics, Hypothesis Testing).
     // If skills are big (long names), fewer fit but they naturally utilize the required space up to 60-70%.
     const skillsBudget = variant === 'compact' ? 52 : 80;
-    const { visible: visibleSkills, remainingCount } = getVisibleSkills(job.requiredSkills || [], skillsBudget);
+    const { visible: visibleSkills, remainingCount } = getVisibleSkills(orderedSkills, skillsBudget);
+
+    const targetId = jobId || job.id;
+    const isJobSaved = isSaved !== undefined ? isSaved : Boolean(savedJobsMap[targetId] || savedJobsMap[job.id]);
+
+    const currentPath = encodeURIComponent(`${pathname}${searchParams?.toString() ? `?${searchParams.toString()}` : ''}`);
+    const loginRedirectHref = `/login?redirect=${currentPath}`;
+
+    const handleSaveClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (!user) {
+            toast.error('Please log in to save opportunities');
+            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+            return;
+        }
+        if (job) {
+            saveOpportunityToCache({ ...job, id: targetId } as any);
+        }
+        if (onToggleSave) {
+            onToggleSave();
+        } else {
+            toggleSavedJob(targetId)
+                .then(() => {
+                    toast.success(savedJobsMap[targetId] ? 'Removed from bookmarks' : 'Added to bookmarks');
+                })
+                .catch(() => {
+                    toast.error('Bookmark update failed');
+                });
+        }
+    };
 
     // Feature: Heat & Trust Badges from Plan
     const heatBadge = job.shareCount && job.shareCount > 10 ? 'Trending' : null;
@@ -231,7 +389,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
         return (
             <div
                 className={cn(
-                    "group relative bg-card border rounded-xl p-3.5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/40 hover:bg-card flex flex-col gap-2.5 overflow-hidden shrink-0 h-full",
+                    "group relative bg-card border rounded-xl p-3.5 shadow-sm transition-all duration-200 ease-out hover:shadow-md hover:border-primary/40 hover:bg-card active:scale-[0.98] flex flex-col gap-2.5 overflow-hidden shrink-0 h-full",
                     isSelected
                         ? "border-primary/70 ring-1 ring-primary/15 shadow-sm"
                         : "border-border/60",
@@ -293,6 +451,30 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                     </div>
                     
                     <div className="flex items-center gap-1.5 shrink-0">
+                        {user && matchResult && (
+                            <span className={cn(
+                                "inline-flex shrink-0 items-center px-1.5 py-0.5 text-[11px] font-semibold rounded border",
+                                !matchResult.isEligible
+                                    ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                    : matchResult.score >= 70
+                                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                        : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                            )}>
+                                {!matchResult.isEligible ? 'Ineligible' : `${matchResult.score}%`}
+                            </span>
+                        )}
+                        {!user && (
+                            <Link
+                                href={loginRedirectHref}
+                                className="inline-flex shrink-0 items-center gap-0.5 px-1.5 py-0.5 text-[11px] font-semibold rounded border border-border/80 bg-muted/30 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all z-20 cursor-pointer pointer-events-auto"
+                                title="Login to see if you match"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                }}
+                            >
+                                <span>Check Match</span>
+                            </Link>
+                        )}
                         <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-primary/10 text-primary border border-primary/20">
                             {isDrive ? 'Drive' : job.type === 'INTERNSHIP' ? 'Intern' : job.type === 'WALKIN' ? 'Walk-in' : 'Job'}
                         </span>
@@ -302,14 +484,28 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                 {/* Skills Row */}
                 {visibleSkills.length > 0 && (
                     <div className="flex flex-row flex-nowrap overflow-hidden gap-1 pt-1.5 border-t border-border/20 items-center w-full">
-                        {visibleSkills.map((skill, idx) => (
-                            <span
-                                key={`${skill}-${idx}`}
-                                className="inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded bg-primary/5 text-primary border border-primary/10 whitespace-nowrap capitalize shrink-0"
-                            >
-                                {skill}
-                            </span>
-                        ))}
+                        {visibleSkills.map((skill, idx) => {
+                            const isMatched = profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase());
+                            const isSearched = Boolean(effectiveSearchQuery && (
+                                skill.toLowerCase().includes(effectiveSearchQuery.toLowerCase()) ||
+                                effectiveSearchQuery.toLowerCase().includes(skill.toLowerCase())
+                            ));
+                            return (
+                                <span
+                                    key={`${skill}-${idx}`}
+                                    className={cn(
+                                        "inline-flex items-center px-1.5 py-0.5 text-[10px] font-medium rounded whitespace-nowrap capitalize shrink-0 border",
+                                        isSearched
+                                            ? "bg-primary/20 text-primary border-primary/30 font-bold ring-1 ring-primary/20"
+                                            : isMatched
+                                                ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                                : "bg-primary/5 text-primary border-primary/10"
+                                    )}
+                                >
+                                    {skill}
+                                </span>
+                            );
+                        })}
                         {remainingCount > 0 && (
                             <span className="inline-flex items-center px-1 py-0.5 text-[10px] font-medium rounded bg-muted text-muted-foreground border border-border/40 whitespace-nowrap shrink-0">
                                 +{remainingCount}
@@ -324,7 +520,7 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
     return (
         <div
             className={cn(
-                "group relative bg-card border rounded-2xl p-4 md:p-5 shadow-sm transition-all duration-200 hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/35 flex flex-col gap-3 overflow-hidden shrink-0 h-full",
+                "group relative bg-card border rounded-2xl p-4 md:p-5 shadow-sm transition-all duration-200 ease-out hover:shadow-lg hover:-translate-y-0.5 hover:border-primary/35 active:scale-[0.98] flex flex-col gap-3 overflow-hidden shrink-0 h-full",
                 isSelected
                     ? "border-primary/70 ring-2 ring-primary/10 shadow-md"
                     : "border-border/60",
@@ -358,6 +554,30 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                     <span className="inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-medium rounded-md bg-primary/10 text-primary border border-primary/20">
                         {isDrive ? 'Hiring Drive' : isGovernment ? ((job as any).governmentJobDetails?.jobCategory?.[0] || 'Govt Job') : (job.employmentType || job.type) === 'INTERNSHIP' || job.type === 'INTERNSHIP' ? 'Internship' : (job.employmentType || job.type) === 'WALKIN' || job.type === 'WALKIN' ? 'Walk-in' : 'Full-time'}
                     </span>
+                    {user && matchResult && (
+                        <span className={cn(
+                            "inline-flex shrink-0 items-center px-2 py-0.5 text-xs font-semibold rounded-md border",
+                            !matchResult.isEligible
+                                ? "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20"
+                                : matchResult.score >= 70
+                                    ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                    : "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                        )}>
+                            {!matchResult.isEligible ? 'Not Eligible' : `${matchResult.score}% Match`}
+                        </span>
+                    )}
+                    {!user && (
+                        <Link
+                            href={loginRedirectHref}
+                            className="inline-flex shrink-0 items-center gap-1 px-2 py-0.5 text-xs font-semibold rounded-md border border-border/80 bg-muted/30 text-muted-foreground hover:bg-primary/5 hover:text-primary transition-all z-20 cursor-pointer pointer-events-auto"
+                            title="Login to see if you match"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                            }}
+                        >
+                            <span>Check Match Score</span>
+                        </Link>
+                    )}
                     {heatBadge && (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-700 dark:text-amber-500 text-[10px] font-bold uppercase tracking-wider border border-amber-500/20">
                             <FireIcon className="w-3 h-3" />
@@ -401,26 +621,65 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
 
                 <div className="flex flex-col items-end shrink-0">
                     <div className="flex items-center gap-1">
+                        <div className="relative">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowReportMenu(!showReportMenu);
+                                }}
+                                className={cn(
+                                    "relative z-20 h-9 w-9 rounded-lg transition-all border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary outline-none",
+                                    showReportMenu
+                                        ? "bg-destructive/10 border-destructive/20 text-destructive shadow-sm"
+                                        : "bg-background dark:bg-muted/35 border-transparent dark:border-border/60 text-muted-foreground hover:border-destructive/30 hover:text-destructive"
+                                )}
+                                title="Report issue or expired job"
+                                aria-label={`Report issue with ${job.title}`}
+                            >
+                                <FlagIcon className="w-4 h-4" aria-hidden="true" />
+                            </button>
+                            {showReportMenu && (
+                                <div className="absolute top-full right-0 mt-1 w-44 bg-card border border-border rounded-xl shadow-xl z-50 p-1.5 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                                    <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/40 mb-1">
+                                        Report Listing
+                                    </div>
+                                    {[
+                                        { id: 'EXPIRED', label: 'Job Expired / Closed' },
+                                        { id: 'LINK_BROKEN', label: 'Broken Apply Link' },
+                                        { id: 'INACCURATE', label: 'Inaccurate Details' },
+                                        { id: 'SPAM', label: 'Spam or Fake Job' },
+                                    ].map(item => (
+                                        <button
+                                            key={item.id}
+                                            onClick={(e) => handleReportClick(e, item.id)}
+                                            className="w-full text-left px-2 py-1.5 rounded-lg text-xs font-semibold text-foreground hover:bg-muted transition-colors flex items-center justify-between"
+                                        >
+                                            <span>{item.label}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                         <button
                             onClick={handleShareClick}
-                            className="relative z-20 h-11 w-11 rounded-lg transition-all border border-transparent dark:border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
+                            className="relative z-20 h-9 w-9 rounded-lg transition-all border border-transparent dark:border-border/60 bg-background dark:bg-muted/35 text-muted-foreground hover:border-primary/30 hover:text-primary flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none"
                             title="Share listing"
                             aria-label={`Share ${job.title}`}
                         >
-                            <ShareIcon className="w-5 h-5" aria-hidden="true" />
+                            <ShareIcon className="w-4.5 h-4.5" aria-hidden="true" />
                         </button>
-                        {/* <button
+                        <button
                             onClick={handleSaveClick}
                             className={cn(
                                 "relative z-20 h-9 w-9 rounded-lg transition-all border shrink-0 flex items-center justify-center focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 outline-none",
-                                isSaved
+                                isJobSaved
                                     ? "bg-primary/10 border-primary/20 text-primary shadow-sm"
                                     : "bg-background dark:bg-muted/35 border-transparent dark:border-border/60 text-muted-foreground hover:border-primary/30"
                             )}
-                            aria-label={isSaved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}
+                            aria-label={isJobSaved ? `Remove ${job.title} from saved jobs` : `Save ${job.title}`}
                         >
-                            {isSaved ? <BookmarkSolidIcon className="w-5 h-5" aria-hidden="true" /> : <BookmarkIcon className="w-5 h-5" aria-hidden="true" />}
-                        </button> */}
+                            {isJobSaved ? <BookmarkSolidIcon className="w-4.5 h-4.5" aria-hidden="true" /> : <BookmarkIcon className="w-4.5 h-4.5" aria-hidden="true" />}
+                        </button>
                     </div>
                 </div>
             </div>
@@ -447,14 +706,28 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
             {/* Skills Badges row */}
             {visibleSkills.length > 0 && (
                 <div className="flex flex-row flex-nowrap overflow-hidden gap-1.5 z-20 pointer-events-none items-center w-full">
-                    {visibleSkills.map((skill, idx) => (
-                        <span
-                            key={`${skill}-${idx}`}
-                            className="inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded bg-primary/5 text-primary border border-primary/10 whitespace-nowrap capitalize shrink-0"
-                        >
-                            {skill}
-                        </span>
-                    ))}
+                    {visibleSkills.map((skill, idx) => {
+                        const isMatched = profile?.skills?.some(s => s.toLowerCase() === skill.toLowerCase());
+                        const isSearched = Boolean(effectiveSearchQuery && (
+                            skill.toLowerCase().includes(effectiveSearchQuery.toLowerCase()) ||
+                            effectiveSearchQuery.toLowerCase().includes(skill.toLowerCase())
+                        ));
+                        return (
+                            <span
+                                key={`${skill}-${idx}`}
+                                className={cn(
+                                    "inline-flex items-center px-2 py-0.5 text-[11px] font-medium rounded whitespace-nowrap capitalize shrink-0 border",
+                                    isSearched
+                                        ? "bg-primary/20 text-primary border-primary/30 font-bold ring-1 ring-primary/20"
+                                        : isMatched
+                                            ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                                            : "bg-primary/5 text-primary border-primary/10"
+                                )}
+                            >
+                                {skill}
+                            </span>
+                        );
+                    })}
                     {remainingCount > 0 && (
                         <span className="inline-flex items-center px-1.5 py-0.5 text-[11px] font-medium rounded bg-muted text-muted-foreground border border-border/40 whitespace-nowrap shrink-0">
                             +{remainingCount}
@@ -513,9 +786,19 @@ export default function JobCard({ job, onClick, isApplied = false, isAdmin, prio
                         </span>
                     )}
                 </div>
-                <div className="flex items-center gap-1 text-primary text-[13px] font-bold group-hover:translate-x-1 transition-transform duration-300">
-                    <span>View details</span>
-                    <ChevronRightIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                <div className="flex items-center gap-2.5">
+                    <button
+                        type="button"
+                        onClick={handleApplyClick}
+                        className="relative z-20 inline-flex items-center gap-1 px-3 py-1 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer shadow-sm pointer-events-auto"
+                        title="Apply to job"
+                    >
+                        <span>Apply Now</span>
+                    </button>
+                    <div className="flex items-center gap-1 text-primary text-[13px] font-bold group-hover:translate-x-1 transition-transform duration-300">
+                        <span>View details</span>
+                        <ChevronRightIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                    </div>
                 </div>
             </div>
 

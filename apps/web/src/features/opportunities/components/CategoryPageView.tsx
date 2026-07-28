@@ -1,5 +1,5 @@
 import { cn } from '@repo/ui/utils/cn';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Opportunity, OpportunityType } from '@fresherflow/types';
 import dynamic from 'next/dynamic';
@@ -23,6 +23,7 @@ import { Breadcrumb } from '@/ui/Breadcrumb';
 import { Button } from '@/ui/Button';
 import { Input } from '@/ui/Input';
 import { SkeletonJobCard } from '@/ui/Skeleton';
+import { useIntersectionObserver } from '@/lib/hooks/useIntersectionObserver';
 import { EmptyState } from '@/ui/EmptyState';
 import { FilterDropdownBar } from '@/features/opportunities/components/FilterDropdownBar';
 import {
@@ -212,6 +213,18 @@ export function CategoryPageView({
     visibleCount, setVisibleCount, isJobSaved, isJobApplied, toggleSave, reload
 }: CategoryPageState) {
     const config = CATEGORY_CONFIG[type];
+    const { targetRef: loadMoreRef, isIntersecting } = useIntersectionObserver({ threshold: 0.1, rootMargin: '400px' });
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+
+    useEffect(() => {
+        if (isIntersecting && visibleCount < visibleOpps.length && !isLoadingMore) {
+            setIsLoadingMore(true);
+            setTimeout(() => {
+                setVisibleCount(prev => prev + 20);
+                setIsLoadingMore(false);
+            }, 600);
+        }
+    }, [isIntersecting, visibleCount, visibleOpps.length, isLoadingMore, setVisibleCount]);
 
     const tickerItems = useMemo(() => {
         if (type !== OpportunityType.GOVERNMENT) return [];
@@ -227,7 +240,7 @@ export function CategoryPageView({
     }, [filteredOpps, type]);
 
     return (
-        <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pb-12 md:pb-20 space-y-4">
+        <div className="w-full max-w-7xl mx-auto px-3 md:px-6 pb-12 md:pb-20 lg:pb-4 space-y-4">
 
             {/* Live Ticker — govt only */}
             {type === OpportunityType.GOVERNMENT && mounted && tickerItems.length > 0 && (
@@ -433,6 +446,7 @@ export function CategoryPageView({
                                     isAdmin={user?.role === 'ADMIN'}
                                     isSelected={opp.id === selectedOpp?.id || opp.slug === selectedOpp?.slug}
                                     variant={type !== OpportunityType.GOVERNMENT ? "compact" : "default"}
+                                    searchQuery={search}
                                     onClick={(e) => {
                                         if (type !== OpportunityType.GOVERNMENT) {
                                             e.preventDefault();
@@ -443,14 +457,9 @@ export function CategoryPageView({
                                 />
                             ))}
                         </div>
-                        {visibleCount < visibleOpps.length && (
-                            <div className="flex justify-center pt-8 pb-4">
-                                <button
-                                    onClick={() => setVisibleCount(prev => prev + 20)}
-                                    className="px-6 py-2.5 rounded-full bg-primary hover:bg-primary/90 text-sm font-bold text-primary-foreground transition-colors shadow-sm"
-                                >
-                                    Load more opportunities
-                                </button>
+                        {(visibleCount < visibleOpps.length || isLoadingMore) && (
+                            <div ref={loadMoreRef} className="flex justify-center pt-8 pb-4">
+                                <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                             </div>
                         )}
                     </div>

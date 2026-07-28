@@ -7,7 +7,8 @@ import toast from 'react-hot-toast';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { readFeedCache, saveFeedCache } from '@/lib/api/offline/opportunitiesFeedCache';
 import { calculateOpportunityMatch, isNotEligible } from '@/features/opportunities/domain/matchScore';
-import { enqueueOfflineSaveToggle } from '@/lib/api/offline/actionQueue';
+
+import { useFirebaseSaved } from '@/lib/hooks/useFirebaseSaved';
 
 
 const WEB_STATIC_DISCOVERY = true;
@@ -48,6 +49,7 @@ export function useOpportunitiesFeed({
     initialData,
 }: UseOpportunitiesFeedOptions) {
     const { user, profile, isLoading: authLoading } = useAuth();
+    const { savedJobsMap, toggleSavedJob } = useFirebaseSaved(user?.id);
 
 
 
@@ -87,8 +89,8 @@ export function useOpportunitiesFeed({
 
     const loadOpportunities = useCallback(async (pageNum = 1, append = false) => {
         if (WEB_STATIC_DISCOVERY) {
-            if (showOnlySaved) {
-                setError('Saved jobs are available in the mobile app.');
+            if (showOnlySaved && !user) {
+                setError('Please log in to view saved opportunities');
                 setOpportunities([]);
                 setTotalCount(0);
                 setIsLoading(false);
@@ -243,6 +245,10 @@ export function useOpportunitiesFeed({
         const modeFiltered = opportunities;
 
         const filtered = modeFiltered.filter(opp => {
+            if (showOnlySaved && !savedJobsMap[opp.id]) {
+                return false;
+            }
+
             // Segregate government jobs from normal feeds
             const isGovOpp = opp.type === 'GOVERNMENT' || Boolean(opp.governmentJobDetails);
             const isGovFeed = type === 'GOVERNMENT';
@@ -255,6 +261,14 @@ export function useOpportunitiesFeed({
                 if (opp.type !== type) {
                     return false;
                 }
+            }
+
+            if (type === 'REMOTE') {
+                const isRemote = (opp.locations || []).some(loc => {
+                    const l = loc.toLowerCase();
+                    return l.includes('remote') || l.includes('wfh') || l.includes('work from home');
+                }) || (opp as any).workMode === 'REMOTE' || opp.title.toLowerCase().includes('remote');
+                if (!isRemote) return false;
             }
 
             const matchesSearch = !normalizedSearch || [
@@ -324,6 +338,8 @@ export function useOpportunitiesFeed({
             const match = calculateOpportunityMatch(profile, opp);
             return {
                 ...opp,
+                isSaved: !!savedJobsMap[opp.id],
+                isEligible: match.isEligible,
                 matchScore: match.score,
                 matchReason: match.reason,
             };
@@ -337,82 +353,49 @@ export function useOpportunitiesFeed({
         };
 
         return enriched.sort((a, b) => {
-            // Expired opportunities always go to the absolute bottom
+            // 1. Expired opportunities always go to the absolute bottom
             const isExpiredA = a.expiresAt ? new Date(a.expiresAt) < new Date() : false;
             const isExpiredB = b.expiresAt ? new Date(b.expiresAt) < new Date() : false;
             if (isExpiredA !== isExpiredB) return isExpiredA ? 1 : -1;
 
-            // Not-eligible jobs always go to the bottom
+            // 2. Not-eligible jobs always go to the bottom
             if (isNotEligible(a) !== isNotEligible(b)) return isNotEligible(a) ? 1 : -1;
 
-            // Removed salary sorting
-
+            // 3. Bucket weight (unapplied/unsaved first)
             const bucketDiff = bucketWeight(a) - bucketWeight(b);
             if (bucketDiff !== 0) return bucketDiff;
 
-            const scoreDiff = (b.matchScore || 0) - (a.matchScore || 0);
-            if (scoreDiff !== 0) return scoreDiff;
+            // 4. Mobile Architecture: Recency priority (newer postedAt date comes first)
+            const timeA = a.postedAt ? new Date(a.postedAt).getTime() : 0;
+            const timeB = b.postedAt ? new Date(b.postedAt).getTime() : 0;
 
-            const postedA = new Date(a.postedAt || 0).getTime();
-            const postedB = new Date(b.postedAt || 0).getTime();
-            if (postedA !== postedB) return postedB - postedA;
+            const diff = Math.abs(timeB - timeA);
+            if (diff > 24 * 60 * 60 * 1000) {
+                return timeB - timeA;
+            }
 
-            return (a.id || '').localeCompare(b.id || '');
+            // 5. Match score tie-breaker for postings within the same 24h window
+            const scoreA = a.matchScore ?? 0;
+            const scoreB = b.matchScore ?? 0;
+            if (scoreB !== scoreA) {
+                return scoreB - scoreA;
+            }
+
+            return timeB - timeA;
         });
-    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch, type]);
+    }, [opportunities, selectedLoc, selectedYear, closingSoon, sector, qualification, course, profile, normalizedSearch, type, showOnlySaved, savedJobsMap]);
 
     const toggleSave = async (opportunityId: string) => {
         if (!user) {
-            toast.error('Saved jobs are available in the mobile app');
+            toast.error('Please log in to save opportunities');
+            window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
             return;
         }
-
-        // OPTIMISTIC UPDATE: Update UI immediately
-        const previousState = [...opportunities];
-        const newSavedState = !opportunities.find(o => o.id === opportunityId)?.isSaved;
-
-        setOpportunities(prev => prev.map(opp =>
-            opp.id === opportunityId
-                ? { ...opp, isSaved: newSavedState }
-                : opp
-        ));
-
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-            enqueueOfflineSaveToggle(opportunityId, user.id);
-            toast.success(`Saved update queued for sync.`);
-            return;
-        }
-
-        // Background sync
         try {
-            throw new Error('Saved jobs are disabled on web');
-            // const result = await savedApi.toggle(opportunityId) as { saved: boolean };
-            const result = { saved: newSavedState };
-
-            // Verify sync result matches optimistic state
-            if (result.saved !== newSavedState) {
-                setOpportunities(prev => prev.map(opp =>
-                    opp.id === opportunityId
-                        ? { ...opp, isSaved: result.saved }
-                        : opp
-                ));
-            }
-
-            if (result.saved) {
-                import('@/lib/api/client').then(({ growthApi }) => {
-                    growthApi.trackEvent('SAVE_JOB', 'opportunity_feed').catch(() => undefined);
-                });
-            }
-        } catch (err: unknown) {
-            if (typeof navigator !== 'undefined' && !navigator.onLine) {
-                enqueueOfflineSaveToggle(opportunityId, user.id);
-                toast.success('Saved update queued for sync.');
-                return;
-            }
-            // ROLLBACK: Revert to previous state on error
-            setOpportunities(previousState);
-            const { getErrorMessage } = await import('@/lib/utils/error');
-            toast.error(getErrorMessage(err) || 'Failed to update bookmark');
+            await toggleSavedJob(opportunityId);
+            toast.success(savedJobsMap[opportunityId] ? 'Removed from bookmarks' : 'Added to bookmarks');
+        } catch {
+            toast.error('Bookmark update failed');
         }
     };
 
