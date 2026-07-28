@@ -1,17 +1,24 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, Suspense } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
+import { useSearchParams } from 'next/navigation';
 import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
-export default function LogoutClient() {
+function LogoutContent() {
     const { logout } = useAuth();
+    const searchParams = useSearchParams();
+    const redirectParam = searchParams.get('redirect') || searchParams.get('to');
 
     useEffect(() => {
+        const target = redirectParam && redirectParam.startsWith('/') && !redirectParam.startsWith('//') && !redirectParam.startsWith('/logout')
+            ? redirectParam
+            : '/login';
+            
         if (logout) {
-            logout();
+            void logout(target);
         }
-    }, [logout]);
+    }, [logout, redirectParam]);
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background to-muted/20 p-4">
@@ -32,6 +39,14 @@ export default function LogoutClient() {
                 </div>
             </div>
         </div>
+    );
+}
+
+export default function LogoutClient() {
+    return (
+        <Suspense fallback={null}>
+            <LogoutContent />
+        </Suspense>
     );
 }
 

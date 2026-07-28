@@ -28,6 +28,7 @@ function deriveSiblingHosts(hostname: string) {
             publicHost: hostname,
             appHost: hostname,
             adminHost: hostname,
+            joinHost: hostname,
         };
     }
 
@@ -36,6 +37,7 @@ function deriveSiblingHosts(hostname: string) {
             publicHost: baseHost,
             appHost: `app.${baseHost}`,
             adminHost: `admin.${baseHost}`,
+            joinHost: `join.${baseHost}`,
         };
     }
 
@@ -44,6 +46,7 @@ function deriveSiblingHosts(hostname: string) {
             publicHost: baseHost,
             appHost: hostname,
             adminHost: `admin.${baseHost}`,
+            joinHost: `join.${baseHost}`,
         };
     }
 
@@ -52,6 +55,16 @@ function deriveSiblingHosts(hostname: string) {
             publicHost: baseHost,
             appHost: `app.${baseHost}`,
             adminHost: hostname,
+            joinHost: `join.${baseHost}`,
+        };
+    }
+
+    if (hostname.startsWith('join.')) {
+        return {
+            publicHost: baseHost,
+            appHost: `app.${baseHost}`,
+            adminHost: `admin.${baseHost}`,
+            joinHost: hostname,
         };
     }
 
@@ -59,6 +72,7 @@ function deriveSiblingHosts(hostname: string) {
         publicHost: baseHost,
         appHost: `app.${baseHost}`,
         adminHost: `admin.${baseHost}`,
+        joinHost: `join.${baseHost}`,
     };
 }
 
@@ -72,8 +86,15 @@ export function getHostRole(hostname: string, request: NextRequest) {
         return 'other' as const;
     }
 
-    const { PUBLIC_WEB_HOST, APP_WEB_HOST, ADMIN_WEB_HOST } = resolveHosts(request);
+    const { PUBLIC_WEB_HOST, APP_WEB_HOST, ADMIN_WEB_HOST, JOIN_WEB_HOST } = resolveHosts(request);
     const baseHost = getRegistrableBaseHost(normalizedHost);
+
+    if (
+        normalizedHost === JOIN_WEB_HOST ||
+        normalizedHost.startsWith('join.')
+    ) {
+        return 'join' as const;
+    }
 
     if (
         normalizedHost === ADMIN_WEB_HOST ||
@@ -116,6 +137,10 @@ export function resolveHosts(request: NextRequest) {
         process.env.USER_LOGIN_HOST || process.env.NEXT_PUBLIC_USER_LOGIN_HOST,
         ''
     );
+    const envJoinHost = normalizeHost(
+        process.env.JOIN_WEB_HOST || process.env.NEXT_PUBLIC_JOIN_WEB_HOST,
+        ''
+    );
 
     const derived = deriveSiblingHosts(requestHost);
 
@@ -123,12 +148,14 @@ export function resolveHosts(request: NextRequest) {
     const APP_WEB_HOST = isRealHost(envAppHost) ? envAppHost : derived.appHost;
     const ADMIN_WEB_HOST = isRealHost(envAdminHost) ? envAdminHost : derived.adminHost;
     const USER_LOGIN_HOST = isRealHost(envLoginHost) ? envLoginHost : APP_WEB_HOST;
+    const JOIN_WEB_HOST = isRealHost(envJoinHost) ? envJoinHost : derived.joinHost;
 
     return {
         PUBLIC_WEB_HOST,
         APP_WEB_HOST,
         ADMIN_WEB_HOST,
         USER_LOGIN_HOST,
+        JOIN_WEB_HOST,
     };
 }
 

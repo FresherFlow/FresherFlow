@@ -1,8 +1,11 @@
 export const USER_PATHS = [
     "/dashboard",
     "/account",
+    "/settings",
     "/profile",
     "/alerts",
+    "/tracker",
+    "/saved",
 ];
 
 export const ADMIN_ROOT_PREFIXES = [
@@ -49,6 +52,7 @@ export function isPublicPath(pathname: string) {
     if (pathname.startsWith("/walkins")) return true;
     if (isOpportunityPublic(pathname)) return true;
     if (pathname.startsWith("/companies")) return true;
+    if (pathname.startsWith("/remote")) return true;
     
     return false;
 }

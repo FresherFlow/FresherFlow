@@ -13,6 +13,35 @@ export function handleHostRouting(req: NextRequest) {
         return null;
     }
 
+    // 0. Join Subdomain (join.fresherflow.in / join.fresherflow.com) handling
+    if (hostRole === 'join') {
+        const rawPath = pathname.replace(/^\/+/, '');
+        const segments = rawPath.split('/').filter(Boolean);
+        let refCode = req.nextUrl.searchParams.get('ref');
+
+        // If URL format is join.fresherflow.in/ABC123
+        if (!refCode && segments.length === 1 && !['login', 'signup', 'api', '_next'].includes(segments[0].toLowerCase())) {
+            refCode = segments[0];
+        }
+
+        const targetUrl = new URL(`${req.nextUrl.protocol}//${USER_LOGIN_HOST}/login`);
+        targetUrl.searchParams.set('intent', 'signup');
+        if (refCode) {
+            targetUrl.searchParams.set('ref', refCode.toUpperCase());
+        }
+
+        const res = NextResponse.redirect(targetUrl, 307);
+        if (refCode) {
+            // Set 30-day persistent cookie to preserve referral code across tabs/browsing
+            res.cookies.set('ff_ref_code', refCode.toUpperCase(), {
+                maxAge: 30 * 24 * 60 * 60,
+                path: '/',
+                sameSite: 'lax',
+            });
+        }
+        return res;
+    }
+
     // 1. Admin Host handling
     if (hostRole === 'admin') {
         if (pathname === '/admin-manifest.json') {

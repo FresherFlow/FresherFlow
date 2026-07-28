@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, Suspense } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { useSearchParams } from 'next/navigation';
 import toast from 'react-hot-toast';
@@ -11,7 +11,6 @@ import {
     ArrowPathIcon,
     ShieldCheckIcon,
     ChevronLeftIcon,
-    KeyIcon
 } from '@heroicons/react/24/outline';
 import { useAuthFormData } from '@/lib/auth/AuthFormDataContext';
 import { Button } from '@/ui/Button';
@@ -19,24 +18,13 @@ import { Input } from '@/ui/Input';
 import { growthApi } from '@/lib/api/client';
 import LoadingScreen from '@/ui/LoadingScreen';
 
-declare global {
-    interface Window {
-         
-        google: any;
-        __ffGoogleGsiInitialized?: boolean;
-    }
-}
-
 type LoginStep = 'email' | 'otp';
 
 function LoginContent() {
     const { email, setEmail } = useAuthFormData();
-    const [otp, setOtp] = useState('');
+    const [otpArray, setOtpArray] = useState<string[]>(Array(6).fill(''));
     const [step, setStep] = useState<LoginStep>('email');
     const [isProcessing, setIsProcessing] = useState(false);
-    const [googleScriptLoaded, setGoogleScriptLoaded] = useState(false);
-    const [googleScriptBlocked, setGoogleScriptBlocked] = useState(false);
-    const googleInitializedRef = useRef(false);
 
     const { sendOtp, verifyOtp, loginWithGoogle, user, isLoading } = useAuth();
     const searchParams = useSearchParams();
@@ -44,15 +32,19 @@ function LoginContent() {
     const refCode = searchParams.get('ref') || undefined;
     const redirectParam = searchParams.get('redirect');
     const isInviteFlow = source === 'dashboard_invite' || Boolean(refCode);
+    
     const redirectTarget = useMemo(() => {
-        if (!redirectParam || !redirectParam.startsWith('/') || redirectParam.startsWith('//')) {
+        if (!redirectParam) return '/dashboard';
+        const cleaned = redirectParam.trim();
+        if (!cleaned.startsWith('/') || cleaned.startsWith('//')) {
             return '/dashboard';
         }
-        if (redirectParam === '/login' || redirectParam.startsWith('/login?')) {
+        if (cleaned === '/login' || cleaned.startsWith('/login?') || cleaned === '/logout' || cleaned.startsWith('/logout?')) {
             return '/dashboard';
         }
-        return redirectParam;
+        return cleaned;
     }, [redirectParam]);
+
     const trackingSource = useMemo(() => {
         if (!source && !refCode) return undefined;
         if (source && refCode) return `${source}|ref:${refCode}`;
@@ -60,58 +52,35 @@ function LoginContent() {
     }, [source, refCode]);
 
     const navigateAfterLogin = useCallback(() => {
+        const isLoggingOut = typeof window !== 'undefined' && (window as any).__isLoggingOut;
+        if (isLoggingOut) return;
+        if (typeof document !== 'undefined') {
+            const maxAge = Number(process.env.NEXT_PUBLIC_SESSION_HINT_COOKIE_MAX_AGE_SECONDS || 90 * 24 * 60 * 60);
+            const secure = typeof window !== 'undefined' && window.location.protocol === 'https:' ? '; Secure' : '';
+            document.cookie = `ff_logged_in=true; path=/; max-age=${maxAge}; SameSite=Lax${secure}`;
+        }
         window.location.replace(redirectTarget);
     }, [redirectTarget]);
 
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        if (window.google?.accounts?.id) return;
-        const existing = document.querySelector('script[data-ff-google-gsi="1"]');
-        if (existing) return;
-        const script = document.createElement('script');
-        script.src = 'https://accounts.google.com/gsi/client';
-        script.async = true;
-        script.defer = true;
-        script.dataset.ffGoogleGsi = '1';
-        document.head.appendChild(script);
-    }, []);
-
-    useEffect(() => {
-         
         const isLoggingOut = typeof window !== 'undefined' && (window as any).__isLoggingOut;
         if (user && !isLoading && !isLoggingOut) {
             navigateAfterLogin();
         }
     }, [user, isLoading, navigateAfterLogin]);
 
-    useEffect(() => {
-        let retries = 0;
-        const maxRetries = 50;
-        let timeoutId: ReturnType<typeof setTimeout> | undefined;
-        const checkGoogleScript = () => {
-            if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-                setGoogleScriptLoaded(true);
-                setGoogleScriptBlocked(false);
-                return;
-            }
-            retries += 1;
-            if (retries >= maxRetries) { setGoogleScriptBlocked(true); return; }
-            timeoutId = setTimeout(checkGoogleScript, 100);
-        };
-        checkGoogleScript();
-        return () => { if (timeoutId) clearTimeout(timeoutId); };
-    }, []);
-
-     
-    const handleGoogleCallback = useCallback(async (response: any) => {
+    const handleGoogleSignIn = useCallback(async () => {
         setIsProcessing(true);
         try {
-            await loginWithGoogle(response.credential, trackingSource || source, refCode);
+            await loginWithGoogle(trackingSource || source, refCode);
             toast.success('Welcome! Redirecting...');
             navigateAfterLogin();
         } catch (err: unknown) {
             setIsProcessing(false);
-            toast.error((err as Error).message || 'Google login failed.');
+            const errMsg = (err as Error).message || '';
+            if (!errMsg.includes('auth/popup-closed-by-user') && !errMsg.includes('cancelled-by-user')) {
+                toast.error(errMsg || 'Google login failed.');
+            }
         }
     }, [loginWithGoogle, navigateAfterLogin, refCode, trackingSource, source]);
 
@@ -128,39 +97,6 @@ function LoginContent() {
         }
     }, [trackingSource, isSignupIntent]);
 
-    useEffect(() => {
-        if (step !== 'email' || !googleScriptLoaded) return;
-        let mounted = true;
-        const googleBtnId = 'google-login-btn';
-        const initGoogle = () => {
-            if (!mounted) return;
-            const googleBtn = document.getElementById(googleBtnId);
-            if (!googleBtn) { setTimeout(initGoogle, 100); return; }
-            try {
-                googleBtn.innerHTML = '';
-                if (!window.__ffGoogleGsiInitialized && !googleInitializedRef.current) {
-                    window.google.accounts.id.initialize({
-                        client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID,
-                        callback: handleGoogleCallback,
-                        auto_select: false,
-                    });
-                    window.__ffGoogleGsiInitialized = true;
-                    googleInitializedRef.current = true;
-                }
-                const buttonWidth = Math.min(400, googleBtn.clientWidth || 280);
-                window.google.accounts.id.renderButton(googleBtn, {
-                    type: 'standard', theme: 'outline', size: 'large',
-                    text: 'continue_with', shape: 'rectangular',
-                    logo_alignment: 'center', width: buttonWidth,
-                });
-            } catch (err: unknown) {
-                console.error('[Google] Render failed:', err);
-            }
-        };
-        const timer = setTimeout(initGoogle, 150);
-        return () => { mounted = false; clearTimeout(timer); };
-    }, [step, googleScriptLoaded, handleGoogleCallback]);
-
     const handleSendOtp = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!email) return;
@@ -169,38 +105,96 @@ function LoginContent() {
             await sendOtp(email);
             toast.success('Code sent to your email!', { id: loadingToast });
             setStep('otp');
+            setOtpArray(Array(6).fill(''));
         } catch (err: unknown) {
             toastError(err, 'Failed to send code.', { id: loadingToast });
         }
     };
 
-    const handleVerifyOtp = useCallback(async (e: React.FormEvent) => {
-        e.preventDefault();
+    const submitOtpCode = useCallback(async (code: string) => {
+        if (code.length !== 6) return;
         setIsProcessing(true);
         try {
-            await verifyOtp(email, otp, trackingSource || source, refCode);
+            await verifyOtp(email, code, trackingSource || source, refCode);
             navigateAfterLogin();
         } catch (err: unknown) {
             setIsProcessing(false);
             toastError(err, 'Invalid or expired code.');
         }
-    }, [email, otp, verifyOtp, trackingSource, source, refCode, navigateAfterLogin]);
+    }, [email, verifyOtp, trackingSource, source, refCode, navigateAfterLogin]);
+
+    const handleVerifyOtp = (e: React.FormEvent) => {
+        e.preventDefault();
+        submitOtpCode(otpArray.join(''));
+    };
+
+    const handleOtpChange = (val: string, index: number) => {
+        const cleaned = val.replace(/\D/g, '');
+        if (!cleaned) return;
+        
+        const newOtp = [...otpArray];
+        newOtp[index] = cleaned.slice(-1);
+        setOtpArray(newOtp);
+        
+        // Auto focus next input
+        if (index < 5) {
+            const nextInput = document.getElementById(`otp-${index + 1}`) as HTMLInputElement | null;
+            nextInput?.focus();
+        } else {
+            // Trigger auto-submit if it's the last input
+            const fullCode = newOtp.join('');
+            if (fullCode.length === 6) {
+                void submitOtpCode(fullCode);
+            }
+        }
+    };
+
+    const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+        if (e.key === 'Backspace') {
+            const newOtp = [...otpArray];
+            if (!newOtp[index] && index > 0) {
+                // Focus previous and clear it
+                const prevInput = document.getElementById(`otp-${index - 1}`) as HTMLInputElement | null;
+                if (prevInput) {
+                    prevInput.focus();
+                    newOtp[index - 1] = '';
+                    setOtpArray(newOtp);
+                }
+            } else {
+                newOtp[index] = '';
+                setOtpArray(newOtp);
+            }
+        }
+    };
+
+    const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+        if (pastedData.length === 6) {
+            const newOtp = pastedData.split('');
+            setOtpArray(newOtp);
+            document.getElementById('otp-5')?.focus();
+            void submitOtpCode(pastedData);
+        }
+    };
 
     if (isProcessing) return <LoadingScreen />;
 
     return (
-        <div className="flex-1 flex flex-col md:flex-row bg-background overflow-hidden relative min-h-[calc(100vh-64px)] md:min-h-[calc(100vh-88px)]">
+        <div className="flex-1 flex flex-col md:flex-row bg-background overflow-hidden relative h-[calc(100vh-64px)] md:h-[calc(100vh-88px)]">
             {/* Left Side: Hero (Desktop Only) */}
-            <div className="hidden md:flex md:w-[45%] lg:w-[50%] bg-muted/30 border-r border-border relative overflow-hidden flex-col items-center justify-center p-12 text-center">
-                <div className="space-y-6 max-w-sm animate-in fade-in slide-in-from-left-6 duration-500">
-                    <h2 className="text-4xl font-bold tracking-tight text-foreground">
+            <div className="hidden md:flex md:w-[45%] lg:w-[50%] bg-muted/20 border-r border-border relative overflow-hidden flex-col items-center justify-center p-12 text-center select-none">
+                {/* Clean background dot grid pattern */}
+                <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] [mask-image:radial-gradient(ellipse_50%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-30 pointer-events-none dark:opacity-10" />
+
+                <div className="space-y-6 max-w-sm animate-in fade-in slide-in-from-left-6 duration-500 z-10">
+                    <h2 className="text-4xl font-bold tracking-tight text-foreground leading-[1.15]">
                         Verified opportunities for freshers.
                     </h2>
                     <p className="text-base text-muted-foreground leading-relaxed">
                         Access a verified feed of off-campus jobs, internships, and walk-ins. Direct apply links only.
                     </p>
                 </div>
-                <div className="absolute -bottom-24 -left-24 h-64 w-64 bg-primary/5 rounded-full blur-3xl" />
             </div>
 
             {/* Right Side: Login Form */}
@@ -210,7 +204,7 @@ function LoginContent() {
                         {step !== 'email' && (
                             <button
                                 onClick={() => setStep('email')}
-                                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary capitalize tracking-wider mb-4 transition-colors"
+                                className="flex items-center gap-1 text-[11px] font-semibold text-muted-foreground hover:text-primary capitalize tracking-wider mb-4 transition-colors cursor-pointer"
                             >
                                 <ChevronLeftIcon className="w-3 h-3" />
                                 Back to login
@@ -259,40 +253,72 @@ function LoginContent() {
                                         <span className="bg-background px-4 text-muted-foreground/40">or</span>
                                     </div>
                                 </div>
-                                <div id="google-login-btn" className="w-full min-h-[44px] overflow-hidden rounded-lg flex justify-center" />
-                                {googleScriptBlocked && (
-                                    <p className="text-[11px] text-muted-foreground text-center">
-                                        Google sign-in appears blocked by browser extension/privacy settings. Use email OTP or disable blocking for this site.
-                                    </p>
-                                )}
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={handleGoogleSignIn}
+                                    disabled={isLoading}
+                                    className="w-full !h-11 text-sm font-semibold !rounded-lg flex items-center justify-center gap-2 border-border/80 hover:bg-muted/40 transition-colors"
+                                >
+                                    <svg className="w-5 h-5 mr-1" viewBox="0 0 24 24">
+                                        <path
+                                            fill="#EA4335"
+                                            d="M5.266 9.765A7.077 7.077 0 0 1 12 4.909c1.69 0 3.218.6 4.418 1.582L19.91 3C17.782 1.145 15.055 0 12 0 7.37 0 3.412 2.667 1.48 6.555l3.786 3.21z"
+                                        />
+                                        <path
+                                            fill="#FBBC05"
+                                            d="M1.48 6.555A12.049 12.049 0 0 0 0 12c0 1.927.455 3.746 1.258 5.373l3.967-3.07a7.086 7.086 0 0 1-.225-2.303c0-1.442.434-2.776 1.18-3.885L1.48 6.555z"
+                                        />
+                                        <path
+                                            fill="#4285F4"
+                                            d="M12 24c3.245 0 5.973-1.076 7.964-2.912l-3.836-2.973c-1.127.755-2.564 1.203-4.128 1.203-3.18 0-5.88-2.154-6.845-5.064L1.258 17.373C3.12 21.294 7.234 24 12 24z"
+                                        />
+                                        <path
+                                            fill="#34A853"
+                                            d="M24 12c0-.864-.077-1.697-.22-2.509H12v4.8h6.732c-.29 1.549-1.164 2.863-2.477 3.745l3.836 2.973C22.336 19.167 24 15.827 24 12z"
+                                        />
+                                    </svg>
+                                    Continue with Google
+                                </Button>
                             </form>
                         )}
 
                         {step === 'otp' && (
                             <form onSubmit={handleVerifyOtp} className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     <label className="text-xs font-medium text-foreground ml-1">Verification Code</label>
-                                    <div className="relative group">
-                                        <KeyIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground/40 group-focus-within:text-primary transition-colors z-10" />
-                                        <Input
-                                            type="text"
-                                            required
-                                            maxLength={6}
-                                            value={otp}
-                                            onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                            className="pl-11 !h-11 text-center text-xl font-bold tracking-[0.4em]"
-                                            placeholder="000000"
-                                            autoFocus
-                                        />
+                                    
+                                    {/* Premium 6-Box OTP Inputs */}
+                                    <div className="flex justify-between gap-2.5">
+                                        {otpArray.map((digit, idx) => (
+                                            <input
+                                                key={idx}
+                                                id={`otp-${idx}`}
+                                                type="text"
+                                                inputMode="numeric"
+                                                maxLength={1}
+                                                value={digit}
+                                                onChange={(e) => handleOtpChange(e.target.value, idx)}
+                                                onKeyDown={(e) => handleOtpKeyDown(e, idx)}
+                                                onPaste={handleOtpPaste}
+                                                className="w-12 h-12 rounded-xl border border-border bg-card text-center text-xl font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all shadow-sm"
+                                                autoFocus={idx === 0}
+                                            />
+                                        ))}
                                     </div>
-                                    <div className="flex justify-between items-center px-1">
+
+                                    <div className="flex justify-between items-center px-1 pt-1">
                                         <p className="text-[11px] text-muted-foreground">Didn&apos;t receive it?</p>
-                                        <button type="button" onClick={handleSendOtp} className="text-[11px] font-semibold text-primary hover:underline">
+                                        <button type="button" onClick={handleSendOtp} className="text-[11px] font-semibold text-primary hover:underline cursor-pointer">
                                             Resend code
                                         </button>
                                     </div>
                                 </div>
-                                <Button type="submit" disabled={isLoading || otp.length !== 6} className="w-full !h-11 text-sm font-semibold !rounded-lg">
+                                <Button 
+                                    type="submit" 
+                                    disabled={isLoading || otpArray.join('').length !== 6} 
+                                    className="w-full !h-11 text-sm font-semibold !rounded-lg mt-2"
+                                >
                                     {isLoading ? <ArrowPathIcon className="w-5 h-5 animate-spin mx-auto" /> : 'Verify code'}
                                 </Button>
                             </form>

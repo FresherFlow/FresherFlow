@@ -10,7 +10,7 @@ export function HomeAuthGuard() {
 
     useEffect(() => {
         if (!isLoading && user) {
-            router.push('/dashboard');
+            router.replace('/dashboard');
         }
     }, [user, isLoading, router]);
 
